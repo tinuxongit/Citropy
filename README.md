@@ -1,13 +1,39 @@
 <div align="center">
   <img src="public/citropy.svg" width="84" alt="">
   <h1>Citropy</h1>
-  <p>A desktop workspace for Claude Code, Codex, and OpenCode.</p>
+  <p>One desktop app for Claude Code, Codex, OpenCode, and Cursor.</p>
   <p>
-    <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-blue.svg">
-    <img alt="Node.js 22.18 or newer" src="https://img.shields.io/badge/node-%3E%3D22.18-5FA04E.svg">
-    <img alt="Linux and macOS" src="https://img.shields.io/badge/desktop-Linux%20%26%20macOS-1793D1.svg">
+    <a href="https://github.com/tinuxongit/Citropy/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/tinuxongit/Citropy?label=release"></a>
+    <img alt="Linux, macOS, and Windows" src="https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-1793D1.svg">
+    <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   </p>
 </div>
+
+## Install
+
+**Linux and macOS**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.sh | sh
+```
+
+**Windows** (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps1 | iex
+```
+
+Run the same command again to update. Citropy also updates itself from Settings.
+
+You need Git and at least one agent CLI installed and signed in: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), [OpenCode](https://opencode.ai), or [Cursor CLI](https://cursor.com/cli). Node.js is not required. The app ships its own runtime.
+
+| System | Build | Installed to |
+| --- | --- | --- |
+| Linux | x86_64 AppImage | `~/.local/bin/citropy`, plus an application menu entry |
+| macOS | Apple Silicon and Intel | `~/Applications/Citropy.app` |
+| Windows | x64 | `%LOCALAPPDATA%\Programs\citropy`, plus a Start menu entry |
+
+Nothing needs an administrator password. Manual downloads are on the [releases page](https://github.com/tinuxongit/Citropy/releases/latest).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/chat-dark.png">
@@ -15,17 +41,17 @@
   <img alt="Citropy running a Claude Code conversation beside the task list and Git status" src="docs/assets/chat-light.png">
 </picture>
 
-Citropy runs the coding agent CLIs you already have, in one window. Each conversation keeps its own provider, model, reasoning effort, and permission mode, while files, Git, terminals, browser tabs, and checkpoints belong to the workspace. It runs against a local backend on your machine, or on a remote host over SSH.
+## What it does
 
-## Commit and push with the agent
+Citropy runs the coding agents you already use, side by side in one window. Each conversation keeps its own agent, model, reasoning effort, and permission mode. Files, Git, terminals, and browser tabs belong to the project, so every agent works on the same folder.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/git-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/git-light.png">
-  <img alt="The Git panel showing the branch, changed files, and AI commit buttons" src="docs/assets/git-light.png">
-</picture>
-
-The floating Git panel shows the branch, the change counts, and the commits waiting to push. AI commit writes the message from a bounded diff in a separate session, and the model used for it is chosen per conversation.
+- **Every agent in one list.** Switch between Claude Code, Codex, OpenCode, and Cursor per conversation, or move a conversation to another agent and keep its history.
+- **Review before you keep it.** Each turn is checkpointed. Read diffs, revert single hunks, comment on lines, and send the comments back to the agent.
+- **Git and GitHub built in.** Stage, commit with an AI-written message, and push. Browse pull requests, issues, Actions runs, and releases without leaving the app.
+- **Browser, terminal, and files beside the chat.** Agents can drive the same browser and terminals you see.
+- **Computer use.** Let a conversation click and type in native apps on Linux and macOS.
+- **Remote work.** Open folders on another machine over SSH, or in a Docker container.
+- **Usage at a glance.** Claude Code and Codex limits with reset times, token totals, and live CPU and memory use.
 
 ## Review every change
 
@@ -35,9 +61,19 @@ The floating Git panel shows the branch, the change counts, and the commits wait
   <img alt="The Changes panel with grouped files and an expanded diff" src="docs/assets/changes-light.png">
 </picture>
 
-Files group by added, changed, and deleted, with diffs inline. Stage, unstage, or revert single hunks, comment on lines, and send the comments back to the agent as feedback. Every turn is checkpointed, so a message can be restored or branched into a new conversation.
+Changed files are grouped into added, changed, and deleted, with the diff inline. Stage, unstage, or revert a single hunk. Any earlier message can be restored or branched into a new conversation.
 
-## Browser, terminals, and files beside the chat
+## Commit and push
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/git-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/git-light.png">
+  <img alt="The Git panel showing the branch, changed files, and AI commit buttons" src="docs/assets/git-light.png">
+</picture>
+
+The Git panel shows the branch, change counts, and commits waiting to push. AI commit writes the message from the diff in a separate session, so it doesn't touch your conversation.
+
+## Browser and terminals
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/browser-dark.png">
@@ -45,9 +81,9 @@ Files group by added, changed, and deleted, with diffs inline. Stage, unstage, o
   <img alt="The browser panel showing a local dashboard next to the conversation" src="docs/assets/browser-light.png">
 </picture>
 
-The workspace panel opens a browser, terminal, file tree, changes view, subagents, and the MCP tool list. Tabs and terminals stay open while you move between them, and providers drive the same browser and terminal sessions through Citropy's MCP tools. Page resolution, mobile mode, and phone presets are one click away.
+The side panel holds a browser, terminals, a file tree, the changes view, subagents, and the list of tools agents can call. Tabs stay open while you switch between them. Agents use the same browser and terminals through Citropy's MCP tools, and phone-sized page presets are one click away.
 
-## Computer use, for the whole desktop
+## Computer use
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/computer-dark.png">
@@ -55,9 +91,9 @@ The workspace panel opens a browser, terminal, file tree, changes view, subagent
   <img alt="The Computer panel sharing a Linux desktop with recent activity" src="docs/assets/computer-light.png">
 </picture>
 
-Share a screen and let a conversation move, click, drag, scroll, and type in native desktop apps on Linux and macOS. Input follows the conversation's permission mode, a screen indicator keeps pause and stop reachable from anywhere, and sessions end after five minutes without actions.
+Share a screen and a conversation can move the mouse, click, drag, scroll, and type in desktop apps. Input follows the conversation's permission mode. An on-screen indicator keeps pause and stop within reach, and the session ends after five idle minutes. Available on Linux and macOS.
 
-## Questions land in one panel
+## Questions in one place
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/question-dark.png">
@@ -65,9 +101,9 @@ Share a screen and let a conversation move, click, drag, scroll, and type in nat
   <img alt="A question from the agent with answer choices above the composer" src="docs/assets/question-light.png">
 </picture>
 
-Claude Code, Codex, and OpenCode ask in the same panel above the composer. Pick one option, select several, write your own answer, or skip. Replies return to the waiting tool, and drafts survive switching conversations and reconnecting.
+When an agent needs a decision, it asks above the composer. Pick an option, choose several, write your own answer, or skip. Half-written answers survive switching conversations.
 
-## Local, SSH, and Docker workspaces
+## SSH and Docker
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/workspaces-dark.png">
@@ -75,9 +111,9 @@ Claude Code, Codex, and OpenCode ask in the same panel above the composer. Pick 
   <img alt="The workspace picker showing local folders, an SSH host, and Docker" src="docs/assets/workspaces-light.png">
 </picture>
 
-Open a local folder, connect to a host over SSH, or start a Docker environment. Files, Git, terminals, and provider sessions run on that host while the interface stays local. Per-folder settings inherit from global defaults or override them, and switching hosts preserves drafts, selections, and running shells.
+Connect to a host over SSH or start a Docker container. Files, Git, terminals, and agents run on that machine while the window stays on yours. Citropy sets up Node.js on the remote host by itself if it's missing, on Linux and macOS hosts.
 
-## Usage and resources
+## Usage
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/usage-dark.png">
@@ -85,31 +121,23 @@ Open a local folder, connect to a host over SSH, or start a Docker environment. 
   <img alt="The Usage view with allowances, token totals, and per-conversation usage" src="docs/assets/usage-light.png">
 </picture>
 
-Claude Code and Codex allowances with reset times, token totals for every saved conversation, and a live view of memory, CPU, terminals, browsers, and running work.
+See how much of your Claude Code and Codex allowance is left and when it resets, token totals for every conversation, and what's using memory and CPU right now.
 
-## Install
+## Uninstall
 
-Linux, Node.js 22.18 or newer, and Git, plus at least one of the agent CLIs installed and signed in.
-
-Linux and macOS install and update with one command. It downloads the latest release, verifies its checksum, and puts Citropy in your user account, with no administrator password.
+Your conversations and settings live in `~/.citropy` and are kept when you update or uninstall.
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.sh | sh -s -- --uninstall
 ```
-
-On Linux it installs `~/.local/bin/citropy` and adds Citropy to your application menu. On macOS it installs `~/Applications/Citropy.app`, ad-hoc signed so Apple Silicon runs it, without the quarantine tag, so it opens without a Gatekeeper prompt. A zip downloaded through a browser instead is blocked by Gatekeeper on macOS 15 and later. Re-run the same command to update, and pass `--uninstall` to remove it. On macOS the update button in Settings runs this installer for you.
-
-On Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps1 | iex
+$s = irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps1; & ([scriptblock]::Create($s)) -Uninstall
 ```
 
-It installs per user under `%LOCALAPPDATA%\Programs\citropy` with no administrator rights, adds a Start menu entry, and updates itself in the app. Because a PowerShell download carries no Mark of the Web, Windows shows no SmartScreen warning. Machines with Smart App Control turned on still block unsigned apps by design, which needs a signed build or that setting off. Uninstall with `$s = irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps1; & ([scriptblock]::Create($s)) -Uninstall`.
+## Build from source
 
-Installing replaces the installed build; your conversations, settings, and terminals stay. Remove Citropy with `--uninstall` on Linux and macOS, or `-Uninstall` on Windows.
-
-From a source checkout instead:
+Requires Node.js 22.18 or newer and Git.
 
 ```sh
 git clone https://github.com/tinuxongit/Citropy.git
@@ -118,30 +146,24 @@ npm install
 npm run desktop
 ```
 
-If the Electron download was skipped during installation, run `npm run setup:desktop` once. Conversations and settings are stored in `~/.citropy`.
+If the Electron download was skipped during `npm install`, run `npm run setup:desktop` once.
 
-## Development
+| Command | What it does |
+| --- | --- |
+| `npm run desktop:dev` | Desktop window with live reload. Uses separate data in `~/.citropy-dev` |
+| `npm run dev` | Web development server, no desktop window |
+| `npm start` | Web interface at http://127.0.0.1:4177 |
+| `npm run typecheck` | TypeScript check |
+| `npm test` | Test suite |
+| `npm run desktop:package` | Build a release package into `release/` |
+| `npm run screenshots` | Regenerate the images in `docs/assets` |
 
-```sh
-npm run desktop:dev   # desktop window with live interface updates
-npm run dev           # web development server, no desktop window
-npm start             # web interface at http://127.0.0.1:4177
-npm run typecheck     # TypeScript
-npm test              # test suite
-npm run build         # production web bundle
-npm run screenshots   # regenerate the images in docs/assets
-```
-
-`npm run desktop:dev` uses separate data in `~/.citropy-dev`, a **Citropy Dev** desktop profile, and backend port 4178. The live interface runs on port 5177. Development controls stay out of normal builds.
-
-`npm run desktop:install` adds the normal source build to the application menu; pass `-- --dev` for a separate development launcher. `npm run desktop:package` builds a Linux AppImage and its update manifest in `release/`; pass `-- --mac` on macOS for a zip of the app. The packaged app starts and stops its own local server. `npm run desktop:smoke` checks the packaged app without running a model, and `npm run desktop:smoke:mac` checks the macOS zip.
-
-[Development and release instructions](docs/release.md) cover isolation, system dependencies, GitHub checks, and draft releases.
+Packaging, smoke tests, and publishing are covered in [docs/release.md](docs/release.md).
 
 ## Documentation
 
-[docs/guide.md](docs/guide.md) covers workspaces, Git and checkpoints, providers, the browser and computer tools, settings, storage, and the code layout. Issues and pull requests are welcome.
+The [guide](docs/guide.md) explains each part of the app in detail, plus storage and the code layout. Issues and pull requests are welcome.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Bundled Inter and Geist Mono fonts are used under the SIL Open Font License; license copies ship in `public/fonts`.
+MIT. See [LICENSE](LICENSE). The bundled Inter and Geist Mono fonts are under the SIL Open Font License, with copies in `public/fonts`.
