@@ -82,7 +82,7 @@ export function providerControl(
         else if (response.request_id === "read")
           finish(undefined, response.response);
       }
-    });
+    }, undefined, error => finish(error instanceof Error ? error : new Error(String(error))));
     write(
       provider === "codex"
         ? {

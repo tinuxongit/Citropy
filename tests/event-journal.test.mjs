@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { Worker } from "node:worker_threads";
+import { once } from "node:events";
 
 const directory = mkdtempSync(join(tmpdir(), "citropy-journal-test-"));
 process.env.CITROPY_DATA_DIR = directory;
@@ -101,6 +103,25 @@ test("a closed journal can reopen its statements and preserves replacement order
   assert.equal(journal.hasThread("missing"), false);
   assert.deepEqual(journal.threads(), []);
   journal.close();
+});
+
+test("brief concurrent writes do not drop provider events", async t => {
+  const path = join(directory, "contention.sqlite");
+  const journal = new EventJournal(path);
+  assert.equal(journal.sequence, 0);
+  const writer = new Worker(`
+    const { parentPort, workerData } = require("node:worker_threads");
+    const { DatabaseSync } = require("node:sqlite");
+    const db = new DatabaseSync(workerData);
+    db.exec("BEGIN IMMEDIATE");
+    parentPort.postMessage("locked");
+    setTimeout(() => { db.exec("COMMIT"); db.close(); }, 100);
+  `, { eval: true, workerData: path });
+  t.after(async () => { await writer.terminate(); journal.close(); });
+  await once(writer, "message");
+  const event = { t: "message.add", threadId: "concurrent", message: { id: "message", role: "assistant", ts: 1, parts: [] } };
+  assert.equal(journal.append(event), 1);
+  assert.deepEqual(journal.replay(0), [{ ...event, sequence: 1 }]);
 });
 
 test.after(() => { eventJournal.close(); rmSync(directory, { recursive: true, force: true }); });

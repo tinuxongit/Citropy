@@ -142,3 +142,46 @@ test("the favicon route is served through the feature handler", async (t) => {
   assert.equal(await response.text(), icon);
   assert.equal((await fetch(`${base}/api/nothing`)).status, 404);
 });
+
+test("concurrent links from one site share their icon download", async t => {
+  const hits = [];
+  const site = await fixture((request, response) => {
+    hits.push(request.url);
+    setTimeout(() => {
+      if (request.url === "/favicon.ico") response.writeHead(200, { "content-type": "image/svg+xml" }).end(icon);
+      else response.writeHead(200, { "content-type": "text/html" }).end("<title>Shared site</title>");
+    }, 10);
+  });
+  t.after(async () => {
+    site.server.closeAllConnections();
+    await new Promise(resolve => site.server.close(resolve));
+  });
+  const results = await Promise.all(Array.from({ length: 40 }, (_, index) => faviconFor(`${site.url}/page-${index}`)));
+  assert.equal(hits.length, 2);
+  assert.ok(results.every(result => result.body.toString() === icon));
+});
+
+test("large site icons evict older cached images within the byte budget", async t => {
+  const hits = new Map();
+  const data = Buffer.alloc(512 * 1024, 1);
+  const sites = [];
+  t.after(async () => {
+    for (const site of sites) {
+      site.server.closeAllConnections();
+      await new Promise(resolve => site.server.close(resolve));
+    }
+  });
+  for (let index = 0; index < 10; index++) {
+    const site = await fixture((request, response) => {
+      hits.set(index, (hits.get(index) ?? 0) + 1);
+      if (request.url === "/favicon.ico") response.writeHead(200, { "content-type": "image/png" }).end(data);
+      else response.writeHead(200, { "content-type": "text/html" }).end("<title>Site</title>");
+    });
+    sites.push(site);
+    assert.equal((await faviconFor(site.url)).body.length, data.length);
+  }
+  await faviconFor(sites[9].url);
+  assert.equal(hits.get(9), 2);
+  await faviconFor(sites[0].url);
+  assert.equal(hits.get(0), 4);
+});

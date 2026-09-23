@@ -1,3 +1,4 @@
+import "./fixtures/isolated-data.mjs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import childProcess from "node:child_process";
@@ -46,4 +47,24 @@ test("providers surface stray non-JSON stdout as warnings", async (t) => {
   codex.stdout.write("codex: noisy warning\n");
   await tick();
   assert.ok(codexEvents.some((event) => event.type === "notice" && event.level === "warn" && /noisy warning/.test(event.text)));
+
+  await t.test("handler errors report their cause without displaying command payloads", async () => {
+    for (const provider of [claudeProvider, codexProvider]) {
+      const events = [];
+      const session = provider.start({ ...options, emit(event) {
+        if (event.type === "tool.start" || event.type === "block.start") throw new Error("Persistence unavailable");
+        events.push(event);
+      } });
+      const child = children.at(-1);
+      const wire = provider.id === "claude"
+        ? { type: "stream_event", event: { type: "content_block_start", index: 0, content_block: { type: "tool_use", id: "call", name: "Bash", input: { command: "private-command" } } } }
+        : { method: "item/agentMessage/delta", params: { itemId: "call", delta: "private-command" } };
+      child.stdout.write(`${JSON.stringify(wire)}\n`);
+      await tick();
+      assert.ok(events.some(event => event.type === "notice" && event.level === "error" && event.text.includes("Persistence unavailable")));
+      assert.ok(events.some(event => event.type === "exit" && event.code !== 0));
+      assert.equal(JSON.stringify(events).includes("private-command"), false);
+      session.dispose();
+    }
+  });
 });

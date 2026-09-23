@@ -5,6 +5,7 @@ const iconLimit = 512 * 1024;
 const hitTtl = 6 * 60 * 60 * 1000;
 const missTtl = 5 * 60 * 1000;
 const cacheLimit = 200;
+const cacheByteLimit = 4 * 1024 * 1024;
 
 interface Entry {
   at: number;
@@ -13,6 +14,8 @@ interface Entry {
 }
 
 const cache = new Map<string, Entry>();
+const pending = new Map<string, Promise<{ type: string; body: Buffer } | undefined>>();
+let cacheBytes = 0;
 
 function attribute(tag: string, name: string): string | undefined {
   const match = new RegExp(`\\b${name}\\s*=\\s*("[^"]*"|'[^']*'|[^\\s>]+)`, "i").exec(tag);
@@ -84,8 +87,19 @@ export async function faviconFor(href: string): Promise<{ type: string; body: Bu
   }
   if (!["http:", "https:"].includes(url.protocol)) return undefined;
   const cached = cache.get(url.origin);
-  if (cached && Date.now() - cached.at < (cached.body ? hitTtl : missTtl))
+  if (cached && Date.now() - cached.at < (cached.body ? hitTtl : missTtl)) {
+    cache.delete(url.origin);
+    cache.set(url.origin, cached);
     return cached.body ? { type: cached.type!, body: cached.body } : undefined;
+  }
+  const current = pending.get(url.origin);
+  if (current) return current;
+  const request = loadFavicon(url).finally(() => pending.delete(url.origin));
+  pending.set(url.origin, request);
+  return request;
+}
+
+async function loadFavicon(url: URL): Promise<{ type: string; body: Buffer } | undefined> {
   const page = await download(url.href, "text/html,application/xhtml+xml", pageLimit, 5000).catch(() => undefined);
   const candidates = [
     ...new Set([
@@ -101,8 +115,16 @@ export async function faviconFor(href: string): Promise<{ type: string; body: Bu
       break;
     }
   }
-  if (cache.size >= cacheLimit) cache.delete(cache.keys().next().value!);
+  cacheBytes -= cache.get(url.origin)?.body?.length ?? 0;
+  cache.delete(url.origin);
+  const bytes = found?.body.length ?? 0;
+  while (cache.size >= cacheLimit || cacheBytes + bytes > cacheByteLimit) {
+    const [key, entry] = cache.entries().next().value!;
+    cacheBytes -= entry.body?.length ?? 0;
+    cache.delete(key);
+  }
   cache.set(url.origin, found ? { at: Date.now(), ...found } : { at: Date.now() });
+  cacheBytes += bytes;
   return found;
 }
 

@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { bus } from "../server/bus.ts";
-import { shellList, startShell, shellOutput, endShell, endThreadShells, stopShell } from "../server/shells.ts";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const directory = mkdtempSync(join(tmpdir(), "citropy-shells-"));
+process.env.CITROPY_DATA_DIR = directory;
+const { bus } = await import("../server/bus.ts");
+const { eventJournal } = await import("../server/event-journal.ts");
+const { shellList, startShell, shellOutput, endShell, endThreadShells, stopShell } = await import("../server/shells.ts");
+test.after(() => { eventJournal.close(); rmSync(directory, { recursive: true, force: true }); });
 
 test("shell registry tracks independent owners, bounded output and background lifetime", async (t) => {
   const events = [];

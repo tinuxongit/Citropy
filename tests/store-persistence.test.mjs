@@ -78,4 +78,31 @@ test("thread persistence is durable on flush and adaptive when scheduled", async
     assert.equal(recovered.messages[0].parts[0].text, "Updated older message");
     assert.equal(recovered.messages.at(-1).parts.at(-1).text, "delta ".repeat(50));
   });
+
+  await t.test("metadata reuses file counts during streaming and invalidates actual file changes", () => {
+    const entry = store.createThread({ projectId: project.id, provider: "opencode", title: "Metadata", permissionMode: "manual" });
+    const tool = { id: "edit-part", kind: "tool", callId: "edit", name: "Edit", shape: "edit", status: "ok", input: { file_path: "first.ts" } };
+    store.addMessage(entry.id, { id: "edits", role: "assistant", ts: 1, parts: [tool] });
+    store.addPart(entry.id, "edits", { id: "answer", kind: "text", text: "" });
+    assert.equal(store.meta(entry).changedFiles, 1);
+    let scans = 0;
+    Object.defineProperty(tool, "input", { enumerable: true, configurable: true, get() { scans++; return { file_path: "first.ts" }; } });
+    for (let index = 0; index < 50; index++) {
+      store.appendText(entry.id, "edits", "answer", "delta");
+      store.patchThread(entry.id, { status: "working" });
+      assert.equal(store.meta(entry).changedFiles, 1);
+    }
+    assert.equal(scans, 0);
+    Object.defineProperty(tool, "input", { enumerable: true, configurable: true, writable: true, value: { file_path: "first.ts" } });
+    store.patchPart(entry.id, "edits", "edit-part", { input: { paths: ["first.ts", "second.ts", "first.ts"] } });
+    assert.equal(store.meta(entry).changedFiles, 2);
+    store.patchPart(entry.id, "edits", "edit-part", { status: "error" });
+    assert.equal(store.meta(entry).changedFiles, 0);
+    store.addPart(entry.id, "edits", { ...tool, id: "write-part", shape: "write", status: "ok", input: { path: "third.ts" } });
+    assert.equal(store.meta(entry).changedFiles, 1);
+    store.addMessage(entry.id, { id: "next-edits", role: "assistant", ts: 2, parts: [{ ...tool, id: "next-edit", status: "ok" }] });
+    assert.equal(store.meta(entry).changedFiles, 3);
+    store.replaceMessages(entry.id, []);
+    assert.equal(store.meta(entry).changedFiles, 0);
+  });
 });

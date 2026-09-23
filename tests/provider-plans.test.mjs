@@ -1,3 +1,4 @@
+import "./fixtures/isolated-data.mjs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import childProcess from "node:child_process";
@@ -71,5 +72,18 @@ test("Claude and Codex convert native plan updates into readable steps", async (
     ]);
     children.at(-1).receive({ method: "turn/plan/updated", params: { threadId: "native-thread", plan: [] } });
     assert.deepEqual(events.findLast(event => event.type === "todos").items, []);
+  });
+
+  await t.test("Codex full text completes streamed Unicode without duplicating earlier chunks", async () => {
+    const events = [];
+    sessions.push(codexProvider.start({ ...options, emit: event => events.push(event) }));
+    await new Promise(resolve => setImmediate(resolve));
+    const child = children.at(-1);
+    child.receive({ method: "item/agentMessage/delta", params: { itemId: "answer", delta: "Hello 😀" } });
+    child.receive({ method: "item/completed", params: { item: { id: "answer", type: "agentMessage", text: "Hello 😀 world" } } });
+    child.receive({ method: "item/completed", params: { item: { id: "answer", type: "agentMessage", text: "Hello 😀 world" } } });
+    child.receive({ method: "item/completed", params: { item: { id: "thought", type: "reasoning", summary: ["First", "Second"] } } });
+    assert.deepEqual(events.filter(event => event.type === "block.delta").map(event => event.text), ["Hello 😀", " world", "First\nSecond"]);
+    assert.deepEqual(events.filter(event => event.type === "block.start").map(event => event.block), ["text", "reasoning"]);
   });
 });

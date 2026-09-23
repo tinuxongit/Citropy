@@ -8,6 +8,7 @@ import { createTimelineSelector } from "../web/src/lib/timeline.ts";
 const directory = mkdtempSync(join(tmpdir(), "citropy-performance-"));
 process.env.CITROPY_DATA_DIR = directory;
 const { EventJournal } = await import("../server/event-journal.ts");
+const { store } = await import("../server/store.ts");
 const journal = new EventJournal(join(directory, "events.sqlite"));
 
 try {
@@ -40,7 +41,15 @@ try {
   const selectionStarted = performance.now();
   for (const snapshot of snapshots) assert.strictEqual(select(snapshot), rows);
   console.log(JSON.stringify({ benchmark: "timeline selector: 5000 messages, 300 streaming updates", elapsedMs: performance.now() - selectionStarted }));
+
+  const thread = { id: "metadata", messages: Array.from({ length: 10000 }, (_, index) => ({ id: `message-${index}`, ts: index, parts: [{ id: `tool-${index}`, kind: "tool", shape: "edit", status: "ok", input: { file_path: `file-${index % 100}.ts` } }] })) };
+  assert.equal(store.meta(thread).changedFiles, 100);
+  const metadataStarted = performance.now();
+  for (let index = 0; index < 1000; index++) assert.equal(store.meta(thread).changedFiles, 100);
+  console.log(JSON.stringify({ benchmark: "metadata: 10000 tools, 1000 status reads", elapsedMs: performance.now() - metadataStarted }));
 } finally {
   journal.close();
+  const { eventJournal } = await import("../server/event-journal.ts");
+  eventJournal.close();
   rmSync(directory, { recursive: true, force: true });
 }

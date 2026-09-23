@@ -154,6 +154,10 @@ class ClaudeSession implements AgentSession {
     onJson(this.#child.stdout, (value) => this.#handle(value as Record<string, unknown>), (line) => {
       if (/^\s*$/.test(line)) return;
       this.#emit({ type: "notice", level: "warn", text: line });
+    }, (error) => {
+      this.#emit({ type: "notice", level: "error", text: `Could not process a Claude event: ${error instanceof Error ? error.message : String(error)}` });
+      this.#emit({ type: "exit", code: -1 });
+      this.dispose();
     });
     onLines(this.#child.stderr, (line) => {
       if (/^\s*$/.test(line)) return;

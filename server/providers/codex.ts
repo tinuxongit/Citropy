@@ -60,8 +60,8 @@ class CodexSession implements AgentSession {
   #failed = false;
   #interruptPending = false;
   #queue: Array<{ text: string; attachments: Attachment[]; skills: Array<{ name: string; path: string }> }> = [];
-  #blocks = new Map<string, string>();
-  #items = new Map<string, Item>();
+  #blocks = new Map<string, number>();
+  #items = new Map<string, Pick<Item, "id" | "type" | "command" | "changes">>();
   #stderr = "";
   #agents = new Map<string, Map<string, string>>();
   #compacting = false;
@@ -81,7 +81,7 @@ class CodexSession implements AgentSession {
       env: { ...process.env, RUST_LOG: "error", ...(options.mcp ? { CITROPY_MCP_TOKEN: options.mcp.headers.Authorization?.replace(/^Bearer /, "") } : {}) },
       stdio: ["pipe", "pipe", "pipe"],
     });
-    onJson(this.#child.stdout, (raw) => this.#receive(raw as Wire), (line) => this.#options.emit({ type: "notice", level: "warn", text: line }));
+    onJson(this.#child.stdout, (raw) => this.#receive(raw as Wire), (line) => this.#options.emit({ type: "notice", level: "warn", text: line }), (error) => this.#fail(`Could not process a Codex event: ${error instanceof Error ? error.message : String(error)}`));
     onLines(this.#child.stderr, (line) => {
       this.#stderr = `${this.#stderr}${line}\n`.slice(-4000);
     });
@@ -302,10 +302,10 @@ class CodexSession implements AgentSession {
 
   #text(id: string, kind: "text" | "reasoning", text: string, full = false): void {
     const blockId = `${id}:${kind}`;
-    const previous = this.#blocks.get(blockId) ?? "";
+    const previous = this.#blocks.get(blockId) ?? 0;
     if (!this.#blocks.has(blockId)) this.#options.emit({ type: "block.start", blockId, block: kind });
-    const delta = full ? text.slice(previous.length) : text;
-    this.#blocks.set(blockId, previous + delta);
+    const delta = full ? text.slice(previous) : text;
+    this.#blocks.set(blockId, previous + delta.length);
     if (delta) this.#options.emit({ type: "block.delta", blockId, text: delta });
   }
 
@@ -411,7 +411,7 @@ class CodexSession implements AgentSession {
       return;
     }
     const started = this.#items.has(item.id);
-    this.#items.set(item.id, item);
+    this.#items.set(item.id, { id: item.id, type: item.type, command: item.command, changes: item.changes });
     if (item.type === "agentMessage" || item.type === "plan" || item.type === "reasoning") {
       if (done) {
         const kind = item.type === "reasoning" ? "reasoning" : "text";
@@ -479,7 +479,7 @@ class CodexSession implements AgentSession {
     if (!messages) return;
     const emit = this.#options.emit;
     const item = params.item as Item | undefined;
-    if (item) this.#items.set(item.id, item);
+    if (item) this.#items.set(item.id, { id: item.id, type: item.type, command: item.command, changes: item.changes });
     if (method === "turn/started") {
       messages.clear();
       emit({ type: "subagent", id, status: "working" });

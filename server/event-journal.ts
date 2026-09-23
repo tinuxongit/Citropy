@@ -20,7 +20,7 @@ export class EventJournal {
     if (this.#path !== ":memory:") mkdirSync(dirname(this.#path), { recursive: true, mode: 0o700 });
     const database = new DatabaseSync(this.#path);
     if (this.#path !== ":memory:") chmodSync(this.#path, 0o600);
-    database.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;
+    database.exec(`PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;
       CREATE TABLE IF NOT EXISTS events (sequence INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS documents (kind TEXT NOT NULL, id TEXT NOT NULL, parent TEXT NOT NULL, position INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(kind,id));
       CREATE INDEX IF NOT EXISTS document_parent ON documents(kind,parent,position);

@@ -67,16 +67,23 @@ function saveRaw(path: string, json: string, durable: boolean): void {
   }
 }
 
+const changedFileCounts = new WeakMap<Thread, number>();
+
 function meta(thread: Thread): ThreadMeta {
   const { messages, ...rest } = thread;
-  const paths = new Set<string>();
-  for (const message of messages) for (const part of message.parts) {
-    if (part.kind !== "tool" || part.status !== "ok" || !["edit", "write"].includes(part.shape)) continue;
-    const input = part.input as Record<string, unknown> | undefined;
-    const candidates = Array.isArray(input?.paths) ? input.paths : [input?.file_path ?? input?.filePath ?? input?.path];
-    for (const path of candidates) if (typeof path === "string" && path) paths.add(path);
+  let changedFiles = changedFileCounts.get(thread);
+  if (changedFiles === undefined) {
+    const paths = new Set<string>();
+    for (const message of messages) for (const part of message.parts) {
+      if (part.kind !== "tool" || part.status !== "ok" || !["edit", "write"].includes(part.shape)) continue;
+      const input = part.input as Record<string, unknown> | undefined;
+      const candidates = Array.isArray(input?.paths) ? input.paths : [input?.file_path ?? input?.filePath ?? input?.path];
+      for (const path of candidates) if (typeof path === "string" && path) paths.add(path);
+    }
+    changedFiles = paths.size;
+    changedFileCounts.set(thread, changedFiles);
   }
-  return { ...rest, updatedAt: messages.at(-1)?.ts ?? rest.updatedAt, changedFiles: paths.size };
+  return { ...rest, updatedAt: messages.at(-1)?.ts ?? rest.updatedAt, changedFiles };
 }
 
 export class Store {
@@ -504,6 +511,7 @@ export class Store {
     if (!thread) throw new Error(`unknown thread ${threadId}`);
     if (message.role === "assistant") message.provider ??= thread.provider;
     thread.messages.push(message);
+    changedFileCounts.delete(thread);
     thread.updatedAt = message.ts;
     bus.emit({ t: "message.add", threadId, message });
     this.#schedule(threadId);
@@ -514,6 +522,7 @@ export class Store {
     const thread = this.threads.get(threadId);
     if (!thread) throw new Error("Conversation not found.");
     thread.messages = messages;
+    changedFileCounts.delete(thread);
     bus.emit({ t: "thread.messages", threadId, messages });
     this.#schedule(threadId);
   }
@@ -521,6 +530,7 @@ export class Store {
   addPart(threadId: string, messageId: string, part: Part): Part {
     const message = this.#message(threadId, messageId);
     message.parts.push(part);
+    if (part.kind === "tool") changedFileCounts.delete(this.threads.get(threadId)!);
     bus.emit({ t: "part.add", threadId, messageId, part });
     this.#schedule(threadId);
     return part;
@@ -535,6 +545,7 @@ export class Store {
 
   patchPart(threadId: string, messageId: string, partId: string, patch: Record<string, unknown>): void {
     const part = this.#part(threadId, messageId, partId);
+    if (part.kind === "tool" || patch.kind === "tool") changedFileCounts.delete(this.threads.get(threadId)!);
     Object.assign(part, patch);
     bus.emit({ t: "part.patch", threadId, messageId, partId, patch });
     this.#schedule(threadId);
