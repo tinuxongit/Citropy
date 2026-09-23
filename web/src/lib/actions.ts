@@ -1,4 +1,5 @@
-import { environmentId, environmentSignal, environmentStorage, selectEnvironment } from "./environment.ts";
+import { connectionName, environmentId, environmentSignal, environmentStorage, selectEnvironment } from "./environment.ts";
+import { browseRemoteFolder } from "./remote-folder.ts";
 import type {
   GitHubRequests,
   GitHubResponses,
@@ -327,6 +328,13 @@ export function fetchFile(
   return promise;
 }
 
+// Uses the system folder dialog, or Citropy's own browser for SSH hosts the system dialog cannot reach.
+async function pickWorkspaceFolder(id: string): Promise<string | null> {
+  const choice = await window.citropyDesktop!.chooseWorkspaceFolder(id);
+  if (choice === null || typeof choice === "string") return choice;
+  return browseRemoteFolder(id, connectionName(id), choice.path);
+}
+
 export function chooseWorkspace(): void {
   void chooseWorkspaceOn(environmentId());
 }
@@ -344,7 +352,7 @@ export async function chooseWorkspaceOn(id: string): Promise<void> {
     return;
   }
   try {
-    const path = await desktop.chooseWorkspaceFolder(id);
+    const path = await pickWorkspaceFolder(id);
     if (!path) return;
     await selectEnvironment(id);
     send({ t: "project.choose", path });
@@ -381,7 +389,7 @@ export async function github<K extends keyof GitHubRequests>(
     throw new Error("Reconnect to Citropy to use GitHub.");
   const signal = environmentSignal();
   if (operation === "clone" && window.citropyDesktop?.chooseWorkspaceFolder) {
-    const parent = await window.citropyDesktop.chooseWorkspaceFolder(environmentId());
+    const parent = await pickWorkspaceFolder(environmentId());
     signal.throwIfAborted();
     if (!parent) return { project: null } as GitHubResponses[K];
     input = { ...input, parent };
