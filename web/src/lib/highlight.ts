@@ -1,5 +1,4 @@
-import { escapeHtml } from "./highlight-core.ts";
-export { escapeHtml, resolveLang } from "./highlight-core.ts";
+import { escapeHtml } from "./escape-html.ts";
 
 export interface HighlightRequest {
   id: number;
@@ -29,6 +28,7 @@ async function render(
 ): Promise<Result> {
   if (signal?.aborted) return null;
   if (typeof Worker === "undefined") {
+    if (import.meta.env?.SSR === false) return null;
     const core = await import("./highlight-core.ts");
     return request.kind === "html"
       ? core.highlight(request.code, request.lang, request.theme)

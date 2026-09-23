@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../lib/i18n.ts";
-import { Folder, GitBranch, GitFork, LoaderCircle } from "lucide-react";
+import { Folder, GitBranch, GitFork } from "lucide-react";
 import { Modal } from "./Modal.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { api } from "../lib/api.ts";
@@ -10,6 +10,7 @@ import { selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
 import type { WorkspaceOptions } from "../../../shared/features.ts";
 import type { ProviderId, ThreadMeta, WorkspaceChoice } from "../../../shared/protocol.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export function NewConversation() {
   const t = useI18n();
@@ -114,7 +115,7 @@ export function NewConversation() {
               (kind === "new" && !options.hasCommits)
             }
           >
-            {busy && <LoaderCircle size={15} className="spin" />}{t("Create conversation")}
+            {busy && <PixelLoader size={15} />}{t("Create conversation")}
           </button>
         </>
       }

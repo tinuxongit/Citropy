@@ -1,11 +1,11 @@
 import {
   CircleAlert,
   Clock3,
-  LoaderCircle,
   Pause,
   MessageCircleQuestion,
 } from "lucide-react";
 import type { ThreadStatus } from "../../../shared/protocol.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export function ThreadPulse({
   status,
@@ -15,10 +15,8 @@ export function ThreadPulse({
   size?: number;
 }) {
   if (status === "idle") return null;
-  const busy = status === "working" || status === "thinking";
-  const Icon = busy
-    ? LoaderCircle
-    : status === "queued"
+  if (status === "working" || status === "thinking") return <PixelLoader size={size} />;
+  const Icon = status === "queued"
       ? Clock3
       : status === "error"
         ? CircleAlert
@@ -28,7 +26,6 @@ export function ThreadPulse({
   return (
     <Icon
       size={size}
-      className={busy ? "git-spinner" : undefined}
       aria-hidden="true"
     />
   );

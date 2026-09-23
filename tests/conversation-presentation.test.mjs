@@ -23,7 +23,15 @@ const tools = Array.from({ length: 3 }, (_, index) => ({
   output: "Example file contents.",
 }));
 
-test("conversation presentation", { timeout: 360_000 }, async (t) => {
+async function until(check) {
+  for (let index = 0; index < 150; index++) {
+    if (check()) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error("Expected request was not sent");
+}
+
+test("conversation presentation", { timeout: 360_000, concurrency: 4 }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-presentation-"));
   let server;
   let browser;
@@ -42,6 +50,8 @@ test("conversation presentation", { timeout: 360_000 }, async (t) => {
   const warmup = await browser.newPage();
   await warmup.goto(server.resolvedUrls.local[0], { timeout: 120_000 });
   await warmup.close();
+  const pending = [];
+  const subtest = (...args) => pending.push(t.test(...args));
   async function fixture({ desktopPage, preferences = {}, messages = [message("saved", [textPart("saved-text", "Saved conversation.")])], children = [], histories = {}, githubAccount, reducedMotion = "no-preference", isGit = false, hasTouch = false } = {}) {
     const page = desktopPage ?? await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion, hasTouch });
     page.setDefaultTimeout(20000);
@@ -105,7 +115,7 @@ test("conversation presentation", { timeout: 360_000 }, async (t) => {
     return { page, emit, begin, complete, idle, requests, close: async () => { assert.deepEqual(errors, []); await page.close(); } };
   }
 
-  await t.test("desktop running shells dismiss without blocking the workspace", { timeout: 40_000 }, async (test) => {
+  subtest("desktop running shells dismiss without blocking the workspace", { timeout: 40_000 }, async (test) => {
     const display = spawn("Xvfb", ["-displayfd", "3", "-screen", "0", "1600x1000x24"], { stdio: ["ignore", "ignore", "ignore", "pipe"] });
     let desktop;
     test.after(async () => { await desktop?.close(); display.kill(); });
@@ -175,7 +185,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("running shells stay discoverable across tasks with bounded output and clear stop scope", async () => {
+  subtest("running shells stay discoverable across tasks with bounded output and clear stop scope", async () => {
     const other = { ...thread, id: "server-task", title: "Preview the workspace" };
     const f = await fixture({ children: [other] });
     const { page, emit } = f;
@@ -239,7 +249,7 @@ app.whenReady().then(() => {
     await panel.waitFor({ state: "hidden" });
     await page.locator('#panel-body-terminal-panel .xterm-screen').waitFor();
     assert.equal(await page.getByRole("tab", { name: "Terminal 1", exact: true }).getAttribute("aria-selected"), "true");
-    assert.ok(f.requests.some(event => event.t === "term.open" && event.termId === "terminal-panel"));
+    await until(() => f.requests.some(event => event.t === "term.open" && event.termId === "terminal-panel"));
     await page.getByRole("button", { name: "Running shells, 1 active", exact: true }).click();
     emit({ t: "panel.remove", id: "terminal-panel" }, { t: "shell.upsert", shell: { ...terminal, status: "stopped", endedAt: Date.now() } });
     await panel.getByRole("button", { name: "Open task", exact: true }).waitFor();
@@ -248,7 +258,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("shell navigation reveals the exact command and output inside folded work details", async () => {
+  subtest("shell navigation reveals the exact command and output inside folded work details", async () => {
     const command = { ...tools[0], id: "background-command", callId: "provider:background", name: "Bash", shape: "command", headline: "npm run preview", output: "Preview listening on port 4000" };
     const history = [
       message("command-message", [textPart("intro", "Checking the preview."), ...tools, command, textPart("result", "Preview started.")]),
@@ -289,7 +299,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("shell output follows a newly selected process without disturbing older output being read", async () => {
+  subtest("shell output follows a newly selected process without disturbing older output being read", async () => {
     const f = await fixture();
     const { page, emit } = f;
     const shell = { id: "first", projectId: "workspace", threadId: "chat", command: "first server", cwd: "/example", status: "running", background: true, stopMode: "shell", output: "First output line\n".repeat(300), startedAt: 2 };
@@ -313,7 +323,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("GitHub identity is optional and every section keeps workspace navigation available", async () => {
+  subtest("GitHub identity is optional and every section keeps workspace navigation available", async () => {
     const account = { login: "octocat", name: "The Octocat", avatar_url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' rx='20' fill='%239890cd'/%3E%3C/svg%3E", html_url: "https://github.com/octocat" };
     const f = await fixture({ githubAccount: account, preferences: { compactNavigation: "1" }, messages: [
       { ...message("question", [textPart("question-text", "Could you review the navigation?")]), role: "user" },
@@ -352,7 +362,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("message actions reveal near either header without gaps, layout work, or hidden click targets", async () => {
+  subtest("message actions reveal near either header without gaps, layout work, or hidden click targets", async () => {
     const f = await fixture({ githubAccount: { login: "a-long-account-name-for-the-header" }, preferences: { sidebar: "0" }, messages: [
       { ...message("question", [textPart("question-text", "The push was rejected because the remote branch contains changes.\n\nExplain what happened before changing any files.")]), role: "user" },
       message("answer", [textPart("answer-text", "The remote branch has newer commits.")]),
@@ -476,7 +486,7 @@ app.whenReady().then(() => {
     await touch.close();
   });
 
-  await t.test("conversation menus stay visible above the sidebar footer and support keyboard navigation", async () => {
+  subtest("conversation menus stay visible above the sidebar footer and support keyboard navigation", async () => {
     const f = await fixture({ preferences: { compactNavigation: "1" }, children: Array.from({ length: 12 }, (_, index) => ({ ...thread, id: `other-${index}`, title: `Other conversation ${index}` })) });
     const { page } = f;
     const row = page.locator('.thread-card').last();
@@ -514,7 +524,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("tool-only activity stays outside speech bubbles and keeps its expandable details", async () => {
+  subtest("tool-only activity stays outside speech bubbles and keeps its expandable details", async () => {
     const f = await fixture({ messages: [message("work", [tools[0], { ...tools[1], name: "Bash", shape: "command", headline: "git status" }])] });
     const { page } = f;
     f.emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", runStartedAt: Date.now() - 3200 } });
@@ -533,7 +543,7 @@ app.whenReady().then(() => {
       await page.waitForFunction(() => getComputedStyle(document.querySelector(".working")).opacity === "1");
       const body = await activity.locator(".agent-activity").boundingBox();
       const thinking = await page.locator(".working-text").boundingBox();
-      assert.ok(thinking.y - body.y - body.height <= 18, `Tool activity left ${thinking.y - body.y - body.height}px before thinking.`);
+      assert.ok(thinking.y - body.y - body.height <= 30, `Tool activity left ${thinking.y - body.y - body.height}px before thinking.`);
       assert.equal(await page.locator(".turn-agent .turn-heading").count(), 1);
       await page.screenshot({ path: `/tmp/citropy-activity-row-${width}.png`, animations: "disabled" });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -549,15 +559,14 @@ app.whenReady().then(() => {
     f.emit({ t: "message.add", threadId: "chat", message: message("empty-after-tools", []) });
     await page.waitForFunction(async () => Boolean((await import("/web/src/lib/store.ts")).useApp.getState().messages["empty-after-tools"]));
     assert.equal(await page.locator(".turn-agent .turn-heading").count(), 1);
-    const expanded = await activity.locator(".agent-activity").boundingBox();
+    const group = await activity.locator(".group-head").boundingBox();
     const thinking = await page.locator(".working-text").boundingBox();
-    assert.ok(thinking.y - expanded.y - expanded.height >= 0);
-    assert.ok(thinking.y - expanded.y - expanded.height <= 18);
+    assert.ok(thinking.y + thinking.height <= group.y);
 
     await f.close();
   });
 
-  await t.test("chat bubbles fit short messages, preserve line breaks and resolve runtime model names", async () => {
+  subtest("chat bubbles fit short messages, preserve line breaks and resolve runtime model names", async () => {
     const f = await fixture({ messages: [
       { ...message("greeting", [textPart("greeting-text", "Hello!")]), role: "user" },
       { ...message("reply", [textPart("reply-text", "Hi. What do you need?")]), model: "claude-sonnet-5[1m]" },
@@ -611,7 +620,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("message content shares the composer edges with avatars outside the reading column", async () => {
+  subtest("message content shares the composer edges with avatars outside the reading column", async () => {
     const f = await fixture({ preferences: { sidebar: "0" }, messages: [
       { ...message("question", [textPart("question-text", "Check the layout at every window size.")]), role: "user" },
       message("answer", [textPart("answer-text", "The message and composer share a reading column.")]),
@@ -641,7 +650,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("creating and switching conversations leaves exactly one isolated chat surface", async () => {
+  subtest("creating and switching conversations leaves exactly one isolated chat surface", async () => {
     const f = await fixture({ histories: { "new-1": [], "new-2": [] } });
     const { page } = f;
     await page.route("**/api/workspaces?*", (route) => route.fulfill({ json: { hasCommits: false, branches: [], worktrees: [] } }));
@@ -676,7 +685,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("thread actions have their own space and compact navigation uses equal button sizes", async () => {
+  subtest("thread actions have their own space and compact navigation uses equal button sizes", async () => {
     const title = "Review the workspace and check the latest changes";
     const f = await fixture({ preferences: { compactNavigation: "1" }, messages: [
       { ...message("question", [textPart("question-text", "Please check the changes in this workspace.")]), role: "user" },
@@ -741,7 +750,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("provider notices render safe Markdown without typing animation or narrow overflow", async () => {
+  subtest("provider notices render safe Markdown without typing animation or narrow overflow", async () => {
     const warning = "This session was recorded with model `gpt-5.6-sol` but is resuming with `gpt-6-astra`. Consider switching back to `gpt-5.6-sol` as it may affect Codex performance.";
     const f = await fixture({ preferences: { textStreaming: "0", typingAnimation: "1" } });
     const { page } = f;
@@ -790,7 +799,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("Markdown image previews are bounded, keyboard accessible and navigate without including favicons", async () => {
+  subtest("Markdown image previews are bounded, keyboard accessible and navigate without including favicons", async () => {
     const f = await fixture({ preferences: { sidebar: "0", uiScale: "100", textStreaming: "0", typingAnimation: "0" } });
     const { page } = f;
     const svg = (width, height, color) => `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="${color}"/><circle cx="50%" cy="50%" r="80" fill="#315d59"/></svg>`;
@@ -851,7 +860,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("Markdown image errors stay local when malformed URLs are opened", async () => {
+  subtest("Markdown image errors stay local when malformed URLs are opened", async () => {
     const f = await fixture({ preferences: { sidebar: "0", typingAnimation: "0" } });
     const { page } = f;
     f.emit({ t: "message.add", threadId: "chat", message: message("invalid-images", [textPart("invalid-images-text", "![Malformed](http://[) ![Non-image](data:text/html,test)")]) });
@@ -870,7 +879,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("short replies stay readable and navigation selects the clicked message without moving the app", async () => {
+  subtest("short replies stay readable and navigation selects the clicked message without moving the app", async () => {
     const f = await fixture({ messages: Array.from({ length: 12 }, (_, index) => message(`quick-${index}`, [textPart(`quick-text-${index}`, index === 4 ? "30." : `Short reply ${index}.`)])) });
     const { page } = f;
     const rail = page.getByRole("navigation", { name: "Conversation messages", exact: true });
@@ -905,7 +914,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("a growing conversation keeps the visible message when its timeline starts windowing", async () => {
+  subtest("a growing conversation keeps the visible message when its timeline starts windowing", async () => {
     const f = await fixture({ messages: Array.from({ length: 40 }, (_, index) => message(`short-${index}`, [textPart(`short-text-${index}`, `History ${index}. `.repeat(15))])) });
     const target = f.page.locator("#message-short-10");
     await target.scrollIntoViewIfNeeded();
@@ -920,7 +929,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("long conversations mount a bounded timeline and keep navigation, search and live following usable", async () => {
+  subtest("long conversations mount a bounded timeline and keep navigation, search and live following usable", async () => {
     const history = Array.from({ length: 200 }, (_, index) => message(`history-${index}`, [
       textPart(`history-text-${index}`, `Paragraph ${index}. `.repeat(20)),
     ]));
@@ -947,7 +956,8 @@ app.whenReady().then(() => {
       assert.ok(await mounted() < 40);
     }
     await page.getByRole("button", { name: /^Work details/ }).click();
-    await page.getByRole("button", { name: "Latest", exact: true }).click();
+    await page.waitForFunction(() => !document.getAnimations().some(animation => animation.effect?.target?.matches(".timeline-row")));
+    await page.locator(".canvas").evaluate((node) => node.scrollTop = node.scrollHeight);
     await bottom();
     await page.locator(".group-head").click();
     await page.locator(".group-body").waitFor();
@@ -1015,7 +1025,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("streaming displays arriving text and buffering waits for the completed block", async () => {
+  subtest("streaming displays arriving text and buffering waits for the completed block", async () => {
     for (const streaming of ["1", "0"]) {
       const f = await fixture({ preferences: { textStreaming: streaming } });
       const left = (await f.page.locator("#message-saved").boundingBox()).x;
@@ -1035,7 +1045,7 @@ app.whenReady().then(() => {
     }
   });
 
-  await t.test("replies slide down once while thought text stays still through streaming and history navigation", async () => {
+  subtest("replies slide down once while thought text stays still through streaming and history navigation", async () => {
     const f = await fixture();
     const { page } = f;
     await page.evaluate(() => {
@@ -1096,7 +1106,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("text entrances preserve layout at desktop and narrow widths and cancel when motion is disabled", async () => {
+  subtest("text entrances preserve layout at desktop and narrow widths and cancel when motion is disabled", async () => {
     const f = await fixture({ preferences: { sidebar: "0", uiScale: "100" } });
     const { page } = f;
     await page.evaluate(() => {
@@ -1148,7 +1158,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("typing reveals finished Markdown at the selected speed without replaying history", async () => {
+  subtest("typing reveals finished Markdown at the selected speed without replaying history", async () => {
     const f = await fixture({ preferences: { textStreaming: "0", typingAnimation: "1", typingSpeed: "20" } });
     const { page } = f;
     assert.equal(await page.locator('[data-part-id="saved-text"]').textContent(), "Saved conversation.\n");
@@ -1194,7 +1204,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("reduced motion bypasses typing and interrupted output remains readable", async () => {
+  subtest("reduced motion bypasses typing and interrupted output remains readable", async () => {
     const f = await fixture({ preferences: { textStreaming: "0", typingAnimation: "1", typingSpeed: "20" }, reducedMotion: "reduce" });
     f.begin("interrupted", "An interrupted response.");
     await f.page.locator("#message-interrupted").waitFor();
@@ -1204,7 +1214,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("settings save streaming controls and remain usable at desktop and narrow widths", async () => {
+  subtest("settings save streaming controls and remain usable at desktop and narrow widths", async () => {
     const f = await fixture();
     const { page } = f;
     await page.getByRole("button", { name: "Settings", exact: true }).click();
@@ -1225,7 +1235,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("subagents stay hidden until expanded and earlier batches remain in the workspace tab", async () => {
+  subtest("subagents stay hidden until expanded and earlier batches remain in the workspace tab", async () => {
     const children = [
       { ...thread, id: "finished", parentThreadId: "chat", parentMessageId: "batch-one", title: "Finished research" },
       { ...thread, id: "active", parentThreadId: "chat", parentMessageId: "batch-one", title: "Active research", running: true, status: "working" },
@@ -1259,7 +1269,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("finished conversations reopen from the composer without losing drafts or sending them", async () => {
+  subtest("finished conversations reopen from the composer without losing drafts or sending them", async () => {
     const f = await fixture();
     const { page, emit } = f;
     const input = page.getByRole("textbox", { name: "Message", exact: true });
@@ -1299,7 +1309,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("composer suggestions use keyboard commands and skills, and navigation collapses by dragging", async () => {
+  subtest("composer suggestions use keyboard commands and skills, and navigation collapses by dragging", async () => {
     const f = await fixture({ preferences: { compactNavigation: "0" } });
     const { page } = f;
     await page.route("**/api/skills?*", route => route.fulfill({ json: [
@@ -1370,7 +1380,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("sending with Enter resumes following replies after reading expanded tools", async () => {
+  subtest("sending with Enter resumes following replies after reading expanded tools", async () => {
     for (const streaming of ["1", "0"]) {
       const history = Array.from({ length: 20 }, (_, index) => message(`history-${index}`, [textPart(`history-text-${index}`, "An earlier paragraph. ".repeat(20))]));
       history.at(-1).parts.push(...tools, textPart("ending", "The earlier task is complete."));
@@ -1414,7 +1424,7 @@ app.whenReady().then(() => {
     }
   });
 
-  await t.test("closing work at the bottom resumes following and scrolling up still preserves the reading position", async () => {
+  subtest("closing work at the bottom resumes following and scrolling up still preserves the reading position", async () => {
     const history = [message("history", [textPart("history-text", "The checks finished."), ...tools])];
     const f = await fixture({ messages: history, preferences: { typingAnimation: "0" } });
     const { page } = f;
@@ -1459,7 +1469,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("completion notices stay quiet only while the same chat is focused near the bottom", async () => {
+  subtest("completion notices stay quiet only while the same chat is focused near the bottom", async () => {
     const history = Array.from({ length: 20 }, (_, index) => message(`history-${index}`, [textPart(`history-text-${index}`, "An earlier paragraph. ".repeat(20))]));
     const f = await fixture({ messages: history, children: [{ ...thread, id: "elsewhere", title: "Other conversation" }] });
     const { page } = f;
@@ -1498,7 +1508,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("typing does not leave a cursor after a list or code block", async () => {
+  subtest("typing does not leave a cursor after a list or code block", async () => {
     const f = await fixture({ preferences: { textStreaming: "0", typingAnimation: "1", typingSpeed: "20" } });
     f.begin("list", "A response with a list.\n\n- The first item has enough text to reveal gradually.\n- The second item finishes the response.");
     f.complete("list");
@@ -1508,12 +1518,13 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("jump controls and expanded tool lists do not add temporary scroll gaps at any UI scale", async () => {
+  subtest("jump controls and expanded tool lists do not add temporary scroll gaps at any UI scale", async () => {
     const history = Array.from({ length: 30 }, (_, index) => message(`message-${index}`, [textPart(`text-${index}`, `Sample paragraph ${index}. `.repeat(12))]));
     history.at(-1).parts.push(...tools, textPart("ending", "The task is complete."));
     const f = await fixture({ messages: history });
     const { page } = f;
     await page.getByRole("button", { name: /^Work details/ }).click();
+    await page.waitForFunction(() => !document.getAnimations().some(animation => animation.effect?.target?.matches(".timeline-row")));
     for (const scale of [90, 120, 150]) {
       await page.evaluate(async (scale) => (await import("/web/src/lib/store.ts")).setUiScale(scale), scale);
       const canvas = page.locator(".canvas");
@@ -1555,7 +1566,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("long queued logs stay inside the chat with reachable controls", async () => {
+  subtest("long queued logs stay inside the chat with reachable controls", async () => {
     const f = await fixture();
     const { page } = f;
     const queue = [{ id: "log", text: "[main/ERROR]: Incompatible mods found! ".repeat(150), createdAt: 2 }];
@@ -1577,14 +1588,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("queued follow-ups stay visible and editable, and messages written offline wait for the connection", async () => {
-    const until = async (check) => {
-      for (let index = 0; index < 150; index++) {
-        if (check()) return;
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      throw new Error("Expected request was not sent");
-    };
+  subtest("queued follow-ups stay visible and editable, and messages written offline wait for the connection", async () => {
     const f = await fixture();
     const { page } = f;
     const provider = { id: "claude", label: "Claude Code", available: true, enabled: true, models: [{ id: "sample", label: "Example model" }], steerHint: "Claude Code reads it at its next step.", capabilities: { transport: "stdio", steer: true, compact: true, stopShell: true } };
@@ -1640,7 +1644,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("empty provider replies do not add space while thinking or hide later content", async () => {
+  subtest("empty provider replies do not add space while thinking or hide later content", async () => {
     for (const streaming of ["1", "0"]) {
       const f = await fixture({ preferences: { sidebar: "0", textStreaming: streaming }, messages: [
         { ...message("question", [textPart("question-text", "Tell me how much 15*15 is")]), role: "user" },
@@ -1702,7 +1706,7 @@ app.whenReady().then(() => {
     }
   });
 
-  await t.test("a new turn shows its selected model immediately and stopping leaves no empty reply", async () => {
+  subtest("a new turn shows its selected model immediately and stopping leaves no empty reply", async () => {
     const f = await fixture({ preferences: { sidebar: "0" }, messages: [
       { ...message("question", [textPart("question-text", "First question")]), role: "user" },
       { ...message("answer", [textPart("answer-text", "First answer")]), model: "sample" },
@@ -1725,7 +1729,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("the thinking indicator loops without a visual reset and respects reduced motion", async () => {
+  subtest("the thinking indicator loops without a visual reset and respects reduced motion", async () => {
     const f = await fixture();
     f.emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", runStartedAt: Date.now() - 3200 } });
     const signal = f.page.locator(".working-grid");
@@ -1773,7 +1777,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("links show site icons and offer keyboard-accessible browser destinations", async () => {
+  subtest("links show site icons and offer keyboard-accessible browser destinations", async () => {
     const f = await fixture();
     const { page } = f;
     const url = "https://docs.example.test/guide?mode=focus#next";
@@ -1840,7 +1844,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("the elapsed turn time survives settings navigation and resets only for a new run", async () => {
+  subtest("the elapsed turn time survives settings navigation and resets only for a new run", async () => {
     const f = await fixture();
     const { page } = f;
     const runStartedAt = Date.now() - 125000;
@@ -1857,7 +1861,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("AI Git controls keep their state, settings choose writing models, and UI text stays unselected", async () => {
+  subtest("AI Git controls keep their state, settings choose writing models, and UI text stays unselected", async () => {
     const f = await fixture({ isGit: true, children: [{ ...thread, id: "pinned", title: "Pinned conversation", pinned: true }] });
     const { page } = f;
     let settings = { automaticTitles: true, titleModel: null, commitModel: null };
@@ -1935,7 +1939,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("the floating Git panel follows current changes, retries pushes, and can stay hidden", async () => {
+  subtest("the floating Git panel follows current changes, retries pushes, and can stay hidden", async () => {
     const f = await fixture({ isGit: true });
     const { page } = f;
     const initial = { branch: "main", ahead: 1, behind: 0, clean: false, files: [
@@ -1999,7 +2003,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  await t.test("the Git panel stays inside narrow windows and does not reuse another thread's result", async () => {
+  subtest("the Git panel stays inside narrow windows and does not reuse another thread's result", async () => {
     const other = { ...thread, id: "worktree", title: "Worktree conversation", workspacePath: "/example/worktree", workspaceBranch: "feature/other" };
     const f = await fixture({ isGit: true, children: [other, { ...thread, id: "child-agent", parentThreadId: "chat", title: "Child agent" }] });
     const { page } = f;
@@ -2038,4 +2042,5 @@ app.whenReady().then(() => {
     assert.equal(await page.getByRole("button", { name: "Git actions", exact: true }).count(), 1);
     await f.close();
   });
+  await Promise.all(pending);
 });

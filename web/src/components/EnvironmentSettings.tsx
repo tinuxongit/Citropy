@@ -1,12 +1,13 @@
 import type { SshConnection } from "../../../shared/environments.ts";
 import { useEffect, useId, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Box, Square, Pencil, Check, LoaderCircle, Monitor, Plus, Server, Trash2 } from "lucide-react";
+import { Box, Square, Pencil, Check, Monitor, Plus, Server, Trash2 } from "lucide-react";
 import { ContainerEnvironment } from "./ContainerEnvironment.tsx";
 import { Modal } from "./Modal.tsx";
 import { useI18n } from "../lib/i18n.ts";
 import { selectEnvironment, useEnvironments } from "../lib/environment.ts";
 import { confirmAction } from "../lib/store.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export function NewSshConnection({ onClose, connection }: { onClose: () => void; connection?: SshConnection }) {
   const t = useI18n();
@@ -37,7 +38,7 @@ export function NewSshConnection({ onClose, connection }: { onClose: () => void;
   };
   return <Modal title={t("Connect over SSH")} description={t("Work with files, Git, providers, and shells on another machine.")} icon={<Server size={20} />} initialFocus="input" busy={busy} onClose={onClose} onSubmit={() => void connect()} footer={<>
     <button className="btn" type="button" data-cancel onClick={() => { if (busy && savedId) void window.citropyDesktop?.disconnectEnvironment(savedId).catch(error => setError(error.message)); else onClose(); }} disabled={busy && !savedId}>{t(busy ? "Cancel connection" : "Cancel")}</button>
-    <button className="btn" data-variant="primary" type="submit" disabled={busy || !target.trim()}>{busy && <LoaderCircle size={14} className="spin" />}{t(savedId ? "Reconnect" : "Connect")}</button>
+    <button className="btn" data-variant="primary" type="submit" disabled={busy || !target.trim()}>{busy && <PixelLoader size={14} />}{t(savedId ? "Reconnect" : "Connect")}</button>
   </>}>
     <div className="ssh-form feature-field">
       <label htmlFor={`${id}-target`}>{t("SSH host")}</label>
@@ -51,7 +52,7 @@ export function NewSshConnection({ onClose, connection }: { onClose: () => void;
       </div></details>
       <p className="settings-note">{t("Uses your SSH config, keys, and agent. Connect once in a terminal to trust a new host. Citropy sets up Node.js and its backend under your remote account when needed, without sudo.")}</p>
       <p className="settings-note">{t("Use providers installed and signed in on the remote host. Desktop browser and computer tools are available in Local only.")}</p>
-      {busy && <p className="ssh-progress" role="status"><LoaderCircle size={14} className="spin" />{t(progress?.message || "Connecting…")}</p>}
+      {busy && <p className="ssh-progress" role="status"><PixelLoader size={14} />{t(progress?.message || "Connecting…")}</p>}
       {error && <p className="ssh-error" role="alert">{error}</p>}
     </div>
   </Modal>;

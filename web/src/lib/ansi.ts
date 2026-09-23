@@ -1,4 +1,4 @@
-import { escapeHtml } from "./highlight.ts";
+import { escapeHtml } from "./escape-html.ts";
 
 const BASE = [
   "var(--text-4)",

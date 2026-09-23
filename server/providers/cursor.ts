@@ -1,7 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { dataRoot } from "../paths.ts";
-import { AcpSession, acpDetect, acpModels, type AcpConfig } from "./acp.ts";
+import { AcpSession, acpDetect } from "./acp.ts";
+import type { AcpConfig } from "./acp-connection.ts";
+import { acpModels } from "./acp-models.ts";
 import type { Provider } from "./types.ts";
 import type { ModelOption } from "../../shared/protocol.ts";
 import type { ProviderCommand } from "../../shared/features.ts";

@@ -49,7 +49,7 @@ export function Welcome() {
               >
                 <Folder size={13} />
                 <span className="truncate">{project.name}</span>
-                <span className="muted truncate mono">{shortPath(project.path, home)}</span>
+                <span className="muted truncate">{shortPath(project.path, home)}</span>
               </button>
             ))}
           </div>

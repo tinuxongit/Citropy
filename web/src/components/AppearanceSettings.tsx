@@ -21,7 +21,7 @@ export function AppearanceSettings() {
         <input
           id="ui-scale"
           type="range"
-          min="90"
+          min="75"
           max="150"
           step="5"
           value={uiScale}
@@ -32,9 +32,9 @@ export function AppearanceSettings() {
           <span>{t("Compact")}</span>
           <button
             type="button"
-            onClick={() => setUiScale(120)}
-            disabled={uiScale === 120}
-          >{" "}{t("Reset to 120%")}{" "}</button>
+            onClick={() => setUiScale(100)}
+            disabled={uiScale === 100}
+          >{" "}{t("Reset to 100%")}{" "}</button>
           <span>{t("Larger")}</span>
         </div>
       </div>

@@ -1,19 +1,14 @@
 import { assertApplicationReady } from "./update-lock.ts";
 import { generateThreadTitle, workspaceGitBusy } from "./assistance.ts";
 import { stopTextGeneration, textGenerationBusy } from "./text-generation.ts";
-import { basename, resolve } from "node:path";
-import { diffLines } from "./diff.ts";
 import { uid } from "./ids.ts";
 import { cancelQuestions, hasPendingQuestion } from "./questions.ts";
 import { cancelThread } from "./permissions.ts";
 import { store } from "./store.ts";
 import { removeAttachment, validateAttachments } from "./assets.ts";
-import { saveToolImages } from "./tool-images.ts";
 import { workspacePath } from "./workspaces.ts";
-import { listSkills } from "./skills.ts";
+import { mentionedSkills } from "./skills.ts";
 import { expandCommand } from "./commands.ts";
-import { describeTool } from "./tools.ts";
-import { inside } from "./files.ts";
 import { providers } from "./providers/index.ts";
 import { receiveAgentEvent } from "./providers/events.ts";
 import { beginCheckpoint, finishCheckpoint, checkpointBusy, historyPrompt } from "./checkpoints.ts";
@@ -27,45 +22,19 @@ import type { AgentEvent, SessionConfig } from "./providers/types.ts";
 import type { AgentSession } from "./providers/types.ts";
 import { startShell, shellOutput, endShell, endThreadShells, shellList } from "./shells.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
+import { ThreadTranscript } from "./thread-transcript.ts";
 import type {
   Message,
-  Part,
   Thread,
-  ToolPart,
-  TodoPart,
   Attachment,
   QueuedMessage,
   ProviderInfo,
-  ImageFile,
   Usage,
 } from "../shared/protocol.ts";
 
-const MAX_OUTPUT = 24_000;
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
+const SHELL_TOOLS = new Set(["Bash", "Shell", "Monitor"]);
 const COMMAND = /^\/[\w.:-]+(?:\s|$)/;
-
-function clip(text: string): string {
-  if (text.length <= MAX_OUTPUT) return text;
-  return `${text.slice(0, MAX_OUTPUT)}\n… ${text.length - MAX_OUTPUT} more characters`;
-}
-
-const IMAGE_FILE = /\.(png|jpe?g|gif|webp|avif|svg|bmp|ico)$/i;
-
-function imageFilesFor(name: string, raw: unknown, cwd: string): ImageFile[] | undefined {
-  if (["workspace_image", "citropy_workspace_image", "mcp__citropy__workspace_image"].includes(name)) return undefined;
-  const input = (raw ?? {}) as Record<string, unknown>;
-  for (const key of ["file_path", "filePath", "path", "notebook_path"]) {
-    const value = input[key];
-    if (typeof value !== "string" || !IMAGE_FILE.test(value)) continue;
-    return [{ path: inside(cwd, value) ?? resolve(cwd, value), label: basename(value) }];
-  }
-  return undefined;
-}
-
-interface PartRef {
-  messageId: string;
-  partId: string;
-}
 
 interface Prepared {
   messageId: string;
@@ -82,12 +51,6 @@ export class ThreadRuntime {
   #disposed = false;
   #session: AgentSession | null = null;
   #sessionGeneration = 0;
-  #messageId: string | null = null;
-  #blocks = new Map<string, PartRef>();
-  #tools = new Map<string, PartRef>();
-  #todo: PartRef | null = null;
-  #running = new Set<string>();
-  #pendingModel: string | undefined;
   #preparing = false;
   #checkpointCompletion: Promise<void> | null = null;
   #enqueuing: Promise<void> | undefined;
@@ -100,9 +63,11 @@ export class ThreadRuntime {
   #usagePulse = 0;
   #autoTitle: string | undefined;
   #providerTitled = false;
+  #transcript: ThreadTranscript;
 
   constructor(thread: Thread) {
     this.#thread = thread;
+    this.#transcript = new ThreadTranscript(thread);
   }
 
   get #cwd(): string {
@@ -173,16 +138,9 @@ export class ThreadRuntime {
       assertProviderReady(provider.id);
       if (store.disabledProviders.has(provider.id)) throw new Error("Enable this provider before transferring.");
       const previous = { provider: thread.provider, model: thread.model, externalId: thread.externalId, usage: { ...thread.usage }, at: Date.now() };
-      this.#sessionGeneration += 1;
       this.#buildPlan = false;
-      this.#session?.dispose();
-      this.#session = null;
-      this.#pendingModel = undefined;
-      this.#messageId = null;
-      this.#blocks.clear();
-      this.#tools.clear();
-      this.#running.clear();
-      this.#todo = null;
+      this.#closeSession();
+      this.#transcript.reset();
       cancelThread(this.id);
       cancelQuestions(this.id);
       disconnectTools(this.id);
@@ -247,7 +205,9 @@ export class ThreadRuntime {
 
   async removeQueued(id: string): Promise<void> {
     const item = this.takeQueued(id);
-    await Promise.all((item.attachments ?? []).map((file) => removeAttachment(this.id, String(file.id))));
+    const stillQueued = new Set((this.#thread.queue ?? []).flatMap((entry) => (entry.attachments ?? []).map((file) => String(file.id))));
+    const orphaned = (item.attachments ?? []).filter((file) => !stillQueued.has(String(file.id)));
+    await Promise.all(orphaned.map((file) => removeAttachment(this.id, String(file.id))));
   }
 
   takeQueued(id: string): QueuedMessage {
@@ -310,21 +270,7 @@ export class ThreadRuntime {
     prompt = context.prompt;
     if (this.#thread.transferContext) prompt = `${await transferPrompt(this.#thread.transferContext)}\n\nCurrent request:\n${prompt}`;
     else if (this.#thread.rebuildContext && !this.#thread.externalId) prompt = historyPrompt(this.#thread.messages, prompt);
-    const requestedSkills = new Set([...text.matchAll(/(?:^|\s)[@$]([\w.:-]+)(?![\w./:-])/g)].map((match) => match[1]));
-    const skills: Prepared["skills"] = [];
-    if (requestedSkills.size) {
-      const available = await listSkills(this.#thread.projectId, this.id);
-      const matching = available.filter(skill =>
-        skill.enabled && skill.provider === this.#thread.provider && requestedSkills.has(skill.name),
-      );
-      matching.sort((a, b) => Number(b.scope === "project") - Number(a.scope === "project"));
-      const selectedNames = new Set<string>();
-      for (const skill of matching) {
-        if (selectedNames.has(skill.name)) continue;
-        selectedNames.add(skill.name);
-        skills.push(skill);
-      }
-    }
+    const skills = await mentionedSkills(this.#thread, text);
     this.#checkSession(generation);
     if (store.disabledProviders.has(this.#thread.provider)) throw new Error("This provider is disabled. Enable it in Settings > Providers.");
     assertApplicationReady();
@@ -350,7 +296,7 @@ export class ThreadRuntime {
       store.patchThread(this.#thread.id, { title: this.#autoTitle });
       if (this.#thread.provider !== "cursor") void generateThreadTitle(this.id, true);
     }
-    this.#messageId = null;
+    this.#transcript.closeMessage();
   }
 
   async #deliver(prepared: Prepared, queued?: { item: QueuedMessage; index: number }): Promise<void> {
@@ -470,10 +416,8 @@ export class ThreadRuntime {
     };
     const restart = () => {
       if (this.#session === session) {
-        this.#sessionGeneration += 1;
-        this.#session = null;
+        this.#closeSession();
         this.#buildPlan = false;
-        session.dispose();
         disconnectTools(this.id);
         this.#finishParts();
       }
@@ -533,24 +477,11 @@ export class ThreadRuntime {
     return this.#session;
   }
 
-  #message(): string {
-    if (this.#messageId) return this.#messageId;
-    const message: Message = {
-      id: uid("msg"),
-      role: "assistant",
-      parts: [],
-      ts: Date.now(),
-      model: this.#pendingModel ?? this.#thread.model,
-    };
-    store.addMessage(this.#thread.id, message);
-    this.#messageId = message.id;
-    return message.id;
-  }
-
-  #add(part: Part): PartRef {
-    const messageId = this.#message();
-    store.addPart(this.#thread.id, messageId, part);
-    return { messageId, partId: part.id };
+  #closeSession(): void {
+    const session = this.#session;
+    this.#session = null;
+    this.#sessionGeneration += 1;
+    session?.dispose();
   }
 
   #applyUsage(incoming?: Partial<Usage>): void {
@@ -575,20 +506,23 @@ export class ThreadRuntime {
     this.#applyUsage();
   }
 
+  #notifyChat(level: "success" | "error", title: string, text: string): void {
+    store.notify({
+      kind: "chat",
+      level,
+      title,
+      text,
+      target: { view: "chat", projectId: this.#thread.projectId, threadId: this.#thread.id },
+    });
+  }
+
   #finishParts(): void {
-    for (const ref of this.#blocks.values())
-      store.patchPart(this.#thread.id, ref.messageId, ref.partId, { complete: true });
-    for (const ref of this.#tools.values())
-      store.patchPart(this.#thread.id, ref.messageId, ref.partId, {
-        status: "error",
-        output: "The provider stopped before returning a tool result.",
-        endedAt: Date.now(),
-      });
-    this.#tools.clear();
-    this.#running.clear();
+    this.#transcript.finish();
     endThreadShells(this.id, "failed", true);
-    this.#blocks.clear();
-    this.#todo = null;
+  }
+
+  #shellId(callId: string): string {
+    return `${this.id}:${callId}`;
   }
 
   #trackShell(callId: string, raw: unknown, taskId?: string): void {
@@ -596,7 +530,7 @@ export class ThreadRuntime {
     const command = typeof input.command === "string" ? input.command : typeof input.script === "string" ? input.script : "";
     const native = taskId && this.#session?.stopShell;
     startShell({
-      id: `${this.id}:${callId}`, projectId: this.#thread.projectId, threadId: this.id,
+      id: this.#shellId(callId), projectId: this.#thread.projectId, threadId: this.id,
       command, cwd: typeof input.cwd === "string" ? input.cwd : this.#cwd,
       background: Boolean(taskId), stopMode: native ? "shell" : "task",
     }, native ? () => native.call(this.#session, taskId) : async () => {
@@ -613,19 +547,20 @@ export class ThreadRuntime {
     if (this.#thread.status === "queued" && startsWork) store.patchThread(this.id, { status: "thinking" });
     switch (event.type) {
       case "shell.background":
-        this.#onShellBackground(event);
+        this.#trackShell(event.callId, { command: event.command, cwd: event.cwd }, event.taskId);
         return;
       case "shell.end":
-        this.#onShellEnd(event);
+        if (event.output !== undefined) shellOutput(this.#shellId(event.callId), event.output);
+        endShell(this.#shellId(event.callId), event.stopped ? "stopped" : event.ok ? "finished" : "failed");
         return;
       case "tool.output":
-        this.#onToolOutput(event);
+        shellOutput(this.#shellId(event.callId), event.output, event.append);
         return;
       case "compacted":
         this.#onCompacted(event);
         return;
       case "subagent":
-        this.#onSubagent(event);
+        store.updateSubagent(this.#thread.id, event);
         return;
       case "session":
         this.#onSession(event);
@@ -637,13 +572,13 @@ export class ThreadRuntime {
         this.#onStatus(event);
         return;
       case "block.start":
-        this.#onBlockStart(event);
+        this.#transcript.startBlock(event);
         return;
       case "block.delta":
-        this.#onBlockDelta(event);
+        if (this.#transcript.appendBlock(event)) this.#pulseUsage();
         return;
       case "block.end":
-        this.#onBlockEnd(event);
+        this.#transcript.endBlock(event);
         return;
       case "tool.start":
         this.#onToolStart(event);
@@ -655,19 +590,19 @@ export class ThreadRuntime {
         this.#onToolEnd(event);
         return;
       case "todos":
-        this.#onTodos(event);
+        this.#transcript.setTodos(event.items);
         return;
       case "usage":
-        this.#onUsage(event);
+        this.#applyUsage(event.usage);
         return;
       case "plan.accepted":
-        this.#onPlanAccepted(event);
+        this.#buildPlan = true;
         return;
       case "turn.end":
         this.#onTurnEnd(event);
         return;
       case "notice":
-        this.#onNotice(event);
+        if (event.level !== "info") this.#transcript.notice(event.level, event.text);
         return;
       case "exit":
         this.#onExit(event);
@@ -675,39 +610,23 @@ export class ThreadRuntime {
     }
   }
 
-  #onShellBackground(event: Extract<AgentEvent, { type: "shell.background" }>): void {
-    this.#trackShell(event.callId, { command: event.command, cwd: event.cwd }, event.taskId);
-  }
-
-  #onShellEnd(event: Extract<AgentEvent, { type: "shell.end" }>): void {
-    if (event.output !== undefined) shellOutput(`${this.id}:${event.callId}`, event.output);
-    endShell(`${this.id}:${event.callId}`, event.stopped ? "stopped" : event.ok ? "finished" : "failed");
-  }
-
-  #onToolOutput(event: Extract<AgentEvent, { type: "tool.output" }>): void {
-    shellOutput(`${this.id}:${event.callId}`, event.output, event.append);
-  }
-
   #onCompacted(event: Extract<AgentEvent, { type: "compacted" }>): void {
     const manual = this.#thread.compacting;
     clearTimeout(this.#compactionTimer);
     if (event.contextTokens !== undefined) this.#applyUsage({ contextTokens: event.contextTokens, contextEstimated: undefined });
     store.patchThread(this.id, { compacting: false, compactedAt: Date.now(), ...(manual ? { running: false, status: "idle", activeTool: undefined } : {}) });
-    this.#add({ id: uid("prt"), kind: "notice", level: "info", text: "Context compacted. Your conversation history is still available here." });
-    if (manual) this.#messageId = null;
-  }
-
-  #onSubagent(event: Extract<AgentEvent, { type: "subagent" }>): void {
-    store.updateSubagent(this.#thread.id, event);
+    this.#transcript.notice("info", "Context compacted. Your conversation history is still available here.");
+    if (manual) this.#transcript.closeMessage();
   }
 
   #onSession(event: Extract<AgentEvent, { type: "session" }>): void {
-    this.#pendingModel = event.model ?? this.#thread.model;
+    const sessionModel = event.model ?? this.#thread.model;
+    this.#transcript.sessionModel = sessionModel;
     store.patchThread(this.#thread.id, {
       externalId: event.externalId || this.#thread.externalId,
       model: this.#thread.model ?? event.model,
     });
-    const contextMax = event.contextMax ?? this.#thread.contextWindow ?? selectedModel(providers[this.#thread.provider].models, this.#pendingModel)?.contextMax;
+    const contextMax = event.contextMax ?? this.#thread.contextWindow ?? selectedModel(providers[this.#thread.provider].models, sessionModel)?.contextMax;
     if (contextMax) this.#applyUsage({ contextMax });
     if (event.model === undefined || event.model === (this.#thread.model ?? event.model)) {
       const reported: Partial<Thread> = {};
@@ -734,120 +653,26 @@ export class ThreadRuntime {
     });
   }
 
-  #onBlockStart(event: Extract<AgentEvent, { type: "block.start" }>): void {
-    const part: Part =
-      event.block === "reasoning"
-        ? { id: uid("prt"), kind: "reasoning", text: "", complete: false }
-        : { id: uid("prt"), kind: "text", text: "", complete: false };
-    this.#blocks.set(event.blockId, this.#add(part));
-  }
-
-  #onBlockDelta(event: Extract<AgentEvent, { type: "block.delta" }>): void {
-    const ref = this.#blocks.get(event.blockId);
-    if (!ref) return;
-    store.appendText(this.#thread.id, ref.messageId, ref.partId, event.text);
-    this.#pulseUsage();
-  }
-
-  #onBlockEnd(event: Extract<AgentEvent, { type: "block.end" }>): void {
-    const ref = this.#blocks.get(event.blockId);
-    if (ref) store.patchPart(this.#thread.id, ref.messageId, ref.partId, { complete: true });
-    this.#blocks.delete(event.blockId);
-  }
-
   #onToolStart(event: Extract<AgentEvent, { type: "tool.start" }>): void {
     if (PLAN_TOOLS.has(event.name)) return;
-    if (event.name === "Bash" || event.name === "Shell" || event.name === "Monitor") this.#trackShell(event.callId, event.input);
-    const described = describeTool(event.name, event.input, this.#cwd);
-    const part: ToolPart = {
-      id: uid("prt"),
-      kind: "tool",
-      callId: event.callId,
-      name: event.name,
-      shape: described.shape,
-      headline: described.headline,
-      detail: described.detail,
-      input: event.input,
-      status: "running",
-      imageFiles: imageFilesFor(event.name, event.input, this.#cwd),
-      startedAt: Date.now(),
-    };
-    this.#tools.set(event.callId, this.#add(part));
-    this.#running.add(event.callId);
+    if (SHELL_TOOLS.has(event.name)) this.#trackShell(event.callId, event.input);
+    this.#transcript.startTool(event);
   }
 
   #onToolInput(event: Extract<AgentEvent, { type: "tool.input" }>): void {
-    const thread = store.threads.get(this.#thread.id);
-    const active = this.#tools.get(event.callId);
-    const message = active
-      ? thread?.messages.findLast((entry) => entry.id === active.messageId)
-      : thread?.messages.findLast((entry) => entry.parts.some((part) => part.kind === "tool" && part.callId === event.callId));
-    const part = (active
-      ? message?.parts.findLast((entry) => entry.id === active.partId)
-      : message?.parts.findLast((entry) => entry.kind === "tool" && entry.callId === event.callId)) as ToolPart | undefined;
-    if (!message || !part) return;
-    const name = event.name ?? part?.name;
-    if (active && name && ["Bash", "Shell", "Monitor"].includes(name)) this.#trackShell(event.callId, event.input);
-    const described = describeTool(name ?? "tool", event.input, this.#cwd);
-    const imageFiles = imageFilesFor(name ?? "", event.input, this.#cwd);
-    store.patchPart(this.#thread.id, message.id, part.id, {
-      ...(event.name ? { name: event.name } : {}),
-      input: event.input,
-      shape: described.shape,
-      headline: described.headline,
-      detail: described.detail,
-      ...(active ? { patch: previewPatch(name ?? "", event.input) } : {}),
-      ...(imageFiles ? { imageFiles } : {}),
-    });
+    const runningName = this.#transcript.runningToolName(event);
+    if (runningName && SHELL_TOOLS.has(runningName)) this.#trackShell(event.callId, event.input);
+    this.#transcript.updateToolInput(event);
   }
 
   #onToolEnd(event: Extract<AgentEvent, { type: "tool.end" }>): void {
-    if (event.output) shellOutput(`${this.id}:${event.callId}`, event.output);
-    endShell(`${this.id}:${event.callId}`, event.ok ? "finished" : "failed", true);
-    const ref = this.#tools.get(event.callId);
-    this.#running.delete(event.callId);
-    if (ref) {
-      const thread = store.threads.get(this.#thread.id);
-      const part = thread?.messages.findLast((message) => message.id === ref.messageId)?.parts.findLast((entry) => entry.id === ref.partId) as ToolPart | undefined;
-      store.patchPart(this.#thread.id, ref.messageId, ref.partId, {
-        status: event.ok ? "ok" : "error",
-        output: clip(event.output),
-        endedAt: Date.now(),
-        ...(event.patch && !part?.patch ? { patch: event.patch } : {}),
-      });
-      if (event.images?.length) {
-        void saveToolImages(this.#thread.id, event.images, () => store.threads.has(this.#thread.id)).then((images) => {
-          if (!images.length) return;
-          try {
-            store.patchPart(this.#thread.id, ref.messageId, ref.partId, { images });
-          } catch {}
-        }).catch(() => {});
-      }
-      this.#tools.delete(event.callId);
-    }
-    if (this.#running.size === 0 && this.#thread.status === "working") {
+    if (event.output) shellOutput(this.#shellId(event.callId), event.output);
+    endShell(this.#shellId(event.callId), event.ok ? "finished" : "failed", true);
+    this.#transcript.endTool(event);
+    if (this.#transcript.runningTools === 0 && this.#thread.status === "working") {
       store.patchThread(this.#thread.id, { status: "thinking", activeTool: undefined });
     }
     this.#pulseUsage();
-  }
-
-  #onTodos(event: Extract<AgentEvent, { type: "todos" }>): void {
-    if (this.#todo) {
-      store.patchPart(this.#thread.id, this.#todo.messageId, this.#todo.partId, {
-        items: event.items,
-      });
-      return;
-    }
-    const part: TodoPart = { id: uid("prt"), kind: "todo", items: event.items };
-    this.#todo = this.#add(part);
-  }
-
-  #onUsage(event: Extract<AgentEvent, { type: "usage" }>): void {
-    this.#applyUsage(event.usage);
-  }
-
-  #onPlanAccepted(event: Extract<AgentEvent, { type: "plan.accepted" }>): void {
-    this.#buildPlan = true;
   }
 
   #onTurnEnd(event: Extract<AgentEvent, { type: "turn.end" }>): void {
@@ -858,8 +683,7 @@ export class ThreadRuntime {
     const stopped = this.#thread.status === "stopped";
     const completed = this.#thread.running && !stopped;
     this.#applyUsage({ turns: this.#thread.usage.turns + 1 });
-    const messageId = this.#messageId ?? undefined;
-    this.#messageId = null;
+    const messageId = this.#transcript.closeMessage();
     this.#finishParts();
     const build = this.#buildPlan && completed && !event.error;
     this.#buildPlan = false;
@@ -870,20 +694,10 @@ export class ThreadRuntime {
       activeTool: undefined,
       error: stopped ? undefined : event.error,
     });
-    if (completed && !this.#thread.parentThreadId)
-      store.notify({
-        kind: "chat",
-        level: event.error ? "error" : "success",
-        title: event.error
-          ? "Chat needs attention"
-          : "Response finished",
-        text: event.error ?? this.#thread.title,
-        target: {
-          view: "chat",
-          projectId: this.#thread.projectId,
-          threadId: this.#thread.id,
-        },
-      });
+    if (completed && !this.#thread.parentThreadId) {
+      if (event.error) this.#notifyChat("error", "Chat needs attention", event.error);
+      else this.#notifyChat("success", "Response finished", this.#thread.title);
+    }
     const settle = () => {
       if (build)
         store.patchThread(this.#thread.id, {
@@ -927,41 +741,23 @@ export class ThreadRuntime {
     }
   }
 
-  #onNotice(event: Extract<AgentEvent, { type: "notice" }>): void {
-    if (event.level === "info") return;
-    this.#add({ id: uid("prt"), kind: "notice", level: event.level, text: event.text });
-  }
-
   #onExit(event: Extract<AgentEvent, { type: "exit" }>): void {
     this.#stopping?.release();
     clearTimeout(this.#compactionTimer);
     this.#resume = false;
     this.#buildPlan = false;
-    if (this.#thread.running && this.#thread.status !== "stopped" && !this.#thread.parentThreadId)
-      store.notify({
-        kind: "chat",
-        level: event.code ? "error" : "success",
-        title: event.code
-          ? "Provider stopped unexpectedly"
-          : "Response finished",
-        text: this.#thread.title,
-        target: {
-          view: "chat",
-          projectId: this.#thread.projectId,
-          threadId: this.#thread.id,
-        },
-      });
+    if (this.#thread.running && this.#thread.status !== "stopped" && !this.#thread.parentThreadId) {
+      if (event.code) this.#notifyChat("error", "Provider stopped unexpectedly", this.#thread.title);
+      else this.#notifyChat("success", "Response finished", this.#thread.title);
+    }
     disconnectTools(this.#thread.id);
     stopChildren(this.#thread.id);
     cancelThread(this.#thread.id, false);
     cancelQuestions(this.#thread.id);
-    const session = this.#session;
-    this.#session = null;
-    this.#sessionGeneration += 1;
-    session?.dispose();
+    this.#closeSession();
     endThreadShells(this.id, event.code ? "failed" : "stopped");
     this.#finishParts();
-    this.#messageId = null;
+    this.#transcript.closeMessage();
     const status = event.code === 0 ? "idle" : "error";
     store.patchThread(this.#thread.id, {
       status: this.#thread.status === "stopped" ? "stopped" : status,
@@ -970,19 +766,6 @@ export class ThreadRuntime {
       activeTool: undefined,
     });
   }
-}
-
-function previewPatch(name: string, rawInput: unknown): unknown {
-  const input = (rawInput ?? {}) as Record<string, unknown>;
-  const path = typeof input.file_path === "string" ? input.file_path : "";
-  if (!path) return undefined;
-  if (name === "Edit" && typeof input.old_string === "string" && typeof input.new_string === "string") {
-    return diffLines(input.old_string, input.new_string, basename(path));
-  }
-  if (name === "Write" && typeof input.content === "string") {
-    return diffLines("", input.content, basename(path));
-  }
-  return undefined;
 }
 
 const runtimes = new Map<string, ThreadRuntime>();

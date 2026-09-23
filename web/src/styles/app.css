@@ -210,7 +210,6 @@
 .git-panel-counts {
   display: flex;
   gap: 6px;
-  font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
 
@@ -251,12 +250,11 @@
 .git-panel-combined:disabled { color: var(--text-4); opacity: 0.5; cursor: default; }
 .git-panel-progress,
 .git-panel-error { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
-.git-panel-progress > svg,
+.git-panel-progress > .pixel-loader,
 .git-panel-error > svg { flex: none; margin-top: 2px; }
 .git-panel-trigger[data-error],
 .git-panel-error { color: var(--bad); }
 .git-panel-error p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
-.git-actions .spin { animation: citropy-spin 1s linear infinite; }
 
 .git-panel-footer {
   display: grid;
@@ -529,6 +527,10 @@
   color: var(--text);
 }
 
+.recent-item .muted {
+  font-size: var(--text-sm);
+}
+
 .panel-resize {
   position: absolute;
   top: 0;
@@ -611,6 +613,7 @@
   .sliding-panel[data-side="left"][data-open="false"] > .rail { translate: -100% 0; }
   .sliding-panel[data-side="right"][data-open="false"] > .inspector { translate: 100% 0; }
   @starting-style {
+    .shell-body .sliding-panel[data-animate="true"][data-open="true"] { margin: 0; }
     .sliding-panel[data-animate="true"][data-side="left"][data-open="true"] > .rail { translate: -100% 0; }
     .sliding-panel[data-animate="true"][data-side="right"][data-open="true"] > .inspector { translate: 100% 0; }
   }

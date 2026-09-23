@@ -5,7 +5,7 @@ import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { TaskReview } from "./TaskReview.tsx";
 import type { AssistanceSettings, WritingModel } from "../../../shared/assistance.ts";
-import { GitCommitHorizontal, GitBranch, FileDiff, ArrowUpFromLine, LoaderCircle, CircleAlert, RefreshCw, ChevronRight, X } from "lucide-react";
+import { GitCommitHorizontal, GitBranch, FileDiff, ArrowUpFromLine, CircleAlert, RefreshCw, ChevronRight, X } from "lucide-react";
 import { scaled, selectThread, useApp, viewportWidth } from "../lib/store.ts";
 import { api } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.ts";
@@ -13,6 +13,7 @@ import { send } from "../lib/socket.ts";
 import { openWorkbenchPanel } from "../lib/actions.ts";
 import { gitActionBusy, type GitActionState } from "../../../shared/assistance.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export function GitActions({ thread }: { thread: ThreadMeta }) {
   const [reviewing, setReviewing] = useState(false);
@@ -121,11 +122,11 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
   };
   const activity = pending === "push" || state?.status === "pushing" ? t("Pushing…") : state?.status === "committing" ? t("Committing…") : pending || state?.status === "generating" ? t("Writing commit…") : "";
   const failed = !busy && Boolean(error || state?.status === "error");
-  const Icon = busy ? LoaderCircle : failed ? CircleAlert : GitCommitHorizontal;
+  const Icon = failed ? CircleAlert : GitCommitHorizontal;
   if (!project?.isGit) return null;
   return <div className="git-actions">
     <button ref={trigger} type="button" className="icon-btn git-panel-trigger" aria-label={t("Git actions")} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} data-active={open} data-error={failed || undefined} title={activity || t("Git actions")} onClick={() => setOpen(!open)}>
-      <Icon size={16} className={busy ? "spin" : undefined} /><span className="git-trigger-label">Git</span>
+      {busy ? <PixelLoader size={16} /> : <Icon size={16} />}<span className="git-trigger-label">Git</span>
     </button>
     <AnimatePresence>{open && <motion.section ref={panel} id={id} popover="manual" className="git-panel scroll" role="dialog" aria-label={t("Git actions")}
       initial={{ opacity: 0, y: reducedMotion ? 0 : -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -5, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
@@ -148,7 +149,7 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
         <button type="button" className="git-panel-combined" disabled={!connected} onClick={() => setReviewing(true)}><FileDiff size={15} />{t("Review task changes")}</button>
         {status && <p className="git-panel-sync">{status.upstream === null ? t("No upstream branch") : status.behind > 0 ? t(status.behind === 1 ? "1 commit behind upstream" : "{count} commits behind upstream", { count: status.behind }) : status.ahead > 0 ? t(status.ahead === 1 ? "1 commit to push" : "{count} commits to push", { count: status.ahead }) : t("No commits to push")}</p>}
         {hasChanges && <p className="git-panel-scope" title={t(scope === "staged" ? "Commit staged changes only" : "Commit all changes in this workspace")}><span>{t("Commit scope")}</span><span>{scope === "staged" ? t(staged === 1 ? "1 staged file" : "{count} staged files", { count: staged }) : t("All changes")}</span></p>}
-        {busy && <div className="git-panel-progress" role="status"><LoaderCircle size={14} className="spin" />{activity}</div>}
+        {busy && <div className="git-panel-progress" role="status"><PixelLoader size={14} />{activity}</div>}
         {failed && <div className="git-panel-error" role="alert"><CircleAlert size={15} /><p>{error || state?.message}</p></div>}
         <div className="git-panel-buttons">
           {hasChanges && <button type="button" className="btn" data-variant="primary" disabled={blocked} onClick={() => void run("commit")}><GitCommitHorizontal size={15} />{t("AI commit")}</button>}

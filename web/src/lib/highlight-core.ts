@@ -1,4 +1,5 @@
 import type { HighlighterCore } from "shiki/core";
+import { escapeHtml } from "./escape-html.ts";
 import { citropyDark, citropyLight } from "./theme-code.ts";
 
 const LOADERS: Record<string, () => Promise<unknown>> = {
@@ -75,7 +76,7 @@ function highlighter(): Promise<HighlighterCore> {
   return core;
 }
 
-export function resolveLang(input: string | undefined): string | null {
+function resolveLang(input: string | undefined): string | null {
   if (!input) return null;
   const key = input.trim().toLowerCase();
   const name = ALIASES[key] ?? key;
@@ -99,14 +100,6 @@ async function ensure(lang: string): Promise<boolean> {
   await pending;
   inflight.delete(lang);
   return true;
-}
-
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 export async function highlight(code: string, lang: string | undefined, theme: "dark" | "light"): Promise<string> {

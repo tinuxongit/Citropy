@@ -1,5 +1,6 @@
 import { Marked, type Tokens } from "marked";
-import { escapeHtml, highlight } from "./highlight.ts";
+import { escapeHtml } from "./escape-html.ts";
+import { highlight } from "./highlight.ts";
 import { serverUrl } from "./environment.ts";
 import { translateFor, type Language } from "./translations.ts";
 

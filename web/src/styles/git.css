@@ -161,14 +161,6 @@
 .git-empty-action {
   margin-top: 8px;
 }
-.git-empty-path {
-  font-family: var(--font-mono);
-}
-
-.git-spinner {
-  animation: citropy-spin 1s linear infinite;
-}
-
 .git-alert {
   display: flex;
   align-items: flex-start;

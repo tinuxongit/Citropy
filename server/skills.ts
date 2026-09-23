@@ -13,7 +13,7 @@ import { basename, dirname, join } from "node:path";
 import { workspacePath } from "./workspaces.ts";
 import { store } from "./store.ts";
 import { providerControl } from "./providers/control.ts";
-import type { ProviderId } from "../shared/protocol.ts";
+import type { ProviderId, Thread } from "../shared/protocol.ts";
 import type { SkillInfo } from "../shared/features.ts";
 import { builtinSkillRoot, installComputerSkill } from "./builtin-skills.ts";
 
@@ -205,6 +205,18 @@ export async function listSkills(
   if (inventories.size > 25)
     inventories.delete(inventories.keys().next().value!);
   return value;
+}
+
+export async function mentionedSkills(thread: Thread, text: string): Promise<SkillInfo[]> {
+  const requested = new Set([...text.matchAll(/(?:^|\s)[@$]([\w.:-]+)(?![\w./:-])/g)].map((match) => match[1]));
+  if (!requested.size) return [];
+  const matching = (await listSkills(thread.projectId, thread.id)).filter((skill) =>
+    skill.enabled && skill.provider === thread.provider && requested.has(skill.name),
+  );
+  matching.sort((a, b) => Number(b.scope === "project") - Number(a.scope === "project"));
+  const selected = new Map<string, SkillInfo>();
+  for (const skill of matching) if (!selected.has(skill.name)) selected.set(skill.name, skill);
+  return [...selected.values()];
 }
 
 async function scanSkills(projectPath?: string): Promise<SkillInfo[]> {

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ChevronRight, FileCode2, LoaderCircle, RotateCcw } from "lucide-react";
+import { ChevronRight, FileCode2, RotateCcw } from "lucide-react";
 import { FileIcon } from "./FileIcon.tsx";
 import { fetchDiff, manageGit } from "../lib/actions.ts";
 import { DiffView } from "./DiffView.tsx";
 import type { FilePatch } from "../../../shared/protocol.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { scaled } from "../lib/store.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export type GitSelection =
   | { kind: "file"; path: string; staged: boolean }
@@ -87,7 +88,7 @@ export function GitReview({
     <div className="git-review-scroll scroll" data-kind={selection.kind} ref={viewport}>
       {loading ? (
         <div className="git-preview-placeholder" role="status">
-          <LoaderCircle size={22} className="git-spinner" />
+          <PixelLoader size={22} />
           <span>{t("Loading changes…")}</span>
         </div>
       ) : error ? (

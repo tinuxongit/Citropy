@@ -71,6 +71,7 @@ export function ThreadPreview({ id, thread, anchor, onClose, onPointerEnter, onP
       <dt>{t("Last activity")}</dt><dd><time dateTime={new Date(thread.updatedAt).toISOString()}>{new Date(thread.updatedAt).toLocaleString(currentLocale(), { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></dd>
       {path && <><dt>{t("Folder")}</dt><dd>{shortPath(path, home)}</dd></>}
       {thread.workspaceBranch && <><dt>{t("Branch")}</dt><dd>{thread.workspaceBranch}</dd></>}
+      {thread.pullRequest && <><dt>{t("Pull request")}</dt><dd>#{thread.pullRequest.split("/").at(-1)}</dd></>}
       {Boolean(thread.changedFiles) && <><dt>{t("Changes")}</dt><dd>{thread.changedFiles} {thread.changedFiles === 1 ? t("file") : t("files")}</dd></>}
     </dl>
   </div>;

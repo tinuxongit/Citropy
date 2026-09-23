@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowRight, LoaderCircle, GitBranch } from "lucide-react";
+import { ArrowRight, GitBranch } from "lucide-react";
 import { Modal } from "./Modal.tsx";
 import type { GitOperation } from "../../../shared/protocol.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export interface GitDialogAction {
   operation: GitOperation;
@@ -73,7 +74,7 @@ export function GitDialog({
             disabled={busy || !valid || !connected}
           >
             {busy ? (
-              <LoaderCircle size={15} className="git-spinner" />
+              <PixelLoader size={15} />
             ) : (
               !action.danger && <ArrowRight size={15} />
             )}

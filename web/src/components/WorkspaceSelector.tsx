@@ -1,7 +1,7 @@
 import { AnimatedText } from "./AnimatedText.tsx";
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Box, ChevronDown, FolderOpen, FolderPlus, GitFork, LoaderCircle, LogOut, Monitor, Server } from "lucide-react";
+import { Box, ChevronDown, FolderOpen, FolderPlus, GitFork, LogOut, Monitor, Server } from "lucide-react";
 import { ContainerEnvironment } from "./ContainerEnvironment.tsx";
 import { NewSshConnection } from "./EnvironmentSettings.tsx";
 import { selectEnvironment, useEnvironments, useWorkspaceCatalog, environmentName, isRemote } from "../lib/environment.ts";
@@ -11,8 +11,9 @@ import { chooseWorkspaceOn, closeProject, createThread } from "../lib/actions.ts
 import { shortPath } from "../lib/format.ts";
 import { selectProject, useApp } from "../lib/store.ts";
 import { Menu, type MenuItem } from "./Menu.tsx";
+import { PixelLoader } from "./PixelLoader.tsx";
 
-export function WorkspaceSelector({ disabled = false }: { disabled?: boolean }) {
+export function WorkspaceSelector({ disabled = false, addOnly = false }: { disabled?: boolean; addOnly?: boolean }) {
   const t = useI18n();
   const environments = useEnvironments();
   const catalog = useWorkspaceCatalog();
@@ -46,17 +47,19 @@ export function WorkspaceSelector({ disabled = false }: { disabled?: boolean }) 
     { id: "environment:local", label: t("Local"), hint: t("This computer"), icon: <Monitor size={17} />, children: group("local") },
     ...environments.connections.map(entry => ({
       id: `environment:${entry.id}`, label: entry.name, hint: entry.target,
-      icon: entry.status === "connecting" ? <LoaderCircle size={17} className="spin" /> : entry.kind === "container" ? <Box size={17} /> : <Server size={17} />,
+      icon: entry.status === "connecting" ? <PixelLoader size={17} /> : entry.kind === "container" ? <Box size={17} /> : <Server size={17} />,
       children: group(entry.id),
     })),
     { id: "environment:container", label: t("Add container…"), section: t("Workspace actions"), icon: <Box size={17} />, onSelect: () => setContainer(true) },
     { id: "environment:add", label: t("Connect over SSH…"), section: t("Workspace actions"), icon: <Server size={17} />, onSelect: () => setAdding(true) },
   ] : group("local");
-  if (project?.isGit) items.push({ id: "new-worktree", label: t("New thread with workspace options…"), section: t("Workspace actions"), icon: <GitFork size={17} />, onSelect: () => { void createThread(undefined, true); } });
-  if (project) items.push({ id: "close", label: t("Close workspace"), hint: t("Remove {name} from the sidebar. Files stay on disk.", { name: project.name }), section: t("Workspace actions"), icon: <LogOut size={17} />, danger: true, onSelect: () => closeProject(project.id) });
+  if (!addOnly && project?.isGit) items.push({ id: "new-worktree", label: t("New thread with workspace options…"), section: t("Workspace actions"), icon: <GitFork size={17} />, onSelect: () => { void createThread(undefined, true); } });
+  if (!addOnly && project) items.push({ id: "close", label: t("Close workspace"), hint: t("Remove {name} from the sidebar. Files stay on disk.", { name: project.name }), section: t("Workspace actions"), icon: <LogOut size={17} />, danger: true, onSelect: () => closeProject(project.id) });
   return <>
-    <Menu align="start" header={t("Workspaces")} className="workspace-menu" width={340} searchable searchPlaceholder={t("Find a workspace")} items={items}
-      trigger={({ toggle, id, open }) => <button id={id} type="button" className="workspace-select"
+    <Menu align="start" header={t(addOnly ? "Add project" : "Workspaces")} className="workspace-menu" width={340} searchable searchPlaceholder={t("Find a workspace")} items={items}
+      trigger={({ toggle, id, open }) => addOnly ? <button id={id} type="button" className="new-thread project-add"
+        aria-label={t("Add project")} title={t("Add project")} aria-haspopup="menu" aria-expanded={open}
+        onClick={toggle} disabled={disabled || choosing}><FolderPlus size={18} /></button> : <button id={id} type="button" className="workspace-select"
         aria-label={t("Choose workspace, {name}", { name: project?.name ?? t("none selected") })}
         aria-haspopup="menu" aria-expanded={open} onClick={toggle} disabled={disabled || choosing}
         title={isRemote() ? `${environmentName()}: ${project?.path ?? ""}` : project?.path}>

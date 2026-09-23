@@ -56,6 +56,7 @@ export interface Confirmation {
 }
 
 export type Theme = "dark" | "light";
+export type SidebarMode = "workspaces" | "global";
 export type PanelId = "sidebar" | "inspector" | "git" | "github";
 
 export interface AppState {
@@ -113,6 +114,7 @@ export interface AppState {
   inspectorOpen: boolean;
   gitPanelOpen: boolean;
   sidebarOpen: boolean;
+  sidebarMode: SidebarMode;
   theme: Theme;
   language: Language;
   uiScale: number;
@@ -136,11 +138,11 @@ function readFlag(key: string, fallback: boolean): boolean {
   return value === null ? fallback : value === "1";
 }
 
-const storedScale = Number(readPref("citropy.uiScale", "120"));
+const storedScale = Number(readPref("citropy.uiScale", "100"));
 const initialScale =
-  Number.isFinite(storedScale) && storedScale >= 90 && storedScale <= 150
+  Number.isFinite(storedScale) && storedScale >= 75 && storedScale <= 150
     ? storedScale
-    : 120;
+    : 100;
 const storedSpeed = Number(readPref("citropy.typingSpeed", "100"));
 const storedVolume = Number(readPref("citropy.uiSoundVolume", "60"));
 
@@ -247,6 +249,7 @@ export const useApp = create<AppState>(() => ({
     typeof window !== "undefined" &&
       window.innerWidth / (initialScale / 100) > 720,
   ),
+  sidebarMode: readPref<SidebarMode>("citropy.sidebarMode", "workspaces") === "global" ? "global" : "workspaces",
   theme: readPref<Theme>(
     "citropy.theme",
     typeof window !== "undefined" && window.citropyDesktop ? "dark" : "light",

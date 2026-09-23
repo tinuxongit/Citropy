@@ -209,3 +209,21 @@ test("Markdown image references stay scoped to the current thread and previews p
   const notice = await renderMarkdown(`![Saved](citropy-image:${id}) [Docs](https://example.test)`, "dark", undefined, assets, { images: false });
   assert.doesNotMatch(notice, /<img|<button|\/api\/favicon/);
 });
+
+test("ignored background deltas and replies do not notify renderer subscribers", async () => {
+  const before = useApp.getState();
+  let notifications = 0;
+  const stop = useApp.subscribe(() => notifications++);
+  try {
+    for (let index = 0; index < 100; index++) {
+      useApp.setState(state => applyEvents(state, [{ t: "part.append", threadId: "unloaded", messageId: "background", partId: "background-text", text: "delta" }]));
+    }
+    const response = awaitResponse("quiet-response");
+    useApp.setState(state => applyEvents(state, [{ t: "file.content", requestId: "quiet-response", content: "Requested file" }]));
+    assert.equal(await response, "Requested file");
+    assert.strictEqual(useApp.getState(), before);
+    assert.equal(notifications, 0);
+  } finally {
+    stop();
+  }
+});

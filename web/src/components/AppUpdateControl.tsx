@@ -5,11 +5,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   Check,
   Download,
-  LoaderCircle,
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
 import type { AppUpdateState } from "../../../shared/app-update.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 const size = (bytes?: number) =>
   bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : "";
@@ -112,13 +112,11 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
   const Icon =
     state.status === "error"
       ? TriangleAlert
-      : busy && !downloading
-        ? LoaderCircle
-        : ready
-          ? RefreshCw
-          : state.status === "current"
-            ? Check
-            : Download;
+      : ready
+        ? RefreshCw
+        : state.status === "current"
+          ? Check
+          : Download;
   return (
     <div
       className={`app-update-control${variant === "settings" ? " app-update-settings" : ""}`}
@@ -144,10 +142,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
         aria-disabled={busy || state.status === "unsupported"}
         onClick={() => void run()}
       >
-        <Icon
-          size={17}
-          className={busy && !downloading ? "git-spinner" : undefined}
-        />
+        {state.status !== "error" && busy && !downloading ? <PixelLoader size={17} /> : <Icon size={17} />}
         {variant === "settings" ? t(label) : downloading && <small>{Math.floor(state.percent || 0)}%</small>}
         {variant === "rail" && state.status === "available" && (
           <span className="update-available-dot" />

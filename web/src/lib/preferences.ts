@@ -1,5 +1,5 @@
 import { environmentStorage } from "./environment.ts";
-import { useApp, type PanelId, type Theme } from "./app-state.ts";
+import { useApp, type PanelId, type SidebarMode, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import type { Language } from "./translations.ts";
 
@@ -44,8 +44,14 @@ export function toggleSidebar(): void {
   environmentStorage.setItem("citropy.sidebar", next ? "1" : "0");
 }
 
+export function setSidebarMode(mode: SidebarMode): void {
+  if (mode !== "workspaces" && mode !== "global") return;
+  useApp.setState({ sidebarMode: mode });
+  environmentStorage.setItem("citropy.sidebarMode", mode);
+}
+
 export function setUiScale(value: number): void {
-  const uiScale = Math.max(90, Math.min(150, Math.round(value)));
+  const uiScale = Math.max(75, Math.min(150, Math.round(value)));
   if (!Number.isFinite(uiScale)) return;
   useApp.setState({ uiScale });
   environmentStorage.setItem("citropy.uiScale", String(uiScale));

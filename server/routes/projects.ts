@@ -25,6 +25,12 @@ export const projectRoutes: Routes = {
     const project = store.openProject(event.path);
     await refreshGit(project.id, true);
   },
+  "project.rename": (event) => {
+    if (typeof event.name !== "string") throw new Error("Invalid project name.");
+    const name = event.name.trim();
+    if (!name || name.length > 80) throw new Error("Project name must be between 1 and 80 characters.");
+    store.updateProject(event.id, { name });
+  },
   "project.close": async (event) => {
     for (const panel of panelList()) {
       if (panel.projectId !== event.id) continue;

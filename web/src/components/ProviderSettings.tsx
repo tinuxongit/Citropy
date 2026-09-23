@@ -5,7 +5,6 @@ import {
   Check,
   ChevronRight,
   FileText,
-  LoaderCircle,
   RefreshCw,
 } from "lucide-react";
 import { ProviderIcon } from "./ProviderIcon.tsx";
@@ -16,6 +15,7 @@ import { send } from "../lib/socket.ts";
 import type { ProviderInfo } from "../../../shared/protocol.ts";
 import type { ProviderMaintenance } from "../../../shared/provider-settings.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export function ProviderSettings() {
   const t = useI18n();
@@ -94,10 +94,7 @@ export function ProviderSettings() {
           disabled={!connected || updating || checking}
           onClick={() => setRefresh((value) => value + 1)}
         >
-          <RefreshCw
-            size={14}
-            className={checking ? "git-spinner" : undefined}
-          />{" "}{t("Check for updates")}{" "}</button>
+          {checking ? <PixelLoader size={14} /> : <RefreshCw size={14} />}{" "}{t("Check for updates")}{" "}</button>
       </div>
       <div className="provider-settings-group">
         {providers.map((provider) => {
@@ -210,7 +207,7 @@ export function ProviderSettings() {
                       onClick={() => void update(provider)}
                     >
                       {isUpdating ? (
-                        <LoaderCircle size={14} className="git-spinner" />
+                        <PixelLoader size={14} />
                       ) : (
                         <ArrowUpToLine size={14} />
                       )}

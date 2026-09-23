@@ -8,6 +8,7 @@ import { groupStats, summarize } from "../lib/group.ts";
 import { useApp } from "../lib/store.ts";
 import type { ToolPart, ToolShape } from "../../../shared/protocol.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export const WorkGroup = memo(function WorkGroup({ ids }: { ids: string[] }) {
   const t = useI18n();
@@ -41,7 +42,7 @@ export const WorkGroup = memo(function WorkGroup({ ids }: { ids: string[] }) {
           })}
         </span>
         <span className="group-label truncate">{sentence}</span>
-        {stats.running && <span className="tool-spin" role="img" aria-label={t("running")} />}
+        {stats.running && <PixelLoader size={12} className="tool-spin" role="img" aria-label={t("running")} />}
         {stats.failed > 0 && (
           <span className="group-failed" role="img" aria-label={t(stats.failed === 1 ? "{count} failed tool" : "{count} failed tools", { count: stats.failed })}>
             <AlertTriangle size={11} aria-hidden="true" />

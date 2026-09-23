@@ -46,7 +46,7 @@ export function Working({ status, tool, compacting, startedAt }: Props) {
         {Array.from({ length: 9 }, (_, index) => <i key={index} style={{ "--pixel-delay": `${(Math.floor(index / 3) + index % 3) * -120}ms` } as CSSProperties} />)}
       </span>
       <span className="working-text" role="status">{text}</span>
-      <span className="working-time mono">{duration(Math.max(0, now - startedAt))}</span>
+      <span className="working-time">{duration(Math.max(0, now - startedAt))}</span>
     </span>
   );
 }

@@ -9,11 +9,11 @@ import {
   ExternalLink,
   GitMerge,
   GitPullRequest,
-  LoaderCircle,
   X,
 } from "lucide-react";
 import { useApp } from "../../lib/store.ts";
 import { currentLocale, useI18n } from "../../lib/i18n.ts";
+import { PixelLoader } from "../PixelLoader.tsx";
 
 export function GitHubLink({
   href,
@@ -58,7 +58,7 @@ export function GitHubFeedback({
   if (loading)
     return (
       <div className="github-feedback" role="status">
-        <LoaderCircle size={18} className="git-spinner" />
+        <PixelLoader size={18} />
         <span>{t("Loading from GitHub…")}</span>
       </div>
     );
@@ -212,7 +212,7 @@ export function GitHubDialog({
               data-variant={danger ? "danger" : "primary"}
               disabled={busy || !connected}
             >
-              {busy && <LoaderCircle size={14} className="git-spinner" />}
+              {busy && <PixelLoader size={14} />}
               {busy ? t("Working…") : submitLabel && t(submitLabel)}
             </button>
           )}

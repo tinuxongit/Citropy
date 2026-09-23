@@ -667,7 +667,6 @@
   border-radius: var(--r-md);
   background: var(--raised);
   color: var(--text);
-  font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.75;
   tab-size: 2;

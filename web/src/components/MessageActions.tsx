@@ -9,8 +9,9 @@ import { TaskReview } from "./TaskReview.tsx";
 import { fileRestoreIssue } from "../../../shared/review.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 
-export function MessageActions({ thread, messageId, user }: { thread: ThreadMeta; messageId: string; user: boolean }) {
+export function MessageActions({ threadId, messageId, user }: { threadId: string; messageId: string; user: boolean }) {
   const t = useI18n();
+  const thread = useApp(state => state.threads[threadId]!);
   const [dialog, setDialog] = useState<"restore" | "review">();
   const [mode, setMode] = useState<"conversation" | "files" | "both">("conversation");
   const id = useId();

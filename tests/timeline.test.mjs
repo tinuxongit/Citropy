@@ -132,3 +132,22 @@ test("final answer boundaries distinguish later work, notices and unfinished tho
     assert.equal(activity.previewId, final ? undefined : tail.includes(answer) ? "answer" : "progress");
   }
 });
+
+test("streaming updates inspect content only for changed parts", () => {
+  let reads = 0;
+  const state = fixture();
+  for (let index = 0; index < 1000; index++) {
+    const id = `old-${index}`;
+    state.messages[id] = { id, role: "assistant", ts: index, partIds: [id] };
+    state.parts[id] = { id, kind: "text", complete: true, get text() { reads++; return "Saved answer"; } };
+    state.order.chat.unshift(id);
+  }
+  const select = createTimelineSelector("chat");
+  const rows = select(state);
+  reads = 0;
+  for (let index = 0; index < 100; index++) {
+    const next = { ...state, parts: { ...state.parts, progress: { ...state.parts.progress, text: `Checking ${index}` } } };
+    assert.strictEqual(select(next), rows);
+  }
+  assert.equal(reads, 0);
+});

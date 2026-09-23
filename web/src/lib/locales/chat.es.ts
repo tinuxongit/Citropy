@@ -251,6 +251,7 @@ export const chatEs: Record<string, string> = {
   "Running": "Ejecutando",
   "Save": "Guardar",
   "Search conversations": "Buscar conversaciones",
+  "Start a conversation": "Iniciar una conversación",
   "Searched": "Buscado",
   "Searched code": "Buscó código",
   "Searched the web": "Buscó en la web",

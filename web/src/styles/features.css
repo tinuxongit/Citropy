@@ -60,7 +60,8 @@
 .feature-path {
   overflow-wrap: anywhere;
   color: var(--text-3);
-  font: 11px/1.7 var(--font-mono);
+  font-size: 11px;
+  line-height: 1.7;
 }
 .feature-note {
   font-size: var(--text-sm);
@@ -208,7 +209,7 @@
 .project-folder-picker small {
   overflow: hidden;
   color: var(--text-3);
-  font: 11px var(--font-mono);
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

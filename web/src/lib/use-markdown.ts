@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { renderMarkdown } from "./markdown.ts";
-import { escapeHtml } from "./highlight.ts";
+import { escapeHtml } from "./escape-html.ts";
 import { useApp } from "./store.ts";
 
 const cache = new Map<string, string>();

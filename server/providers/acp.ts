@@ -1,102 +1,31 @@
 import * as acp from "@agentclientprotocol/sdk";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { basename } from "node:path";
-import { Readable, Writable } from "node:stream";
 import { pathToFileURL } from "node:url";
 import { onLines } from "../lines.ts";
-import { diffLines } from "../diff.ts";
-import { stopProcess } from "./process.ts";
-import { commandVersion, spawnCommand } from "./binary.ts";
+import { commandVersion } from "./binary.ts";
 import { ask, cancelThread } from "../permissions.ts";
 import { askQuestion, cancelQuestions } from "../questions.ts";
+import { closeAgent, errorMessage, initializeAgent, signedOut, spawnAgent, withTimeout, type AcpConfig } from "./acp-connection.ts";
+import { acpCurrentModel, contextMax, contextOption, contextTokens, effortOption, fastOption, optionValues, selectOption } from "./acp-models.ts";
+import { contentImages, contentText, diffPatch, pickOption, toolReading, type ToolCallLike } from "./acp-tools.ts";
+import {
+  askCursorQuestion,
+  extensionParams,
+  type CursorAskQuestionRequest,
+  type CursorCreatePlanRequest,
+  type CursorCreatePlanResponse,
+  type CursorGenerateImageRequest,
+  type CursorTaskRequest,
+  type CursorUpdateTodosRequest,
+} from "./acp-cursor.ts";
 import type { AgentSession, SessionConfig, StartOptions } from "./types.ts";
-import type { Attachment, FilePatch, ModelOption, PermissionMode, TodoItem } from "../../shared/protocol.ts";
-import type { ProviderCommand } from "../../shared/features.ts";
+import type { Attachment, TodoItem } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
 import { parseAcpUsage } from "../../shared/usage-metrics.ts";
-import packageInfo from "../../package.json" with { type: "json" };
-
-export interface AcpConfig {
-  label: string;
-  binary: string;
-  args: string[];
-  loginCommand: string;
-  modes: Record<PermissionMode, string>;
-  parameterizedModelPicker?: boolean;
-  modelListing?: string;
-  onCommands?: (cwd: string, commands: ProviderCommand[]) => void;
-}
-
-interface CursorAskQuestion {
-  id: string;
-  prompt: string;
-  options: Array<{ id: string; label: string }>;
-  allowMultiple?: boolean;
-}
-
-interface CursorAskQuestionRequest {
-  toolCallId: string;
-  title?: string;
-  questions: CursorAskQuestion[];
-}
-
-interface CursorTodo {
-  id?: string;
-  content?: string;
-  title?: string;
-  status?: string;
-}
-
-type CursorAskQuestionResponse = {
-  outcome:
-    | { outcome: "answered"; answers: Array<{ questionId: string; selectedOptionIds: string[] }> }
-    | { outcome: "cancelled" };
-};
-
-interface CursorCreatePlanRequest {
-  toolCallId: string;
-  name?: string;
-  overview?: string;
-  plan: string;
-  todos: CursorTodo[];
-  isProject?: boolean;
-  phases?: Array<{ name: string; todos: CursorTodo[] }>;
-}
-
-type CursorCreatePlanResponse = {
-  outcome: { outcome: "accepted" } | { outcome: "rejected"; reason?: string } | { outcome: "cancelled" };
-};
-
-interface CursorUpdateTodosRequest {
-  toolCallId: string;
-  todos: CursorTodo[];
-  merge: boolean;
-}
-
-interface CursorTaskRequest {
-  toolCallId: string;
-  description: string;
-  prompt: string;
-  subagentType: string | { custom: string };
-  model?: string;
-  agentId?: string;
-  durationMs?: number;
-}
-
-interface CursorGenerateImageRequest {
-  toolCallId: string;
-  description: string;
-  filePath?: string;
-  referenceImagePaths?: string[];
-}
-
-const extensionParams = <T>(): { parse(value: unknown): T } => ({ parse: (value) => value as T });
 
 const MAX_PENDING_NOTIFICATIONS = 500;
-
-type ToolCallLike = acp.ToolCall | acp.ToolCallUpdate;
+const usageTotalKeys = ["input", "output", "cacheRead", "cacheWrite", "costUsd"] as const;
 
 interface ToolState {
   name: string;
@@ -111,244 +40,6 @@ interface ToolState {
   kind: string;
   content?: Array<acp.ToolCallContent> | null;
   locations?: Array<acp.ToolCallLocation> | null;
-}
-
-const clientInfo = { name: "citropy", version: packageInfo.version } satisfies acp.Implementation;
-const usageTotalKeys = ["input", "output", "cacheRead", "cacheWrite", "costUsd"] as const;
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === "object" && "message" in error) return String((error as { message: unknown }).message);
-  return String(error);
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms);
-    timer.unref();
-    promise.then(
-      (value) => { clearTimeout(timer); resolve(value); },
-      (error: unknown) => { clearTimeout(timer); reject(error instanceof Error ? error : new Error(errorMessage(error))); },
-    );
-  });
-}
-
-function signedOut(config: AcpConfig, error: unknown): Error {
-  if (error instanceof acp.RequestError && error.code === -32000)
-    return new Error(`${config.label} is not signed in. Run \`${config.loginCommand}\` in a terminal, then try again.`);
-  return error instanceof Error ? error : new Error(errorMessage(error));
-}
-
-type SelectOption =Extract<acp.SessionConfigOption, { type: "select" }>;
-
-function contextTokens(value: string): number | undefined {
-  const match = /^(\d+(?:\.\d+)?)(k|m)?$/i.exec(value.trim());
-  if (!match) return undefined;
-  const unit = match[2]?.toLowerCase();
-  return Number(match[1]) * (unit === "m" ? 1_000_000 : unit === "k" ? 1_000 : 1);
-}
-
-function contextMax(id: string): number | undefined {
-  const match = /context=(\d+(?:\.\d+)?[km]?)/i.exec(id);
-  return match ? contextTokens(match[1]!) : undefined;
-}
-
-function modelHint(id: string): string | undefined {
-  const match = /\[([^\]]*)\]/.exec(id);
-  if (!match) return undefined;
-  const params: Record<string, string> = {};
-  for (const part of match[1]!.split(",")) {
-    const [key, value] = part.split("=");
-    if (key && value) params[key.trim()] = value.trim();
-  }
-  const parts: string[] = [];
-  if (params.context) parts.push(`${params.context} context`);
-  const effort = params.effort ?? params.reasoning ?? params.reasoning_effort;
-  if (effort) parts.push(`${effort} effort`);
-  if (params.fast === "true") parts.push("fast");
-  if (params.thinking === "true" && !effort) parts.push("thinking");
-  return parts.length ? parts.join(" · ") : undefined;
-}
-
-function selectOption(options: acp.SessionConfigOption[] | null | undefined, category: string, predicate?: (option: SelectOption) => boolean): SelectOption | undefined {
-  return (options ?? []).find(
-    (entry): entry is SelectOption =>
-      entry.type === "select" && entry.category === category && (!predicate || predicate(entry)),
-  );
-}
-
-function optionValues(option: SelectOption): string[] {
-  const values: string[] = [];
-  for (const entry of option.options ?? []) {
-    if ("value" in entry) values.push(entry.value);
-    else for (const nested of entry.options) values.push(nested.value);
-  }
-  return values;
-}
-
-const EFFORT_VALUES = new Set(["none", "minimal", "low", "medium", "high", "xhigh", "extra-high", "extra_high", "max"]);
-
-function displayName(value: string): string {
-  return value.replace(/[\u200b-\u200d\ufeff]/g, "");
-}
-
-function effortOption(options: acp.SessionConfigOption[] | null | undefined): SelectOption | undefined {
-  return selectOption(options, "thought_level", (option) => optionValues(option).some((value) => EFFORT_VALUES.has(value)));
-}
-
-function contextOption(options: acp.SessionConfigOption[] | null | undefined): SelectOption | undefined {
-  return selectOption(options, "model_config", (option) => {
-    const values = optionValues(option);
-    return values.length > 0 && values.every((value) => contextTokens(value) !== undefined);
-  });
-}
-
-function fastOption(options: acp.SessionConfigOption[] | null | undefined): SelectOption | undefined {
-  return selectOption(options, "model_config", (option) =>
-    /fast/i.test(`${option.id} ${option.name}`) && optionValues(option).includes("true"),
-  );
-}
-
-function modelSelect(response: acp.NewSessionResponse): SelectOption | undefined {
-  return selectOption(response.configOptions, "model");
-}
-
-function legacyModels(response: acp.NewSessionResponse): { currentModelId?: string; availableModels?: Array<{ modelId: string; name: string }> } | undefined {
-  return (response as acp.NewSessionResponse & { models?: { currentModelId?: string; availableModels?: Array<{ modelId: string; name: string }> } }).models;
-}
-
-export function acpCurrentModel(response: acp.NewSessionResponse): string | undefined {
-  return modelSelect(response)?.currentValue ?? legacyModels(response)?.currentModelId;
-}
-
-function modelLabels(option: SelectOption | undefined): Map<string, string> {
-  const labels = new Map<string, string>();
-  for (const entry of option?.options ?? []) {
-    if ("value" in entry) labels.set(entry.value, displayName(entry.name));
-    else for (const nested of entry.options) labels.set(nested.value, displayName(nested.name));
-  }
-  return labels;
-}
-
-function describeModel(id: string, label: string | undefined, options: acp.SessionConfigOption[] | null | undefined): ModelOption {
-  const effort = effortOption(options);
-  const context = contextOption(options);
-  const fast = fastOption(options);
-  const windows = context ? optionValues(context).map(contextTokens).filter((value): value is number => value !== undefined) : [];
-  return {
-    id,
-    label: displayName(label ?? id),
-    hint: modelHint(id),
-    isDefault: id.startsWith("default"),
-    efforts: effort ? optionValues(effort) : [],
-    defaultEffort: effort?.currentValue ?? undefined,
-    contextWindows: windows.length > 1 ? windows : undefined,
-    contextMax: context ? contextTokens(context.currentValue) : contextMax(id),
-    fastMode: Boolean(fast),
-    fastModeHint: fast ? "Cursor runs this model faster with increased usage" : undefined,
-  };
-}
-
-export function acpModelOptions(response: acp.NewSessionResponse): ModelOption[] {
-  const select = modelSelect(response);
-  const values: Array<{ id: string; label: string }> = [];
-  if (select) {
-    const labels = modelLabels(select);
-    for (const value of optionValues(select)) values.push({ id: value, label: labels.get(value) ?? value });
-  } else {
-    for (const model of legacyModels(response)?.availableModels ?? [])
-      values.push({ id: model.modelId, label: displayName(model.name) });
-  }
-  return values.map(({ id, label }) => describeModel(id, label, undefined));
-}
-
-function toolReading(call: ToolCallLike): { name: string; input: unknown } {
-  const raw = (call.rawInput ?? {}) as Record<string, unknown>;
-  const path = call.locations?.[0]?.path ?? (typeof raw.path === "string" ? raw.path : "");
-  switch (call.kind ?? "other") {
-    case "execute":
-      return { name: "Bash", input: { command: typeof raw.command === "string" ? raw.command : call.title } };
-    case "edit":
-    case "delete":
-    case "move":
-      return { name: "Edit", input: { file_path: path } };
-    case "read":
-      return { name: "Read", input: { file_path: path } };
-    case "search":
-      return { name: "Grep", input: { pattern: typeof raw.pattern === "string" ? raw.pattern : call.title } };
-    case "fetch":
-      return { name: "WebFetch", input: { url: typeof raw.url === "string" ? raw.url : call.title } };
-    default:
-      if (typeof raw.providerIdentifier === "string" && typeof raw.toolName === "string")
-        return { name: `mcp__${raw.providerIdentifier}__${raw.toolName}`, input: raw.args ?? {} };
-      return { name: call.name ?? call.title ?? "Tool", input: call.rawInput ?? {} };
-  }
-}
-
-function rawOutputText(rawOutput: unknown): string | undefined {
-  if (rawOutput === undefined || rawOutput === null) return undefined;
-  if (typeof rawOutput === "string") return rawOutput;
-  if (typeof rawOutput !== "object" || Array.isArray(rawOutput)) return JSON.stringify(rawOutput);
-  const output = rawOutput as Record<string, unknown>;
-  if (typeof output.stdout === "string" || typeof output.stderr === "string") {
-    const stdout = typeof output.stdout === "string" ? output.stdout : "";
-    const stderr = typeof output.stderr === "string" ? output.stderr : "";
-    let text = stdout;
-    if (stderr) text += `${text ? "\n" : ""}${stderr}`;
-    if (typeof output.exitCode === "number" && output.exitCode !== 0) text += `${text ? "\n" : ""}[exit code ${output.exitCode}]`;
-    return text;
-  }
-  if (typeof output.content === "string") return output.content;
-  if (typeof output.totalMatches === "number") return `${output.totalMatches} matches${output.truncated === true ? " (truncated)" : ""}`;
-  return JSON.stringify(rawOutput);
-}
-
-function diffPatch(content?: Array<acp.ToolCallContent> | null): FilePatch | undefined {
-  for (const block of content ?? []) {
-    if (block.type !== "diff") continue;
-    let oldText = block.oldText ?? "";
-    let newText = block.newText;
-    if (/^-- \/dev\/null$/.test(oldText.trim())) oldText = "";
-    const lines = newText.split("\n");
-    if (lines[0] !== undefined && /^\+\+ b\//.test(lines[0])) newText = lines.slice(1).join("\n");
-    const patch = diffLines(oldText, newText, basename(block.path));
-    if (patch.added > 0 || patch.removed > 0) return patch;
-  }
-  return undefined;
-}
-
-function contentText(content?: Array<acp.ToolCallContent> | null, rawOutput?: unknown, skipDiff = false): string {
-  const parts: string[] = [];
-  for (const block of content ?? []) {
-    if (block.type === "content" && block.content.type === "text") parts.push(block.content.text);
-    else if (block.type === "diff") { if (!skipDiff) parts.push(`${block.path}\n${block.newText}`); }
-    else if (block.type === "terminal") parts.push(block.terminalId);
-  }
-  const text = rawOutputText(rawOutput);
-  if (text) parts.push(text);
-  return parts.join("\n");
-}
-
-function contentImages(content?: Array<acp.ToolCallContent> | null): Array<{ mime: string; data: string }> {
-  const images: Array<{ mime: string; data: string }> = [];
-  for (const block of content ?? []) {
-    if (block.type === "content" && block.content.type === "image" && typeof block.content.data === "string" && typeof block.content.mimeType === "string")
-      images.push({ mime: block.content.mimeType, data: block.content.data });
-  }
-  return images;
-}
-
-function pickOption(options: acp.PermissionOption[], decision: "allow" | "allow_always" | "deny"): string | undefined {
-  const order = decision === "deny"
-    ? ["reject_once", "reject_always"]
-    : decision === "allow_always"
-      ? ["allow_always", "allow_once"]
-      : ["allow_once", "allow_always"];
-  for (const kind of order) {
-    const option = options.find((entry) => entry.kind === kind);
-    if (option) return option.optionId;
-  }
-  return undefined;
 }
 
 export class AcpSession implements AgentSession {
@@ -377,20 +68,12 @@ export class AcpSession implements AgentSession {
   constructor(config: AcpConfig, options: StartOptions) {
     this.#config = config;
     this.#options = options;
-    this.#child = spawnCommand(config.binary, config.args, {
-      detached: process.platform !== "win32",
-      cwd: options.cwd,
-      env: { ...process.env, NO_COLOR: "1", TERM: "dumb" },
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    const stream = acp.ndJsonStream(
-      Writable.toWeb(this.#child.stdin) as WritableStream<Uint8Array>,
-      Readable.toWeb(this.#child.stdout) as ReadableStream<Uint8Array>,
-    );
+    const { child, stream } = spawnAgent(config, options.cwd);
+    this.#child = child;
     const app = acp.client({ name: "citropy" })
       .onRequest(acp.methods.client.session.requestPermission, (context) => this.#permission(context.params))
       .onNotification(acp.methods.client.session.update, (context) => { this.#receive(context.params); })
-      .onRequest("cursor/ask_question", extensionParams<CursorAskQuestionRequest>(), (context) => this.#askQuestion(context.params, context.signal))
+      .onRequest("cursor/ask_question", extensionParams<CursorAskQuestionRequest>(), (context) => askCursorQuestion(this.#options.threadId, context.params, context.signal))
       .onRequest("cursor/create_plan", extensionParams<CursorCreatePlanRequest>(), (context) => this.#createPlan(context.params, context.signal))
       .onNotification("cursor/update_todos", extensionParams<CursorUpdateTodosRequest>(), (context) => { this.#updateTodos(context.params); })
       .onNotification("cursor/task", extensionParams<CursorTaskRequest>(), (context) => { this.#task(context.params); })
@@ -414,21 +97,7 @@ export class AcpSession implements AgentSession {
 
   async #initialize(): Promise<void> {
     const { label } = this.#config;
-    const init = await withTimeout(
-      this.#agent().request<acp.InitializeResponse, acp.InitializeRequest>(acp.methods.agent.initialize, {
-        protocolVersion: acp.PROTOCOL_VERSION,
-        clientCapabilities: {
-          fs: { readTextFile: false, writeTextFile: false },
-          terminal: false,
-          ...(this.#config.parameterizedModelPicker ? { _meta: { parameterizedModelPicker: true } } : {}),
-        },
-        clientInfo,
-      }),
-      30_000,
-      `${label} did not answer the ACP handshake within 30 seconds`,
-    );
-    if (init.protocolVersion !== acp.PROTOCOL_VERSION)
-      throw new Error(`${label} speaks ACP version ${init.protocolVersion}; this Citropy build supports version ${acp.PROTOCOL_VERSION}.`);
+    const init = await initializeAgent(this.#agent(), this.#config);
     this.#capabilities = init.agentCapabilities ?? {};
     const mcpServers: Array<acp.McpServer> = [];
     if (this.#options.mcp) {
@@ -633,9 +302,7 @@ export class AcpSession implements AgentSession {
     this.#pending = [];
     cancelThread(this.#options.threadId, false);
     cancelQuestions(this.#options.threadId);
-    this.#connection.close();
-    this.#child.stdin.end();
-    stopProcess(this.#child, true);
+    closeAgent(this.#connection, this.#child);
   }
 
   #fail(message: string): void {
@@ -785,31 +452,6 @@ export class AcpSession implements AgentSession {
     }, true);
   }
 
-  async #askQuestion(params: CursorAskQuestionRequest, signal: AbortSignal): Promise<CursorAskQuestionResponse> {
-    const asked = params.questions.slice(0, 4);
-    const questions = asked.map((question) => ({
-      id: question.id,
-      question: question.prompt,
-      options: question.options.length
-        ? question.options.slice(0, 12).map((option) => ({ label: option.label }))
-        : [{ label: "OK" }],
-      multiple: question.allowMultiple === true,
-    }));
-    if (!questions.length) return { outcome: { outcome: "answered", answers: [] } };
-    const result = await askQuestion(this.#options.threadId, questions, { signal });
-    if (result.cancelled) return { outcome: { outcome: "cancelled" } };
-    return {
-      outcome: {
-        outcome: "answered",
-        answers: asked.map((question) => ({
-          questionId: question.id,
-          selectedOptionIds: (result.answers[question.id] ?? []).flatMap((label) =>
-            question.options.filter((option) => option.label.trim() === label).map((option) => option.id)),
-        })),
-      },
-    };
-  }
-
   async #createPlan(params: CursorCreatePlanRequest, signal: AbortSignal): Promise<CursorCreatePlanResponse> {
     const todos = params.todos.length ? params.todos : params.phases?.flatMap((phase) => phase.todos) ?? [];
     this.#updateTodos({ toolCallId: params.toolCallId, todos, merge: false });
@@ -930,86 +572,6 @@ export class AcpSession implements AgentSession {
     const decision = await ask(this.#options.threadId, reading.name, reading.input);
     if (!this.#disposed) this.#options.emit({ type: "status", status: "working" });
     return selected(decision);
-  }
-}
-
-export async function acpModels(config: AcpConfig): Promise<ModelOption[]> {
-  const child = spawnCommand(config.binary, config.args, {
-    detached: process.platform !== "win32",
-    cwd: tmpdir(),
-    env: { ...process.env, NO_COLOR: "1", TERM: "dumb" },
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  const stream = acp.ndJsonStream(
-    Writable.toWeb(child.stdin) as WritableStream<Uint8Array>,
-    Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>,
-  );
-  const connection = acp.client({ name: "citropy" }).connect(stream);
-  try {
-    const init = await withTimeout(
-      connection.agent.request<acp.InitializeResponse, acp.InitializeRequest>(acp.methods.agent.initialize, {
-        protocolVersion: acp.PROTOCOL_VERSION,
-        clientCapabilities: {
-          fs: { readTextFile: false, writeTextFile: false },
-          terminal: false,
-          ...(config.parameterizedModelPicker ? { _meta: { parameterizedModelPicker: true } } : {}),
-        },
-        clientInfo,
-      }),
-      30_000,
-      `${config.label} did not answer the ACP handshake within 30 seconds`,
-    );
-    if (init.protocolVersion !== acp.PROTOCOL_VERSION)
-      throw new Error(`${config.label} speaks ACP version ${init.protocolVersion}; this Citropy build supports version ${acp.PROTOCOL_VERSION}.`);
-    if (config.modelListing) {
-      const listing = await withTimeout(
-        connection.agent.request(config.modelListing, {}) as Promise<{ models?: Array<{ value?: unknown; name?: unknown; configOptions?: acp.SessionConfigOption[] | null }> }>,
-        20_000,
-        `${config.label} did not list models within 20 seconds`,
-      ).catch((error: unknown) => { throw signedOut(config, error); });
-      return (listing.models ?? []).flatMap((entry) =>
-        typeof entry.value === "string" && typeof entry.name === "string"
-          ? [describeModel(entry.value, entry.name, entry.configOptions)]
-          : []);
-    }
-    const response = await withTimeout(
-      connection.agent.request(acp.methods.agent.session.new, { cwd: tmpdir(), mcpServers: [] }),
-      60_000,
-      `${config.label} did not return models within 60 seconds`,
-    ).catch((error: unknown) => { throw signedOut(config, error); });
-    const select = modelSelect(response);
-    if (!select) return acpModelOptions(response);
-    const labels = modelLabels(select);
-    const initial = select.currentValue;
-    const models: ModelOption[] = [];
-    for (const value of optionValues(select)) {
-      if (!value.startsWith("default") && value !== initial) {
-        try {
-          const result = await withTimeout(
-            connection.agent.request(acp.methods.agent.session.setConfigOption, { sessionId: response.sessionId, configId: select.id, value }),
-            10_000,
-            `${config.label} did not describe ${value} within 10 seconds`,
-          );
-          models.push(describeModel(value, labels.get(value), result.configOptions));
-          continue;
-        } catch {
-          // Fall through to the undiscovered description.
-        }
-      }
-      models.push(describeModel(value, labels.get(value), value === initial ? response.configOptions : undefined));
-    }
-    if (initial) {
-      await withTimeout(
-        connection.agent.request(acp.methods.agent.session.setConfigOption, { sessionId: response.sessionId, configId: select.id, value: initial }),
-        10_000,
-        `${config.label} did not restore ${initial} within 10 seconds`,
-      ).catch(() => undefined);
-    }
-    return models;
-  } finally {
-    connection.close();
-    child.stdin.end();
-    stopProcess(child, true);
   }
 }
 

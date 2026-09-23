@@ -6,7 +6,6 @@ import {
   GitBranch,
   GitCommitHorizontal,
   GitMerge,
-  LoaderCircle,
   Minus,
   Plus,
   Search,
@@ -18,7 +17,6 @@ import { GitReview, type GitSelection } from "../GitReview.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import { FileGroup } from "./FileGroup.tsx";
 import { fileLabel } from "./files.ts";
-import { FileIcon } from "../FileIcon.tsx";
 import type { useI18n } from "../../lib/i18n.ts";
 import type { GitDialogAction } from "../GitDialog.tsx";
 import type {
@@ -26,7 +24,7 @@ import type {
   GitOperation,
   GitOverview,
 } from "../../../../shared/protocol.ts";
-import type { ReactNode } from "react";
+import { PixelLoader } from "../PixelLoader.tsx";
 
 export function ChangesSection({
   data,
@@ -207,7 +205,7 @@ export function ChangesSection({
               disabled={!canCommit}
             >
               {busy === "commit" ? (
-                <LoaderCircle size={15} className="git-spinner" />
+                <PixelLoader size={15} />
               ) : (
                 <GitCommitHorizontal size={17} />
               )}

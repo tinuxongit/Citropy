@@ -13,6 +13,7 @@ import { useApp } from "../lib/store.ts";
 import { BrowserViewport } from "./BrowserViewport.tsx";
 import type { BrowserAction, PanelTab } from "../../../shared/workbench.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export function BrowserPane({
   panel,
@@ -169,7 +170,7 @@ export function BrowserPane({
             aria-label={t("Reload browser")}
             onClick={() => act({ action: "reload" })}
           >
-            <RotateCw size={13} className={state?.loading ? "spin" : ""} />
+            {state?.loading ? <PixelLoader size={13} /> : <RotateCw size={13} />}
           </button>
         </div>
         <form

@@ -10,7 +10,6 @@ import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview, type GitSelection } from "../GitReview.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import { currentLocale, type useI18n } from "../../lib/i18n.ts";
-import type { GitDialogAction } from "../GitDialog.tsx";
 import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
 import type { ReactNode } from "react";
 

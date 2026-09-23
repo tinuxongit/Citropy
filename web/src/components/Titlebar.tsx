@@ -43,6 +43,7 @@ export function Titlebar({
     return selected?.parentThreadId ? undefined : selected;
   });
   const inspectorOpen = useApp((state) => state.inspectorOpen);
+  const globalMode = useApp((state) => state.sidebarMode === "global");
 
   const project = projects.find((entry) => entry.id === activeProjectId);
   // The project-level Git cache can still describe a previously selected worktree.
@@ -51,6 +52,7 @@ export function Titlebar({
   const branch = thread
     ? thread.workspaceBranch ?? (onProjectCheckout ? project?.branch : undefined)
     : project?.branch;
+  const workspaceContext = !globalMode || isRemote() || Boolean(branch && view === "chat");
   const header = useRef<HTMLElement>(null);
   useEffect(() => {
     const element = header.current;
@@ -100,19 +102,19 @@ export function Titlebar({
         className="topbar-center breadcrumb"
         aria-label={t("Current workspace and view")}
       >
-        <div className="workspace-breadcrumb">
+        {workspaceContext && <div className="workspace-breadcrumb">
           {isRemote() && <span className="environment-breadcrumb" title={environmentName()}><Server size={13} /><span className="truncate">{environmentName()}</span></span>}
-          <WorkspaceSelector disabled={workspaceDisabled} />
+          {!globalMode && <WorkspaceSelector disabled={workspaceDisabled} />}
           {branch && view === "chat" && (
             <span className="branch" title={branch}>
               <GitBranch size={12} />
               <span className="truncate">{branch}</span>
             </span>
           )}
-        </div>
+        </div>}
         {(thread || view !== "chat") && (
           <>
-            <span className="breadcrumb-separator" aria-hidden="true">/</span>
+            {workspaceContext && <span className="breadcrumb-separator" aria-hidden="true">/</span>}
             <span className="thread-title truncate">
               {view === "git" ? t("Source control") : view === "github" ? "GitHub" : view === "usage" ? t("Usage") : view === "settings" ? t("Settings") : thread?.title}
             </span>

@@ -22,7 +22,6 @@ export {
   Globe,
   Layers,
   ListChecks,
-  Loader2,
   MessageSquarePlus,
   Moon,
   PanelLeft,

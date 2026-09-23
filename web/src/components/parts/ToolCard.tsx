@@ -9,6 +9,7 @@ import { ansiToHtml, stripAnsi } from "../../lib/ansi.ts";
 import { duration } from "../../lib/format.ts";
 import type { ToolPart } from "../../../../shared/protocol.ts";
 import { ImageStrip } from "./ImageStrip.tsx";
+import { PixelLoader } from "../PixelLoader.tsx";
 
 export function ToolCard({ part }: { part: ToolPart }) {
   const t = useI18n();
@@ -20,15 +21,21 @@ export function ToolCard({ part }: { part: ToolPart }) {
   const hasImages = Boolean(part.images?.length || part.imageFiles?.length);
 
   const peek = useMemo(() => {
+    if (part.shape === "command") return null;
     if (part.status === "running") return null;
     if (part.patch) return null;
     const clean = stripAnsi(output).trim();
     if (!clean) return null;
     const first = clean.split("\n").find((line) => line.trim().length > 0) ?? "";
     return first.length > 120 ? `${first.slice(0, 120)}…` : first;
-  }, [output, part.patch, part.status]);
+  }, [output, part.patch, part.shape, part.status]);
 
   const url = part.shape === "web" ? part.headline : null;
+  const command = part.shape === "command"
+    ? part.input && typeof part.input === "object" && "command" in part.input && typeof part.input.command === "string"
+      ? part.input.command
+      : part.headline
+    : null;
 
   return (
     <div id={`tool-${part.id}`} className="tool" data-shape={part.shape} data-status={part.status} data-open={open} data-images={hasImages || undefined}>
@@ -38,7 +45,7 @@ export function ToolCard({ part }: { part: ToolPart }) {
           <Icon size={12} aria-hidden="true" />
         </span>
         <span className="tool-name" title={label}>{label}</span>
-        <span className="tool-headline mono truncate" title={part.headline}>{part.headline}</span>
+        <span className="tool-headline truncate" title={part.headline}>{part.headline}</span>
         <span className="tool-meta">
           {part.detail && <span className="tool-detail truncate" title={part.detail}>{part.detail}</span>}
           {part.patch && (
@@ -52,12 +59,15 @@ export function ToolCard({ part }: { part: ToolPart }) {
         </span>
       </button>
 
-      {!open && peek && !hasImages && <div className="tool-peek mono truncate">{peek}</div>}
+      <Collapsible open={!open && Boolean(peek) && !hasImages} className="tool-peek-collapse">
+        <div className="tool-peek truncate">{peek}</div>
+      </Collapsible>
 
       <Collapsible open={open} className="tool-body">
         <div className="tool-body-inner">
+          {command && <pre className="tool-output">{command}</pre>}
           {url && (
-            <a className="tool-url mono truncate" href={url} target="_blank" rel="noreferrer noopener">
+            <a className="tool-url truncate" href={url} target="_blank" rel="noreferrer noopener">
               {url}
               <ExternalLink size={11} />
             </a>
@@ -66,7 +76,7 @@ export function ToolCard({ part }: { part: ToolPart }) {
           {!part.patch && output && <Output text={output} shape={part.shape} partId={part.id} />}
           {!part.patch && !output && !hasImages && part.status === "running" && (
             <div className="tool-waiting">
-              <span className="tool-waiting-bar" />
+              <PixelLoader size={12} />
               {t("Running")}
             </div>
           )}
@@ -82,7 +92,7 @@ export function ToolCard({ part }: { part: ToolPart }) {
 
 function StatusMark({ status }: { status: ToolPart["status"] }) {
   const t = useI18n();
-  if (status === "running") return <span className="tool-spin" aria-label={t("running")} />;
+  if (status === "running") return <PixelLoader size={12} className="tool-spin" role="img" aria-label={t("running")} />;
   if (status === "ok") return <Check size={12} className="tool-ok" aria-label={t("done")} />;
   if (status === "denied") return <Ban size={12} className="tool-bad" aria-label={t("denied")} />;
   return <AlertTriangle size={12} className="tool-bad" aria-label={t("failed")} />;
@@ -93,9 +103,9 @@ function Output({ text, shape, partId }: { text: string; shape: ToolPart["shape"
   const [expanded, setExpanded] = useDisclosure(partId, "output");
   const lines = useMemo(() => text.split("\n"), [text]);
   const cap = shape === "command" ? 18 : 14;
-  const shown = expanded ? lines : lines.slice(0, cap);
-  const hidden = lines.length - shown.length;
-  const html = useMemo(() => ansiToHtml(shown.join("\n")), [shown]);
+  const shown = expanded ? lines.length : Math.min(lines.length, cap);
+  const hidden = lines.length - shown;
+  const html = useMemo(() => ansiToHtml(lines.slice(0, shown).join("\n")), [lines, shown]);
 
   return (
     <>

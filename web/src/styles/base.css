@@ -208,12 +208,6 @@ kbd {
   overflow: hidden;
 }
 
-.mono {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  letter-spacing: -0.01em;
-}
-
 .eyebrow {
   font-size: var(--text-xs);
   font-weight: 600;
@@ -343,15 +337,6 @@ kbd {
   white-space: nowrap;
 }
 
-@keyframes citropy-sweep {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(320%);
-  }
-}
-
 @keyframes citropy-rise {
   from {
     opacity: 0;
@@ -363,10 +348,31 @@ kbd {
   }
 }
 
-@keyframes citropy-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.pixel-loader {
+  display: inline-grid;
+  grid-template-columns: repeat(3, var(--pixel-cell));
+  grid-template-rows: repeat(3, var(--pixel-cell));
+  flex: none;
+  gap: var(--pixel-gap);
+  vertical-align: middle;
+}
+
+.pixel-loader i {
+  display: block;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0;
+  animation: citropy-pixel-chase 960ms steps(1, end) calc((var(--pixel-step) - 8) * 120ms) infinite;
+}
+
+@keyframes citropy-pixel-chase {
+  0% { opacity: 1; }
+  37.5%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixel-loader i { animation: none; }
+  .pixel-loader i:nth-child(-n + 3) { opacity: 1; }
 }
 
 .file-type-icon {
@@ -403,7 +409,7 @@ kbd {
   *::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }

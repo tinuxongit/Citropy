@@ -8,19 +8,6 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     target: "es2022",
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          shiki: ["shiki"],
-          xterm: [
-            "@xterm/xterm",
-            "@xterm/addon-fit",
-            "@xterm/addon-webgl",
-            "@xterm/addon-web-links",
-          ],
-        },
-      },
-    },
   },
   server: {
     port: Number(process.env.CITROPY_UI_PORT ?? 5177),

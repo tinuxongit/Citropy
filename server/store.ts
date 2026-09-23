@@ -179,7 +179,7 @@ export class Store {
       for (const project of raw) this.projects.set(project.id, project);
     }
     for (const name of readdirSync(threadsDir)) {
-      if (!name.endsWith(".json")) continue;
+      if (!name.endsWith(".json") || eventJournal.hasThread(name.slice(0, -5))) continue;
       try {
         const thread = JSON.parse(readFileSync(join(threadsDir, name), "utf8")) as Thread;
         if (thread.status !== "idle" && thread.status !== "error") thread.status = "idle";

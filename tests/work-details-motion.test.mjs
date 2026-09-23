@@ -88,7 +88,8 @@ test("work details transitions preserve virtualized layout and interaction", { t
     const animationsBeforeClose = await page.evaluate(() => window.workAnimations.length);
     await details.press("Space");
     await settled();
-    assert.equal(await page.evaluate(() => window.workAnimations.length), animationsBeforeClose, "Closing must not fade the surviving rows");
+    assert.ok(await page.evaluate(() => window.workAnimations.length) > animationsBeforeClose);
+    assert.equal(await page.evaluate(count => window.workAnimations.slice(count).some(animation => animation.effect.target.isConnected), animationsBeforeClose), false, "Closing must only slide the rows it removes");
     assert.equal(await details.getAttribute("aria-expanded"), "false");
     assert.equal(await page.locator(".timeline-row").count(), 2);
     assert.equal(await details.evaluate(element => element === document.activeElement), true);
@@ -100,7 +101,8 @@ test("work details transitions preserve virtualized layout and interaction", { t
   });
 
   await t.test("rapid reversal applies every toggle without trapping pointer input", async () => {
-    await details.dblclick({ delay: 40 });
+    await details.click();
+    await details.click();
     await settled();
     assert.equal(await details.getAttribute("aria-expanded"), "false");
     await details.evaluate(element => { element.click(); element.click(); });
@@ -141,13 +143,13 @@ test("work details transitions preserve virtualized layout and interaction", { t
       await page.evaluate(() => {
         window.workAnimations = [];
         window.pauseWorkAnimations = true;
-        window.stableMessageElements = [document.querySelector(".turn-heading"), document.querySelector(".activity-head"), document.querySelector('[data-part-id="answer"]')];
+        window.stableMessageElements = [document.querySelector(".activity-head"), document.querySelector('[data-part-id="answer"]')];
       });
       await details.click();
       const opening = await page.evaluate(() => ({
-        opacity: window.stableMessageElements.map(element => getComputedStyle(element.closest(".timeline-row")).opacity),
+        opacity: [document.querySelector(".turn-heading"), ...window.stableMessageElements].map(element => getComputedStyle(element.closest(".timeline-row")).opacity),
         retained: window.stableMessageElements.every(element => element.isConnected),
-        targetsAreNew: window.workAnimations.every(animation => !window.stableMessageElements.some(element => animation.effect.target.contains(element))),
+        targetsAreNew: window.workAnimations.every(animation => ![document.querySelector(".turn-heading"), ...window.stableMessageElements].some(element => animation.effect.target.contains(element))),
         animated: window.workAnimations.length,
       }));
       assert.deepEqual(opening.opacity, ["1", "1", "1"]);
@@ -156,10 +158,10 @@ test("work details transitions preserve virtualized layout and interaction", { t
       assert.ok(opening.animated > 0);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.screenshot({ path: `/tmp/citropy-work-details-no-flicker-${width}-opening.png`, animations: "allow" });
+      await page.evaluate(() => window.pauseWorkAnimations = false);
       await details.click();
       await settled();
-      assert.equal(await page.evaluate(() => window.workAnimations.length), opening.animated);
-      assert.deepEqual(await page.evaluate(() => window.stableMessageElements.map(element => getComputedStyle(element.closest(".timeline-row")).opacity)), ["1", "1", "1"]);
+      assert.deepEqual(await page.evaluate(() => [document.querySelector(".turn-heading"), ...window.stableMessageElements].map(element => getComputedStyle(element.closest(".timeline-row")).opacity)), ["1", "1", "1"]);
       assert.equal(await page.locator(".timeline-row").count(), 2);
       await page.screenshot({ path: `/tmp/citropy-work-details-no-flicker-${width}-closed.png`, animations: "allow" });
     }

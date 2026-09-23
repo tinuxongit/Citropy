@@ -7,6 +7,7 @@ import { SectionSidebar } from "./SectionSidebar.tsx";
 import type { UsageReport } from "../../../shared/features.ts";
 import { currentLocale, useI18n } from "../lib/i18n.ts";
 import { spanish } from "../lib/translations.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export function UsageView({
   sidebarOpen,
@@ -60,7 +61,7 @@ export function UsageView({
               disabled={busy}
               onClick={() => setRevision((value) => value + 1)}
             >
-              <RefreshCw size={15} className={busy ? "spin" : ""} />
+              {busy ? <PixelLoader size={15} /> : <RefreshCw size={15} />}
               {t("Refresh")}
             </button>
           </header>

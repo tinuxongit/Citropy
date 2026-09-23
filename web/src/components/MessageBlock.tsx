@@ -38,26 +38,22 @@ export const MessageBlock = memo(function MessageBlock({
   const t = useI18n();
   const shell = useApp((state) => messageId ? state.messages[messageId] : undefined);
   const partKind = useApp((state) => row?.kind === "part" ? state.parts[row.id]?.kind : undefined);
-  const provider = useApp((state) =>
-    shell?.provider ?? (state.activeThreadId
-      ? state.threads[state.activeThreadId]?.provider
-      : undefined),
-  );
-  const threadModel = useApp((state) =>
-    state.activeThreadId
-      ? state.threads[state.activeThreadId]?.model
-      : undefined,
-  );
+  const threadId = useApp((state) => state.activeThreadId && state.threads[state.activeThreadId] ? state.activeThreadId : undefined);
+  const provider = useApp((state) => shell?.provider ?? state.threads[threadId ?? ""]?.provider);
+  const threadModel = useApp((state) => state.threads[threadId ?? ""]?.model);
+  const projectId = useApp((state) => state.threads[threadId ?? ""]?.projectId);
+  const timestamp = useApp((state) => {
+    const thread = state.threads[threadId ?? ""];
+    return shell ? shell.ts : thread?.runStartedAt ?? thread?.updatedAt ?? 0;
+  });
   const providers = useApp((state) => state.providers);
-
-  const thread = useApp((state) => state.threads[state.activeThreadId ?? ""]);
   const account = useApp((state) =>
     state.showGitHubIdentity && messageId && state.messages[messageId]?.role === "user"
       ? state.githubAccount
       : null,
   );
 
-  if (!shell && (messageId !== undefined || !thread)) return null;
+  if (!shell && (messageId !== undefined || !threadId)) return null;
 
   if (shell?.role === "user") {
     return (
@@ -83,13 +79,13 @@ export const MessageBlock = memo(function MessageBlock({
           <div className="turn-heading">
             <strong>{account?.login ?? t("You")}</strong>
             <time>{clock(shell.ts)}</time>
-            {thread && messageId && <MessageActions thread={thread} messageId={messageId} user />}
+            {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} user />}
           </div>
-          {shell.attachments?.length && thread ? (
+          {shell.attachments?.length && threadId && projectId ? (
             <Attachments
               files={shell.attachments}
-              projectId={thread.projectId}
-              threadId={thread.id}
+              projectId={projectId}
+              threadId={threadId}
             />
           ) : null}
           <div className="message-bubble user-card">
@@ -125,7 +121,7 @@ export const MessageBlock = memo(function MessageBlock({
       <div className="message-content">
         {first && (
           <div className="turn-heading">
-            {thread && messageId && !streaming && <MessageActions thread={thread} messageId={messageId} user={false} />}
+            {threadId && messageId && !streaming && <MessageActions threadId={threadId} messageId={messageId} user={false} />}
             <strong>{modelName}</strong>
             {provider && (
               <span
@@ -135,7 +131,7 @@ export const MessageBlock = memo(function MessageBlock({
                 {catalog?.label ?? providerLabels[provider]}
               </span>
             )}
-            <time>{clock(shell?.ts ?? thread?.runStartedAt ?? thread?.updatedAt ?? 0)}</time>
+            <time>{clock(timestamp)}</time>
           </div>
         )}
         {separator && <hr className="work-separator" />}

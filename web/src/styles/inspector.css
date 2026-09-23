@@ -120,13 +120,11 @@
   max-width: 110px;
   color: var(--text-4);
   font-size: var(--text-xs);
-  font-family: var(--font-mono);
 }
 
 .change-stat {
   display: flex;
   gap: 5px;
-  font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: 600;
 }

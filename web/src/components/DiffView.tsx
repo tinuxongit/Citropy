@@ -1,7 +1,7 @@
 import { useI18n } from "../lib/i18n.ts";
 import { useCallback, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { escapeHtml } from "../lib/highlight.ts";
+import { escapeHtml } from "../lib/escape-html.ts";
 import { langFor } from "../lib/format.ts";
 import { useHighlightedLines } from "../lib/use-highlighted-lines.ts";
 import { useDisclosure } from "../lib/use-disclosure.ts";

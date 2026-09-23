@@ -19,7 +19,7 @@ test("the ACP provider drives a fake Cursor agent", { timeout: 120_000 }, async 
   process.env.CITROPY_DATA_DIR = join(directory, "data");
 
   const { cursorProvider, cursorConfig, cursorCommands } = await import("../server/providers/cursor.ts");
-  const { acpModels } = await import("../server/providers/acp.ts");
+  const { acpModels } = await import("../server/providers/acp-models.ts");
   const { answer, pendingRequests } = await import("../server/permissions.ts");
   const { pendingQuestions, answerQuestion } = await import("../server/questions.ts");
   const { store } = await import("../server/store.ts");

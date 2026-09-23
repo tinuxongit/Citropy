@@ -459,6 +459,7 @@ export type ClientEvent = (
   | { t: "providers.refresh" }
   | { t: "providers.configure"; provider: ProviderId; enabled: boolean }
   | { t: "project.open"; path: string }
+  | { t: "project.rename"; id: string; name: string }
   | { t: "project.close"; id: string }
   | {
       t: "thread.create";

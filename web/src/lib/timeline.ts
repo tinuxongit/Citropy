@@ -32,55 +32,44 @@ function partFingerprint(part: AppState["parts"][string] | undefined): string {
   }
 }
 
-function timelineFingerprint(state: AppState, threadId: string): string {
-  const order = state.order[threadId] ?? [];
+function sameTimelineContent(previous: AppState, state: AppState, threadId: string): boolean {
+  const order = state.order[threadId];
+  if (previous.order[threadId] !== order) return false;
   const thread = state.threads[threadId];
-  const sections = [
-    order.join(","),
-    thread?.status ?? "",
-    thread?.running ? "1" : "0",
-    thread?.compacting ? "1" : "0",
-    thread?.runStartedAt === undefined ? "" : String(thread.runStartedAt),
-  ];
-  for (const messageId of order) {
+  const previousThread = previous.threads[threadId];
+  if (previousThread?.status !== thread?.status ||
+    previousThread?.running !== thread?.running ||
+    previousThread?.compacting !== thread?.compacting ||
+    previousThread?.runStartedAt !== thread?.runStartedAt) return false;
+  if (previous.messages === state.messages && previous.parts === state.parts &&
+    previous.disclosures === state.disclosures) return true;
+  for (const messageId of order ?? []) {
     const message = state.messages[messageId];
-    if (!message) {
-      sections.push(`@${messageId}`);
-      continue;
-    }
-    sections.push(`>${message.role}:${message.ts}`);
-    for (const partId of message.partIds) {
-      sections.push(`${partId}=${partFingerprint(state.parts[partId])}`);
-      if (state.disclosures[partId]?.activity) sections.push(`^${partId}`);
+    if (previous.messages[messageId] !== message) return false;
+    for (const partId of message?.partIds ?? []) {
+      if (previous.disclosures[partId]?.activity !== state.disclosures[partId]?.activity) return false;
+      const part = state.parts[partId];
+      const previousPart = previous.parts[partId];
+      if (previousPart !== part && partFingerprint(previousPart) !== partFingerprint(part)) return false;
     }
   }
-  return sections.join("|");
+  return true;
 }
 
 export function createTimelineSelector(threadId: string | null): (state: AppState) => TimelineRow[] {
   let rows: TimelineRow[] = [];
-  let fingerprint: string | undefined;
   let previous: AppState | undefined;
   return (state) => {
     if (!threadId) return rows;
-    const thread = state.threads[threadId];
-    const previousThread = previous?.threads[threadId];
-    const unchanged = previous &&
-      previous.order[threadId] === state.order[threadId] &&
-      previous.messages === state.messages &&
-      previous.parts === state.parts &&
-      previous.disclosures === state.disclosures &&
-      previousThread?.status === thread?.status &&
-      previousThread?.running === thread?.running &&
-      previousThread?.compacting === thread?.compacting &&
-      previousThread?.runStartedAt === thread?.runStartedAt;
+    const unchanged = previous && sameTimelineContent(previous, state, threadId);
     previous = state;
     if (unchanged) return rows;
-    const key = timelineFingerprint(state, threadId);
-    if (key === fingerprint) return rows;
-    fingerprint = key;
-    const next = timelineRows(state, threadId);
-    if (!sameTimelineRows(rows, next)) rows = next;
+    const previousByKey = new Map(rows.map(item => [item.key, item]));
+    const next = timelineRows(state, threadId).map(item => {
+      const kept = previousByKey.get(item.key);
+      return kept && sameTimelineRow(kept, item) ? kept : item;
+    });
+    if (next.length !== rows.length || next.some((item, index) => item !== rows[index])) rows = next;
     return rows;
   };
 }
@@ -179,8 +168,8 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       const open = state.disclosures[id]?.activity ?? false;
       const previewId = finalAnswer ? undefined : ids.findLast(id => state.parts[id]?.kind === "text");
       if (ids.length) {
-        const detailRows = open ? rows : rows.filter(row => !work.has(row));
-        visible = [{ kind: "activity", id, ids, messageIds, open, active, previewId }, ...detailRows];
+        const workRows = open ? rows.filter(row => work.has(row)) : [];
+        visible = [{ kind: "activity", id, ids, messageIds, open, active, previewId }, ...workRows, ...rows.filter(row => !work.has(row))];
       }
     }
     return visible.map((row, index) => ({
@@ -195,20 +184,18 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
 }
 
 export function sameTimelineRows(a: TimelineRow[], b: TimelineRow[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every((item, index) => {
-      const other = b[index]!;
-      if (item.key !== other.key || item.messageId !== other.messageId ||
-        item.first !== other.first || item.last !== other.last || item.separator !== other.separator || item.row?.kind !== other.row?.kind) return false;
-      const row = item.row;
-      const next = other.row;
-      if (!row || row.kind === "part") return true;
-      if (!next || next.kind === "part") return false;
-      if (row.kind === "activity" && next.kind === "activity" &&
-        (row.id !== next.id || row.open !== next.open || row.active !== next.active || row.previewId !== next.previewId || row.messageIds.length !== next.messageIds.length ||
-          row.messageIds.some((id, i) => id !== next.messageIds[i]))) return false;
-      return row.ids.length === next.ids.length && row.ids.every((id, i) => id === next.ids[i]);
-    })
-  );
+  return a.length === b.length && a.every((item, index) => sameTimelineRow(item, b[index]!));
+}
+
+function sameTimelineRow(item: TimelineRow, other: TimelineRow): boolean {
+  if (item.key !== other.key || item.messageId !== other.messageId ||
+    item.first !== other.first || item.last !== other.last || item.separator !== other.separator || item.row?.kind !== other.row?.kind) return false;
+  const row = item.row;
+  const next = other.row;
+  if (!row || row.kind === "part") return true;
+  if (!next || next.kind === "part") return false;
+  if (row.kind === "activity" && next.kind === "activity" &&
+    (row.id !== next.id || row.open !== next.open || row.active !== next.active || row.previewId !== next.previewId || row.messageIds.length !== next.messageIds.length ||
+      row.messageIds.some((id, i) => id !== next.messageIds[i]))) return false;
+  return row.ids.length === next.ids.length && row.ids.every((id, i) => id === next.ids[i]);
 }

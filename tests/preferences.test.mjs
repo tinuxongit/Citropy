@@ -40,7 +40,8 @@ test("the shared app state loads migrated preferences with existing validation a
   assert.equal(initial.theme, "dark");
   assert.equal(stored.get("citropy.theme"), "dark");
   assert.equal(stored.has("loom.theme"), false);
-  assert.equal(initial.uiScale, 120);
+  assert.equal(initial.uiScale, 100);
+  assert.equal(initial.sidebarMode, "workspaces");
   assert.equal(initial.typingSpeed, 100);
   assert.equal(initial.uiSoundVolume, 100);
   assert.equal(initial.language, "en");
@@ -70,7 +71,7 @@ test("preference actions keep the public store API, persistence and DOM updates 
   }
   for (const [action, field, input, expected] of [
     [store.setUiScale, "uiScale", 180, 150],
-    [store.setUiScale, "uiScale", 10, 90],
+    [store.setUiScale, "uiScale", 10, 75],
     [store.setTypingSpeed, "typingSpeed", 501, 300],
     [store.setTypingSpeed, "typingSpeed", 10, 20],
     [store.setUiSoundVolume, "uiSoundVolume", 101, 100],
@@ -83,7 +84,10 @@ test("preference actions keep the public store API, persistence and DOM updates 
     action(NaN);
     assert.strictEqual(useApp.getState(), previous);
   }
-  assert.equal(properties.get("--ui-scale"), "0.9");
+  assert.equal(properties.get("--ui-scale"), "0.75");
+  store.setSidebarMode("global");
+  assert.equal(useApp.getState().sidebarMode, "global");
+  assert.equal(stored.get("citropy.sidebarMode"), "global");
   store.setTheme("light");
   assert.equal(useApp.getState().theme, "light");
   assert.equal(stored.get("citropy.theme"), "light");

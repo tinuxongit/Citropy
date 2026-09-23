@@ -161,7 +161,8 @@ test("a live turn keeps repeated thoughts and tools in one stable disclosure", (
   const expanded = timelineRows({ ...state, disclosures: { progress: { activity: true } } }, "chat");
   assert.equal(expanded.filter(row => row.row?.kind === "thoughts").length, 150);
   assert.equal(expanded.filter(row => row.row?.kind === "group").length, 150);
-  assert.equal(expanded[0].key, rows[0].key);
+  assert.equal(expanded.find(row => row.row?.kind === "activity").key, rows[0].key);
+  assert.equal(expanded[0].row.kind, "activity");
   const ended = timelineRows({ ...state, threads: { chat: { ...thread, running: false, status: "stopped" } } }, "chat");
   assert.equal(ended[0].row.active, false);
   assert.equal(ended[0].row.open, false);
@@ -236,7 +237,7 @@ test("steering preserves the running response and plan without presenting old pr
   assert.equal(nextRun.some(row => row.row?.kind === "part" && row.row.id === "update"), false);
 });
 
-test("compact activity layout", { timeout: 60000 }, async (t) => {
+test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-activity-"));
   let server;
   let browser;
@@ -252,6 +253,11 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
   });
   await server.listen();
   browser = await chromium.launch({ headless: true });
+  const warmup = await browser.newPage();
+  await warmup.goto(server.resolvedUrls.local[0], { timeout: 120_000 });
+  await warmup.close();
+  const pending = [];
+  const subtest = (...args) => pending.push(t.test(...args));
   async function fixture(t, preferences = {}) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     page.setDefaultTimeout(20000);
@@ -277,7 +283,7 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     return { page, emit: event => connection.send(JSON.stringify(event)) };
   }
 
-  await t.test("image previews belong to their tool actions, including late results and folded live work", async (t) => {
+  subtest("image previews belong to their tool actions, including late results and folded live work", async (t) => {
     const { page, emit } = await fixture(t, { sidebar: "0" });
     const requests = [];
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360"><rect width="600" height="360" fill="#c5dfbe"/><circle cx="300" cy="180" r="100" fill="#2c6547"/><path d="M260 220V140L350 180Z" fill="#eff8ed"/></svg>';
@@ -377,7 +383,7 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     assert.equal(await page.locator(".image-strip").count(), await page.locator(".tool").count());
   });
 
-  await t.test("image and file actions share plain disclosure styling and keep previews independently accessible", async (t) => {
+  subtest("image and file actions share plain disclosure styling and keep previews independently accessible", async (t) => {
     const { page, emit } = await fixture(t, { sidebar: "0", uiScale: "100" });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.route("**/api/assets?**", route => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect width="240" height="160" fill="#91b59d"/></svg>' }));
@@ -476,7 +482,7 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   });
 
-  await t.test("steered work keeps readable progress and keyboard-accessible thought groups", async (t) => {
+  subtest("steered work keeps readable progress and keyboard-accessible thought groups", async (t) => {
     const { page, emit } = await fixture(t, { sidebar: "0" });
     const startedAt = thread.runStartedAt;
     emit({ t: "thread.messages", threadId: "chat", messages: [
@@ -492,15 +498,14 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     await page.getByRole("note", { name: "Latest update", exact: true }).getByText("The final render is running. I will check the audio when it finishes.", { exact: true }).waitFor();
     const position = await page.evaluate(() => ({
       update: document.querySelector(".activity-update").getBoundingClientRect().bottom,
-      tool: document.querySelector(".activity-preview").getBoundingClientRect().bottom,
       working: document.querySelector(".activity-head").getBoundingClientRect().top,
     }));
     assert.ok(position.working >= position.update, JSON.stringify(position));
-    assert.ok(position.working >= position.tool, JSON.stringify(position));
+    assert.equal(await page.locator(".activity-preview").count(), 0);
     assert.equal(await page.locator(".working").count(), 1);
     assert.equal(await page.locator(".turn-agent .turn-heading").count(), 1);
     assert.equal(await page.locator('[data-part-id="render-update"]').count(), 0);
-    assert.equal(await page.locator(".activity-preview").innerText(), "Running command");
+    assert.equal(await page.locator(".activity-head .activity-action").innerText(), "Running command");
     assert.equal(await page.locator(".reason-text").count(), 0);
     const plan = page.getByRole("region", { name: "Plan", exact: true });
     await plan.locator(".todo-current").getByText("Render and verify the audio", { exact: true }).waitFor();
@@ -535,7 +540,7 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     }
   });
 
-  await t.test("thoughts render Markdown during streaming and when reopened from work details", async (t) => {
+  subtest("thoughts render Markdown during streaming and when reopened from work details", async (t) => {
     const start = "## Check the encoder\n\nUse **one pass** for the `digest` and keep the *frame order*.\n\n- Read the metadata\n- Verify the final block\n\n```js\nconst digest = calculateDigest(\"" + "sample-".repeat(30);
     const end = "\");\n```\n\n| Case | Result |\n| --- | --- |\n| Short file | Ready |\n\n[Reference](https://example.com/encoder) and [Blocked](javascript:alert%281%29).\n\n<span onclick=\"alert(1)\">Raw HTML</span>";
     for (const streaming of ["1", "0"]) {
@@ -589,7 +594,7 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     }
   });
 
-  await t.test("thought text stays readable through streaming and tool use until the response finishes", async (t) => {
+  subtest("thought text stays readable through streaming and tool use until the response finishes", async (t) => {
     for (const streaming of ["1", "0"]) {
       const { page, emit } = await fixture(t, { textStreaming: streaming });
       const text = "I will inspect the audio settings before changing the preview.\n\nThe timing needs to match the existing sequence. I will read the configuration, check the track lengths, and then adjust the transition between sections. Once that is ready, I can render a short preview and compare it with the original.";
@@ -629,7 +634,39 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     }
   });
 
-  await t.test("writes and edits expand inside their group and streaming keeps disclosures", async (t) => {
+  subtest("command rows stay on one line until expanded at desktop and narrow widths", async (t) => {
+    const { page, emit } = await fixture(t, { sidebar: "0" });
+    const command = "printf '%s\\n' 'A long command with arguments that should remain readable when expanded'";
+    emit({ t: "thread.messages", threadId: "chat", messages: [{ id: "commands", role: "assistant", ts: 1, parts: [
+      tool("compact-command", "command", "printf '%s\\n' …", { input: { command }, detail: "Print the command result", output: "First output line\nSecond output line" }),
+      tool("running-command", "command", "npm run build", { status: "running", output: "Building…", endedAt: undefined }),
+      tool("failed-command", "command", "npm test", { status: "error", output: "Test failed" }),
+    ] }] });
+    await page.getByRole("button", { name: "Work details", exact: true }).click();
+    await page.locator(".group-head").click();
+    const row = page.locator("#tool-compact-command");
+    await row.waitFor();
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const card of await page.locator('.tool[data-shape="command"]').all()) {
+        assert.equal(await card.locator(".tool-head").getAttribute("aria-expanded"), "false");
+        assert.equal(await card.locator(".tool-peek, .tool-body").count(), 0);
+        const sizes = await card.evaluate(element => ({ row: element.getBoundingClientRect().height, head: element.querySelector(".tool-head").getBoundingClientRect().height }));
+        assert.ok(Math.abs(sizes.row - sizes.head) < 1, JSON.stringify(sizes));
+      }
+      await page.screenshot({ path: `/tmp/citropy-command-rows-${width}.png`, animations: "disabled" });
+      await row.locator(".tool-head").click();
+      await row.locator(".tool-output").getByText(command, { exact: true }).waitFor();
+      await row.locator(".tool-output").getByText("First output line\nSecond output line", { exact: true }).waitFor();
+      await page.waitForFunction(() => getComputedStyle(document.querySelector("#tool-compact-command .tool-body")).opacity === "1");
+      await page.screenshot({ path: `/tmp/citropy-command-expanded-${width}.png`, animations: "disabled" });
+      await row.locator(".tool-head").press("Enter");
+      await row.locator(".tool-body").waitFor({ state: "detached" });
+      assert.equal(await row.locator(".tool-head").evaluate(element => element === document.activeElement), true);
+    }
+  });
+
+  subtest("writes and edits expand inside their group and streaming keeps disclosures", async (t) => {
     const { page, emit } = await fixture(t);
     await page.getByRole("button", { name: "Work details", exact: true }).click();
     assert.equal(await page.locator(".group").count(), 3);
@@ -661,7 +698,7 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     await page.screenshot({ path: "/tmp/citropy-activity-expanded.png", animations: "disabled" });
   });
 
-  await t.test("thought disclosures and collapsed tools keep compact spacing at desktop and narrow widths", async (t) => {
+  subtest("thought disclosures and collapsed tools keep compact spacing at desktop and narrow widths", async (t) => {
     const { page } = await fixture(t);
     await page.getByRole("button", { name: "Work details", exact: true }).click();
     for (const width of [1440, 960]) {
@@ -681,7 +718,7 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     }
   });
 
-  await t.test("long workspace names truncate inside the topbar as the window resizes", async (t) => {
+  subtest("long workspace names truncate inside the topbar as the window resizes", async (t) => {
     const { page, emit } = await fixture(t);
     const name = `${project.name}-with-a-long-workspace-name`.repeat(3);
     emit({ t: "project.upsert", project: { ...project, name } });
@@ -703,7 +740,7 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     }
   });
 
-  await t.test("a live response stays folded while streaming and keeps its answer and expandable history", async (t) => {
+  subtest("a live response stays folded while streaming and keeps its answer and expandable history", async (t) => {
     const { page, emit } = await fixture(t);
     const details = page.getByRole("button", { name: /^Work details/ });
     await details.waitFor();
@@ -742,13 +779,13 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     assert.equal(await page.locator(".work-separator").count(), 1);
     assert.equal(await page.locator(".work-separator + .agent-card [data-part-id=answer]").count(), 1);
     await details.click();
-    assert.equal(await page.locator(".reason-text").count(), 0);
+    await page.locator(".reason-text").first().waitFor({ state: "detached" });
     await page.evaluate(async () => (await import("/web/src/lib/store.ts")).useApp.setState({ searchMessageId: "response" }));
     await page.locator(".reason-text").first().waitFor();
     await page.locator(".diff").waitFor();
   });
 
-  await t.test("plans recover provider text, wrap long steps, and update without empty cards", async (t) => {
+  subtest("plans recover provider text, wrap long steps, and update without empty cards", async (t) => {
     const { page, emit } = await fixture(t);
     const items = [
       { content: "Inspect stopped container configuration", status: "in_progress", priority: "high" },
@@ -786,7 +823,7 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     assert.ok(await page.getByText("The plan is complete.", { exact: true }).isVisible());
   });
 
-  await t.test("split replies keep every command inside one work details section", async (t) => {
+  subtest("split replies keep every command inside one work details section", async (t) => {
     const { page, emit } = await fixture(t);
     emit({ t: "thread.messages", threadId: "chat", messages: [
       { id: "first-fragment", role: "assistant", ts: 1, parts: [tool("earlier-command", "command", "check environment")] },
@@ -811,11 +848,11 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
     await page.getByText("check environment", { exact: true }).waitFor();
     await page.getByText("check result", { exact: true }).waitFor();
     await details.click();
-    assert.equal(await page.locator(".group-head").count(), 0);
+    await page.locator(".group-head").first().waitFor({ state: "detached" });
     assert.ok(await page.locator('[data-part-id="fragment-answer"]').isVisible());
   });
 
-  await t.test("long work histories stay windowed when opened and settle on the visible final answer", async (t) => {
+  subtest("long work histories stay windowed when opened and settle on the visible final answer", async (t) => {
     const { page, emit } = await fixture(t);
     const content = Array.from({ length: 120 }, (_, index) => [
       { id: `long-thought-${index}`, kind: "reasoning", text: `Check the timing for section ${index}.`, complete: true },
@@ -847,4 +884,5 @@ test("compact activity layout", { timeout: 60000 }, async (t) => {
       assert.equal(await details.evaluate(element => element === document.activeElement), true);
     }
   });
+  await Promise.all(pending);
 });

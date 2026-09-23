@@ -4,34 +4,25 @@ import {
   ArrowRight,
   CircleAlert,
   FolderGit2,
-  GitBranch,
-  LoaderCircle,
   Plus,
-  RefreshCw,
   X,
 } from "lucide-react";
-import { chooseWorkspace, manageGit } from "../lib/actions.ts";
+import { chooseWorkspace } from "../lib/actions.ts";
 import { useApp, viewportWidth } from "../lib/store.ts";
-import { shortPath } from "../lib/format.ts";
-import { currentLocale, useI18n } from "../lib/i18n.ts";
-import { groupGitFiles } from "../lib/git-files.ts";
+import { useI18n } from "../lib/i18n.ts";
 import { SectionSidebar } from "./SectionSidebar.tsx";
 import { GitDialog, type GitDialogAction } from "./GitDialog.tsx";
-import { GitReview, type GitSelection } from "./GitReview.tsx";
 import { EmptyState } from "./git/GitEmptyState.tsx";
-import { doneLabels, tabs, workingLabels, type Section } from "./git/labels.ts";
-import { isConflict, readableError } from "./git/files.ts";
+import { GitHeader } from "./git/GitHeader.tsx";
+import { tabs, type Section } from "./git/labels.ts";
+import { isConflict } from "./git/files.ts";
+import { sectionSelection, useGitRepository } from "./git/use-git-repository.ts";
 import { ChangesSection } from "./git/ChangesSection.tsx";
 import { HistorySection } from "./git/HistorySection.tsx";
 import { BranchesSection } from "./git/BranchesSection.tsx";
 import { StashesSection } from "./git/StashesSection.tsx";
 import { RemotesSection } from "./git/RemotesSection.tsx";
-import type {
-  GitOperation,
-  GitOverview,
-} from "../../../shared/protocol.ts";
-
-type Feedback = { error: boolean; text: string; detail?: string };
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export function GitManager({
   sidebarOpen,
@@ -58,203 +49,46 @@ export function GitManager({
       : sourceProject;
   const home = useApp((state) => state.home);
   const connected = useApp((state) => state.connected);
-  const [data, setData] = useState<GitOverview | null>(null);
   const [section, setSection] = useState<Section>("Changes");
-  const [busy, setBusy] = useState<GitOperation | null>(null);
+  const [message, setMessage] = useState("");
+  const [description, setDescription] = useState("");
+  const [filter, setFilter] = useState("");
+  const [dialog, setDialog] = useState<GitDialogAction | null>(null);
+  const dialogTrigger = useRef<HTMLElement | null>(null);
+  const {
+    data,
+    busy,
+    feedback,
+    setFeedback,
+    selection,
+    setSelection,
+    offset,
+    revision,
+    act,
+  } = useGitRepository({
+    projectId,
+    connected,
+    section,
+    t,
+    onCommitted: () => {
+      setMessage("");
+      setDescription("");
+    },
+    onConflicts: () => {
+      setSection("Changes");
+      setFilter("");
+    },
+  });
   useEffect(() => {
     onBusyChange(Boolean(busy));
     return () => onBusyChange(false);
   }, [busy, onBusyChange]);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [message, setMessage] = useState("");
-  const [description, setDescription] = useState("");
-  const [filter, setFilter] = useState("");
-  const [selection, setSelection] = useState<GitSelection | null>(null);
-  const [offset, setOffset] = useState(0);
-  const [revision, setRevision] = useState(0);
-  const [dialog, setDialog] = useState<GitDialogAction | null>(null);
-  const generation = useRef(0);
-  const pending = useRef(false);
-  const dialogTrigger = useRef<HTMLElement | null>(null);
-
-  const firstFile = (overview: GitOverview): GitSelection | null => {
-    const files = overview.status?.files ?? [];
-    const unstaged = files.filter((entry) => entry.untracked || entry.work !== " ");
-    const file = files.find(isConflict) ?? groupGitFiles(unstaged, false)[0]?.files[0] ?? groupGitFiles(files, true)[0]?.files[0];
-    return file
-      ? {
-          kind: "file",
-          path: file.path,
-          staged: file.staged && !file.untracked && file.work === " ",
-        }
-      : null;
-  };
-
-  const receive = (overview: GitOverview, page: number) => {
-    setData(overview);
-    setOffset(page);
-    setRevision((value) => value + 1);
-    setSelection((previous) => {
-      if (previous?.kind === "file") {
-        const file = overview.status?.files.find(
-          (entry) => entry.path === previous.path,
-        );
-        if (file)
-          return {
-            ...previous,
-            staged: previous.staged
-              ? file.staged
-              : !file.untracked && file.work === " ",
-          };
-        return firstFile(overview);
-      }
-      if (
-        previous?.kind === "commit" &&
-        !overview.commits.some((entry) => entry.hash === previous.hash)
-      )
-        return overview.commits[0]
-          ? { kind: "commit", hash: overview.commits[0].hash }
-          : null;
-      if (
-        previous?.kind === "stash" &&
-        !overview.stashes.some((entry) => entry.ref === previous.ref)
-      )
-        return null;
-      return previous;
-    });
-  };
-
-  useEffect(() => {
-    const epoch = ++generation.current;
-    if (!projectId || !connected) {
-      setBusy(null);
-      return;
-    }
-    setBusy("overview");
-    pending.current = true;
-    void manageGit(projectId, "overview")
-      .then((result) => {
-        if (
-          epoch !== generation.current ||
-          typeof result === "string" ||
-          !("repository" in result)
-        )
-          return;
-        setData(result);
-        setSelection(
-          section === "Changes"
-            ? firstFile(result)
-            : section === "History" && result.commits[0]
-              ? { kind: "commit", hash: result.commits[0].hash }
-              : null,
-        );
-        setRevision((value) => value + 1);
-      })
-      .catch((error: Error) => {
-        if (epoch === generation.current)
-          setFeedback({
-            error: true,
-            text: readableError(error.message, t),
-            detail: error.message,
-          });
-      })
-      .finally(() => {
-        if (epoch === generation.current) {
-          pending.current = false;
-          setBusy(null);
-        }
-      });
-    return () => {
-      generation.current++;
-      pending.current = false;
-    };
-  }, [projectId, connected]);
-
-  const act = async (
-    operation: GitOperation,
-    value?: string,
-    page = 0,
-    remote?: string,
-  ) => {
-    if (!projectId || pending.current || !connected) return false;
-    const epoch = generation.current;
-    pending.current = true;
-    setBusy(operation);
-    setFeedback(null);
-    try {
-      const result = await manageGit(projectId, operation, value, page, remote);
-      if (epoch !== generation.current) return false;
-      if (typeof result !== "string" && "repository" in result)
-        receive(result, page);
-      else {
-        if (operation === "commit") {
-          setMessage("");
-          setDescription("");
-        }
-        try {
-          const updated = await manageGit(projectId, "overview");
-          if (epoch !== generation.current) return false;
-          if (typeof updated !== "string" && "repository" in updated)
-            receive(updated, 0);
-        } catch (error) {
-          if (epoch !== generation.current) return false;
-          setFeedback({
-            error: true,
-            text: t("{message} Refresh to load the latest repository state.", {
-              message: t(doneLabels[operation] ?? "Action completed."),
-            }),
-            detail: (error as Error).message,
-          });
-          return true;
-        }
-        setFeedback({
-          error: false,
-          text: t(doneLabels[operation] ?? "Repository updated."),
-        });
-      }
-      return true;
-    } catch (error) {
-      if (epoch === generation.current) {
-        const detail = (error as Error).message;
-        setFeedback({ error: true, text: readableError(detail, t), detail });
-        try {
-          const updated = await manageGit(projectId, "overview");
-          if (
-            epoch === generation.current &&
-            typeof updated !== "string" &&
-            "repository" in updated
-          ) {
-            receive(updated, 0);
-            if (
-              ["merge", "pull", "applyStash"].includes(operation) &&
-              updated.status?.files.some(isConflict)
-            ) {
-              setSection("Changes");
-              setFilter("");
-              setSelection(firstFile(updated));
-              setFeedback(null);
-              return true;
-            }
-          }
-        } catch {}
-      }
-      return false;
-    } finally {
-      if (epoch === generation.current) {
-        pending.current = false;
-        setBusy(null);
-      }
-    }
-  };
 
   const changeSection = (next: Section) => {
     if (viewportWidth() <= 720) onCloseSidebar();
     setSection(next);
     setFilter("");
-    if (next === "Changes" && data) setSelection(firstFile(data));
-    else if (next === "History" && data?.commits[0])
-      setSelection({ kind: "commit", hash: data.commits[0].hash });
-    else setSelection(null);
+    setSelection(sectionSelection(next, data));
   };
 
   const showDialog = (action: GitDialogAction) => {
@@ -336,7 +170,7 @@ export function GitManager({
       data-variant="primary"
       onClick={() => changeSection("Changes")}
     >
-            {t("Review changes")}
+      {t("Review changes")}
       <ArrowRight size={15} />
     </button>
   );
@@ -361,53 +195,18 @@ export function GitManager({
           ))}
       </SectionSidebar>
       <div className="git-manager">
-        <header className="git-header">
-          <div className="git-heading">
-            <FolderGit2 size={24} strokeWidth={1.6} />
-            <div>
-              <h1>{t(section)}</h1>
-              <p role="status" title={project?.path}>
-                {busy
-                  ? `${t(workingLabels[busy] ?? "Working")}…`
-                  : feedback && !feedback.error
-                    ? feedback.text
-                    : project
-                  ? shortPath(project.path, home)
-                  : t("No workspace selected")}
-              </p>
-            </div>
-          </div>
-          <div className="git-repository-state">
-            {data?.repository && (
-              <div className="git-current-branch">
-                <GitBranch size={16} />
-                <strong>
-                  {branch === "detached" ? t("Detached HEAD") : branch}
-                </strong>
-                <span>
-                  {!data.hasCommits
-                    ? t("No commits yet")
-                    : upstream
-                      ? data.status?.ahead || data.status?.behind
-                        ? t("{ahead} ahead · {behind} behind", { ahead: data.status?.ahead ?? 0, behind: data.status?.behind ?? 0 })
-                        : t("Up to date")
-                      : t("Local branch")}
-                </span>
-              </div>
-            )}
-            <button
-              className="icon-btn"
-              title={t("Refresh repository")}
-              disabled={disabled || !projectId}
-              onClick={() => void act("overview", undefined, offset)}
-            >
-              <RefreshCw
-                size={17}
-                className={busy === "overview" ? "git-spinner" : undefined}
-              />
-            </button>
-          </div>
-        </header>
+        <GitHeader
+          section={section}
+          busy={busy}
+          notice={feedback && !feedback.error ? feedback.text : undefined}
+          path={project?.path}
+          home={home}
+          data={data}
+          branch={branch}
+          upstream={upstream}
+          refreshDisabled={disabled || !projectId}
+          onRefresh={() => void act("overview", undefined, offset)}
+        />
 
         {!connected && (
           <div className="git-alert" role="status">
@@ -461,7 +260,7 @@ export function GitManager({
           ) : !data ? (
             busy ? (
               <div className="git-preview-placeholder" role="status">
-                <LoaderCircle className="git-spinner" size={24} />
+                <PixelLoader size={24} />
                 <p>{t("Reading repository…")}</p>
               </div>
             ) : (
@@ -495,7 +294,7 @@ export function GitManager({
               <p>
                 {t("Git keeps a history of your files so you can review changes, save commits, and work on branches.")}
               </p>
-              <p className="git-empty-path">{project?.name}</p>
+              <p>{project?.name}</p>
             </EmptyState>
           ) : (
             <>

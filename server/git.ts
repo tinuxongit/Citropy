@@ -38,10 +38,11 @@ export async function status(cwd: string): Promise<GitStatus> {
   const porcelain = await tryGit(cwd, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
   const branchLine = (await tryGit(cwd, ["symbolic-ref", "--quiet", "--short", "HEAD"])).trim();
   const upstream = (await tryGit(cwd, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"])).trim() || null;
-  const counts = await numstat(cwd);
+  const records = porcelain.split("\0").filter(Boolean);
+  const trackedChanges = records.some(record => !record.startsWith("?? "));
+  const counts = trackedChanges ? await numstat(cwd) : new Map<string, { added: number; removed: number }>();
 
   const files: GitFile[] = [];
-  const records = porcelain.split("\0").filter(Boolean);
   for (let i = 0; i < records.length; i += 1) {
     const record = records[i];
     if (!record || record.length < 3) continue;
@@ -66,7 +67,7 @@ export async function status(cwd: string): Promise<GitStatus> {
 
   let ahead = 0;
   let behind = 0;
-  const tracking = (await tryGit(cwd, ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"])).trim();
+  const tracking = upstream ? (await tryGit(cwd, ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"])).trim() : "";
   if (tracking) {
     const [b, a] = tracking.split(/\s+/);
     behind = Number(b ?? 0);

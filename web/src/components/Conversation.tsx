@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "./icons.ts";
 import { MessageBlock } from "./MessageBlock.tsx";
@@ -15,6 +15,30 @@ import {
   createTimelineSelector,
 } from "../lib/timeline.ts";
 import { useI18n } from "../lib/i18n.ts";
+
+function slideRows(elements: HTMLElement[], direction: "open" | "close"): Animation[] {
+  const heights = elements.map(element => element.offsetHeight);
+  const total = heights.reduce((sum, height) => sum + height, 0);
+  let top = 0;
+  return elements.map((element, index) => {
+    const height = heights[index]!;
+    const hidden = { height: "0px", opacity: 0, overflow: "clip" };
+    const shown = { height: `${height}px`, opacity: 1, overflow: "clip" };
+    const keyframes = [
+      { ...hidden, offset: 0 },
+      { ...hidden, offset: top / total },
+      { ...shown, offset: (top + height) / total },
+      { ...shown, offset: 1 },
+    ];
+    top += height;
+    return element.animate(keyframes, {
+      duration: Math.min(direction === "open" ? 360 : 280, 160 + total / 6),
+      easing: "cubic-bezier(0.2, 0, 0, 1)",
+      direction: direction === "open" ? "normal" : "reverse",
+      fill: direction === "open" ? "none" : "forwards",
+    });
+  });
+}
 
 export function Conversation() {
   const t = useI18n();
@@ -57,35 +81,11 @@ export function Conversation() {
     nearBottom,
     scrollToBottom,
     stopFollowing,
+    following,
   } = useStickToBottom<HTMLDivElement, HTMLDivElement>();
   const reducedMotion = useReducedMotion();
-  const activityAnimations = useRef<Animation[]>([]);
-  const transitionActivity = useCallback((id: string, update: () => void) => {
-    for (const animation of activityAnimations.current) animation.cancel();
-    activityAnimations.current = [];
-    const activity = rows.find(row => row.row?.kind === "activity" && row.row.id === id)?.row;
-    const previousKeys = new Set(rows.map(row => row.key));
-    flushSync(update);
-    if (reducedMotion || activity?.kind !== "activity" || activity.open) return;
-    const nextRows = selectRows(useApp.getState());
-    for (const element of viewport.current?.querySelectorAll<HTMLElement>(".timeline-row") ?? []) {
-      const row = nextRows[Number(element.dataset.index)];
-      if (!row || previousKeys.has(row.key) || !activity.messageIds.includes(row.messageId)) continue;
-      const animation = element.animate([{ opacity: 0.35 }, { opacity: 1 }], {
-        duration: 160,
-        easing: "cubic-bezier(0.2, 0, 0, 1)",
-      });
-      animation.onfinish = () => {
-        activityAnimations.current = activityAnimations.current.filter(active => active !== animation);
-      };
-      activityAnimations.current.push(animation);
-    }
-  }, [viewport, rows, selectRows, reducedMotion]);
-  useLayoutEffect(() => () => {
-    for (const animation of activityAnimations.current) animation.cancel();
-    activityAnimations.current = [];
-  }, [threadId, reducedMotion]);
   const virtualized = rows.length > 40;
+  const pinnedActivity = useRef<{ id: string }>(undefined);
   const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);
   const timeline = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: rows.length,
@@ -96,13 +96,77 @@ export function Conversation() {
     paddingStart: scaled(30),
     overscan: virtualized ? 4 : 40,
     measureElement: (element) => element.offsetHeight,
+    rangeExtractor: (range) => {
+      const indexes = defaultRangeExtractor(range);
+      if (!pinnedActivity.current) return indexes;
+      const pinned = rows.findIndex(row => row.row?.kind === "activity" && row.row.id === pinnedActivity.current!.id);
+      if (pinned < 0 || indexes.includes(pinned)) return indexes;
+      return defaultRangeExtractor({ ...range, startIndex: Math.min(range.startIndex, pinned), endIndex: Math.max(range.endIndex, pinned) });
+    },
   });
   timeline.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) => {
-    const canvas = viewport.current;
-    const offset = instance.scrollOffset ?? 0;
-    return Boolean(canvas && offset <= canvas.scrollHeight - canvas.clientHeight + 1 && item.end <= offset + instance.scrollAdjustments);
+    if (following()) return false;
+    return item.end <= (instance.scrollOffset ?? 0) + instance.scrollAdjustments;
   };
   const virtualItems = timeline.getVirtualItems();
+  const activityAnimations = useRef<Animation[]>([]);
+  const closingActivity = useRef<string>(undefined);
+  const cancelActivityTransition = useCallback(() => {
+    for (const animation of activityAnimations.current) animation.cancel();
+    activityAnimations.current = [];
+    closingActivity.current = undefined;
+  }, []);
+  const transitionActivity = useCallback((id: string, update: () => void) => {
+    const reopening = closingActivity.current === id;
+    cancelActivityTransition();
+    if (reopening) return;
+    const activity = rows.find(row => row.row?.kind === "activity" && row.row.id === id)?.row;
+    const canvas = viewport.current!;
+    const renderedRows = () => [...canvas.querySelectorAll<HTMLElement>(".timeline-row")];
+    const apply = () => {
+      const previousKeys = new Set(rows.map(row => row.key));
+      const summary = () => document.getElementById(`activity-count-${id}`)?.closest("button");
+      const offset = summary()!.getBoundingClientRect().top - canvas.getBoundingClientRect().top;
+      const pin = { id };
+      pinnedActivity.current = pin;
+      flushSync(update);
+      const keepSummaryInPlace = (frames: number, expectedTop: number) => {
+        if (pinnedActivity.current !== pin) return;
+        const button = summary();
+        if (!button || frames === 0 || Math.abs(canvas.scrollTop - expectedTop) > 1) {
+          pinnedActivity.current = undefined;
+          return;
+        }
+        const drift = button.getBoundingClientRect().top - canvas.getBoundingClientRect().top - offset;
+        if (Math.abs(drift) >= 1) canvas.scrollTop += drift;
+        const top = canvas.scrollTop;
+        requestAnimationFrame(() => keepSummaryInPlace(frames - 1, top));
+      };
+      keepSummaryInPlace(12, canvas.scrollTop);
+      if (reducedMotion || activity?.kind !== "activity" || activity.open) return;
+      const nextRows = selectRows(useApp.getState());
+      const entering = renderedRows().filter(element => {
+        const row = nextRows[Number(element.dataset.index)];
+        return row && !previousKeys.has(row.key) && activity.messageIds.includes(row.messageId);
+      });
+      activityAnimations.current = slideRows(entering, "open");
+    };
+    if (reducedMotion || activity?.kind !== "activity" || !activity.open) return apply();
+    const work = new Set(activity.ids);
+    const leaving = renderedRows().filter(element => {
+      const row = rows[Number(element.dataset.index)]?.row;
+      return row && row.kind !== "activity" && work.has(row.kind === "part" ? row.id : row.ids[0]!);
+    });
+    if (!leaving.length) return apply();
+    closingActivity.current = id;
+    activityAnimations.current = slideRows(leaving, "close");
+    activityAnimations.current[0]!.onfinish = () => {
+      closingActivity.current = undefined;
+      activityAnimations.current = [];
+      apply();
+    };
+  }, [viewport, rows, selectRows, reducedMotion, cancelActivityTransition]);
+  useLayoutEffect(() => cancelActivityTransition, [threadId, reducedMotion, cancelActivityTransition]);
 
   useEffect(() => {
     if (threadId && connected) {
@@ -177,6 +241,7 @@ export function Conversation() {
       }
     }
     if (!threadId || !messageId || !ids?.includes(messageId)) return;
+    cancelActivityTransition();
     stopFollowing();
     const activity = rows.find(row => row.row?.kind === "activity" && row.row.messageIds.includes(messageId))?.row;
     const expanding = activity?.kind === "activity" && !activity.open;
@@ -220,12 +285,11 @@ export function Conversation() {
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [searchMessageId, searchShellId, threadId, loaded, ids, rows, timeline, stopFollowing, t]);
+  }, [searchMessageId, searchShellId, threadId, loaded, ids, rows, timeline, stopFollowing, cancelActivityTransition, t]);
 
   const busy =
     compacting || status === "thinking" || status === "working" || status === "queued";
-  const activityRunning = rows.some(row => row.row?.kind === "activity" && row.row.active && !row.row.open);
-  const messages = ids ?? [];
+  const activityRunning = rows.some(row => row.row?.kind === "activity" && row.row.active);
   const visibleItem = virtualItems.find((item) => item.end > (timeline.scrollOffset ?? 0) + 30);
   const jumpToMessage = useCallback((messageId: string) => {
     useApp.setState({ searchMessageId: messageId });
@@ -247,7 +311,7 @@ export function Conversation() {
           className="canvas-inner"
           ref={content}
         >
-          {messages.length === 0 && !busy && (
+          {!ids?.length && !busy && (
             <div className="canvas-hint">
               <p>
                 {t("This thread is empty. Describe what you want changed and the provider will work in your repository.")}
@@ -256,7 +320,10 @@ export function Conversation() {
           )}
           <div
             className="timeline-rows"
-            style={{ height: timeline.getTotalSize() }}
+            style={{
+              paddingTop: virtualItems[0]?.start ?? 0,
+              paddingBottom: timeline.getTotalSize() - (virtualItems.at(-1)?.end ?? 0),
+            }}
           >
             {virtualItems.map((item) => {
               const row = rows[item.index]!;
@@ -267,7 +334,6 @@ export function Conversation() {
                   data-index={item.index}
                   data-message-id={row.messageId}
                   ref={timeline.measureElement}
-                  style={{ transform: `translateY(${item.start}px)` }}
                 >
                   <MessageBlock
                     messageId={row.messageId}
@@ -277,7 +343,7 @@ export function Conversation() {
                     transitionActivity={transitionActivity}
                     last={row.last && !(busy && continuesReply && item.index === rows.length - 1)}
                     streaming={
-                      Boolean(running) && row.messageId === messages.at(-1)
+                      Boolean(running) && row.messageId === ids?.at(-1)
                     }
                   />
                 </div>
@@ -291,7 +357,7 @@ export function Conversation() {
           )}
           {busy && !activityRunning && <MessageBlock
             messageId={lastMessage?.role === "assistant" ? lastMessage.id : undefined}
-            first={!continuesReply && !rows.some(row => row.row?.kind === "activity" && row.row.active)}
+            first={!continuesReply}
             last
             streaming={false}
           >

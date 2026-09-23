@@ -1,11 +1,12 @@
 import { AnimatePresence } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { Monitor, MousePointer2, Pause, Play, RefreshCw, Square, LoaderCircle, Check, AlertCircle, Maximize2 } from "lucide-react";
+import { Monitor, MousePointer2, Pause, Play, RefreshCw, Square, Check, AlertCircle, Maximize2 } from "lucide-react";
 import { Modal } from "./Modal.tsx";
 import { api, reportError } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
 import type { ComputerCapabilities, ComputerFrame, ComputerAction } from "../../../shared/computer.ts";
 import { currentLocale, useI18n } from "../lib/i18n.ts";
+import { PixelLoader } from "./PixelLoader.tsx";
 
 export function ComputerPane({ active }: { active: boolean }) {
   const t = useI18n();
@@ -110,7 +111,7 @@ export function ComputerPane({ active }: { active: boolean }) {
       </header>
       {!running ? (
         <div className="computer-welcome">
-          {state.status === "starting" ? <LoaderCircle size={36} className="spin" /> : <Monitor size={38} className="panel-icon-computer" />}
+          {state.status === "starting" ? <PixelLoader size={36} /> : <Monitor size={38} className="panel-icon-computer" />}
           <h3>{state.status === "starting" ? t("Choose what to share") : t("Work across your desktop")}</h3>
           <p>{state.status === "starting" ? t("Confirm screen sharing in your desktop's dialog. Citropy will show the shared screen here.") : t("Let this conversation see a screen and use the mouse and keyboard in your desktop apps.")}</p>
           {state.status === "starting" ? <button className="btn" onClick={() => void operation("computer/stop")}>{t("Cancel")}</button> : !state.enabled ? <button className="btn btn-primary" disabled={busy || !connected} onClick={() => void enable()}>{t("Enable computer use")}</button> : capabilities?.reason?.includes("Open Citropy desktop") ? <button className="btn btn-primary" disabled={busy || !connected} onClick={() => void launch()}><Monitor size={15} /> {t("Open Citropy desktop")}</button> : <button className="btn btn-primary" disabled={busy || !connected || !threadId || !capabilities?.available} onClick={() => void operation(`computer/start?threadId=${encodeURIComponent(threadId!)}`)}><Play size={15} /> {t("Share a screen")}</button>}
@@ -147,7 +148,7 @@ export function ComputerPane({ active }: { active: boolean }) {
                 else void act({ action: "click", frameId: frame.id, x: to.x, y: to.y });
               }}
               onPointerCancel={() => { pointer.current = undefined; }}
-              onContextMenu={(event) => { if (!interactive) return; event.preventDefault(); const pos = point(event.clientX, event.clientY); if (pos) void act({ action: "click", frameId: frame.id, ...pos, button: "right" }); }} /> : <div className="computer-capturing"><LoaderCircle size={24} className="spin" /><span>{t("Waiting for the screen…")}</span></div>}
+              onContextMenu={(event) => { if (!interactive) return; event.preventDefault(); const pos = point(event.clientX, event.clientY); if (pos) void act({ action: "click", frameId: frame.id, ...pos, button: "right" }); }} /> : <div className="computer-capturing"><PixelLoader size={24} /><span>{t("Waiting for the screen…")}</span></div>}
           </div>
           <div className="computer-preview-caption"><span>{frame ? t("{width} × {height} preview", { width: frame.width, height: frame.height }) : t("Screen sharing")}</span><button disabled={!state.control || state.status !== "active" || busy} data-active={interactive} aria-pressed={interactive} onClick={() => setInteractive(!interactive)}><MousePointer2 size={13} /> {interactive ? t("Interacting · Esc to leave") : t("Interact")}</button></div>
           {interactive && <p className="computer-session-note">{t("Click or drag in the preview. Use your keyboard directly in the focused app.")}</p>}
@@ -162,7 +163,7 @@ export function ComputerPane({ active }: { active: boolean }) {
         {frame && <img className="computer-large-image" src={`data:image/jpeg;base64,${frame.image}`} alt={t("Shared desktop at a larger size")} />}
       </Modal>}</AnimatePresence>
       {(error || state.error) && <p className="feature-error" role="alert"><AlertCircle size={16} /> {error || state.error}</p>}
-      {state.activity.length > 0 && <div className="computer-activity"><h4>{t("Recent activity")}</h4>{state.activity.slice(0, 20).map((item) => <div className="computer-activity-row" key={item.id}>{item.status === "running" ? <LoaderCircle className="spin" size={14} /> : item.status === "error" ? <AlertCircle size={14} className="text-err" /> : <Check size={14} className="text-ok" />}<span>{item.action}<small>{item.error || (item.actor === "user" ? t("You") : t("Provider"))}</small></span><time>{new Date(item.at).toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" })}</time></div>)}</div>}
+      {state.activity.length > 0 && <div className="computer-activity"><h4>{t("Recent activity")}</h4>{state.activity.slice(0, 20).map((item) => <div className="computer-activity-row" key={item.id}>{item.status === "running" ? <PixelLoader size={14} /> : item.status === "error" ? <AlertCircle size={14} className="text-err" /> : <Check size={14} className="text-ok" />}<span>{item.action}<small>{item.error || (item.actor === "user" ? t("You") : t("Provider"))}</small></span><time>{new Date(item.at).toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" })}</time></div>)}</div>}
     </section>
   );
 }

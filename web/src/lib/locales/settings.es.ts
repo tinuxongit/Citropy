@@ -1,4 +1,8 @@
 export const settingsEs: Record<string, string> = {
+  "Conversation navigation": "Navegación de conversaciones",
+  "Sidebar mode": "Modo de barra lateral",
+  "Workspaces shows one folder at a time. Global lists every open folder and its conversations.": "Espacios de trabajo muestra una carpeta a la vez. Global enumera todas las carpetas abiertas y sus conversaciones.",
+  "Global": "Global",
   "Subagent completions": "Finalización de subagentes",
   "Notify you when a subagent finishes or fails. Results remain available in the conversation.": "Avisa cuando un subagente termina o falla. Los resultados siguen disponibles en la conversación.",
   "Citropy development": "Citropy desarrollo",
@@ -376,7 +380,7 @@ export const settingsEs: Record<string, string> = {
   "Remove this shared skill from all Citropy providers. Its instructions can be restored in Computer use settings.": "Eliminar esta habilidad compartida de todos los proveedores de Citropy. Sus instrucciones se pueden restaurar en los ajustes de Uso del ordenador.",
   "Reported cost": "Coste indicado",
   "Reset time not reported": "Hora de restablecimiento no indicada",
-  "Reset to 120%": "Restablecer al 120%",
+  "Reset to 100%": "Restablecer al 100%",
   "Resets {date}": "Se restablece {date}",
   "Resets {when}": "Se restablece {when}",
   "Updated {time}": "Actualizado {time}",

@@ -83,4 +83,24 @@ test("provider boundaries normalize plans and reject malformed lifecycle events"
   assert.match(receiveAgentEvent("opencode", "thread", { type: "turn.end", error: null }).error, /invalid completion event/);
 });
 
+test("a closed journal can reopen its statements and preserves replacement ordering", () => {
+  const journal = new EventJournal(join(directory, "reopen.sqlite"));
+  journal.importThreads([{ ...thread, messages: [{ id: "old", role: "user", ts: 1, parts: [{ id: "old-part", kind: "text", text: "Old" }] }] }]);
+  assert.equal(journal.hasThread(thread.id), true);
+  journal.close();
+  const messages = [
+    { id: "second", role: "user", ts: 2, parts: [{ id: "b", kind: "text", text: "B" }, { id: "a", kind: "text", text: "A" }] },
+    { id: "first", role: "assistant", ts: 3, parts: [] },
+  ];
+  journal.append({ t: "thread.messages", threadId: thread.id, messages });
+  assert.deepEqual(journal.threads()[0].messages, messages);
+  journal.append({ t: "part.patch", threadId: thread.id, messageId: "second", partId: "a", patch: { text: "Patched", complete: true } });
+  assert.equal(journal.threads()[0].messages[0].parts[1].text, "Patched");
+  journal.append({ t: "thread.remove", id: thread.id });
+  assert.equal(journal.hasThread(thread.id), true);
+  assert.equal(journal.hasThread("missing"), false);
+  assert.deepEqual(journal.threads(), []);
+  journal.close();
+});
+
 test.after(() => { eventJournal.close(); rmSync(directory, { recursive: true, force: true }); });

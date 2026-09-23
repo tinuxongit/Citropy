@@ -35,7 +35,8 @@ test("GitHub integration validates targets, paginates, preserves request bodies,
     return { stdout: `${chooser}\n`, stderr: "" };
   } });
   syncBuiltinESMExports();
-  const { handleGitHub, repositoryName, repositoryFromRemote } = await import("../server/github.ts");
+  const { handleGitHub } = await import("../server/github.ts");
+  const { repositoryName, repositoryFromRemote } = await import("../server/github-input.ts");
   t.after(async () => {
     const { store } = await import("../server/store.ts");
     store.flush();

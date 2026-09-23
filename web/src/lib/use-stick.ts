@@ -13,6 +13,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     stuck.current = false;
     readingExpanded.current = false;
   }, []);
+  const following = useCallback(() => stuck.current, []);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     const node = viewport.current;
@@ -98,5 +99,5 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     };
   }, []);
 
-  return { viewport, content, atBottom, nearBottom, scrollToBottom, stopFollowing };
+  return { viewport, content, atBottom, nearBottom, scrollToBottom, stopFollowing, following };
 }

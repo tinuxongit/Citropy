@@ -223,6 +223,29 @@ export function finishThread(id: string, finished: boolean): void {
   send({ t: "thread.finish", id, finished });
 }
 
+export async function reorderThreads(projectId: string, ids: string[]): Promise<void> {
+  const previous = useApp.getState().threads;
+  useApp.setState((state) => {
+    const threads = { ...state.threads };
+    ids.forEach((id, position) => { threads[id] = { ...threads[id]!, position }; });
+    return { threads };
+  });
+  try {
+    await api(`threads/reorder?projectId=${projectId}`, {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    });
+  } catch (error) {
+    useApp.setState((state) => {
+      if (!ids.every((id, position) => state.threads[id]?.position === position)) return state;
+      const threads = { ...state.threads };
+      ids.forEach((id) => { threads[id] = { ...threads[id]!, position: previous[id]?.position }; });
+      return { threads };
+    });
+    reportError(error);
+  }
+}
+
 export async function configureThread(
   id: string,
   patch: {
