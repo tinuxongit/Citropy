@@ -1,9 +1,9 @@
+import { RuntimeDownloads } from "./RuntimeDownloads.tsx";
 import { AnimatePresence } from "motion/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUpToLine,
   Check,
-  ChevronRight,
   FileText,
   RefreshCw,
 } from "lucide-react";
@@ -15,10 +15,14 @@ import { send } from "../lib/socket.ts";
 import type { ProviderInfo } from "../../../shared/protocol.ts";
 import type { ProviderMaintenance } from "../../../shared/provider-settings.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { selectEnvironment, useEnvironments } from "../lib/environment.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 
 export function ProviderSettings() {
   const t = useI18n();
+  const environments = useEnvironments();
+  const [switching, setSwitching] = useState(false);
+  const [starting, setStarting] = useState(false);
   const providers = useApp((state) => state.providers);
   const connected = useApp((state) => state.connected);
   const threads = useApp((state) => state.threads);
@@ -26,8 +30,9 @@ export function ProviderSettings() {
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const refreshMaintenance = useCallback(() => setRefresh(value => value + 1), []);
   const [editor, setEditor] = useState<ProviderInfo>();
-  const updating = maintenance.some((entry) => entry.status === "updating");
+  const updating = starting || maintenance.some((entry) => entry.status === "updating");
 
   useEffect(() => {
     if (!connected) return;
@@ -61,10 +66,11 @@ export function ProviderSettings() {
   }, [connected, refresh, providers]);
 
   const update = async (provider: ProviderInfo) => {
+    setStarting(true);
     setMaintenance((previous) =>
       previous.map((entry) =>
         entry.provider === provider.id
-          ? { ...entry, status: "updating", message: "Starting update…" }
+          ? { ...entry, status: "updating", message: provider.available ? "Starting update…" : "Starting installation…" }
           : entry,
       ),
     );
@@ -81,17 +87,61 @@ export function ProviderSettings() {
     } catch (error) {
       reportError(error);
     } finally {
+      setStarting(false);
       setRefresh((value) => value + 1);
+    }
+  };
+
+  const eligible = maintenance.some(entry =>
+    entry.available && !entry.install && entry.binaryPath && entry.updateStatus !== "current" &&
+    !Object.values(threads).some(thread => thread.provider === entry.provider && (thread.running || thread.status === "awaiting")));
+
+  const updateAll = async () => {
+    setStarting(true);
+    try {
+      const queued = await api<ProviderMaintenance[]>("providers/update-all", { method: "POST" });
+      setMaintenance(previous => previous.map(entry => queued.find(state => state.provider === entry.provider) ?? entry));
+    } catch (error) {
+      reportError(error);
+    } finally {
+      setStarting(false);
+      setRefresh(value => value + 1);
     }
   };
 
   return (
     <>
+      <div className="settings-group provider-environment">
+        <label className="setting-row">
+          <span>
+            <strong>{t("Environment")}</strong>
+            <small>{t("Switch the active environment to manage its providers.")}</small>
+          </span>
+          <select aria-label={t("Provider environment")} value={environments.activeId}
+            disabled={switching || !window.citropyDesktop?.connectEnvironment}
+            onChange={async event => {
+              const id = event.target.value;
+              if (id === environments.activeId) return;
+              setSwitching(true);
+              setEditor(undefined);
+              try { await selectEnvironment(id); } catch (error) { reportError(error); }
+              finally { setSwitching(false); }
+            }}>
+            <option value="local">{t("Local")}</option>
+            {environments.connections.map(connection =>
+              <option key={connection.id} value={connection.id}>{connection.name}</option>)}
+          </select>
+        </label>
+        {switching && <p className="provider-maintenance-note" role="status">{t("Connecting…")}</p>}
+      </div>
       <div className="provider-maintenance-heading">
       <h2 className="settings-group-heading">{t("Installed providers")}</h2>
+        <button className="btn" disabled={!connected || switching || updating || checking || !eligible}
+          title={t("Update installed providers in this environment. Providers with active conversations are skipped.")}
+          onClick={() => void updateAll()}><ArrowUpToLine size={14} />{t("Update all")}</button>
         <button
           className="btn"
-          disabled={!connected || updating || checking}
+          disabled={!connected || switching || updating || checking}
           onClick={() => setRefresh((value) => value + 1)}
         >
           {checking ? <PixelLoader size={14} /> : <RefreshCw size={14} />}{" "}{t("Check for updates")}{" "}</button>
@@ -106,6 +156,7 @@ export function ProviderSettings() {
               thread.provider === provider.id &&
               (thread.running || thread.status === "awaiting"),
           ).length;
+          const installing = state?.install ?? !provider.available;
           const isUpdating = state?.status === "updating";
           return (
             <section
@@ -149,7 +200,7 @@ export function ProviderSettings() {
                   role="switch"
                   aria-label={t("Enable {provider}", { provider: provider.label })}
                   checked={provider.enabled}
-                  disabled={!connected || isUpdating}
+                  disabled={!connected || switching || isUpdating}
                   onChange={async (event) => {
                     const enabled = event.target.checked;
                     if (
@@ -184,16 +235,20 @@ export function ProviderSettings() {
                       {state?.binaryPath ?? provider.binary}
                     </small>
                   </div>
-                  {state?.updateStatus === "current" && !isUpdating ? (
+                  <button type="button" className="btn"
+                    disabled={!connected || switching} onClick={() => setEditor(provider)}>
+                    <FileText size={14} />{t("Global instructions")}
+                  </button>
+                  {!installing && state?.updateStatus === "current" && !isUpdating ? (
                     <span className="provider-up-to-date" role="status">
                       <Check size={14} />{" "}{t("Up to date")}{" "}</span>
                   ) : (
                     <button
                       type="button"
                       className="btn"
-                      aria-label={t("Update {provider}", { provider: provider.label })}
+                      aria-label={t(installing ? "Install {provider}" : "Update {provider}", { provider: provider.label })}
                       disabled={
-                        !connected ||
+                        !connected || switching ||
                         !state?.available ||
                         updating ||
                         active > 0
@@ -202,7 +257,7 @@ export function ProviderSettings() {
                         active
                           ? t("Finish or stop active conversations before updating.")
                           : (state?.reason ??
-                            t("Check for updates and install with the existing installer."))
+                            t(installing ? "Install this provider in the selected environment." : "Check for updates and install with the existing installer."))
                       }
                       onClick={() => void update(provider)}
                     >
@@ -212,7 +267,9 @@ export function ProviderSettings() {
                         <ArrowUpToLine size={14} />
                       )}
                       {isUpdating
-                        ? t("Updating…")
+                        ? t(installing ? "Installing…" : "Updating…")
+                        : installing
+                          ? t("Install")
                         : state?.updateStatus === "available"
                           ? t("Update to {version}", { version: state.latestVersion ?? "" })
                           : t("Check & update")}
@@ -243,26 +300,12 @@ export function ProviderSettings() {
                   </details>
                 )}
               </div>
-              <button
-                type="button"
-                className="provider-instructions-link"
-                disabled={!connected}
-                onClick={() => setEditor(provider)}
-              >
-                <FileText size={17} />
-                <span>
-                  <strong>{t("Global instructions")}</strong>
-                  <small>
-                    {provider.id === "claude" ? "CLAUDE.md" : provider.id === "cursor" ? "citropy.mdc" : "AGENTS.md"}
-                    <span>{" "}{t("· Guidance for all projects")}</span>
-                  </small>
-                </span>
-                <ChevronRight size={16} />
-              </button>
+
             </section>
           );
         })}
       </div>
+      <RuntimeDownloads onInstalled={refreshMaintenance} />
       {error && (
         <p className="dialog-error" role="alert">
           {error}{" "}

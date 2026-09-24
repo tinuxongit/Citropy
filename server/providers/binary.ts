@@ -49,6 +49,10 @@ const DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD";
 const CACHE_TTL = 30_000;
 const cache = new Map<string, { at: number; value: ResolvedCommand }>();
 
+export function clearCommandCache(): void {
+  cache.clear();
+}
+
 function findInDirs(name: string, dirs: string[], exists: (path: string) => boolean, win: boolean): string | undefined {
   for (const dir of dirs) {
     const candidate = (win ? win32 : posix).join(dir, name);

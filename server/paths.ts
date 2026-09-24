@@ -1,3 +1,4 @@
+import { nodeVersion } from "../shared/node-runtime.mjs";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, posix, win32 } from "node:path";
@@ -9,7 +10,9 @@ const augmented = new WeakSet<object>();
 
 function wellKnownDirs(env: NodeJS.ProcessEnv, home: string, platform: NodeJS.Platform): string[] {
   const p = platform === "win32" ? win32 : posix;
+  const runtime = p.join(home, ".citropy", "runtimes", `node-v${nodeVersion}-${platform === "win32" ? "win" : platform}-${process.arch}`);
   const dirs = [
+    platform === "win32" ? runtime : p.join(runtime, "bin"),
     p.join(home, ".local", "bin"),
     p.join(home, ".opencode", "bin"),
     p.join(home, ".cursor", "bin"),

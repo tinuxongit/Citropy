@@ -1,3 +1,4 @@
+import { commandVersion } from "./binary.ts";
 import { stopProcess } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverModels } from "./models.ts";
@@ -512,6 +513,10 @@ export const claudeProvider: Provider = {
   models: [],
   listModels: () => discoverModels("claude"),
   async detect() {
+    if (process.platform === "win32") {
+      const version = await commandVersion("claude");
+      return { available: Boolean(version), version };
+    }
     try {
       const { stdout } = await run("claude", ["--version"], { timeout: 8000 });
       return { available: true, version: stdout.trim().split("\n")[0] };

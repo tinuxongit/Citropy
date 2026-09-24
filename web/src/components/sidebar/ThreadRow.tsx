@@ -50,6 +50,12 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
   const childRunning = (tree.childrenByParent.get(thread.id) ?? []).some((child) => child.running);
   const finishLabel = `${thread.finished ? t("Reopen") : t("Finish")} ${thread.title}`;
 
+  const openMenu = (card: HTMLElement) => {
+    preview.hide();
+    const button = card.querySelector<HTMLButtonElement>(".thread-more");
+    if (button?.getAttribute("aria-expanded") !== "true") button?.click();
+  };
+
   const open = () => {
     preview.hide();
     onConversation();
@@ -70,7 +76,24 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
       onDragStart={(event) => event.preventDefault()}
       onClickCapture={drag.suppressClickAfterDrag}
     >
-      <div className="thread-card" data-active={active} onPointerDownCapture={preview.hide}>
+      <div
+        className="thread-card"
+        data-active={active}
+        onPointerDownCapture={preview.hide}
+        onContextMenu={(event) => {
+          if ((event.target as HTMLElement).closest('[role="menu"], dialog, a')) return;
+          event.preventDefault();
+          event.stopPropagation();
+          openMenu(event.currentTarget);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
+          if ((event.target as HTMLElement).closest('[role="menu"], dialog, a')) return;
+          event.preventDefault();
+          event.stopPropagation();
+          openMenu(event.currentTarget);
+        }}
+      >
         {active && <motion.span
           className="thread-selection"
           aria-hidden="true"

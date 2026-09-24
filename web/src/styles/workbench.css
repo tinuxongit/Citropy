@@ -233,7 +233,7 @@
 }
 .browser-address:focus-within {
   background: var(--raised-2);
-  box-shadow: 0 0 8px var(--accent-line);
+  box-shadow: var(--field-focus-ring);
 }
 .browser-address input {
   width: 100%;

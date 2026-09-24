@@ -544,6 +544,7 @@
 }
 .provider-update-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
 }
@@ -609,36 +610,6 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.provider-instructions-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 16px var(--settings-inset);
-  text-align: left;
-  background: var(--raised);
-  color: var(--text-2);
-  transition: background var(--dur-instant) var(--ease-out);
-}
-.provider-instructions-link:hover {
-  background: var(--raised-2);
-}
-.provider-instructions-link > svg:first-child {
-  color: var(--file-icon);
-}
-.provider-instructions-link > span {
-  flex: 1;
-}
-.provider-instructions-link strong {
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
-.provider-instructions-link small {
-  display: block;
-  margin-top: 4px;
-  font-size: var(--text-xs);
-  color: var(--text-3);
-}
 .citropy-dialog.provider-instructions-dialog {
   width: min(800px, calc(var(--viewport-width) - 48px));
 }
@@ -685,9 +656,6 @@
   font-size: var(--text-xs);
 }
 @container application (max-width: 720px) {
-  .provider-instructions-link {
-    padding: 12px var(--settings-inset);
-  }
   .provider-instructions-dialog .dialog-footer {
     flex-wrap: wrap;
   }
@@ -696,6 +664,7 @@
   }
 }
 
-.provider-maintenance-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.provider-maintenance-heading .settings-group-heading { margin: 0; }
+.provider-environment { margin-bottom: 16px; }
+.provider-maintenance-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.provider-maintenance-heading .settings-group-heading { margin: 0; margin-right: auto; }
 .provider-up-to-date { display: inline-flex; align-items: center; gap: 6px; color: var(--ok); font-size: var(--text-sm); white-space: nowrap; }

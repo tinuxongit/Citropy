@@ -19,6 +19,7 @@ export {
   setUiScale,
   setTextStreaming,
   setShowGitHubIdentity,
+  setShowFailedTools,
   setTypingAnimation,
   setUiSounds,
   setUiAlertSounds,

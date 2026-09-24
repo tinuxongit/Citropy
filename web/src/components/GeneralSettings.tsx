@@ -3,6 +3,7 @@ import { useI18n } from "../lib/i18n.ts";
 import {
   setLanguage,
   setShowGitHubIdentity,
+  setShowFailedTools,
   setTextStreaming,
   setTypingAnimation,
   setTypingSpeed,
@@ -19,6 +20,7 @@ export function GeneralSettings() {
   const textStreaming = useApp((state) => state.textStreaming);
   const typingAnimation = useApp((state) => state.typingAnimation);
   const typingSpeed = useApp((state) => state.typingSpeed);
+  const showFailedTools = useApp(state => state.showFailedTools);
   const showGitHubIdentity = useApp((state) => state.showGitHubIdentity);
 
   return (
@@ -81,6 +83,17 @@ export function GeneralSettings() {
             checked={showGitHubIdentity}
             onChange={(event) => setShowGitHubIdentity(event.target.checked)}
           />
+        </label>
+      </div>
+      <h2 className="settings-group-heading settings-group-spaced">{t("Tool activity")}</h2>
+      <div className="settings-group">
+        <label className="setting-row">
+          <span>
+            <strong>{t("Show failed-tools badge")}</strong>
+            <small>{t("Show the failure count in work summaries. Tool results remain available when hidden.")}</small>
+          </span>
+          <input className="setting-switch" type="checkbox" role="switch"
+            checked={showFailedTools} onChange={event => setShowFailedTools(event.target.checked)} />
         </label>
       </div>
       <h2 className="settings-group-heading settings-group-spaced">{" "}{t("Response text")}{" "}</h2>

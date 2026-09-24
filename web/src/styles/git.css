@@ -291,12 +291,13 @@
 
 .git-filter:focus-within {
   background: var(--raised-2);
-  box-shadow: 0 0 8px var(--accent-line);
+  box-shadow: var(--field-focus-ring);
 }
 .git-filter > svg {
   flex: none;
 }
 .git-filter > input {
+  box-shadow: none;
   width: 100%;
   min-width: 0;
   background: transparent;

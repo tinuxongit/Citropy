@@ -184,7 +184,7 @@ export function Settings({
             {section === "General" && <GeneralSettings />}
             {section === "Notifications" && <NotificationSettings />}
             {section === "Appearance" && <AppearanceSettings />}
-            {section === "Providers" && <ProviderSettings />}
+            {section === "Providers" && <ProviderSettings key={environment} />}
           </Fragment>
           <ApplicationSettings active={section === "Application"} />
         </div>

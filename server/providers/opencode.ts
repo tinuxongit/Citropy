@@ -1,3 +1,4 @@
+import { commandVersion } from "./binary.ts";
 import { stopProcess, waitForStoppedProcesses } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverOpenCodeModels } from "./models.ts";
@@ -578,6 +579,10 @@ export const opencodeProvider: Provider = {
   models: [],
   listModels: () => discoverOpenCodeModels(),
   async detect() {
+    if (process.platform === "win32") {
+      const version = await commandVersion("opencode");
+      return { available: Boolean(version), version };
+    }
     try {
       const { stdout } = await run("opencode", ["--version"], { timeout: 8000 });
       return { available: true, version: stdout.trim().split("\n").pop() ?? undefined };

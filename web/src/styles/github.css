@@ -138,6 +138,7 @@
   border-radius: var(--r-sm);
 }
 .github-search input {
+  box-shadow: none;
   flex: 1;
   min-width: 0;
   width: 100%;
@@ -150,7 +151,7 @@
 .github-search:focus-within {
   color: var(--text);
   background: var(--raised-2);
-  box-shadow: 0 0 8px var(--accent-line);
+  box-shadow: var(--field-focus-ring);
 }
 .github-toolbar select,
 .github-dialog select {

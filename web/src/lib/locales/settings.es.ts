@@ -1,4 +1,21 @@
 export const settingsEs: Record<string, string> = {
+  "Set up terminals": "Configurar terminales",
+  "Configuring Node.js for terminals…": "Configurando Node.js para las terminales…",
+  "Node.js and npm are ready. Open a new terminal to use them outside Citropy.": "Node.js y npm están listos. Abre una terminal nueva para usarlos fuera de Citropy.",
+  "Runtime downloads": "Descargas de runtimes",
+  "Node {version} · npm {npm}": "Node {version} · npm {npm}",
+  "Node.js and npm for provider installation and development.": "Node.js y npm para instalar proveedores y desarrollar.",
+  "Install Node.js": "Instalar Node.js",
+  "Automatic installation supports Linux, macOS, and Windows on x64 or ARM64.": "La instalación automática es compatible con Linux, macOS y Windows en x64 o ARM64.",
+
+  "Provider environment": "Entorno de proveedores",
+  "Switch the active environment to manage its providers.": "Cambia el entorno activo para gestionar sus proveedores.",
+  "Update all": "Actualizar todos",
+  "Update installed providers in this environment. Providers with active conversations are skipped.": "Actualiza los proveedores instalados en este entorno. Se omiten los que tienen conversaciones activas.",
+  "Tool activity": "Actividad de herramientas",
+  "Show failed-tools badge": "Mostrar indicador de herramientas fallidas",
+  "Show the failure count in work summaries. Tool results remain available when hidden.": "Muestra el número de fallos en los resúmenes de trabajo. Los resultados siguen disponibles cuando se oculta.",
+
   "Conversation navigation": "Navegación de conversaciones",
   "Sidebar mode": "Modo de barra lateral",
   "Workspaces shows one folder at a time. Global lists every open folder and its conversations.": "Espacios de trabajo muestra una carpeta a la vez. Global enumera todas las carpetas abiertas y sus conversaciones.",

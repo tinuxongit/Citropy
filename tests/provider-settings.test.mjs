@@ -92,6 +92,7 @@ if (args.includes('--help')) {
     const {
       providerMaintenance,
       startProviderUpdate,
+      startProviderUpdates,
       providerUpdating,
       assertProviderReady,
       startProviderUpdateChecks,
@@ -544,13 +545,38 @@ if (args.includes('--help')) {
           localStorage.setItem("citropy.theme", "dark");
           localStorage.setItem("citropy.uiScale", "120");
         });
+        await page.addInitScript(endpoint => {
+          const state = { activeId: "local", endpoint: "", connections: [{ id: "test-ssh", name: "Build server", target: "builder@example", status: "connected" }] };
+          window.environmentSelections = [];
+          window.citropyDesktop = {
+            onBrowserSelect: () => () => {},
+            environmentsState: async () => state,
+            onEnvironmentsState: () => () => {},
+            connectEnvironment: async id => {
+              window.environmentSelections.push(id);
+              return { ...state, activeId: id, endpoint: id === "local" ? "" : endpoint };
+            },
+          };
+        }, origin);
         await page.goto(origin);
         await page
           .getByRole("button", { name: "Settings", exact: true })
           .click();
+        const failedBadge = page.getByRole("switch", { name: /Show failed-tools badge/ });
+        assert.equal(await failedBadge.isChecked(), true);
+        await failedBadge.click();
+        assert.equal(await page.evaluate(() => localStorage.getItem("citropy.showFailedTools")), "0");
+        await failedBadge.click();
         await page
           .getByRole("button", { name: "Providers", exact: true })
           .click();
+        const environment = page.getByRole("combobox", { name: "Provider environment" });
+        await environment.selectOption("test-ssh");
+        await page.waitForFunction(() => document.querySelector('[aria-label="Provider environment"]')?.value === "test-ssh");
+        await page.getByRole("region", { name: "Codex", exact: true }).waitFor();
+        await environment.selectOption("local");
+        await page.waitForFunction(() => document.querySelector('[aria-label="Provider environment"]')?.value === "local");
+        assert.deepEqual(await page.evaluate(() => window.environmentSelections), ["test-ssh", "local"]);
         const codex = page.getByRole("region", { name: "Codex", exact: true });
         const update = codex.getByRole("button", { name: "Update Codex" });
         await update.waitFor();
@@ -653,6 +679,76 @@ if (args.includes('--help')) {
             .evaluate((element) => element.scrollWidth <= element.clientWidth),
         );
         assert.deepEqual(errors, []);
+        let installRequests = 0;
+        let installationFinished = false;
+        await page.route("**/api/providers/maintenance*", async route => {
+          const entries = await providerMaintenance();
+          await route.fulfill({ json: entries.map(entry => entry.provider === "codex"
+            ? { ...entry, available: true, install: !installationFinished, status: installRequests && !installationFinished ? "updating" : "idle", updateStatus: installationFinished ? "current" : "unknown" }
+            : entry) });
+        });
+        await page.route("**/api/providers/update", async route => {
+          assert.deepEqual(route.request().postDataJSON(), { provider: "codex" });
+          installRequests++;
+          await route.fulfill({ json: { provider: "codex", available: true, install: true, status: "updating", message: "Installing provider…" } });
+        });
+        await page.setViewportSize({ width: 1440, height: 1050 });
+        await page.getByRole("button", { name: "Check for updates", exact: true }).click();
+        const install = page.getByRole("button", { name: "Install Codex", exact: true });
+        await install.waitFor();
+        assert.equal(await install.innerText(), "Install");
+        await environment.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: "/tmp/citropy-provider-install-desktop.png" });
+        await page.setViewportSize({ width: 590, height: 920 });
+        await environment.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: "/tmp/citropy-provider-install-narrow.png" });
+        await install.click();
+        await codex.getByText("Installing…", { exact: true }).waitFor();
+        assert.equal(await install.isDisabled(), true);
+        assert.equal(installRequests, 1);
+        installationFinished = true;
+        await codex.getByText("Up to date", { exact: true }).waitFor();
+        let batchRequests = 0;
+        await page.route("**/api/providers/update-all", async route => {
+          batchRequests++;
+          await route.fulfill({ json: [] });
+        });
+        await page.getByRole("button", { name: "Update all", exact: true }).click();
+        assert.equal(batchRequests, 1);
+        let runtimeRequests = 0;
+        let runtimeReady = false;
+        await page.route("**/api/runtimes/node", async route => {
+          if (route.request().method() === "POST") {
+            runtimeRequests++;
+            assert.equal(route.request().url(), origin + "/api/runtimes/node");
+          }
+          await route.fulfill({ json: {
+            status: runtimeReady ? "success" : runtimeRequests ? "installing" : "idle",
+            ready: runtimeReady, shellReady: runtimeRequests > 1, supported: true, installVersion: "22.23.2",
+            version: runtimeReady ? "v22.23.2" : undefined, npmVersion: runtimeReady ? "10.9.8" : undefined,
+            message: runtimeReady ? "Node.js and npm are ready." : runtimeRequests ? "Downloading Node.js and npm…" : undefined,
+          } });
+        });
+        await page.setViewportSize({ width: 1440, height: 1050 });
+        await environment.selectOption("test-ssh");
+        const installNode = page.getByRole("button", { name: "Install Node.js", exact: true });
+        await installNode.waitFor();
+        await page.waitForFunction(() => [...document.querySelectorAll("button")].some(button => button.textContent.includes("Install Node.js") && !button.disabled));
+        await installNode.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: "/tmp/citropy-runtime-downloads-desktop.png", animations: "disabled" });
+        await page.setViewportSize({ width: 590, height: 920 });
+        await installNode.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: "/tmp/citropy-runtime-downloads-narrow.png", animations: "disabled" });
+        await installNode.click();
+        await page.getByText("Downloading Node.js and npm…", { exact: true }).waitFor();
+        assert.equal(runtimeRequests, 1);
+        runtimeReady = true;
+        await page.getByText("Node v22.23.2 · npm 10.9.8", { exact: true }).waitFor();
+        assert.equal(await page.getByRole("button", { name: "Install Node.js", exact: true }).count(), 0);
+        const setupTerminals = page.getByRole("button", { name: "Set up terminals", exact: true });
+        await setupTerminals.click();
+        await page.getByText("Installed", { exact: true }).waitFor();
+        assert.equal(runtimeRequests, 2);
         await page.close();
       },
     );
@@ -736,6 +832,45 @@ if (args.includes('--help')) {
         fs.rmSync(npm);
       },
     );
+    await t.test("bulk updates run sequentially, retain their lock, and continue after a failure", async () => {
+      let release;
+      const order = [];
+      const gate = new Promise(resolve => { release = resolve; });
+      const queued = startProviderUpdates(["claude", "codex"], async provider => {
+        order.push(provider);
+        if (provider === "claude") {
+          await gate;
+          throw new Error("Provider became busy");
+        }
+      }, async () => {});
+      assert.equal(queued.length, 2);
+      assert.equal(providerUpdating("codex"), true);
+      assert.deepEqual(order, ["claude"]);
+      assert.throws(() => startProviderUpdate("cursor", async () => {}, async () => {}), /Wait for/);
+      release();
+      assert.equal((await settle("claude")).status, "error");
+      assert.equal((await settle("codex")).status, "success");
+      assert.deepEqual(order, ["claude", "codex"]);
+    });
+    await t.test("update-all skips active and current providers on the backend", async () => {
+      latest = "1.1.0";
+      fs.writeFileSync(join(home, "claude.version"), "1.0.0");
+      fs.writeFileSync(join(home, "opencode.version"), "1.0.0");
+      const project = store.openProject(home);
+      const thread = store.createThread({ projectId: project.id, provider: "opencode", title: "Busy provider", permissionMode: "manual" });
+      store.patchThread(thread.id, { running: true, status: "working" });
+      try {
+        const response = await call("update-all", "POST");
+        assert.equal(response.status, 200);
+        const ids = response.data.map(entry => entry.provider);
+        assert.ok(ids.includes("claude"));
+        assert.ok(!ids.includes("codex"));
+        assert.ok(!ids.includes("opencode"));
+        for (const id of ids) assert.equal((await settle(id)).status, "success");
+      } finally {
+        store.patchThread(thread.id, { running: false, status: "idle" });
+      }
+    });
     await t.test(
       "backup links never overwrite their targets and broken instruction links are preserved",
       () => {

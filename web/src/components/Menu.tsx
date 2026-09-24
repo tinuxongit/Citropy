@@ -193,6 +193,7 @@ export function Menu({
             data-align={align}
             style={{ width: scaled(width) }}
             role="menu"
+            tabIndex={-1}
             aria-labelledby={anchor ? undefined : id}
             aria-label={anchor ? header : undefined}
             initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.985 }}

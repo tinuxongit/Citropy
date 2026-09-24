@@ -68,6 +68,28 @@ test("chat content and controls adapt when the workspace squeezes the conversati
     }));
   });
   const draft = page.locator(".composer-input");
+  await page.getByRole('button', { name: 'Open panel', exact: true }).focus();
+  await page.waitForTimeout(380);
+  await draft.focus();
+  await page.waitForFunction(() => document.querySelector('.composer-focus-ring').getAnimations().some(animation =>
+    animation.animationName === 'composer-trace' && animation.playState === 'running',
+  ));
+  const ring = page.locator('.composer-focus-ring');
+  const trace = await ring.evaluate(async node => {
+    const animation = node.getAnimations().find(animation => animation.animationName === 'composer-trace');
+    const before = getComputedStyle(node).getPropertyValue('--composer-trace-angle');
+    await new Promise(resolve => setTimeout(resolve, 120));
+    return { before, after: getComputedStyle(node).getPropertyValue('--composer-trace-angle'), duration: animation.effect.getTiming().duration, iterations: animation.effect.getTiming().iterations };
+  });
+  assert.notEqual(trace.before, trace.after);
+  assert.equal(trace.duration, 6000);
+  assert.equal(trace.iterations, Infinity);
+  await page.getByRole('button', { name: 'Open panel', exact: true }).focus();
+  assert.equal(await ring.evaluate(node => getComputedStyle(node).animationPlayState), 'paused');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await draft.focus();
+  assert.equal(await ring.evaluate(node => getComputedStyle(node).animationName), 'none');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await draft.fill("Keep this draft while resizing.");
 
   const resizeChat = width => page.evaluate(async width => {
@@ -93,6 +115,7 @@ test("chat content and controls adapt when the workspace squeezes the conversati
   assert.equal(await page.locator('#message-answer .turn-heading time').evaluate(node => node.getAnimations().some(animation => animation.effect.getKeyframes().some(frame => frame.translate))), false);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
 
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await resizeChat(590);
   await page.waitForFunction(() => {
     const animation = document.querySelector('#message-answer .turn-heading time').getAnimations().find(animation =>
@@ -180,5 +203,31 @@ test("chat content and controls adapt when the workspace squeezes the conversati
   assert.equal(await menu.evaluate(node => getComputedStyle(node).boxShadow), "none");
   await page.keyboard.press("Escape");
   await menu.waitFor({ state: "detached" });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  assert.ok(await page.locator("#message-working .group-failed").count() > 0);
+  await page.evaluate(async () => {
+    const { setShowFailedTools } = await import("/web/src/lib/store.ts");
+    setShowFailedTools(false);
+  });
+  await page.waitForFunction(() => !document.querySelector("#message-working .group-failed"));
+  await details.click();
+  const group = page.locator(".group-head").first();
+  if (await group.count()) await group.click();
+  await page.locator(".tool-head").first().click();
+  await page.getByText("Search results", { exact: true }).first().waitFor();
+  assert.equal(await page.locator(".group-failed").count(), 0);
+  assert.equal(await page.evaluate(async () => {
+    const { useApp } = await import("/web/src/lib/store.ts");
+    return Object.values(useApp.getState().parts).filter(part => part.kind === "tool" && part.status === "error").length;
+  }), 3);
+  assert.equal(await page.evaluate(() => localStorage.getItem("citropy.showFailedTools")), "0");
+  await page.reload();
+  await page.locator("#message-working .activity-head").waitFor();
+  assert.equal(await page.locator("#message-working .group-failed").count(), 0);
+  await page.evaluate(async () => {
+    const { setShowFailedTools } = await import("/web/src/lib/store.ts");
+    setShowFailedTools(true);
+  });
+  await page.locator("#message-working .group-failed").first().waitFor();
   assert.deepEqual(errors, []);
 });

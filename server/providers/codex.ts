@@ -1,3 +1,4 @@
+import { commandVersion } from "./binary.ts";
 import { stopProcess } from "./process.ts";
 import { spawn, execFile, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { promisify } from "node:util";
@@ -162,7 +163,19 @@ class CodexSession implements AgentSession {
   }
 
   #input(text: string, attachments: Attachment[], skills: Array<{ name: string; path: string }>): unknown[] {
-    return [{ type: "text", text: text || "Please inspect the attached files.", text_elements: [] }, ...attachments.map((file) => ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.mime ?? "") ? { type: "localImage", path: file.path } : { type: "mention", name: file.label, path: file.path }), ...skills.map((skill) => ({ type: "skill", name: skill.name, path: skill.path }))];
+    return [
+      { type: "text", text: text || "Please inspect the attached files.", text_elements: [] },
+      ...attachments.map((file) =>
+        ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.mime ?? "")
+          ? { type: "localImage", path: file.path }
+          : {
+              type: "text",
+              text: `Attached file: ${file.label}\nLocal path on this host: ${JSON.stringify(file.path)}\nThis uploaded file is stored outside the workspace. Read it at the path above.`,
+              text_elements: [],
+            },
+      ),
+      ...skills.map((skill) => ({ type: "skill", name: skill.name, path: skill.path })),
+    ];
   }
 
   async #pump(): Promise<void> {
@@ -541,6 +554,10 @@ export const codexProvider: Provider = {
   models: [],
   listModels: () => discoverModels("codex"),
   async detect() {
+    if (process.platform === "win32") {
+      const version = await commandVersion("codex");
+      return { available: Boolean(version), version };
+    }
     try {
       const { stdout } = await run("codex", ["--version"], { timeout: 8000 });
       return { available: true, version: stdout.trim().split("\n")[0] };

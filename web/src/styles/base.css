@@ -190,6 +190,20 @@ kbd {
   background-color: var(--raised-2);
 }
 
+:where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"]), textarea, [contenteditable="true"]):not(:where(.monaco-editor *, .xterm *, .composer-input)) {
+  box-shadow: inset 0 0 0 2px transparent;
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+
+:where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"]), textarea, [contenteditable="true"]):not(:where(.monaco-editor *, .xterm *, .composer-input)):focus-visible {
+  box-shadow: var(--field-focus-ring);
+}
+
+:is(.thread-search, .feature-search, .github-search, .git-filter, .browser-address) {
+  box-shadow: inset 0 0 0 2px transparent;
+  transition: background var(--dur-fast), box-shadow var(--dur-base) var(--ease-out);
+}
+
 ::selection {
   background: var(--accent-soft);
   color: var(--text);

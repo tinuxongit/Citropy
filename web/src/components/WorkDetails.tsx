@@ -12,6 +12,7 @@ import { ImageStrip } from "./parts/ImageStrip.tsx";
 
 export function WorkDetails({ id, ids, messageIds, open, active, previewId, transitionActivity }: { id: string; ids: string[]; messageIds: string[]; open: boolean; active: boolean; previewId?: string; transitionActivity?: (id: string, update: () => void) => void }) {
   const t = useI18n();
+  const showFailedTools = useApp(state => state.showFailedTools);
   const [, setOpen] = useDisclosure(id, "activity");
   const tools = useApp(useShallow(state => ids.map(id => state.parts[id]).filter((part): part is ToolPart => part?.kind === "tool")));
   const stats = groupStats(tools);
@@ -54,7 +55,7 @@ export function WorkDetails({ id, ids, messageIds, open, active, previewId, tran
         </>}
         <span id={`activity-count-${id}`} className="activity-count">
           {tools.length > 0 && <span className="reason-count">{tools.length} {t(tools.length === 1 ? "tool" : "tools")}</span>}
-          {stats.failed > 0 && <span className="group-failed"><AlertTriangle size={11} aria-hidden="true" />{t(stats.failed === 1 ? "{count} failed tool" : "{count} failed tools", { count: stats.failed })}</span>}
+          {showFailedTools && stats.failed > 0 && <span className="group-failed"><AlertTriangle size={11} aria-hidden="true" />{t(stats.failed === 1 ? "{count} failed tool" : "{count} failed tools", { count: stats.failed })}</span>}
           <ChevronDown size={12} className="group-chevron" aria-hidden="true" />
         </span>
         {!open && active && latest && Icon && <span className="activity-action" title={`${latest.name}: ${latest.headline}`}>

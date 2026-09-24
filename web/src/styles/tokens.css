@@ -7,6 +7,8 @@
   --dur-instant: 90ms;
   --dur-fast: 160ms;
   --dur-base: 240ms;
+  --field-focus-color: color-mix(in srgb, var(--text-3) 30%, transparent);
+  --field-focus-ring: inset 0 0 0 2px var(--field-focus-color);
 
   --font-ui:
     "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;

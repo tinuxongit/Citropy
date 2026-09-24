@@ -135,14 +135,20 @@ test("Codex app-server streams turns, resumes, reports usage and routes approval
     assert.equal(turn.params.effort, "high");
     assert.equal(turn.params.serviceTier, "priority");
     assert.equal(turn.params.input[0].text, "Hello");
-    assert.deepEqual(turn.params.input.slice(1).map((entry) => entry.type), ["localImage", "mention", "skill"]);
+    assert.deepEqual(turn.params.input.slice(1).map((entry) => entry.type), ["localImage", "text", "skill"]);
+    assert.ok(turn.params.input[2].text.includes(JSON.stringify(join(directory, "notes.txt"))));
+    assert.match(turn.params.input[2].text, /Attached file: notes.txt/);
     await reply("turn/start", { turn: { id: "turn1" } });
-    const steering = codex.steer("Also check the tests", [], [{ name: "sample", path: join(directory, "SKILL.md") }]);
+    const steering = codex.steer("Also check the tests", [{ label: "minecraft.html", path: "/remote/attachments/my files/minecraft.html", mime: "text/html" }], [{ name: "sample", path: join(directory, "SKILL.md") }]);
     await tick();
     assert.deepEqual(wire.messages.findLast((m) => m.method === "turn/steer").params, {
       threadId: "external",
       expectedTurnId: "turn1",
-      input: [{ type: "text", text: "Also check the tests", text_elements: [] }, { type: "skill", name: "sample", path: join(directory, "SKILL.md") }],
+      input: [{ type: "text", text: "Also check the tests", text_elements: [] }, {
+        type: "text",
+        text: 'Attached file: minecraft.html\nLocal path on this host: "/remote/attachments/my files/minecraft.html"\nThis uploaded file is stored outside the workspace. Read it at the path above.',
+        text_elements: [],
+      }, { type: "skill", name: "sample", path: join(directory, "SKILL.md") }],
     });
     await reply("turn/steer", { turnId: "turn1" });
     await steering;

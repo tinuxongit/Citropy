@@ -6,7 +6,7 @@ import { homedir, tmpdir } from "node:os";
 import { promisify, stripVTControlCharacters } from "node:util";
 import { valid, gt } from "semver";
 import { providers } from "./index.ts";
-import { resolveCommand } from "./binary.ts";
+import { clearCommandCache, invocation, resolveCommand } from "./binary.ts";
 import { bus } from "../bus.ts";
 import { notifyUpdateAvailable } from "../update-notifications.ts";
 import type { ProviderId } from "../../shared/protocol.ts";
@@ -39,6 +39,7 @@ interface UpdatePlan {
   args?: string[];
   reason?: string;
   installer?: string;
+  install?: boolean;
 }
 
 async function executablePath(binary: string): Promise<string | undefined> {
@@ -74,12 +75,37 @@ async function probe(executable: string, args: string[]): Promise<string> {
 
 async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
   const binaryPath = await executablePath(providers[provider].binary);
-  if (!binaryPath)
-    return { reason: "Install this provider first, then refresh models." };
+  if (!binaryPath) {
+    const packageName = packages[provider];
+    if (packageName) {
+      const npm = await executablePath("npm");
+      if (!npm) return { install: true, reason: "Install Node.js and npm on this machine, then check again." };
+      const prefix = process.platform === "win32"
+        ? join(process.env.APPDATA || join(homedir(), "AppData", "Roaming"), "npm")
+        : join(homedir(), ".local");
+      return {
+        install: true,
+        method: "npm",
+        executable: npm,
+        args: ["install", "--global", "--prefix", prefix, `--allow-scripts=${packageName}`, `${packageName}@latest`],
+      };
+    }
+    const windows = process.platform === "win32";
+    const shell = await executablePath(windows ? "powershell.exe" : "bash");
+    if (!shell)
+      return { install: true, reason: `Install ${windows ? "PowerShell" : "bash"} on this machine, then check again.` };
+    return {
+      install: true,
+      method: "Official installer",
+      executable: shell,
+      args: windows ? ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"] : [],
+      installer: windows ? "https://cursor.com/install?win32=true" : "https://cursor.com/install",
+    };
+  }
   const target = await realpath(binaryPath);
   const packageName = packages[provider];
-  const npmSuffix = `/lib/node_modules/${packageName}/`;
-  const npmIndex = target.indexOf(npmSuffix);
+  const npmSuffix = `${process.platform === "win32" ? "" : "/lib"}/node_modules/${packageName}/`;
+  const npmIndex = target.replace(/\\/g, "/").indexOf(npmSuffix);
   if (npmIndex > 0) {
     const npm = await executablePath("npm");
     if (npm)
@@ -190,6 +216,7 @@ function updatePlan(
   provider: ProviderId,
   refresh = false,
 ): Promise<UpdatePlan> {
+  if (refresh) clearCommandCache();
   const cached = plans.get(provider);
   if (!refresh && cached && Date.now() - cached.time < 30000)
     return cached.value;
@@ -326,6 +353,7 @@ export async function providerMaintenance(
         status: "idle" as const,
         ...states.get(provider.id),
         available: Boolean(plan.executable),
+        install: plan.install ?? false,
         version,
         latestVersion: latest,
         checkedAt: versions.get(provider.id)?.time,
@@ -372,20 +400,28 @@ async function runUpdate(
   try {
     if (plan.installer) {
       const response = await fetch(plan.installer, { signal: AbortSignal.timeout(30000) });
-      if (!response.ok) throw new Error("Could not download the official Codex installer.");
+      if (!response.ok) throw new Error("Could not download the official provider installer.");
       const script = await response.text();
-      if (script.length > 512 * 1024 || !script.startsWith("#!/bin/sh")) throw new Error("The Codex installer response was invalid.");
-      directory = await mkdtemp(join(tmpdir(), "citropy-codex-update-"));
-      const path = join(directory, "install.sh");
+      const validScript = process.platform === "win32"
+        ? Boolean(script.trim()) && !/^\s*</.test(script)
+        : script.startsWith(plan.install ? "#!" : "#!/bin/sh");
+      if (script.length > 512 * 1024 || !validScript) throw new Error("The provider installer response was invalid.");
+      directory = await mkdtemp(join(tmpdir(), "citropy-provider-install-"));
+      const path = join(directory, process.platform === "win32" ? "install.ps1" : "install.sh");
       await writeFile(path, script, { mode: 0o600, flag: "wx" });
-      args = [path];
+      args = [...plan.args!, path];
     }
     await new Promise<void>((resolve, reject) => {
-      const child = spawn(plan.executable!, args, {
+      const command = process.platform === "win32" && /\.(cmd|bat)$/i.test(plan.executable!)
+        ? invocation({ file: process.env.ComSpec || "cmd.exe", path: plan.executable, prefix: [], shell: "cmd" }, args)
+        : { file: plan.executable!, args, verbatim: false };
+      const child = spawn(command.file, command.args, {
+        windowsHide: true,
+        windowsVerbatimArguments: command.verbatim,
         cwd: homedir(),
         stdio: ["ignore", "pipe", "pipe"],
         detached: process.platform !== "win32",
-        env: { ...process.env, CI: "1", NO_COLOR: "1", TERM: "dumb", ...(plan.installer ? { CODEX_NON_INTERACTIVE: "1", CODEX_INSTALL_DIR: dirname(plan.binaryPath!) } : {}) },
+        env: { ...process.env, CI: "1", NO_COLOR: "1", TERM: "dumb", ...(plan.installer && !plan.install ? { CODEX_NON_INTERACTIVE: "1", CODEX_INSTALL_DIR: dirname(plan.binaryPath!) } : {}) },
       });
       const append = (chunk: Buffer) => {
         state.output = stripVTControlCharacters(
@@ -453,52 +489,91 @@ export function startProviderUpdate(
     message: "Checking the installed CLI…",
   };
   states.set(provider, state);
-  void (async () => {
-    try {
-      await prepare();
-      const plan = await updatePlan(provider, true);
-      if (!plan.executable)
-        throw new Error(
-          plan.reason || "No updater is available for this installation.",
-        );
-      Object.assign(state, {
-        binaryPath: plan.binaryPath,
-        method: plan.method,
-        command: plan.installer || [plan.executable, ...plan.args!].join(" "),
-      });
-      const before = await providers[provider].detect();
-      state.message = "Checking for updates and installing…";
-      await runUpdate(plan, state);
-      const after = await providers[provider].detect();
-      if (!after.available || !after.version)
-        throw new Error(
-          "The updater finished, but the CLI could not be verified. Check the output.",
-        );
-      state.version = after.version;
-      installed.delete(provider);
-      versions.delete(provider);
-      state.message =
-        before.version === after.version
-          ? `Update check complete. Installed: ${after.version}.`
-          : `Updated to ${after.version}.`;
-      await refresh();
-      state.status = "success";
-      bus.emit({
-        t: "toast",
-        level: "success",
-        text: `${providers[provider].label}: ${state.message}`,
-      });
-    } catch (error) {
-      state.status = "error";
-      state.message = (error as Error).message;
-      bus.emit({
-        t: "toast",
-        level: "error",
-        text: `${providers[provider].label} update failed: ${state.message}`,
-      });
-    } finally {
-      plans.delete(provider);
-    }
-  })();
+  void performProviderUpdate(provider, state, prepare, refresh, true);
   return state;
+}
+
+export function startProviderUpdates(
+  ids: ProviderId[],
+  prepare: (provider: ProviderId) => Promise<void>,
+  refresh: () => Promise<void>,
+): ProviderMaintenance[] {
+  if ([...states.values()].some(state => state.status === "updating"))
+    throw new Error("Wait for the current provider update to finish.");
+  const queued = [...new Set(ids)].map(provider => {
+    const state: ProviderMaintenance = { provider, status: "updating", available: true, install: false, message: "Queued for update…" };
+    states.set(provider, state);
+    return state;
+  });
+  void (async () => {
+    for (const state of queued)
+      await performProviderUpdate(state.provider, state, () => prepare(state.provider), refresh, false);
+  })();
+  return queued;
+}
+
+async function performProviderUpdate(
+  provider: ProviderId,
+  state: ProviderMaintenance,
+  prepare: () => Promise<void>,
+  refresh: () => Promise<void>,
+  allowInstall: boolean,
+): Promise<void> {
+  try {
+    await prepare();
+    const plan = await updatePlan(provider, true);
+    if (plan.install && !allowInstall) throw new Error("This provider is no longer installed. Install it separately.");
+    if (!plan.executable)
+      throw new Error(
+        plan.reason || "No updater is available for this installation.",
+      );
+    Object.assign(state, {
+      binaryPath: plan.binaryPath,
+      install: plan.install ?? false,
+      method: plan.method,
+      command: plan.installer || [plan.executable, ...plan.args!].join(" "),
+    });
+    const before = await providers[provider].detect();
+    state.message = plan.install ? "Installing provider…" : "Checking for updates and installing…";
+    await runUpdate(plan, state);
+    if (plan.install) {
+      const bin = plan.method === "npm" && process.platform === "win32"
+        ? plan.args![3]!
+        : join(homedir(), ".local", "bin");
+      if (!(process.env.PATH || "").split(delimiter).includes(bin))
+        process.env.PATH = `${bin}${delimiter}${process.env.PATH || ""}`;
+    }
+    clearCommandCache();
+    const after = await providers[provider].detect();
+    if (!after.available || !after.version)
+      throw new Error(
+        "The updater finished, but the CLI could not be verified. Check the output.",
+      );
+    state.version = after.version;
+    installed.delete(provider);
+    versions.delete(provider);
+    state.message =
+      plan.install
+        ? `Installed ${after.version}. Sign in to this provider to start using it.`
+        : before.version === after.version
+        ? `Update check complete. Installed: ${after.version}.`
+        : `Updated to ${after.version}.`;
+    await refresh();
+    state.status = "success";
+    bus.emit({
+      t: "toast",
+      level: "success",
+      text: `${providers[provider].label}: ${state.message}`,
+    });
+  } catch (error) {
+    state.status = "error";
+    state.message = (error as Error).message;
+    bus.emit({
+      t: "toast",
+      level: "error",
+      text: `${providers[provider].label} ${state.install ? "installation" : "update"} failed: ${state.message}`,
+    });
+  } finally {
+    plans.delete(provider);
+  }
 }

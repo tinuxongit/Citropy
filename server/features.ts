@@ -1,3 +1,4 @@
+import { nodeRuntimeStatus, installNodeRuntime } from "./node-runtime.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createEditorFile, readEditorFile, saveEditorFile } from "./editor.ts";
 import { tree } from "./files.ts";
@@ -12,7 +13,7 @@ import type { ReviewScope } from "../shared/review.ts";
 import { changeHunk, reviewWithModel } from "./review.ts";
 import { findContextPaths, findWorkspacePaths, inspectContext } from "./context.ts";
 import { copyToWorktree, removeWorktree } from "./worktree-actions.ts";
-import { providerMaintenance, startProviderUpdate, assertProviderReady } from "./providers/maintenance.ts";
+import { providerMaintenance, startProviderUpdate, startProviderUpdates, assertProviderReady } from "./providers/maintenance.ts";
 import { readGlobalInstructions, saveGlobalInstructions } from "./providers/instructions.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
 import { modelSettings } from "../shared/model-options.ts";
@@ -114,7 +115,7 @@ export async function handleFeatures(
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", "http://localhost");
   if (
-    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|computer|providers|shells)(\/|$)/.test(
+    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|computer|providers|runtimes|shells)(\/|$)/.test(
       url.pathname,
     )
   )
@@ -221,7 +222,18 @@ export async function handleFeatures(
       await generateThreadTitle(threadId ?? "");
       respond({ ok: true });
     } else if (url.pathname === "/api/providers/maintenance" && req.method === "GET") respond(await providerMaintenance(url.searchParams.get("refresh") === "1"));
-    else if (url.pathname === "/api/providers/update" && req.method === "POST") {
+    else if (url.pathname === "/api/runtimes/node" && req.method === "GET") respond(await nodeRuntimeStatus());
+    else if (url.pathname === "/api/runtimes/node" && req.method === "POST") respond(installNodeRuntime());
+    else if (url.pathname === "/api/providers/update-all" && req.method === "POST") {
+      const maintenance = await providerMaintenance(true);
+      const eligible = maintenance.filter(entry =>
+        entry.available && !entry.install && entry.binaryPath && entry.updateStatus !== "current" && !providerBusy(entry.provider));
+      respond(startProviderUpdates(eligible.map(entry => entry.provider), async provider => {
+        if (providerBusy(provider)) throw new Error("Finish or stop this provider’s active conversations before updating.");
+        reloadProviderSessions(new Set([provider]));
+        await waitForStoppedProcesses();
+      }, refreshProviders));
+    } else if (url.pathname === "/api/providers/update" && req.method === "POST") {
       const input = await body(req);
       if (!["claude", "codex", "opencode", "cursor"].includes(input.provider)) throw new Error("Unknown provider.");
       const provider = input.provider as ProviderId;

@@ -1,4 +1,4 @@
-import { environmentSignal, serverUrl } from "./environment.ts";
+import { environmentSignal, isRemote, serverUrl } from "./environment.ts";
 import { useApp } from "./store.ts";
 
 export async function api<T>(
@@ -13,7 +13,9 @@ export async function api<T>(
   });
   if (!response.headers.get("content-type")?.includes("application/json"))
     throw new Error(
-      "This feature is unavailable. Restart the Citropy server and try again.",
+      isRemote()
+        ? "This feature is unavailable on the remote server. Disconnect and reconnect this environment in Settings > Environments to load the latest backend after running tasks finish."
+        : "This feature is unavailable. Restart the Citropy server and try again.",
     );
   const data = await response.json().catch(() => ({}));
   signal.throwIfAborted();

@@ -429,7 +429,7 @@
 }
 
 .workspace-menu .workspace-folder-icon { color: var(--file-icon); }
-.workspace-menu .menu-search:focus-visible { outline: none; box-shadow: 0 0 8px var(--accent-line); }
+.workspace-menu .menu-search:focus-visible { outline: none; box-shadow: var(--field-focus-ring); }
 .workspace-menu .menu-section { padding-top: 12px; }
 .workspace-menu .menu-item[data-danger] .menu-icon { color: var(--heat); }
 .workspace-menu .menu-item[data-danger]:hover .menu-icon { color: var(--bad); }

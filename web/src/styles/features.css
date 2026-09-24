@@ -45,7 +45,7 @@
 .feature-field select:focus,
 .feature-inline input:focus {
   outline: none;
-  box-shadow: 0 0 8px var(--accent-line);
+  box-shadow: var(--field-focus-ring);
 }
 .feature-field input:disabled,
 .feature-field select:disabled {
@@ -290,13 +290,14 @@
 }
 .feature-search:focus-within {
   background: var(--raised-2);
-  box-shadow: 0 0 8px var(--accent-line);
+  box-shadow: var(--field-focus-ring);
 }
 .feature-search svg {
   flex: none;
   color: var(--text-3);
 }
 .feature-search input {
+  box-shadow: none;
   width: 100%;
   min-width: 0;
   background: transparent;

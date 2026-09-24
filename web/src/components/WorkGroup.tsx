@@ -12,6 +12,7 @@ import { PixelLoader } from "./PixelLoader.tsx";
 
 export const WorkGroup = memo(function WorkGroup({ ids }: { ids: string[] }) {
   const t = useI18n();
+  const showFailedTools = useApp(state => state.showFailedTools);
   const [open, setOpen] = useDisclosure(ids[0], "group");
   const tools = useApp(useShallow((state) =>
     ids.map((id) => state.parts[id]).filter((part): part is ToolPart => part?.kind === "tool"),
@@ -43,7 +44,7 @@ export const WorkGroup = memo(function WorkGroup({ ids }: { ids: string[] }) {
         </span>
         <span className="group-label truncate">{sentence}</span>
         {stats.running && <PixelLoader size={12} className="tool-spin" role="img" aria-label={t("running")} />}
-        {stats.failed > 0 && (
+        {showFailedTools && stats.failed > 0 && (
           <span className="group-failed" role="img" aria-label={t(stats.failed === 1 ? "{count} failed tool" : "{count} failed tools", { count: stats.failed })}>
             <AlertTriangle size={11} aria-hidden="true" />
             {stats.failed}

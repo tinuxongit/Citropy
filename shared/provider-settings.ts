@@ -4,6 +4,7 @@ export interface ProviderMaintenance {
   provider: ProviderId;
   status: "idle" | "updating" | "success" | "error";
   available: boolean;
+  install?: boolean;
   updateStatus?: "available" | "current" | "unknown";
   latestVersion?: string;
   checkedAt?: number;

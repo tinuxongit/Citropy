@@ -62,6 +62,28 @@ test("sidebar mode shows compact conversations across open projects", { timeout:
   });
   await page.goto(server.resolvedUrls.local[0]);
   await page.locator('.rail[data-sidebar-mode="workspaces"]').waitFor();
+  const checkContextMenu = async title => {
+    const row = page.getByRole('button', { name: title, exact: true });
+    const selected = await page.evaluate(async () => (await import('/web/src/lib/store.ts')).useApp.getState().activeThreadId);
+    await row.click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Rename…', exact: true }).waitFor();
+    assert.equal(await page.evaluate(async () => (await import('/web/src/lib/store.ts')).useApp.getState().activeThreadId), selected);
+    await row.click({ button: 'right' });
+    assert.equal(await page.getByRole('menu').count(), 1);
+    await page.getByRole('menuitem', { name: 'Rename…', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Rename conversation', exact: true });
+    await dialog.waitFor();
+    assert.equal(await dialog.getByRole('textbox').inputValue(), title);
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await dialog.waitFor({ state: 'detached' });
+    await row.focus();
+    await page.keyboard.press('Shift+F10');
+    await page.getByRole('menuitem', { name: 'Rename…', exact: true }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.getByRole('menu').waitFor({ state: 'detached' });
+    assert.equal(await page.getByRole('button', { name: `Organize ${title}`, exact: true }).evaluate(node => node === document.activeElement), true);
+  };
+  await checkContextMenu('Pinned project task');
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.locator('button[data-settings-section="application"]').click();
   const mode = page.getByLabel("Sidebar mode");
@@ -72,6 +94,7 @@ test("sidebar mode shows compact conversations across open projects", { timeout:
   const sidebar = page.locator('.rail[data-sidebar-mode="global"]');
   const second = sidebar.locator('.thread-category[data-category="project:second"]');
   await second.getByRole("button", { name: "Second project task", exact: true }).waitFor();
+  await checkContextMenu('Second project task');
   assert.equal(await page.locator('.topbar .workspace-select').count(), 0);
   assert.equal(await page.locator('.topbar .breadcrumb-separator').count(), 0);
   assert.equal(await sidebar.locator('.thread-category').first().getAttribute('data-category'), 'pinned');

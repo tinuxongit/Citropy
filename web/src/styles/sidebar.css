@@ -306,7 +306,7 @@
   border-radius: var(--r-sm);
   background: var(--panel);
   color: var(--text-3);
-  transition: background var(--dur-fast), box-shadow var(--dur-fast);
+  transition: background var(--dur-fast), box-shadow var(--dur-base) var(--ease-out);
 }
 
 .thread-toolbar {
@@ -333,7 +333,7 @@
 
 .thread-search:focus-within {
   background: var(--raised);
-  box-shadow: 0 0 8px var(--accent-line);
+  box-shadow: var(--field-focus-ring);
 }
 .thread-search input {
   min-width: 0;

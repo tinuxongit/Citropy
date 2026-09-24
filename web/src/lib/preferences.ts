@@ -72,6 +72,11 @@ export function setTextStreaming(value: boolean): void {
   environmentStorage.setItem("citropy.textStreaming", value ? "1" : "0");
 }
 
+export function setShowFailedTools(value: boolean): void {
+  useApp.setState({ showFailedTools: value });
+  environmentStorage.setItem("citropy.showFailedTools", value ? "1" : "0");
+}
+
 export function setShowGitHubIdentity(value: boolean): void {
   useApp.setState({ showGitHubIdentity: value });
   environmentStorage.setItem("citropy.showGitHubIdentity", value ? "1" : "0");
