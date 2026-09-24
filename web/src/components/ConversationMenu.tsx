@@ -19,25 +19,28 @@ import { Menu } from "./Menu.tsx";
 import { Modal } from "./Modal.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
+import type { CachedThread } from "../lib/environment.ts";
 import { useApp, confirmAction } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
 
-export async function organizeConversation(id: string, patch: object) {
+export async function organizeConversation(id: string, patch: object, environment?: string) {
   await api(`threads/organize?threadId=${id}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
-  });
+  }, environment);
 }
 
 export function ConversationMenu({
   thread,
+  environment,
   onMove,
 }: {
-  thread: ThreadMeta;
-  onMove: (direction: number) => void;
+  thread: CachedThread & Partial<ThreadMeta>;
+  environment?: string;
+  onMove?: (direction: number) => void;
 }) {
   const t = useI18n();
-  const project = useApp(state => state.projects.find(project => project.id === thread.projectId));
+  const project = useApp(state => environment ? undefined : state.projects.find(project => project.id === thread.projectId));
   const worktree = async (action: "copy" | "remove") => {
     if (!await confirmAction({ title: t(action === "copy" ? "Continue in a new worktree?" : "Remove this worktree?"), description: t(action === "copy" ? "Copy the current changes to a new branch and continue this task there. Changes remain in the original folder. The copied changes start unstaged." : "Only a clean worktree unused by other tasks can be removed. The branch and conversation history stay available."), label: t(action === "copy" ? "Copy and continue" : "Remove worktree"), danger: action === "remove" })) return;
     setBusy(true);
@@ -52,7 +55,7 @@ export function ConversationMenu({
   const [generatingTitle, setGeneratingTitle] = useState(false);
   const regenerateTitle = async () => {
     setGeneratingTitle(true);
-    try { await api(`threads/title?threadId=${encodeURIComponent(thread.id)}`, { method: "POST" }); }
+    try { await api(`threads/title?threadId=${encodeURIComponent(thread.id)}`, { method: "POST" }, environment); }
     catch (error) { reportError(error); }
     finally { setGeneratingTitle(false); }
   };
@@ -68,19 +71,20 @@ export function ConversationMenu({
     setError("");
   };
   const update = (patch: object) =>
-    organizeConversation(thread.id, patch).catch(reportError);
+    organizeConversation(thread.id, patch, environment).catch(reportError);
   const save = async () => {
     setBusy(true);
     setError("");
     try {
       if (editing === "title")
-        await organizeConversation(thread.id, { title: value.trim() });
+        await organizeConversation(thread.id, { title: value.trim() }, environment);
       else
         await organizeConversation(
           thread.id,
           editing === "snooze"
             ? { snoozedUntil: new Date(value).getTime() }
             : { pullRequest: value.trim() },
+          environment,
         );
       setEditing(undefined);
     } catch (error) {
@@ -117,26 +121,28 @@ export function ConversationMenu({
             disabled: generatingTitle,
             onSelect: () => void regenerateTitle(),
           }] : []),
-          {
-            id: "up",
-            label: t("Move up"),
-            icon: <ArrowUp size={15} />,
-            onSelect: () => onMove(-1),
-          },
-          {
-            id: "down",
-            label: t("Move down"),
-            icon: <ArrowDown size={15} />,
-            onSelect: () => onMove(1),
-          },
-          {
+          ...(onMove ? [
+            {
+              id: "up",
+              label: t("Move up"),
+              icon: <ArrowUp size={15} />,
+              onSelect: () => onMove(-1),
+            },
+            {
+              id: "down",
+              label: t("Move down"),
+              icon: <ArrowDown size={15} />,
+              onSelect: () => onMove(1),
+            },
+          ] : []),
+          ...(!environment ? [{
             id: "pr",
             label: thread.pullRequest
               ? t("Edit pull request link…")
               : t("Link pull request…"),
             icon: <GitPullRequest size={15} />,
             onSelect: () => edit("pullRequest"),
-          },
+          }] : []),
           ...(!thread.running
             ? [
                 {

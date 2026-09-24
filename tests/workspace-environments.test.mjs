@@ -17,6 +17,7 @@ test("folder controls work across environments without entering a conversation",
   page.setDefaultTimeout(15000);
   const errors = [];
   const commands = [];
+  const requests = [];
   const feeds = new Map();
   const sockets = new Map();
   const threads = { local: [], "ssh-test": [] };
@@ -50,7 +51,11 @@ test("folder controls work across environments without entering a conversation",
       updateState: async () => ({ status: "idle", version: "test" }), onUpdateState: () => () => {},
     };
   }, projects);
-  await page.route("**/api/**", route => route.fulfill({ json: {}, headers: { "access-control-allow-origin": "*" } }));
+  await page.route("**/api/**", route => {
+    const request = route.request();
+    if (request.method() !== "OPTIONS") requests.push({ url: request.url(), method: request.method(), body: request.postData() });
+    return route.fulfill({ json: {}, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, PATCH, DELETE", "access-control-allow-headers": "Content-Type" } });
+  });
   await page.routeWebSocket("**/socket*", socket => {
     const environment = socket.url().includes(":49121/") ? "ssh-test" : "local";
     if (new URL(socket.url()).searchParams.has("workspace")) {
@@ -142,14 +147,42 @@ test("folder controls work across environments without entering a conversation",
     assert.deepEqual(await state(), ["local", "shared", null]);
     assert.equal(await page.getByRole("dialog", { name: "Rename project", exact: true }).count(), 0);
     await page.evaluate(() => { window.failConnection = false; });
+    const connections = await page.evaluate(() => window.hostConnections.length);
     await edit("ssh-test", "second", "Remove project");
-    await page.getByRole("dialog", { name: "Remove project?", exact: true }).getByRole("button", { name: "Remove project", exact: true }).click();
+    await Promise.all([
+      page.waitForRequest(request => request.method() === "DELETE" && request.url() === "http://127.0.0.1:49121/api/projects?projectId=second"),
+      page.getByRole("dialog", { name: "Remove project?", exact: true }).getByRole("button", { name: "Remove project", exact: true }).click(),
+    ]);
+    projects["ssh-test"] = projects["ssh-test"].filter(project => project.id !== "second");
+    feeds.get("ssh-test").send(JSON.stringify({ t: "project.remove", id: "second" }));
     await heading("ssh-test", "second").waitFor({ state: "detached" });
     assert.ok(projects.local.some(project => project.id === "second"));
-    assert.ok(commands.some(event => event.t === "project.close" && event.environment === "ssh-test" && event.id === "second"));
+    assert.equal(await page.evaluate(() => window.hostConnections.length), connections);
+    assert.deepEqual(await state(), ["local", "shared", null]);
+  });
+  await t.test("the workspace picker removes folders from any host", async () => {
+    const added = { id: "picker-folder", name: "Picker folder", path: "/workspace/picker", isGit: false, lastOpened: 3 };
+    projects["ssh-test"].push(added);
+    feeds.get("ssh-test").send(JSON.stringify({ t: "project.upsert", project: added }));
+    await heading("ssh-test", added.id).waitFor();
+    await page.getByRole("button", { name: "Add project", exact: true }).click();
+    const menu = page.getByRole("menu");
+    if (await menu.getByRole("menuitem", { name: "Picker folder" }).count() === 0) await menu.getByRole("menuitem", { name: "Build server" }).click();
+    await Promise.all([
+      page.waitForRequest(request => request.method() === "DELETE" && request.url() === "http://127.0.0.1:49121/api/projects?projectId=picker-folder"),
+      (async () => {
+        await menu.getByRole("button", { name: "Remove project Picker folder", exact: true }).click();
+        await page.getByRole("dialog", { name: "Remove project?", exact: true }).getByRole("button", { name: "Remove project", exact: true }).click();
+      })(),
+    ]);
+    feeds.get("ssh-test").send(JSON.stringify({ t: "project.remove", id: added.id }));
+    await heading("ssh-test", added.id).waitFor({ state: "detached" });
+    assert.deepEqual(await state(), ["local", "shared", null]);
   });
   assert.ok(!commands.some(event => ["thread.load", "thread.create", "thread.send"].includes(event.t)));
   await t.test("inactive hosts keep live activity with both current and older SSH backends", async () => {
+    await edit("ssh-test", "shared", "Open workspace");
+    await page.waitForFunction(async () => (await import("/web/src/lib/environment.ts")).environmentId() === "ssh-test");
     const thread = environment => ({ id: "same-thread", projectId: "shared", provider: "codex", title: `${environment} task`, createdAt: 1, updatedAt: 1, status: "working", running: true, model: "test", permissionMode: "full", usage: {}, unread: false });
     threads.local.push(thread("local"));
     threads["ssh-test"].push(thread("ssh-test"));
@@ -197,6 +230,36 @@ test("folder controls work across environments without entering a conversation",
     await row("ssh-test").waitFor({ state: "detached" });
     assert.equal(await row("local").count(), 1);
     assert.ok(!commands.some(event => event.background));
+  });
+  await t.test("threads on an inactive host can be edited without switching to it", async () => {
+    const remote = { id: "remote-thread", projectId: "shared", provider: "codex", title: "Remote task", createdAt: 1, updatedAt: 1, status: "idle", running: false };
+    feeds.get("ssh-test").send(JSON.stringify({ t: "workspace.thread", thread: remote }));
+    const row = page.locator('.thread-entry[data-environment="ssh-test"][data-thread-id="remote-thread"]');
+    const connections = await page.evaluate(() => window.hostConnections.length);
+    await row.waitFor();
+    const sent = (method, path) => requests.find(request => request.method === method && request.url.startsWith(`http://127.0.0.1:49121/api/${path}`));
+    await row.hover();
+    await row.getByRole("button", { name: "Organize Remote task", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Rename…", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Rename conversation", exact: true });
+    await dialog.getByRole("textbox").fill("Renamed remote task");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.waitFor({ state: "detached" });
+    assert.deepEqual(JSON.parse(sent("PATCH", "threads/organize?threadId=remote-thread").body), { title: "Renamed remote task" });
+    await row.hover();
+    const [finish] = await Promise.all([
+      page.waitForRequest(request => request.method() === "POST" && request.url() === "http://127.0.0.1:49121/api/threads/finish?threadId=remote-thread"),
+      row.getByRole("button", { name: "Finish Remote task", exact: true }).click(),
+    ]);
+    assert.deepEqual(JSON.parse(finish.postData()), { finished: true });
+    await row.hover();
+    await row.getByRole("button", { name: "Delete Remote task", exact: true }).click();
+    await Promise.all([
+      page.waitForRequest(request => request.method() === "DELETE" && request.url() === "http://127.0.0.1:49121/api/threads?threadId=remote-thread"),
+      page.getByRole("dialog").getByRole("button", { name: "Delete conversation", exact: true }).click(),
+    ]);
+    assert.deepEqual(await state(), ["local", "shared", "same-thread"]);
+    assert.equal(await page.evaluate(() => window.hostConnections.length), connections);
   });
   assert.ok(!commands.some(event => ["thread.create", "thread.send"].includes(event.t)));
   assert.deepEqual(errors, []);

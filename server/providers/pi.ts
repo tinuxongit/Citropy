@@ -12,7 +12,9 @@ import { MessageUsage } from "./message-usage.ts";
 
 type RecordValue = Record<string, any>;
 
-const approvalExtension = fileURLToPath(new URL("./pi-approval.mjs", import.meta.url));
+const piThinkingLevels = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+
+const approvalExtension =fileURLToPath(new URL("./pi-approval.mjs", import.meta.url));
 
 function modelId(model: RecordValue | undefined): string | undefined {
   return typeof model?.provider === "string" && typeof model?.id === "string" ? `${model.provider}/${model.id}` : undefined;
@@ -60,7 +62,10 @@ async function discoverPiModels(): Promise<ModelOption[]> {
       const models = available.filter((model: RecordValue) => modelId(model)).map((model: RecordValue) => ({
         id: modelId(model)!, label: model.name || model.id, hint: model.provider,
         contextMax: model.contextWindow,
-        efforts: model.reasoning ? ["off", "minimal", "low", "medium", "high", "xhigh", "max"] : [],
+        efforts: model.reasoning ? piThinkingLevels.filter(level => {
+          const mapped = model.thinkingLevelMap?.[level];
+          return mapped !== null && (mapped !== undefined || (level !== "xhigh" && level !== "max"));
+        }) : [],
         isDefault: modelId(model) === selected,
       }));
       finish(undefined, models);

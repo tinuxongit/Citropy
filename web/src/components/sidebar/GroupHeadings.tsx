@@ -55,7 +55,11 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
       label: t("Remove project"),
       danger: true,
     });
-    if (confirmed) await run(() => closeProject(project.id));
+    if (!confirmed) return;
+    setPending(true);
+    try { await closeProject(project.id, environment); }
+    catch (error) { reportError(error); }
+    finally { setPending(false); }
   };
   const openMenu = (element: HTMLElement) => {
     const button = element.querySelector<HTMLButtonElement>(".global-project-edit");

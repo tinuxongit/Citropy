@@ -88,6 +88,13 @@ export function isRemote(): boolean { return initial.activeId !== "local"; }
 export function environmentName(): string { return initial.connections.find(entry => entry.id === initial.activeId)?.name || "Local"; }
 export function connectionName(id: string): string { return initial.connections.find(entry => entry.id === id)?.name || id; }
 export function serverUrl(path: string): string { return `${initial.endpoint}${path}`; }
+export function environmentUrl(id: string, path: string): string {
+  if (id === initial.activeId) return serverUrl(path);
+  if (id === "local") return path;
+  const connection = initial.connections.find(entry => entry.id === id);
+  if (connection?.status !== "connected" || !connection.endpoint) throw new Error(`Connect to ${connection?.name ?? id} to change its conversations.`);
+  return `${connection.endpoint}${path}`;
+}
 
 export function useEnvironments(): EnvironmentState {
   return useSyncExternalStore(subscribe, () => initial);

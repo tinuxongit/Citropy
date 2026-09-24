@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createEditorFile, readEditorFile, saveEditorFile } from "./editor.ts";
 import { tree } from "./files.ts";
 import { store } from "./store.ts";
+import { closeProject } from "./routes/projects.ts";
 import { answerQuestion } from "./questions.ts";
 import { stopShell } from "./shells.ts";
 import { dev, developmentOrigin } from "./config.ts";
@@ -311,6 +312,10 @@ export async function handleFeatures(
       const defaults = settings(input.settings ?? {}, providers, true);
       store.configureProjectDefaults(defaults);
       respond(defaults);
+    } else if (url.pathname === "/api/projects" && req.method === "DELETE") {
+      if (!store.projects.has(projectId ?? "")) throw new Error("Workspace not found");
+      await closeProject(projectId!);
+      respond({ ok: true });
     } else if (url.pathname === "/api/projects" && req.method === "PATCH") {
       const input = await body(req);
       const project = store.projects.get(projectId ?? "");
@@ -417,6 +422,16 @@ export async function handleFeatures(
       input.ids.forEach((id: string, index: number) =>
         store.organizeThread(id, { position: index }),
       );
+      respond({ ok: true });
+    } else if (url.pathname === "/api/threads/finish" && req.method === "POST") {
+      const input = await body(req);
+      if (!store.threads.has(threadId ?? "")) throw new Error("Conversation not found");
+      store.setThreadFinished(threadId!, input.finished);
+      respond({ ok: true });
+    } else if (url.pathname === "/api/threads" && req.method === "DELETE") {
+      if (!store.threads.has(threadId ?? "")) throw new Error("Conversation not found");
+      disposeRuntime(threadId!);
+      store.removeThread(threadId!);
       respond({ ok: true });
     } else if (url.pathname === "/api/threads/transfer" && req.method === "POST") {
       const input = await body(req);

@@ -8,6 +8,20 @@ import { store } from "../store.ts";
 import * as terminals from "../terminals.ts";
 import type { Routes } from "./types.ts";
 
+export async function closeProject(id: string): Promise<void> {
+  for (const panel of panelList()) {
+    if (panel.projectId !== id) continue;
+    await terminals.close(panel.id);
+    await browser.closeBrowser(panel.id);
+    closePanel(panel.id);
+  }
+  for (const thread of store.threads.values()) {
+    if (thread.projectId === id) disposeRuntime(thread.id);
+  }
+  store.closeProject(id);
+  forgetGit(id);
+}
+
 export const projectRoutes: Routes = {
   "project.choose": async (event, send) => {
     try {
@@ -31,17 +45,5 @@ export const projectRoutes: Routes = {
     if (!name || name.length > 80) throw new Error("Project name must be between 1 and 80 characters.");
     store.updateProject(event.id, { name });
   },
-  "project.close": async (event) => {
-    for (const panel of panelList()) {
-      if (panel.projectId !== event.id) continue;
-      await terminals.close(panel.id);
-      await browser.closeBrowser(panel.id);
-      closePanel(panel.id);
-    }
-    for (const thread of store.threads.values()) {
-      if (thread.projectId === event.id) disposeRuntime(thread.id);
-    }
-    store.closeProject(event.id);
-    forgetGit(event.id);
-  },
+  "project.close": (event) => closeProject(event.id),
 };

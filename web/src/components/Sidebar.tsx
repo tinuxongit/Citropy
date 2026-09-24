@@ -189,7 +189,7 @@ export function Sidebar({
     query={query}
     match={matches?.find((result) => result.threadId === thread.id)}
     projectName={!globalMode && query.trim() && allProjects ? (projects.find((project) => project.id === thread.projectId)?.name ?? "") : undefined}
-    categoryEnd={!globalMode && groups.some((group) => group.threads.at(-1)?.id === thread.id)}
+    categoryEnd={groups.some((group) => !group.cachedThreads?.length && group.threads.at(-1)?.id === thread.id)}
     drag={threadDrag}
     preview={preview}
     tree={tree}
@@ -202,14 +202,14 @@ export function Sidebar({
     if (virtualized) return list.getVirtualItems().filter((item) => rows[item.index]?.group.id === group.id).map((item) => {
       const row = rows[item.index]!;
       return <div key={item.key} data-index={item.index} ref={list.measureElement} className="thread-list-item" style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${item.start}px)` }}>
-        {row.thread ? renderThread(row.thread) : row.cached ? <CachedThreadRow thread={row.cached} environment={group.environment!} connected={Boolean(catalog[group.environment!]?.connected)} onConversation={onConversation} /> : row.empty ? renderEmpty(group) : renderHeading(group)}
+        {row.thread ? renderThread(row.thread) : row.cached ? <CachedThreadRow thread={row.cached} categoryEnd={row.cached === group.cachedThreads?.at(-1)} environment={group.environment!} connected={Boolean(catalog[group.environment!]?.connected)} onConversation={onConversation} /> : row.empty ? renderEmpty(group) : renderHeading(group)}
       </div>;
     });
     return <>
       {renderHeading(group)}
       <Collapsible open={group.open || Boolean(query)} className="thread-category-content">
         {group.threads.map((thread) => <div className="thread-list-item" key={thread.id}>{renderThread(thread)}</div>)}
-        {group.cachedThreads?.map((thread) => <div className="thread-list-item" key={thread.id}><CachedThreadRow thread={thread} environment={group.environment!} connected={Boolean(catalog[group.environment!]?.connected)} onConversation={onConversation} /></div>)}
+        {group.cachedThreads?.map((thread) => <div className="thread-list-item" key={thread.id}><CachedThreadRow thread={thread} categoryEnd={thread === group.cachedThreads?.at(-1)} environment={group.environment!} connected={Boolean(catalog[group.environment!]?.connected)} onConversation={onConversation} /></div>)}
         {group.project && !query && !group.threads.length && !group.cachedThreads?.length && renderEmpty(group)}
       </Collapsible>
     </>;

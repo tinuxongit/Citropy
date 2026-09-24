@@ -105,8 +105,9 @@ export function openProject(path: string): void {
   send({ t: "project.open", path });
 }
 
-export function closeProject(id: string): void {
-  send({ t: "project.close", id });
+export async function closeProject(id: string, environment = environmentId()): Promise<void> {
+  if (environment === environmentId()) send({ t: "project.close", id });
+  else await api(`projects?projectId=${encodeURIComponent(id)}`, { method: "DELETE" }, environment);
 }
 
 export function rememberThreadSettings(thread: Pick<ThreadMeta, "provider" | "model" | "effort" | "contextWindow" | "fastMode">): void {

@@ -689,19 +689,34 @@
 
 .rail[data-sidebar-mode="global"] .thread-toolbar > .menu-wrap { flex: none; width: 36px; height: 36px; }
 .rail[data-sidebar-mode="global"] .thread-entry { margin: 0; padding: 1px 0 1px 24px; }
-.rail[data-sidebar-mode="global"] .thread-entry::after { display: none; }
-.rail[data-sidebar-mode="global"] .thread-entry::before,
-.global-project-empty::before {
+.rail[data-sidebar-mode="global"] .thread-entry::before {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
   left: 15px;
-  width: 1px;
-  background: var(--line-strong);
+  width: 2px;
+  background: var(--tree-line);
   pointer-events: none;
 }
-.global-project-empty::before { left: -9px; }
+.rail[data-sidebar-mode="global"] .thread-entry[data-category-end="true"]::before { bottom: auto; height: 11px; }
+.rail[data-sidebar-mode="global"] .thread-entry::after,
+.global-project-empty::before {
+  content: "";
+  position: absolute;
+  top: 11px;
+  right: auto;
+  bottom: auto;
+  left: 15px;
+  width: 8px;
+  height: 7px;
+  border-left: 2px solid var(--tree-line);
+  border-bottom: 2px solid var(--tree-line);
+  border-bottom-left-radius: 6px;
+  background: none;
+  pointer-events: none;
+}
+.global-project-empty::before { top: 0; left: -9px; height: 15px; }
 .rail[data-sidebar-mode="global"] .thread-row-body { padding: 6px 8px; }
 .rail[data-sidebar-mode="global"] .thread-row-heading { align-items: center; }
 .rail[data-sidebar-mode="global"] .thread-row-heading .provider-icon { width: 14px; height: 14px; align-self: center; margin: 0; }
