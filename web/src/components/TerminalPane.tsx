@@ -96,6 +96,8 @@ export function TerminalPane({
     if (term.current) term.current.options.cursorBlink = active && connected;
     if (!active || !connected || !host.current || signal.aborted) return;
     if (term.current) {
+      term.current.options.theme = useApp.getState().theme === "light" ? LIGHT : DARK;
+      term.current.options.fontSize = 13 * useApp.getState().uiScale / 100;
       fit.current?.fit();
       if (!attached.current) {
         term.current.reset();
@@ -190,6 +192,7 @@ export function TerminalPane({
   }, [active, projectId, connected, panel.id]);
 
   useEffect(() => {
+    if (!active || !connected) return;
     return onTerminal((event) => {
       if (event.termId !== panel.id) return;
       if (event.t === "term.data") {
@@ -200,15 +203,15 @@ export function TerminalPane({
       else
         term.current?.writeln(`\r\n${t("[process exited with code {code}]", { code: event.code ?? "?" })}`);
     });
-  }, [panel.id, t]);
+  }, [active, connected, panel.id, t]);
 
   useEffect(() => {
-    if (!term.current) return;
+    if (!active || !term.current) return;
     term.current.options.theme = theme === "light" ? LIGHT : DARK;
   }, [theme]);
 
   useEffect(() => {
-    if (!term.current) return;
+    if (!active || !term.current) return;
     term.current.options.fontSize = 13 * uiScale / 100;
     fit.current?.fit();
   }, [uiScale]);

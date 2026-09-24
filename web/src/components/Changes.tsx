@@ -20,27 +20,29 @@ function statusLabel(file: GitFile, t: ReturnType<typeof useI18n>): string {
   return t("changed");
 }
 
-function Row({ file, projectId, open, onToggle, expanded, onExpand }: { file: GitFile; projectId: string; open: boolean; onToggle: () => void; expanded: boolean; onExpand: () => void }) {
+function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { file: GitFile; projectId: string; active: boolean; open: boolean; onToggle: () => void; expanded: boolean; onExpand: () => void }) {
   const t = useI18n();
   const [patch, setPatch] = useState<FilePatch | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!open) return;
+    if (!active || !open) return;
     let cancelled = false;
-    setPatch(null);
     setError("");
     setLoading(true);
     void fetchDiff(projectId, file.path, file.staged).then((result) => {
       if (!cancelled) setPatch(result);
     }).catch((error: Error) => {
-      if (!cancelled) setError(error.message);
+      if (!cancelled) {
+        setPatch(null);
+        setError(error.message);
+      }
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [open, projectId, file.path, file.staged, file.added, file.removed]);
+  }, [active, open, projectId, file.path, file.staged, file.added, file.removed]);
 
   const name = file.path.split("/").pop() ?? file.path;
   const dir = file.path.slice(0, file.path.length - name.length).replace(/\/$/, "");
@@ -86,7 +88,7 @@ function Row({ file, projectId, open, onToggle, expanded, onExpand }: { file: Gi
   );
 }
 
-export function Changes() {
+export function Changes({ active = true }: { active?: boolean }) {
   const t = useI18n();
   const projectId = useApp((state) => state.activeProjectId);
   const git = useApp((state) => (projectId ? state.git[projectId] : undefined));
@@ -110,8 +112,8 @@ export function Changes() {
   });
 
   useEffect(() => {
-    if (projectId) refreshGit(projectId);
-  }, [projectId]);
+    if (active && projectId) refreshGit(projectId);
+  }, [active, projectId]);
 
   if (!projectId) return <div className="pane-empty">{t("Open a workspace first.")}</div>;
   if (!git) return <div className="pane-empty">{t("Not a git repository.")}</div>;
@@ -125,7 +127,7 @@ export function Changes() {
             const { file, group } = rows[item.index]!;
             return (
               <div className="changes-row" key={item.key} data-index={item.index} ref={list.measureElement} style={{ transform: `translateY(${item.start}px)` }}>
-                {group ? <h3 className="change-category" data-kind={group.kind}>{t(group.label)}<span>{group.files.length}</span></h3> : file && <Row file={file} projectId={projectId} open={openFiles.has(file.path)} expanded={expandedFiles.has(file.path)} onExpand={() => setExpandedFiles((previous) => new Set(previous).add(file.path))} onToggle={() => setOpenFiles((previous) => {
+                {group ? <h3 className="change-category" data-kind={group.kind}>{t(group.label)}<span>{group.files.length}</span></h3> : file && <Row file={file} projectId={projectId} active={active} open={openFiles.has(file.path)} expanded={expandedFiles.has(file.path)} onExpand={() => setExpandedFiles((previous) => new Set(previous).add(file.path))} onToggle={() => setOpenFiles((previous) => {
                   const next = new Set(previous);
                   if (next.has(file.path)) next.delete(file.path);
                   else next.add(file.path);

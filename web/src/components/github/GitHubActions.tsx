@@ -50,8 +50,19 @@ export function GitHubActions({
   const active = detail.data?.run.status !== "completed";
   useEffect(() => {
     if (!list.data?.items.some((run) => run.status !== "completed")) return;
-    const timer = setInterval(refresh, 20_000);
-    return () => clearInterval(timer);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const resume = () => {
+      clearInterval(timer);
+      if (document.hidden) return;
+      refresh();
+      timer = setInterval(refresh, 20_000);
+    };
+    if (!document.hidden) timer = setInterval(refresh, 20_000);
+    document.addEventListener("visibilitychange", resume);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", resume);
+    };
   }, [list.data, selected]);
   return (
     <div className="github-workspace">

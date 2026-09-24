@@ -296,7 +296,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                 "files" ? (
                 <FileTree />
               ) : panel.kind === "changes" ? (
-                <Changes key={`${projectId}:${threadId}`} />
+                <Changes key={`${projectId}:${threadId}`} active={active} />
               ) : panel.kind === "subagents" ? (
                 <SubagentsPane />
               ) : (

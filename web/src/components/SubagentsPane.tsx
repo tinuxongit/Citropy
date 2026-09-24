@@ -1,5 +1,6 @@
 import { useI18n } from "../lib/i18n.ts";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { ChevronDown, ChevronUp, History } from "lucide-react";
 import { groupSubagents } from "../lib/subagents.ts";
 import { Collapsible } from "./Collapsible.tsx";
@@ -13,16 +14,17 @@ import { modelLabel } from "../lib/format.ts";
 
 export function SubagentsPane() {
   const t = useI18n();
-  const threads = useApp((state) => state.threads);
-  const activeId = useApp((state) => state.activeThreadId);
+  const parentId = useApp((state) => {
+    const activeId = state.activeThreadId;
+    return activeId ? state.threads[activeId]?.parentThreadId ?? activeId : activeId;
+  });
   const providers = useApp((state) => state.providers);
   const connected = useApp((state) => state.connected);
-  const active = activeId ? threads[activeId] : undefined;
-  const parentId = active?.parentThreadId ?? activeId;
-  const children = Object.values(threads)
-    .filter((thread) => thread.parentThreadId === parentId)
-    .sort((a, b) => a.createdAt - b.createdAt);
-  const { current, earlier } = groupSubagents(children);
+  const children = useApp(useShallow((state) => Object.values(state.threads)
+    .filter((thread) => thread.parentThreadId === parentId)));
+  const { current, earlier } = useMemo(() => groupSubagents(
+    children.toSorted((a, b) => a.createdAt - b.createdAt),
+  ), [children]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const renderChild = (child: (typeof children)[number]) => (
     <div className="subagent-item" key={child.id}>
