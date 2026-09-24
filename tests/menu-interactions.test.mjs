@@ -25,6 +25,8 @@ test("menu surfaces retain focus while outside interaction and selection dismiss
     import '/web/src/styles/tokens.css';
     import '/web/src/styles/base.css';
     import '/web/src/styles/overlays.css';
+    import '/web/src/styles/composer.css';
+    import '/web/src/styles/app.css';
     const h = React.createElement;
     useApp.setState({ uiScale: 100, providers: [{ id: 'claude', label: 'Claude', available: true, enabled: true, models: [{ id: 'fast', label: 'Fast' }] }] });
     createRoot(document.getElementById('fixture')).render(h('div', null,
@@ -52,6 +54,11 @@ test("menu surfaces retain focus while outside interaction and selection dismiss
     await menu.getByRole('textbox', { name: 'Search models', exact: true }).fill('no matching models');
     await menu.locator('.menu-empty').click();
     assert.equal(await menu.count(), 1);
+    assert.equal(await menu.getByRole('textbox', { name: 'Search models', exact: true }).inputValue(), 'no matching models');
+    await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'detached' });
+    await page.getByRole('button', { name: 'Model: Fast', exact: true }).click();
+    assert.equal(await menu.getByRole('textbox', { name: 'Search models', exact: true }).inputValue(), '');
     await page.keyboard.press('Escape');
     await menu.waitFor({ state: 'detached' });
     await page.getByRole('button', { name: 'Open menu', exact: true }).click();

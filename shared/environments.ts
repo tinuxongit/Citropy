@@ -13,5 +13,6 @@ export interface EnvironmentState {
   connections: (SshConnection & {
     status: "disconnected" | "connecting" | "connected" | "error";
     message?: string;
+    endpoint?: string;
   })[];
 }

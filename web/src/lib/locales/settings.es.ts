@@ -1,4 +1,17 @@
 export const settingsEs: Record<string, string> = {
+  "Could not copy terminal selection. Try your browser’s Copy command.": "No se pudo copiar la selección del terminal. Prueba el comando Copiar del navegador.",
+  "Open {name}": "Abrir {name}",
+  "Import conversations…": "Importar conversaciones…",
+  "Import conversations": "Importar conversaciones",
+  "Conversation history": "Historial de conversaciones",
+  "Continue a Claude Code or Codex session from {host}.": "Continúa una sesión de Claude Code o Codex de {host}.",
+  "Find a conversation": "Buscar una conversación",
+  "Choose from the 200 most recent session files on this machine.": "Elige entre los 200 archivos de sesión más recientes de esta máquina.",
+  "Import messages and tool history, then continue in the original workspace. Attachments are not copied.": "Importa mensajes e historial de herramientas y continúa en el espacio de trabajo original. Los adjuntos no se copian.",
+  "Loading sessions…": "Cargando sesiones…",
+  "No matching sessions found on this machine.": "No se encontraron sesiones coincidentes en esta máquina.",
+  "Import": "Importar",
+
   "Environment": "Entorno",
   "Install {provider}": "Instalar {provider}",
   "Install this provider in the selected environment.": "Instala este proveedor en el entorno seleccionado.",

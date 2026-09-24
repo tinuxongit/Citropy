@@ -1,6 +1,6 @@
 import { GitCommitHorizontal, Server } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { environmentName, isRemote } from "../lib/environment.ts";
+import { environmentName, isRemote, useEnvironments } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { GitBranch, PanelLeft, PanelRight } from "./icons.ts";
 import { toggleInspector, useApp } from "../lib/store.ts";
@@ -27,6 +27,7 @@ export function Titlebar({
   onNotification: (target: NotificationTarget) => void;
 }) {
   const t = useI18n();
+  const { activeId: environment } = useEnvironments();
   const projects = useApp((state) => state.projects);
   const activeProjectId = useApp((state) => state.activeProjectId);
   const activeThreadId = useApp((state) => state.activeThreadId);
@@ -85,7 +86,7 @@ export function Titlebar({
           <span>Citropy</span>
         </div>
         <div className="topbar-navigation">
-          <NotificationCenter onOpen={onNotification} />
+          <NotificationCenter key={environment} onOpen={onNotification} />
           <button
             className="icon-btn"
             type="button"
@@ -124,8 +125,8 @@ export function Titlebar({
 
       <div className="topbar-right">
         <ComputerIndicator />
-        <RunningShells onOpen={onNotification} />
-        {project && (project.isGit && gitThread ? <GitActions key={gitThread.id} thread={gitThread} /> : <button type="button" className="icon-btn git-panel-trigger" aria-label={t("Git actions")} title={t("Git actions")} onClick={() => useApp.setState({ activeView: "git", readingThreadId: null })}><GitCommitHorizontal size={16} /><span className="git-trigger-label">Git</span></button>)}
+        <RunningShells key={environment} onOpen={onNotification} />
+        {project && (project.isGit && gitThread ? <GitActions key={`${environment}:${gitThread.id}`} thread={gitThread} /> : <button type="button" className="icon-btn git-panel-trigger" aria-label={t("Git actions")} title={t("Git actions")} onClick={() => useApp.setState({ activeView: "git", readingThreadId: null })}><GitCommitHorizontal size={16} /><span className="git-trigger-label">Git</span></button>)}
         {view === "chat" && (
           <button
             className="icon-btn"

@@ -430,7 +430,43 @@
 
 .workspace-menu .workspace-folder-icon { color: var(--file-icon); }
 .workspace-menu .menu-search:focus-visible { outline: none; box-shadow: var(--field-focus-ring); }
-.workspace-menu .menu-section { padding-top: 12px; }
+.workspace-menu {
+  --menu-nesting-indent: 0px;
+  padding: 8px;
+}
+.workspace-menu .menu-header {
+  padding: 4px 10px 8px;
+}
+.workspace-menu .menu-search {
+  min-height: 38px;
+  padding: 9px 10px;
+  margin-bottom: 8px;
+}
+.workspace-menu .menu-list {
+  align-content: start;
+  gap: 4px;
+}
+.workspace-menu .menu-section {
+  padding: 8px 10px 4px;
+  margin-top: 0;
+}
+.workspace-menu .menu-item {
+  min-height: 36px;
+  padding: 8px 10px;
+}
+.workspace-menu .menu-option:has(> .menu-item[data-depth]) {
+  margin-inline-start: 18px;
+}
+.workspace-menu .menu-copy {
+  gap: 2px;
+}
+.workspace-menu .menu-hint {
+  min-width: 0;
+}
+.workspace-menu .menu-hint .truncate {
+  min-width: 0;
+  white-space: nowrap;
+}
 .workspace-menu .menu-item[data-danger] .menu-icon { color: var(--heat); }
 .workspace-menu .menu-item[data-danger]:hover .menu-icon { color: var(--bad); }
 
@@ -717,3 +753,6 @@
 :root[data-platform="darwin"] .brand > span {
   display: none;
 }
+
+.workspace-menu .menu-item:has(.workspace-add-icon) { background: var(--raised-2); color: var(--text); font-weight: 500; }
+.workspace-menu .workspace-add-icon { color: var(--accent); }

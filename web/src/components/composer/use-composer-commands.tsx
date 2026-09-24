@@ -67,7 +67,7 @@ export function useComposerCommands({
       label: "/model",
       hint: t("Choose a model"),
       icon: <Brain size={16} />,
-      idleOnly: true,
+      idleOnly: false,
       run: () => modelButton.current?.click(),
     },
     {
@@ -75,7 +75,7 @@ export function useComposerCommands({
       label: "/plan",
       hint: t("Switch to Plan only permissions"),
       icon: <ListChecks size={16} />,
-      idleOnly: true,
+      idleOnly: false,
       run: () => {
         if (threadId) configureThread(threadId, { permissionMode: "plan" });
       },
@@ -87,7 +87,7 @@ export function useComposerCommands({
             label: "/effort",
             hint: t("Choose reasoning effort and context size"),
             icon: <Brain size={16} />,
-            idleOnly: true,
+            idleOnly: false,
             run: () => effortButton.current?.click(),
           },
         ]
@@ -99,7 +99,7 @@ export function useComposerCommands({
             label: "/fast",
             hint: thread?.fastMode ? t("Turn fast mode off") : t("Turn fast mode on"),
             icon: <Zap size={16} />,
-            idleOnly: true,
+            idleOnly: false,
             run: () => {
               if (threadId)
                 configureThread(threadId, { fastMode: !thread?.fastMode });
@@ -112,7 +112,7 @@ export function useComposerCommands({
       label: "/permissions",
       hint: t("Choose tool permissions"),
       icon: <ShieldCheck size={16} />,
-      idleOnly: true,
+      idleOnly: false,
       run: () => permissionButton.current?.click(),
     },
   ];

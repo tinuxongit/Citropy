@@ -99,7 +99,7 @@ root.render(<React.StrictMode><Fixture /></React.StrictMode>);`;
         requests.push(event);
         if (event.t === "notifications.configure") socket.send(JSON.stringify({ t: "notifications.preferences", preferences: { toasts: true, desktop: true, sound: false, subagents: false, ...event.preferences } }));
       });
-      socket.send(JSON.stringify({ t: "reconnected", epoch: "settings", sequence: 0 }));
+      socket.send(JSON.stringify({ t: "hello", epoch: "settings", sequence: 0, snapshot: { projects: [], threads: [], providers: [], permissions: [], home: "/test", development: true } }));
     });
     const html = '<!doctype html><html data-theme="dark"><body><div id="root" style="height:100vh;display:flex;flex-direction:column"></div><script type="module" src="/__settings_fixture.tsx"></script></body></html>';
     await page.route("**/settings-fixture", async route => route.fulfill({ contentType: "text/html", body: await server.transformIndexHtml("/settings-fixture", html) }));

@@ -232,7 +232,6 @@ export function App() {
       }
     >
       <Titlebar
-        key={environment}
         onNotification={openNotification}
         view={view}
         sidebarOpen={navigationOpen}
@@ -251,7 +250,6 @@ export function App() {
         )}
         {view === "chat" && <SlidingPanel open={sidebarOpen} side="left">
           <Sidebar
-            key={environment}
             onSettings={() => {
               setSettingsSection("General");
               openView("settings");

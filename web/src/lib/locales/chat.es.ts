@@ -213,6 +213,7 @@ export const chatEs: Record<string, string> = {
   "past:Read": "Leído",
   "Paused until the next reply finishes": "En pausa hasta que termine la próxima respuesta",
   "Permissions": "Permisos",
+  "Applies to the next turn": "Se aplica al siguiente turno",
   "Pin conversation": "Fijar conversación",
   "Pinned": "Fijada",
   "Plan": "Plan",

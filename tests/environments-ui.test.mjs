@@ -92,6 +92,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
     socket.onMessage(raw => {
       const event = JSON.parse(raw);
       messages.push({ remote, ...event });
+      if (event.t === "shell.watch" && event.id) socket.send(JSON.stringify({ t: "shell.output", id: event.id, output: "Subscribed remote output" }));
       if (event.t === "thread.load") socket.send(JSON.stringify({ t: "thread.messages", threadId: "task", messages: [{ id: "answer", role: "assistant", ts: 1, parts: [{ id: "text", kind: "text", text: remote ? "REMOTE RESPONSE" : "LOCAL RESPONSE", complete: true }] }] }));
       if (event.t === "github.request") socket.send(JSON.stringify({ t: "github.result", requestId: event.requestId, result: { installed: false } }));
       if (event.t === "thread.send") {
@@ -144,6 +145,33 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   assert.equal(await page.locator("h1[data-settings-section='environments']").count(), 1);
   await page.getByRole("button", { name: "Back to chat", exact: true }).click();
   await page.getByText("REMOTE RESPONSE", { exact: true }).waitFor();
+  await page.evaluate(async () => {
+    const { useApp } = await import("/web/src/lib/store.ts");
+    useApp.setState({ panels: [{ id: "ssh-shell", projectId: "remote-project", kind: "terminal", title: "Remote build" }] });
+  });
+  await page.getByRole("button", { name: "Running shells, 2 active", exact: true }).click();
+  const shells = page.getByRole("dialog", { name: "Running shells", exact: true });
+  await shells.getByRole("button", { name: /Remote build/ }).click();
+  assert.equal(await shells.getByRole("button", { name: "Open terminal", exact: true }).count(), 1);
+  assert.equal(await shells.getByRole("button", { name: "Stop shell", exact: true }).count(), 0);
+  await page.evaluate(async () => {
+    const { useApp } = await import("/web/src/lib/store.ts");
+    useApp.setState(state => ({ shells: { ...state.shells, "terminal:ssh-shell": { id: "terminal:ssh-shell", panelId: "ssh-shell", projectId: "remote-project", command: "", cwd: "/project", status: "running", busy: true, process: "node", background: true, stopMode: "shell", output: "Build ready", startedAt: 2 } } }));
+  });
+  await shells.getByRole("button", { name: "Stop shell", exact: true }).waitFor();
+  await shells.getByText("Subscribed remote output", { exact: true }).waitFor();
+  await shells.locator(".shell-status").getByText("Running", { exact: true }).waitFor();
+  assert.ok(messages.some(event => event.remote && event.t === "shell.watch" && event.id === "terminal:ssh-shell"));
+  assert.equal(await shells.locator(".shell-row").count(), 2);
+  assert.equal(await shells.getByText("Interactive terminal", { exact: true }).count(), 0);
+  for (const width of [1440, 620]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.screenshot({ path: `/tmp/citropy-shell-list-${width}.png`, animations: "disabled" });
+  }
+  await shells.getByRole("button", { name: "Close running shells", exact: true }).click();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  assert.ok(messages.some(event => event.remote && event.t === "shell.watch" && event.id === null));
+
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.locator("button[data-settings-section='projects']").click();
   const globalDefaults = page.getByRole("region", { name: "Global defaults", exact: true });

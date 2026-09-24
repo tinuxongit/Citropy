@@ -69,7 +69,7 @@ export class SshEnvironments {
   state() {
     return { activeId: this.activeId, endpoint: this.sessions.get(this.activeId)?.proxy?.endpoint || "", connections: this.connections.map(connection => {
       const session = this.sessions.get(connection.id);
-      return { ...connection, status: session?.status || "disconnected", ...(session?.message ? { message: session.message } : {}) };
+      return { ...connection, status: session?.status || "disconnected", ...(session?.status === "connected" && session.proxy ? { endpoint: session.proxy.endpoint } : {}), ...(session?.message ? { message: session.message } : {}) };
     }) };
   }
 

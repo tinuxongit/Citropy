@@ -1,3 +1,4 @@
+import { listImportableSessions, importSession } from "./session-import.ts";
 import { nodeRuntimeStatus, installNodeRuntime } from "./node-runtime.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createEditorFile, readEditorFile, saveEditorFile } from "./editor.ts";
@@ -221,6 +222,14 @@ export async function handleFeatures(
     } else if (url.pathname === "/api/threads/title" && req.method === "POST") {
       await generateThreadTitle(threadId ?? "");
       respond({ ok: true });
+    } else if (url.pathname === "/api/providers/sessions" && req.method === "GET") {
+      const provider = url.searchParams.get("provider");
+      if (provider !== "claude" && provider !== "codex") throw new Error("Choose Claude Code or Codex.");
+      respond(await listImportableSessions(provider));
+    } else if (url.pathname === "/api/providers/sessions" && req.method === "POST") {
+      const input = await body(req);
+      if (typeof input.id !== "string") throw new Error("Choose a session to import.");
+      respond(await importSession(input.id));
     } else if (url.pathname === "/api/providers/maintenance" && req.method === "GET") respond(await providerMaintenance(url.searchParams.get("refresh") === "1"));
     else if (url.pathname === "/api/runtimes/node" && req.method === "GET") respond(await nodeRuntimeStatus());
     else if (url.pathname === "/api/runtimes/node" && req.method === "POST") respond(installNodeRuntime());

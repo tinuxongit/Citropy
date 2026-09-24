@@ -68,6 +68,8 @@ export interface ToolPart {
 }
 
 export interface ShellProcess {
+  busy?: boolean;
+  process?: string;
   id: string;
   projectId: string;
   threadId?: string;
@@ -230,6 +232,7 @@ export interface WorkspaceChoice {
 }
 
 export interface ThreadMeta {
+  pendingConfig?: Pick<ThreadMeta, "model" | "effort" | "contextWindow" | "fastMode" | "permissionMode">;
   transferContext?: string;
   transfers?: Array<{ provider: ProviderId; model?: string; externalId?: string; usage: Usage; at: number }>;
   contextSources?: import("./context.ts").ContextSource[];
@@ -389,6 +392,7 @@ export interface Snapshot {
 }
 
 export type ServerEvent = (
+  | { t: "shell.output"; id: string; output: string }
   | { t: "shell.upsert"; shell: ShellProcess }
   | { t: "shell.remove"; id: string }
   | { t: "project.defaults"; settings: ProjectSettings }
@@ -513,6 +517,7 @@ export type ClientEvent = (
   | { t: "git.discard"; projectId: string; path: string }
   | { t: "file.tree"; requestId: string; projectId: string; path?: string }
   | { t: "file.read"; requestId: string; projectId: string; path: string }
+  | { t: "shell.watch"; id: string | null }
   | { t: "term.open"; termId: string; projectId: string; cols: number; rows: number; flowControl?: boolean }
   | { t: "term.ack"; termId: string; count: number; streamId: string }
   | { t: "term.unsubscribe"; termId: string }

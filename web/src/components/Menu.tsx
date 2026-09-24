@@ -149,7 +149,6 @@ export function Menu({
 
   useEffect(() => {
     if (!open) return;
-    setQuery("");
     const onPointer = (event: PointerEvent) => {
       if (!wrap.current?.contains(event.target as Node) && !anchor?.contains(event.target as Node)) setOpen(false);
     };
@@ -183,7 +182,7 @@ export function Menu({
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
     >
-      {trigger?.({ open, toggle: () => setOpen((value) => !value), id })}
+      {trigger?.({ open, toggle: () => { if (!open) setQuery(""); setOpen((value) => !value); }, id })}
       <AnimatePresence onExitComplete={onClose}>
         {open && (
           <motion.div
@@ -272,7 +271,7 @@ export function Menu({
                         data-selected={item.selected || undefined}
                         data-danger={item.danger || undefined}
                         data-depth={item.depth || undefined}
-                        style={item.depth ? { paddingInlineStart: 10 + item.depth * 18 } : undefined}
+                        style={item.depth ? { paddingInlineStart: `calc(10px + ${item.depth} * var(--menu-nesting-indent, 18px))` } : undefined}
                         aria-expanded={item.children ? Boolean(query) || !collapsed.has(item.id) : undefined}
                         title={item.hint}
                         onClick={() => {

@@ -134,23 +134,25 @@ export function useThreadGroups({ threads, query, globalMode, projects, environm
     }
     const folders = environments.flatMap(({ environment, server, cached }): ThreadGroup[] => {
       const icon = server ? Server : Folder;
+      const projectKey = (id: string) => environment === "local" ? `project:${id}` : `environment:${environment}:project:${id}`;
       if (!cached) return projects.map((project) => group({
-        id: `project:${project.id}`,
+        id: projectKey(project.id),
         label: project.name,
         icon,
         threads: (byProject.get(project.id) ?? []).sort(sortThreads),
         project,
-      }, `project:${project.id}`)).filter((entry) => !searching || entry.threads.length > 0);
+        environment,
+      }, projectKey(project.id))).filter((entry) => !searching || entry.threads.length > 0);
       if (searching) return [];
       return cached.projects.map((project) => group({
-        id: `environment:${environment}:project:${project.id}`,
+        id: projectKey(project.id),
         label: project.name,
         icon,
         threads: [],
         cachedThreads: cached.threads.filter((thread) => thread.projectId === project.id && !thread.archived && !thread.snoozedUntil && !thread.finished).sort(sortThreads),
         project,
         environment,
-      }, `project:${project.id}`));
+      }, projectKey(project.id)));
     });
     return [
       ...(categories.pinned.length ? [category("pinned", categories.pinned)] : []),
@@ -163,7 +165,7 @@ export function useThreadGroups({ threads, query, globalMode, projects, environm
     { key: group.id, group, empty: false },
     ...(group.open || searching ? group.threads.map((thread) => ({ key: thread.id, group, thread, empty: false })) : []),
     ...(group.open && group.cachedThreads ? group.cachedThreads.map((cached) => ({ key: `${group.id}:${cached.id}`, group, cached, empty: false })) : []),
-    ...(group.project && !group.environment && group.open && !searching && !group.threads.length ? [{ key: `${group.id}:empty`, group, empty: true }] : []),
+    ...(group.project && group.open && !searching && !group.threads.length && !group.cachedThreads?.length ? [{ key: `${group.id}:empty`, group, empty: true }] : []),
   ]), [groups, searching]);
 
   return { groups, rows, revealFinished: () => reveal("finished") };

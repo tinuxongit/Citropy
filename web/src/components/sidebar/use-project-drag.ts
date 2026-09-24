@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
-import type { Project } from "../../../../shared/protocol.ts";
 import { autoscrollDistance, canStartPointerDrag, followPointerDrag } from "./pointer-drag.ts";
 import type { DropEdge } from "./use-project-order.ts";
 
@@ -14,7 +13,7 @@ const sameDrop = (a: ProjectDrop | undefined, b: ProjectDrop | undefined) =>
 
 function sectionBottom(list: HTMLElement, projectId: string): number {
   const rows = list.querySelectorAll<HTMLElement>(
-    `[data-category="project:${CSS.escape(projectId)}"] :is(.global-project-heading, .thread-entry, .global-project-empty)`,
+    `[data-category="${CSS.escape(projectId)}"] :is(.global-project-heading, .thread-entry, .global-project-empty)`,
   );
   return Math.max(...Array.from(rows, (row) => row.getBoundingClientRect().bottom));
 }
@@ -22,7 +21,7 @@ function sectionBottom(list: HTMLElement, projectId: string): number {
 export function useProjectDrag({ viewport, list, projects, disabled, resetKey, onMove }: {
   viewport: RefObject<HTMLElement | null>;
   list: RefObject<HTMLElement | null>;
-  projects: Project[];
+  projects: { id: string; environment?: string }[];
   disabled: boolean;
   resetKey: string;
   onMove: (source: string, target: string, edge: DropEdge) => void;
@@ -39,17 +38,19 @@ export function useProjectDrag({ viewport, list, projects, disabled, resetKey, o
     const listElement = list.current;
     const scroll = viewport.current;
     if (!canStartPointerDrag(event) || disabled || !listElement || !scroll) return;
-    const ids = projects.map((project) => project.id);
+    const environment = projects.find((project) => project.id === projectId)?.environment;
+    const ids = projects.filter((project) => project.environment === environment).map((project) => project.id);
     const source = ids.indexOf(projectId);
+    if (source < 0) return;
     let current: ProjectDrop | undefined;
     const target = (y: number): ProjectDrop | undefined => {
       const listTop = listElement.getBoundingClientRect().top;
-      const headings = Array.from(listElement.querySelectorAll<HTMLElement>(".global-project-heading[data-project-id]"));
+      const headings = Array.from(listElement.querySelectorAll<HTMLElement>(".global-project-heading[data-drag-id]")).filter(heading => ids.includes(heading.dataset.dragId!));
       const below = headings.find((heading) => {
         const rect = heading.getBoundingClientRect();
         return y < rect.top + rect.height / 2;
       });
-      const id = below ? below.dataset.projectId! : headings.at(-1)?.dataset.projectId;
+      const id = below ? below.dataset.dragId! : headings.at(-1)?.dataset.dragId;
       const edge = below ? "before" : "after";
       if (!id || id === projectId || ids.indexOf(id) === source + (edge === "before" ? 1 : -1)) return undefined;
       const top = below ? below.getBoundingClientRect().top - listTop - 3 : sectionBottom(listElement, id) - listTop + 1;

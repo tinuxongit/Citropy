@@ -138,6 +138,8 @@ export const coreEs: Record<string, string> = {
   "Notifications": "Notificaciones",
   "Notifications, {count} unread": "Notificaciones, {count} sin leer",
   "Open": "Abrir",
+  "Idle": "Inactiva",
+  "Open the terminal to view its output.": "Abre la terminal para ver su salida.",
   "Open files, a terminal, or a browser alongside the conversation.": "Abre archivos, una terminal o un navegador junto a la conversación.",
   "Open a panel": "Abrir un panel",
   "Open a workspace": "Abrir un espacio de trabajo",

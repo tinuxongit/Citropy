@@ -4,6 +4,7 @@ import { Clock, GitBranch, GitPullRequest } from "lucide-react";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
 import { finishThread, loadThread, removeThread } from "../../lib/actions.ts";
 import { modelLabel, threadActivity } from "../../lib/format.ts";
+import { environmentId } from "../../lib/environment.ts";
 import { currentLocale, useI18n } from "../../lib/i18n.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
 import { useReducedMotion } from "../../lib/use-reduced-motion.ts";
@@ -69,6 +70,7 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
     <div
       className="thread-entry"
       data-thread-id={thread.id}
+      data-environment={environmentId()}
       data-category-end={categoryEnd}
       data-dragging={drag.draggingId === thread.id}
       style={{ "--thread-shift": `${drag.shifts.get(thread.id) ?? 0}px` } as CSSProperties}

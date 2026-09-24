@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
-import { modelSettings } from "../shared/model-options.ts";
+import { modelSettings, nextTurnSettings } from "../shared/model-options.ts";
 
 const projects = [
   { id: "first", name: "First workspace", path: "/example/first", isGit: true, lastOpened: 1 },
@@ -21,7 +21,7 @@ const providers = [
 const thread = { id: "chat", projectId: "first", provider: "claude", model: "claude-fast", title: "Current conversation", permissionMode: "manual", status: "idle", running: false, externalId: "session", createdAt: 1, updatedAt: 1, usage: { input: 280000, output: 1900, cacheRead: 100000, cacheWrite: 2000, costUsd: 4.3, contextTokens: 82000, contextMax: 200000, turns: 4 } };
 const account = { login: "example", avatar_url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'/%3E", html_url: "https://github.com/example" };
 
-test("workspace navigation and conversation setup stay consistent", { timeout: 90_000 }, async (t) => {
+test("workspace navigation and conversation setup stay consistent", { timeout: 180_000 }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-navigation-"));
   const server = await createServer({ configFile: false, cacheDir: join(directory, "cache"), root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
   await server.listen();
@@ -73,7 +73,10 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 9
         if (event.t === "thread.config") {
           const current = created.get(event.id) ?? thread;
           const provider = catalogs.find(entry => entry.id === (event.provider ?? current.provider));
-          const updated = { ...current, ...event, ...modelSettings(provider.models, { ...current, ...event }) };
+          const selection = nextTurnSettings(current);
+          const updated = current.running
+            ? { ...current, pendingConfig: { ...modelSettings(provider.models, { ...selection, ...event, effort: event.effort === null || (event.model && event.model !== selection.model) ? undefined : event.effort ?? selection.effort }), permissionMode: event.permissionMode ?? selection.permissionMode } }
+            : { ...current, ...event, ...modelSettings(provider.models, { ...current, ...event }) };
           created.set(event.id, updated);
           socket.send(JSON.stringify({ t: "thread.upsert", thread: updated }));
           socket.send(JSON.stringify({ t: "thread.accepted", requestId: event.requestId }));
@@ -102,8 +105,70 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 9
     });
     await page.goto(server.resolvedUrls.local[0]);
     await page.getByRole("button", { name: "Choose workspace, First workspace", exact: true }).waitFor();
-    return { page, requests, states, emit: event => connection.send(JSON.stringify(event)) };
+    return { page, requests, states, emit: event => { if (event.t === "thread.upsert") created.set(event.thread.id, event.thread); connection.send(JSON.stringify(event)); } };
   }
+
+  await t.test("model, effort and access remain editable for the next turn while running", async test => {
+    const { page, emit } = await fixture(test);
+    emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", effort: "high", runStartedAt: Date.now() } });
+    await page.locator(".composer-stop").waitFor();
+    await page.getByRole("button", { name: /^Model options:/ }).click();
+    await page.getByRole("menuitem", { name: /^Low/ }).click();
+    await page.getByRole("button", { name: /^Model options: Low/ }).waitFor();
+    await page.getByRole("button", { name: "Ask before changes", exact: true }).click();
+    await page.getByRole("menuitem", { name: /^Full access/ }).click();
+    await page.getByRole("button", { name: "Full access", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Model: Claude Fast", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: "Transfer to another agent", exact: true }).isDisabled(), true);
+    await page.getByRole("menuitem", { name: /^Claude Extended/ }).click();
+    await page.getByRole("button", { name: "Model: Claude Extended", exact: true }).waitFor();
+    await page.locator(".composer-pending-settings").getByText("Applies to the next turn", { exact: true }).waitFor();
+    assert.deepEqual(await page.evaluate(async () => {
+      const { useApp } = await import("/web/src/lib/store.ts");
+      const thread = useApp.getState().threads.chat;
+      return [thread.running, thread.model, thread.permissionMode, thread.pendingConfig.model, thread.pendingConfig.permissionMode];
+    }), [true, "claude-fast", "manual", "claude-extended", "bypass"]);
+    for (const width of [1440, 620]) {
+      await page.setViewportSize({ width, height: 900 });
+      if (width === 620) await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
+      await page.screenshot({ path: `/tmp/citropy-pending-settings-${width}.png`, animations: "disabled" });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    }
+  });
+
+  await t.test("provider session import supports filtering, errors, and opening imported conversations", async test => {
+    const { page } = await fixture(test);
+    let fail = true;
+    await page.route("**/api/providers/sessions**", async route => {
+      if (route.request().method() === "POST") {
+        assert.equal(route.request().postDataJSON().id, "session-1");
+        return route.fulfill({ status: fail ? 400 : 200, json: fail ? { error: "Workspace is unavailable" } : { threadId: "chat", projectId: "first" } });
+      }
+      const provider = new URL(route.request().url()).searchParams.get("provider");
+      return route.fulfill({ json: provider === "claude" ? [] : [{ id: "session-1", provider: "codex", title: "Build a Minecraft game", cwd: "/home/user/Desktop/game", updatedAt: 1780000000000, sessionId: "native-1" }] });
+    });
+    await page.getByRole("button", { name: "Choose workspace, First workspace", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Import conversations…", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Import conversations", exact: true });
+    await dialog.getByText("No matching sessions found on this machine.").waitFor();
+    await dialog.getByRole("combobox", { name: "Provider", exact: true }).selectOption("codex");
+    const open = dialog.getByRole("button", { name: "Open Build a Minecraft game", exact: true });
+    await open.waitFor();
+    await dialog.getByRole("textbox", { name: "Find a conversation", exact: true }).fill("missing");
+    await dialog.getByText("No matching sessions found on this machine.").waitFor();
+    await dialog.getByRole("textbox", { name: "Find a conversation", exact: true }).fill("Minecraft");
+    for (const width of [1440, 590]) {
+      await page.setViewportSize({ width, height: 920 });
+      await page.screenshot({ path: `/tmp/citropy-import-${width}.png`, animations: "disabled" });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    }
+    await open.click();
+    await dialog.getByRole("alert").getByText("Workspace is unavailable").waitFor();
+    fail = false;
+    await open.click();
+    await dialog.waitFor({ state: "detached" });
+    assert.equal(await page.evaluate(async () => (await import("/web/src/lib/store.ts")).useApp.getState().activeThreadId), "chat");
+  });
 
   await t.test("subagent completion alerts default off and can be changed in settings", async test => {
     const { page, requests } = await fixture(test);
@@ -113,11 +178,11 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 9
     await toggle.waitFor();
     assert.equal(await toggle.isChecked(), false);
     await toggle.click();
-    await page.waitForFunction(async () => (await import("/web/src/lib/store.ts")).useApp.getState().notificationPreferences.subagents);
+    await page.getByRole("switch", { name: /^Subagent completions/, checked: true }).waitFor();
     assert.equal(await toggle.isChecked(), true);
     assert.deepEqual(requests.find(event => event.t === "notifications.configure"), { t: "notifications.configure", preferences: { subagents: true } });
     await toggle.click();
-    await page.waitForFunction(async () => !(await import("/web/src/lib/store.ts")).useApp.getState().notificationPreferences.subagents);
+    await page.getByRole("switch", { name: /^Subagent completions/, checked: false }).waitFor();
     assert.equal(await toggle.isChecked(), false);
     assert.deepEqual(requests.filter(event => event.t === "notifications.configure").at(-1), { t: "notifications.configure", preferences: { subagents: false } });
     for (const width of [1440, 600]) {
@@ -613,7 +678,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 9
     fail = false;
     await choose();
     await page.getByRole("button", { name: "Model: Codex Extended", exact: true }).waitFor();
-    assert.equal(await page.locator(".composer-model").isDisabled(), true);
+    assert.equal(await page.locator(".composer-model").isEnabled(), true);
     assert.equal(await draft.inputValue(), "Keep this unsent draft.");
     assert.equal(await page.locator(".turn-agent .turn-provider").first().textContent(), "Claude Code");
     assert.equal(await page.locator(".turn-agent .turn-heading strong").first().textContent(), "Claude Fast");

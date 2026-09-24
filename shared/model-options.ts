@@ -1,5 +1,10 @@
 import type { ModelOption, ThreadMeta } from "./protocol.ts";
 
+export function nextTurnSettings(thread: ThreadMeta): NonNullable<ThreadMeta["pendingConfig"]> {
+  const { model, effort, contextWindow, fastMode, permissionMode } = thread.pendingConfig ?? thread;
+  return { model, effort, contextWindow, fastMode, permissionMode };
+}
+
 export function selectedModel(
   models: ModelOption[],
   id?: string,

@@ -10,7 +10,7 @@ import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { flushHeld, holdMessage } from "./offline.ts";
 import { api, reportError } from "./api.ts";
-import { modelSettings, selectedModel } from "../../../shared/model-options.ts";
+import { modelSettings, nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
 import type {
   FileEntry,
@@ -200,7 +200,7 @@ export function loadThread(id: string): void {
 }
 
 export async function openOnEnvironment(environment: string, projectId: string, threadId?: string): Promise<void> {
-  await selectEnvironment(environment, projectId);
+  await selectEnvironment(environment, projectId, threadId);
   if (environmentId() !== environment) return;
   if (!threadId) return;
   if (!useApp.getState().threads[threadId]) throw new Error("This conversation is no longer on that host.");
@@ -333,8 +333,8 @@ export async function configureThread(
   if (signal.aborted) return;
   const state = useApp.getState();
   const thread = state.threads[id];
-  if (thread && !thread.running && (patch.provider !== undefined || patch.model !== undefined || patch.effort !== undefined || patch.contextWindow !== undefined || patch.fastMode !== undefined)) {
-    rememberThreadSettings(thread);
+  if (thread && (patch.provider !== undefined || patch.model !== undefined || patch.effort !== undefined || patch.contextWindow !== undefined || patch.fastMode !== undefined)) {
+    rememberThreadSettings({ ...thread, ...nextTurnSettings(thread) });
   }
 }
 

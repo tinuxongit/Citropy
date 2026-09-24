@@ -20,6 +20,9 @@ async function daemon(t) {
   // Only the native PTY dependency is replaced, so these tests require no GUI or node-pty.
   await copyFile(new URL('../server/terminal-daemon.ts', import.meta.url), join(root, 'terminal-daemon.ts'));
   await writeFile(join(root, 'terminal-host.ts'), `export class TerminalHost {
+    constructor(emit) { this.emit = emit; }
+    observeActivity() {}
+    open() { this.emit({ type: "activity", id: "terminal", busy: true, process: "node" }); return {}; }
     list() { return []; }
     release() {}
     flow() {}
@@ -128,4 +131,17 @@ test('authentication and operation errors remain isolated and recoverable', { ti
   assert.deepEqual(await reply(socket, { id: 3, op: 'list' }), { id: 3, result: [] });
   socket.destroy();
   await alive(instance);
+});
+
+test('activity events are opt-in so older backend clients do not interpret them as exits', async t => {
+  const instance = await daemon(t);
+  const legacy = await instance.connect();
+  await reply(legacy, { id: 1, op: 'hello', version: 1, token });
+  let received = '';
+  legacy.on('data', chunk => { received += chunk; });
+  const current = await instance.connect();
+  await reply(current, { id: 2, op: 'hello', version: 1, token, activity: true });
+  assert.deepEqual(await reply(current, { id: 3, op: 'open', input: {} }), { event: { type: 'activity', id: 'terminal', busy: true, process: 'node' } });
+  await reply(legacy, { id: 4, op: 'list' });
+  assert.ok(!received.includes('activity'));
 });

@@ -14,7 +14,7 @@ import { receiveAgentEvent } from "./providers/events.ts";
 import { beginCheckpoint, finishCheckpoint, checkpointBusy, historyPrompt } from "./checkpoints.ts";
 import { prepareContext, prepareTransferContext, transferPrompt } from "./context.ts";
 import { assertProviderReady } from "./providers/maintenance.ts";
-import { modelSettings, selectedModel } from "../shared/model-options.ts";
+import { modelSettings, nextTurnSettings, selectedModel } from "../shared/model-options.ts";
 import { emptyUsage } from "../shared/protocol.ts";
 import { mergeUsage } from "../shared/usage-metrics.ts";
 import { connectTools, disconnectTools } from "./mcp-access.ts";
@@ -87,6 +87,10 @@ export class ThreadRuntime {
     );
   }
 
+  get turnActive(): boolean {
+    return this.#preparing || this.#thread.running || Boolean(this.#thread.compacting);
+  }
+
   async configure(config: SessionConfig): Promise<boolean> {
     const session = this.#session;
     if (!session?.configure) return false;
@@ -153,6 +157,7 @@ export class ThreadRuntime {
       store.patchThread(this.id, {
         provider: provider.id,
         ...modelSettings(provider.models, { model: model.id }),
+        pendingConfig: undefined,
         externalId: undefined,
         usage: emptyUsage(),
         transfers: [...(thread.transfers ?? []), previous],
@@ -260,6 +265,7 @@ export class ThreadRuntime {
     const generation = this.#stopGeneration;
     if (this.#checkpointCompletion) await this.#checkpointCompletion;
     this.#checkSession(generation);
+    if (!this.#thread.running) await this.#applyPendingConfig(generation);
     if (checkpointBusy(this.#cwd)) throw new Error("Wait for workspace review or recovery to finish.");
     if (workspaceGitBusy(this.#cwd)) throw new Error("Wait for the Git action to finish before sending a message.");
     this.#check(text, files);
@@ -298,6 +304,30 @@ export class ThreadRuntime {
       if (this.#thread.provider !== "cursor") void generateThreadTitle(this.id, true);
     }
     this.#transcript.closeMessage();
+  }
+
+  async #applyPendingConfig(generation: number): Promise<void> {
+    const pending = this.#thread.pendingConfig;
+    if (!pending) return;
+    const settings = nextTurnSettings(this.#thread);
+    const session = this.#session;
+    let live = false;
+    if (session?.configure) {
+      try {
+        await session.configure({ model: settings.model, effort: settings.effort, contextMax: settings.contextWindow, fastMode: settings.fastMode, permissionMode: settings.permissionMode });
+        live = true;
+      } catch {}
+    }
+    this.#checkSession(generation);
+    if (!live) {
+      this.#closeSession();
+      disconnectTools(this.id);
+    }
+    store.patchThread(this.id, {
+      ...settings,
+      ...(!live && (settings.model !== this.#thread.model || settings.contextWindow !== this.#thread.contextWindow) ? { usage: { ...this.#thread.usage, contextMax: 0 } } : {}),
+      pendingConfig: this.#thread.pendingConfig === pending ? undefined : this.#thread.pendingConfig,
+    });
   }
 
   async #deliver(prepared: Prepared, queued?: { item: QueuedMessage; index: number }): Promise<void> {

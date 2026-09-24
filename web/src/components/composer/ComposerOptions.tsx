@@ -81,6 +81,7 @@ export function ModelOptionsMenu({
     : undefined;
   return (
     <Menu
+      header={thread.pendingConfig ? t("Applies to the next turn") : undefined}
       width={280}
       items={[
         ...(model?.efforts ?? []).map((value) => ({
@@ -172,7 +173,7 @@ export function PermissionMenu({
   const ModeIcon = mode?.icon ?? ShieldCheck;
   return (
     <Menu
-      header={t("Permissions")}
+      header={thread.pendingConfig ? t("Applies to the next turn") : t("Permissions")}
       width={290}
       items={MODES.map((entry) => ({
         id: entry.id,

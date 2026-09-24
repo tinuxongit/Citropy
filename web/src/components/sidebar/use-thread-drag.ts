@@ -45,6 +45,7 @@ export function useThreadDrag({ viewport, groups, globalMode, disabled, resetKey
     let current: ThreadDrop | undefined;
 
     const measure = () => Array.from(scroll.querySelectorAll<HTMLElement>(".thread-entry")).flatMap((node) => {
+      if (node.dataset.environment !== element.dataset.environment) return [];
       const id = node.dataset.threadId!;
       const index = indices.get(id);
       return index === undefined ? [] : [{ id, index, rect: node.parentElement!.getBoundingClientRect() }];

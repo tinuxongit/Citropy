@@ -6,7 +6,8 @@ import { handleFeatures } from "./features.ts";
 import { computerState, stopComputer } from "./computer.ts";
 import { createServer, type IncomingMessage } from "node:http";
 import { pendingQuestions } from "./questions.ts";
-import { shellList } from "./shells.ts";
+import { attachWorkspaceFeed } from "./workspace-feed.ts";
+import { shellList, readShellOutput, watchShellOutput } from "./shells.ts";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,7 +52,7 @@ bus.subscribe((event) => {
 
 function snapshot(): Snapshot {
   return {
-    shells: shellList(),
+    shells: shellList(false),
     projectDefaults: store.projectDefaults,
     assistance: store.assistance,
     computer: computerState(),
@@ -185,9 +186,13 @@ const wss = new WebSocketServer({
 
 wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
   if (new URL(req.url ?? "/socket", origin).searchParams.has("desktop")) { attachDesktop(socket); return; }
+  if (new URL(req.url ?? "/socket", origin).searchParams.get("workspace") === "1") { attachWorkspaceFeed(socket); return; }
   const consumer = randomUUID();
+  let watchedShell: string | null = null;
+  let unwatchShell: (() => void) | undefined;
   const subscriptions = new Map<string, { pending: number; flow: boolean; streamId: string }>();
   const send = (event: ServerEvent) => {
+    if (event.t === "shell.output" && event.id !== watchedShell) return;
     if (event.t === "term.data") {
       const subscription = subscriptions.get(event.termId);
       if (!subscription) return;
@@ -204,7 +209,7 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
   const replay = query.get("epoch") === connectionEpoch ? eventJournal.replay(Number(query.get("after"))) : null;
   if (replay) {
     for (const event of replay) send(event);
-    send({ t: "reconnected", epoch: connectionEpoch, sequence: eventJournal.sequence, shells: shellList(), browsers: browser.browserStates(), computer: computerState() });
+    send({ t: "reconnected", epoch: connectionEpoch, sequence: eventJournal.sequence, shells: shellList(false), browsers: browser.browserStates(), computer: computerState() });
   } else send({ t: "hello", snapshot: snapshot(), epoch: connectionEpoch, sequence: eventJournal.sequence });
   for (const project of store.projects.values()) void refreshGit(project.id, true);
 
@@ -215,6 +220,16 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
       event = JSON.parse(String(raw)) as ClientEvent;
       if (!event || typeof event !== "object") return;
     } catch {
+      return;
+    }
+    if (event.t === "shell.watch") {
+      unwatchShell?.();
+      unwatchShell = undefined;
+      watchedShell = typeof event.id === "string" && event.id.length <= 300 ? event.id : null;
+      if (watchedShell) {
+        unwatchShell = watchShellOutput(watchedShell);
+        send({ t: "shell.output", id: watchedShell, output: readShellOutput(watchedShell) });
+      }
       return;
     }
     if (event.t === "term.ack") {
@@ -248,7 +263,7 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
       else send({ t: "toast", level: "error", text: (error as Error).message });
     }
   });
-  socket.on("close", () => { unsubscribe(); terminals.release(consumer); });
+  socket.on("close", () => { unsubscribe(); unwatchShell?.(); terminals.release(consumer); });
 });
 
 desktopEvents.on("event", (event) => {

@@ -4,17 +4,34 @@ import type { ShellProcess } from "../shared/protocol.ts";
 
 const entries = new Map<string, { shell: ShellProcess; stop: () => void | Promise<void> }>();
 const changed = new Set<string>();
+const watchers = new Map<string, number>();
 let timer: NodeJS.Timeout | undefined;
 
 function publish(id: string): void {
-  changed.delete(id);
-  if (!changed.size) { clearTimeout(timer); timer = undefined; }
   const entry = entries.get(id);
-  if (entry) bus.emit({ t: "shell.upsert", shell: { ...entry.shell } });
+  if (entry) bus.emit({ t: "shell.upsert", shell: { ...entry.shell, output: "" } });
 }
 
-export function shellList(): ShellProcess[] {
-  return [...entries.values()].map(entry => ({ ...entry.shell }));
+export function shellList(includeOutput = true): ShellProcess[] {
+  return [...entries.values()].map(entry => ({ ...entry.shell, output: includeOutput ? entry.shell.output : "" }));
+}
+
+export function watchShellOutput(id: string): () => void {
+  watchers.set(id, (watchers.get(id) ?? 0) + 1);
+  return () => {
+    const count = (watchers.get(id) ?? 1) - 1;
+    if (count) watchers.set(id, count);
+    else { watchers.delete(id); changed.delete(id); }
+  };
+}
+
+export function readShellOutput(id: string): string { return entries.get(id)?.shell.output ?? ""; }
+
+export function shellActivity(id: string, busy?: boolean, process?: string): void {
+  const entry = entries.get(id);
+  if (!entry || (entry.shell.busy === busy && entry.shell.process === process)) return;
+  Object.assign(entry.shell, { busy, process });
+  publish(id);
 }
 
 export function startShell(input: Omit<ShellProcess, "status" | "startedAt" | "output">, stop: () => void | Promise<void>): void {
@@ -43,10 +60,12 @@ export function shellOutput(id: string, output: string, append = false): void {
   const value = stripVTControlCharacters((append ? entry.shell.output + output : output).slice(-32000));
   if (value === entry.shell.output) return;
   entry.shell.output = value;
+  if (!watchers.has(id)) return;
   changed.add(id);
   timer ??= setTimeout(() => {
     timer = undefined;
-    for (const id of [...changed]) publish(id);
+    for (const id of changed) bus.emit({ t: "shell.output", id, output: readShellOutput(id) });
+    changed.clear();
   }, 100);
   timer.unref();
 }
@@ -55,6 +74,7 @@ export function endShell(id: string, status: "finished" | "failed" | "stopped", 
   const entry = entries.get(id);
   if (!entry || (foregroundOnly && entry.shell.background) || !["running", "stopping"].includes(entry.shell.status)) return;
   entry.shell.status = status;
+  if (entry.shell.panelId) { entry.shell.busy = false; entry.shell.process = undefined; }
   entry.shell.endedAt = Date.now();
   entry.stop = () => {};
   publish(id);

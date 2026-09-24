@@ -42,7 +42,7 @@ test("conversation persistence and lifecycle recovery", async (t) => {
   const { applyEvent, useApp } = await import("../web/src/lib/store.ts");
   const sessions = [];
   for (const provider of Object.values(providers)) {
-    provider.listModels = async () => [{ id: "test", label: "Test", efforts: ["low", "high"] }];
+    provider.listModels = async () => [{ id: "test", label: "Test", efforts: ["low", "high"] }, { id: "next-test", label: "Next model", efforts: ["low", "high"] }];
     provider.detect = async () => ({ available: true });
     provider.start = (options) => {
       const session = { options, disposed: false };
@@ -202,6 +202,34 @@ test("conversation persistence and lifecycle recovery", async (t) => {
     return { socket, events };
   }
   const first = await connect();
+  await t.test("shell output is separate from metadata and only reaches its selected subscriber", async () => {
+    const { startShell, shellOutput, shellActivity } = await import("../server/shells.ts");
+    const { bus } = await import("../server/bus.ts");
+    const id = "watched-shell";
+    try {
+      startShell({ id, projectId: "preview-project", command: "build", cwd: directory, background: true, stopMode: "shell" }, () => {});
+      shellOutput(id, "Initial output");
+      const viewer = await connect();
+      const summary = viewer.events.find(event => event.t === "hello").snapshot.shells.find(shell => shell.id === id);
+      assert.equal(summary.output, "");
+      viewer.socket.send(JSON.stringify({ t: "shell.watch", id }));
+      await waitFor(() => viewer.events.some(event => event.t === "shell.output" && event.output === "Initial output"));
+      shellOutput(id, "Latest output");
+      await waitFor(() => viewer.events.some(event => event.t === "shell.output" && event.output === "Latest output"));
+      shellActivity(id, true, "node");
+      await waitFor(() => first.events.some(event => event.t === "shell.upsert" && event.shell.id === id && event.shell.busy));
+      assert.ok(first.events.filter(event => event.t === "shell.upsert" && event.shell.id === id).every(event => event.shell.output === ""));
+      assert.equal(first.events.some(event => event.t === "shell.output" && event.id === id), false);
+      viewer.socket.send(JSON.stringify({ t: "shell.watch", id: "different-shell" }));
+      await waitFor(() => viewer.events.some(event => event.t === "shell.output" && event.id === "different-shell"));
+      const count = viewer.events.filter(event => event.t === "shell.output" && event.id === id).length;
+      shellOutput(id, "Hidden output");
+      await new Promise(resolve => setTimeout(resolve, 180));
+      assert.equal(viewer.events.filter(event => event.t === "shell.output" && event.id === id).length, count);
+      viewer.socket.close();
+    } finally { bus.emit({ t: "project.remove", id: "preview-project" }); }
+  });
+
   await t.test("browser panels load the chosen link and reject non-web destinations before creating a panel", async test => {
     const { attachDesktop } = await import("../server/desktop.ts");
     const { closeBrowser } = await import("../server/browser.ts");
@@ -307,8 +335,11 @@ test("conversation persistence and lifecycle recovery", async (t) => {
     const count = entry.messages.length;
     emit({ type: "tool.output", callId: "server", output: "\nGET / 200", append: true });
     assert.equal(entry.messages.length, count);
-    const snapshot = (await connect()).events.find(event => event.t === "hello").snapshot;
-    assert.match(snapshot.shells.find(shell => shell.id === id).output, /GET \/ 200/);
+    const viewer = await connect();
+    const snapshot = viewer.events.find(event => event.t === "hello").snapshot;
+    assert.equal(snapshot.shells.find(shell => shell.id === id).output, "");
+    viewer.socket.send(JSON.stringify({ t: "shell.watch", id }));
+    await waitFor(() => viewer.events.some(event => event.t === "shell.output" && /GET \/ 200/.test(event.output)));
     const rejected = await fetch(`${url}/api/shells/stop`, { method: "POST", headers: { "content-type": "application/json", origin: "https://unrelated.invalid" }, body: JSON.stringify({ id }) });
     assert.equal(rejected.status, 403);
     assert.equal(session.stoppedShell, undefined);
@@ -453,16 +484,47 @@ test("conversation persistence and lifecycle recovery", async (t) => {
         assert.notEqual(next, old);
         assert.equal(next.options.permissionMode, "bypass");
         assert.equal(next.options.externalId, `native-${entry.id}`);
-        const rejected = `busy-${entry.id}`;
-        first.socket.send(JSON.stringify({ t: "thread.config", id: entry.id, permissionMode: "manual", requestId: rejected }));
-        await waitFor(() => first.events.some(event => event.t === "request.error" && event.requestId === rejected));
+        const deferred = `busy-${entry.id}`;
+        first.socket.send(JSON.stringify({ t: "thread.config", id: entry.id, permissionMode: "manual", requestId: deferred }));
+        await waitFor(() => first.events.some(event => event.t === "thread.accepted" && event.requestId === deferred));
         assert.equal(entry.permissionMode, "bypass");
+        assert.equal(entry.pendingConfig.permissionMode, "manual");
         assert.equal(entry.running, true);
         assert.equal(next.disposed, false);
         runtimeFor(entry.id).stop();
         assert.equal(entry.status, "stopped");
       }
     }
+  });
+
+  await t.test("running settings remain unchanged until the queued follow-up starts", async subtest => {
+    const previousSessions = sessions.length;
+    const entry = store.createThread({ projectId: project.id, provider: "codex", model: "test", effort: "high", title: "Deferred settings", permissionMode: "manual" });
+    subtest.after(() => { disposeRuntime(entry.id); store.removeThread(entry.id); sessions.splice(previousSessions); });
+    const runtime = runtimeFor(entry.id);
+    await runtime.send("First turn");
+    const original = sessions.at(-1);
+    original.options.emit({ type: "session", externalId: "deferred-native" });
+    first.socket.send(JSON.stringify({ t: "thread.config", id: entry.id, model: "next-test", effort: "low", permissionMode: "bypass", requestId: "deferred-settings" }));
+    await waitFor(() => first.events.some(event => event.t === "thread.accepted" && event.requestId === "deferred-settings"));
+    assert.equal(entry.effort, "high");
+    assert.equal(entry.model, "test");
+    assert.equal(entry.permissionMode, "manual");
+    assert.equal(original.disposed, false);
+    assert.equal(new Store().threads.get(entry.id).pendingConfig.permissionMode, "bypass");
+    original.options.emit({ type: "session", effort: "high" });
+    assert.equal(entry.pendingConfig.effort, "low");
+    await runtime.send("Next turn");
+    assert.equal(entry.queue.length, 1);
+    original.options.emit({ type: "turn.end" });
+    await waitFor(() => sessions.at(-1) !== original && sessions.at(-1).options.threadId === entry.id);
+    const next = sessions.at(-1);
+    assert.equal(next.options.model, "next-test");
+    assert.equal(next.options.effort, "low");
+    assert.equal(next.options.permissionMode, "bypass");
+    assert.equal(next.options.externalId, "deferred-native");
+    assert.equal(entry.pendingConfig, undefined);
+    assert.equal(original.disposed, true);
   });
 
   await t.test("effort is validated, saved, and passed to the agent", async () => {
@@ -549,12 +611,7 @@ test("conversation persistence and lifecycle recovery", async (t) => {
           effort: "low",
         }),
       );
-      await waitFor(() =>
-        first.events.some(
-          (event) =>
-            event.t === "toast" && /Wait for this turn/.test(event.text),
-        ),
-      );
+      await waitFor(() => store.threads.get(otherThread.id).pendingConfig?.effort === "low");
       assert.equal(
         sessions.find((session) => session.options.threadId === otherThread.id)
           .disposed,
@@ -569,14 +626,10 @@ test("conversation persistence and lifecycle recovery", async (t) => {
           t: "thread.config",
           id: otherThread.id,
           effort: "low",
+          requestId: "stopped-effort",
         }),
       );
-      await waitFor(
-        () =>
-          sessions.find(
-            (session) => session.options.threadId === otherThread.id,
-          ).disposed,
-      );
+      await waitFor(() => first.events.some(event => event.t === "thread.accepted" && event.requestId === "stopped-effort"));
       assert.equal(store.threads.get(otherThread.id).running, false);
       assert.equal(store.threads.has(thread.id), false);
       assert.equal(new Store().threads.has(thread.id), false);

@@ -43,6 +43,12 @@ test("SSH configuration rejects command injection and persists only connection d
   assert.deepEqual(another.connections, [saved]);
   assert.equal((await stat(join(directory, "ssh.json"))).mode & 0o777, 0o600);
   assert.ok(!JSON.stringify(another.state()).includes("token"));
+  another.sessions.set(saved.id, { status: "connected", proxy: { endpoint: "http://127.0.0.1:49121" } });
+  assert.equal(another.state().activeId, "local");
+  assert.equal(another.state().connections[0].endpoint, "http://127.0.0.1:49121");
+  another.sessions.get(saved.id).status = "disconnected";
+  assert.equal(another.state().connections[0].endpoint, undefined);
+  another.sessions.delete(saved.id);
   await another.remove(saved.id);
   assert.deepEqual(another.state().connections, []);
 });
@@ -59,7 +65,8 @@ test("the remote proxy authenticates HTTP and WebSocket requests and never falls
   });
   const port = await listen(server);
   const wss = new WebSocketServer({ server, verifyClient: ({ req }) => req.headers["x-citropy-remote-token"] === token });
-  wss.on("connection", socket => socket.on("message", data => socket.send(data)));
+  const urls = [];
+  wss.on("connection", (socket, req) => { urls.push(req.url); socket.on("message", data => socket.send(data)); });
   const origin = "http://127.0.0.1:4177";
   const proxy = await remoteProxy(origin);
   t.after(async () => {
@@ -85,6 +92,12 @@ test("the remote proxy authenticates HTTP and WebSocket requests and never falls
   await once(socket, "open");
   socket.send("remote output");
   assert.equal(String((await once(socket, "message"))[0]), "remote output");
+  const workspace = new WebSocket(proxy.endpoint.replace("http", "ws") + "/socket?workspace=1", { origin });
+  await once(workspace, "open");
+  workspace.send("workspace update");
+  assert.equal(String((await once(workspace, "message"))[0]), "workspace update");
+  assert.equal(urls.at(-1), "/socket?workspace=1");
+  workspace.close();
   const closed = once(socket, "close");
   proxy.setTarget(undefined);
   await closed;

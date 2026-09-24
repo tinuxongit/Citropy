@@ -1,3 +1,4 @@
+import { reportError } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { useEffect, useRef, useState } from "react";
 import type { Terminal } from "@xterm/xterm";
@@ -80,6 +81,7 @@ export function TerminalPane({
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<Terminal | null>(null);
   const fit = useRef<FitAddon | null>(null);
+  const replays = useRef(new WeakMap<Terminal, number>());
   const attached = useRef(false);
   const [signal] = useState(environmentSignal);
   const projectId = panel.projectId;
@@ -143,6 +145,18 @@ export function TerminalPane({
       instance.loadAddon(fitAddon);
       instance.loadAddon(new WebLinksAddon());
       instance.open(host.current);
+      instance.attachCustomKeyEventHandler(event => {
+        if (event.type !== "keydown" || !event.ctrlKey || event.altKey || event.metaKey || event.key.toLowerCase() !== "c" || !instance.hasSelection()) return true;
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          if (!document.execCommand("copy")) {
+            if (!navigator.clipboard) throw new Error(t("Could not copy terminal selection. Try your browser’s Copy command."));
+            void navigator.clipboard.writeText(instance.getSelection()).catch(reportError);
+          }
+        } catch (error) { reportError(error); }
+        return false;
+      });
 
       if (hasWebgl2()) {
         try {
@@ -178,7 +192,7 @@ export function TerminalPane({
       });
 
       instance.onData((data) => {
-        if (!signal.aborted) send({ t: "term.data", termId: panel.id, data });
+        if (!signal.aborted && !replays.current.get(instance)) send({ t: "term.data", termId: panel.id, data });
       });
       instance.onResize(({ cols, rows }) => {
         if (!signal.aborted) send({ t: "term.resize", termId: panel.id, cols, rows });
@@ -197,7 +211,15 @@ export function TerminalPane({
     return onTerminal((event) => {
       if (event.termId !== panel.id || !attached.current) return;
       if (event.t === "term.data") {
-        term.current?.write((event.reset ? "\x1bc" : "") + event.data, () => {
+        const instance = term.current;
+        if (!instance) return;
+        if (event.reset) replays.current.set(instance, (replays.current.get(instance) ?? 0) + 1);
+        instance.write((event.reset ? "\x1bc" : "") + event.data, () => {
+          if (event.reset) replays.current.set(instance, (replays.current.get(instance) ?? 1) - 1);
+          if (event.reset && attached.current && !signal.aborted && term.current) {
+            if (!document.documentElement.hasAttribute("data-resizing")) fit.current?.fit();
+            send({ t: "term.resize", termId: panel.id, cols: term.current.cols, rows: term.current.rows });
+          }
           if (event.streamId && !signal.aborted) send({ t: "term.ack", termId: panel.id, count: event.data.length, streamId: event.streamId });
         });
       }

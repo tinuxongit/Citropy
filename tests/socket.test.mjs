@@ -31,14 +31,14 @@ test("the local connection recovers without replaying GitHub actions", { timeout
     }
   }
   globalThis.WebSocket = FakeWebSocket;
-  globalThis.location = { protocol: "http:", host: "127.0.0.1:4177" };
+  globalThis.location = { origin: "http://127.0.0.1:4177", protocol: "http:", host: "127.0.0.1:4177" };
   globalThis.localStorage = { getItem: () => null };
   globalThis.requestAnimationFrame = (callback) => {
     frames.set(++nextFrame, callback);
     return nextFrame;
   };
   globalThis.cancelAnimationFrame = (id) => frames.delete(id);
-  const { connect, disconnect } = await import("../web/src/lib/socket.ts");
+  const { connect, disconnect, prepareConnection } = await import("../web/src/lib/socket.ts");
   const { useApp } = await import("../web/src/lib/store.ts");
   const { github, fetchFile, fetchTree, fetchDiff, manageGit } = await import("../web/src/lib/actions.ts");
   const hello = {
@@ -188,6 +188,39 @@ test("the local connection recovers without replaying GitHub actions", { timeout
     }
     t.mock.timers.tick(65_000);
     assert.equal(sockets.length, count + 10);
+  });
+
+  await t.test("preparing a host preserves the active socket on cancellation, failure, and timeout", async () => {
+    connect();
+    const active = sockets.at(-1);
+    active.open();
+    active.message(hello);
+    flush();
+    for (const reason of ["abort", "close", "timeout"]) {
+      const controller = new AbortController();
+      const pending = prepareConnection("http://127.0.0.1:49121", controller.signal);
+      const rejected = assert.rejects(pending, /changed|closed|timed out/);
+      const destination = sockets.at(-1);
+      if (reason === "abort") controller.abort();
+      else if (reason === "close") destination.close();
+      else t.mock.timers.tick(20000);
+      await rejected;
+      assert.equal(destination.readyState, 3);
+      assert.equal(active.readyState, 1);
+      assert.equal(useApp.getState().connected, true);
+    }
+    const pending = prepareConnection("http://127.0.0.1:49121", new AbortController().signal);
+    const destination = sockets.at(-1);
+    destination.open();
+    destination.message({ ...hello, snapshot: { ...hello.snapshot, home: "/remote" } });
+    const prepared = await pending;
+    const count = sockets.length;
+    disconnect(true);
+    connect(prepared);
+    assert.equal(sockets.length, count);
+    assert.equal(useApp.getState().connected, true);
+    assert.equal(useApp.getState().home, "/remote");
+    disconnect();
   });
 
   t.mock.timers.reset();

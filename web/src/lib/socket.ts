@@ -8,6 +8,12 @@ type TermListener = (
 ) => void;
 
 const termListeners = new Set<TermListener>();
+const shellOutputListeners = new Set<(event: Extract<ServerEvent, { t: "shell.output" }>) => void>();
+
+export function onShellOutput(listener: (event: Extract<ServerEvent, { t: "shell.output" }>) => void): () => void {
+  shellOutputListeners.add(listener);
+  return () => { shellOutputListeners.delete(listener); };
+}
 let socket: WebSocket | null = null;
 let queue: ServerEvent[] = [];
 let frame = 0;
@@ -100,13 +106,53 @@ export function send(event: ClientEvent): void {
       "term.data",
       "term.ack",
       "term.unsubscribe",
+      "shell.watch",
     ].includes(event.t)
   )
     return;
   outbox.push(event);
 }
 
-export function connect(): void {
+export async function prepareConnection(endpoint: string, signal: AbortSignal, threadId?: string): Promise<{ socket: WebSocket; events: ServerEvent[] }> {
+  const url = new URL(`${endpoint}/socket`, location.origin);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  const pending = new WebSocket(url);
+  const events: ServerEvent[] = [];
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timeout);
+      signal.removeEventListener("abort", abort);
+    };
+    const fail = (error: Error) => {
+      cleanup();
+      pending.onclose = null;
+      pending.onerror = null;
+      pending.onmessage = null;
+      pending.close();
+      reject(error);
+    };
+    const abort = () => fail(new DOMException("Environment changed", "AbortError"));
+    const timeout = setTimeout(() => fail(new Error("The workspace connection timed out. Reconnect to try again.")), 20000);
+    signal.addEventListener("abort", abort, { once: true });
+    pending.onerror = () => fail(new Error("Could not connect to the workspace."));
+    pending.onclose = () => fail(new Error("The workspace connection closed before it was ready."));
+    pending.onmessage = message => {
+      try {
+        const event = JSON.parse(message.data as string) as ServerEvent;
+        events.push(event);
+        if (event.t === "hello" && threadId && event.snapshot.threads.some(thread => thread.id === threadId)) {
+          pending.send(JSON.stringify({ t: "thread.load", id: threadId }));
+        } else if (event.t === "hello" || (event.t === "thread.messages" && event.threadId === threadId)) {
+          cleanup();
+          resolve({ socket: pending, events });
+        }
+      } catch { fail(new Error("The workspace sent an invalid response.")); }
+    };
+    if (signal.aborted) abort();
+  });
+}
+
+export function connect(prepared?: { socket: WebSocket; events: ServerEvent[] }): void {
   if (
     socket &&
     (socket.readyState === WebSocket.OPEN ||
@@ -118,7 +164,7 @@ export function connect(): void {
   const url = new URL(serverUrl("/socket"), `${location.protocol}//${location.host}`);
   if (epoch) { url.searchParams.set("epoch", epoch); url.searchParams.set("after", String(sequence)); }
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  const current = new WebSocket(url);
+  const current = prepared?.socket ?? new WebSocket(url);
   socket = current;
 
   current.onopen = () => {
@@ -130,9 +176,8 @@ export function connect(): void {
     }
   };
 
-  current.onmessage = (message) => {
+  const receive = (event: ServerEvent) => {
     if (socket !== current) return;
-    const event = JSON.parse(message.data as string) as ServerEvent;
     if (event.t === "hello") { epoch = event.epoch ?? ""; sequence = event.sequence ?? 0; }
     else if (event.t === "reconnected") {
       flush();
@@ -145,12 +190,18 @@ export function connect(): void {
       if (sequence && event.sequence !== sequence + 1) { epoch = ""; current.close(); return; }
       sequence = event.sequence;
     }
+    if (event.t === "shell.output") {
+      for (const listener of shellOutputListeners) listener(event);
+      return;
+    }
     if (event.t === "term.data" || event.t === "term.exit") {
       for (const listener of termListeners) listener(event);
       return;
     }
     enqueue(event);
   };
+
+  current.onmessage = message => receive(JSON.parse(message.data as string) as ServerEvent);
 
   current.onclose = () => {
     if (socket !== current) return;
@@ -163,6 +214,11 @@ export function connect(): void {
   };
 
   current.onerror = () => current.close();
+  if (prepared) {
+    backoff = 400;
+    for (const event of prepared.events) receive(event);
+    flush();
+  }
 }
 
 export function disconnect(switching = false): void {
@@ -181,6 +237,7 @@ export function disconnect(switching = false): void {
   }
   outbox.length = 0;
   termListeners.clear();
+  shellOutputListeners.clear();
   epoch = "";
   sequence = 0;
   rejectResponses(switching);

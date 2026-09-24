@@ -9,7 +9,7 @@ import type { WritingModel } from "../../../shared/assistance.ts";
 import { useCallback, useRef, useState } from "react";
 import { ArrowUp, Square } from "./icons.ts";
 import { Paperclip, CheckCircle2 } from "lucide-react";
-import { selectedModel } from "../../../shared/model-options.ts";
+import { nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { ContextUsage } from "./ContextUsage.tsx";
 import {
   configureThread,
@@ -103,9 +103,10 @@ export function Composer({
     !gitActionBusy(thread?.gitAction) &&
     !uploading &&
     Boolean(provider?.enabled && provider.available);
-  const model = selectedModel(provider?.models ?? [], thread?.model);
+  const configuredThread = thread ? { ...thread, ...nextTurnSettings(thread) } : undefined;
+  const model = selectedModel(provider?.models ?? [], configuredThread?.model);
   const commands = useComposerCommands({
-    thread,
+    thread: configuredThread,
     provider,
     model,
     onCompact: compact,
@@ -260,31 +261,32 @@ export function Composer({
           thread={thread}
           commands={commands}
         />
+        {thread.pendingConfig && <div className="composer-pending-settings" role="status">{t("Applies to the next turn")}</div>}
         <div className="composer-bar">
           <ModelPicker
-            value={{ provider: thread.provider, model: thread.model ?? model?.id ?? "default" }}
+            value={{ provider: thread.provider, model: configuredThread?.model ?? model?.id ?? "default" }}
             label={t("Model")}
             buttonRef={modelButton}
             className="composer-select composer-model"
-            disabled={running || !connected || sending || transferring}
-            lockedProvider={hasMessages || thread.externalId || thread.usage.turns || thread.queue?.length ? thread.provider : undefined}
+            disabled={!connected || sending || transferring}
+            lockedProvider={running || hasMessages || thread.externalId || thread.usage.turns || thread.queue?.length ? thread.provider : undefined}
             onTransfer={hasMessages && !thread.parentThreadId ? (choice) => void transfer(choice) : undefined}
-            transferDisabled={Boolean(thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
+            transferDisabled={Boolean(running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
             onChange={(choice) => { if (choice) configureThread(thread.id, { ...choice, effort: null }); }}
           />
 
           {hasModelOptions(model) && (
             <ModelOptionsMenu
-              thread={thread}
+              thread={configuredThread!}
               model={model}
-              disabled={running || transferring}
+              disabled={!connected || sending || transferring}
               buttonRef={effortButton}
             />
           )}
 
           <PermissionMenu
-            thread={thread}
-            disabled={running || transferring}
+            thread={configuredThread!}
+            disabled={!connected || sending || transferring}
             buttonRef={permissionButton}
           />
 

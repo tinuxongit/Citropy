@@ -118,6 +118,12 @@
   color: var(--text-3);
 }
 
+.composer-pending-settings {
+  padding: 0 14px 4px;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+
 .composer-bar {
   display: flex;
   flex-wrap: wrap;

@@ -30,6 +30,8 @@ test("renderer panels release background work and ignore stale replies", { timeo
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   const requests = [];
+  const terminalInterrupt = Promise.withResolvers();
+  let terminalRestored;
   let slowFile;
   let connection;
   const panels = [
@@ -104,6 +106,8 @@ test("renderer panels release background work and ignore stale replies", { timeo
     socket.onMessage((raw) => {
       const event = JSON.parse(raw);
       requests.push(event);
+      if (event.t === "term.data" && event.data === "\u0003") terminalInterrupt.resolve();
+      if (event.t === "term.resize") terminalRestored?.resolve(event);
       const reply = (event) => socket.send(JSON.stringify(event));
       if (event.t === "file.tree") reply({ t: "file.tree", requestId: event.requestId, entries: ["slow.txt", "current.txt"].map((name) => ({ name, path: name, dir: false })) });
       if (event.t === "file.read" && event.path === "current.txt") reply({ t: "file.content", requestId: event.requestId, path: event.path, content: "The current file" });
@@ -236,15 +240,67 @@ test("renderer panels release background work and ignore stale replies", { timeo
         await page.locator(".inspector").screenshot({ path: `/tmp/citropy-terminal-${width}-${scale}.png` });
       }
     }
+    await page.evaluate(() => {
+      window.terminalCopies = [];
+      window.originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+      document.addEventListener("copy", event => window.terminalCopies.push(event.clipboardData.getData("text/plain")));
+    });
+    const sentBeforeCopy = requests.filter(event => event.t === "term.data").length;
+    await page.locator(".xterm-screen").dblclick({ position: { x: 100, y: 10 } });
+    await page.keyboard.press("Control+Shift+C");
+    await page.waitForFunction(() => window.terminalCopies.length === 1);
+    await page.keyboard.press("Control+C");
+    await page.waitForFunction(() => window.terminalCopies.length === 2);
+    const copies = await page.evaluate(() => window.terminalCopies);
+    assert.ok(copies[0].length > 0);
+    assert.equal(copies[0], copies[1]);
+    assert.equal(requests.filter(event => event.t === "term.data").length, sentBeforeCopy);
+    await page.locator(".xterm-screen").click({ position: { x: 100, y: 10 } });
+    await page.keyboard.press("Control+C");
+    await page.waitForFunction(() => document.activeElement.classList.contains("xterm-helper-textarea"));
+    await terminalInterrupt.promise;
+    assert.equal(requests.filter(event => event.t === "term.data").at(-1).data, "\u0003");
+    await page.evaluate(() => {
+      if (window.originalClipboard) Object.defineProperty(navigator, "clipboard", window.originalClipboard);
+      else delete navigator.clipboard;
+    });
     await page.locator(".xterm-helper-textarea").fill("echo ready");
     await page.keyboard.press("Enter");
-    assert.equal(requests.filter(event => event.t === "term.data").map(event => event.data).join(""), "echo ready\r");
+    assert.equal(requests.filter(event => event.t === "term.data").map(event => event.data).join(""), "\u0003echo ready\r");
     assert.equal(requests.filter(event => event.t === "term.open").length, 1);
     assert.equal(requests.filter(event => event.t === "term.unsubscribe").length, 0);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.evaluate(async () => (await import("/web/src/lib/store.ts")).setUiScale(120));
     await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
     await settle();
+  });
+
+  await t.test("restored terminal output resynchronizes dimensions even when its layout did not change", async () => {
+    await settle();
+    const previous = requests.filter(event => event.t === "term.resize").at(-1);
+    assert.ok(previous);
+    terminalRestored = Promise.withResolvers();
+    connection.send(JSON.stringify({ t: "term.data", termId: "terminal", reset: true, data: "Restored terminal\r\n" }));
+    const resized = await terminalRestored.promise;
+    terminalRestored = undefined;
+    assert.equal(resized.cols, previous.cols);
+    assert.equal(resized.rows, previous.rows);
+  });
+
+  await t.test("history replay does not answer old device queries but live queries still work", async () => {
+    const replies = () => requests.filter(event => event.t === "term.data").length;
+    const before = replies();
+    terminalRestored = Promise.withResolvers();
+    connection.send(JSON.stringify({ t: "term.data", termId: "terminal", reset: true, data: "History\r\n\u001b[6n\u001b[c" }));
+    await terminalRestored.promise;
+    terminalRestored = undefined;
+    await settle();
+    assert.equal(replies(), before);
+    connection.send(JSON.stringify({ t: "term.data", termId: "terminal", data: "\u001b[6n" }));
+    await settle();
+    assert.equal(replies(), before + 1);
+    assert.match(requests.filter(event => event.t === "term.data").at(-1).data, /^\u001b\[\d+;\d+R$/);
   });
 
   await t.test("terminal grid resizes once when the workspace edge drag ends", async () => {

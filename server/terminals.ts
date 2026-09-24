@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { dataRoot } from "./paths.ts";
 import { bus } from "./bus.ts";
 import { panelList, closePanel, openPanel } from "./panels.ts";
-import { startShell, shellOutput, endShell } from "./shells.ts";
+import { startShell, shellOutput, endShell, shellActivity } from "./shells.ts";
 import type { TerminalSession, TerminalEvent } from "./terminal-host.ts";
 
 const key = createHash("sha256").update(dataRoot).digest("hex").slice(0, 24);
@@ -35,8 +35,13 @@ function receive(event: TerminalEvent): void {
     session.output = (session.output + data).slice(-200_000);
     shellOutput(`terminal:${event.id}`, data, true);
     bus.emit({ t: "term.data", termId: event.id, data });
+  } else if (event.type === "activity") {
+    Object.assign(session, { busy: event.busy, process: event.process });
+    shellActivity(`terminal:${event.id}`, event.busy, event.process);
   } else {
     session.running = false;
+    session.busy = false;
+    session.process = undefined;
     session.code = event.code;
     session.output = (session.output + `\r\n[process exited with code ${event.code}]\r\n`).slice(-200_000);
     endShell(`terminal:${event.id}`, event.code === 0 ? "finished" : "failed");
@@ -52,6 +57,7 @@ function attach(session: TerminalSession, recovered = false): void {
   const panel = session.panel ?? panelList().find(panel => panel.id === session.id);
   if (panel) {
     startShell({ id: `terminal:${session.id}`, projectId: panel.projectId, threadId: panel.threadId, panelId: panel.id, command: session.command || "", cwd: session.cwd, background: true, stopMode: "shell" }, async () => { await close(session.id); closePanel(session.id); });
+    shellActivity(`terminal:${session.id}`, session.busy, session.process);
     shellOutput(`terminal:${session.id}`, session.output);
     if (!session.running) endShell(`terminal:${session.id}`, session.code === 0 ? "finished" : "failed");
   }
@@ -112,12 +118,16 @@ function dial(): Promise<void> {
           let message: { event?: TerminalEvent; id?: string; result?: unknown; error?: string };
           try { message = JSON.parse(line); } catch { socket.destroy(); return; }
           if (message.event) {
-            if (ready) receive(message.event);
-            else {
-              waiting.push(message.event);
-              waitingBytes += message.event.type === "data" ? message.event.data.length : 0;
-              if (waitingBytes > 1024 * 1024) { socket.destroy(); return; }
-            }
+            const event = message.event;
+            queueMicrotask(() => {
+              if (connection !== socket || socket.destroyed) return;
+              if (ready) receive(event);
+              else {
+                waiting.push(event);
+                waitingBytes += event.type === "data" ? event.data.length : 0;
+                if (waitingBytes > 1024 * 1024) socket.destroy();
+              }
+            });
           }
           else if (message.id) {
             const entry = pending.get(message.id);
@@ -134,7 +144,7 @@ function dial(): Promise<void> {
         pending.clear();
         if (!detached && sessions.size) reconnect = setTimeout(() => { void ensure().catch(() => {}); }, 1000);
       });
-      void readFile(join(directory, "key"), "utf8").then(token => request<TerminalSession[]>("hello", { version: 1, token })).then(async entries => {
+      void readFile(join(directory, "key"), "utf8").then(token => request<TerminalSession[]>("hello", { version: 1, token, activity: true })).then(async entries => {
         if (connection !== socket || socket.destroyed) throw new Error("The terminal service disconnected during recovery.");
         for (const session of entries) attach(session, true);
         ready = true;
@@ -171,6 +181,7 @@ export async function open(termId: string, cwd: string, cols: number, rows: numb
   await ensure();
   const session = await request<TerminalSession>("open", { input: { id: termId, cwd, cols, rows, command, env, panel: panelList().find(panel => panel.id === termId) } });
   attach(session);
+  await request("resize", { termId, cols, rows });
 }
 
 export function session(termId: string): TerminalSession | undefined { return sessions.get(termId); }

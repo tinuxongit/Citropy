@@ -1,7 +1,8 @@
+import { ImportSessions } from "./ImportSessions.tsx";
 import { AnimatedText } from "./AnimatedText.tsx";
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Box, ChevronDown, FolderOpen, FolderPlus, GitFork, LogOut, Monitor, Server } from "lucide-react";
+import { Box, ChevronDown, FolderOpen, FolderPlus, Import, GitFork, LogOut, Monitor, Server } from "lucide-react";
 import { ContainerEnvironment } from "./ContainerEnvironment.tsx";
 import { NewSshConnection } from "./EnvironmentSettings.tsx";
 import { selectEnvironment, useEnvironments, useWorkspaceCatalog, environmentName, isRemote } from "../lib/environment.ts";
@@ -17,6 +18,7 @@ export function WorkspaceSelector({ disabled = false, addOnly = false }: { disab
   const t = useI18n();
   const environments = useEnvironments();
   const catalog = useWorkspaceCatalog();
+  const [importing, setImporting] = useState(false);
   const [adding, setAdding] = useState(false);
   const [container, setContainer] = useState(false);
   const projects = useApp(state => state.projects);
@@ -30,6 +32,7 @@ export function WorkspaceSelector({ disabled = false, addOnly = false }: { disab
     const entries = current ? projects : catalog[id]?.projects ?? [];
     const root = current ? home : catalog[id]?.home ?? "";
     return [
+      { id: `${id}:open`, label: t("Open another folder…"), icon: <FolderPlus size={17} className="workspace-add-icon" />, disabled: choosing, onSelect: () => { void chooseWorkspaceOn(id); } },
       ...entries.map(entry => ({
         id: `${id}:${entry.id}`, label: entry.name, hint: shortPath(entry.path, root),
         selected: current && entry.id === activeProjectId,
@@ -40,7 +43,6 @@ export function WorkspaceSelector({ disabled = false, addOnly = false }: { disab
         },
       })),
       ...(!current && !catalog[id] ? [{ id: `${id}:load`, label: t("Load workspaces"), icon: <Server size={17} />, onSelect: () => { void selectEnvironment(id).catch(reportError); } }] : []),
-      { id: `${id}:open`, label: t("Open another folder…"), icon: <FolderPlus size={17} className="workspace-folder-icon" />, disabled: choosing, onSelect: () => { void chooseWorkspaceOn(id); } },
     ];
   };
   const items: MenuItem[] = desktop ? [
@@ -55,6 +57,7 @@ export function WorkspaceSelector({ disabled = false, addOnly = false }: { disab
   ] : group("local");
   if (!addOnly && project?.isGit) items.push({ id: "new-worktree", label: t("New thread with workspace options…"), section: t("Workspace actions"), icon: <GitFork size={17} />, onSelect: () => { void createThread(undefined, true); } });
   if (!addOnly && project) items.push({ id: "close", label: t("Close workspace"), hint: t("Remove {name} from the sidebar. Files stay on disk.", { name: project.name }), section: t("Workspace actions"), icon: <LogOut size={17} />, danger: true, onSelect: () => closeProject(project.id) });
+  items.push({ id: "import-sessions", label: t("Import conversations…"), section: t("Workspace actions"), icon: <Import size={17} />, onSelect: () => setImporting(true) });
   return <>
     <Menu align="start" header={t(addOnly ? "Add project" : "Workspaces")} className="workspace-menu" width={340} searchable searchPlaceholder={t("Find a workspace")} items={items}
       trigger={({ toggle, id, open }) => addOnly ? <button id={id} type="button" className="new-thread project-add"
@@ -68,6 +71,6 @@ export function WorkspaceSelector({ disabled = false, addOnly = false }: { disab
         <ChevronDown size={14} />
       </button>}
     />
-    <AnimatePresence>{container && <ContainerEnvironment onClose={() => setContainer(false)} />}{adding && <NewSshConnection onClose={() => setAdding(false)} />}</AnimatePresence>
+    <AnimatePresence>{importing && <ImportSessions onClose={() => setImporting(false)} />}{container && <ContainerEnvironment onClose={() => setContainer(false)} />}{adding && <NewSshConnection onClose={() => setAdding(false)} />}</AnimatePresence>
   </>;
 }

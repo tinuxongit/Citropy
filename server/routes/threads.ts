@@ -4,7 +4,7 @@ import { providerInfo } from "../provider-registry.ts";
 import { disposeRuntime, runtimeFor, runtimeIfExists } from "../runtime.ts";
 import { store } from "../store.ts";
 import { chooseThreadWorkspace } from "../workspaces.ts";
-import { modelSettings, selectedModel } from "../../shared/model-options.ts";
+import { modelSettings, nextTurnSettings, selectedModel } from "../../shared/model-options.ts";
 import type { ClientEvent, Thread } from "../../shared/protocol.ts";
 import type { Routes } from "./types.ts";
 
@@ -24,14 +24,15 @@ function hasHistory(thread: Thread): boolean {
 }
 
 function resolveConfig(thread: Thread, event: ConfigEvent): { changedProvider: boolean; changedModel: boolean; settings: Settings } {
+  const selection = nextTurnSettings(thread);
   const changedProvider = event.provider !== undefined && event.provider !== thread.provider;
   const provider = providerInfo().find((entry) => entry.id === (event.provider ?? thread.provider));
   if (changedProvider) {
     if (!provider?.available || !provider.enabled) throw new Error("Select an enabled, installed provider.");
-    if (hasHistory(thread)) throw new Error("Start a new thread to use a different provider after sending a message.");
+    if (hasHistory(thread) || runtimeIfExists(thread.id)?.turnActive) throw new Error("Start a new thread to use a different provider after sending a message.");
   }
   const models = provider?.models ?? [];
-  const model = selectedModel(models, event.model ?? (changedProvider ? undefined : thread.model));
+  const model = selectedModel(models, event.model ?? (changedProvider ? undefined : selection.model));
   if (event.model && !model) throw new Error("This model is no longer available. Refresh the model list.");
   if (event.effort && !model?.efforts?.includes(event.effort))
     throw new Error("This effort is not supported by the selected model");
@@ -39,12 +40,12 @@ function resolveConfig(thread: Thread, event: ConfigEvent): { changedProvider: b
     throw new Error("This context size is not supported by the selected model");
   if (event.fastMode !== undefined && (typeof event.fastMode !== "boolean" || (event.fastMode && !model?.fastMode)))
     throw new Error("Fast mode is not supported by the selected model");
-  const changedModel = changedProvider || (event.model !== undefined && event.model !== thread.model);
+  const changedModel = changedProvider || (event.model !== undefined && event.model !== selection.model);
   const settings = modelSettings(models, {
-    model: event.model ?? (changedProvider ? model?.id : thread.model),
-    effort: event.effort === null || changedModel ? (event.effort ?? undefined) : (event.effort ?? thread.effort),
-    contextWindow: event.contextWindow ?? (changedModel ? undefined : thread.contextWindow),
-    fastMode: event.fastMode ?? (changedModel ? false : thread.fastMode),
+    model: event.model ?? (changedProvider ? model?.id : selection.model),
+    effort: event.effort === null || changedModel ? (event.effort ?? undefined) : (event.effort ?? selection.effort),
+    contextWindow: event.contextWindow ?? (changedModel ? undefined : selection.contextWindow),
+    fastMode: event.fastMode ?? (changedModel ? false : selection.fastMode),
   });
   return { changedProvider, changedModel, settings };
 }
@@ -101,12 +102,19 @@ export const threadRoutes: Routes = {
   "thread.config": async (event, send) => {
     const thread = store.threads.get(event.id);
     if (!thread) throw new Error("Conversation not found");
-    const { changedProvider, changedModel, settings } = resolveConfig(thread, event);
+    const selection = nextTurnSettings(thread);
+    const { changedProvider, settings } = resolveConfig(thread, event);
+    const changedModel = changedProvider || settings.model !== thread.model;
+    const permissionMode = event.permissionMode ?? selection.permissionMode;
     const restart =
       changedProvider ||
       Object.entries(settings).some(([key, value]) => thread[key as keyof Settings] !== value) ||
-      (event.permissionMode !== undefined && event.permissionMode !== thread.permissionMode);
-    if (restart && thread.running) throw new Error("Wait for this turn to finish before changing its settings.");
+      permissionMode !== thread.permissionMode;
+    if (thread.running || runtimeIfExists(event.id)?.turnActive) {
+      store.patchThread(event.id, { pendingConfig: restart ? { ...settings, permissionMode } : undefined, title: event.title ?? thread.title });
+      if (event.requestId) send({ t: "thread.accepted", requestId: event.requestId });
+      return;
+    }
     let live = false;
     if (restart) {
       const existing = changedProvider ? undefined : runtimeIfExists(event.id);
@@ -116,7 +124,7 @@ export const threadRoutes: Routes = {
           effort: settings.effort,
           contextMax: settings.contextWindow,
           fastMode: settings.fastMode,
-          permissionMode: event.permissionMode ?? thread.permissionMode,
+          permissionMode,
         });
       if (!live) disposeRuntime(event.id, true);
     }
@@ -127,7 +135,8 @@ export const threadRoutes: Routes = {
       ...(!live && (changedModel || settings.contextWindow !== thread.contextWindow)
         ? { usage: { ...thread.usage, contextMax: 0 } }
         : {}),
-      permissionMode: event.permissionMode ?? thread.permissionMode,
+      permissionMode,
+      pendingConfig: undefined,
       title: event.title ?? thread.title,
     });
     if (event.requestId) send({ t: "thread.accepted", requestId: event.requestId });

@@ -902,3 +902,46 @@
   color: var(--text-3);
   font-size: var(--text-sm);
 }
+
+.session-import-dialog {
+  width: min(760px, calc(var(--viewport-width) - 32px));
+}
+.session-import-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.session-import-controls select {
+  width: auto;
+}
+.session-import-controls input {
+  flex: 1;
+  min-width: 140px;
+}
+.session-import-list {
+  max-height: 48vh;
+  overflow: auto;
+}
+.session-import-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 4px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 90px;
+}
+.session-import-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.session-import-row strong,
+.session-import-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.session-import-row small {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  margin-top: 4px;
+}

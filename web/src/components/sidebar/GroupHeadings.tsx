@@ -1,16 +1,18 @@
-import type { MouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { closeProject, createThread, openOnEnvironment } from "../../lib/actions.ts";
+import { useEffect, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { AnimatePresence } from "motion/react";
+import { closeProject, openOnEnvironment } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { connectionName, environmentId, useEnvironments } from "../../lib/environment.ts";
 import { useI18n } from "../../lib/i18n.ts";
-import { confirmAction, useApp } from "../../lib/store.ts";
+import { confirmAction, selectProject, useApp } from "../../lib/store.ts";
 import { ChevronRight, Folder, FolderOpen, MessageSquarePlus, Pencil, Trash2 } from "../icons.ts";
 import { Menu } from "../Menu.tsx";
 import { PixelLoader } from "../PixelLoader.tsx";
+import { RenameProjectModal } from "./RenameProjectModal.tsx";
 import type { Project } from "../../../../shared/protocol.ts";
 import type { ThreadGroup } from "./thread-groups.ts";
 
-export function ProjectHeading({ group, project, searching, dragging, isFirst, isLast, canCreateThread, onDragStart, consumeDrag, onMove, onRename, onNewThread }: {
+export function ProjectHeading({ group, project, searching, dragging, isFirst, isLast, canCreateThread, onDragStart, consumeDrag, onMove, onNewThread, onConversation }: {
   group: ThreadGroup;
   project: Project;
   searching: boolean;
@@ -21,13 +23,31 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
   onDragStart: (event: ReactPointerEvent<HTMLElement>) => void;
   consumeDrag: (event: MouseEvent) => boolean;
   onMove: (direction: -1 | 1) => void;
-  onRename: () => void;
   onNewThread: () => void;
+  onConversation: () => void;
 }) {
   const t = useI18n();
   const connected = useApp((state) => state.connected);
   const activeProjectId = useApp((state) => state.activeProjectId);
+  const environments = useEnvironments();
+  const environment = group.environment ?? environments.activeId;
+  const current = environment === environments.activeId;
+  const [renaming, setRenaming] = useState(false);
+  const [pending, setPending] = useState(false);
+  const connecting = environments.connections.some(entry => entry.id === environment && entry.status === "connecting");
   const expanded = group.open || searching;
+  useEffect(() => { if (!current) setRenaming(false); }, [current]);
+
+  const run = async (action: () => void) => {
+    setPending(true);
+    try {
+      if (!current || !connected) await openOnEnvironment(environment, project.id);
+      if (environmentId() !== environment) return;
+      if (!useApp.getState().projects.some(entry => entry.id === project.id)) throw new Error("This workspace is no longer open on that host.");
+      action();
+    } catch (error) { reportError(error); }
+    finally { setPending(false); }
+  };
   const remove = async () => {
     const confirmed = await confirmAction({
       title: t("Remove project?"),
@@ -35,83 +55,53 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
       label: t("Remove project"),
       danger: true,
     });
-    if (confirmed) closeProject(project.id);
+    if (confirmed) await run(() => closeProject(project.id));
+  };
+  const openMenu = (element: HTMLElement) => {
+    const button = element.querySelector<HTMLButtonElement>(".global-project-edit");
+    if (button?.getAttribute("aria-expanded") !== "true") button?.click();
   };
   const editLabel = `${t("Edit project")} ${group.label}`;
   const Icon = group.icon === Folder && expanded ? FolderOpen : group.icon;
   const newThreadLabel = `${t("New thread")} · ${group.label}`;
+  const disabled = pending || connecting || (current && !connected && !window.citropyDesktop?.connectEnvironment);
 
-  return (
-    <div className="global-project-heading" data-project-id={project.id} data-active={project.id === activeProjectId} data-dragging={dragging}>
-      <button
-        className="global-project-toggle"
-        type="button"
-        aria-label={`${group.open ? t("Collapse") : t("Expand")} ${group.label}`}
-        aria-expanded={expanded}
-        title={project.path}
-        onPointerDown={onDragStart}
-        onClick={(event) => { if (!consumeDrag(event)) group.toggle(); }}
-      >
-        <Icon size={15} />
-        <span className="truncate">{group.label}</span>
-        {!expanded && group.threads.length > 0 && <span className="global-project-count">{group.threads.length}</span>}
-      </button>
-      <Menu
-        align="end"
-        items={[
-          { id: "rename", label: t("Rename project"), icon: <Pencil size={15} />, disabled: !connected, onSelect: onRename },
-          { id: "up", label: t("Move up"), disabled: isFirst, onSelect: () => onMove(-1) },
-          { id: "down", label: t("Move down"), disabled: isLast, onSelect: () => onMove(1) },
-          { id: "remove", label: t("Remove project"), icon: <Trash2 size={15} />, danger: true, disabled: !connected, onSelect: () => void remove() },
-        ]}
-        trigger={({ id, open, toggle }) => (
-          <button id={id} className="global-project-edit" type="button" aria-label={editLabel} title={editLabel} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
-            <Pencil size={13} />
-          </button>
-        )}
-      />
-      <button className="global-project-new" type="button" aria-label={newThreadLabel} title={newThreadLabel} disabled={!canCreateThread} onClick={onNewThread}>
-        <MessageSquarePlus size={14} />
-      </button>
-    </div>
-  );
-}
-
-export function CachedProjectHeading({ group, environment, project, onConversation }: {
-  group: ThreadGroup;
-  environment: string;
-  project: Project;
-  onConversation: () => void;
-}) {
-  const t = useI18n();
-  const connecting = useEnvironments().connections.some((entry) => entry.id === environment && entry.status === "connecting");
-  const count = group.cachedThreads?.length ?? 0;
-  const Icon = group.icon === Folder && group.open ? FolderOpen : group.icon;
-  const newThreadLabel = `${t("New thread")} · ${group.label}`;
-  const startThread = () => {
-    onConversation();
-    void openOnEnvironment(environment, project.id).then(() => { if (environmentId() === environment) return createThread(); }).catch(reportError);
-  };
-
-  return (
-    <div className="global-project-heading" data-project-id={project.id} data-environment={environment}>
-      <button
-        className="global-project-toggle"
-        type="button"
-        aria-label={`${group.open ? t("Collapse") : t("Expand")} ${group.label}`}
-        aria-expanded={group.open}
+  return <>
+    <div className="global-project-heading" data-project-id={project.id} data-environment={environment} data-drag-id={group.id} data-active={current && project.id === activeProjectId} data-dragging={dragging}
+      onContextMenu={event => {
+        if ((event.target as HTMLElement).closest('[role="menu"], dialog')) return;
+        event.preventDefault();
+        openMenu(event.currentTarget);
+      }}
+      onKeyDown={event => {
+        if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
+        if ((event.target as HTMLElement).closest('[role="menu"], dialog')) return;
+        event.preventDefault();
+        openMenu(event.currentTarget);
+      }}
+    >
+      <button className="global-project-toggle" type="button"
+        aria-label={`${group.open ? t("Collapse") : t("Expand")} ${group.label}`} aria-expanded={expanded}
         title={environment === "local" ? project.path : `${connectionName(environment)}: ${project.path}`}
-        onClick={group.toggle}
+        onPointerDown={onDragStart} onClick={event => { if (!consumeDrag(event)) group.toggle(); }}
       >
-        {connecting ? <PixelLoader size={15} /> : <Icon size={15} />}
+        {pending || connecting ? <PixelLoader size={15} /> : <Icon size={15} />}
         <span className="truncate">{group.label}</span>
-        {!group.open && count > 0 && <span className="global-project-count">{count}</span>}
+        {!expanded && (group.cachedThreads ?? group.threads).length > 0 && <span className="global-project-count">{(group.cachedThreads ?? group.threads).length}</span>}
       </button>
-      <button className="global-project-new" type="button" aria-label={newThreadLabel} title={newThreadLabel} disabled={connecting} onClick={startThread}>
-        <MessageSquarePlus size={14} />
-      </button>
+      <Menu align="end" items={[
+        { id: "open", label: t("Open workspace"), icon: <FolderOpen size={15} />, disabled, onSelect: () => void run(() => { selectProject(project.id); onConversation(); }) },
+        { id: "rename", label: t("Rename project"), icon: <Pencil size={15} />, disabled, onSelect: () => void run(() => setRenaming(true)) },
+        { id: "up", label: t("Move up"), disabled: isFirst, onSelect: () => onMove(-1) },
+        { id: "down", label: t("Move down"), disabled: isLast, onSelect: () => onMove(1) },
+        { id: "remove", label: t("Remove project"), icon: <Trash2 size={15} />, danger: true, disabled, onSelect: () => void remove() },
+      ]} trigger={({ id, open, toggle }) => (
+        <button id={id} className="global-project-edit" type="button" aria-label={editLabel} title={editLabel} aria-haspopup="menu" aria-expanded={open} onClick={toggle}><Pencil size={13} /></button>
+      )} />
+      <button className="global-project-new" type="button" aria-label={newThreadLabel} title={newThreadLabel} disabled={disabled || !canCreateThread} onClick={onNewThread}><MessageSquarePlus size={14} /></button>
     </div>
-  );
+    <AnimatePresence>{renaming && current && <RenameProjectModal project={project} onClose={() => setRenaming(false)} />}</AnimatePresence>
+  </>;
 }
 
 export function StatusHeading({ group, searching }: { group: ThreadGroup; searching: boolean }) {

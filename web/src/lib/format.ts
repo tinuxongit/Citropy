@@ -44,7 +44,7 @@ export function modelSource(
   return names[source] ?? source;
 }
 
-export function threadActivity(thread: ThreadMeta): { status: ThreadStatus; label: string } {
+export function threadActivity(thread: Pick<ThreadMeta, "running" | "status">): { status: ThreadStatus; label: string } {
   const status = thread.running && ["idle", "stopped"].includes(thread.status) ? "working" : thread.status;
   const label = status === "idle" ? "Ready" : status === "error" ? "Failed" : status === "awaiting" ? "Needs input"
     : status.charAt(0).toUpperCase() + status.slice(1);

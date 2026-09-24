@@ -8,14 +8,16 @@ const [address, directory] = process.argv.slice(2);
 if (!address || !directory) throw new Error("A terminal service address is required.");
 const token = await readFile(join(directory, "key"), "utf8");
 await writeFile(join(directory, "lock", "pid"), String(process.pid), { mode: 0o600 });
-const clients = new Map<import("node:net").Socket, string>();
+const clients = new Map<import("node:net").Socket, { id: string; activity: boolean }>();
 const host = new TerminalHost(event => {
   const data = JSON.stringify({ event }) + "\n";
-  for (const [socket, id] of clients) {
-    if (!socket.write(data)) host.flow(event.id, id, true);
+  for (const [socket, client] of clients) {
+    if (event.type === "activity" && !client.activity) continue;
+    if (!socket.write(data)) host.flow(event.id, client.id, true);
     if (socket.writableLength > 512 * 1024) socket.destroy();
   }
 });
+host.observeActivity(false);
 const server = createServer(socket => {
   const id = randomUUID();
   let authenticated = false;
@@ -24,7 +26,7 @@ const server = createServer(socket => {
   socket.setEncoding("utf8");
   socket.on("error", () => {});
   socket.on("drain", () => host.release(id));
-  socket.on("close", () => { clearTimeout(timer); clients.delete(socket); host.release(id); host.release(`${id}:render`); });
+  socket.on("close", () => { clearTimeout(timer); clients.delete(socket); host.observeActivity([...clients.values()].some(client => client.activity)); host.release(id); host.release(`${id}:render`); });
   socket.on("data", chunk => {
     input += chunk;
     if (input.length > 1024 * 1024) { socket.destroy(); return; }
@@ -42,7 +44,8 @@ const server = createServer(socket => {
             if (request.op !== "hello" || request.token !== token || request.version !== 1) { socket.destroy(); return; }
             authenticated = true;
             clearTimeout(timer);
-            clients.set(socket, id);
+            clients.set(socket, { id, activity: request.activity === true });
+            host.observeActivity([...clients.values()].some(client => client.activity));
           }
           let result: unknown;
           switch (request.op) {
