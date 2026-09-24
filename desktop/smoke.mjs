@@ -23,7 +23,7 @@ try {
   await access(join(appRoot, "dist/index.html"));
   await access(join(appRoot, "node_modules/@fontsource-variable/inter/files/inter-latin-standard-normal.woff2"));
   const notices = await readFile(join(appRoot, "dist/THIRD_PARTY_NOTICES.txt"), "utf8");
-  for (const path of ["react/LICENSE", "lucide-react/LICENSE", "@fontsource-variable/geist-mono/LICENSE", "tslib/CopyrightNotice.txt"]) {
+  for (const path of ["react/LICENSE", "lucide-react/LICENSE", "monaco-editor/LICENSE", "tslib/CopyrightNotice.txt"]) {
     assert.ok(notices.includes(await readFile(new URL(`../node_modules/${path}`, import.meta.url), "utf8")), `Missing bundled dependency notice: ${path}`);
   }
   await access(join(appRoot, "desktop/apply-appimage-update.sh"));
