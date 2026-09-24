@@ -196,8 +196,9 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 9
     const strip = page.getByRole("tablist", { name: "Open workspace panels", exact: true });
     const contained = async () => {
       await page.waitForFunction(() => {
-        const bounds = document.querySelector('.workbench-tabs')?.getBoundingClientRect();
-        return bounds && bounds.left >= 0 && bounds.right <= innerWidth + 1;
+        const strip = document.querySelector('.workbench-tabs');
+        const bounds = strip?.getBoundingClientRect();
+        return bounds && bounds.left >= 0 && bounds.right <= innerWidth + 1 && strip.scrollWidth <= strip.clientWidth;
       });
       const boxes = await strip.evaluate(element => ({ width: element.clientWidth, scroll: element.scrollWidth, bounds: element.getBoundingClientRect().toJSON(), tabs: [...element.querySelectorAll('[role="tab"], .workbench-close, .workbench-overflow')].map(tab => tab.getBoundingClientRect().toJSON()) }));
       assert.ok(boxes.scroll <= boxes.width, JSON.stringify(boxes));

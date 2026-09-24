@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { AnimatedText } from "./AnimatedText.tsx";
 import { isRemote } from "../lib/environment.ts";
@@ -112,7 +113,7 @@ export function Inspector({ visible }: { visible: boolean }) {
     const style = getComputedStyle(element);
     setTabWidth(element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) setTabWidth(Math.floor(entry.contentRect.width));
+      if (entry) flushSync(() => setTabWidth(Math.floor(entry.contentRect.width)));
     });
     observer.observe(element);
     return () => observer.disconnect();
