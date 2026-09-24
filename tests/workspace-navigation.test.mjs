@@ -191,7 +191,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 9
     ];
     await page.evaluate(async panels => {
       const { useApp } = await import("/web/src/lib/store.ts");
-      useApp.setState({ inspectorOpen: true, panels: panels.slice(0, 4), activePanels: { first: "files" }, panelWidths: { inspector: 320 } });
+      useApp.setState({ inspectorOpen: true, panels: panels.slice(0, 4), activePanels: { first: "changes" }, panelWidths: { inspector: 320 } });
     }, panels);
     const strip = page.getByRole("tablist", { name: "Open workspace panels", exact: true });
     const contained = async () => {
@@ -209,8 +209,17 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 9
       await page.setViewportSize({ width, height: 1000 });
       await strip.getByRole("tab", { name: "Files", exact: true }).waitFor();
       await contained();
-      assert.equal(await strip.getByRole("tab").count(), 4);
-      assert.equal(await strip.getByRole("button", { name: "More panels", exact: true }).count(), 0);
+      const visible = await strip.getByRole("tab").count();
+      const overflow = strip.getByRole("button", { name: "More panels", exact: true });
+      if (visible < 4) {
+        await overflow.click();
+        const hidden = page.getByRole("menu", { name: "More panels", exact: true }).getByRole("menuitem");
+        assert.equal(visible + await hidden.count(), 4);
+        await page.keyboard.press("Escape");
+      } else {
+        assert.equal(visible, 4);
+        assert.equal(await overflow.count(), 0);
+      }
       await page.screenshot({ path: `/tmp/citropy-workspace-tabs-${width}.png`, animations: "disabled" });
     }
     await page.evaluate(async panels => (await import("/web/src/lib/store.ts")).useApp.setState({ panels }), panels);

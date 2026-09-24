@@ -32,7 +32,7 @@ test("reviews and source previews keep rendering bounded", { timeout: 120_000 },
   await server.listen();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
-  async function fixture(test, { files = [], panels = [] } = {}) {
+  async function fixture(test, { files = [], panels = [], attachments = [] } = {}) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     page.setDefaultTimeout(20000);
     const errors = [];
@@ -54,6 +54,7 @@ test("reviews and source previews keep rendering bounded", { timeout: 120_000 },
       socket.onMessage(raw => {
         const event = JSON.parse(raw);
         requests.push(event);
+        if (event.t === "thread.load") socket.send(JSON.stringify({ t: "thread.messages", threadId: "attachments", messages: [{ id: "upload", role: "user", ts: 1, parts: [], attachments }] }));
         if (event.t === "github.request") socket.send(JSON.stringify({ t: "github.result", requestId: event.requestId, result: { installed: true, repositories: [] } }));
         if (event.t === "git.manage") {
           const result = event.operation === "show"
@@ -65,8 +66,9 @@ test("reviews and source previews keep rendering bounded", { timeout: 120_000 },
         if (event.t === "git.diff") socket.send(JSON.stringify({ t: "git.diff", requestId: event.requestId, patch: patches.find(patch => patch.path === event.path) ?? { ...patches[0], path: event.path } }));
         if (event.t === "file.tree") socket.send(JSON.stringify({ t: "file.tree", requestId: event.requestId, entries: ["large.ts", "small.ts"].map(path => ({ path, name: path, dir: false })) }));
       });
-      socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [{ id: "workspace", name: "Review workspace", path: "/example", isGit: true, lastOpened: 1 }], threads: [], providers: [], permissions: [], home: "/example", panels } }));
+      socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [{ id: "workspace", name: "Review workspace", path: "/example", isGit: true, lastOpened: 1 }], threads: attachments.length ? [{ id: "attachments", projectId: "workspace", title: "Uploaded files", provider: "codex", permissionMode: "bypass", status: "idle", running: false, createdAt: 1, updatedAt: 1, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, turns: 0 } }] : [], providers: [], permissions: [], home: "/example", panels } }));
     });
+    if (attachments.length) await page.addInitScript(() => localStorage.setItem("citropy.thread", "attachments"));
     await page.goto(server.resolvedUrls.local[0]);
     await page.getByRole("button", { name: "Source control", exact: true }).waitFor();
     return { page, requests, state, failCommit: value => { failCommit = value; }, emit: event => connection.send(JSON.stringify(event)) };
@@ -188,7 +190,7 @@ test("reviews and source previews keep rendering bounded", { timeout: 120_000 },
   });
 
   await t.test("source previews virtualize long files and theme changes reuse the fetched text", async (test) => {
-    const { page } = await fixture(test, { panels: [{ id: "files", projectId: "workspace", kind: "files", title: "Files" }] });
+    const { page } = await fixture(test, { attachments: ["large.ts", "small.ts"].map(path => ({ id: path, path, label: path, mime: "text/plain", size: 100 })) });
     const source = Array.from({ length: 5000 }, (_, index) => `export const value${index} = ${index};`).join("\n");
     let fetches = 0;
     await page.route("**/api/preview?**", route => {
@@ -198,7 +200,7 @@ test("reviews and source previews keep rendering bounded", { timeout: 120_000 },
       return route.fulfill({ json: { path, name: path, mime: "text/plain", size: text.length, text } });
     });
     await page.evaluate(async () => (await import("/web/src/lib/store.ts")).useApp.setState({ inspectorOpen: true }));
-    await page.getByRole("button", { name: "large.ts", exact: true }).click();
+    await page.getByRole("button", { name: "Preview large.ts", exact: true }).click();
     await page.locator(".source-line code span[style]").first().waitFor();
     assert.ok(await page.locator(".source-line").count() < 70);
     await page.getByRole("region", { name: "Source of large.ts" }).evaluate(node => { node.scrollTop = node.scrollHeight; });
@@ -212,8 +214,8 @@ test("reviews and source previews keep rendering bounded", { timeout: 120_000 },
     }, color);
     assert.equal(fetches, loadedFetches);
     await page.screenshot({ path: "/tmp/citropy-source-light.png", animations: "disabled" });
-    await page.getByRole("button", { name: "Close preview", exact: true }).click();
-    await page.getByRole("button", { name: "small.ts", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).last().click();
+    await page.getByRole("button", { name: "Preview small.ts", exact: true }).click();
     await page.getByText("export const current = true;", { exact: true }).waitFor();
     assert.equal(await page.locator(".source-line").count(), 1);
     assert.equal(await page.getByText(/value4999/).count(), 0);

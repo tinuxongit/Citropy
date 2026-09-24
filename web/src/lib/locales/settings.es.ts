@@ -1,4 +1,10 @@
 export const settingsEs: Record<string, string> = {
+  "Environment": "Entorno",
+  "Install {provider}": "Instalar {provider}",
+  "Install this provider in the selected environment.": "Instala este proveedor en el entorno seleccionado.",
+  "Installing…": "Instalando…",
+  "Install": "Instalar",
+  "Installed": "Instalado",
   "Set up terminals": "Configurar terminales",
   "Configuring Node.js for terminals…": "Configurando Node.js para las terminales…",
   "Node.js and npm are ready. Open a new terminal to use them outside Citropy.": "Node.js y npm están listos. Abre una terminal nueva para usarlos fuera de Citropy.",
