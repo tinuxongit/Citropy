@@ -22,6 +22,7 @@ const packages: Partial<Record<ProviderId, string>> = {
   claude: "@anthropic-ai/claude-code",
   codex: "@openai/codex",
   opencode: "opencode-ai",
+  pi: "@earendil-works/pi-coding-agent",
 };
 const versions = new Map<
   ProviderId,

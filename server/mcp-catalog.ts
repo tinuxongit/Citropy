@@ -186,7 +186,7 @@ export const workspaceTools = ([
         title: string,
         task: string,
         provider: {
-          enum: ["claude", "codex", "opencode", "cursor"],
+          enum: ["claude", "codex", "opencode", "cursor", "pi"],
           description:
             "Provider to run the subagent on. Defaults to this conversation's provider.",
         },

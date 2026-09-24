@@ -102,6 +102,13 @@ async function limits(provider: ProviderId): Promise<ProviderUsage> {
           error:
             "Cursor does not report a subscription allowance through its CLI. Check your Cursor account for usage.",
         };
+      if (provider === "pi")
+        return {
+          provider,
+          windows: [],
+          updatedAt: Date.now(),
+          error: "Pi uses multiple model services. Check the connected service for its allowance.",
+        };
       return parseProviderLimits(
         provider,
         await providerControl(

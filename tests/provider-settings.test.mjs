@@ -55,8 +55,9 @@ test(
       join(home, ".local/bin/codex"),
       join(home, ".local/share/cursor-agent/versions/1.0.0/cursor-agent"),
       join(home, ".opencode/bin/opencode"),
+      join(home, ".local/bin/pi"),
     ];
-    for (const [index, provider] of ["claude", "codex", "cursor", "opencode"].entries()) {
+    for (const [index, provider] of ["claude", "codex", "cursor", "opencode", "pi"].entries()) {
       const path = files[index];
       fs.mkdirSync(dirname(path), { recursive: true });
       fs.writeFileSync(
@@ -156,8 +157,9 @@ if (args.includes('--help')) {
           codex: join(home, "codex-custom/AGENTS.md"),
           opencode: join(home, "config-custom/opencode/AGENTS.md"),
           cursor: join(home, ".cursor/rules/citropy.mdc"),
+          pi: join(home, ".pi/agent/AGENTS.md"),
         };
-        for (const provider of ["claude", "codex", "opencode", "cursor"]) {
+        for (const provider of ["claude", "codex", "opencode", "cursor", "pi"]) {
           const first = readGlobalInstructions(provider);
           assert.equal(first.path, expected[provider]);
           assert.equal(first.exists, false);
@@ -247,30 +249,30 @@ if (args.includes('--help')) {
           await new Promise(resolve => setTimeout(resolve, 10));
         assert.equal(versionChecks.length, before + count);
       };
-      await checked(3);
-      assert.equal(new Set(versionChecks.slice(before)).size, 3);
+      await checked(4);
+      assert.equal(new Set(versionChecks.slice(before)).size, 4);
       await providerMaintenance();
       t.mock.timers.tick(299999);
       await new Promise(resolve => setTimeout(resolve, 20));
-      assert.equal(versionChecks.length, before + 3);
+      assert.equal(versionChecks.length, before + 4);
       t.mock.timers.tick(1);
-      await checked(6);
+      await checked(8);
       await providerMaintenance();
       versionGate = new Promise(resolve => { release = resolve; });
       t.mock.timers.tick(300000);
-      await checked(9);
+      await checked(12);
       t.mock.timers.tick(300000);
       await new Promise(resolve => setTimeout(resolve, 20));
-      assert.equal(versionChecks.length, before + 9);
+      assert.equal(versionChecks.length, before + 12);
       release();
       await providerMaintenance();
       t.mock.timers.tick(300000);
-      await checked(12);
+      await checked(16);
       await providerMaintenance();
       stop();
       t.mock.timers.tick(600000);
       await new Promise(resolve => setTimeout(resolve, 20));
-      assert.equal(versionChecks.length, before + 12);
+      assert.equal(versionChecks.length, before + 16);
       assert.equal(installerDownloads, 0);
       assert.equal(fs.existsSync(join(home, "calls.jsonl")), false);
     });
@@ -278,12 +280,12 @@ if (args.includes('--help')) {
       "updates use the owning installer, run only on request, verify versions, and bound output",
       async () => {
         const maintenance = await providerMaintenance();
-        assert.ok(maintenance.every((entry) => entry.available));
-        assert.deepEqual(maintenance.map((entry) => entry.method), ["Native updater", "Standalone installer", "Native updater", "Native updater"]);
+        assert.ok(maintenance.slice(0, 4).every((entry) => entry.available));
+        assert.deepEqual(maintenance.map((entry) => entry.method), ["Native updater", "Standalone installer", "Native updater", "Native updater", undefined]);
         await providerMaintenance(true);
         assert.equal(installerDownloads, 0);
         assert.equal(fs.existsSync(join(home, "calls.jsonl")), false);
-        assert.equal(store.notifications.filter((entry) => entry.kind === "update").length, 3);
+        assert.equal(store.notifications.filter((entry) => entry.kind === "update").length, 4);
         assert.ok(store.notifications.every((entry) => entry.target?.view === "settings" && entry.target.section === "Providers"));
         let prepared = 0;
         let refreshed = 0;

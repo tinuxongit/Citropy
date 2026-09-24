@@ -90,6 +90,10 @@ export async function generateText(selection: WritingModel, instruction: string,
         "--config", "project_doc_max_bytes=0",
         "--output-schema", schemaPath, "--output-last-message", output, "--color", "never", "-"], cwd, prompt, controller.signal);
       result = JSON.parse(await readFile(output, "utf8"));
+    } else if (selection.provider === "pi") {
+      const raw = await run(provider.binary, ["--print", "--mode", "text", "--model", selection.model,
+        "--no-tools", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--no-session", "--no-approve"], cwd, prompt, controller.signal);
+      result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
     } else {
       const raw = await generateOpenCodeText(cwd, selection.model, prompt, controller.signal);
       result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));

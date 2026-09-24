@@ -180,6 +180,7 @@ export function UsageView({
                       <option value="codex">Codex</option>
                       <option value="opencode">OpenCode</option>
                       <option value="cursor">Cursor</option>
+                      <option value="pi">Pi</option>
                     </select>
                   </div>
                   <div className="feature-table-wrap scroll">

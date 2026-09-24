@@ -65,7 +65,7 @@ function settings(
   const out: ProjectSettings = {};
   if (input.provider !== undefined) {
     if (input.provider !== null && !(shared
-      ? ["claude", "codex", "opencode", "cursor"].includes(input.provider)
+      ? ["claude", "codex", "opencode", "cursor", "pi"].includes(input.provider)
       : providers.some((provider) => provider.id === input.provider)))
       throw new Error("Unknown provider");
     out.provider = input.provider;
@@ -224,7 +224,7 @@ export async function handleFeatures(
       respond({ ok: true });
     } else if (url.pathname === "/api/providers/sessions" && req.method === "GET") {
       const provider = url.searchParams.get("provider");
-      if (provider !== "claude" && provider !== "codex") throw new Error("Choose Claude Code or Codex.");
+      if (provider !== "claude" && provider !== "codex" && provider !== "cursor" && provider !== "opencode" && provider !== "pi") throw new Error("Choose a provider.");
       respond(await listImportableSessions(provider));
     } else if (url.pathname === "/api/providers/sessions" && req.method === "POST") {
       const input = await body(req);
@@ -244,7 +244,7 @@ export async function handleFeatures(
       }, refreshProviders));
     } else if (url.pathname === "/api/providers/update" && req.method === "POST") {
       const input = await body(req);
-      if (!["claude", "codex", "opencode", "cursor"].includes(input.provider)) throw new Error("Unknown provider.");
+      if (!["claude", "codex", "opencode", "cursor", "pi"].includes(input.provider)) throw new Error("Unknown provider.");
       const provider = input.provider as ProviderId;
       if (providerBusy(provider)) throw new Error("Finish or stop this provider’s active conversations before updating.");
       respond(startProviderUpdate(provider, async () => {
@@ -253,7 +253,7 @@ export async function handleFeatures(
       }, refreshProviders));
     } else if (url.pathname === "/api/providers/instructions" && ["GET", "PUT"].includes(req.method || "")) {
       const provider = url.searchParams.get("provider") as ProviderId;
-      if (!["claude", "codex", "opencode", "cursor"].includes(provider)) throw new Error("Unknown provider.");
+      if (!["claude", "codex", "opencode", "cursor", "pi"].includes(provider)) throw new Error("Unknown provider.");
       if (req.method === "GET") respond(readGlobalInstructions(provider));
       else {
         const input = await body(req);

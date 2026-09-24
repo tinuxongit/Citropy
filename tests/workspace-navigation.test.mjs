@@ -151,6 +151,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.getByRole("menuitem", { name: "Import conversations…", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Import conversations", exact: true });
     await dialog.getByText("No matching sessions found on this machine.").waitFor();
+    assert.deepEqual(await dialog.getByRole("combobox", { name: "Provider", exact: true }).locator("option").allTextContents(), ["Claude Code", "Codex", "Cursor", "OpenCode", "Pi"]);
     await dialog.getByRole("combobox", { name: "Provider", exact: true }).selectOption("codex");
     const open = dialog.getByRole("button", { name: "Open Build a Minecraft game", exact: true });
     await open.waitFor();

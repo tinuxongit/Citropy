@@ -1,4 +1,6 @@
-export type ImportProvider = "claude" | "codex";
+import type { ProviderId } from "./protocol.ts";
+
+export type ImportProvider = ProviderId;
 
 export interface ImportableSession {
   id: string;

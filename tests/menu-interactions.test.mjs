@@ -28,7 +28,14 @@ test("menu surfaces retain focus while outside interaction and selection dismiss
     import '/web/src/styles/composer.css';
     import '/web/src/styles/app.css';
     const h = React.createElement;
-    useApp.setState({ uiScale: 100, providers: [{ id: 'claude', label: 'Claude', available: true, enabled: true, models: [{ id: 'fast', label: 'Fast' }] }] });
+    useApp.setState({ uiScale: 100, providers: [
+      { id: 'claude', label: 'Claude', available: true, enabled: true, models: [{ id: 'fast', label: 'Fast' }] },
+      { id: 'pi', label: 'Pi', available: true, enabled: true, models: [
+        { id: 'opencode-go/gpt-5', label: 'GPT 5', hint: 'opencode-go' },
+        { id: 'openai/gpt-5', label: 'GPT 5', hint: 'openai' },
+        { id: 'anthropic/claude-opus', label: 'Claude Opus', hint: 'anthropic' },
+      ] },
+    ] });
     createRoot(document.getElementById('fixture')).render(h('div', null,
       h(Menu, { header: 'Actions', items: [{ id: 'disabled', label: 'Unavailable', disabled: true }, { id: 'select', label: 'Select', section: 'Choices', onSelect: () => window.chosen = true }], trigger: ({ id, toggle }) => h('button', { id, onClick: toggle }, 'Open menu') }),
       h(ModelPicker, { label: 'Model', value: { provider: 'claude', model: 'fast' }, onChange: () => {} }),
@@ -51,7 +58,7 @@ test("menu surfaces retain focus while outside interaction and selection dismiss
     await menu.waitFor({ state: 'detached' });
     assert.equal(await page.evaluate(() => window.chosen), true);
     await page.getByRole('button', { name: 'Model: Fast', exact: true }).click();
-    await menu.getByRole('textbox', { name: 'Search models', exact: true }).fill('no matching models');
+    await menu.getByRole('textbox', { name: 'Search models', exact: true }).pressSequentially('no matching models');
     await menu.locator('.menu-empty').click();
     assert.equal(await menu.count(), 1);
     assert.equal(await menu.getByRole('textbox', { name: 'Search models', exact: true }).inputValue(), 'no matching models');
@@ -59,6 +66,16 @@ test("menu surfaces retain focus while outside interaction and selection dismiss
     await menu.waitFor({ state: 'detached' });
     await page.getByRole('button', { name: 'Model: Fast', exact: true }).click();
     assert.equal(await menu.getByRole('textbox', { name: 'Search models', exact: true }).inputValue(), '');
+    await menu.getByRole('button', { name: 'Pi', exact: true }).click();
+    const search = menu.getByRole('textbox', { name: 'Search models', exact: true });
+    await search.pressSequentially('go gpt');
+    assert.equal(await search.inputValue(), 'go gpt');
+    assert.deepEqual(await menu.locator('.menu-item .menu-label').allTextContents(), ['GPT 5']);
+    assert.deepEqual(await menu.locator('.menu-item .menu-hint').allTextContents(), ['OpenCode Go']);
+    await search.fill('open code go  ');
+    assert.deepEqual(await menu.locator('.menu-item .menu-label').allTextContents(), ['GPT 5']);
+    await search.fill('   ');
+    assert.equal(await menu.locator('.menu-item .menu-label').count(), 3);
     await page.keyboard.press('Escape');
     await menu.waitFor({ state: 'detached' });
     await page.getByRole('button', { name: 'Open menu', exact: true }).click();

@@ -2,6 +2,7 @@ import { claudeProvider } from "./claude.ts";
 import { codexProvider } from "./codex.ts";
 import { cursorProvider } from "./cursor.ts";
 import { opencodeProvider } from "./opencode.ts";
+import { piProvider } from "./pi.ts";
 import type { Provider } from "./types.ts";
 import type { ProviderId, ProviderInfo } from "../../shared/protocol.ts";
 
@@ -10,6 +11,7 @@ export const providers: Record<ProviderId, Provider> = {
   codex: codexProvider,
   cursor: cursorProvider,
   opencode: opencodeProvider,
+  pi: piProvider,
 };
 
 import { store } from "../store.ts";

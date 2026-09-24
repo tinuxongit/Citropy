@@ -57,6 +57,8 @@ export function globalInstructionLocation(
     );
     note =
       "OpenCode uses this file for global rules. Creating it replaces the Claude Code fallback, if your OpenCode version uses that fallback.";
+  } else if (provider === "pi") {
+    path = join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent"), "AGENTS.md");
   } else if (provider === "cursor") {
     path = join(homedir(), ".cursor", "rules", "citropy.mdc");
     note =

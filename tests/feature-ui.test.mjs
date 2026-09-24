@@ -392,7 +392,7 @@ test(
     await page.getByText(/^Resets \d/).waitFor();
     assert.deepEqual(
       await page.getByLabel("Filter usage by provider").locator("option").allTextContents(),
-      ["All providers", "Claude Code", "Codex", "OpenCode", "Cursor"],
+      ["All providers", "Claude Code", "Codex", "OpenCode", "Cursor", "Pi"],
     );
     await page.screenshot({
       animations: "disabled",

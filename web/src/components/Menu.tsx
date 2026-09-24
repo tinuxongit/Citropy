@@ -72,19 +72,24 @@ export function Menu({
   const menu = useRef<HTMLDivElement>(null);
   const id = useId();
   const visibleItems: (MenuItem & { depth: number })[] = [];
-  const matches = (item: MenuItem, text: string): boolean =>
-    `${item.label} ${item.id} ${item.hint ?? ""}`.toLowerCase().includes(text) || Boolean(item.children?.some(child => matches(child, text)));
-  const collect = (entries: MenuItem[], depth: number, text: string) => {
+  const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const contains = (item: MenuItem, words: string[]): boolean => {
+    if (!words.length) return true;
+    const text = `${item.label} ${item.id} ${item.hint ?? ""}`.toLowerCase();
+    return words.every(word => text.includes(word));
+  };
+  const matches = (item: MenuItem, words: string[]): boolean =>
+    contains(item, words) || Boolean(item.children?.some(child => matches(child, words)));
+  const collect = (entries: MenuItem[], depth: number, words: string[]) => {
     for (const item of entries) {
-      if (!matches(item, text)) continue;
+      if (!matches(item, words)) continue;
       visibleItems.push({ ...item, depth });
-      if (item.children && (text || !collapsed.has(item.id))) {
-        const groupMatches = `${item.label} ${item.hint ?? ""}`.toLowerCase().includes(text);
-        collect(item.children, depth + 1, groupMatches ? "" : text);
+      if (item.children && (words.length || !collapsed.has(item.id))) {
+        collect(item.children, depth + 1, contains(item, words) ? [] : words);
       }
     }
   };
-  collect(items, 0, query.toLowerCase());
+  collect(items, 0, terms);
   const toggleGroup = (itemId: string, collapse = !collapsed.has(itemId)) => setCollapsed(previous => {
     const next = new Set(previous);
     if (collapse) next.add(itemId); else next.delete(itemId);
@@ -272,7 +277,7 @@ export function Menu({
                         data-danger={item.danger || undefined}
                         data-depth={item.depth || undefined}
                         style={item.depth ? { paddingInlineStart: `calc(10px + ${item.depth} * var(--menu-nesting-indent, 18px))` } : undefined}
-                        aria-expanded={item.children ? Boolean(query) || !collapsed.has(item.id) : undefined}
+                        aria-expanded={item.children ? Boolean(terms.length) || !collapsed.has(item.id) : undefined}
                         title={item.hint}
                         onClick={() => {
                           if (item.children) { toggleGroup(item.id); return; }
@@ -298,7 +303,7 @@ export function Menu({
                         {item.selected && (
                           <Check size={13} className="menu-check" />
                         )}
-                        {item.children && <ChevronRight size={13} className="menu-group-chevron" data-expanded={Boolean(query) || !collapsed.has(item.id)} />}
+                        {item.children && <ChevronRight size={13} className="menu-group-chevron" data-expanded={Boolean(terms.length) || !collapsed.has(item.id)} />}
                       </button>
                       {item.action && <button
                         type="button"
@@ -313,7 +318,7 @@ export function Menu({
                 ))}
               {!visibleItems.length && (
                 <div className="menu-empty">
-                  {query ? t("No matches") : emptyMessage ?? t("No options available")}
+                  {terms.length ? t("No matches") : emptyMessage ?? t("No options available")}
                 </div>
               )}
             </div>

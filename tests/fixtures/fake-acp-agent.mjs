@@ -73,6 +73,7 @@ const app = acp.agent({ name: "fake-cursor" })
       protocolVersion: acp.PROTOCOL_VERSION,
       agentCapabilities: {
         loadSession: true,
+        sessionCapabilities: { list: {} },
         mcpCapabilities: { http: true, sse: false },
         promptCapabilities: { image: true, audio: false, embeddedContext: false },
       },
@@ -84,6 +85,9 @@ const app = acp.agent({ name: "fake-cursor" })
     record({ method: "authenticate", methodId: context.params.methodId });
     return {};
   })
+  .onRequest(acp.methods.agent.session.list, () => ({
+    sessions: process.env.FAKE_ACP_IMPORT ? [{ sessionId: "cursor-import-session", cwd: process.env.FAKE_ACP_CWD, title: "Cursor game", updatedAt: "2026-09-24T06:00:00Z" }] : [],
+  }))
   .onRequest(acp.methods.agent.session.new, (context) => {
     record({ method: "session/new", mcpServers: context.params.mcpServers, cwd: context.params.cwd });
     requireSignIn();
@@ -97,6 +101,15 @@ const app = acp.agent({ name: "fake-cursor" })
   .onRequest(acp.methods.agent.session.load, async (context) => {
     const resumed = context.params.sessionId;
     record({ method: "session/load", sessionId: resumed });
+    if (process.env.FAKE_ACP_IMPORT) {
+      if (resumed !== "cursor-import-session") throw new Error("Unknown session");
+      const update = async value => context.client.notify(acp.methods.client.session.update, { sessionId: resumed, update: value });
+      await update({ sessionUpdate: "user_message_chunk", messageId: "user-1", content: { type: "text", text: "Review the game" } });
+      await update({ sessionUpdate: "agent_thought_chunk", messageId: "thought-1", content: { type: "text", text: "Reading files" } });
+      await update({ sessionUpdate: "tool_call", toolCallId: "cursor-tool", title: "Read game.js", kind: "read", status: "in_progress", rawInput: { path: "game.js" } });
+      await update({ sessionUpdate: "tool_call_update", toolCallId: "cursor-tool", status: "completed", rawOutput: "const game = true;" });
+      await update({ sessionUpdate: "agent_message_chunk", messageId: "assistant-1", content: { type: "text", text: "Looks good" } });
+    }
     if (process.env.FAKE_ACP_RESUME_UPDATES) {
       await context.client.notify(acp.methods.client.session.update, {
         sessionId: resumed,

@@ -13,6 +13,7 @@ export const providerLabels: Record<ProviderId, string> = {
   codex: "Codex",
   cursor: "Cursor",
   opencode: "OpenCode",
+  pi: "Pi",
 };
 
 export function modelLabel(models: ModelOption[], modelId?: string): string {
@@ -22,26 +23,57 @@ export function modelLabel(models: ModelOption[], modelId?: string): string {
   );
 }
 
+const modelSourceNames: Record<string, string> = {
+  "302ai": "302.AI",
+  opencode: "OpenCode Zen",
+  "opencode-go": "OpenCode Go",
+  openai: "OpenAI",
+  "openai-codex": "OpenAI Codex",
+  "google-vertex": "Google Vertex AI",
+  openrouter: "OpenRouter",
+  "github-copilot": "GitHub Copilot",
+  "azure-openai-responses": "Azure OpenAI",
+  "cloudflare-ai-gateway": "Cloudflare AI Gateway",
+  "cloudflare-workers-ai": "Cloudflare Workers AI",
+  deepseek: "DeepSeek",
+  huggingface: "Hugging Face",
+  "kimi-coding": "Kimi for Coding",
+  minimax: "MiniMax",
+  "minimax-cn": "MiniMax (China)",
+  moonshotai: "Moonshot AI",
+  "moonshotai-cn": "Moonshot AI (China)",
+  nvidia: "NVIDIA",
+  "qwen-token-plan-cn": "Qwen Token Plan (China)",
+  "qwen-token-plan-individual": "Qwen Token Plan (Individual)",
+  stepfun: "StepFun",
+  "stepfun-ai": "StepFun (Global)",
+  "stepfun-ai-step-plan": "StepFun Step Plan (Global)",
+  "stepfun-step-plan": "StepFun Step Plan (China)",
+  together: "Together AI",
+  "vercel-ai-gateway": "Vercel AI Gateway",
+  "wafer.ai": "Wafer",
+  xai: "xAI",
+  xiaomi: "Xiaomi MiMo",
+  "xiaomi-token-plan-ams": "Xiaomi Token Plan (Amsterdam)",
+  "xiaomi-token-plan-cn": "Xiaomi Token Plan (China)",
+  "xiaomi-token-plan-sgp": "Xiaomi Token Plan (Singapore)",
+  zai: "Z.AI",
+  "zai-coding-cn": "Z.AI Coding Plan (China)",
+};
+
 export function modelSource(
   provider: ProviderInfo | undefined,
   model?: ModelOption,
 ): string {
   if (!provider) return translate("Provider unavailable");
   if (provider.id === "cursor") return model?.hint ?? provider.label;
-  if (provider.id !== "opencode") return provider.label;
+  if (provider.id !== "opencode" && provider.id !== "pi") return provider.label;
   const source = model?.hint ?? model?.id.split("/")[0];
   if (!source) return provider.label;
-  const names: Record<string, string> = {
-    opencode: "OpenCode Zen",
-    openai: "OpenAI",
-    anthropic: "Anthropic",
-    google: "Google",
-    openrouter: "OpenRouter",
-    "github-copilot": "GitHub Copilot",
-    "amazon-bedrock": "Amazon Bedrock",
-    azure: "Azure",
-  };
-  return names[source] ?? source;
+  const name = modelSourceNames[source];
+  if (typeof name === "string") return name;
+  if (!/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(source)) return source;
+  return source.split(/[-_]/).map(part => part[0]!.toUpperCase() + part.slice(1)).join(" ");
 }
 
 export function threadActivity(thread: Pick<ThreadMeta, "running" | "status">): { status: ThreadStatus; label: string } {

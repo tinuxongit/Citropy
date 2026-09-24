@@ -71,9 +71,14 @@ async function roots(
       provider: "opencode",
       scope: "personal",
     },
+    {
+      path: join(process.env.PI_CODING_AGENT_DIR || join(home, ".pi", "agent"), "skills"),
+      provider: "pi",
+      scope: "personal",
+    },
   ];
-  for (const provider of ["claude", "codex", "opencode"] as const) {
-    locations.push({ path: builtinSkillRoot(), provider, scope: "builtin" });
+  for (const provider of ["claude", "codex", "opencode", "pi"] as const) {
+    if (provider !== "pi") locations.push({ path: builtinSkillRoot(), provider, scope: "builtin" });
     locations.push({
       path: join(home, ".agents/skills"),
       provider,

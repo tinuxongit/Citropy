@@ -107,6 +107,7 @@ export function SkillsSettings() {
           <option value="claude">Claude Code</option>
           <option value="codex">Codex</option>
           <option value="opencode">OpenCode</option>
+          <option value="pi">Pi</option>
         </select>
         <button
           className="icon-btn"

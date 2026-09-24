@@ -5,6 +5,8 @@ import cursorLight from "../assets/providers/cursor-light.svg";
 import cursorDark from "../assets/providers/cursor-dark.svg";
 import opencodeLight from "../assets/providers/opencode-light.svg";
 import opencodeDark from "../assets/providers/opencode-dark.svg";
+import piLight from "../assets/providers/pi-light.svg";
+import piDark from "../assets/providers/pi-dark.svg";
 import { useApp } from "../lib/store.ts";
 import type { ProviderId } from "../../../shared/protocol.ts";
 
@@ -13,6 +15,7 @@ const logos = {
   codex: { light: codexLight, dark: codexDark },
   cursor: { light: cursorLight, dark: cursorDark },
   opencode: { light: opencodeLight, dark: opencodeDark },
+  pi: { light: piLight, dark: piDark },
 };
 
 export function ProviderIcon({ provider }: { provider: ProviderId }) {

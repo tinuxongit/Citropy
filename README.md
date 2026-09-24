@@ -1,7 +1,7 @@
 <div align="center">
   <img src="public/citropy.svg" width="84" alt="">
   <h1>Citropy</h1>
-  <p>One desktop app for Claude Code, Codex, OpenCode, and Cursor.</p>
+  <p>One desktop app for Claude Code, Codex, OpenCode, Cursor, and Pi.</p>
   <p>
     <a href="https://github.com/tinuxongit/Citropy/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/tinuxongit/Citropy?label=release"></a>
     <img alt="Linux, macOS, and Windows" src="https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-1793D1.svg">
@@ -25,7 +25,7 @@ irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps
 
 Run the same command again to update. Citropy also updates itself from Settings.
 
-You need Git and at least one agent CLI installed and signed in: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), [OpenCode](https://opencode.ai), or [Cursor CLI](https://cursor.com/cli). Node.js is not required. The app ships its own runtime.
+You need Git and at least one agent CLI installed and signed in: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), [OpenCode](https://opencode.ai), [Cursor CLI](https://cursor.com/cli), or [Pi](https://github.com/earendil-works/pi). Node.js is not required. The app ships its own runtime.
 
 | System | Build | Installed to |
 | --- | --- | --- |
@@ -45,7 +45,7 @@ Nothing needs an administrator password. Manual downloads are on the [releases p
 
 Citropy runs the coding agents you already use, side by side in one window. Each conversation keeps its own agent, model, reasoning effort, and permission mode. Files, Git, terminals, and browser tabs belong to the project, so every agent works on the same folder.
 
-- **Every agent in one list.** Switch between Claude Code, Codex, OpenCode, and Cursor per conversation, or move a conversation to another agent and keep its history.
+- **Every agent in one list.** Switch between Claude Code, Codex, OpenCode, Cursor, and Pi per conversation, or move a conversation to another agent and keep its history.
 - **Review before you keep it.** Each turn is checkpointed. Read diffs, revert single hunks, comment on lines, and send the comments back to the agent.
 - **Git and GitHub built in.** Stage, commit with an AI-written message, and push. Browse pull requests, issues, Actions runs, and releases without leaving the app.
 - **Browser, terminal, and files beside the chat.** Agents can drive the same browser and terminals you see.

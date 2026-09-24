@@ -7,6 +7,9 @@ import { selectProject, selectThread, useApp } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { Modal } from "./Modal.tsx";
 import { PixelLoader } from "./PixelLoader.tsx";
+import { providerLabels } from "../lib/format.ts";
+
+const importProviders: ImportProvider[] = ["claude", "codex", "cursor", "opencode", "pi"];
 
 export function ImportSessions({ onClose }: { onClose: () => void }) {
   const t = useI18n();
@@ -41,17 +44,17 @@ export function ImportSessions({ onClose }: { onClose: () => void }) {
     finally { setBusy(undefined); }
   };
   const filtered = sessions.filter(session => `${session.title} ${session.cwd}`.toLowerCase().includes(query.toLowerCase()));
-  return <Modal title={t("Import conversations")} description={t("Continue a Claude Code or Codex session from {host}.", { host: environmentName() })}
+  return <Modal title={t("Import conversations")} description={t("Continue a provider session from {host}.", { host: environmentName() })}
     icon={<Import size={20} />} onClose={onClose} busy={Boolean(busy)} className="session-import-dialog"
     footer={<button type="button" className="btn" disabled={Boolean(busy)} onClick={onClose}>{t("Close")}</button>}>
     <div className="feature-field feature-inline session-import-controls">
       <select aria-label={t("Provider")} value={provider} disabled={Boolean(busy)} onChange={event => setProvider(event.target.value as ImportProvider)}>
-        <option value="claude">Claude Code</option><option value="codex">Codex</option>
+        {importProviders.map(id => <option value={id} key={id}>{providerLabels[id]}</option>)}
       </select>
       <input aria-label={t("Find a conversation")} placeholder={t("Find a conversation")} value={query} onChange={event => setQuery(event.target.value)} />
       <button type="button" className="icon-btn" aria-label={t("Refresh")} disabled={loading || Boolean(busy)} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={16} /></button>
     </div>
-    <p className="settings-note">{t("Choose from the 200 most recent session files on this machine.")}</p>
+    <p className="settings-note">{t("Choose from the 200 most recent conversations on this machine.")}</p>
     <p className="settings-note">{t("Import messages and tool history, then continue in the original workspace. Attachments are not copied.")}</p>
     {error && <p className="dialog-error" role="alert">{error}</p>}
     {loading ? <p role="status"><PixelLoader size={16} /> {t("Loading sessions…")}</p> : <div className="session-import-list">

@@ -4,6 +4,8 @@ import { test } from "node:test";
 import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { DatabaseSync } from "node:sqlite";
 
 test("provider sessions import history, resume IDs, and original workspaces without modifying source files", async t => {
   const root = await mkdtemp(join(tmpdir(), "citropy-import-"));
@@ -11,6 +13,8 @@ test("provider sessions import history, resume IDs, and original workspaces with
   process.env.CITROPY_DATA_DIR = join(root, "citropy");
   process.env.CLAUDE_CONFIG_DIR = join(root, "claude");
   process.env.CODEX_HOME = join(root, "codex");
+  process.env.PI_CODING_AGENT_SESSION_DIR = join(root, "pi/sessions");
+  process.env.XDG_DATA_HOME = join(root, "share");
   t.after(async () => { process.env = old; await rm(root, { recursive: true, force: true }); });
   const cwd = join(root, "workspace");
   await mkdir(cwd);
@@ -57,6 +61,64 @@ test("provider sessions import history, resume IDs, and original workspaces with
   assert.equal(conversation.messages[1].parts[0].output, "game.js");
   assert.equal(conversation.messages[2].parts[0].text, "Fixed it");
   assert.equal(store.threads.size, 2);
+  const bin = join(root, "bin");
+  await mkdir(bin);
+  const agent = fileURLToPath(new URL("./fixtures/fake-acp-agent.mjs", import.meta.url));
+  await writeFile(join(bin, "cursor-agent"), `#!/bin/sh\nexec node '${agent}' "$@"\n`, { mode: 0o755 });
+  process.env.PATH = `${bin}:${old.PATH}`;
+  process.env.FAKE_ACP_IMPORT = "1";
+  process.env.FAKE_ACP_CWD = cwd;
+  const cursorList = await listImportableSessions("cursor");
+  assert.equal(cursorList.length, 1);
+  assert.equal(cursorList[0].cwd, cwd);
+  const cursorResult = await importSession(cursorList[0].id);
+  const cursorThread = store.threads.get(cursorResult.threadId);
+  assert.equal(cursorThread.externalId, "cursor-import-session");
+  assert.equal(cursorThread.title, "Cursor game");
+  assert.equal(cursorThread.model, "fake-fast");
+  assert.deepEqual(cursorThread.messages.map(message => message.role), ["user", "assistant"]);
+  assert.equal(cursorThread.messages[1].parts.find(part => part.kind === "tool").output, "const game = true;");
+  assert.equal(cursorThread.messages[1].parts.at(-1).text, "Looks good");
+  assert.deepEqual(await importSession(cursorList[0].id), cursorResult);
+  assert.equal((await listImportableSessions("cursor"))[0].importedThreadId, cursorResult.threadId);
+  await writeFile(join(bin, "cursor-agent"), "#!/bin/sh\nexit 7\n", { mode: 0o755 });
+  await assert.rejects(listImportableSessions("cursor"));
+  delete process.env.FAKE_ACP_IMPORT;
+  delete process.env.FAKE_ACP_CWD;
+  process.env.PATH = old.PATH;
+  const pi = join(root, "pi/sessions/project/pi-session.jsonl");
+  await mkdir(join(root, "pi/sessions/project"), { recursive: true });
+  await writeFile(pi, [
+    { type: "session", version: 3, id: "pi-session", cwd, timestamp: stamp },
+    { type: "message", id: "pi-user", parentId: null, timestamp: stamp, message: { role: "user", content: [{ type: "text", text: "Make a Pi game" }], timestamp: Date.parse(stamp) } },
+    { type: "message", id: "abandoned", parentId: "pi-user", timestamp: stamp, message: { role: "assistant", content: [{ type: "text", text: "Old branch" }] } },
+    { type: "model_change", id: "pi-model", parentId: "pi-user", provider: "openai", modelId: "gpt-test", timestamp: stamp },
+    { type: "message", id: "pi-assistant", parentId: "pi-model", timestamp: stamp, message: { role: "assistant", provider: "openai", model: "gpt-test", content: [{ type: "text", text: "Building" }, { type: "toolCall", id: "pi-tool", name: "read", arguments: { path: "game.js" } }] } },
+    { type: "message", id: "pi-result", parentId: "pi-assistant", timestamp: stamp, message: { role: "toolResult", toolCallId: "pi-tool", content: [{ type: "text", text: "game.js" }] } },
+    { type: "session_info", id: "pi-name", parentId: "pi-result", timestamp: stamp, name: "Named Pi session" },
+  ].map(row => JSON.stringify(row)).join("\n"));
+  const piList = await listImportableSessions("pi");
+  assert.equal(piList.length, 1);
+  assert.equal(piList[0].title, "Named Pi session");
+  const piResult = await importSession(piList[0].id);
+  const piThread = store.threads.get(piResult.threadId);
+  assert.equal(piThread.model, "openai/gpt-test");
+  assert.equal(piThread.messages.length, 2);
+  assert.equal(piThread.messages[1].parts[1].output, "game.js");
+  const dbPath = join(root, "share/opencode/opencode.db");
+  await mkdir(join(root, "share/opencode"), { recursive: true });
+  const db = new DatabaseSync(dbPath);
+  db.exec("CREATE TABLE session (id TEXT PRIMARY KEY, directory TEXT, title TEXT, model TEXT, time_updated INTEGER, parent_id TEXT); CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT, data TEXT, time_created INTEGER); CREATE TABLE part (id TEXT PRIMARY KEY, message_id TEXT, session_id TEXT, data TEXT, time_created INTEGER)");
+  db.prepare("INSERT INTO session VALUES (?, ?, ?, ?, ?, ?)").run("opencode-session", cwd, "OpenCode game", JSON.stringify({ providerID: "openai", id: "gpt-test" }), Date.parse(stamp), null);
+  db.prepare("INSERT INTO message VALUES (?, ?, ?, ?)").run("oc-user", "opencode-session", JSON.stringify({ role: "user", time: { created: Date.parse(stamp) } }), 1);
+  db.prepare("INSERT INTO message VALUES (?, ?, ?, ?)").run("oc-assistant", "opencode-session", JSON.stringify({ role: "assistant", providerID: "openai", modelID: "gpt-test" }), 2);
+  db.prepare("INSERT INTO part VALUES (?, ?, ?, ?, ?)").run("oc-part-user", "oc-user", "opencode-session", JSON.stringify({ type: "text", text: "Open the game" }), 1);
+  db.prepare("INSERT INTO part VALUES (?, ?, ?, ?, ?)").run("oc-part-assistant", "oc-assistant", "opencode-session", JSON.stringify({ type: "tool", tool: "read", callID: "oc-tool", state: { status: "completed", input: { path: "game.js" }, output: "game.js" } }), 2);
+  db.close();
+  const openCodeList = await listImportableSessions("opencode");
+  assert.equal(openCodeList.length, 1);
+  const openCodeResult = await importSession(openCodeList[0].id);
+  assert.equal(store.threads.get(openCodeResult.threadId).messages[1].parts[0].output, "game.js");
   await assert.rejects(importSession("../../outside"), /Refresh/);
   await assert.rejects(listImportableSessions("unknown"), /Choose/);
   const { handleFeatures } = await import("../server/features.ts");

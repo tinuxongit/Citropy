@@ -60,6 +60,7 @@ export function listCommands(
         ...(await codexPrompts()).map(({ template, ...command }) => command),
       ];
     if (provider === "cursor") return cursorCommands(cwd);
+    if (provider === "pi") return [];
     const result =
       provider === "claude"
         ? (await providerControl("claude", "initialize", {}, cwd)).commands

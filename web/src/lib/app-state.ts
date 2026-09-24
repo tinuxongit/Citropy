@@ -186,7 +186,7 @@ export function readOffline(): Record<string, QueuedMessage[]> {
 function readThreadDefaults(): AppState["threadDefaults"] {
   try {
     const value = JSON.parse(readPref("citropy.threadDefaults", "null"));
-    return value && ["claude", "codex", "opencode"].includes(value.provider) &&
+    return value && ["claude", "codex", "opencode", "cursor", "pi"].includes(value.provider) &&
       (value.model === undefined || typeof value.model === "string") &&
       (value.effort === undefined || typeof value.effort === "string") ? value : null;
   } catch {
@@ -197,7 +197,7 @@ function readThreadDefaults(): AppState["threadDefaults"] {
 function readFavoriteModels(): WritingModel[] {
   try {
     const value = JSON.parse(readPref("citropy.favoriteModels", "[]"));
-    return Array.isArray(value) ? value.filter((entry) => entry && ["claude", "codex", "opencode"].includes(entry.provider) && typeof entry.model === "string") : [];
+    return Array.isArray(value) ? value.filter((entry) => entry && ["claude", "codex", "opencode", "cursor", "pi"].includes(entry.provider) && typeof entry.model === "string") : [];
   } catch {
     return [];
   }

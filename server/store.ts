@@ -176,7 +176,7 @@ export class Store {
         if (typeof settings.assistance?.automaticTitles === "boolean") this.assistance.automaticTitles = settings.assistance.automaticTitles;
         for (const key of ["titleModel", "commitModel", "reviewModel"] as const) {
           const model = settings.assistance?.[key];
-          if (model && ["claude", "codex", "opencode", "cursor"].includes(model.provider) && typeof model.model === "string" && model.model.trim())
+          if (model && ["claude", "codex", "opencode", "cursor", "pi"].includes(model.provider) && typeof model.model === "string" && model.model.trim())
             this.assistance[key] = { provider: model.provider, model: model.model };
         }
         for (const key of ["toasts", "desktop", "sound", "subagents"] as const) {
@@ -185,7 +185,7 @@ export class Store {
         }
         if (Array.isArray(settings.disabledProviders)) {
           for (const id of settings.disabledProviders) {
-            if (["claude", "codex", "opencode", "cursor"].includes(id)) this.disabledProviders.add(id);
+            if (["claude", "codex", "opencode", "cursor", "pi"].includes(id)) this.disabledProviders.add(id);
           }
         }
       } catch (error) {
@@ -240,7 +240,7 @@ export class Store {
   }
 
   setProviderEnabled(id: ProviderId, enabled: boolean): void {
-    if (!["claude", "codex", "opencode", "cursor"].includes(id) || typeof enabled !== "boolean") throw new Error("Invalid provider setting");
+    if (!["claude", "codex", "opencode", "cursor", "pi"].includes(id) || typeof enabled !== "boolean") throw new Error("Invalid provider setting");
     const disabled = new Set(this.disabledProviders);
     if (enabled) disabled.delete(id);
     else disabled.add(id);
