@@ -1,5 +1,5 @@
 import { AnimatePresence } from "motion/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
   BookOpen,
@@ -48,14 +48,12 @@ export function GitHub({
   onCloseSidebar,
   onBack,
   onGit,
-  navigation,
   status,
 }: {
   sidebarOpen: boolean;
   onCloseSidebar: () => void;
   onBack: () => void;
   onGit: () => void;
-  navigation?: ReactNode;
   status: ReturnType<typeof useGitHub<"status">>;
 }) {
   const t = useI18n();
@@ -95,7 +93,7 @@ export function GitHub({
     sections.find((entry) => entry.name === section)?.global;
   return (
     <section className="section-view github-view" aria-label={t("GitHub")}>
-      <SectionSidebar activeItem={section} open={sidebarOpen} title="GitHub" onBack={onBack} navigation={navigation}>
+      <SectionSidebar activeItem={section} open={sidebarOpen} title="GitHub" onBack={onBack}>
           {sections.map(({ name, icon: Icon, global }) => (
             <button
               className="section-link"

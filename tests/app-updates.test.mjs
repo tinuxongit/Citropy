@@ -210,13 +210,14 @@ test(
     });
     const fixtureSource = `import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { SidebarFooter } from '/web/src/components/SidebarFooter.tsx';
+import { NavigationStrip } from '/web/src/components/NavigationStrip.tsx';
 import '/web/src/styles/tokens.css';
 import '/web/src/styles/base.css';
 import '/web/src/styles/sidebar.css';
 const root = document.getElementById('root');
 root.style.cssText = 'height:var(--viewport-height);display:flex;max-width:100%;background:var(--canvas)';
-createRoot(root).render(React.createElement('aside', {className:'rail', style:{width:280}}, React.createElement('div', {style:{padding:24,fontSize:17}}, 'Citropy'), React.createElement('div', {style:{padding:24,color:'var(--text-3)',flex:1}}, 'Your conversations'), React.createElement(SidebarFooter, {onGit(){},onGitHub(){},onSettings(){},onUsage(){}})));
+root.style.setProperty('--strip', '48px');
+createRoot(root).render(React.createElement(React.Fragment, null, React.createElement(NavigationStrip, {activeView:'none',onChat(){},onGit(){},onGitHub(){},onSettings(){},onUsage(){}}), React.createElement('aside', {className:'rail', style:{width:280}}, React.createElement('div', {style:{padding:24,fontSize:17}}, 'Citropy'), React.createElement('div', {style:{padding:24,color:'var(--text-3)',flex:1}}, 'Your conversations'))));
 `;
     server = await createServer({
       configFile: false,
@@ -245,7 +246,6 @@ createRoot(root).render(React.createElement('aside', {className:'rail', style:{w
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.addInitScript(() => {
-      localStorage.setItem("citropy.compactNavigation", "1");
       let state = {
         status: "available",
         currentVersion: "0.1.0",
@@ -341,17 +341,11 @@ createRoot(root).render(React.createElement('aside', {className:'rail', style:{w
       });
     await page.screenshot({ path: "/tmp/citropy-update-footer-desktop.png" });
     const colors = await page
-      .locator(".navigation-actions [data-tone] > svg")
+      .locator(".strip-action > svg")
       .evaluateAll((nodes) =>
         nodes.map((node) => getComputedStyle(node).color),
       );
     assert.equal(new Set(colors).size, 1);
-    assert.equal(
-      await page
-        .locator(".navigation-handle svg, .navigation-handle span")
-        .count(),
-      0,
-    );
     await page.setViewportSize({ width: 600, height: 720 });
     await page.getByRole("button", { name: "Downloading 42%" }).hover();
     await page.screenshot({ path: "/tmp/citropy-update-footer-narrow.png" });
@@ -369,12 +363,6 @@ createRoot(root).render(React.createElement('aside', {className:'rail', style:{w
       "download",
       "install",
     ]);
-    await page.getByRole("button", { name: "Expand navigation" }).click();
-    await page.getByRole("button", { name: "Usage", exact: true }).waitFor();
-    assert.equal(
-      await page.locator(".navigation-footer").getAttribute("data-compact"),
-      "false",
-    );
     assert.deepEqual(errors, []);
   },
 );

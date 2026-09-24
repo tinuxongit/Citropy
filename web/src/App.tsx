@@ -15,7 +15,7 @@ import {
 } from "react";
 import { Titlebar } from "./components/Titlebar.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
-import { SidebarFooter } from "./components/SidebarFooter.tsx";
+import { NavigationStrip } from "./components/NavigationStrip.tsx";
 import { Conversation } from "./components/Conversation.tsx";
 import { Composer } from "./components/Composer.tsx";
 import { Inspector } from "./components/Inspector.tsx";
@@ -123,8 +123,9 @@ export function App() {
     else setSectionSidebarOpen((open) => !open);
   };
   const navigation = (
-    <SidebarFooter
+    <NavigationStrip
       activeView={view}
+      onChat={() => (view === "chat" ? toggleSidebar() : openView("chat"))}
       onGit={() => openView("git")}
       onGitHub={() => openView("github")}
       onSettings={() => {
@@ -231,6 +232,7 @@ export function App() {
         ) as CSSProperties
       }
     >
+      {navigation}
       <Titlebar
         onNotification={openNotification}
         view={view}
@@ -250,13 +252,6 @@ export function App() {
         )}
         {view === "chat" && <SlidingPanel open={sidebarOpen} side="left">
           <Sidebar
-            onSettings={() => {
-              setSettingsSection("General");
-              openView("settings");
-            }}
-            onUsage={() => openView("usage")}
-            onGit={() => openView("git")}
-            onGitHub={() => openView("github")}
             onConversation={() => openView("chat")}
           />
         </SlidingPanel>}
@@ -269,13 +264,11 @@ export function App() {
             {view === "usage" ? (
               <UsageView
                 key={environment}
-                navigation={navigation}
                 sidebarOpen={sectionSidebarOpen}
                 onBack={() => openView("chat")}
               />
             ) : view === "git" ? (
               <GitManager
-                navigation={navigation}
                 onBusyChange={setGitBusy}
                 key={`${environment}:${activeProjectId}:${activeThreadId}`}
                 sidebarOpen={sectionSidebarOpen}
@@ -284,7 +277,6 @@ export function App() {
               />
             ) : view === "github" ? (
               <GitHub
-                navigation={navigation}
                 status={githubStatus}
                 onGit={() => openView("git")}
                 key={`${environment}:${activeProjectId}`}
@@ -294,7 +286,6 @@ export function App() {
               />
             ) : view === "settings" ? (
               <Settings
-                navigation={navigation}
                 initialSection={settingsSection}
                 sidebarOpen={sectionSidebarOpen}
                 onCloseSidebar={() => setSectionSidebarOpen(false)}

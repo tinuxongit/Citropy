@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Activity,
   Bell,
@@ -105,13 +105,11 @@ export function Settings({
   sidebarOpen,
   onCloseSidebar,
   onBack,
-  navigation,
   initialSection = "General",
 }: {
   sidebarOpen: boolean;
   onCloseSidebar: () => void;
   onBack: () => void;
-  navigation?: ReactNode;
   initialSection?: string;
 }) {
   const t = useI18n();
@@ -126,7 +124,7 @@ export function Settings({
 
   return (
     <section className="section-view" aria-label={t("Settings")}>
-      <SectionSidebar activeItem={section} open={sidebarOpen} title={t("Settings")} onBack={onBack} navigation={navigation}>
+      <SectionSidebar activeItem={section} open={sidebarOpen} title={t("Settings")} onBack={onBack}>
           {["Workspace", "Providers & tools", "Application"].map((group) => (
             <Fragment key={group}>
               <h2 className="section-nav-label">{t(group)}</h2>

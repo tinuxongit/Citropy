@@ -7,9 +7,8 @@ import { environmentId, isRemote, useEnvironments, useWorkspaceCatalog } from ".
 import { useI18n } from "../lib/i18n.ts";
 import { scaled, selectProject, useApp } from "../lib/store.ts";
 import { Collapsible } from "./Collapsible.tsx";
-import { MessageSquarePlus, Search } from "./icons.ts";
+import { Search } from "./icons.ts";
 import { ResizeHandle } from "./ResizeHandle.tsx";
-import { SidebarFooter } from "./SidebarFooter.tsx";
 import { ThreadPreview } from "./ThreadPreview.tsx";
 import { WorkspaceSelector } from "./WorkspaceSelector.tsx";
 import { CachedThreadRow } from "./sidebar/CachedThreadRow.tsx";
@@ -32,19 +31,7 @@ function estimateRowHeight(globalMode: boolean, row: { thread?: ThreadMeta; cach
   return 40;
 }
 
-export function Sidebar({
-  onSettings,
-  onGit,
-  onGitHub,
-  onConversation,
-  onUsage,
-}: {
-  onSettings: () => void;
-  onGit: () => void;
-  onGitHub: () => void;
-  onConversation: () => void;
-  onUsage: () => void;
-}) {
+export function Sidebar({ onConversation }: { onConversation: () => void }) {
   const t = useI18n();
   const threadMap = useApp((state) => state.threads);
   const order = useApp((state) => state.threadOrder);
@@ -227,25 +214,19 @@ export function Sidebar({
     <aside className="rail" data-sidebar-mode={globalMode ? "global" : "workspaces"} aria-label={t("Conversations")}>
       <div className="thread-toolbar">
         <label className="thread-search">
-          <Search size={14} aria-hidden="true" />
+          <Search size={16} aria-hidden="true" />
           <input
             aria-label={t("Find a conversation")}
-            placeholder={t("Search conversations")}
+            placeholder={t("Search")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        {globalMode ? <WorkspaceSelector addOnly /> : <button
-          className="new-thread"
-          aria-label={t("New thread")}
-          title={t("New thread")}
-          type="button"
-          onClick={() => { onConversation(); createThread(); }}
-          disabled={!canCreateThread || !activeProjectId}
-        >
-          <MessageSquarePlus size={18} />
-        </button>}
       </div>
+      {globalMode && <div className="rail-section-label">
+        {t("Projects")}
+        <WorkspaceSelector addOnly />
+      </div>}
       {query.trim() && !globalMode && (
         <label className="search-scope">
           <input type="checkbox" checked={allProjects} onChange={(event) => setAllProjects(event.target.checked)} />
@@ -283,7 +264,6 @@ export function Sidebar({
         onPointerEnter={preview.clearTimer}
         onPointerLeave={preview.leave}
       />}
-      <SidebarFooter onGit={onGit} onGitHub={onGitHub} onSettings={onSettings} onUsage={onUsage} />
       <ResizeHandle panel="sidebar" />
     </aside>
   );

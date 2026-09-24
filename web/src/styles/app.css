@@ -1,8 +1,9 @@
 .shell {
+  --strip: 48px;
   --rail: clamp(
     216px,
     var(--sidebar-width, 252px),
-    min(440px, calc(var(--viewport-width) * 0.34))
+    min(440px, calc((var(--viewport-width) - var(--strip)) * 0.34))
   );
   --visible-rail: 0px;
   --inspector: clamp(
@@ -11,10 +12,11 @@
       --inspector-width,
       clamp(280px, calc(var(--viewport-width) * 0.29), 500px)
     ),
-    calc(var(--viewport-width) - var(--visible-rail) - 360px)
+    calc(var(--viewport-width) - var(--strip) - var(--visible-rail) - 360px)
   );
   position: relative;
   display: grid;
+  padding-left: var(--strip);
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: var(--topbar) minmax(0, 1fr);
   height: 100%;
@@ -743,7 +745,10 @@
   color: white;
 }
 :root[data-platform="darwin"] .topbar-left {
-  padding-left: calc(76px / var(--ui-scale) + 6px);
+  padding-left: max(18px, calc(76px / var(--ui-scale) + 6px - var(--strip)));
+}
+:root[data-platform="darwin"] .navigation-strip {
+  padding-top: var(--topbar);
 }
 @container application (width > 720px) {
   :root[data-platform="darwin"] .shell[data-sidebar="false"] .topbar-left {
