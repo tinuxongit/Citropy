@@ -2,7 +2,7 @@ import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { AnimatedText } from "./AnimatedText.tsx";
 import { isRemote } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   Globe2,
   TerminalSquare,
@@ -14,6 +14,8 @@ import {
   X,
   Monitor,
   MoreHorizontal,
+  Minimize2,
+  Maximize2,
 } from "lucide-react";
 import { Changes } from "./Changes.tsx";
 import { ResizeHandle } from "./ResizeHandle.tsx";
@@ -24,6 +26,7 @@ import { SubagentsPane } from "./SubagentsPane.tsx";
 import { ToolsPane } from "./ToolsPane.tsx";
 import { ComputerPane } from "./ComputerPane.tsx";
 import { Menu } from "./Menu.tsx";
+import { usePanelTabActions } from "./use-panel-tab-actions.tsx";
 import { scaled, selectPanel, useApp } from "../lib/store.ts";
 import { openWorkbenchPanel } from "../lib/actions.ts";
 import { send } from "../lib/socket.ts";
@@ -81,11 +84,14 @@ export function Inspector({ visible }: { visible: boolean }) {
   const panels = useApp((state) => state.panels);
   const activePanels = useApp((state) => state.activePanels);
   const connected = useApp((state) => state.connected);
-  const initialized = useRef(new Set<string>());
   const tabStrip = useRef<HTMLDivElement>(null);
   const focusTab = useRef(false);
+  const [expandedProject, setExpandedProject] = useState<string>();
+  const expanded = Boolean(projectId && expandedProject === projectId);
+  const toggleExpanded = () => setExpandedProject(expanded ? undefined : projectId ?? undefined);
   const [tabWidth, setTabWidth] = useState(0);
   const tabs = panels.filter((panel) => panel.projectId === projectId);
+  const tabActions = usePanelTabActions(tabs, tabStrip, visible);
   const activeId =
     projectId && tabs.some((panel) => panel.id === activePanels[projectId])
       ? activePanels[projectId]
@@ -119,25 +125,18 @@ export function Inspector({ visible }: { visible: boolean }) {
     }
   }, [visible, activeId]);
 
-  useEffect(() => {
-    if (
-      !visible ||
-      !connected ||
-      !projectId ||
-      initialized.current.has(projectId)
-    )
-      return;
-    initialized.current.add(projectId);
-    if (!panels.some((panel) => panel.projectId === projectId))
-      openWorkbenchPanel("changes");
-  }, [visible, connected, projectId, panels]);
-
   return (
     <aside
       className="inspector workbench"
       data-visible={visible}
+      data-expanded={expanded}
       aria-label={t("Workspace panels")}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && expanded && event.target === event.currentTarget)
+          toggleExpanded();
+      }}
     >
+      {tabActions.overlays}
       <div className="workbench-heading">
         <div
           className="workbench-tabs sliding-selection"
@@ -149,7 +148,8 @@ export function Inspector({ visible }: { visible: boolean }) {
             if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
               return;
             event.preventDefault();
-            const index = tabs.findIndex((panel) => panel.id === activeId);
+            const focused = event.target.closest('[role="tab"]')?.id;
+            const index = tabs.findIndex((panel) => `panel-tab-${panel.id}` === focused);
             const next =
               event.key === "Home"
                 ? 0
@@ -163,10 +163,12 @@ export function Inspector({ visible }: { visible: boolean }) {
             if (panel) {
               focusTab.current = panel.id !== activeId;
               selectPanel(panel.id);
+              document.getElementById(`panel-tab-${panel.id}`)?.focus({ preventScroll: true });
             }
           }}
         >
-          <SelectionHighlight value={activeId} selector='.workbench-tab[data-active="true"]' />
+          <SelectionHighlight value={`${activeId}:${visibleTabs.map((panel) => panel.id).join(",")}`} selector='.workbench-tab[data-active="true"]' />
+          {tabActions.indicator}
           {visibleTabs.map((panel) => {
             const Icon = options.find(
               (option) => option.kind === panel.kind,
@@ -177,6 +179,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                 className="workbench-tab"
                 key={panel.id}
                 data-active={activeId === panel.id}
+                {...tabActions.tabProps(panel)}
               >
                 <button
                   type="button"
@@ -185,6 +188,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                   aria-label={title}
                   aria-selected={activeId === panel.id}
                   aria-controls={`panel-body-${panel.id}`}
+                  aria-keyshortcuts={panel.kind === "terminal" ? "F2 Alt+ArrowLeft Alt+ArrowRight" : "Alt+ArrowLeft Alt+ArrowRight"}
                   tabIndex={activeId === panel.id ? 0 : -1}
                   title={title}
                   onClick={() => selectPanel(panel.id)}
@@ -243,8 +247,20 @@ export function Inspector({ visible }: { visible: boolean }) {
             )}
           />}
         </div>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={t(expanded ? "Restore workspace" : "Expand workspace")}
+          title={t(expanded ? "Restore workspace" : "Expand workspace")}
+          aria-pressed={expanded}
+          disabled={!projectId}
+          onClick={toggleExpanded}
+        >
+          {expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+        </button>
         <Menu
           header={t("Open a panel")}
+          className="workbench-panel-menu"
           width={292}
           align="end"
           items={options.filter(option => !isRemote() || !["browser", "computer"].includes(option.kind)).map((option) => ({
@@ -274,7 +290,7 @@ export function Inspector({ visible }: { visible: boolean }) {
         />
       </div>
       <div className="inspector-body">
-        {panels.map((panel) => {
+        {panels.toSorted((a, b) => a.id.localeCompare(b.id)).map((panel) => {
           const selected = panel.projectId === projectId && panel.id === activeId;
           const active = visible && selected;
           return (
@@ -294,7 +310,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                 <TerminalPane panel={panel} active={active} />
               ) : panel.projectId !== projectId ? null : panel.kind ===
                 "files" ? (
-                <FileTree />
+                <FileTree panelId={panel.id} active={active} />
               ) : panel.kind === "changes" ? (
                 <Changes key={`${projectId}:${threadId}`} active={active} />
               ) : panel.kind === "subagents" ? (
@@ -309,14 +325,15 @@ export function Inspector({ visible }: { visible: boolean }) {
           <div className="workbench-empty">
             <Files size={28} />
             <h3>{t("Room for your work")}</h3>
-            <p>{t("Open a browser, terminal, or workspace view alongside the conversation.")}</p>
+            <p>{t("Open files, a terminal, or a browser alongside the conversation.")}</p>
             <button
               type="button"
               className="btn"
               disabled={!connected}
-              onClick={() => openWorkbenchPanel("browser")}
+              onClick={() => openWorkbenchPanel("files")}
             >
-              <Globe2 size={15} />{t("Open browser")}</button>
+              <Files size={15} />{t("Open files", undefined, "action")}
+            </button>
           </div>
         )}
       </div>

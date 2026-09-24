@@ -11,7 +11,7 @@ export interface TimelineRow {
   separator?: boolean;
 }
 
-function partFingerprint(part: AppState["parts"][string] | undefined): string {
+export function partFingerprint(part: AppState["parts"][string] | undefined): string {
   if (!part) return "-";
   switch (part.kind) {
     case "text":
@@ -41,7 +41,10 @@ function sameTimelineContent(previous: AppState, state: AppState, threadId: stri
     previousThread?.running !== thread?.running ||
     previousThread?.compacting !== thread?.compacting ||
     previousThread?.runStartedAt !== thread?.runStartedAt) return false;
-  if (previous.messages === state.messages && previous.parts === state.parts &&
+  const version = state.timelineVersions?.[threadId];
+  const sameParts = previous.parts === state.parts ||
+    (version !== undefined && previous.timelineVersions?.[threadId] === version);
+  if (previous.messages === state.messages && sameParts &&
     previous.disclosures === state.disclosures) return true;
   for (const messageId of order ?? []) {
     const message = state.messages[messageId];

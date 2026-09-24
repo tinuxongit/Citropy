@@ -72,7 +72,7 @@ test("conversation presentation", { timeout: 360_000, concurrency: 4 }, async (t
       };
     });
     await page.addInitScript((preferences) => {
-      for (const [key, value] of Object.entries({ project: "workspace", thread: "chat", inspector: "0", theme: "dark", uiScale: "120", ...preferences }))
+      for (const [key, value] of Object.entries({ project: "workspace", thread: "chat", inspector: "0", theme: "dark", uiScale: "120", sidebarMode: "workspaces", ...preferences }))
         localStorage.setItem(`citropy.${key}`, value);
       const request = window.requestAnimationFrame;
       const cancel = window.cancelAnimationFrame;
@@ -387,6 +387,7 @@ app.whenReady().then(() => {
           const message = page.locator(`#message-${id}`);
           const header = message.locator(".turn-heading");
           const toolbar = message.locator(".message-actions");
+          const compact = await header.evaluate(node => getComputedStyle(node).display === "grid");
           const metadata = header.locator(user ? "time" : "strong");
           const body = message.locator(user ? ".user-card" : ".agent-card");
           await leave();
@@ -398,7 +399,7 @@ app.whenReady().then(() => {
             return { gap: user ? content.right - metadata.right : metadata.left - content.left, x: metadata.x, opacity: getComputedStyle(actions).opacity, hiddenTarget: actions.contains(document.elementFromPoint(button.x + button.width / 2, button.y + button.height / 2)) };
           }, user);
           const bubble = await body.boundingBox();
-          assert.ok(Math.abs(resting.gap) < 1, JSON.stringify({ width, review, id, resting }));
+          if (!compact) assert.ok(Math.abs(resting.gap) < 1, JSON.stringify({ width, review, id, resting }));
           assert.equal(resting.opacity, "0");
           assert.equal(resting.hiddenTarget, false);
           await body.hover();
@@ -416,9 +417,11 @@ app.whenReady().then(() => {
           await settle();
           assert.equal(await toolbar.evaluate(node => getComputedStyle(node).opacity), "1");
           const revealed = await metadata.boundingBox();
-          assert.ok(user ? revealed.x < resting.x - 40 : revealed.x > resting.x + 30);
+          if (compact) assert.ok(Math.abs(revealed.x - resting.x) < 1, "Compact header metadata must remain still when actions appear");
+          else assert.ok(user ? revealed.x < resting.x - 40 : revealed.x > resting.x + 30);
           const nearestButton = await toolbar.locator("button").nth(user ? 0 : -1).boundingBox();
-          assert.ok(user ? revealed.x + revealed.width < nearestButton.x : nearestButton.x + nearestButton.width < revealed.x);
+          if (compact && !user) assert.ok(nearestButton.y >= revealed.y + revealed.height, "Compact actions belong below the name");
+          else assert.ok(user ? revealed.x + revealed.width < nearestButton.x : nearestButton.x + nearestButton.width < revealed.x);
           assert.deepEqual(await body.boundingBox(), bubble);
           for (const button of await toolbar.locator("button").all()) {
             await button.hover();
@@ -1471,7 +1474,7 @@ app.whenReady().then(() => {
 
   subtest("completion notices stay quiet only while the same chat is focused near the bottom", async () => {
     const history = Array.from({ length: 20 }, (_, index) => message(`history-${index}`, [textPart(`history-text-${index}`, "An earlier paragraph. ".repeat(20))]));
-    const f = await fixture({ messages: history, children: [{ ...thread, id: "elsewhere", title: "Other conversation" }] });
+    const f = await fixture({ messages: history, preferences: { uiScale: "100" }, children: [{ ...thread, id: "elsewhere", title: "Other conversation" }] });
     const { page } = f;
     await page.locator("textarea").focus();
     const notice = (id, threadId = "chat", kind = "chat", level = "success") => ({
@@ -1487,6 +1490,13 @@ app.whenReady().then(() => {
     await page.getByRole("button", { name: "Latest", exact: true }).waitFor();
     f.emit(notice("reading-history"));
     await page.locator(".toast").getByText("reading-history", { exact: true }).waitFor();
+    assert.equal(await page.locator(".toasts").evaluate(node => getComputedStyle(node).bottom), "154px");
+    await page.getByRole("button", { name: /^Notifications/ }).click();
+    await page.getByRole("dialog", { name: "Notifications", exact: true }).waitFor();
+    assert.equal(await page.locator(".toasts").evaluate(node => getComputedStyle(node).visibility), "hidden");
+    await page.getByRole("button", { name: "Close notifications", exact: true }).click();
+    await page.getByRole("dialog", { name: "Notifications", exact: true }).waitFor({ state: "detached" });
+    assert.equal(await page.locator(".toasts").evaluate(node => getComputedStyle(node).visibility), "visible");
     await page.getByRole("button", { name: "Latest", exact: true }).click();
     await page.waitForFunction(() => { const node = document.querySelector(".canvas"); return node.scrollHeight - node.clientHeight - node.scrollTop < 2; });
     f.emit(notice("other-conversation", "elsewhere"), notice("push-complete", "chat", "git"), notice("failed-response", "chat", "chat", "error"));
@@ -1505,6 +1515,7 @@ app.whenReady().then(() => {
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     f.emit(notice("while-in-settings"));
     await page.locator(".toast").getByText("while-in-settings", { exact: true }).waitFor();
+    assert.notEqual(await page.locator(".toasts").evaluate(node => getComputedStyle(node).bottom), "154px");
     await f.close();
   });
 

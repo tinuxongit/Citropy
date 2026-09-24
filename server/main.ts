@@ -28,7 +28,7 @@ import * as browser from "./browser.ts";
 import { openDesktop, attachDesktop, authorizeDesktop, desktopRequest, desktopEvents } from "./desktop.ts";
 import { panelList } from "./panels.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
-import { disposeAll } from "./runtime.ts";
+import { closeIdleSessions, disposeAll } from "./runtime.ts";
 import { serveStatic } from "./static.ts";
 import { requestHandler } from "./http-handler.ts";
 import { store } from "./store.ts";
@@ -257,6 +257,7 @@ desktopEvents.on("event", (event) => {
 
 let stopProviderUpdateChecks: (() => void) | undefined;
 const providerTimer = setInterval(() => {
+  closeIdleSessions();
   if (wss.clients.size) void refreshProviders();
 }, 60_000);
 providerTimer.unref();
@@ -264,7 +265,7 @@ providerTimer.unref();
 const gitTimer = setInterval(() => {
   store.wakeThreads();
   for (const thread of store.threads.values()) if (thread.running) void refreshGit(thread.projectId, false, thread.id);
-}, 1800);
+}, 5000);
 gitTimer.unref();
 
 onShutdown(async () => {

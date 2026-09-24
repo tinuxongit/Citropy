@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState, type ComponentType } from "react";
-import { Archive, CircleCheck, Clock, MessagesSquare, Pin } from "lucide-react";
+import { useEffect, useMemo, useRef, type ComponentType } from "react";
+import { Archive, CircleCheck, Clock, MessagesSquare, Pin, Server } from "lucide-react";
 import type { Project, ThreadMeta } from "../../../../shared/protocol.ts";
+import type { CachedThread } from "../../lib/environment.ts";
+import { setSidebarGroupOpen, useApp } from "../../lib/store.ts";
 import { Folder } from "../icons.ts";
 
 type Category = "pinned" | "active" | "snoozed" | "archived" | "finished";
@@ -10,15 +12,18 @@ export interface ThreadGroup {
   label: string;
   icon: ComponentType<{ size?: number; className?: string }>;
   threads: ThreadMeta[];
+  cachedThreads?: CachedThread[];
   open: boolean;
   toggle: () => void;
   project?: Project;
+  environment?: string;
 }
 
 export interface ThreadRow {
   key: string;
   group: ThreadGroup;
   thread?: ThreadMeta;
+  cached?: CachedThread;
   empty: boolean;
 }
 
@@ -30,7 +35,9 @@ const CATEGORIES: { id: Category; label: string; icon: ThreadGroup["icon"] }[] =
   { id: "finished", label: "Finished", icon: CircleCheck },
 ];
 
-export const sortThreads = (a: ThreadMeta, b: ThreadMeta) =>
+type Sortable = Pick<ThreadMeta, "position" | "updatedAt">;
+
+export const sortThreads = (a: Sortable, b: Sortable) =>
   (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || b.updatedAt - a.updatedAt;
 
 function categorize(threads: ThreadMeta[], searching: boolean): Record<Category, ThreadMeta[]> {
@@ -77,66 +84,86 @@ export function threadOrderAfterMove(
   return ordered;
 }
 
-export function useThreadGroups({ threads, query, globalMode, projects, activeRoot, activeThreadId }: {
+export interface EnvironmentFolders {
+  environment: string;
+  server: boolean;
+  cached?: { projects: Project[]; threads: CachedThread[] };
+}
+
+const DEFAULT_OPEN: Record<string, boolean> = { pinned: true, active: true, snoozed: false, archived: false, finished: false };
+
+export function useThreadGroups({ threads, query, globalMode, projects, environments, activeRoot, activeThreadId }: {
   threads: ThreadMeta[];
   query: string;
   globalMode: boolean;
   projects: Project[];
+  environments: EnvironmentFolders[];
   activeRoot: ThreadMeta | undefined;
   activeThreadId: string | null;
 }) {
-  const [open, setOpen] = useState<Record<Category, boolean>>({ pinned: true, active: true, snoozed: false, archived: false, finished: false });
-  const [closedProjects, setClosedProjects] = useState<Set<string>>(() => new Set());
-  const reveal = (category: Category) => setOpen((current) => current[category] ? current : { ...current, [category]: true });
+  const stored = useApp((state) => state.sidebarGroups);
+  const isOpen = (key: string) => stored[key] ?? DEFAULT_OPEN[key] ?? true;
+  const reveal = (key: string) => { if (!isOpen(key)) setSidebarGroupOpen(key, true); };
   const revealed = revealedCategory(activeRoot);
+  const revealedKey = useRef(`${activeThreadId}:${revealed}`);
   useEffect(() => {
+    const key = `${activeThreadId}:${revealed}`;
+    if (revealedKey.current === key) return;
+    revealedKey.current = key;
     if (revealed) reveal(revealed);
   }, [activeThreadId, revealed]);
 
   const searching = Boolean(query);
   const categories = useMemo(() => categorize(threads, searching), [threads, searching]);
   const groups = useMemo(() => {
-    const category = (id: Category, groupThreads: ThreadMeta[]): ThreadGroup => ({
-      ...CATEGORIES.find((entry) => entry.id === id)!,
-      threads: groupThreads,
-      open: open[id],
-      toggle: () => setOpen((current) => ({ ...current, [id]: !current[id] })),
-    });
-    if (!globalMode) return CATEGORIES.map(({ id }) => category(id, categories[id])).filter((group) => group.threads.length > 0);
+    const group = (base: Omit<ThreadGroup, "open" | "toggle">, key: string): ThreadGroup => {
+      const open = isOpen(key);
+      return { ...base, open, toggle: () => setSidebarGroupOpen(key, !open) };
+    };
+    const category = (id: Category, groupThreads: ThreadMeta[]) => group({ ...CATEGORIES.find((entry) => entry.id === id)!, threads: groupThreads }, id);
+    if (!globalMode) return CATEGORIES.map(({ id }) => category(id, categories[id])).filter((entry) => entry.threads.length > 0);
 
     const finished = threads.filter((thread) => (!thread.parentThreadId || searching) && thread.finished).sort(sortThreads);
     const grouped = new Set([...categories.pinned, ...finished].map((thread) => thread.id));
     const byProject = new Map<string, ThreadMeta[]>();
     for (const thread of threads) {
       if ((thread.parentThreadId && !searching) || grouped.has(thread.id)) continue;
-      const group = byProject.get(thread.projectId);
-      if (group) group.push(thread);
+      const entry = byProject.get(thread.projectId);
+      if (entry) entry.push(thread);
       else byProject.set(thread.projectId, [thread]);
     }
-    const folders = projects.map((project): ThreadGroup => ({
-      id: `project:${project.id}`,
-      label: project.name,
-      icon: Folder,
-      threads: (byProject.get(project.id) ?? []).sort(sortThreads),
-      open: !closedProjects.has(project.id),
-      toggle: () => setClosedProjects((current) => {
-        const next = new Set(current);
-        if (!next.delete(project.id)) next.add(project.id);
-        return next;
-      }),
-      project,
-    })).filter((group) => !searching || group.threads.length > 0);
+    const folders = environments.flatMap(({ environment, server, cached }): ThreadGroup[] => {
+      const icon = server ? Server : Folder;
+      if (!cached) return projects.map((project) => group({
+        id: `project:${project.id}`,
+        label: project.name,
+        icon,
+        threads: (byProject.get(project.id) ?? []).sort(sortThreads),
+        project,
+      }, `project:${project.id}`)).filter((entry) => !searching || entry.threads.length > 0);
+      if (searching) return [];
+      return cached.projects.map((project) => group({
+        id: `environment:${environment}:project:${project.id}`,
+        label: project.name,
+        icon,
+        threads: [],
+        cachedThreads: cached.threads.filter((thread) => thread.projectId === project.id && !thread.archived && !thread.snoozedUntil && !thread.finished).sort(sortThreads),
+        project,
+        environment,
+      }, `project:${project.id}`));
+    });
     return [
       ...(categories.pinned.length ? [category("pinned", categories.pinned)] : []),
       ...folders,
       ...(finished.length ? [category("finished", finished)] : []),
     ];
-  }, [globalMode, threads, projects, closedProjects, searching, categories, open]);
+  }, [globalMode, threads, projects, environments, stored, searching, categories]);
 
   const rows = useMemo(() => groups.flatMap((group): ThreadRow[] => [
     { key: group.id, group, empty: false },
     ...(group.open || searching ? group.threads.map((thread) => ({ key: thread.id, group, thread, empty: false })) : []),
-    ...(group.project && group.open && !searching && !group.threads.length ? [{ key: `${group.id}:empty`, group, empty: true }] : []),
+    ...(group.open && group.cachedThreads ? group.cachedThreads.map((cached) => ({ key: `${group.id}:${cached.id}`, group, cached, empty: false })) : []),
+    ...(group.project && !group.environment && group.open && !searching && !group.threads.length ? [{ key: `${group.id}:empty`, group, empty: true }] : []),
   ]), [groups, searching]);
 
   return { groups, rows, revealFinished: () => reveal("finished") };

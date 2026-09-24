@@ -4,6 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import { ChevronDown, ChevronUp, History } from "lucide-react";
 import { groupSubagents } from "../lib/subagents.ts";
 import { Collapsible } from "./Collapsible.tsx";
+import { VirtualList } from "./VirtualList.tsx";
 import { Network, ArrowUpRight, Square } from "lucide-react";
 import { loadThread } from "../lib/actions.ts";
 import { selectThread, useApp } from "../lib/store.ts";
@@ -94,7 +95,7 @@ export function SubagentsPane() {
           <span>{t("Ask your provider to delegate a task. Its subagents will appear here and beneath the chat in your sidebar.")}</span>
         </div>
       ) : (
-        current.map(renderChild)
+        <VirtualList items={current} itemKey="id" estimateSize={116}>{renderChild}</VirtualList>
       )}
       {earlier.length > 0 && (
         <div className="subagent-history">
@@ -110,7 +111,7 @@ export function SubagentsPane() {
             {historyOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           <Collapsible open={historyOpen} className="subagent-history-list">
-            {earlier.map(renderChild)}
+            <VirtualList items={earlier} itemKey="id" estimateSize={116}>{renderChild}</VirtualList>
           </Collapsible>
         </div>
       )}

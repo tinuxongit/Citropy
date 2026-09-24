@@ -44,6 +44,7 @@ export function packagedBackend(env, diagnose = () => {}) {
       process.execPath,
       [
         "--experimental-strip-types",
+        "--optimize-for-size",
         fileURLToPath(new URL("../server/main.ts", import.meta.url)),
         "--packaged",
       ],

@@ -9,6 +9,15 @@ export interface PanelTab {
   threadId?: string;
 }
 
+export function movePanelTab(panels: PanelTab[], id: string, targetId: string, edge: "before" | "after"): PanelTab[] {
+  const panel = panels.find((entry) => entry.id === id);
+  const target = panels.find((entry) => entry.id === targetId);
+  if (!panel || !target || panel === target || panel.projectId !== target.projectId) return panels;
+  const next = panels.filter((entry) => entry !== panel);
+  next.splice(next.indexOf(target) + (edge === "after" ? 1 : 0), 0, panel);
+  return next.every((entry, index) => entry === panels[index]) ? panels : next;
+}
+
 export interface BrowserState {
   profileId?: string;
   profileName?: string;

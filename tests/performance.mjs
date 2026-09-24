@@ -4,6 +4,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createTimelineSelector } from "../web/src/lib/timeline.ts";
+import { replaceHistory } from "../web/src/lib/history-cache.ts";
+import { applyEvents } from "../web/src/lib/server-events.ts";
 
 const directory = mkdtempSync(join(tmpdir(), "citropy-performance-"));
 process.env.CITROPY_DATA_DIR = directory;
@@ -23,7 +25,7 @@ try {
   const elapsed = performance.now() - started;
   const usage = process.cpuUsage(cpu);
   const rssGrowth = process.memoryUsage().rss - memory.rss;
-  assert.equal(journal.threads()[0].messages[0].parts[0].text, "streamed text ".repeat(10000));
+  assert.equal(journal.messages("chat")[0].parts[0].text, "streamed text ".repeat(10000));
   console.log(JSON.stringify({ benchmark: "journal: 10000 durable text deltas", elapsedMs: elapsed, cpuMs: (usage.user + usage.system) / 1000, rssGrowthMiB: rssGrowth / 1024 / 1024 }));
 
   const state = { threads: { chat: { running: true, status: "working" } }, messages: {}, order: { chat: [] }, parts: {}, disclosures: {} };
@@ -41,6 +43,22 @@ try {
   const selectionStarted = performance.now();
   for (const snapshot of snapshots) assert.strictEqual(select(snapshot), rows);
   console.log(JSON.stringify({ benchmark: "timeline selector: 5000 messages, 300 streaming updates", elapsedMs: performance.now() - selectionStarted }));
+
+  let live = { ...state, parts: {}, messages: {}, order: {}, loaded: {}, reveals: {}, historyBytes: {}, timelineVersions: {}, disclosures: {}, activeThreadId: "chat" };
+  replaceHistory(live, "chat", state.order.chat.map((id) => ({
+    ...state.messages[id], parts: state.messages[id].partIds.map((partId) => state.parts[partId]),
+  })));
+  const selectLive = createTimelineSelector("chat");
+  const liveRows = selectLive(live);
+  global.gc?.();
+  const liveStarted = performance.now();
+  const liveCpu = process.cpuUsage();
+  for (let index = 0; index < 300; index++) {
+    live = applyEvents(live, [{ t: "part.append", threadId: "chat", messageId: "message4999", partId: "part4999", text: " next" }]);
+    assert.strictEqual(selectLive(live), liveRows);
+  }
+  const liveUsage = process.cpuUsage(liveCpu);
+  console.log(JSON.stringify({ benchmark: "store and timeline: 5000 messages, 300 text deltas", elapsedMs: performance.now() - liveStarted, cpuMs: (liveUsage.user + liveUsage.system) / 1000 }));
 
   const thread = { id: "metadata", messages: Array.from({ length: 10000 }, (_, index) => ({ id: `message-${index}`, ts: index, parts: [{ id: `tool-${index}`, kind: "tool", shape: "edit", status: "ok", input: { file_path: `file-${index % 100}.ts` } }] })) };
   assert.equal(store.meta(thread).changedFiles, 100);

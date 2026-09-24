@@ -80,7 +80,7 @@
 }
 .navigation-footer[data-compact="true"]
   .rail-action
-  > span:not(.update-available-dot) {
+  > span:not(.update-available-dot, .pixel-loader) {
   display: none;
 }
 .navigation-actions .rail-action[data-tone] > svg { color: var(--text-3); }

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import fs from "node:fs";
 import os from "node:os";
 import http from "node:http";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { syncBuiltinESMExports } from "node:module";
 
@@ -510,6 +510,35 @@ test("workspace features persist and use conversation boundaries", async (t) => 
       );
     },
   );
+  await t.test("skill discovery skips trash and preserves installed copies", async () => {
+    const workspace = join(directory, "skill-discovery-workspace");
+    const personal = join(directory, ".claude", "skills");
+    const local = join(workspace, ".claude", "skills");
+    const plugin = join(directory, ".claude", "plugins", "cache", "fixture");
+    const installed = [
+      join(personal, "docs", "SKILL.md"),
+      join(local, "docs", "SKILL.md"),
+      join(local, "disabled-docs", "SKILL.md.citropy-disabled"),
+      join(local, ".system", "docs", "SKILL.md"),
+      join(plugin, "skills", "docs", "SKILL.md"),
+    ];
+    const discarded = [
+      join(personal, ".trash", "batch-one", "docs", "SKILL.md"),
+      join(personal, ".trash", "batch-two", "docs", "SKILL.md"),
+      join(local, ".trash", "batch-one", "docs", "SKILL.md.citropy-disabled"),
+      join(local, "nested", ".trash", "docs", "SKILL.md"),
+      join(plugin, "skills", ".trash", "docs", "SKILL.md"),
+    ];
+    for (const path of [...installed, ...discarded]) {
+      fs.mkdirSync(dirname(path), { recursive: true });
+      fs.writeFileSync(path, "---\nname: discovery-docs\ndescription: Discovery fixture.\n---\nRead the files.");
+    }
+    const owner = store.openProject(workspace);
+    const skills = (await listSkills(owner.id)).filter((skill) => skill.name === "discovery-docs");
+    assert.deepEqual(skills.map((skill) => skill.path).sort(), installed.toSorted());
+    assert.equal(skills.filter((skill) => !skill.enabled).length, 1);
+    assert.ok(discarded.every((path) => fs.existsSync(path)));
+  });
   await t.test("requested skills prefer enabled project copies and stay within their provider", async () => {
     const workspace = join(directory, "runtime-skill-workspace");
     const personal = join(directory, ".claude", "skills");

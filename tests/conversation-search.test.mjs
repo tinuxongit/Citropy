@@ -4,12 +4,14 @@ import { searchConversations } from "../server/conversation-search.ts";
 
 test("search finds saved message content, scopes workspaces and returns the matching message", () => {
   const threads = [
-    { id: "a", projectId: "one", title: "Unrelated title", updatedAt: 1, messages: [{ id: "m1", parts: [{ kind: "text", text: "The folder contains random_numbers.txt" }] }] },
-    { id: "b", projectId: "two", title: "Folder task", updatedAt: 2, messages: [{ id: "m2", parts: [{ kind: "text", text: "Another FOLDER" }] }] },
+    { id: "a", projectId: "one", title: "Unrelated title", updatedAt: 1 },
+    { id: "b", projectId: "two", title: "Folder task", updatedAt: 2 },
   ];
-  assert.deepEqual(searchConversations(threads, "FOLDER", "one"), [{ threadId: "a", messageId: "m1", snippet: "The folder contains random_numbers.txt" }]);
-  assert.deepEqual(searchConversations(threads, "folder").map((result) => result.threadId), ["b", "a"]);
-  assert.equal(searchConversations(threads, "Unrelated")[0].messageId, undefined);
-  assert.deepEqual(searchConversations(threads, "   "), []);
-  assert.deepEqual(searchConversations(threads, "missing"), []);
+  const texts = { a: [{ id: "m1", text: "The folder contains random_numbers.txt" }], b: [{ id: "m2", text: "Another FOLDER" }] };
+  const search = (query, projectId) => searchConversations(threads, (id) => texts[id], query, projectId);
+  assert.deepEqual(search("FOLDER", "one"), [{ threadId: "a", messageId: "m1", snippet: "The folder contains random_numbers.txt" }]);
+  assert.deepEqual(search("folder").map((result) => result.threadId), ["b", "a"]);
+  assert.equal(search("Unrelated")[0].messageId, undefined);
+  assert.deepEqual(search("   "), []);
+  assert.deepEqual(search("missing"), []);
 });

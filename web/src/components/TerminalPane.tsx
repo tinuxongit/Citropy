@@ -95,12 +95,15 @@ export function TerminalPane({
     }
     if (term.current) term.current.options.cursorBlink = active && connected;
     if (!active || !connected || !host.current || signal.aborted) return;
+    const detach = () => {
+      if (attached.current && !signal.aborted) send({ t: "term.unsubscribe", termId: panel.id });
+      attached.current = false;
+    };
     if (term.current) {
       term.current.options.theme = useApp.getState().theme === "light" ? LIGHT : DARK;
       term.current.options.fontSize = 13 * useApp.getState().uiScale / 100;
       fit.current?.fit();
       if (!attached.current) {
-        term.current.reset();
         attached.current = true;
         send({
           t: "term.open",
@@ -112,7 +115,7 @@ export function TerminalPane({
         });
       }
       if (!document.activeElement?.matches('[role="tab"]:focus-visible')) term.current.focus();
-      return;
+      return detach;
     }
     let disposed = false;
 
@@ -125,11 +128,8 @@ export function TerminalPane({
         ]);
       if (disposed || signal.aborted || !host.current) return;
 
-      await document.fonts.load('13px "Geist Mono Variable"').catch(() => []);
-      if (disposed || signal.aborted || !host.current) return;
-
       const instance = new Xterm({
-        fontFamily: getComputedStyle(document.documentElement).getPropertyValue("--font-mono").trim(),
+        fontFamily: getComputedStyle(document.documentElement).getPropertyValue("--font-terminal").trim(),
         fontSize: 13 * useApp.getState().uiScale / 100,
         lineHeight: 1.35,
         letterSpacing: 0,
@@ -188,13 +188,14 @@ export function TerminalPane({
 
     return () => {
       disposed = true;
+      detach();
     };
   }, [active, projectId, connected, panel.id]);
 
   useEffect(() => {
     if (!active || !connected) return;
     return onTerminal((event) => {
-      if (event.termId !== panel.id) return;
+      if (event.termId !== panel.id || !attached.current) return;
       if (event.t === "term.data") {
         term.current?.write((event.reset ? "\x1bc" : "") + event.data, () => {
           if (event.streamId && !signal.aborted) send({ t: "term.ack", termId: panel.id, count: event.data.length, streamId: event.streamId });
@@ -219,20 +220,26 @@ export function TerminalPane({
   useEffect(() => {
     if (!active || !connected || !host.current) return;
     let frame = 0;
-    const observer = new ResizeObserver(() => {
-      if (frame) return;
+    const root = document.documentElement;
+    const scheduleFit = () => {
+      if (frame || root.hasAttribute("data-resizing")) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
+        if (root.hasAttribute("data-resizing")) return;
         try {
           fit.current?.fit();
         } catch {
           /* not measurable yet */
         }
       });
-    });
+    };
+    const observer = new ResizeObserver(scheduleFit);
+    const dragObserver = new MutationObserver(scheduleFit);
     observer.observe(host.current);
+    dragObserver.observe(root, { attributes: true, attributeFilter: ["data-resizing"] });
     return () => {
       observer.disconnect();
+      dragObserver.disconnect();
       cancelAnimationFrame(frame);
     };
   }, [active, connected]);

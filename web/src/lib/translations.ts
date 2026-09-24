@@ -1,3 +1,4 @@
+import { editorEs } from "./locales/editor.es.ts";
 import { automationEs } from "./locales/automation.es.ts";
 import { environmentsEs } from "./locales/environments.es.ts";
 import { coreEs } from "./locales/core.es.ts";
@@ -12,6 +13,7 @@ export type Translator = (message: string, values?: TranslationValues, context?:
 
 export const spanish: Record<string, string> = {
   ...coreEs,
+  ...editorEs,
   ...automationEs,
   ...environmentsEs,
   ...settingsEs,

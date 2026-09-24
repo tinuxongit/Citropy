@@ -57,47 +57,20 @@
   box-shadow: var(--shadow-md);
 }
 
-@property --composer-trace-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
 .composer-focus-ring {
   position: absolute;
   inset: 0;
   padding: 2px;
   border-radius: inherit;
   pointer-events: none;
-  background:
-    conic-gradient(
-      from var(--composer-trace-angle),
-      transparent 0turn 0.55turn,
-      color-mix(in srgb, var(--text) 12%, transparent) 0.75turn,
-      color-mix(in srgb, var(--text) 55%, transparent) 0.9turn,
-      color-mix(in srgb, var(--text) 90%, transparent) 0.94turn,
-      transparent 0.96turn
-    ),
-    color-mix(in srgb, var(--text-3) 16%, transparent);
+  background: color-mix(in srgb, var(--text-3) 30%, transparent);
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
   opacity: 0;
   transition: opacity var(--dur-base) var(--ease-out);
-  animation: composer-trace 6s linear infinite paused;
 }
 .composer-shell:focus-within .composer-focus-ring {
   opacity: 1;
-  animation-play-state: running;
-}
-@keyframes composer-trace {
-  to { --composer-trace-angle: 360deg; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .composer-focus-ring {
-    animation: none;
-    background: color-mix(in srgb, var(--text-3) 30%, transparent);
-  }
 }
 
 .composer-input {
@@ -131,6 +104,10 @@
   align-items: center;
   gap: 6px;
   margin-left: auto;
+}
+.composer-bar > .menu-wrap {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .composer-send,
@@ -545,7 +522,7 @@
   font-size: var(--text-sm);
 }
 
-@container application (max-width: 720px) {
+@container conversation (max-width: 720px) {
   .composer {
     padding: 8px var(--chat-gutter) 14px;
   }

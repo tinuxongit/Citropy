@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -121,8 +121,6 @@ test("Git refresh keeps conversation branches synchronized with their actual wor
     git(project.path, "switch", "release-prep/0.4.2");
     await refreshGit(project.id, true, selected.id);
     store.flush();
-    const saved = JSON.parse(readFileSync(join(process.env.CITROPY_DATA_DIR, "threads", `${selected.id}.json`), "utf8"));
-    assert.equal(saved.workspaceBranch, "release-prep/0.4.2");
     const module = new URL("../server/store.ts", import.meta.url).href;
     const restored = execFileSync(process.execPath, ["--experimental-strip-types", "--input-type=module", "-e",
       `const {store}=await import(${JSON.stringify(module)}); process.stdout.write(JSON.stringify(store.threads.get(${JSON.stringify(selected.id)}).workspaceBranch));`],

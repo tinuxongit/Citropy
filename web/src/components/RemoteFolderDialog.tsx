@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { ArrowUp, Folder, FolderOpen, LoaderCircle, Server } from "lucide-react";
 import { Modal } from "./Modal.tsx";
+import { VirtualList } from "./VirtualList.tsx";
 import { useI18n } from "../lib/i18n.ts";
 import { finishRemoteFolder, useRemoteFolderRequest, type RemoteFolderRequest as Request } from "../lib/remote-folder.ts";
 
@@ -65,10 +66,12 @@ function RemoteFolderBrowser({ request }: { request: Request }) {
         <input aria-label={t("Folder path")} value={typed} readOnly={loading} spellCheck={false} autoComplete="off" placeholder="~/projects" onChange={(event) => setTyped(event.target.value)} />
         <label><input type="checkbox" checked={hidden} onChange={(event) => setHidden(event.target.checked)} />{t("Hidden")}</label>
       </div>
-      <div className="remote-folder-list" role="list" aria-busy={loading} aria-label={t("Folders")}>
+      <div className="remote-folder-list scroll" role="list" aria-busy={loading} aria-label={t("Folders")}>
         {loading && !listing ? <div className="remote-folder-empty"><LoaderCircle size={18} className="spin" />{t("Loading…")}</div>
           : folders.length === 0 ? <div className="remote-folder-empty">{t("No folders here")}</div>
-            : folders.map((folder) => <button type="button" role="listitem" key={folder.name} className="remote-folder-row" data-hidden={folder.hidden || undefined} disabled={loading} onClick={() => void open(join(folder.name))}><Folder size={16} /><span className="truncate">{folder.name}</span></button>)}
+            : <VirtualList key={listing?.path} items={folders} itemKey="name" estimateSize={32}>
+              {(folder) => <button type="button" role="listitem" className="remote-folder-row" data-hidden={folder.hidden || undefined} disabled={loading} onClick={() => void open(join(folder.name))}><Folder size={16} /><span className="truncate">{folder.name}</span></button>}
+            </VirtualList>}
       </div>
       {error && <p className="dialog-error" role="alert">{error}</p>}
     </Modal>

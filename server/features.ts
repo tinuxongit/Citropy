@@ -1,4 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { createEditorFile, readEditorFile, saveEditorFile } from "./editor.ts";
+import { tree } from "./files.ts";
 import { store } from "./store.ts";
 import { answerQuestion } from "./questions.ts";
 import { stopShell } from "./shells.ts";
@@ -8,7 +10,7 @@ import { reloadProviderSessions, providerBusy, runtimeFor, disposeRuntime } from
 import { assertWorkspaceIdle, restoreCheckpoint, redoCheckpoint, forkConversation, reviewChanges } from "./checkpoints.ts";
 import type { ReviewScope } from "../shared/review.ts";
 import { changeHunk, reviewWithModel } from "./review.ts";
-import { findContextPaths, inspectContext } from "./context.ts";
+import { findContextPaths, findWorkspacePaths, inspectContext } from "./context.ts";
 import { copyToWorktree, removeWorktree } from "./worktree-actions.ts";
 import { providerMaintenance, startProviderUpdate, assertProviderReady } from "./providers/maintenance.ts";
 import { readGlobalInstructions, saveGlobalInstructions } from "./providers/instructions.ts";
@@ -37,12 +39,12 @@ import { computerState, computerCapabilities, configureComputer, startComputer, 
 import type { ComputerAction } from "../shared/computer.ts";
 import type { ProjectSettings, ProviderId, ProviderInfo } from "../shared/protocol.ts";
 
-async function body(req: IncomingMessage): Promise<Record<string, any>> {
+async function body(req: IncomingMessage, limit = 128 * 1024): Promise<Record<string, any>> {
   let size = 0;
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 128 * 1024) throw new Error("Request is too large.");
+    if (size > limit) throw new Error("Request is too large.");
     chunks.push(chunk);
   }
   const value = JSON.parse(Buffer.concat(chunks).toString() || "{}");
@@ -112,7 +114,7 @@ export async function handleFeatures(
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", "http://localhost");
   if (
-    !/^\/api\/(attachments|assets|preview|favicon|tool-images|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|computer|providers|shells)(\/|$)/.test(
+    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|computer|providers|shells)(\/|$)/.test(
       url.pathname,
     )
   )
@@ -148,7 +150,19 @@ export async function handleFeatures(
       .end(JSON.stringify(value));
   };
   try {
-    if (url.pathname === "/api/threads/question" && req.method === "POST") {
+    if (url.pathname === "/api/editor/search" && req.method === "GET") {
+      respond(await findWorkspacePaths(workspacePath(projectId ?? "", threadId), url.searchParams.get("query") ?? ""));
+    } else if (url.pathname === "/api/editor/tree" && req.method === "GET") {
+      respond(await tree(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? "", true));
+    } else if (url.pathname === "/api/editor/file" && req.method === "POST") {
+      respond(await createEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
+    } else if (url.pathname === "/api/editor/file" && req.method === "GET") {
+      respond(await readEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
+    } else if (url.pathname === "/api/editor/file" && req.method === "PUT") {
+      const input = await body(req, 12 * 1024 * 1024 + 1024);
+      const saved = await saveEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? "", input.text, input.revision);
+      respond({ revision: saved.revision });
+    } else if (url.pathname === "/api/threads/question" && req.method === "POST") {
       const input = await body(req);
       answerQuestion(threadId ?? "", String(input.id ?? ""), input.answers);
       respond({ ok: true });

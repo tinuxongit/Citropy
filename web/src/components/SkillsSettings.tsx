@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { VirtualList } from "./VirtualList.tsx";
 import { BookOpen, RefreshCw, Search, Trash2, ChevronDown } from "lucide-react";
 import { api } from "../lib/api.ts";
 import { confirmAction, useApp } from "../lib/store.ts";
@@ -78,13 +79,13 @@ export function SkillsSettings() {
       setBusy("");
     }
   };
-  const filtered = skills.filter(
+  const filtered = useMemo(() => skills.filter(
     (skill) =>
       (!provider || skill.provider === provider) &&
       `${skill.name} ${skill.description} ${skill.path}`
         .toLowerCase()
         .includes(query.toLowerCase()),
-  );
+  ), [skills, provider, query]);
   return (
     <div className="feature-stack">
       <div className="feature-filters">
@@ -146,8 +147,8 @@ export function SkillsSettings() {
           {error}
         </p>
       )}
-      <div className="skill-list">
-        {filtered.map((skill) => (
+      <VirtualList className="skill-list" items={filtered} itemKey="id" estimateSize={160} gap={4}>
+        {(skill) => (
           <article className="skill-row" key={skill.id}>
             <div className="skill-summary">
               <ProviderIcon provider={skill.provider} />
@@ -195,8 +196,8 @@ export function SkillsSettings() {
               </div>
             )}
           </article>
-        ))}
-      </div>
+        )}
+      </VirtualList>
       {!filtered.length && (
         <div className="pane-empty">
           <BookOpen size={28} />

@@ -81,8 +81,15 @@ export function App() {
   const githubStatus = useGitHub("status", {
     projectId: activeProjectId ?? undefined,
   });
-  const threadOrder = useApp((state) => state.threadOrder);
-  const threads = useApp((state) => state.threads);
+  const hasActiveThread = useApp((state) => Boolean(state.threads[state.activeThreadId ?? ""]));
+  const newestThread = useApp((state) => {
+    if (state.activeThreadId || !state.activeProjectId) return undefined;
+    return state.threadOrder.find((id) => {
+      const thread = state.threads[id];
+      return thread?.projectId === state.activeProjectId &&
+        !thread.parentThreadId && !thread.archived && !thread.snoozedUntil;
+    });
+  });
   const hasProject = useApp((state) => state.projects.length > 0);
   const navigationOpen = view === "chat" ? sidebarOpen : sectionSidebarOpen;
   useUiSounds();
@@ -176,16 +183,8 @@ export function App() {
   );
 
   useEffect(() => {
-    if (activeThreadId || !activeProjectId) return;
-    const newest = threadOrder.find(
-      (id) =>
-        threads[id]?.projectId === activeProjectId &&
-        !threads[id]?.parentThreadId &&
-        !threads[id]?.archived &&
-        !threads[id]?.snoozedUntil,
-    );
-    if (newest) selectThread(newest);
-  }, [activeThreadId, activeProjectId, threadOrder, threads]);
+    if (newestThread) selectThread(newestThread);
+  }, [newestThread]);
 
   useEffect(() => {
     const refresh = () => send({ t: "providers.refresh" });
@@ -222,6 +221,7 @@ export function App() {
       className="shell"
       data-sidebar={navigationOpen}
       data-inspector={inspectorOpen && view === "chat"}
+      data-composer={view === "chat" && hasProject && hasActiveThread}
       style={
         Object.fromEntries(
           Object.entries(panelWidths).map(([panel, width]) => [

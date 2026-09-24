@@ -1,0 +1,32 @@
+.virtual-list[data-virtualized="true"] {
+  position: relative;
+  display: block;
+  flex: none;
+}
+
+.virtual-list-row {
+  display: flow-root;
+}
+
+.virtual-list[data-virtualized="true"] > .virtual-list-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.menu-list[data-large="true"] > .menu-option {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 44px;
+}
+
+.git-branch-row,
+.git-history-row {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 64px;
+}
+
+.notification-list:has(> :nth-child(41)) > .notification-row {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 96px;
+}

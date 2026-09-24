@@ -15,6 +15,7 @@ export {
   toggleInspector,
   toggleSidebar,
   setSidebarMode,
+  setSidebarGroupOpen,
   setUiScale,
   setTextStreaming,
   setShowGitHubIdentity,
@@ -57,6 +58,7 @@ export function resetEnvironment(projects: Project[], home: string): void {
     order: {},
     loaded: {},
     historyBytes: {},
+    timelineVersions: {},
     disclosures: {},
     git: {},
     permissions: [],
@@ -69,6 +71,7 @@ export function resetEnvironment(projects: Project[], home: string): void {
     readingThreadId: null,
     panels: [],
     activePanels: {},
+    editorTerminals: {},
     browsers: {},
     computer: { enabled: false, status: "idle", control: false, displays: [], activity: [] },
     toolConnections: {},
@@ -106,13 +109,41 @@ export function selectProject(id: string): void {
 }
 
 export function selectPanel(id: string): void {
-  const panel = useApp.getState().panels.find((entry) => entry.id === id);
+  const state = useApp.getState();
+  const panel = state.panels.find((entry) => entry.id === id);
   if (!panel) return;
+  const tabs = state.panels.filter((entry) => entry.projectId === panel.projectId);
+  const selected =
+    tabs.find((entry) => entry.id === state.activePanels[panel.projectId]) ?? tabs[0];
+  if (panel.kind === "terminal" && selected?.kind === "files") {
+    setEditorTerminal(selected.id, panel.id);
+    return;
+  }
   useApp.setState((state) => ({
     activePanels: { ...state.activePanels, [panel.projectId]: id },
     inspectorOpen: true,
   }));
   environmentStorage.setItem("citropy.inspector", "1");
+}
+
+export function setEditorTerminal(filesId: string, id?: string): void {
+  useApp.setState((state) => {
+    const previous = state.editorTerminals[filesId];
+    const terminalId = id ?? previous?.id;
+    if (!terminalId) return state;
+    return {
+      editorTerminals: {
+        ...state.editorTerminals,
+        [filesId]: {
+          id: terminalId,
+          threadId: state.activeThreadId,
+          visible: Boolean(id),
+        },
+      },
+      ...(id ? { inspectorOpen: true } : {}),
+    };
+  });
+  if (id) environmentStorage.setItem("citropy.inspector", "1");
 }
 
 export function dismissToast(id: string): void {

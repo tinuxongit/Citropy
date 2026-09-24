@@ -91,7 +91,7 @@ export const threadRoutes: Routes = {
       t: "thread.search",
       query: event.query,
       projectId: event.projectId,
-      results: searchConversations(store.threads.values(), event.query, event.projectId),
+      results: searchConversations(store.threads.values(), (id) => store.searchText(id), event.query, event.projectId),
     });
   },
   "thread.load": (event, send) => {

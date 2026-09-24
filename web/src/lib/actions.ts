@@ -5,7 +5,7 @@ import type {
   GitHubResponses,
   GitHubRequest,
 } from "../../../shared/github.ts";
-import { selectThread, selectPanel, useApp, confirmAction } from "./store.ts";
+import { selectThread, selectPanel, setEditorTerminal, useApp, confirmAction } from "./store.ts";
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { flushHeld, holdMessage } from "./offline.ts";
@@ -21,10 +21,32 @@ import type {
   ThreadMeta,
 } from "../../../shared/protocol.ts";
 import type { PanelKind } from "../../../shared/workbench.ts";
+import { movePanelTab } from "../../../shared/workbench.ts";
+
+export function moveWorkbenchPanel(id: string, targetId: string, edge: "before" | "after"): void {
+  const state = useApp.getState();
+  if (!state.connected) return;
+  const panels = movePanelTab(state.panels, id, targetId, edge);
+  if (panels === state.panels) return;
+  const projectId = panels.find((panel) => panel.id === id)!.projectId;
+  const tabs = state.panels.filter((panel) => panel.projectId === projectId);
+  const selected = tabs.find((panel) => panel.id === state.activePanels[projectId]) ?? tabs[0]!;
+  useApp.setState({ panels, activePanels: { ...state.activePanels, [projectId]: selected.id } });
+  send({ t: "panel.move", id, targetId, edge });
+}
 
 export function openWorkbenchPanel(kind: PanelKind, url?: string): void {
   const state = useApp.getState();
   if (!state.activeProjectId || !state.connected) return;
+  const tabs = state.panels.filter(
+    (panel) => panel.projectId === state.activeProjectId,
+  );
+  const selectedId = state.activePanels[state.activeProjectId];
+  const selected = tabs.find((panel) => panel.id === selectedId) ?? tabs[0];
+  if (kind === "terminal" && selected?.kind === "files") {
+    openEditorTerminal(selected.id, true);
+    return;
+  }
   const existing =
     !["browser", "terminal"].includes(kind) &&
     state.panels.find(
@@ -48,6 +70,35 @@ export function openWorkbenchPanel(kind: PanelKind, url?: string): void {
     threadId: state.activeThreadId ?? undefined,
     ...(kind === "browser" && url ? { url } : {}),
   });
+}
+
+export function openEditorTerminal(filesId: string, create = false): void {
+  const state = useApp.getState();
+  const files = state.panels.find(
+    (panel) => panel.id === filesId && panel.kind === "files",
+  );
+  if (!files || !state.connected) return;
+  const dock = state.editorTerminals[filesId];
+  const previous = dock?.threadId === state.activeThreadId ? dock.id : undefined;
+  const existing = create
+    ? undefined
+    : state.panels.find((panel) => panel.id === previous) ??
+      state.panels.find((panel) =>
+        panel.kind === "terminal" &&
+        panel.projectId === files.projectId &&
+        (panel.threadId ?? null) === state.activeThreadId,
+      );
+  const id = existing?.id ?? (create ? undefined : previous) ?? crypto.randomUUID();
+  setEditorTerminal(filesId, id);
+  if (!existing)
+    send({
+      t: "panel.open",
+      id,
+      projectId: files.projectId,
+      threadId: state.activeThreadId ?? undefined,
+      kind: "terminal",
+      background: true,
+    });
 }
 
 export function openProject(path: string): void {
@@ -146,6 +197,15 @@ export async function createThread(provider?: ProviderId, options = false): Prom
 export function loadThread(id: string): void {
   if (useApp.getState().loaded[id]) return;
   send({ t: "thread.load", id });
+}
+
+export async function openOnEnvironment(environment: string, projectId: string, threadId?: string): Promise<void> {
+  await selectEnvironment(environment, projectId);
+  if (environmentId() !== environment) return;
+  if (!threadId) return;
+  if (!useApp.getState().threads[threadId]) throw new Error("This conversation is no longer on that host.");
+  selectThread(threadId);
+  loadThread(threadId);
 }
 
 export function readThreadNotifications(threadId: string, since = 0): void {

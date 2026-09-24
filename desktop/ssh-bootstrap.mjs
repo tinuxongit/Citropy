@@ -70,7 +70,7 @@ try {
     const child = fork(join(appRoot, "server/main.ts"), [], {
       cwd: appRoot,
       detached: true,
-      execArgv: ["--experimental-strip-types"],
+      execArgv: ["--experimental-strip-types", "--optimize-for-size"],
       env: { ...process.env, CITROPY_PORT: String(port), CITROPY_HOST: "127.0.0.1", CITROPY_REMOTE_ID: id, CITROPY_REMOTE_TOKEN: token, CITROPY_REMOTE_BUILD: build, CITROPY_DATA_DIR: join(root, "data"), PATH: `${dirname(process.execPath)}:${join(homedir(), ".local/bin")}:${join(homedir(), ".opencode/bin")}:${process.env.PATH || "/usr/bin:/bin"}` },
       stdio: ["ignore", log.fd, log.fd, "ipc"],
     });

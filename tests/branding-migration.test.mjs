@@ -66,7 +66,7 @@ test("conversation directory migration retains saved bytes and never overwrites 
     const saved = JSON.stringify({ id: "saved", projectId: "workspace", status: "idle", running: false, messages: [{ id: "response", role: "assistant", parts: [{ id: "text", kind: "text", text: "Preserved response", complete: false }] }] });
     write(join(directory, ".loom", "threads", "saved.json"), saved);
     if (existing) write(join(directory, ".citropy", "threads", "current.json"), saved.replace('"saved"', '"current"'));
-    const result = execFileSync(process.execPath, ["--experimental-strip-types", "--input-type=module", "-e", `const { store } = await import(${JSON.stringify(new URL("../server/store.ts", import.meta.url).href)}); process.stdout.write(JSON.stringify([...store.threads.values()]));`], { env: { ...process.env, HOME: directory }, encoding: "utf8" });
+    const result = execFileSync(process.execPath, ["--experimental-strip-types", "--input-type=module", "-e", `const { store } = await import(${JSON.stringify(new URL("../server/store.ts", import.meta.url).href)}); process.stdout.write(JSON.stringify([...store.threads.values()].map(thread => ({ ...thread, messages: thread.messages }))));`], { env: { ...process.env, HOME: directory }, encoding: "utf8" });
     const threads = JSON.parse(result);
     assert.equal(threads.length, 1);
     assert.equal(threads[0].id, existing ? "current" : "saved");
@@ -96,7 +96,7 @@ test("conversations from the earlier Lemon data folder move into the shared fold
     const saved = JSON.stringify({ id: "saved", projectId: "workspace", status: "idle", running: false, messages: [{ id: "response", role: "assistant", parts: [{ id: "text", kind: "text", text: "Preserved response", complete: false }] }] });
     write(join(directory, ".citropy-lemon", "threads", "saved.json"), saved);
     if (existing) write(join(directory, ".citropy", "threads", "current.json"), saved.replace('"saved"', '"current"'));
-    const result = execFileSync(process.execPath, ["--experimental-strip-types", "--input-type=module", "-e", `const { store } = await import(${JSON.stringify(new URL("../server/store.ts", import.meta.url).href)}); process.stdout.write(JSON.stringify([...store.threads.values()]));`], { env: { ...process.env, HOME: directory }, encoding: "utf8" });
+    const result = execFileSync(process.execPath, ["--experimental-strip-types", "--input-type=module", "-e", `const { store } = await import(${JSON.stringify(new URL("../server/store.ts", import.meta.url).href)}); process.stdout.write(JSON.stringify([...store.threads.values()].map(thread => ({ ...thread, messages: thread.messages }))));`], { env: { ...process.env, HOME: directory }, encoding: "utf8" });
     const threads = JSON.parse(result);
     assert.equal(threads.length, 1);
     assert.equal(threads[0].id, existing ? "current" : "saved");

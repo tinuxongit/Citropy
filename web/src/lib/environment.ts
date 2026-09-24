@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { EnvironmentState } from "../../../shared/environments.ts";
-import type { Project } from "../../../shared/protocol.ts";
+import type { Project, ThreadMeta } from "../../../shared/protocol.ts";
 
 let initial: EnvironmentState = { activeId: "local", endpoint: "", connections: [] };
 let controller = new AbortController();
@@ -8,13 +8,18 @@ let switching: string | null = null;
 let selection = 0;
 let pushes = 0;
 const listeners = new Set<() => void>();
-type WorkspaceCatalog = Record<string, { home: string; projects: Project[] }>;
+export type CachedThread = Pick<ThreadMeta, "id" | "projectId" | "provider" | "title" | "updatedAt" | "position" | "pinned" | "finished" | "archived" | "snoozedUntil">;
+type WorkspaceCatalog = Record<string, { home: string; projects: Project[]; threads: CachedThread[] }>;
 let workspaces: WorkspaceCatalog = {};
 try {
   const saved = typeof localStorage === "undefined" ? {} : JSON.parse(localStorage.getItem("citropy.workspaces") || "{}");
   for (const [id, value] of Object.entries(saved) as [string, WorkspaceCatalog[string]][]) {
     if (typeof value?.home === "string" && Array.isArray(value.projects))
-      workspaces[id] = { home: value.home, projects: value.projects.filter(project => typeof project?.id === "string" && typeof project.name === "string" && typeof project.path === "string") };
+      workspaces[id] = {
+        home: value.home,
+        projects: value.projects.filter(project => typeof project?.id === "string" && typeof project.name === "string" && typeof project.path === "string"),
+        threads: Array.isArray(value.threads) ? value.threads.filter(thread => typeof thread?.id === "string" && typeof thread.projectId === "string" && typeof thread.title === "string") : [],
+      };
   }
 } catch {}
 
@@ -48,8 +53,15 @@ export function useWorkspaceCatalog(): WorkspaceCatalog {
   return useSyncExternalStore(subscribe, () => workspaces);
 }
 
-export function rememberWorkspaces(projects: Project[], home: string): void {
-  workspaces = { ...workspaces, [initial.activeId]: { home, projects: projects.map(({ id, name, path, isGit, lastOpened }) => ({ id, name, path, isGit, lastOpened })) } };
+export function rememberWorkspaces(projects: Project[], home: string, threads: ThreadMeta[]): void {
+  const entry = {
+    home,
+    projects: projects.map(({ id, name, path, isGit, lastOpened }) => ({ id, name, path, isGit, lastOpened })),
+    threads: threads.filter(thread => !thread.parentThreadId).map(({ id, projectId, provider, title, updatedAt, position, pinned, finished, archived, snoozedUntil }) =>
+      ({ id, projectId, provider, title, updatedAt, position, pinned, finished, archived, snoozedUntil })),
+  };
+  if (JSON.stringify(entry) === JSON.stringify(workspaces[initial.activeId])) return;
+  workspaces = { ...workspaces, [initial.activeId]: entry };
   try { localStorage.setItem("citropy.workspaces", JSON.stringify(workspaces)); } catch {}
   publish();
 }

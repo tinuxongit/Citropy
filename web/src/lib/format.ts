@@ -65,11 +65,18 @@ export function tokens(value: number): string {
   return `${(value / 1_000_000).toFixed(2)}M`;
 }
 
+const formatters = new Map<string, Intl.NumberFormat>();
+
+export function decimal(value: number, fractionDigits = 1): string {
+  const key = `${currentLocale()}:${fractionDigits}`;
+  let formatter = formatters.get(key);
+  if (!formatter) formatters.set(key, formatter = new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: fractionDigits }));
+  return formatter.format(value);
+}
+
 export function tokenRate(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return "0";
-  return new Intl.NumberFormat(currentLocale(), {
-    maximumFractionDigits: 1,
-  }).format(value);
+  return decimal(value);
 }
 
 export function cost(value: number): string {

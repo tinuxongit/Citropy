@@ -75,24 +75,9 @@ test("conversation persistence and lifecycle recovery", async (t) => {
   });
   const project = store.openProject(directory);
   const thread = store.createThread({ projectId: project.id, provider: "claude", title: "Recovery", permissionMode: "manual" });
-  store.flush();
-  const savedPath = join(directory, ".citropy", "threads", `${thread.id}.json`);
 
-  await t.test("a failed replacement preserves the last complete save and can be retried", () => {
-    const previous = fs.readFileSync(savedPath, "utf8");
+  await t.test("conversation changes survive a restart before any flush", () => {
     store.patchThread(thread.id, { title: "Updated" });
-    fs.renameSync = () => { throw new Error("simulated failed replacement"); };
-    syncBuiltinESMExports();
-    try {
-      assert.throws(() => store.flush(), /simulated failed replacement/);
-      assert.equal(fs.readFileSync(savedPath, "utf8"), previous);
-      assert.deepEqual(fs.readdirSync(join(directory, ".citropy", "threads")), [`${thread.id}.json`]);
-    } finally {
-      fs.renameSync = originalRename;
-      syncBuiltinESMExports();
-    }
-    store.flush();
-    assert.equal(JSON.parse(fs.readFileSync(savedPath, "utf8")).title, "Updated");
     assert.equal(new Store().threads.get(thread.id).title, "Updated");
   });
 
@@ -130,7 +115,7 @@ test("conversation persistence and lifecycle recovery", async (t) => {
       store.patchThread(thread.id, { title: "Saved again" });
       store.flush();
       store.flush();
-      assert.deepEqual(writes, [savedPath]);
+      assert.deepEqual(writes, []);
     } finally {
       fs.renameSync = originalRename;
       syncBuiltinESMExports();
@@ -483,8 +468,7 @@ test("conversation persistence and lifecycle recovery", async (t) => {
   await t.test("effort is validated, saved, and passed to the agent", async () => {
     first.socket.send(JSON.stringify({ t: "thread.config", id: thread.id, model: "test", effort: "high" }));
     await waitFor(() => store.threads.get(thread.id).effort === "high");
-    store.flush();
-    assert.equal(JSON.parse(fs.readFileSync(savedPath, "utf8")).effort, "high");
+    assert.equal(new Store().threads.get(thread.id).effort, "high");
     first.socket.send(JSON.stringify({ t: "thread.config", id: thread.id, effort: "unsupported" }));
     await waitFor(() => first.events.find((event) => event.t === "toast" && event.text.includes("not supported")));
     assert.equal(store.threads.get(thread.id).effort, "high");
@@ -595,7 +579,7 @@ test("conversation persistence and lifecycle recovery", async (t) => {
       );
       assert.equal(store.threads.get(otherThread.id).running, false);
       assert.equal(store.threads.has(thread.id), false);
-      assert.equal(fs.existsSync(savedPath), false);
+      assert.equal(new Store().threads.has(thread.id), false);
       assert.equal(
         JSON.parse((await approval).result.content[0].text).behavior,
         "deny",

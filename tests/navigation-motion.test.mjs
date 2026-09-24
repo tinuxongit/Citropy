@@ -37,7 +37,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     page.on("pageerror", (error) => errors.push(error.message));
     test.after(async () => { await page.close(); assert.deepEqual(errors, []); });
     await page.addInitScript(() => {
-      for (const [key, value] of Object.entries({ project: "workspace", thread: "thread-0", sidebar: "1", inspector: "0", theme: "dark", uiScale: "120", compactNavigation: "1" })) localStorage.setItem(`citropy.${key}`, value);
+      for (const [key, value] of Object.entries({ project: "workspace", thread: "thread-0", sidebar: "1", inspector: "0", theme: "dark", uiScale: "120", compactNavigation: "1", sidebarMode: "workspaces" })) localStorage.setItem(`citropy.${key}`, value);
       const observers = new Set();
       const frames = new Set();
       const Resize = window.ResizeObserver;

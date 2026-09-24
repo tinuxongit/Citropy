@@ -254,7 +254,7 @@ export function Menu({
                 onChange={(event) => setQuery(event.target.value)}
               />
             )}
-            <div className="menu-list scroll">
+            <div className="menu-list scroll" data-large={visibleItems.length > 40}>
               {visibleItems.map((item, index) => (
                   <Fragment key={item.id}>
                     {item.section &&

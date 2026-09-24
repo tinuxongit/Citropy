@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { defaultRangeExtractor, useVirtualizer, type Range } from "@tanstack/react-virtual";
 import type { Project, ThreadMeta } from "../../../shared/protocol.ts";
 import { createThread, reorderThreads } from "../lib/actions.ts";
-import { useEnvironments } from "../lib/environment.ts";
+import { isRemote, useEnvironments, useWorkspaceCatalog } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { scaled, selectProject, useApp } from "../lib/store.ts";
 import { Collapsible } from "./Collapsible.tsx";
@@ -12,12 +12,13 @@ import { ResizeHandle } from "./ResizeHandle.tsx";
 import { SidebarFooter } from "./SidebarFooter.tsx";
 import { ThreadPreview } from "./ThreadPreview.tsx";
 import { WorkspaceSelector } from "./WorkspaceSelector.tsx";
-import { CategoryToggle, ProjectHeading, StatusHeading } from "./sidebar/GroupHeadings.tsx";
+import { CachedThreadRow } from "./sidebar/CachedThreadRow.tsx";
+import { CachedProjectHeading, CategoryToggle, ProjectHeading, StatusHeading } from "./sidebar/GroupHeadings.tsx";
 import { RenameProjectModal } from "./sidebar/RenameProjectModal.tsx";
-import { movableSiblings, threadOrderAfterMove, useThreadGroups, type ThreadGroup } from "./sidebar/thread-groups.ts";
+import { movableSiblings, threadOrderAfterMove, useThreadGroups, type EnvironmentFolders, type ThreadGroup } from "./sidebar/thread-groups.ts";
 import { ThreadRow } from "./sidebar/ThreadRow.tsx";
 import { useProjectDrag } from "./sidebar/use-project-drag.ts";
-import { useProjectOrder, type DropEdge } from "./sidebar/use-project-order.ts";
+import { orderProjects, readProjectOrder, useProjectOrder, type DropEdge } from "./sidebar/use-project-order.ts";
 import { useThreadDrag } from "./sidebar/use-thread-drag.ts";
 import { useThreadPreview } from "./sidebar/use-thread-preview.ts";
 import { useThreadSearch } from "./sidebar/use-thread-search.ts";
@@ -25,7 +26,8 @@ import { rootThread, useThreadTree } from "./sidebar/use-thread-tree.ts";
 
 const VIRTUALIZE_AFTER = 40;
 
-function estimateRowHeight(globalMode: boolean, row: { thread?: ThreadMeta; empty: boolean } | undefined): number {
+function estimateRowHeight(globalMode: boolean, row: { thread?: ThreadMeta; cached?: unknown; empty: boolean } | undefined): number {
+  if (row?.cached) return 34;
   if (row?.thread) return globalMode ? 34 : 96;
   if (row?.empty && globalMode) return 30;
   return 40;
@@ -55,7 +57,8 @@ export function Sidebar({
   const creatingThread = useApp((state) => state.creatingThread);
   const uiScale = useApp((state) => state.uiScale);
   const globalMode = useApp((state) => state.sidebarMode === "global");
-  const environment = useEnvironments().activeId;
+  const { activeId: environment, connections } = useEnvironments();
+  const catalog = useWorkspaceCatalog();
   const [allProjects, setAllProjects] = useState(false);
   const [query, setQuery] = useState("");
   const [renaming, setRenaming] = useState<Project>();
@@ -73,7 +76,13 @@ export function Sidebar({
   );
   const activeRoot = rootThread(threadMap, activeThreadId);
   const { orderedProjects, moveProject, moveProjectBy } = useProjectOrder(environment, projects);
-  const { groups, rows, revealFinished } = useThreadGroups({ threads, query, globalMode, projects: orderedProjects, activeRoot, activeThreadId });
+  const environments = useMemo(() => ["local", ...connections.map((connection) => connection.id)].flatMap((id): EnvironmentFolders[] => {
+    if (id === environment) return [{ environment: id, server: isRemote() }];
+    const cached = catalog[id];
+    if (!cached?.projects.length) return [];
+    return [{ environment: id, server: id !== "local", cached: { projects: orderProjects(cached.projects, readProjectOrder(id)), threads: cached.threads } }];
+  }), [environment, connections, catalog]);
+  const { groups, rows, revealFinished } = useThreadGroups({ threads, query, globalMode, projects: orderedProjects, environments, activeRoot, activeThreadId });
   const tree = useThreadTree(threadMap, activeThreadId);
   const rowOrder = rows.map((row) => row.key).join("\0");
 
@@ -141,6 +150,7 @@ export function Sidebar({
   const renderHeading = (group: ThreadGroup) => {
     const searching = Boolean(query);
     const project = group.project;
+    if (project && group.environment) return <CachedProjectHeading group={group} environment={group.environment} project={project} onConversation={onConversation} />;
     if (project) return <ProjectHeading
       group={group}
       project={project}
@@ -179,14 +189,15 @@ export function Sidebar({
     if (virtualized) return list.getVirtualItems().filter((item) => rows[item.index]?.group.id === group.id).map((item) => {
       const row = rows[item.index]!;
       return <div key={item.key} data-index={item.index} ref={list.measureElement} className="thread-list-item" style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${item.start}px)` }}>
-        {row.thread ? renderThread(row.thread) : row.empty ? renderEmpty(group.project!.id) : renderHeading(group)}
+        {row.thread ? renderThread(row.thread) : row.cached ? <CachedThreadRow thread={row.cached} environment={group.environment!} onConversation={onConversation} /> : row.empty ? renderEmpty(group.project!.id) : renderHeading(group)}
       </div>;
     });
     return <>
       {renderHeading(group)}
       <Collapsible open={group.open || Boolean(query)} className="thread-category-content">
         {group.threads.map((thread) => <div className="thread-list-item" key={thread.id}>{renderThread(thread)}</div>)}
-        {group.project && !query && !group.threads.length && renderEmpty(group.project.id)}
+        {group.cachedThreads?.map((thread) => <div className="thread-list-item" key={thread.id}><CachedThreadRow thread={thread} environment={group.environment!} onConversation={onConversation} /></div>)}
+        {group.project && !group.environment && !query && !group.threads.length && renderEmpty(group.project.id)}
       </Collapsible>
     </>;
   };
@@ -248,7 +259,7 @@ export function Sidebar({
             </section>)}
             {projectDrag.drop && <div className="project-drop-line" style={{ top: projectDrag.drop.top }} />}
           </div>
-          {threads.length === 0 && (!globalMode || query || projects.length === 0) && <div className="rail-empty">{emptyMessage}</div>}
+          {threads.length === 0 && (!globalMode || query || groups.length === 0) && <div className="rail-empty">{emptyMessage}</div>}
         </div>
       </div>
       {preview.shown && threadMap[preview.shown.threadId] && <ThreadPreview

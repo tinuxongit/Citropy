@@ -1,5 +1,6 @@
 import { Minus, Plus } from "lucide-react";
 import { FileIcon } from "../FileIcon.tsx";
+import { VirtualList } from "../VirtualList.tsx";
 import { fileLabel } from "./files.ts";
 import { groupGitFiles } from "../../lib/git-files.ts";
 import type { GitSelection } from "../GitReview.tsx";
@@ -53,7 +54,8 @@ export function FileGroup({
       {groupGitFiles(list.filter((file) => match(file.path)), inIndex).map((group) => (
         <div className="git-change-category" key={group.kind}>
           <h4 className="change-category" data-kind={group.kind}>{t(group.label)}<span>{group.files.length}</span></h4>
-          {group.files.map((file) => {
+          <VirtualList items={group.files} itemKey="path" estimateSize={52}>
+          {(file) => {
             const label = fileLabel(file, inIndex, t);
             const active =
               selection?.kind === "file" &&
@@ -100,7 +102,8 @@ export function FileGroup({
                 </button>
               </div>
             );
-          })}
+          }}
+          </VirtualList>
         </div>
       ))}
     </section>

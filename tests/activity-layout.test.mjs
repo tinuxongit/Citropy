@@ -266,7 +266,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     page.on("pageerror", error => errors.push(error.message));
     t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
     await page.addInitScript(preferences => {
-      for (const [key, value] of Object.entries({ project: "workspace", thread: "chat", inspector: "0", theme: "dark", uiScale: "120", panelWidths: '{"sidebar":216}', ...preferences })) localStorage.setItem(`citropy.${key}`, value);
+      for (const [key, value] of Object.entries({ project: "workspace", thread: "chat", inspector: "0", theme: "dark", uiScale: "120", panelWidths: '{"sidebar":216}', sidebarMode: "workspaces", ...preferences })) localStorage.setItem(`citropy.${key}`, value);
     }, preferences);
     await page.routeWebSocket("**/socket", socket => {
       connection = socket;
@@ -765,7 +765,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
         const answer = document.querySelector(".agent-card").getBoundingClientRect();
         return { gap: answer.top - summary.bottom };
       });
-      assert.ok(spacing.gap >= 20 && spacing.gap <= 32, JSON.stringify({ width, ...spacing }));
+      assert.ok(spacing.gap >= 6 && spacing.gap <= 14, JSON.stringify({ width, ...spacing }));
       assert.equal(await details.locator("svg.activity-icon").count(), 1);
     }
     await details.click();

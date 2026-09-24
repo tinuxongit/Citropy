@@ -15,6 +15,15 @@
   flex: none;
   z-index: 25;
 }
+.workbench-panel-menu {
+  box-shadow: none;
+}
+:root[data-theme="dark"] .workbench-panel-menu {
+  background: var(--canvas);
+}
+:root[data-theme="dark"] .workbench-panel-menu .menu-item:is(:hover, :focus-visible) {
+  background: var(--raised);
+}
 .workbench-open {
   display: grid;
   place-items: center;
@@ -56,6 +65,30 @@
 }
 .workbench-tab[data-active="true"] {
   color: var(--text);
+}
+.workbench-tab,
+.editor-terminal-tab {
+  position: relative;
+  user-select: none;
+}
+:is(.workbench-tab, .editor-terminal-tab)[data-dragging="true"] {
+  z-index: 2;
+  background: var(--raised-2);
+  cursor: grabbing;
+}
+[data-dragging="true"] > [role="tab"] {
+  cursor: grabbing;
+}
+.panel-drop-marker {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 2px;
+  z-index: 3;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
 }
 .workbench-tab:hover:not([data-active="true"]) {
   background: var(--raised);
@@ -602,4 +635,20 @@
   margin-left: auto;
   color: var(--text-4);
   font-variant-numeric: tabular-nums;
+}
+
+.shell-body .sliding-panel[data-side="right"]:has(> .inspector[data-expanded="true"]) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  z-index: 19;
+  --panel-width: 100%;
+}
+
+.inspector[data-expanded="true"] {
+  border-radius: var(--r-md);
+}
+
+.inspector[data-expanded="true"] > .panel-resize {
+  display: none;
 }

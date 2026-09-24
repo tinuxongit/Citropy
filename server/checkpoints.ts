@@ -199,7 +199,7 @@ export async function restoreCheckpoint(thread: Thread, messageId: string, mode:
     const checkpoint = thread.checkpoints?.find(entry => entry.messageId === messageId);
     const latest = thread.checkpoints?.at(-1);
     if (mode !== "conversation" && fileRestoreIssue(thread.checkpoints, messageId)) throw new Error("File restore is unavailable for an incomplete or shared checkpoint. You can restore conversation history only.");
-    const backup = structuredClone(thread);
+    const backup = structuredClone({ ...thread, messages: thread.messages });
     const path = join(root, `${thread.id}-redo.json`);
     const saveBackup = async (beforeRestore?: string, afterRestore?: string) => {
       await mkdir(root, { recursive: true, mode: 0o700 });

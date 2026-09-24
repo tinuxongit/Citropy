@@ -70,6 +70,7 @@ if (app.isPackaged) {
   process.env.CITROPY_UI_URL = process.env.CITROPY_URL;
   process.env.CITROPY_DESKTOP_TOKEN = randomBytes(32).toString("hex");
 }
+app.commandLine.appendSwitch("js-flags", "--optimize-for-size");
 const backend = app.isPackaged ? packagedBackend(process.env, diagnose) : undefined;
 let updates;
 let environments;

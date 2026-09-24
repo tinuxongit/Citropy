@@ -302,8 +302,17 @@ createRoot(root).render(React.createElement('aside', {className:'rail', style:{w
       .getByText("Citropy 0.2.0 is available")
       .waitFor();
     await button.click();
+    await page.evaluate(() => window.publishUpdate({ status: "checking" }));
+    await page
+      .locator(".app-update-button .pixel-loader")
+      .waitFor({ state: "visible" });
+    await page.screenshot({ path: "/tmp/citropy-update-checking-desktop.png" });
+    await page.setViewportSize({ width: 600, height: 720 });
+    await page.screenshot({ path: "/tmp/citropy-update-checking-narrow.png" });
+    await page.setViewportSize({ width: 1400, height: 900 });
     await page.evaluate(() =>
       window.publishUpdate({
+        status: "downloading",
         percent: 42.8,
         transferred: 44040192,
         total: 104857600,

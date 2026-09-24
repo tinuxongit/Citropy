@@ -32,7 +32,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
   await page.addInitScript(() => {
     if (!localStorage.getItem("test.seeded")) {
-      const prefs = { project: "local-project", thread: "task", inspector: "0", theme: "dark", uiScale: "120", offline: JSON.stringify({ task: [{ id: "held", text: "LOCAL MESSAGE", attachments: [], createdAt: 1 }] }) };
+      const prefs = { project: "local-project", thread: "task", inspector: "0", theme: "dark", uiScale: "120", sidebarMode: "workspaces", offline: JSON.stringify({ task: [{ id: "held", text: "LOCAL MESSAGE", attachments: [], createdAt: 1 }] }) };
       for (const [key, value] of Object.entries(prefs)) localStorage.setItem(`citropy.${key}`, value);
       localStorage.setItem("citropy.draft.task", JSON.stringify({ text: "LOCAL DRAFT", attachments: [] }));
       localStorage.setItem("citropy.environment.ssh-test.citropy.offline", JSON.stringify({ task: [{ id: "held", text: "REMOTE MESSAGE", attachments: [], createdAt: 1 }] }));

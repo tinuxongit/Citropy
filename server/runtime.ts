@@ -290,6 +290,7 @@ export class ThreadRuntime {
     };
     store.addMessage(this.#thread.id, message);
     store.patchThread(this.id, { contextSources });
+    store.raiseThread(this.id);
     if (!this.#thread.title || this.#thread.title === "New thread") {
       const title = (text.trim().split("\n")[0] || attachments.map((file) => file.label).join(", ")).slice(0, 64);
       this.#autoTitle = title || "New thread";
@@ -815,6 +816,23 @@ export function disposeAll(): void {
 
 export function providerBusy(providerId: string): boolean {
   return textGenerationBusy(providerId) || [...store.threads.values()].some((thread) => thread.provider === providerId && (thread.running || thread.status === "awaiting" || runtimes.get(thread.id)?.busy));
+}
+
+const IDLE_SESSION_MS = 60 * 60_000;
+const idleSince = new WeakMap<ThreadRuntime, number>();
+
+export function closeIdleSessions(now = Date.now()): void {
+  for (const [id, runtime] of runtimes) {
+    const thread = store.threads.get(id);
+    const waiting = !thread || runtime.busy || thread.queue?.length ||
+      [...store.threads.values()].some(child => child.parentThreadId === id && (child.running || child.status === "awaiting"));
+    if (waiting) { idleSince.delete(runtime); continue; }
+    const since = idleSince.get(runtime) ?? now;
+    idleSince.set(runtime, since);
+    if (now - since < IDLE_SESSION_MS) continue;
+    runtime.dispose(true);
+    runtimes.delete(id);
+  }
 }
 
 export function reloadProviderSessions(providerIds: Set<string>): void {

@@ -2,7 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource-variable/inter/standard.css";
 import "@fontsource-variable/inter/standard-italic.css";
-import "@fontsource-variable/geist-mono";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
@@ -18,11 +17,21 @@ import "./styles/overlays.css";
 import "./styles/git.css";
 import "./styles/github.css";
 import "./styles/features.css";
+import "./styles/virtual-list.css";
 import "./styles/computer.css";
 import "./styles/environments.css";
 import { initializeEnvironment } from "./lib/environment.ts";
 
 async function start() {
+  if (/Mac|iPhone|iPad/.test(navigator.platform)) {
+    document.documentElement.style.setProperty(
+      "--font-mono", 'Menlo, Monaco, "Courier New", monospace',
+    );
+  } else if (/Win/.test(navigator.platform)) {
+    document.documentElement.style.setProperty(
+      "--font-mono", 'Consolas, "Courier New", monospace',
+    );
+  }
   await initializeEnvironment();
   const [{ App }, { connect }, { useApp }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts")]);
 

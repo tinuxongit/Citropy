@@ -53,7 +53,7 @@ export function ResizeHandle({
           .width ?? 0;
       return Math.max(
         minimum,
-        Math.min(720, viewport - sidebar / (uiScale / 100) - 360),
+        viewport - sidebar / (uiScale / 100) - 360,
       );
     }
     const available =

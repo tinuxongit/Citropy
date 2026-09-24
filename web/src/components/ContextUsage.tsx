@@ -2,9 +2,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ListTree, Minimize2 } from "lucide-react";
-import { cost, tokenRate, tokens } from "../lib/format.ts";
+import { cost, decimal, tokenRate, tokens } from "../lib/format.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
-import { currentLocale, useI18n } from "../lib/i18n.ts";
+import { useI18n } from "../lib/i18n.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { estimateConversationTokens, estimateTokensFromChars, newInputTokens, reportedContext, uncachedInput } from "../../../shared/usage-metrics.ts";
 import { ContextInspector } from "./ContextInspector.tsx";
@@ -14,11 +14,11 @@ const PANEL_WIDTH = 304;
 function percentage(value: number): string {
   const percent = Math.max(0, Math.min(value * 100, 100));
   if (percent > 0 && percent < 0.1) return "<0.1";
-  return new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 1 }).format(percent);
+  return decimal(percent);
 }
 
 function exactTokens(value: number): string {
-  return Math.round(value).toLocaleString(currentLocale());
+  return decimal(Math.round(value), 0);
 }
 
 export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }: { onCompact?: () => void; draft?: string }) {

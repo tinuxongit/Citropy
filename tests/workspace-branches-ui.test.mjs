@@ -23,6 +23,7 @@ test("the sidebar and titlebar agree without borrowing another worktree's cached
     localStorage.setItem("citropy.project", "project");
     localStorage.setItem("citropy.thread", "selected");
     localStorage.setItem("citropy.uiScale", "100");
+    localStorage.setItem("citropy.sidebarMode", "workspaces");
     localStorage.setItem("citropy.gitPanel", "0");
     localStorage.setItem("citropy.inspector", "0");
   });

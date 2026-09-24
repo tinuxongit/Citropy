@@ -50,6 +50,12 @@ export function setSidebarMode(mode: SidebarMode): void {
   environmentStorage.setItem("citropy.sidebarMode", mode);
 }
 
+export function setSidebarGroupOpen(id: string, open: boolean): void {
+  const sidebarGroups = { ...useApp.getState().sidebarGroups, [id]: open };
+  useApp.setState({ sidebarGroups });
+  environmentStorage.setItem("citropy.sidebarGroups", JSON.stringify(sidebarGroups));
+}
+
 export function setUiScale(value: number): void {
   const uiScale = Math.max(75, Math.min(150, Math.round(value)));
   if (!Number.isFinite(uiScale)) return;

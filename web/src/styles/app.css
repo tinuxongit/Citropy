@@ -11,7 +11,7 @@
       --inspector-width,
       clamp(280px, calc(var(--viewport-width) * 0.29), 500px)
     ),
-    min(720px, calc(var(--viewport-width) - var(--visible-rail) - 360px))
+    calc(var(--viewport-width) - var(--visible-rail) - 360px)
   );
   position: relative;
   display: grid;
@@ -246,6 +246,7 @@
   font-size: var(--text-xs);
 }
 
+.git-panel-body > .git-panel-combined:first-child { margin: 0 0 8px; }
 .git-panel-combined:hover:not(:disabled) { background: var(--raised-2); }
 .git-panel-combined:disabled { color: var(--text-4); opacity: 0.5; cursor: default; }
 .git-panel-progress,

@@ -25,11 +25,11 @@ test("durable events recover text without a snapshot flush and preserve imported
   const sequence = journal.append({ t: "part.append", threadId: thread.id, messageId: "new", partId: "part", text: "Recovered" });
   journal.close();
   journal = new EventJournal(path);
-  assert.equal(journal.threads()[0].messages.at(-1).parts[0].text, "Recovered");
+  assert.equal(journal.messages(thread.id).at(-1).parts[0].text, "Recovered");
   assert.deepEqual(journal.replay(sequence - 1).map(event => event.sequence), [sequence]);
   journal.append({ t: "thread.remove", id: thread.id });
   journal.importThreads([{ ...thread, messages: [] }]);
-  assert.deepEqual(journal.threads(), []);
+  assert.deepEqual(journal.threadRecords(), []);
   journal.close();
 });
 
@@ -95,13 +95,13 @@ test("a closed journal can reopen its statements and preserves replacement order
     { id: "first", role: "assistant", ts: 3, parts: [] },
   ];
   journal.append({ t: "thread.messages", threadId: thread.id, messages });
-  assert.deepEqual(journal.threads()[0].messages, messages);
+  assert.deepEqual(journal.messages(thread.id), messages);
   journal.append({ t: "part.patch", threadId: thread.id, messageId: "second", partId: "a", patch: { text: "Patched", complete: true } });
-  assert.equal(journal.threads()[0].messages[0].parts[1].text, "Patched");
+  assert.equal(journal.messages(thread.id)[0].parts[1].text, "Patched");
   journal.append({ t: "thread.remove", id: thread.id });
   assert.equal(journal.hasThread(thread.id), true);
   assert.equal(journal.hasThread("missing"), false);
-  assert.deepEqual(journal.threads(), []);
+  assert.deepEqual(journal.threadRecords(), []);
   journal.close();
 });
 

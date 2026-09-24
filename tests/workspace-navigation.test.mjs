@@ -44,7 +44,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 9
     page.on("pageerror", error => errors.push(error.message));
     test.after(async () => { await page.close(); assert.deepEqual(errors, []); });
     await page.addInitScript(chat => {
-      for (const [key, value] of Object.entries({ project: "first", thread: chat ? "chat" : "", inspector: "0", theme: "dark", uiScale: "120", compactNavigation: "1" })) localStorage.setItem(`citropy.${key}`, value);
+      for (const [key, value] of Object.entries({ project: "first", thread: chat ? "chat" : "", inspector: "0", theme: "dark", uiScale: "120", compactNavigation: "1", sidebarMode: "workspaces" })) localStorage.setItem(`citropy.${key}`, value);
     }, chat);
     await page.route("**/api/workspaces?*", route => route.fulfill({ json: { hasCommits: true, branches: ["main"], worktrees: [{ path: "/example/worktree", branch: "feature/existing", locked: false }] } }));
     await page.route("**/api/browser/profiles?*", route => route.fulfill({ json: { selected: "workspace", profiles: [{ id: "workspace", name: "Workspace", projectId: "first", cookies: 0, activeTabs: 0 }] } }));

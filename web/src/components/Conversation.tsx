@@ -10,6 +10,7 @@ import { scaled, useApp } from "../lib/store.ts";
 import { loadThread, readThreadNotifications, refreshGit } from "../lib/actions.ts";
 import { useStickToBottom } from "../lib/use-stick.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { useMessageHeaderMotion } from "../lib/use-message-header-motion.ts";
 import {
   timelineRows,
   createTimelineSelector,
@@ -84,6 +85,7 @@ export function Conversation() {
     following,
   } = useStickToBottom<HTMLDivElement, HTMLDivElement>();
   const reducedMotion = useReducedMotion();
+  useMessageHeaderMotion(viewport, threadId);
   const virtualized = rows.length > 40;
   const pinnedActivity = useRef<{ id: string }>(undefined);
   const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);

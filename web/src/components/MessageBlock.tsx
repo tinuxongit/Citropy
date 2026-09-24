@@ -77,7 +77,7 @@ export const MessageBlock = memo(function MessageBlock({
         </div>
         <div className="message-content">
           <div className="turn-heading">
-            <strong>{account?.login ?? t("You")}</strong>
+            <strong title={account?.login ?? t("You")}>{account?.login ?? t("You")}</strong>
             <time>{clock(shell.ts)}</time>
             {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} user />}
           </div>
@@ -122,7 +122,7 @@ export const MessageBlock = memo(function MessageBlock({
         {first && (
           <div className="turn-heading">
             {threadId && messageId && !streaming && <MessageActions threadId={threadId} messageId={messageId} user={false} />}
-            <strong>{modelName}</strong>
+            <strong title={modelName}>{modelName}</strong>
             {provider && (
               <span
                 className="turn-provider"

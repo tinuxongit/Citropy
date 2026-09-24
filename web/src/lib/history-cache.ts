@@ -1,5 +1,6 @@
 import type { AppState } from "./app-state.ts";
 import type { Message, Part, ServerEvent } from "../../../shared/protocol.ts";
+import { partFingerprint } from "./timeline.ts";
 
 export function replaceHistory(
   state: AppState,
@@ -28,6 +29,7 @@ export function replaceHistory(
   state.order[threadId] = ids;
   state.loaded[threadId] = true;
   state.historyBytes[threadId] = contentBytes(messages);
+  state.timelineVersions[threadId] = 0;
 }
 
 function contentBytes(value: unknown): number {
@@ -53,11 +55,12 @@ export function removeMessages(state: AppState, threadId: string): void {
   delete state.order[threadId];
   delete state.loaded[threadId];
   delete state.historyBytes[threadId];
+  delete state.timelineVersions[threadId];
 }
 
-export type HistoryCollection = "messages" | "parts" | "order" | "loaded" | "reveals" | "historyBytes" | "disclosures";
+export type HistoryCollection = "messages" | "parts" | "order" | "loaded" | "reveals" | "historyBytes" | "timelineVersions" | "disclosures";
 const allHistory: HistoryCollection[] = [
-  "messages", "parts", "order", "loaded", "reveals", "historyBytes", "disclosures",
+  "messages", "parts", "order", "loaded", "reveals", "historyBytes", "timelineVersions", "disclosures",
 ];
 export const historyChanges: Partial<Record<ServerEvent["t"], HistoryCollection[]>> = {
   "thread.remove": allHistory,
@@ -156,13 +159,18 @@ export function applyMessageEvent(
       const part = state.parts[event.partId];
       if (!part || (part.kind !== "text" && part.kind !== "reasoning")) return;
       state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + event.text.length * 2;
-      state.parts[event.partId] = { ...part, text: part.text + event.text };
+      const updated = { ...part, text: part.text + event.text };
+      if (partFingerprint(part) !== partFingerprint(updated))
+        state.timelineVersions = { ...state.timelineVersions, [event.threadId]: (state.timelineVersions[event.threadId] ?? 0) + 1 };
+      state.parts[event.partId] = updated;
       return;
     }
     case "part.patch": {
       const part = state.parts[event.partId];
       if (!part) return;
       const updated = { ...part, ...event.patch } as Part;
+      if (partFingerprint(part) !== partFingerprint(updated))
+        state.timelineVersions = { ...state.timelineVersions, [event.threadId]: (state.timelineVersions[event.threadId] ?? 0) + 1 };
       state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + contentBytes(updated) - contentBytes(part);
       state.parts[event.partId] = updated;
       return;

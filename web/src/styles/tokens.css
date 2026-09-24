@@ -10,9 +10,8 @@
 
   --font-ui:
     "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono:
-    "Geist Mono Variable", "Geist Mono", ui-monospace, "SF Mono", Menlo,
-    monospace;
+  --font-mono: "Droid Sans Mono", monospace;
+  --font-terminal: monospace;
 
   --text-xs: 12px;
   --text-sm: 13px;

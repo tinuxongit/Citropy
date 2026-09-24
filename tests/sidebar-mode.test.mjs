@@ -32,6 +32,7 @@ test("sidebar mode shows compact conversations across open projects", { timeout:
   page.on("pageerror", error => errors.push(error.message));
   await page.addInitScript(() => {
     for (const [key, value] of Object.entries({ project: "first", thread: "first-chat", sidebar: "1", inspector: "0", theme: "dark", uiScale: "100" })) localStorage.setItem(`citropy.${key}`, value);
+    localStorage.setItem("citropy.sidebarMode", localStorage.getItem("citropy.sidebarMode") ?? "workspaces");
   });
   const created = [];
   const events = [];

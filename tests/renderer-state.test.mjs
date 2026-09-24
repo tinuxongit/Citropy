@@ -4,6 +4,7 @@ import { test } from "node:test";
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 const { useApp, applyEvents, selectThread } = await import("../web/src/lib/store.ts");
 const { awaitResponse, resolveResponse, rejectResponses } = await import("../web/src/lib/requests.ts");
+const { createTimelineSelector, timelineRows } = await import("../web/src/lib/timeline.ts");
 const initial = useApp.getState();
 const message = (id, text = "Saved text") => ({ id, role: "assistant", ts: 1, parts: [{ id: `${id}-text`, kind: "text", text }] });
 
@@ -64,13 +65,60 @@ test("replacing or deleting conversations releases obsolete messages and parts",
   assert.equal(Object.keys(previous.messages).length, 2);
   assert.equal(state.order.replace, undefined);
   assert.equal(state.loaded.replace, undefined);
+  assert.equal(state.timelineVersions.replace, undefined);
   state = applyEvents(state, [{ t: "hello", snapshot: { projects: [], threads: [], providers: [], permissions: [], home: "" } }]);
-  for (const key of ["messages", "parts", "order", "loaded", "reveals"])
+  for (const key of ["messages", "parts", "order", "loaded", "reveals", "timelineVersions"])
     assert.deepEqual(state[key], {});
   for (let index = 0; index < 500; index++)
     state = applyEvents(state, [{ t: "part.add", threadId: "unloaded", messageId: "unloaded-message", part: { id: `orphan-${index}`, kind: "text", text: "Background update" } }]);
   assert.deepEqual(state.parts, {});
   assert.deepEqual(state.reveals, {});
+});
+
+test("loaded conversation deltas skip timeline scans and invalidate every layout transition", () => {
+  let state = applyEvents(initial, [{ t: "thread.messages", threadId: "chat", messages: [
+    ...Array.from({ length: 1000 }, (_, index) => message(`saved-${index}`)),
+    { id: "response", role: "assistant", ts: 2, parts: [
+      { id: "text", kind: "text", text: "Checking", complete: false },
+      { id: "tool", kind: "tool", name: "Read", callId: "call", status: "running" },
+      { id: "todo", kind: "todo", items: [] },
+      { id: "question", kind: "question", status: "pending", questions: [] },
+      { id: "notice", kind: "notice", level: "info", text: "Notice" },
+      { id: "answer", kind: "text", text: "", complete: false },
+    ] },
+  ] }]);
+  const select = createTimelineSelector("chat");
+  const rows = select(state);
+  for (let index = 0; index < 100; index++) {
+    state = applyEvents(state, [{ t: "part.append", threadId: "chat", messageId: "response", partId: "text", text: " more" }]);
+    let reads = 0;
+    const parts = new Proxy(state.parts, { get(target, key, receiver) {
+      reads++;
+      return Reflect.get(target, key, receiver);
+    } });
+    assert.strictEqual(select({ ...state, parts }), rows);
+    assert.equal(reads, 0);
+  }
+  for (const [partId, patch] of [
+    ["text", { complete: true }],
+    ["tool", { images: [{ mime: "image/png", data: "preview" }] }],
+    ["tool", { name: "Write", callId: "new-call", imageFiles: [{ path: "image.png" }] }],
+    ["todo", { items: [{ text: "Check files", status: "pending" }] }],
+    ["question", { status: "answered" }],
+    ["notice", { level: "warn" }],
+    ["answer", { text: "Done" }],
+    ["answer", { complete: true }],
+    ["answer", { text: " " }],
+  ]) {
+    const before = state;
+    state = applyEvents(state, [{ t: "part.patch", threadId: "chat", messageId: "response", partId, patch }]);
+    assert.equal(state.timelineVersions.chat, before.timelineVersions.chat + 1);
+    assert.deepEqual(select(state), timelineRows(state, "chat"));
+  }
+  const before = state;
+  state = applyEvents(state, [{ t: "part.append", threadId: "chat", messageId: "response", partId: "answer", text: "Finished" }]);
+  assert.equal(state.timelineVersions.chat, before.timelineVersions.chat + 1);
+  assert.deepEqual(select(state), timelineRows(state, "chat"));
 });
 
 test("history cache evicts old conversations and their presentation state without touching saved data", () => {

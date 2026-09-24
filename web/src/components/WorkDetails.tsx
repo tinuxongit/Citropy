@@ -55,8 +55,8 @@ export function WorkDetails({ id, ids, messageIds, open, active, previewId, tran
         <span id={`activity-count-${id}`} className="activity-count">
           {tools.length > 0 && <span className="reason-count">{tools.length} {t(tools.length === 1 ? "tool" : "tools")}</span>}
           {stats.failed > 0 && <span className="group-failed"><AlertTriangle size={11} aria-hidden="true" />{t(stats.failed === 1 ? "{count} failed tool" : "{count} failed tools", { count: stats.failed })}</span>}
+          <ChevronDown size={12} className="group-chevron" aria-hidden="true" />
         </span>
-        <ChevronDown size={12} className="group-chevron" />
         {!open && active && latest && Icon && <span className="activity-action" title={`${latest.name}: ${latest.headline}`}>
           <Icon size={13} aria-hidden="true" />
           <span>{action}</span>

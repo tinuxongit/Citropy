@@ -107,19 +107,52 @@ export class EventJournal {
     } catch (error) { this.#db.exec("ROLLBACK"); throw error; }
   }
 
-  threads(): Thread[] {
-    const threads: Thread[] = [];
-    for (const row of this.#statement("SELECT id,data FROM documents WHERE kind='thread'").iterate()) {
-      const messages: Message[] = [];
-      for (const message of this.#statement("SELECT id,data FROM documents WHERE kind='message' AND parent=? ORDER BY position").iterate(String(row.id))) {
-        const parts: Message["parts"] = [];
-        for (const part of this.#statement("SELECT data FROM documents WHERE kind='part' AND parent=? ORDER BY position").iterate(String(message.id)))
-          parts.push(JSON.parse(String(part.data)));
-        messages.push({ ...JSON.parse(String(message.data)), parts });
-      }
-      threads.push({ ...JSON.parse(String(row.data)), messages });
+  threadRecords(): Omit<Thread, "messages">[] {
+    return this.#statement("SELECT data FROM documents WHERE kind='thread'").all().map(row => JSON.parse(String(row.data)));
+  }
+
+  messages(threadId: string): Message[] {
+    const messages: Message[] = [];
+    for (const message of this.#statement("SELECT id,data FROM documents WHERE kind='message' AND parent=? ORDER BY position").iterate(threadId)) {
+      const parts: Message["parts"] = [];
+      for (const part of this.#statement("SELECT data FROM documents WHERE kind='part' AND parent=? ORDER BY position").iterate(String(message.id)))
+        parts.push(JSON.parse(String(part.data)));
+      messages.push({ ...JSON.parse(String(message.data)), parts });
     }
-    return threads;
+    return messages;
+  }
+
+  messageTexts(threadId: string): Array<{ id: string; text: string }> {
+    const texts: Array<{ id: string; text: string }> = [];
+    for (const row of this.#statement("SELECT m.id AS id, json_extract(p.data,'$.text') AS text FROM documents m CROSS JOIN documents p ON p.kind='part' AND p.parent=m.id WHERE m.kind='message' AND m.parent=? AND json_extract(p.data,'$.kind')='text' ORDER BY m.position, p.position").iterate(threadId)) {
+      const last = texts.at(-1);
+      if (last && last.id === row.id) last.text += ` ${row.text}`;
+      else texts.push({ id: String(row.id), text: String(row.text) });
+    }
+    return texts;
+  }
+
+  lastMessageTimes(): Map<string, number> {
+    return new Map(this.#statement("SELECT parent, json_extract(data,'$.ts') AS ts, max(position) FROM documents WHERE kind='message' GROUP BY parent").all().map(row => [String(row.parent), Number(row.ts)]));
+  }
+
+  changedFileCounts(): Map<string, number> {
+    return new Map(this.#statement(`WITH edits AS (
+        SELECT m.parent AS thread, p.data AS data FROM documents m JOIN documents p ON p.kind='part' AND p.parent=m.id
+        WHERE m.kind='message' AND json_extract(p.data,'$.kind')='tool' AND json_extract(p.data,'$.status')='ok' AND json_extract(p.data,'$.shape') IN ('edit','write'))
+      SELECT thread, count(DISTINCT path) AS count FROM (
+        SELECT thread, j.value AS path FROM edits, json_each(edits.data,'$.input.paths') j WHERE json_type(edits.data,'$.input.paths')='array'
+        UNION ALL
+        SELECT thread, coalesce(json_extract(data,'$.input.file_path'), json_extract(data,'$.input.filePath'), json_extract(data,'$.input.path')) FROM edits WHERE json_type(data,'$.input.paths') IS NOT 'array')
+      WHERE typeof(path)='text' AND path!='' GROUP BY thread`).all().map(row => [String(row.thread), Number(row.count)]));
+  }
+
+  unsettledThreads(): Set<string> {
+    return new Set(this.#statement(`SELECT DISTINCT m.parent AS thread FROM documents p JOIN documents m ON m.kind='message' AND m.id=p.parent WHERE p.kind='part' AND (
+        (json_extract(p.data,'$.kind')='question' AND json_extract(p.data,'$.status')='pending') OR
+        (json_extract(p.data,'$.kind') IN ('text','reasoning') AND json_extract(p.data,'$.complete') IS NOT 1) OR
+        (json_extract(p.data,'$.kind')='tool' AND json_extract(p.data,'$.status')='running') OR
+        json_extract(p.data,'$.kind')='todo')`).all().map(row => String(row.thread)));
   }
 
   replay(after: number): ServerEvent[] | null {

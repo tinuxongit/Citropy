@@ -47,7 +47,7 @@ WORKDIR /opt/citropy
 COPY . .
 RUN npm ci --omit=dev --no-audit --no-fund && npm install --global opencode-ai@1.18.31 --no-audit --no-fund
 ENV HOME=/home/citropy SHELL=/bin/bash PATH=/home/citropy/.local/bin:$PATH NPM_CONFIG_PREFIX=/home/citropy/.local
-CMD ["node", "--experimental-strip-types", "server/main.ts"]
+CMD ["node", "--experimental-strip-types", "--optimize-for-size", "server/main.ts"]
 `;
   const build = createHash("sha256").update(bundle.build).update(dockerfile).digest("hex");
   const image = `citropy-runtime:${build.slice(0, 24)}`;

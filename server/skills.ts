@@ -263,6 +263,7 @@ async function scanSkills(projectPath?: string): Promise<SkillInfo[]> {
             ![
               "node_modules",
               ".git",
+              ".trash",
               "dist",
               "assets",
               "references",

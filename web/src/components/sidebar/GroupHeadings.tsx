@@ -1,9 +1,12 @@
 import type { MouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { closeProject } from "../../lib/actions.ts";
+import { closeProject, createThread, openOnEnvironment } from "../../lib/actions.ts";
+import { reportError } from "../../lib/api.ts";
+import { connectionName, environmentId, useEnvironments } from "../../lib/environment.ts";
 import { useI18n } from "../../lib/i18n.ts";
 import { confirmAction, useApp } from "../../lib/store.ts";
 import { ChevronRight, Folder, FolderOpen, MessageSquarePlus, Pencil, Trash2 } from "../icons.ts";
 import { Menu } from "../Menu.tsx";
+import { PixelLoader } from "../PixelLoader.tsx";
 import type { Project } from "../../../../shared/protocol.ts";
 import type { ThreadGroup } from "./thread-groups.ts";
 
@@ -35,6 +38,7 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
     if (confirmed) closeProject(project.id);
   };
   const editLabel = `${t("Edit project")} ${group.label}`;
+  const Icon = group.icon === Folder && expanded ? FolderOpen : group.icon;
   const newThreadLabel = `${t("New thread")} · ${group.label}`;
 
   return (
@@ -48,7 +52,7 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         onPointerDown={onDragStart}
         onClick={(event) => { if (!consumeDrag(event)) group.toggle(); }}
       >
-        {expanded ? <FolderOpen size={15} /> : <Folder size={15} />}
+        <Icon size={15} />
         <span className="truncate">{group.label}</span>
         {!expanded && group.threads.length > 0 && <span className="global-project-count">{group.threads.length}</span>}
       </button>
@@ -67,6 +71,43 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         )}
       />
       <button className="global-project-new" type="button" aria-label={newThreadLabel} title={newThreadLabel} disabled={!canCreateThread} onClick={onNewThread}>
+        <MessageSquarePlus size={14} />
+      </button>
+    </div>
+  );
+}
+
+export function CachedProjectHeading({ group, environment, project, onConversation }: {
+  group: ThreadGroup;
+  environment: string;
+  project: Project;
+  onConversation: () => void;
+}) {
+  const t = useI18n();
+  const connecting = useEnvironments().connections.some((entry) => entry.id === environment && entry.status === "connecting");
+  const count = group.cachedThreads?.length ?? 0;
+  const Icon = group.icon === Folder && group.open ? FolderOpen : group.icon;
+  const newThreadLabel = `${t("New thread")} · ${group.label}`;
+  const startThread = () => {
+    onConversation();
+    void openOnEnvironment(environment, project.id).then(() => { if (environmentId() === environment) return createThread(); }).catch(reportError);
+  };
+
+  return (
+    <div className="global-project-heading" data-project-id={project.id} data-environment={environment}>
+      <button
+        className="global-project-toggle"
+        type="button"
+        aria-label={`${group.open ? t("Collapse") : t("Expand")} ${group.label}`}
+        aria-expanded={group.open}
+        title={environment === "local" ? project.path : `${connectionName(environment)}: ${project.path}`}
+        onClick={group.toggle}
+      >
+        {connecting ? <PixelLoader size={15} /> : <Icon size={15} />}
+        <span className="truncate">{group.label}</span>
+        {!group.open && count > 0 && <span className="global-project-count">{count}</span>}
+      </button>
+      <button className="global-project-new" type="button" aria-label={newThreadLabel} title={newThreadLabel} disabled={connecting} onClick={startThread}>
         <MessageSquarePlus size={14} />
       </button>
     </div>

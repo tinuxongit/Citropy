@@ -404,4 +404,23 @@ test("follow-ups wait in a visible queue and each provider can take one mid-run"
     assert.deepEqual(userTexts(store.threads.get(thread.id)), ["Plan a pizza file", "Continue"]);
     assert.equal(sessions.at(-1), next);
   });
+
+  await t.test("an idle provider session closes after an hour and the next message starts a new one", async () => {
+    const { closeIdleSessions } = await import("../server/runtime.ts");
+    const { thread, runtime, session } = await start();
+    closeIdleSessions(0);
+    session.options.emit({ type: "turn.end" });
+    await waitFor(() => !runtime.busy);
+    closeIdleSessions(1_000);
+    closeIdleSessions(1_000 + 59 * 60_000);
+    assert.equal(session.disposed, undefined);
+    closeIdleSessions(1_000 + 60 * 60_000);
+    assert.equal(session.disposed, true);
+    await runtimeFor(thread.id).send("Again");
+    const next = sessions.at(-1);
+    assert.notEqual(next, session);
+    assert.match(next.sent.at(-1), /Again/);
+    next.options.emit({ type: "turn.end" });
+    await settle();
+  });
 });

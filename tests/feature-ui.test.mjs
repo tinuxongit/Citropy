@@ -208,6 +208,7 @@ test(
       localStorage.setItem("citropy.theme", "dark");
       localStorage.setItem("citropy.inspector", "0");
       localStorage.setItem("citropy.uiScale", "110");
+      localStorage.setItem("citropy.sidebarMode", "workspaces");
     });
     t.after(async () => {
       await browser.close();

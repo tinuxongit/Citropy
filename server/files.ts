@@ -72,7 +72,7 @@ export async function sameDirectoryState(states: DirectoryState[]): Promise<bool
   return true;
 }
 
-export async function tree(root: string, sub = ""): Promise<FileEntry[]> {
+export async function tree(root: string, sub = "", includeHidden = false): Promise<FileEntry[]> {
   const dir = inside(root, sub);
   if (!dir) return [];
   try {
@@ -93,7 +93,7 @@ export async function tree(root: string, sub = ""): Promise<FileEntry[]> {
 
     const out: FileEntry[] = [];
     for (const entry of entries) {
-      if (entry.name.startsWith(".") && entry.name !== ".env.example") continue;
+      if (!includeHidden && entry.name.startsWith(".") && entry.name !== ".env.example") continue;
       if (IGNORED.has(entry.name)) continue;
       const abs = join(dir, entry.name);
       out.push({

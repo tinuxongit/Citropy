@@ -1,6 +1,7 @@
 import { uid } from "./ids.ts";
 import { bus } from "./bus.ts";
 import type { PanelKind, PanelTab } from "../shared/workbench.ts";
+import { movePanelTab } from "../shared/workbench.ts";
 
 const panels = new Map<string, PanelTab>();
 
@@ -13,6 +14,7 @@ export function openPanel(
   kind: PanelKind,
   threadId?: string,
   id = uid("panel"),
+  background = false,
 ): PanelTab {
   const titles: Record<PanelKind, string> = {
     browser: "Browser",
@@ -34,7 +36,7 @@ export function openPanel(
   if (existing) {
     if (existing.projectId !== projectId || existing.kind !== kind)
       throw new Error("Panel belongs to another workspace");
-    bus.emit({ t: "panel.upsert", panel: existing });
+    bus.emit({ t: "panel.upsert", panel: existing, ...(background ? { background: true } : {}) });
     return existing;
   }
   const titlesInUse = new Set(
@@ -52,7 +54,7 @@ export function openPanel(
     ...(threadId ? { threadId } : {}),
   };
   panels.set(id, panel);
-  bus.emit({ t: "panel.upsert", panel });
+  bus.emit({ t: "panel.upsert", panel, ...(background ? { background: true } : {}) });
   return panel;
 }
 
@@ -60,7 +62,30 @@ export function renamePanel(id: string, title: string): void {
   const panel = panels.get(id);
   if (!panel || panel.title === title) return;
   panel.title = title.slice(0, 100);
-  bus.emit({ t: "panel.upsert", panel: { ...panel } });
+  bus.emit({ t: "panel.upsert", panel: { ...panel }, ...(panel.kind === "terminal" ? { background: true } : {}) });
+}
+
+export function renameTerminal(id: string, title: string): void {
+  if (panels.get(id)?.kind !== "terminal") throw new Error("Terminal not found");
+  if (typeof title !== "string" || !title.trim() || title.trim().length > 100)
+    throw new Error("Use a terminal name between 1 and 100 characters");
+  renamePanel(id, title.trim());
+}
+
+export function movePanel(id: string, targetId: string, edge: "before" | "after"): void {
+  const panel = panels.get(id);
+  const target = panels.get(targetId);
+  if (!panel || !target) throw new Error("Panel not found");
+  if (panel.projectId !== target.projectId) throw new Error("Panels belong to different workspaces");
+  if (edge !== "before" && edge !== "after") throw new Error("Invalid panel position");
+  const ordered = movePanelTab(panelList(), id, targetId, edge);
+  panels.clear();
+  for (const entry of ordered) panels.set(entry.id, entry);
+  bus.emit({
+    t: "panel.order",
+    projectId: panel.projectId,
+    ids: ordered.filter((entry) => entry.projectId === panel.projectId).map((entry) => entry.id),
+  });
 }
 
 export function closePanel(id: string): void {

@@ -1,7 +1,7 @@
 import { dataRoot } from "./paths.ts";
 import { dev } from "./config.ts";
 import { mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, existsSync, renameSync } from "node:fs";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { join, basename, resolve } from "node:path";
 import { bus } from "./bus.ts";
@@ -45,45 +45,43 @@ const notificationsFile = join(root, "notifications.json");
 
 mkdirSync(threadsDir, { recursive: true });
 
-let writes = 0;
-let skipped = 0;
-
-export function persistenceStats(): { writes: number; skipped: number } {
-  return { writes, skipped };
-}
-
-function save(path: string, value: unknown, durable = true): void {
-  saveRaw(path, JSON.stringify(value), durable);
-}
-
-function saveRaw(path: string, json: string, durable: boolean): void {
+function save(path: string, value: unknown): void {
   const temporary = `${path}.${randomUUID()}.tmp`;
   try {
-    writeFileSync(temporary, json, { flag: "wx", mode: 0o600, ...(durable ? { flush: true } : {}) });
+    writeFileSync(temporary, JSON.stringify(value), { flag: "wx", mode: 0o600, flush: true });
     renameSync(temporary, path);
-    writes += 1;
   } finally {
     rmSync(temporary, { force: true });
   }
 }
 
-const changedFileCounts = new WeakMap<Thread, number>();
+const LOADED_CONVERSATIONS = 8;
+
+interface Summary {
+  changedFiles: number;
+  lastMessageAt?: number;
+}
+
+const summaries = new WeakMap<Thread, Summary>();
+
+function summarize(messages: Message[]): Summary {
+  const paths = new Set<string>();
+  for (const message of messages) for (const part of message.parts) {
+    if (part.kind !== "tool" || part.status !== "ok" || !["edit", "write"].includes(part.shape)) continue;
+    const input = part.input as Record<string, unknown> | undefined;
+    const candidates = Array.isArray(input?.paths) ? input.paths : [input?.file_path ?? input?.filePath ?? input?.path];
+    for (const path of candidates) if (typeof path === "string" && path) paths.add(path);
+  }
+  return { changedFiles: paths.size, lastMessageAt: messages.at(-1)?.ts };
+}
 
 function meta(thread: Thread): ThreadMeta {
-  const { messages, ...rest } = thread;
-  let changedFiles = changedFileCounts.get(thread);
-  if (changedFiles === undefined) {
-    const paths = new Set<string>();
-    for (const message of messages) for (const part of message.parts) {
-      if (part.kind !== "tool" || part.status !== "ok" || !["edit", "write"].includes(part.shape)) continue;
-      const input = part.input as Record<string, unknown> | undefined;
-      const candidates = Array.isArray(input?.paths) ? input.paths : [input?.file_path ?? input?.filePath ?? input?.path];
-      for (const path of candidates) if (typeof path === "string" && path) paths.add(path);
-    }
-    changedFiles = paths.size;
-    changedFileCounts.set(thread, changedFiles);
+  let summary = summaries.get(thread);
+  if (!summary) {
+    summary = summarize(thread.messages);
+    summaries.set(thread, summary);
   }
-  return { ...rest, updatedAt: messages.at(-1)?.ts ?? rest.updatedAt, changedFiles };
+  return { ...thread, updatedAt: summary.lastMessageAt ?? thread.updatedAt, changedFiles: summary.changedFiles };
 }
 
 export class Store {
@@ -100,17 +98,17 @@ export class Store {
     sound: false,
     subagents: false,
   };
-  #dirty = new Set<string>();
-  #flushTimer: NodeJS.Timeout | null = null;
   #savedProjects = "";
-  #lastSize = new Map<string, number>();
-  #hashes = new Map<string, string>();
-  #durable = new Set<string>();
+  #loaded = new Map<string, Message[]>();
 
   constructor() {
     this.#load();
     eventJournal.importThreads(this.threads.values());
-    this.threads = new Map(eventJournal.threads().map(thread => {
+    const unsettled = eventJournal.unsettledThreads();
+    const changedFiles = eventJournal.changedFileCounts();
+    const lastMessageAt = eventJournal.lastMessageTimes();
+    this.threads = new Map(eventJournal.threadRecords().map(record => {
+      const thread = this.#track(record);
       const original = JSON.stringify(thread);
       const interrupted = thread.running || thread.compacting;
       if (gitActionBusy(thread.gitAction)) thread.gitAction = { ...thread.gitAction!, status: "error", message: "Citropy restarted during the Git action. Check source control before retrying." };
@@ -118,19 +116,54 @@ export class Store {
       thread.compacting = false;
       thread.activeTool = undefined;
       if (interrupted) { thread.status = "stopped"; thread.error = "Citropy restarted before this turn finished. Your conversation was recovered."; }
-      for (const message of thread.messages) for (const part of message.parts) {
+      if (!unsettled.has(thread.id)) {
+        summaries.set(thread, { changedFiles: changedFiles.get(thread.id) ?? 0, lastMessageAt: lastMessageAt.get(thread.id) });
+        if (JSON.stringify(thread) !== original) eventJournal.append({ t: "thread.upsert", thread: { ...thread } });
+        return [thread.id, thread];
+      }
+      const messages = eventJournal.messages(thread.id);
+      const originalMessages = JSON.stringify(messages);
+      for (const message of messages) for (const part of message.parts) {
         if (part.kind === "question" && part.status === "pending") part.status = "dismissed";
         if (part.kind === "todo") part.items = normalizeTodos(part.items);
         if (part.kind === "text" || part.kind === "reasoning") part.complete = true;
         if (part.kind === "tool" && part.status === "running") { part.status = "error"; part.output ||= "The provider stopped before returning a tool result."; }
       }
-      if (JSON.stringify(thread) !== original) {
-        const { messages, ...meta } = thread;
-        eventJournal.append({ t: "thread.upsert", thread: meta });
+      summaries.set(thread, summarize(messages));
+      if (JSON.stringify(thread) !== original || JSON.stringify(messages) !== originalMessages) {
+        eventJournal.append({ t: "thread.upsert", thread: { ...thread } });
         eventJournal.append({ t: "thread.messages", threadId: thread.id, messages });
       }
       return [thread.id, thread];
     }));
+  }
+
+  #track(record: Omit<Thread, "messages">): Thread {
+    return Object.defineProperty(record, "messages", {
+      get: () => this.#messages(record.id),
+      set: (messages: Message[]) => this.#remember(record.id, messages),
+    }) as Thread;
+  }
+
+  #messages(threadId: string): Message[] {
+    return this.#remember(threadId, this.#loaded.get(threadId) ?? eventJournal.messages(threadId));
+  }
+
+  #remember(threadId: string, messages: Message[]): Message[] {
+    this.#loaded.delete(threadId);
+    this.#loaded.set(threadId, messages);
+    let excess = this.#loaded.size - LOADED_CONVERSATIONS;
+    for (const id of this.#loaded.keys()) {
+      if (excess <= 0) break;
+      if (this.threads.get(id)?.running) continue;
+      this.#loaded.delete(id);
+      excess--;
+    }
+    return messages;
+  }
+
+  searchText(threadId: string): Array<{ id: string; text: string }> {
+    return eventJournal.messageTexts(threadId);
   }
 
   #load(): void {
@@ -197,46 +230,7 @@ export class Store {
     }
   }
 
-  #schedule(threadId: string): void {
-    this.#dirty.add(threadId);
-    if (this.#flushTimer) return;
-    const bytes = this.#lastSize.get(threadId) ?? 0;
-    const delay = Math.min(5000, Math.max(400, 400 + (bytes / 1_000_000) * 600));
-    this.#flushTimer = setTimeout(() => {
-      this.#flushTimer = null;
-      this.#flushScheduled();
-    }, delay);
-    this.#flushTimer.unref();
-  }
-
-  #persistThread(id: string, durable: boolean): void {
-    const thread = this.threads.get(id);
-    if (!thread) return;
-    const json = JSON.stringify(thread);
-    this.#lastSize.set(id, Buffer.byteLength(json));
-    const hash = createHash("sha1").update(json).digest("hex");
-    // A scheduled write skips fsync, so a durable flush still rewrites once even when unchanged.
-    if (this.#hashes.get(id) === hash && (!durable || this.#durable.has(id))) {
-      skipped += 1;
-      return;
-    }
-    saveRaw(join(threadsDir, `${id}.json`), json, durable);
-    this.#hashes.set(id, hash);
-    if (durable) this.#durable.add(id);
-    else this.#durable.delete(id);
-  }
-
-  #flushScheduled(): void {
-    for (const id of this.#dirty) this.#persistThread(id, false);
-    this.#dirty.clear();
-  }
-
   flush(): void {
-    if (this.#flushTimer) clearTimeout(this.#flushTimer);
-    this.#flushTimer = null;
-    for (const id of this.#dirty) this.#persistThread(id, true);
-    for (const id of this.#hashes.keys()) if (!this.#durable.has(id)) this.#persistThread(id, true);
-    this.#dirty.clear();
     const projects = [...this.projects.values()];
     const serialized = JSON.stringify(projects);
     if (serialized !== this.#savedProjects) {
@@ -391,7 +385,7 @@ export class Store {
   createThread(input: Omit<ThreadMeta, "id" | "createdAt" | "updatedAt" | "status" | "usage" | "running">): Thread {
     if (this.disabledProviders.has(input.provider)) throw new Error("This provider is disabled. Enable it in Settings > Providers.");
     const now = Date.now();
-    const thread: Thread = {
+    const thread = this.#track({
       ...input,
       ...(input.parentThreadId ? { parentMessageId: this.threads.get(input.parentThreadId)?.messages.findLast((message) => message.role === "user")?.id } : {}),
       id: uid("thr"),
@@ -400,11 +394,10 @@ export class Store {
       status: "idle",
       usage: emptyUsage(),
       running: false,
-      messages: [],
-    };
+    });
+    thread.messages = [];
     this.threads.set(thread.id, thread);
     bus.emit({ t: "thread.upsert", thread: meta(thread) });
-    this.#schedule(thread.id);
     return thread;
   }
 
@@ -414,10 +407,7 @@ export class Store {
       if (child.parentThreadId === id) this.removeThread(child.id);
     }
     this.threads.delete(id);
-    this.#dirty.delete(id);
-    this.#lastSize.delete(id);
-    this.#hashes.delete(id);
-    this.#durable.delete(id);
+    this.#loaded.delete(id);
     const remaining = this.notifications.filter((entry) => entry.target.threadId !== id);
     if (remaining.length !== this.notifications.length) {
       this.notifications = remaining;
@@ -442,7 +432,6 @@ export class Store {
     thread.snoozedUntil = undefined;
     if (finished) thread.pinned = false;
     bus.emit({ t: "thread.upsert", thread: meta(thread) });
-    this.#schedule(id);
   }
 
   organizeThread(id: string, patch: Pick<Partial<ThreadMeta>, "title" | "pinned" | "position" | "snoozedUntil" | "archived" | "pullRequest">): void {
@@ -450,6 +439,15 @@ export class Store {
     if (!thread) throw new Error("Conversation not found");
     if ((patch.archived || patch.snoozedUntil) && (thread.running || [...this.threads.values()].some((child) => child.parentThreadId === id && child.running))) throw new Error("Stop this conversation and its subagents before putting it away.");
     this.patchThread(id, { ...patch, ...(patch.pinned ? { finished: false, archived: false, snoozedUntil: undefined } : {}) });
+  }
+
+  raiseThread(id: string): void {
+    const thread = this.threads.get(id);
+    if (!thread || thread.parentThreadId) return;
+    const positions = [...this.threads.values()]
+      .filter((entry) => entry.projectId === thread.projectId && entry.id !== id && !entry.parentThreadId && entry.position !== undefined)
+      .map((entry) => entry.position!);
+    this.patchThread(id, { position: Math.min(0, ...positions) - 1 });
   }
 
   wakeThreads(): void {
@@ -464,7 +462,6 @@ export class Store {
       if (thread.projectId !== projectId || (thread.workspacePath ?? project.path) !== path || thread.workspaceBranch === branch) continue;
       thread.workspaceBranch = branch;
       bus.emit({ t: "thread.upsert", thread: meta(thread) });
-      this.#schedule(thread.id);
     }
   }
 
@@ -476,7 +473,6 @@ export class Store {
     Object.assign(thread, patch);
     thread.updatedAt = Date.now();
     bus.emit({ t: "thread.upsert", thread: meta(thread) });
-    this.#schedule(id);
     if (finished && this.notificationPreferences.subagents) {
       const notification = subagentFinishedNotification(thread);
       if (!this.notifications.some((entry) => entry.dedupeKey === notification.dedupeKey)) this.notify(notification);
@@ -511,10 +507,9 @@ export class Store {
     if (!thread) throw new Error(`unknown thread ${threadId}`);
     if (message.role === "assistant") message.provider ??= thread.provider;
     thread.messages.push(message);
-    changedFileCounts.delete(thread);
+    summaries.delete(thread);
     thread.updatedAt = message.ts;
     bus.emit({ t: "message.add", threadId, message });
-    this.#schedule(threadId);
     return message;
   }
 
@@ -522,17 +517,15 @@ export class Store {
     const thread = this.threads.get(threadId);
     if (!thread) throw new Error("Conversation not found.");
     thread.messages = messages;
-    changedFileCounts.delete(thread);
+    summaries.delete(thread);
     bus.emit({ t: "thread.messages", threadId, messages });
-    this.#schedule(threadId);
   }
 
   addPart(threadId: string, messageId: string, part: Part): Part {
     const message = this.#message(threadId, messageId);
     message.parts.push(part);
-    if (part.kind === "tool") changedFileCounts.delete(this.threads.get(threadId)!);
+    if (part.kind === "tool") summaries.delete(this.threads.get(threadId)!);
     bus.emit({ t: "part.add", threadId, messageId, part });
-    this.#schedule(threadId);
     return part;
   }
 
@@ -540,15 +533,13 @@ export class Store {
     const part = this.#part(threadId, messageId, partId);
     if (part.kind === "text" || part.kind === "reasoning") part.text += text;
     bus.emit({ t: "part.append", threadId, messageId, partId, text });
-    this.#schedule(threadId);
   }
 
   patchPart(threadId: string, messageId: string, partId: string, patch: Record<string, unknown>): void {
     const part = this.#part(threadId, messageId, partId);
-    if (part.kind === "tool" || patch.kind === "tool") changedFileCounts.delete(this.threads.get(threadId)!);
+    if (part.kind === "tool" || patch.kind === "tool") summaries.delete(this.threads.get(threadId)!);
     Object.assign(part, patch);
     bus.emit({ t: "part.patch", threadId, messageId, partId, patch });
-    this.#schedule(threadId);
   }
 
   #message(threadId: string, messageId: string): Message {

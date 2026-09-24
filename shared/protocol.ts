@@ -399,8 +399,9 @@ export type ServerEvent = (
   | { t: "notification.add"; notification: AppNotification }
   | { t: "notifications.update"; notifications: AppNotification[] }
   | { t: "notifications.preferences"; preferences: NotificationPreferences }
-  | { t: "panel.upsert"; panel: PanelTab }
+  | { t: "panel.upsert"; panel: PanelTab; background?: boolean }
   | { t: "panel.remove"; id: string }
+  | { t: "panel.order"; projectId: string; ids: string[] }
   | { t: "browser.state"; browser: BrowserState }
   | { t: "tools.connection"; connection: ToolConnection }
   | { t: "github.result"; requestId: string; result?: GitHubResponse; error?: string }
@@ -446,8 +447,10 @@ export type ClientEvent = (
       t: "notifications.configure";
       preferences: Partial<NotificationPreferences>;
     }
-  | { t: "panel.open"; projectId: string; kind: PanelKind; id?: string; threadId?: string; url?: string }
+  | { t: "panel.open"; projectId: string; kind: PanelKind; id?: string; threadId?: string; url?: string; background?: boolean }
   | { t: "panel.close"; id: string }
+  | { t: "panel.rename"; id: string; title: string }
+  | { t: "panel.move"; id: string; targetId: string; edge: "before" | "after" }
   | { t: "browser.action"; id: string; input: BrowserAction }
   | { t: "desktop.open" }
   | { t: "server.restart" }

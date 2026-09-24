@@ -37,6 +37,7 @@ test("renderer panels release background work and ignore stale replies", { timeo
     { id: "second-browser", projectId: "workspace", kind: "browser", title: "Second browser" },
     { id: "terminal", projectId: "workspace", kind: "terminal", title: "Terminal" },
     { id: "files", projectId: "workspace", kind: "files", title: "Files" },
+    { id: "tools", projectId: "workspace", kind: "tools", title: "Tools" },
   ];
   const snapshot = {
     projects: [{ id: "workspace", name: "Example workspace", path: "/example", isGit: false, lastOpened: 1 }],
@@ -44,10 +45,11 @@ test("renderer panels release background work and ignore stale replies", { timeo
     browsers: panels.filter((panel) => panel.kind === "browser").map((panel) => ({ ...panel, url: "https://example.com/", loading: false, width: 1920, height: 1080, mobile: false, scale: 0.25 })),
   };
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.route("**/api/preview?**", async (route) => {
+  await page.route("**/api/editor/tree?**", route => route.fulfill({ json: ["slow.txt", "current.txt"].map(name => ({ name, path: name, dir: false })) }));
+  await page.route("**/api/editor/file?**", async route => {
     const path = new URL(route.request().url()).searchParams.get("path");
     if (path === "slow.txt") { slowFile = route; return; }
-    await route.fulfill({ json: { name: path, path, mime: "text/plain", size: 16, text: "The current file" } });
+    await route.fulfill({ json: { text: "The current file", revision: "a".repeat(64) } });
   });
   await page.addInitScript(() => {
     localStorage.setItem("citropy.project", "workspace");
@@ -61,10 +63,12 @@ test("renderer panels release background work and ignore stale replies", { timeo
     window.MutationObserver = class extends Mutation {
       observe(target, options) {
         if (target === document.body) bodyObservers.add(this);
+        if (target === document.documentElement && options?.attributeFilter?.includes("data-resizing")) terminalObservers.add(this);
         super.observe(target, options);
       }
       disconnect() {
         bodyObservers.delete(this);
+        terminalObservers.delete(this);
         super.disconnect();
       }
     };
@@ -103,7 +107,10 @@ test("renderer panels release background work and ignore stale replies", { timeo
       const reply = (event) => socket.send(JSON.stringify(event));
       if (event.t === "file.tree") reply({ t: "file.tree", requestId: event.requestId, entries: ["slow.txt", "current.txt"].map((name) => ({ name, path: name, dir: false })) });
       if (event.t === "file.read" && event.path === "current.txt") reply({ t: "file.content", requestId: event.requestId, path: event.path, content: "The current file" });
-      if (event.t === "term.open") reply({ t: "term.data", termId: event.termId, data: "\u001b[32mTerminal ready\u001b[0m\r\n" });
+      if (event.t === "term.open") reply({
+        t: "term.data", termId: event.termId, reset: true,
+        data: Array.from({ length: 500 }, (_, index) => `\u001b[32m${index} Terminal ready\u001b[0m\r\n`).join(""),
+      });
       if (event.t === "panel.close") {
         snapshot.panels = snapshot.panels.filter((panel) => panel.id !== event.id);
         snapshot.browsers = snapshot.browsers.filter((panel) => panel.id !== event.id);
@@ -240,44 +247,66 @@ test("renderer panels release background work and ignore stale replies", { timeo
     await settle();
   });
 
+  await t.test("terminal grid resizes once when the workspace edge drag ends", async () => {
+    await settle();
+    const resize = page.getByRole("separator", { name: "Inspector width", exact: true });
+    const grip = await resize.boundingBox();
+    const before = await page.locator(".xterm-screen").boundingBox();
+    const resizeCount = () => requests.filter(event => event.t === "term.resize").length;
+    const count = resizeCount();
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + 100);
+    await page.mouse.down();
+    await page.mouse.move(grip.x - 100, grip.y + 100, { steps: 12 });
+    await page.waitForTimeout(250);
+    assert.equal((await page.locator(".xterm-screen").boundingBox()).width, before.width);
+    assert.equal(resizeCount(), count);
+    await page.mouse.up();
+    await page.waitForFunction(width => document.querySelector(".xterm-screen").getBoundingClientRect().width > width, before.width);
+    await settle();
+    assert.equal(resizeCount(), count + 1);
+  });
+
   await t.test("terminal tab switching preserves the session and reconnect replays only once", async () => {
     await page.getByRole("tab", { name: "Terminal", exact: true }).click();
     await page.locator(".xterm").waitFor();
     await settle();
+    const terminal = await page.locator(".xterm").elementHandle();
     assert.equal(requests.filter((event) => event.t === "term.open").length, 1);
     for (let index = 0; index < 10; index++) {
-      await page.getByRole("tab", { name: "Files", exact: true }).click();
+      await page.getByRole("tab", { name: "Tools", exact: true }).click();
       assert.equal(await page.evaluate(() => window.panelResources.terminalObservers.size), 0);
       await page.getByRole("tab", { name: "Terminal", exact: true }).click();
+      await page.locator(".xterm-screen canvas").last().waitFor();
+      assert.equal(await terminal.evaluate(node => node === document.querySelector(".xterm")), true);
     }
     assert.equal(requests.filter((event) => event.t === "term.open").length, 11);
     assert.equal(requests.filter((event) => event.t === "term.unsubscribe").length, 10);
     assert.ok(requests.filter((event) => event.t === "term.open").every(event => event.flowControl === true));
     connection.close();
-    await page.getByText("Reconnecting to your terminal…").waitFor();
-    await page.getByText("Reconnecting to your terminal…").waitFor({ state: "hidden" });
+    await page.locator(".inspector-pane[data-show=true]").getByText("Reconnecting to your terminal…").waitFor();
+    await page.locator(".inspector-pane[data-show=true]").getByText("Reconnecting to your terminal…").waitFor({ state: "hidden" });
     await settle();
     assert.equal(requests.filter((event) => event.t === "term.open").length, 12);
-    await page.getByRole("button", { name: "Close Terminal", exact: true }).click();
+    await page.locator(".workbench-heading").getByRole("button", { name: "Close Terminal", exact: true }).click();
     await page.locator(".xterm").waitFor({ state: "detached" });
     assert.equal(await page.evaluate(() => window.panelResources.terminalObservers.size), 0);
   });
 
-  await t.test("closing a file prevents its late result from replacing a newer preview", async () => {
+  await t.test("opening another file prevents a late result from replacing the selected editor", async () => {
     await page.getByRole("tab", { name: "Files", exact: true }).click();
-    const loading = page.waitForRequest((request) => request.url().includes("/api/preview?"));
+    const loading = page.waitForRequest(request => request.url().includes("/api/editor/file?"));
     await page.getByRole("button", { name: "slow.txt", exact: true }).click();
-    await page.locator(".preview").waitFor();
     await loading;
     assert.ok(slowFile);
-    await page.locator(".preview").getByRole("button", { name: "Close preview", exact: true }).click();
     await page.getByRole("button", { name: "current.txt", exact: true }).click();
-    await page.locator(".preview-body").getByText("The current file", { exact: true }).waitFor();
-    await slowFile.fulfill({ json: { name: "slow.txt", path: "slow.txt", mime: "text/plain", size: 22, text: "Obsolete file contents" } });
+    await page.getByRole("textbox", { name: "Code editor: current.txt", exact: true }).waitFor({ state: "attached" });
+    await slowFile.fulfill({ json: { text: "Obsolete file contents", revision: "b".repeat(64) } });
+    await page.locator(".editor-tab").getByRole("button", { name: "slow.txt", exact: true }).waitFor();
     await settle();
-    assert.equal(await page.locator(".preview-body code").textContent(), "The current file");
-    assert.equal(await page.getByText("Obsolete file contents").count(), 0);
-    await page.locator(".preview").getByRole("button", { name: "Close preview", exact: true }).click();
+    assert.equal(await page.locator(".editor-tab").getByRole("button", { name: "current.txt", exact: true }).getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator(".view-lines").getByText("Obsolete file contents").count(), 0);
+    await page.getByRole("button", { name: "Close slow.txt", exact: true }).click();
+    await page.getByRole("button", { name: "Close current.txt", exact: true }).click();
   });
 
   await t.test("settings and repository screens load on demand at desktop and narrow widths", async () => {

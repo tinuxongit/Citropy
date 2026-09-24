@@ -17,6 +17,14 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 const outbox: ClientEvent[] = [];
 let sequence = 0;
 let epoch = "";
+let rememberTimer: ReturnType<typeof setTimeout> | null = null;
+
+function rememberCatalog(): void {
+  if (rememberTimer) clearTimeout(rememberTimer);
+  rememberTimer = null;
+  const state = useApp.getState();
+  rememberWorkspaces(state.projects, state.home, Object.values(state.threads));
+}
 
 function flush(): void {
   if (frame) cancelAnimationFrame(frame);
@@ -27,10 +35,8 @@ function flush(): void {
   queue = [];
   if (batch.length === 0) return;
   useApp.setState((previous) => applyEvents(previous, batch));
-  if (batch.some(event => ["hello", "project.upsert", "project.remove"].includes(event.t))) {
-    const state = useApp.getState();
-    rememberWorkspaces(state.projects, state.home);
-  }
+  if (batch.some(event => ["hello", "project.upsert", "project.remove"].includes(event.t))) rememberCatalog();
+  else if (!rememberTimer && batch.some(event => event.t === "thread.upsert" || event.t === "thread.remove")) rememberTimer = setTimeout(rememberCatalog, 1000);
   const notifications = useApp.getState().notifications;
   const read: string[] = [];
   for (const event of batch) {
@@ -89,6 +95,8 @@ export function send(event: ClientEvent): void {
       "desktop.open",
       "panel.open",
       "panel.close",
+      "panel.rename",
+      "panel.move",
       "term.data",
       "term.ack",
       "term.unsubscribe",
@@ -159,6 +167,7 @@ export function connect(): void {
 
 export function disconnect(switching = false): void {
   flush();
+  if (rememberTimer) rememberCatalog();
   if (reconnectTimer) clearTimeout(reconnectTimer);
   reconnectTimer = null;
   const current = socket;

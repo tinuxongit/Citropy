@@ -182,6 +182,11 @@
 }
 .turn-heading:hover > :is(strong, time, .turn-provider),
 .turn-heading:focus-within > :is(strong, time, .turn-provider) { transform: translateX(0); }
+@container conversation (max-width: 600px) {
+  .turn-heading > :is(strong, time, .turn-provider) {
+    transform: translateX(0);
+  }
+}
 .restore-options { display: grid; gap: 4px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .restore-choice { display: grid; grid-template-columns: 18px minmax(0, 1fr) 16px; align-items: center; gap: 12px; padding: 12px; border-radius: var(--r-sm); cursor: pointer; color: var(--text-2); transition: background-color 120ms ease; }
 .restore-choice:hover:not(:has(input:disabled)) { background: var(--raised); }

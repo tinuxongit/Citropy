@@ -71,6 +71,7 @@ let volume = 60;
 let interfaceSounds = true;
 let alertSounds = true;
 let graph: { context: AudioContext; master: GainNode } | null = null;
+let sleepTimer: ReturnType<typeof setTimeout> | undefined;
 
 function enabled(name: UiSound): boolean {
   return sounds[name].alert ? alertSounds : interfaceSounds;
@@ -85,7 +86,14 @@ function graphFor(): { context: AudioContext; master: GainNode } | null {
   master.gain.value = level();
   master.connect(context.destination);
   graph = { context, master };
+  wake(context);
   return graph;
+}
+
+function wake(context: AudioContext): void {
+  clearTimeout(sleepTimer);
+  if (context.state === "suspended") void context.resume();
+  sleepTimer = setTimeout(() => void context.suspend(), 4000);
 }
 
 function level(): number {
@@ -113,7 +121,7 @@ function load(name: UiSound): Promise<unknown> {
 function play(name: UiSound): void {
   const audio = graphFor();
   if (!audio) return;
-  if (audio.context.state === "suspended") void audio.context.resume();
+  wake(audio.context);
   const buffer = loaded.get(name);
   if (!buffer) return;
   const source = audio.context.createBufferSource();
@@ -140,7 +148,6 @@ export function configureUiSounds(next: {
 export function unlockUiSounds(): void {
   const audio = graphFor();
   if (!audio) return;
-  if (audio.context.state === "suspended") void audio.context.resume();
   for (const name of names) if (enabled(name)) void load(name);
 }
 

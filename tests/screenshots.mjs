@@ -354,6 +354,7 @@ async function main() {
         for (const [key, value] of Object.entries({ project: "workspace", thread: "rainfall", inspector: "0", uiScale: "100", ...values }))
           localStorage.setItem(`citropy.${key}`, String(value));
         localStorage.setItem("citropy.theme", theme);
+        localStorage.setItem("citropy.sidebarMode", "workspaces");
       },
       { values: preferences, theme },
     );

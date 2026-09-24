@@ -63,6 +63,7 @@ if (state !== true) {
     process.execPath,
     [
       "--experimental-strip-types",
+      "--optimize-for-size",
       "server/main.ts",
       ...(development ? ["--dev"] : []),
     ],

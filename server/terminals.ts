@@ -73,7 +73,7 @@ async function startService(): Promise<void> {
     return startService();
   }
   if (process.platform !== "win32") await rm(address, { force: true });
-  const child = spawn(process.execPath, ["--experimental-strip-types", fileURLToPath(new URL("./terminal-daemon.ts", import.meta.url)), address, directory], {
+  const child = spawn(process.execPath, ["--experimental-strip-types", "--optimize-for-size", fileURLToPath(new URL("./terminal-daemon.ts", import.meta.url)), address, directory], {
     detached: true, stdio: "ignore", env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
   });
   child.on("error", () => { void rm(join(directory, "lock"), { recursive: true, force: true }); });

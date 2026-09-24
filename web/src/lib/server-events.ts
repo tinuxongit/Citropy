@@ -86,10 +86,25 @@ function applyPanelEvent(
   state: AppState,
   event: Extract<
     ServerEvent,
-    { t: "panel.upsert" } | { t: "panel.remove" } | { t: "browser.state" } | { t: "tools.connection" }
+    { t: "panel.upsert" } | { t: "panel.remove" } | { t: "panel.order" } | { t: "browser.state" } | { t: "tools.connection" }
   >,
 ): void {
   switch (event.t) {
+    case "panel.order": {
+      const tabs = state.panels.filter((panel) => panel.projectId === event.projectId);
+      const selected = tabs.find((panel) => panel.id === state.activePanels[event.projectId]) ?? tabs[0];
+      if (selected) state.activePanels = { ...state.activePanels, [event.projectId]: selected.id };
+      const remaining = new Map(tabs.map((panel) => [panel.id, panel]));
+      const ordered = event.ids.flatMap((id) => {
+        const panel = remaining.get(id);
+        remaining.delete(id);
+        return panel ? [panel] : [];
+      });
+      ordered.push(...remaining.values());
+      let index = 0;
+      state.panels = state.panels.map((panel) => panel.projectId === event.projectId ? ordered[index++]! : panel);
+      return;
+    }
     case "panel.upsert": {
       const exists = state.panels.some((panel) => panel.id === event.panel.id);
       state.panels = exists
@@ -98,10 +113,11 @@ function applyPanelEvent(
           )
         : [...state.panels, event.panel];
       if (
-        !state.activePanels[event.panel.projectId] ||
-        (!exists &&
-          (!event.panel.threadId ||
-            event.panel.threadId === state.activeThreadId))
+        !event.background &&
+        (!state.activePanels[event.panel.projectId] ||
+          (!exists &&
+            (!event.panel.threadId ||
+              event.panel.threadId === state.activeThreadId)))
       )
         state.activePanels = {
           ...state.activePanels,
@@ -122,6 +138,17 @@ function applyPanelEvent(
         };
       const { [event.id]: browser, ...browsers } = state.browsers;
       state.browsers = browsers;
+      state.editorTerminals = Object.fromEntries(
+        Object.entries(state.editorTerminals).flatMap(([filesId, terminal]) => {
+          if (filesId === event.id) return [];
+          if (terminal.id !== event.id) return [[filesId, terminal]];
+          const replacement = state.panels.findLast((panel) =>
+            panel.kind === "terminal" && panel.projectId === removed?.projectId &&
+            (panel.threadId ?? null) === terminal.threadId,
+          );
+          return replacement ? [[filesId, { ...terminal, id: replacement.id }]] : [];
+        }),
+      );
       return;
     }
     case "browser.state":
@@ -323,6 +350,7 @@ export function applyEvent(state: AppState, event: ServerEvent): void {
       return;
     case "panel.upsert":
     case "panel.remove":
+    case "panel.order":
     case "browser.state":
     case "tools.connection":
       applyPanelEvent(state, event);

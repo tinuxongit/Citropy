@@ -83,6 +83,18 @@ The Git panel shows the branch, change counts, and commits waiting to push. AI c
 
 The side panel holds a browser, terminals, a file tree, the changes view, subagents, and the list of tools agents can call. Tabs stay open while you switch between them. Agents use the same browser and terminals through Citropy's MCP tools, and phone-sized page presets are one click away.
 
+## Code editor
+
+Open **Files** from the workspace panel menu to browse and edit code. The editor uses [Microsoft Monaco](https://github.com/microsoft/monaco-editor), with new-file creation, file tabs, filename search, syntax highlighting, multiple cursors, folding, undo and redo, find and replace, and a command palette. Images, videos, and other previews open alongside code in the same tab strip. Expand the panel for more room, or keep it beside the conversation.
+
+While Files is selected, terminal buttons, tabs, and the panel menu open shells beneath the editor without changing the view or leaving expanded mode. Hiding and reopening the dock reuses the selected shell. Drag the file explorer or terminal divider to resize it; sizes are remembered. Dividers also support arrow keys, Home/End, and double-click or Enter to reset.
+
+Save with Ctrl+S or Cmd+S. F1 opens editor commands, including formatting for supported languages. JavaScript, TypeScript, JSON, HTML, and CSS language features run in workers. Language intelligence covers loaded files and Monaco's built-in libraries; this does not run the project's language servers, debugger, or VS Code extensions.
+
+Edits use the selected conversation's worktree. Saves check the disk revision and replace the file using a temporary file, preserving its permission bits. Conflicts keep your draft open; copy any edits you want to retain before reloading the disk version. Open drafts and undo history survive panel and workspace switches within the current app session. Save before quitting; drafts are not persisted across restarts.
+
+The editor loads separately from the initial app bundle. It supports UTF-8 text files up to 2 MB and keeps at most 24 files open. Binary files, non-UTF-8 files, and symbolic links cannot be edited.
+
 ## Computer use
 
 <picture>

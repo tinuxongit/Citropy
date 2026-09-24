@@ -5,7 +5,7 @@ export type DropEdge = "before" | "after";
 
 const storageKey = (environment: string) => `citropy.globalProjectOrder.${environment}`;
 
-function readProjectOrder(environment: string): string[] {
+export function readProjectOrder(environment: string): string[] {
   try {
     const order = JSON.parse(localStorage.getItem(storageKey(environment)) ?? "[]");
     return Array.isArray(order) ? order.filter((id): id is string => typeof id === "string") : [];
@@ -14,13 +14,15 @@ function readProjectOrder(environment: string): string[] {
   }
 }
 
+export function orderProjects(projects: Project[], order: string[]): Project[] {
+  const positions = new Map(order.map((id, index) => [id, index]));
+  return [...projects].sort((a, b) => (positions.get(a.id) ?? -1) - (positions.get(b.id) ?? -1));
+}
+
 export function useProjectOrder(environment: string, projects: Project[]) {
   const [orders, setOrders] = useState<Record<string, string[]>>({});
   const order = useMemo(() => orders[environment] ?? readProjectOrder(environment), [environment, orders]);
-  const orderedProjects = useMemo(() => {
-    const positions = new Map(order.map((id, index) => [id, index]));
-    return [...projects].sort((a, b) => (positions.get(a.id) ?? -1) - (positions.get(b.id) ?? -1));
-  }, [projects, order]);
+  const orderedProjects = useMemo(() => orderProjects(projects, order), [projects, order]);
   const moveProject = (source: string, target: string, edge: DropEdge) => {
     if (source === target) return;
     const ids = orderedProjects.map((project) => project.id);

@@ -53,10 +53,17 @@ function restoreThreads(state: AppState, snapshot: Snapshot): void {
   state.order = {};
   state.loaded = {};
   state.historyBytes = {};
+  state.timelineVersions = {};
   state.disclosures = {};
 }
 
 function restoreWorkspace(state: AppState): void {
+  state.editorTerminals = Object.fromEntries(
+    Object.entries(state.editorTerminals).filter(([filesId, terminal]) =>
+      state.panels.some((panel) => panel.id === filesId) &&
+      state.panels.some((panel) => panel.id === terminal.id),
+    ),
+  );
   state.activePanels = Object.fromEntries(
     Object.entries(state.activePanels).filter(([, id]) =>
       state.panels.some((panel) => panel.id === id),

@@ -60,8 +60,13 @@ async function indexedPaths(cwd: string): Promise<string[]> {
 }
 
 export async function findContextPaths(thread: Thread, query: string): Promise<Array<{ path: string; dir: boolean }>> {
-  const paths = await indexedPaths(workspacePath(thread.projectId, thread.id));
-  return paths.filter(path => path.toLowerCase().includes(query.toLowerCase().slice(0, 200))).slice(0, 80).map(path => ({ path, dir: path.endsWith("/") }));
+  return findWorkspacePaths(workspacePath(thread.projectId, thread.id), query);
+}
+
+export async function findWorkspacePaths(root: string, query: string): Promise<Array<{ path: string; dir: boolean }>> {
+  const paths = await indexedPaths(root);
+  const search = query.toLowerCase().slice(0, 200);
+  return paths.filter(path => path.toLowerCase().includes(search)).slice(0, 80).map(path => ({ path, dir: path.endsWith("/") }));
 }
 
 export async function readBounded(path: string): Promise<{ text: string; truncated: boolean }> {

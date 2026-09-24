@@ -1,5 +1,6 @@
 import { useI18n } from "../lib/i18n.ts";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { VirtualList } from "./VirtualList.tsx";
 import { Plug, Search, Check, Circle } from "lucide-react";
 import { useApp } from "../lib/store.ts";
 
@@ -12,6 +13,10 @@ export function ToolsPane() {
   );
   const connected = useApp((state) => state.connected);
   const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const filtered = useMemo(() => tools.filter((tool) =>
+    `${tool.name} ${t(tool.description)}`.toLowerCase().includes(query.toLowerCase()),
+  ), [tools, query, t]);
   const ready = connected && connection?.connected;
   return (
     <div className="tools-pane scroll">
@@ -40,23 +45,25 @@ export function ToolsPane() {
           onChange={(event) => setQuery(event.target.value)}
         />
       </label>
-      <div className="tools-list">
-        {tools
-          .filter((tool) =>
-            `${tool.name} ${t(tool.description)}`
-              .toLowerCase()
-              .includes(query.toLowerCase()),
-          )
-          .map((tool) => (
-            <details key={tool.name} className="tool-definition">
-              <summary>
-                <span>{tool.name.replaceAll("_", " ")}</span>
-                {tool.annotations?.readOnlyHint && <small>{t("Read")}</small>}
-              </summary>
-              <p>{t(tool.description)}</p>
-            </details>
-          ))}
-      </div>
+      <VirtualList className="tools-list" items={filtered} itemKey="name" estimateSize={44}>
+        {(tool) => (
+          <details className="tool-definition" open={expanded.has(tool.name)}>
+            <summary onClick={(event) => {
+              event.preventDefault();
+              setExpanded((previous) => {
+                const next = new Set(previous);
+                if (next.has(tool.name)) next.delete(tool.name);
+                else next.add(tool.name);
+                return next;
+              });
+            }}>
+              <span>{tool.name.replaceAll("_", " ")}</span>
+              {tool.annotations?.readOnlyHint && <small>{t("Read")}</small>}
+            </summary>
+            <p>{t(tool.description)}</p>
+          </details>
+        )}
+      </VirtualList>
     </div>
   );
 }

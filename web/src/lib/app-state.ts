@@ -95,6 +95,7 @@ export interface AppState {
   order: Record<string, string[]>;
   loaded: Record<string, boolean>;
   historyBytes: Record<string, number>;
+  timelineVersions: Record<string, number>;
   disclosures: Record<string, Record<string, boolean>>;
   git: Record<string, GitStatus>;
   permissions: PermissionRequest[];
@@ -107,6 +108,7 @@ export interface AppState {
   readingThreadId: string | null;
   panels: PanelTab[];
   activePanels: Record<string, string>;
+  editorTerminals: Record<string, { id: string; threadId: string | null; visible: boolean }>;
   browsers: Record<string, BrowserState>;
   computer: ComputerState;
   toolConnections: Record<string, ToolConnection>;
@@ -115,6 +117,7 @@ export interface AppState {
   gitPanelOpen: boolean;
   sidebarOpen: boolean;
   sidebarMode: SidebarMode;
+  sidebarGroups: Record<string, boolean>;
   theme: Theme;
   language: Language;
   uiScale: number;
@@ -154,6 +157,15 @@ function readPanelWidths(): Partial<Record<PanelId, number>> {
         .filter((key) => Number.isFinite(stored?.[key]) && stored[key] > 0)
         .map((key) => [key, stored[key]]),
     );
+  } catch {
+    return {};
+  }
+}
+
+function readSidebarGroups(): Record<string, boolean> {
+  try {
+    const stored = JSON.parse(readPref("citropy.sidebarGroups", "{}"));
+    return Object.fromEntries(Object.entries(stored ?? {}).filter((entry): entry is [string, boolean] => typeof entry[1] === "boolean"));
   } catch {
     return {};
   }
@@ -223,6 +235,7 @@ export const useApp = create<AppState>(() => ({
   order: {},
   loaded: {},
   historyBytes: {},
+  timelineVersions: {},
   disclosures: {},
   git: {},
   permissions: [],
@@ -235,6 +248,7 @@ export const useApp = create<AppState>(() => ({
   readingThreadId: null,
   panels: [],
   activePanels: {},
+  editorTerminals: {},
   browsers: {},
   computer: { enabled: false, status: "idle", control: false, displays: [], activity: [] },
   toolConnections: {},
@@ -249,7 +263,8 @@ export const useApp = create<AppState>(() => ({
     typeof window !== "undefined" &&
       window.innerWidth / (initialScale / 100) > 720,
   ),
-  sidebarMode: readPref<SidebarMode>("citropy.sidebarMode", "workspaces") === "global" ? "global" : "workspaces",
+  sidebarMode: readPref<SidebarMode>("citropy.sidebarMode", "global") === "workspaces" ? "workspaces" : "global",
+  sidebarGroups: readSidebarGroups(),
   theme: readPref<Theme>(
     "citropy.theme",
     typeof window !== "undefined" && window.citropyDesktop ? "dark" : "light",
