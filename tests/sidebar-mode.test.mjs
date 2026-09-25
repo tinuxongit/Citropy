@@ -185,6 +185,6 @@ test("sidebar mode shows compact conversations across open projects", { timeout:
   await page.locator('.rail[data-sidebar-mode="workspaces"] .thread-category[data-category="active"]').waitFor();
   assert.equal(await page.locator('.rail .global-project-heading').count(), 0);
   assert.equal(await page.locator('.topbar .workspace-select').count(), 1);
-  assert.equal(await page.locator('.rail .new-thread').count(), 1);
+  assert.equal(await page.locator('.rail .new-thread').count(), 0);
   assert.deepEqual(errors, []);
 });
