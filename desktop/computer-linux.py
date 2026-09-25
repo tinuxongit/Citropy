@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 import uuid
+from itertools import groupby
 
 
 def number(value, low, high, name):
@@ -350,10 +351,10 @@ class X11:
         if not pressed:
             self.buttons.discard(button)
 
-    def command(self, args, text=None):
+    def command(self, args, text=None, timeout=75):
         self.key_process = subprocess.Popen(["xdotool", *args], stdin=subprocess.PIPE if text is not None else subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         try:
-            _, error = self.key_process.communicate(text.encode() if text is not None else None, timeout=75 if text is not None else 20)
+            _, error = self.key_process.communicate(text.encode() if text is not None else None, timeout=timeout if text is not None else 20)
             if self.key_process.returncode:
                 raise RuntimeError(error.decode(errors="replace")[:300] or "Keyboard input failed.")
         finally:
@@ -370,7 +371,10 @@ class X11:
             subprocess.run(["xdotool", "keyup", *names], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
 
     def type(self, text):
-        self.command(["type", "--clearmodifiers", "--delay", "12", "--file", "-"], text)
+        for ascii_only, characters in groupby(text, str.isascii):
+            segment = "".join(characters)
+            delay = 12 if ascii_only else 50
+            self.command(["type", "--clearmodifiers", "--delay", str(delay), "--file", "-"], segment, max(75, len(segment) * delay / 1000 + 20))
 
     def scroll(self, dx, dy):
         for delta, positive, negative in [(dy, 5, 4), (dx, 7, 6)]:
