@@ -7,14 +7,17 @@ import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { Attachment, ModelOption } from "../../shared/protocol.ts";
-import type { AgentSession, Provider, StartOptions } from "./types.ts";
+import type { AgentSession, Provider, ProviderLaunch, StartOptions } from "./types.ts";
 import { MessageUsage } from "./message-usage.ts";
+import { workspaceTools, discoveryTools } from "../mcp-catalog.ts";
 
 type RecordValue = Record<string, any>;
 
 const piThinkingLevels = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
-const approvalExtension =fileURLToPath(new URL("./pi-approval.mjs", import.meta.url));
+const approvalExtension = fileURLToPath(new URL("./pi-approval.mjs", import.meta.url));
+const toolsExtension = fileURLToPath(new URL("./pi-tools.mjs", import.meta.url));
+const citropyTools = [workspaceTools.find(tool => tool.name === "ask_user")!, ...discoveryTools];
 
 function modelId(model: RecordValue | undefined): string | undefined {
   return typeof model?.provider === "string" && typeof model?.id === "string" ? `${model.provider}/${model.id}` : undefined;
@@ -25,17 +28,17 @@ function toolName(name: unknown): string {
   return ["bash", "read", "write", "edit"].includes(name) ? `${name[0]!.toUpperCase()}${name.slice(1)}` : name;
 }
 
-function startPi(args: string[], cwd: string, permissionMode?: string): ChildProcessWithoutNullStreams {
-  return spawnCommand("pi", ["--mode", "rpc", "--no-extensions", "--approve", ...args], {
+function startPi(args: string[], cwd: string, permissionMode?: string, mcp?: StartOptions["mcp"], launch?: ProviderLaunch): ChildProcessWithoutNullStreams {
+  return spawnCommand(launch?.binary ?? "pi", ["--mode", "rpc", "--no-extensions", "--approve", ...args], {
     cwd,
     detached: process.platform !== "win32",
-    env: { ...process.env, NO_COLOR: "1", CITROPY_PI_PERMISSION_MODE: permissionMode ?? "manual" },
+    env: { ...process.env, ...launch?.environment, NO_COLOR: "1", CITROPY_PI_PERMISSION_MODE: permissionMode ?? "manual", ...(mcp ? { CITROPY_PI_MCP_URL: mcp.url, CITROPY_PI_MCP_AUTHORIZATION: mcp.headers.Authorization, CITROPY_PI_TOOLS: JSON.stringify(citropyTools) } : {}) },
     stdio: ["pipe", "pipe", "pipe"],
   });
 }
 
-async function discoverPiModels(): Promise<ModelOption[]> {
-  const child = startPi(["--no-session", "--no-skills", "--no-prompt-templates", "--no-context-files"], tmpdir());
+async function discoverPiModels(launch?: ProviderLaunch): Promise<ModelOption[]> {
+  const child = startPi(["--no-session", "--no-skills", "--no-prompt-templates", "--no-context-files"], tmpdir(), undefined, undefined, launch);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => finish(new Error("Pi model discovery timed out")), 20_000);
     let finished = false;
@@ -92,10 +95,11 @@ class PiSession implements AgentSession {
     this.#options = options;
     this.#usage = new MessageUsage(options.usage);
     const args = ["--extension", approvalExtension];
+    if (options.mcp) args.push("--extension", toolsExtension);
     if (options.externalId) args.push("--session", options.externalId);
     if (options.model) args.push("--model", options.model);
     if (options.effort) args.push("--thinking", options.effort);
-    this.#child = startPi(args, options.cwd, options.permissionMode);
+    this.#child = startPi(args, options.cwd, options.permissionMode, options.mcp, options);
     onJson(this.#child.stdout, value => { void this.#receive(value as RecordValue); });
     this.#child.stderr.on("data", chunk => { this.#stderr = `${this.#stderr}${chunk}`.slice(-4000); });
     this.#child.on("error", error => this.#fail(error.message));
@@ -237,8 +241,8 @@ export const piProvider: Provider = {
   steerHint: "Pi reads it after the current tool call.",
   models: [],
   listModels: discoverPiModels,
-  async detect() {
-    const version = await commandVersion("pi");
+  async detect(launch) {
+    const version = await commandVersion(launch?.binary ?? "pi", 8000, launch?.environment);
     return { available: Boolean(version), version };
   },
   start: options => new PiSession(options),

@@ -57,6 +57,7 @@ export interface Confirmation {
 
 export type Theme = "dark" | "light";
 export type SidebarMode = "workspaces" | "global";
+export type NavigationStyle = "strip" | "bar";
 export type PanelId = "sidebar" | "inspector" | "git" | "github";
 
 export interface AppState {
@@ -66,7 +67,7 @@ export interface AppState {
   activeView: "chat" | "git" | "github" | "settings" | "usage";
   newThreadProvider: import("../../../shared/protocol.ts").ProviderId | null;
   creatingThread: boolean;
-  threadDefaults: Pick<ThreadMeta, "provider" | "model" | "effort" | "contextWindow" | "fastMode"> | null;
+  threadDefaults: Pick<ThreadMeta, "provider" | "providerInstanceId" | "model" | "effort" | "contextWindow" | "fastMode"> | null;
   favoriteModels: WritingModel[];
   notifications: AppNotification[];
   notificationPreferences: NotificationPreferences;
@@ -118,6 +119,7 @@ export interface AppState {
   gitPanelOpen: boolean;
   sidebarOpen: boolean;
   sidebarMode: SidebarMode;
+  navigationStyle: NavigationStyle;
   sidebarGroups: Record<string, boolean>;
   theme: Theme;
   language: Language;
@@ -131,9 +133,9 @@ export interface AppState {
   uiSoundVolume: number;
 }
 
-function readPref<T extends string>(key: string, fallback: T): T {
+function readPref<T extends string>(key: string, fallback: T, id?: string): T {
   if (typeof localStorage === "undefined") return fallback;
-  return (environmentStorage.getItem(key) as T | null) ?? fallback;
+  return (environmentStorage.getItem(key, id) as T | null) ?? fallback;
 }
 
 function readFlag(key: string, fallback: boolean): boolean {
@@ -172,9 +174,9 @@ function readSidebarGroups(): Record<string, boolean> {
   }
 }
 
-export function readOffline(): Record<string, QueuedMessage[]> {
+export function readOffline(id?: string): Record<string, QueuedMessage[]> {
   try {
-    const stored = JSON.parse(readPref("citropy.offline", "{}"));
+    const stored = JSON.parse(readPref("citropy.offline", "{}", id));
     return stored && typeof stored === "object" && !Array.isArray(stored)
       ? stored
       : {};
@@ -187,8 +189,9 @@ function readThreadDefaults(): AppState["threadDefaults"] {
   try {
     const value = JSON.parse(readPref("citropy.threadDefaults", "null"));
     return value && ["claude", "codex", "opencode", "cursor", "pi"].includes(value.provider) &&
+      (value.providerInstanceId == null || typeof value.providerInstanceId === "string") &&
       (value.model === undefined || typeof value.model === "string") &&
-      (value.effort === undefined || typeof value.effort === "string") ? value : null;
+      (value.effort === undefined || typeof value.effort === "string") ? { ...value, providerInstanceId: value.providerInstanceId || undefined } : null;
   } catch {
     return null;
   }
@@ -197,7 +200,7 @@ function readThreadDefaults(): AppState["threadDefaults"] {
 function readFavoriteModels(): WritingModel[] {
   try {
     const value = JSON.parse(readPref("citropy.favoriteModels", "[]"));
-    return Array.isArray(value) ? value.filter((entry) => entry && ["claude", "codex", "opencode", "cursor", "pi"].includes(entry.provider) && typeof entry.model === "string") : [];
+    return Array.isArray(value) ? value.filter((entry) => entry && ["claude", "codex", "opencode", "cursor", "pi"].includes(entry.provider) && typeof entry.model === "string" && (entry.providerInstanceId === undefined || typeof entry.providerInstanceId === "string")) : [];
   } catch {
     return [];
   }
@@ -266,6 +269,7 @@ export const useApp = create<AppState>(() => ({
       window.innerWidth / (initialScale / 100) > 720,
   ),
   sidebarMode: readPref<SidebarMode>("citropy.sidebarMode", "global") === "workspaces" ? "workspaces" : "global",
+  navigationStyle: readPref<NavigationStyle>("citropy.navigationStyle", "strip") === "bar" ? "bar" : "strip",
   sidebarGroups: readSidebarGroups(),
   theme: readPref<Theme>(
     "citropy.theme",

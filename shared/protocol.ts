@@ -234,7 +234,7 @@ export interface WorkspaceChoice {
 export interface ThreadMeta {
   pendingConfig?: Pick<ThreadMeta, "model" | "effort" | "contextWindow" | "fastMode" | "permissionMode">;
   transferContext?: string;
-  transfers?: Array<{ provider: ProviderId; model?: string; externalId?: string; usage: Usage; at: number }>;
+  transfers?: Array<{ provider: ProviderId; providerInstanceId?: string; model?: string; externalId?: string; usage: Usage; at: number }>;
   contextSources?: import("./context.ts").ContextSource[];
   checkpoints?: import("./review.ts").TurnCheckpoint[];
   branchedFrom?: { threadId: string; messageId: string };
@@ -243,6 +243,7 @@ export interface ThreadMeta {
   id: string;
   projectId: string;
   provider: ProviderId;
+  providerInstanceId?: string;
   model?: string;
   effort?: string;
   contextWindow?: number;
@@ -326,6 +327,15 @@ export interface ProviderInfo {
   steerHint?: string;
   modelsError?: string;
   modelsUpdatedAt?: number;
+  instances?: Array<{ id: string; name: string; available: boolean; version?: string; models: ModelOption[]; modelsError?: string }>;
+}
+
+export interface ProviderInstance {
+  id: string;
+  provider: ProviderId;
+  name: string;
+  binary?: string;
+  environment: Record<string, string>;
 }
 
 export interface ModelOption {
@@ -472,6 +482,7 @@ export type ClientEvent = (
       t: "thread.create";
       projectId: string;
       provider: ProviderId;
+      providerInstanceId?: string;
       model?: string;
       effort?: string | null;
       contextWindow?: number;
@@ -499,6 +510,7 @@ export type ClientEvent = (
       id: string;
       requestId?: string;
       provider?: ProviderId;
+      providerInstanceId?: string | null;
       model?: string;
       effort?: string | null;
       contextWindow?: number;

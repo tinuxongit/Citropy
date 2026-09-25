@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createEditorFile, readEditorFile, saveEditorFile } from "./editor.ts";
 import { tree } from "./files.ts";
 import { store } from "./store.ts";
+import { refreshProvidersNow } from "./provider-registry.ts";
 import { closeProject } from "./routes/projects.ts";
 import { answerQuestion } from "./questions.ts";
 import { stopShell } from "./shells.ts";
@@ -231,6 +232,18 @@ export async function handleFeatures(
       const input = await body(req);
       if (typeof input.id !== "string") throw new Error("Choose a session to import.");
       respond(await importSession(input.id));
+    } else if (url.pathname === "/api/providers/instances" && req.method === "GET") respond([...store.providerInstances.values()]);
+    else if (url.pathname === "/api/providers/instances" && req.method === "POST") {
+      const input = await body(req);
+      const instance = store.saveProviderInstance(input as Parameters<typeof store.saveProviderInstance>[0]);
+      await refreshProvidersNow();
+      respond(instance);
+    } else if (url.pathname === "/api/providers/instances" && req.method === "DELETE") {
+      const input = await body(req);
+      if (typeof input.id !== "string") throw new Error("Choose a provider instance.");
+      store.removeProviderInstance(input.id);
+      await refreshProvidersNow();
+      respond({ ok: true });
     } else if (url.pathname === "/api/providers/maintenance" && req.method === "GET") respond(await providerMaintenance(url.searchParams.get("refresh") === "1"));
     else if (url.pathname === "/api/runtimes/node" && req.method === "GET") respond(await nodeRuntimeStatus());
     else if (url.pathname === "/api/runtimes/node" && req.method === "POST") respond(installNodeRuntime());
@@ -339,8 +352,13 @@ export async function handleFeatures(
       const provider = providers.find(
         (entry) => entry.id === (input.provider ?? defaults?.provider),
       );
-      if (!provider?.available || !provider.enabled)
+      const instanceId = input.providerInstanceId;
+      if (instanceId !== undefined && typeof instanceId !== "string") throw new Error("Invalid provider instance.");
+      const instance = instanceId ? provider?.instances?.find(entry => entry.id === instanceId) : undefined;
+      if (!provider?.enabled || (instanceId ? !instance?.available : !provider.available))
         throw new Error("Select an enabled, installed provider.");
+      const models = instance?.models ?? provider.models;
+      if (input.model && !models.some(model => model.id === input.model)) throw new Error("This model is not available for the selected provider instance.");
       if (
         input.permissionMode &&
         !["manual", "acceptEdits", "plan", "bypass"].includes(
@@ -352,12 +370,13 @@ export async function handleFeatures(
       const thread = store.createThread({
         projectId: project.id,
         provider: provider.id,
+        providerInstanceId: instanceId,
         ...workspace,
-        ...modelSettings(provider.models, {
+        ...modelSettings(models, {
           model:
             input.model ??
-            (provider.id === defaults?.provider ? defaults.model : undefined),
-          effort: input.effort ?? (provider.id === defaults.provider && (!input.model || input.model === defaults.model) ? defaults.effort : undefined),
+            (!instanceId && provider.id === defaults?.provider ? defaults.model : undefined),
+          effort: input.effort ?? (!instanceId && provider.id === defaults.provider && (!input.model || input.model === defaults.model) ? defaults.effort : undefined),
           contextWindow: input.contextWindow,
           fastMode: input.fastMode,
         }),
@@ -436,8 +455,8 @@ export async function handleFeatures(
     } else if (url.pathname === "/api/threads/transfer" && req.method === "POST") {
       const input = await body(req);
       const provider = providers.find(entry => entry.id === input.provider);
-      if (!provider || typeof input.model !== "string" || !input.model) throw new Error("Choose a provider and model for the transfer.");
-      await runtimeFor(threadId ?? "").transfer(provider, input.model);
+      if (!provider || typeof input.model !== "string" || !input.model || (input.providerInstanceId !== undefined && typeof input.providerInstanceId !== "string")) throw new Error("Choose a provider and model for the transfer.");
+      await runtimeFor(threadId ?? "").transfer(provider, input.model, input.providerInstanceId);
       respond({ ok: true });
     } else if (
       url.pathname === "/api/threads/compact" &&
@@ -473,7 +492,7 @@ export async function handleFeatures(
       respond(
         await usageReport(
           providers
-            .filter((entry) => entry.available && entry.enabled)
+            .filter((entry) => entry.enabled && (entry.available || entry.instances?.some(instance => instance.available)))
             .map((entry) => entry.id),
         ),
       );

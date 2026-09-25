@@ -134,6 +134,7 @@ function DefaultsFields({ settings, globalDefaults, update, disabled }: {
         <span>{t("Model")}</span>
         <ModelPicker
           label={t("Default model")}
+          defaultOnly
           value={effective.provider ? { provider: effective.provider, model: effective.model ?? "" } : null}
           automaticLabel={t("Use the last selected model")}
           disabled={disabled || inheritedModel}

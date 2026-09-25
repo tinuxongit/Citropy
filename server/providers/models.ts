@@ -1,5 +1,6 @@
 import { stopProcess } from "./process.ts";
-import { spawn, execFile } from "node:child_process";
+import { invocation, resolveCommand, spawnCommand } from "./binary.ts";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { tmpdir } from "node:os";
 import { onJson } from "../lines.ts";
@@ -104,13 +105,13 @@ export function claudeModels(data: ClaudeModel[]): ModelOption[] {
   return [...models.values()];
 }
 
-export function discoverModels(provider: "codex" | "claude"): Promise<ModelOption[]> {
+export function discoverModels(provider: "codex" | "claude", launch?: import("./types.ts").ProviderLaunch): Promise<ModelOption[]> {
   return new Promise((resolve, reject) => {
     const args = provider === "codex" ? ["app-server"] : [
       "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
       "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--no-session-persistence",
     ];
-    const child = spawn(provider, args, { cwd: tmpdir(), stdio: ["pipe", "pipe", "ignore"] });
+    const child = spawnCommand(launch?.binary ?? provider, args, { cwd: tmpdir(), env: { ...process.env, ...launch?.environment }, stdio: ["pipe", "pipe", "ignore"] });
     let finished = false;
     const models: ModelOption[] = [];
     const cursors = new Set<string>();
@@ -179,7 +180,8 @@ export function openCodeModels(output: string): ModelOption[] {
   return models;
 }
 
-export async function discoverOpenCodeModels(): Promise<ModelOption[]> {
-  const { stdout } = await run("opencode", ["models", "--verbose", "--refresh"], { timeout: 20_000, maxBuffer: 16 * 1024 * 1024 });
+export async function discoverOpenCodeModels(launch?: import("./types.ts").ProviderLaunch): Promise<ModelOption[]> {
+  const call = invocation(resolveCommand(launch?.binary ?? "opencode"), ["models", "--verbose", "--refresh"]);
+  const { stdout } = await run(call.file, call.args, { timeout: 20_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, ...launch?.environment }, windowsVerbatimArguments: call.verbatim });
   return openCodeModels(stdout);
 }

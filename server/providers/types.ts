@@ -34,7 +34,12 @@ export type AgentEvent =
 
 export type Emit = (event: AgentEvent) => void;
 
-export interface StartOptions {
+export interface ProviderLaunch {
+  binary?: string;
+  environment?: Record<string, string>;
+}
+
+export interface StartOptions extends ProviderLaunch {
   mcp?: { url: string; headers: Record<string, string> };
   threadId: string;
   cwd: string;
@@ -78,10 +83,10 @@ export interface Provider {
   label: string;
   binary: string;
   models: ModelOption[];
-  listModels(): Promise<ModelOption[]>;
+  listModels(launch?: ProviderLaunch): Promise<ModelOption[]>;
   supportsPermissionPrompt: boolean;
   capabilities: { transport: "stdio" | "rpc" | "http"; steer: boolean; compact: boolean; stopShell: boolean };
   steerHint?: string;
-  detect(): Promise<{ available: boolean; version?: string }>;
+  detect(launch?: ProviderLaunch): Promise<{ available: boolean; version?: string }>;
   start(options: StartOptions): AgentSession;
 }

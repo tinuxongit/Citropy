@@ -34,6 +34,7 @@ export function NewConversation() {
   const [branch, setBranch] = useState("");
   const [base, setBase] = useState("HEAD");
   const [model, setModel] = useState(preferred?.model ?? "");
+  const [providerInstanceId, setProviderInstanceId] = useState(defaults?.provider === providerId && provider?.instances?.some(entry => entry.id === defaults.providerInstanceId && entry.available) ? defaults.providerInstanceId! : provider?.available ? "" : provider?.instances?.find(entry => entry.available)?.id ?? "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -49,7 +50,9 @@ export function NewConversation() {
     return () => controller.abort();
   }, [project?.id]);
   if (!project || !provider) return null;
-  const currentModel = selectedModel(provider.models, model) ?? selectedModel(provider.models);
+  const instance = provider.instances?.find(entry => entry.id === providerInstanceId);
+  const models = instance?.models ?? provider.models;
+  const currentModel = selectedModel(models, model) ?? selectedModel(models);
   const close = () => useApp.setState({ newThreadProvider: null });
   const create = async () => {
     setBusy(true);
@@ -60,8 +63,9 @@ export function NewConversation() {
         body: JSON.stringify({
           projectId: project.id,
           provider: provider.id,
+          providerInstanceId: providerInstanceId || undefined,
           model: currentModel?.id,
-          effort: currentModel?.id === selectedModel(provider.models, preferred?.model)?.id ? preferred?.effort : undefined,
+          effort: currentModel?.id === selectedModel(models, preferred?.model)?.id ? preferred?.effort : undefined,
           workspace: { kind, path, branch, base },
         }),
       });
@@ -108,7 +112,7 @@ export function NewConversation() {
             disabled={
               busy ||
               !connected ||
-              !provider.available ||
+              !(instance ? instance.available : provider.available) ||
               !provider.enabled ||
               !options ||
               (kind === "existing" && !path) ||
@@ -130,16 +134,25 @@ export function NewConversation() {
             onChange={(event) => {
               const id = event.target.value as ProviderId;
               setProviderId(id);
+              const next = providers.find(entry => entry.id === id);
+              setProviderInstanceId(defaults?.provider === id && next?.instances?.some(entry => entry.id === defaults.providerInstanceId && entry.available) ? defaults.providerInstanceId! : next?.available ? "" : next?.instances?.find(entry => entry.available)?.id ?? "");
               setModel(preferences.provider === id ? preferences.model ?? "" : defaults?.provider === id ? defaults.model ?? "" : "");
             }}
           >
-            {providers.filter((entry) => entry.available && entry.enabled).map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
+            {providers.filter((entry) => entry.enabled && (entry.available || entry.instances?.some(instance => instance.available))).map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
+          </select>
+        </label>
+        <label className="feature-field">
+          {t("Account")}
+          <select value={providerInstanceId} disabled={busy} onChange={(event) => { setProviderInstanceId(event.target.value); setModel(""); }}>
+            {provider.available && <option value="">{t("Default")}</option>}
+            {provider.instances?.map(entry => <option key={entry.id} value={entry.id} disabled={!entry.available}>{entry.name}</option>)}
           </select>
         </label>
         <label className="feature-field">
           {t("Model")}
           <select value={currentModel?.id ?? ""} disabled={busy} onChange={(event) => setModel(event.target.value)}>
-            {provider.models.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
+            {models.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
           </select>
         </label>
       </div>

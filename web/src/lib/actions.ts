@@ -1,4 +1,5 @@
 import { connectionName, environmentId, environmentSignal, environmentStorage, selectEnvironment } from "./environment.ts";
+import { environmentSlice, sendTo, updateEnvironmentSlice } from "./live-environments.ts";
 import { browseRemoteFolder } from "./remote-folder.ts";
 import type {
   GitHubRequests,
@@ -110,9 +111,9 @@ export async function closeProject(id: string, environment = environmentId()): P
   else await api(`projects?projectId=${encodeURIComponent(id)}`, { method: "DELETE" }, environment);
 }
 
-export function rememberThreadSettings(thread: Pick<ThreadMeta, "provider" | "model" | "effort" | "contextWindow" | "fastMode">): void {
-  const { provider, model, effort, contextWindow, fastMode } = thread;
-  const threadDefaults = { provider, model, effort, contextWindow, fastMode };
+export function rememberThreadSettings(thread: Pick<ThreadMeta, "provider" | "providerInstanceId" | "model" | "effort" | "contextWindow" | "fastMode">): void {
+  const { provider, providerInstanceId, model, effort, contextWindow, fastMode } = thread;
+  const threadDefaults = { provider, providerInstanceId: providerInstanceId || undefined, model, effort, contextWindow, fastMode };
   useApp.setState({ threadDefaults });
   environmentStorage.setItem("citropy.threadDefaults", JSON.stringify(threadDefaults));
 }
@@ -123,7 +124,7 @@ export async function createThread(provider?: ProviderId, options = false): Prom
   const projectId = state.activeProjectId;
   if (!projectId || !state.connected || state.creatingThread) return;
   const available = state.providers.filter(
-    (entry) => entry.available && entry.enabled,
+    (entry) => entry.enabled && (entry.available || entry.instances?.some(instance => instance.available)),
   );
   const previous = state.activeThreadId
     ? state.threads[state.activeThreadId]
@@ -161,14 +162,17 @@ export async function createThread(provider?: ProviderId, options = false): Prom
     : previous?.provider === chosen
       ? previous
       : undefined;
-  const model = selectedModel(catalog.models, last?.model) ?? selectedModel(catalog.models);
+  const lastInstanceId = last && "providerInstanceId" in last ? last.providerInstanceId : undefined;
+  const providerInstanceId = lastInstanceId && catalog.instances?.some(instance => instance.id === lastInstanceId && instance.available) ? lastInstanceId : !catalog.available ? catalog.instances?.find(instance => instance.available)?.id : undefined;
+  const models = providerInstanceId ? catalog.instances?.find(instance => instance.id === providerInstanceId)?.models ?? [] : catalog.models;
+  const model = selectedModel(models, last?.model) ?? selectedModel(models);
   useApp.setState({ creatingThread: true });
   try {
     const thread = await api<ThreadMeta>("threads", {
       method: "POST",
       body: JSON.stringify({
-        projectId, provider: chosen,
-        ...modelSettings(catalog.models, {
+        projectId, provider: chosen, providerInstanceId,
+        ...modelSettings(models, {
           model: model?.id,
           effort: last?.effort,
           contextWindow: last && "contextWindow" in last ? last.contextWindow : undefined,
@@ -266,9 +270,10 @@ export function stopThread(): void {
   send({ t: "thread.stop", threadId });
 }
 
-export async function removeThread(id: string): Promise<void> {
-  const thread = useApp.getState().threads[id];
-  if (!thread || !useApp.getState().connected) return;
+export async function removeThread(id: string, environment = environmentId()): Promise<void> {
+  const slice = environmentSlice(environment);
+  const thread = slice?.threads[id];
+  if (!thread || !slice.connected) return;
   const confirmed = await confirmAction({
     title: "Delete this conversation?",
     context: thread.title,
@@ -277,18 +282,19 @@ export async function removeThread(id: string): Promise<void> {
     label: "Delete conversation",
     danger: true,
   });
-  if (confirmed && useApp.getState().connected)
-    send({ t: "thread.remove", id });
+  if (confirmed && environmentSlice(environment)?.connected)
+    sendTo(environment, { t: "thread.remove", id });
 }
 
-export function finishThread(id: string, finished: boolean): void {
-  send({ t: "thread.finish", id, finished });
+export function finishThread(id: string, finished: boolean, environment = environmentId()): void {
+  sendTo(environment, { t: "thread.finish", id, finished });
 }
 
-export async function reorderThreads(projectId: string, ids: string[]): Promise<void> {
-  const previous = useApp.getState().threads;
-  useApp.setState((state) => {
-    const threads = { ...state.threads };
+export async function reorderThreads(projectId: string, ids: string[], environment = environmentId()): Promise<void> {
+  const previous = environmentSlice(environment)?.threads;
+  if (!previous) throw new Error(`No live environment: ${environment}`);
+  updateEnvironmentSlice(environment, (slice) => {
+    const threads = { ...slice.threads };
     ids.forEach((id, position) => { threads[id] = { ...threads[id]!, position }; });
     return { threads };
   });
@@ -296,11 +302,11 @@ export async function reorderThreads(projectId: string, ids: string[]): Promise<
     await api(`threads/reorder?projectId=${projectId}`, {
       method: "POST",
       body: JSON.stringify({ ids }),
-    });
+    }, environment);
   } catch (error) {
-    useApp.setState((state) => {
-      if (!ids.every((id, position) => state.threads[id]?.position === position)) return state;
-      const threads = { ...state.threads };
+    updateEnvironmentSlice(environment, (slice) => {
+      if (!ids.every((id, position) => slice.threads[id]?.position === position)) return {};
+      const threads = { ...slice.threads };
       ids.forEach((id) => { threads[id] = { ...threads[id]!, position: previous[id]?.position }; });
       return { threads };
     });
@@ -312,6 +318,7 @@ export async function configureThread(
   id: string,
   patch: {
     provider?: ProviderId;
+    providerInstanceId?: string | null;
     model?: string;
     effort?: string | null;
     contextWindow?: number;
@@ -334,7 +341,7 @@ export async function configureThread(
   if (signal.aborted) return;
   const state = useApp.getState();
   const thread = state.threads[id];
-  if (thread && (patch.provider !== undefined || patch.model !== undefined || patch.effort !== undefined || patch.contextWindow !== undefined || patch.fastMode !== undefined)) {
+  if (thread && (patch.provider !== undefined || patch.providerInstanceId !== undefined || patch.model !== undefined || patch.effort !== undefined || patch.contextWindow !== undefined || patch.fastMode !== undefined)) {
     rememberThreadSettings({ ...thread, ...nextTurnSettings(thread) });
   }
 }

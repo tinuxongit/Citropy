@@ -325,7 +325,7 @@ app.whenReady().then(() => {
 
   subtest("GitHub identity is optional and every section keeps workspace navigation available", async () => {
     const account = { login: "octocat", name: "The Octocat", avatar_url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' rx='20' fill='%239890cd'/%3E%3C/svg%3E", html_url: "https://github.com/octocat" };
-    const f = await fixture({ githubAccount: account, preferences: { compactNavigation: "1" }, messages: [
+    const f = await fixture({ githubAccount: account, preferences: { compactNavigation: "1", navigationStyle: "bar" }, messages: [
       { ...message("question", [textPart("question-text", "Could you review the navigation?")]), role: "user" },
       message("answer", [textPart("answer-text", "The sections stay within reach. You can switch directly between GitHub, source control, usage, and settings.")]),
     ] });
@@ -490,7 +490,7 @@ app.whenReady().then(() => {
   });
 
   subtest("conversation menus stay visible above the sidebar footer and support keyboard navigation", async () => {
-    const f = await fixture({ preferences: { compactNavigation: "1" }, children: Array.from({ length: 12 }, (_, index) => ({ ...thread, id: `other-${index}`, title: `Other conversation ${index}` })) });
+    const f = await fixture({ preferences: { compactNavigation: "1", navigationStyle: "bar" }, children: Array.from({ length: 12 }, (_, index) => ({ ...thread, id: `other-${index}`, title: `Other conversation ${index}` })) });
     const { page } = f;
     const row = page.locator('.thread-card').last();
     for (const [width, scale] of [[1440, 120], [960, 150]]) {
@@ -690,7 +690,7 @@ app.whenReady().then(() => {
 
   subtest("thread actions have their own space and compact navigation uses equal button sizes", async () => {
     const title = "Review the workspace and check the latest changes";
-    const f = await fixture({ preferences: { compactNavigation: "1" }, messages: [
+    const f = await fixture({ preferences: { compactNavigation: "1", navigationStyle: "bar" }, messages: [
       { ...message("question", [textPart("question-text", "Please check the changes in this workspace.")]), role: "user" },
       message("saved", [textPart("saved-text", "The changes are ready to review.\n\n- The conversation history stays separate.\n- The sidebar actions are available below each title.")]),
     ] });
@@ -1238,7 +1238,7 @@ app.whenReady().then(() => {
     await f.close();
   });
 
-  subtest("subagents stay hidden until expanded and earlier batches remain in the workspace tab", async () => {
+  subtest("subagents show under their parent while running and earlier batches remain in the workspace tab", async () => {
     const children = [
       { ...thread, id: "finished", parentThreadId: "chat", parentMessageId: "batch-one", title: "Finished research" },
       { ...thread, id: "active", parentThreadId: "chat", parentMessageId: "batch-one", title: "Active research", running: true, status: "working" },
@@ -1246,18 +1246,14 @@ app.whenReady().then(() => {
     ];
     const f = await fixture({ children });
     const { page } = f;
-    assert.equal(await page.getByRole("button", { name: "Active research", exact: true }).count(), 0);
-    await page.locator('.thread-row[aria-label="Presentation check"]').hover();
-    const toggle = page.locator('.thread-entry > .thread-children-disclosure > .thread-children-clip > .thread-subagents-toggle');
-    await toggle.click();
     await page.getByRole("button", { name: "Active research", exact: true }).waitFor();
     await page.getByRole("button", { name: "Finished research", exact: true }).waitFor();
-    await toggle.click();
-    await page.getByRole("button", { name: "Active research", exact: true }).waitFor({ state: "hidden" });
+    assert.equal(await page.locator('.thread-child .subagent-parent-icon .provider-icon').count(), 2);
     await page.evaluate(async () => (await import("/web/src/lib/store.ts")).selectThread("nested"));
     await page.locator('.thread-child[data-active="true"]').getByText("Nested result", { exact: true }).waitFor();
     await page.evaluate(async () => (await import("/web/src/lib/store.ts")).selectThread("chat"));
     f.emit({ t: "thread.upsert", thread: { ...children[1], running: false, status: "idle" } });
+    await page.getByRole("button", { name: "Active research", exact: true }).waitFor({ state: "detached" });
     f.emit({ t: "thread.upsert", thread: { ...children[1], id: "new-agent", parentMessageId: "batch-two", createdAt: 10, title: "New research" } });
     await page.getByRole("button", { name: "New research", exact: true }).waitFor();
     assert.equal(await page.getByRole("button", { name: "Finished research", exact: true }).count(), 0);
@@ -1313,7 +1309,7 @@ app.whenReady().then(() => {
   });
 
   subtest("composer suggestions use keyboard commands and skills, and navigation collapses by dragging", async () => {
-    const f = await fixture({ preferences: { compactNavigation: "0" } });
+    const f = await fixture({ preferences: { compactNavigation: "0", navigationStyle: "bar" } });
     const { page } = f;
     await page.route("**/api/skills?*", route => route.fulfill({ json: [
       { id: "review", name: "review", description: "Review this project", provider: "claude", enabled: true, scope: "project", path: "/example/SKILL.md" },
@@ -1904,9 +1900,8 @@ app.whenReady().then(() => {
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByRole("button", { name: "AI assistance", exact: true }).click();
     for (const label of ["Title model", "Commit model"]) {
-      await page.getByRole("button", { name: `${label}: Use the conversation model`, exact: true }).click();
-      await page.getByRole("menuitem", { name: /^Example model/ }).click();
-      await page.getByRole("menu").waitFor({ state: "detached" });
+      await page.getByRole("combobox", { name: `${label} account` }).selectOption("claude:default");
+      await page.getByRole("button", { name: `${label}: Example model`, exact: true }).waitFor();
     }
     await page.getByRole("switch", { name: /^Automatic titles/ }).uncheck();
     assert.equal(settings.automaticTitles, false);

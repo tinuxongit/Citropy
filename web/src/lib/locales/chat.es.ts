@@ -1,4 +1,6 @@
 export const chatEs: Record<string, string> = {
+  "Account": "Cuenta",
+  "Default": "Predeterminada",
   "Transfer to another agent": "Transferir a otro agente",
   "Choose a model for a new agent in this chat. Reading the conversation again consumes extra usage.": "Elige un modelo para un nuevo agente en este chat. Volver a leer la conversación consume uso adicional.",
   "Transfer to {model}?": "¿Transferir a {model}?",
@@ -81,8 +83,6 @@ export const chatEs: Record<string, string> = {
   "Fit image": "Ajustar imagen",
   "Unable to load this image.": "No se ha podido cargar la imagen.",
   "Subagents for {title}": "Subagentes de {title}",
-  "Hide subagents for {title}": "Ocultar subagentes de {title}",
-  "Show subagents for {title}": "Mostrar subagentes de {title}",
   "{first} and {last}": "{first} y {last}",
   "{percent}% context used": "{percent}% del contexto usado",
   "{percent}% used": "{percent}% usado",

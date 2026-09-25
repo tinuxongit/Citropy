@@ -28,7 +28,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
 
-  async function fixture(test, { chat = true, catalogs = providers } = {}) {
+  async function fixture(test, { chat = true, catalogs = providers, navigationStyle = "strip" } = {}) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     page.setDefaultTimeout(20000);
     const errors = [];
@@ -43,9 +43,9 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     }]));
     page.on("pageerror", error => errors.push(error.message));
     test.after(async () => { await page.close(); assert.deepEqual(errors, []); });
-    await page.addInitScript(chat => {
-      for (const [key, value] of Object.entries({ project: "first", thread: chat ? "chat" : "", inspector: "0", theme: "dark", uiScale: "120", compactNavigation: "1", sidebarMode: "workspaces" })) localStorage.setItem(`citropy.${key}`, value);
-    }, chat);
+    await page.addInitScript(({ chat, navigationStyle }) => {
+      for (const [key, value] of Object.entries({ project: "first", thread: chat ? "chat" : "", inspector: "0", theme: "dark", uiScale: "120", compactNavigation: "1", navigationStyle, sidebarMode: "workspaces" })) localStorage.setItem(`citropy.${key}`, value);
+    }, { chat, navigationStyle });
     await page.route("**/api/workspaces?*", route => route.fulfill({ json: { hasCommits: true, branches: ["main"], worktrees: [{ path: "/example/worktree", branch: "feature/existing", locked: false }] } }));
     await page.route("**/api/browser/profiles?*", route => route.fulfill({ json: { selected: "workspace", profiles: [{ id: "workspace", name: "Workspace", projectId: "first", cookies: 0, activeTabs: 0 }] } }));
     await page.route("**/api/browser/sources?*", route => route.fulfill({ json: [{ id: "chromium", name: "Work", browser: "Chromium" }] }));
@@ -197,7 +197,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
   });
 
   await t.test("workspace actions and pinned, active, and finished categories are distinct", async test => {
-    const { page, emit } = await fixture(test);
+    const { page, emit } = await fixture(test, { navigationStyle: "bar" });
     assert.equal(await page.locator(".topbar .workspace-select").count(), 1);
     assert.equal(await page.locator(".rail .workspace-select").count(), 0);
     await page.getByRole("button", { name: "Active 1", exact: true }).waitFor();
@@ -517,6 +517,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.deepEqual(await menu.getByRole("menuitem").locator(".menu-label").allTextContents(), ["Codex Extended"]);
     await menu.getByRole("menuitem", { name: /^Codex Extended/ }).click();
     await page.getByRole("button", { name: "Model: Codex Extended", exact: true }).waitFor();
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem("citropy.threadDefaults") || "null")?.model === "codex-extended");
     await page.reload();
     await page.locator(".welcome").getByRole("button", { name: "New thread", exact: true }).click();
     await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
@@ -954,7 +955,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
   });
 
   await t.test("language changes immediately, persists, and preserves conversation content", async test => {
-    const { page } = await fixture(test);
+    const { page } = await fixture(test, { navigationStyle: "bar" });
     await page.getByRole("textbox", { name: "Message", exact: true }).fill("Keep my draft: source.ts /compact @review");
     await page.locator('.navigation-actions [data-tone="settings"]').click();
     const language = page.locator(".setting-row select").first();

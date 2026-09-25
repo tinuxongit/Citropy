@@ -2,6 +2,7 @@ interface PendingResponse {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  environment?: string;
 }
 
 const pending = new Map<string, PendingResponse>();
@@ -25,8 +26,14 @@ export function resolveResponse(id: string, value?: unknown, error?: string): vo
   else request.resolve(value);
 }
 
-export function rejectResponses(switching = false): void {
+export function trackRequest(id: string, environment: string): void {
+  const request = pending.get(id);
+  if (request) request.environment = environment;
+}
+
+export function rejectResponses(switching = false, environment?: string): void {
   for (const [id, request] of pending) {
+    if (environment && request.environment !== environment) continue;
     if (!switching) resolveResponse(id, undefined, "The connection to Citropy was interrupted. Check the result before retrying this action.");
     else {
       pending.delete(id);

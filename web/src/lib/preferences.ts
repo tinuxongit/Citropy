@@ -1,12 +1,12 @@
 import { environmentStorage } from "./environment.ts";
-import { useApp, type PanelId, type SidebarMode, type Theme } from "./app-state.ts";
+import { useApp, type NavigationStyle, type PanelId, type SidebarMode, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import type { Language } from "./translations.ts";
 
 export function toggleFavoriteModel(model: WritingModel): void {
   const current = useApp.getState().favoriteModels;
-  const exists = current.some((entry) => entry.provider === model.provider && entry.model === model.model);
-  const favoriteModels = exists ? current.filter((entry) => entry.provider !== model.provider || entry.model !== model.model) : [...current, model];
+  const exists = current.some((entry) => entry.provider === model.provider && entry.model === model.model && entry.providerInstanceId === model.providerInstanceId);
+  const favoriteModels = exists ? current.filter((entry) => entry.provider !== model.provider || entry.model !== model.model || entry.providerInstanceId !== model.providerInstanceId) : [...current, model];
   useApp.setState({ favoriteModels });
   environmentStorage.setItem("citropy.favoriteModels", JSON.stringify(favoriteModels));
 }
@@ -48,6 +48,11 @@ export function setSidebarMode(mode: SidebarMode): void {
   if (mode !== "workspaces" && mode !== "global") return;
   useApp.setState({ sidebarMode: mode });
   environmentStorage.setItem("citropy.sidebarMode", mode);
+}
+
+export function setNavigationStyle(style: NavigationStyle): void {
+  useApp.setState({ navigationStyle: style });
+  environmentStorage.setItem("citropy.navigationStyle", style);
 }
 
 export function setSidebarGroupOpen(id: string, open: boolean): void {

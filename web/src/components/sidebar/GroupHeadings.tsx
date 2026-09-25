@@ -71,6 +71,7 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
   const disabled = pending || connecting || (current && !connected && !window.citropyDesktop?.connectEnvironment);
 
   return <>
+    {isFirst && environment !== "local" && !searching && <div className="machine-label">{connectionName(environment)}</div>}
     <div className="global-project-heading" data-project-id={project.id} data-environment={environment} data-drag-id={group.id} data-active={current && project.id === activeProjectId} data-dragging={dragging}
       onContextMenu={event => {
         if ((event.target as HTMLElement).closest('[role="menu"], dialog')) return;
@@ -91,7 +92,7 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
       >
         {pending || connecting ? <PixelLoader size={15} /> : <Icon size={15} />}
         <span className="truncate">{group.label}</span>
-        {!expanded && (group.cachedThreads ?? group.threads).length > 0 && <span className="global-project-count">{(group.cachedThreads ?? group.threads).length}</span>}
+        {!expanded && group.threads.length > 0 && <span className="global-project-count">{group.threads.length}</span>}
       </button>
       <Menu align="end" items={[
         { id: "open", label: t("Open workspace"), icon: <FolderOpen size={15} />, disabled, onSelect: () => void run(() => { selectProject(project.id); onConversation(); }) },

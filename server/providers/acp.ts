@@ -68,7 +68,7 @@ export class AcpSession implements AgentSession {
   constructor(config: AcpConfig, options: StartOptions) {
     this.#config = config;
     this.#options = options;
-    const { child, stream } = spawnAgent(config, options.cwd);
+    const { child, stream } = spawnAgent(config, options.cwd, options);
     this.#child = child;
     const app = acp.client({ name: "citropy" })
       .onRequest(acp.methods.client.session.requestPermission, (context) => this.#permission(context.params))
@@ -575,7 +575,7 @@ export class AcpSession implements AgentSession {
   }
 }
 
-export async function acpDetect(config: AcpConfig): Promise<{ available: boolean; version?: string }> {
-  const version = await commandVersion(config.binary);
+export async function acpDetect(config: AcpConfig, launch?: import("./types.ts").ProviderLaunch): Promise<{ available: boolean; version?: string }> {
+  const version = await commandVersion(launch?.binary ?? config.binary, 8000, launch?.environment);
   return version === undefined ? { available: false } : { available: true, version };
 }

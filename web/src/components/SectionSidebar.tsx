@@ -11,12 +11,14 @@ export function SectionSidebar({
   open,
   onBack,
   children,
+  navigation,
 }: {
   title: string;
   activeItem: string;
   open: boolean;
   onBack: () => void;
   children: ReactNode;
+  navigation?: ReactNode;
 }) {
   const t = useI18n();
   return (
@@ -30,6 +32,7 @@ export function SectionSidebar({
         <button className="rail-action" type="button" onClick={onBack}>
           <ArrowLeft size={16} />{t("Back to chat")}</button>
       </div>
+      {navigation}
       <ResizeHandle panel="sidebar" />
     </aside></SlidingPanel>
   );

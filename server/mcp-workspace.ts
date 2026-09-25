@@ -7,6 +7,8 @@ import { ask } from "./permissions.ts";
 import { store } from "./store.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
 import { providers } from "./providers/index.ts";
+import { providerInfo } from "./provider-registry.ts";
+import { remoteId } from "./remote.ts";
 import { runtimeFor } from "./runtime.ts";
 import { bus } from "./bus.ts";
 import * as browser from "./browser.ts";
@@ -283,12 +285,21 @@ export async function callWorkspaceTool(
     }
     case "open_panel": {
       const kind = required(args, "kind") as PanelKind;
-      if (!["files", "changes", "subagents", "tools", "computer"].includes(kind))
+      if (!["files", "changes", "subagents", "tools", ...(remoteId ? [] : ["computer"])].includes(kind))
         throw new Error("Unknown panel kind");
       const panel = panelList().find(
         (entry) => entry.projectId === project.id && entry.kind === kind,
       );
       return text(openPanel(project.id, kind, threadId, panel?.id));
+    }
+    case "subagent_providers": {
+      const requested = args.provider;
+      if (requested !== undefined && (typeof requested !== "string" || !Object.hasOwn(providers, requested))) throw new Error("Unknown provider");
+      const detailed = typeof requested === "string";
+      return text(providerInfo().filter(entry => entry.enabled && (!requested || entry.id === requested)).flatMap(entry => [
+        ...(entry.available ? [{ provider: entry.id, providerInstanceId: "default", name: "Default", models: detailed ? entry.models.map(model => ({ id: model.id, label: model.label, efforts: model.efforts ?? [] })) : undefined }] : []),
+        ...(entry.instances ?? []).filter(instance => instance.available).map(instance => ({ provider: entry.id, providerInstanceId: instance.id, name: instance.name, models: detailed ? instance.models.map(model => ({ id: model.id, label: model.label, efforts: model.efforts ?? [] })) : undefined })),
+      ]));
     }
     case "subagent_start": {
       assertSubagentSlot(threadId);
@@ -302,42 +313,51 @@ export async function callWorkspaceTool(
         throw new Error(
           `Subagents already nest ${depth} levels deep here, the most allowed. Delegate this task from a parent conversation instead.`,
         );
-      const providerId = (args.provider ??
-        thread.provider) as keyof typeof providers;
+      const providerId = (args.provider ?? thread.provider) as keyof typeof providers;
       const provider = providers[providerId];
+      const requestedInstanceId = args.providerInstanceId;
+      if (requestedInstanceId !== undefined && (typeof requestedInstanceId !== "string" || !requestedInstanceId.trim())) throw new Error("Choose a provider account returned by subagent_providers");
+      const providerInstanceId = requestedInstanceId === "default" ? undefined : requestedInstanceId ?? (providerId === thread.provider ? thread.providerInstanceId : undefined);
+      const instance = providerInstanceId ? store.providerInstances.get(providerInstanceId) : undefined;
+      if (providerInstanceId && (!instance || instance.provider !== providerId)) throw new Error("Requested provider account is unavailable. Call subagent_providers to see available accounts.");
       if (
         !provider ||
         store.disabledProviders.has(providerId) ||
-        !(await provider.detect()).available
+        !(await provider.detect({ binary: instance?.binary, environment: instance?.environment })).available
       )
-        throw new Error("Requested provider is unavailable");
+        throw new Error("Requested provider account is unavailable. Call subagent_providers to see available accounts.");
+      const listedModels = providerInstanceId
+        ? providerInfo().find(entry => entry.id === providerId)?.instances?.find(entry => entry.id === providerInstanceId)?.models ?? []
+        : provider.models;
+      const models = listedModels.length || !providerInstanceId ? listedModels : await provider.listModels({ binary: instance?.binary, environment: instance?.environment });
       if (
         !store.threads.has(threadId) ||
         !store.projects.has(project.id) ||
-        store.disabledProviders.has(providerId)
+        store.disabledProviders.has(providerId) ||
+        (providerInstanceId && store.providerInstances.get(providerInstanceId) !== instance)
       )
         throw new Error("Conversation or provider is no longer available");
       assertSubagentSlot(threadId);
       const model =
         typeof args.model === "string"
           ? args.model
-          : providerId === thread.provider
+          : providerId === thread.provider && providerInstanceId === thread.providerInstanceId
             ? thread.model
-            : (provider.models.find((entry) => entry.isDefault)?.id ??
-              provider.models[0]?.id);
+            : (models.find((entry) => entry.isDefault)?.id ??
+              models[0]?.id);
       const effort =
         typeof args.effort === "string"
           ? args.effort
-          : providerId === thread.provider && model === thread.model
+          : providerId === thread.provider && providerInstanceId === thread.providerInstanceId && model === thread.model
             ? thread.effort
             : undefined;
-      if (args.model && !provider.models.some((entry) => entry.id === model)) {
-        const available = provider.models.slice(0, 12).map(entry => entry.id);
+      if (args.model && !models.some((entry) => entry.id === model)) {
+        const available = models.slice(0, 12).map(entry => entry.id);
         throw new Error(
-          `Unknown model for ${providerId}. Available model IDs${provider.models.length > available.length ? ` (first ${available.length} of ${provider.models.length})` : ""}: ${available.join(", ") || "none currently reported"}. Omit model to use the inherited or provider default model.`,
+          `Unknown model for ${providerId}. Available model IDs${models.length > available.length ? ` (first ${available.length} of ${models.length})` : ""}: ${available.join(", ") || "none currently reported"}. Omit model to use the inherited or provider default model.`,
         );
       }
-      const supportedEfforts = provider.models.find(entry => entry.id === model)?.efforts ?? [];
+      const supportedEfforts = models.find(entry => entry.id === model)?.efforts ?? [];
       if (effort && !supportedEfforts.includes(effort))
         throw new Error(`Unsupported reasoning effort. Supported efforts: ${supportedEfforts.slice(0, 12).join(", ") || "none for this model"}. Omit effort to use the inherited or provider default.`);
       const task = required(args, "task");
@@ -347,6 +367,7 @@ export async function callWorkspaceTool(
         workspacePath: workspacePath(project.id, threadId),
         workspaceBranch: thread.workspaceBranch,
         provider: providerId,
+        providerInstanceId,
         model,
         effort,
         title: required(args, "title").slice(0, 80),

@@ -5,7 +5,7 @@ import { restoreSnapshotNotifications } from "./notification-state.ts";
 
 type Snapshot = Extract<ServerEvent, { t: "hello" }>["snapshot"];
 
-export function applySnapshot(state: AppState, snapshot: Snapshot): void {
+export function applySnapshot(state: AppState, snapshot: Snapshot, focused = true): void {
   restoreEnvironment(state, snapshot);
   restoreSnapshotNotifications(state, snapshot);
   restorePanels(state, snapshot);
@@ -19,7 +19,7 @@ export function applySnapshot(state: AppState, snapshot: Snapshot): void {
   state.projects = snapshot.projects;
   state.providers = snapshot.providers;
   restoreThreads(state, snapshot);
-  restoreWorkspace(state);
+  restoreWorkspace(state, focused);
 }
 
 function restoreEnvironment(state: AppState, snapshot: Snapshot): void {
@@ -57,7 +57,7 @@ function restoreThreads(state: AppState, snapshot: Snapshot): void {
   state.disclosures = {};
 }
 
-function restoreWorkspace(state: AppState): void {
+function restoreWorkspace(state: AppState, focused: boolean): void {
   state.editorTerminals = Object.fromEntries(
     Object.entries(state.editorTerminals).filter(([filesId, terminal]) =>
       state.panels.some((panel) => panel.id === filesId) &&
@@ -83,6 +83,7 @@ function restoreWorkspace(state: AppState): void {
   if (state.activeThreadId && !state.threads[state.activeThreadId])
     state.activeThreadId = null;
   if (
+    focused &&
     typeof window !== "undefined" &&
     window.citropyDesktop &&
     !Object.keys(state.activePanels).length

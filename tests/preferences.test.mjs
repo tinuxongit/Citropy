@@ -126,9 +126,8 @@ test("environment reset reloads workspace state while preserving display prefere
   stored.set("citropy.project", "next-project");
   stored.set("citropy.thread", "next-thread");
   stored.set("citropy.offline", JSON.stringify({ "next-thread": [{ id: "queued", text: "Later" }] }));
-  useApp.setState({ connected: true, activeThreadId: "old", parts: { old: { id: "old", kind: "text", text: "Old" } } });
+  useApp.setState({ connected: true, activeThreadId: "old", parts: { old: { id: "old", kind: "text", text: "Old" } }, toasts: [{ id: "notice", level: "info", text: "Notice" }] });
   store.resetEnvironment([{ id: "next-project", path: "/next", name: "Next" }], "/next");
-  assert.equal(await confirmation, false);
   const state = useApp.getState();
   assert.equal(state.theme, "light");
   assert.equal(state.typingSpeed, 180);
@@ -137,5 +136,8 @@ test("environment reset reloads workspace state while preserving display prefere
   assert.equal(state.offline["next-thread"][0].text, "Later");
   assert.deepEqual(state.parts, {});
   assert.equal(state.connected, false);
-  assert.equal(state.confirmation, null);
+  assert.equal(state.confirmation?.title, "Pending");
+  assert.equal(state.toasts[0].text, "Notice");
+  store.answerConfirmation(false);
+  assert.equal(await confirmation, false);
 });

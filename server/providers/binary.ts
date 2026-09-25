@@ -64,6 +64,11 @@ function findInDirs(name: string, dirs: string[], exists: (path: string) => bool
 /** Pure resolution against an explicit platform, directory list and existence check. */
 export function resolveIn(binary: string, options: ResolveInOptions): ResolvedCommand {
   const { platform, dirs, exists } = options;
+  if ((platform === "win32" ? win32.isAbsolute(binary) : posix.isAbsolute(binary)) && exists(binary)) {
+    if (platform === "win32" && /\.(cmd|bat)$/i.test(binary)) return { file: process.env.ComSpec ?? "cmd.exe", prefix: [], path: binary, shell: "cmd" };
+    if (platform === "win32" && /\.ps1$/i.test(binary)) return { file: "powershell.exe", prefix: ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", binary], path: binary };
+    return { file: binary, prefix: [], path: binary };
+  }
   if (platform !== "win32") {
     const path = findInDirs(binary, dirs, exists, false);
     return path ? { file: binary, prefix: [], path } : { file: binary, prefix: [] };
@@ -137,13 +142,13 @@ export function spawnCommand(
 }
 
 /** Read the first non-empty version line from `binary --version`, or undefined if it fails. */
-export function commandVersion(binary: string, timeoutMs = 8000): Promise<string | undefined> {
+export function commandVersion(binary: string, timeoutMs = 8000, environment?: Record<string, string>): Promise<string | undefined> {
   const call = invocation(resolveCommand(binary), ["--version"]);
   return new Promise((resolve) => {
     execFile(
       call.file,
       call.args,
-      { timeout: timeoutMs, windowsHide: true, windowsVerbatimArguments: call.verbatim },
+      { timeout: timeoutMs, windowsHide: true, windowsVerbatimArguments: call.verbatim, env: { ...process.env, ...environment } },
       (error, stdout, stderr) => {
         if (error) {
           resolve(undefined);

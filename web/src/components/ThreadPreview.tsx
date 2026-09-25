@@ -1,13 +1,15 @@
 import { useLayoutEffect, useRef } from "react";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
+import { environmentSlice } from "../lib/live-environments.ts";
 import { modelLabel, providerLabels, shortPath, threadActivity } from "../lib/format.ts";
 import { currentLocale, useI18n } from "../lib/i18n.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 
-export function ThreadPreview({ id, thread, anchor, onClose, onPointerEnter, onPointerLeave }: {
+export function ThreadPreview({ id, thread, environment, anchor, onClose, onPointerEnter, onPointerLeave }: {
   id: string;
   thread: ThreadMeta;
+  environment: string;
   anchor: HTMLButtonElement;
   onClose: () => void;
   onPointerEnter: () => void;
@@ -16,9 +18,10 @@ export function ThreadPreview({ id, thread, anchor, onClose, onPointerEnter, onP
   const t = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const uiScale = useApp(state => state.uiScale);
-  const home = useApp(state => state.home);
-  const project = useApp(state => state.projects.find(project => project.id === thread.projectId));
-  const provider = useApp(state => state.providers.find(provider => provider.id === thread.provider));
+  const slice = environmentSlice(environment);
+  const home = slice?.home ?? "";
+  const project = slice?.projects.find(project => project.id === thread.projectId);
+  const provider = slice?.providers.find(provider => provider.id === thread.provider);
   const activity = threadActivity(thread);
   const status = activity.status;
   const statusLabel = thread.archived ? "Archived" : thread.finished ? "Finished" : activity.label;

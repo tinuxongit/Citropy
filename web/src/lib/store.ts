@@ -3,6 +3,7 @@ import { defaultAssistance } from "../../../shared/assistance.ts";
 import type { Project } from "../../../shared/protocol.ts";
 import { useApp, readOffline, type Confirmation } from "./app-state.ts";
 import { trimHistories } from "./history-cache.ts";
+import type { EnvironmentSlice } from "./live-environments.ts";
 
 export { useApp } from "./app-state.ts";
 export { applyEvent, applyEvents } from "./server-events.ts";
@@ -11,6 +12,7 @@ export {
   toggleFavoriteModel,
   setPanelWidth,
   setLanguage,
+  setNavigationStyle,
   setTheme,
   toggleInspector,
   toggleSidebar,
@@ -29,9 +31,8 @@ export {
   viewportWidth,
 } from "./preferences.ts";
 
-export function resetEnvironment(projects: Project[], home: string): void {
-  useApp.getState().confirmation?.resolve(false);
-  useApp.setState({
+export function environmentDefaults(projects: Project[], home: string, id?: string): EnvironmentSlice {
+  return {
     shells: {},
     projectDefaults: {},
     assistance: { ...defaultAssistance },
@@ -39,14 +40,13 @@ export function resetEnvironment(projects: Project[], home: string): void {
     creatingThread: false,
     notifications: [],
     notificationPreferences: { toasts: true, desktop: true, sound: false, subagents: false },
-    confirmation: null,
     searchResult: null,
     searchMessageId: null,
     searchShellId: null,
     connected: false,
     development: false,
     githubAccount: null,
-    offline: readOffline(),
+    offline: readOffline(id),
     choosingWorkspace: false,
     home,
     projects,
@@ -65,9 +65,8 @@ export function resetEnvironment(projects: Project[], home: string): void {
     permissions: [],
     questions: [],
     questionDrafts: {},
-    toasts: [],
-    activeProjectId: environmentStorage.getItem("citropy.project"),
-    activeThreadId: environmentStorage.getItem("citropy.thread"),
+    activeProjectId: environmentStorage.getItem("citropy.project", id),
+    activeThreadId: environmentStorage.getItem("citropy.thread", id),
     followRequest: 0,
     readingThreadId: null,
     panels: [],
@@ -77,7 +76,11 @@ export function resetEnvironment(projects: Project[], home: string): void {
     computer: { enabled: false, status: "idle", control: false, displays: [], activity: [] },
     toolConnections: {},
     tools: [],
-  });
+  };
+}
+
+export function resetEnvironment(projects: Project[], home: string): void {
+  useApp.setState(environmentDefaults(projects, home));
 }
 
 export function selectThread(id: string | null): void {

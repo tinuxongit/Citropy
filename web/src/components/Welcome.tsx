@@ -27,7 +27,7 @@ export function Welcome() {
         </p>
 
         {hasProject ? (
-          <button className="btn" type="button" data-variant="primary" onClick={() => createThread()} disabled={!connected || creating || !providers.some((provider) => provider.available && provider.enabled)}>
+          <button className="btn" type="button" data-variant="primary" onClick={() => createThread()} disabled={!connected || creating || !providers.some((provider) => provider.enabled && (provider.available || provider.instances?.some(instance => instance.available)))}>
             <MessageSquarePlus size={14} />{t("New thread")}</button>
         ) : (
           <button className="btn" type="button" data-variant="primary" onClick={chooseWorkspace} disabled={choosing}>
@@ -36,7 +36,7 @@ export function Welcome() {
           </button>
         )}
 
-        {hasProject && !providers.some((provider) => provider.available && provider.enabled) && <p className="settings-note">{t("Enable a provider in Settings to start a conversation.")}</p>}
+        {hasProject && !providers.some((provider) => provider.enabled && (provider.available || provider.instances?.some(instance => instance.available))) && <p className="settings-note">{t("Enable a provider in Settings to start a conversation.")}</p>}
         {projects.length > 0 && (
           <div className="recent-list">
             <span className="eyebrow">{t("Recent")}</span>

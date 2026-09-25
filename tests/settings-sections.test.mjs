@@ -75,7 +75,7 @@ root.render(<React.StrictMode><Fixture /></React.StrictMode>);`;
         update = { ...update, status };
         for (const callback of updates) callback(update);
       };
-      const environment = () => ({ activeId, endpoint: activeId === "local" ? "" : "http://127.0.0.1:49122", connections: [] });
+      const environment = () => ({ activeId, endpoint: activeId === "local" ? "" : "http://127.0.0.1:49122", connections: [{ id: "remote", name: "Remote", target: "user@host", port: 22, node: "node", status: activeId === "remote" ? "connected" : "disconnected", endpoint: activeId === "remote" ? "http://127.0.0.1:49122" : undefined }] });
       window.citropyDesktop = {
         environmentsState: async () => environment(),
         onEnvironmentsState: () => () => {},

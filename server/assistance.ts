@@ -1,5 +1,6 @@
 import { store } from "./store.ts";
 import { providers } from "./providers/index.ts";
+import { providerInfo } from "./provider-registry.ts";
 import { generateText } from "./text-generation.ts";
 import { workspacePath } from "./workspaces.ts";
 import { assertApplicationReady } from "./update-lock.ts";
@@ -39,9 +40,11 @@ export function configureAssistance(input: Record<string, unknown>, available: P
     if (input[key] === undefined) continue;
     if (input[key] === null) { next[key] = null; continue; }
     const value = input[key] as WritingModel;
-    const provider = value && available.find((entry) => entry.id === value.provider && entry.available && entry.enabled);
-    if (!provider || !provider.models.some((model) => model.id === value.model)) throw new Error("Select an available writing model.");
-    next[key] = { provider: provider.id, model: value.model };
+    const provider = value && available.find((entry) => entry.id === value.provider && entry.enabled);
+    const instance = value.providerInstanceId ? provider?.instances?.find(entry => entry.id === value.providerInstanceId) : undefined;
+    const models = instance ? instance.models : provider?.models ?? [];
+    if (!provider || (value.providerInstanceId ? !instance?.available : !provider.available) || !models.some((model) => model.id === value.model)) throw new Error("Select an available writing model.");
+    next[key] = { provider: provider.id, model: value.model, ...(value.providerInstanceId ? { providerInstanceId: value.providerInstanceId } : {}) };
   }
   store.configureAssistance(next);
   return next;
@@ -50,10 +53,10 @@ export function configureAssistance(input: Record<string, unknown>, available: P
 export function writingModel(thread: Thread, kind: "titleModel" | "commitModel" | "reviewModel"): WritingModel {
   const configured = store.assistance[kind];
   if (configured) return configured;
-  const models = providers[thread.provider].models;
+  const models = thread.providerInstanceId ? providerInfo().find(entry => entry.id === thread.provider)?.instances?.find(entry => entry.id === thread.providerInstanceId)?.models ?? [] : providers[thread.provider].models;
   const model = thread.model || models.find((model) => model.isDefault)?.id || models[0]?.id;
   if (!model) throw new Error("Select a writing model in Settings > AI assistance.");
-  return { provider: thread.provider, model };
+  return { provider: thread.provider, model, ...(thread.providerInstanceId ? { providerInstanceId: thread.providerInstanceId } : {}) };
 }
 
 export async function generateThreadTitle(threadId: string, automatic = false): Promise<void> {

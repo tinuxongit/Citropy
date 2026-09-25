@@ -275,6 +275,8 @@ test("real SSH launch, remote tasks, disconnect, reconnect, and cleanup", { time
   assert.equal(hello.snapshot.home, home);
   assert.deepEqual(hello.snapshot.projectDefaults, defaults);
   assert.ok(hello.snapshot.tools.every(tool => !/^(browser_|computer_)/.test(tool.name)));
+  assert.ok(hello.snapshot.tools.some(tool => tool.name === "subagent_providers"));
+  assert.ok(hello.snapshot.tools.some(tool => tool.name === "subagent_start"));
   socket.send(JSON.stringify({ t: "project.choose", path: join(home, "project") }));
   await until(() => messages.some(message => message.t === "project.chosen"));
   const projectId = messages.find(message => message.t === "project.chosen").projectId;

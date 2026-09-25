@@ -74,11 +74,12 @@ export function Composer({
   const transfer = async (choice: WritingModel) => {
     if (!thread || transferring) return;
     const target = providers.find((entry) => entry.id === choice.provider);
-    const name = selectedModel(target?.models ?? [], choice.model)?.label ?? choice.model;
+    const account = target?.instances?.find(entry => entry.id === choice.providerInstanceId);
+    const name = selectedModel(account?.models ?? target?.models ?? [], choice.model)?.label ?? choice.model;
     if (!await confirmAction({
       title: t("Transfer to {model}?", { model: name }),
       description: t("A new agent will read the conversation and continue here. This consumes extra usage on the selected provider, and may incur additional costs. Your chat history, workspace and draft stay in place."),
-      context: target?.label,
+      context: account ? `${target?.label} · ${account.name}` : target?.label,
       label: t("Transfer and continue"),
     }) || scopeSignal.aborted || !useApp.getState().connected) return;
     setTransferring(true);
@@ -96,15 +97,17 @@ export function Composer({
 
   const running = thread?.running ?? false;
   const provider = providers.find((entry) => entry.id === thread?.provider);
+  const instance = thread?.providerInstanceId ? provider?.instances?.find(entry => entry.id === thread.providerInstanceId) : undefined;
+  const models = thread?.providerInstanceId ? instance?.models ?? [] : provider?.models ?? [];
   const canSend =
     !sending &&
     !transferring &&
     !thread?.compacting &&
     !gitActionBusy(thread?.gitAction) &&
     !uploading &&
-    Boolean(provider?.enabled && provider.available);
+    Boolean(provider?.enabled && (thread?.providerInstanceId ? instance?.available : provider.available));
   const configuredThread = thread ? { ...thread, ...nextTurnSettings(thread) } : undefined;
-  const model = selectedModel(provider?.models ?? [], configuredThread?.model);
+  const model = selectedModel(models, configuredThread?.model);
   const commands = useComposerCommands({
     thread: configuredThread,
     provider,
@@ -179,9 +182,9 @@ export function Composer({
           {t("{provider} is disabled. Enable it in Settings > Providers to continue this conversation.", { provider: provider.label })}
         </div>
       )}
-      {provider?.modelsError && (
+      {(instance?.modelsError ?? provider?.modelsError) && (
         <div className="models-warning" role="status">
-          {provider.modelsError}
+          {instance?.modelsError ?? provider?.modelsError}
         </div>
       )}
       <QueueList thread={thread} provider={provider} onEdit={restore} />
@@ -264,16 +267,22 @@ export function Composer({
         {thread.pendingConfig && <div className="composer-pending-settings" role="status">{t("Applies to the next turn")}</div>}
         <div className="composer-bar">
           <ModelPicker
-            value={{ provider: thread.provider, model: configuredThread?.model ?? model?.id ?? "default" }}
+            value={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: configuredThread?.model ?? model?.id ?? "default" }}
             label={t("Model")}
             buttonRef={modelButton}
             className="composer-select composer-model"
             disabled={!connected || sending || transferring}
             lockedProvider={running || hasMessages || thread.externalId || thread.usage.turns || thread.queue?.length ? thread.provider : undefined}
+            instanceId={thread.providerInstanceId}
             onTransfer={hasMessages && !thread.parentThreadId ? (choice) => void transfer(choice) : undefined}
             transferDisabled={Boolean(running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
-            onChange={(choice) => { if (choice) configureThread(thread.id, { ...choice, effort: null }); }}
+            onChange={(choice) => { if (choice) configureThread(thread.id, { ...choice, providerInstanceId: choice.providerInstanceId ?? null, effort: null }); }}
           />
+
+          {provider?.instances?.length ? <select className="composer-select composer-account" aria-label={t("Account")} title={t("Account")} value={thread.providerInstanceId ?? ""} disabled={!connected || sending || transferring || running || hasMessages || Boolean(thread.externalId || thread.parentThreadId || thread.queue?.length)} onChange={event => void configureThread(thread.id, { providerInstanceId: event.target.value || null })}>
+            {provider.available && <option value="">{t("Default")}</option>}
+            {provider.instances.map(entry => <option key={entry.id} value={entry.id} disabled={!entry.available}>{entry.name}</option>)}
+          </select> : null}
 
           {hasModelOptions(model) && (
             <ModelOptionsMenu

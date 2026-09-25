@@ -1,8 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { EnvironmentState } from "../../../shared/environments.ts";
 import type { Project, ThreadMeta } from "../../../shared/protocol.ts";
-import { workspaceThread, type WorkspaceCatalog as WorkspaceSnapshot, type WorkspaceEvent, type WorkspaceThread } from "../../../shared/workspace-catalog.ts";
-import { closeWorkspaceFeeds, syncWorkspaceFeeds } from "./workspace-feed.ts";
+import { workspaceThread, type WorkspaceCatalog as WorkspaceSnapshot, type WorkspaceThread } from "../../../shared/workspace-catalog.ts";
 
 let initial: EnvironmentState = { activeId: "local", endpoint: "", connections: [] };
 let controller = new AbortController();
@@ -14,7 +13,6 @@ const listeners = new Set<() => void>();
 export type CachedThread = WorkspaceThread;
 type WorkspaceCatalog = Record<string, WorkspaceSnapshot & { connected?: boolean }>;
 let workspaces: WorkspaceCatalog = {};
-let catalogTimer: ReturnType<typeof setTimeout> | undefined;
 try {
   const saved = typeof localStorage === "undefined" ? {} : JSON.parse(localStorage.getItem("citropy.workspaces") || "{}");
   for (const [id, value] of Object.entries(saved) as [string, WorkspaceCatalog[string]][]) {
@@ -31,55 +29,22 @@ function publish(): void { for (const listener of listeners) listener(); }
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
 
 function saveCatalog(): void {
-  catalogTimer ??= setTimeout(() => {
-    catalogTimer = undefined;
-    try { localStorage.setItem("citropy.workspaces", JSON.stringify(workspaces)); } catch {}
-  }, 1000);
-}
-
-function receiveWorkspace(id: string, event: WorkspaceEvent | null): void {
-  const current = workspaces[id];
-  if (!event) {
-    if (current?.connected) { workspaces = { ...workspaces, [id]: { ...current, connected: false } }; publish(); }
-    return;
-  }
-  if (id === initial.activeId) return;
-  let next: WorkspaceCatalog[string];
-  if (event.t === "workspace.snapshot") next = { ...event.snapshot, connected: true };
-  else if (!current) return;
-  else if (event.t === "workspace.thread") {
-    const index = current.threads.findIndex(thread => thread.id === event.thread.id);
-    const previous = current.threads[index];
-    if (previous && JSON.stringify({ ...previous, updatedAt: 0 }) === JSON.stringify({ ...event.thread, updatedAt: 0 })) return;
-    const threads = [...current.threads];
-    if (index < 0) threads.push(event.thread);
-    else threads[index] = event.thread;
-    next = { ...current, threads };
-  } else if (event.t === "thread.remove") next = { ...current, threads: current.threads.filter(thread => thread.id !== event.id) };
-  else if (event.t === "project.upsert") next = { ...current, projects: [...current.projects.filter(project => project.id !== event.project.id), event.project].sort((a, b) => b.lastOpened - a.lastOpened) };
-  else if (event.t === "project.remove") next = { ...current, projects: current.projects.filter(project => project.id !== event.id), threads: current.threads.filter(thread => thread.projectId !== event.id) };
-  else return;
-  workspaces = { ...workspaces, [id]: next };
-  saveCatalog();
-  publish();
-}
-
-function syncWorkspaces(): void {
-  if (window.citropyDesktop?.environmentsState) syncWorkspaceFeeds(initial, receiveWorkspace);
+  try { localStorage.setItem("citropy.workspaces", JSON.stringify(workspaces)); } catch {}
 }
 
 export async function initializeEnvironment(): Promise<void> {
   if (window.citropyDesktop?.environmentsState) initial = await window.citropyDesktop.environmentsState();
   if (initial.activeId !== "local" && !/^http:\/\/127\.0\.0\.1:\d+$/.test(initial.endpoint))
     throw new Error("The SSH environment has no local tunnel endpoint.");
+  const { syncConnections } = await import("./socket.ts");
   const unsubscribe = window.citropyDesktop?.onEnvironmentsState?.(value => {
     pushes++;
     initial = { ...value, activeId: initial.activeId, endpoint: initial.endpoint };
-    syncWorkspaces();
+    syncConnections(initial);
     publish();
   });
-  syncWorkspaces();
-  if (import.meta.hot) import.meta.hot.dispose(() => { unsubscribe?.(); controller.abort(); closeWorkspaceFeeds(); clearTimeout(catalogTimer); });
+  syncConnections(initial);
+  if (import.meta.hot) import.meta.hot.dispose(() => { unsubscribe?.(); controller.abort(); });
 }
 
 export function environmentId(): string { return initial.activeId; }
@@ -104,15 +69,24 @@ export function useWorkspaceCatalog(): WorkspaceCatalog {
   return useSyncExternalStore(subscribe, () => workspaces);
 }
 
-export function rememberWorkspaces(projects: Project[], home: string, threads: ThreadMeta[]): void {
+export function rememberWorkspaces(id: string, projects: Project[], home: string, threads: ThreadMeta[], connected: boolean): void {
   const entry = {
     home,
     projects: projects.map(({ id, name, path, isGit, lastOpened }) => ({ id, name, path, isGit, lastOpened })),
     threads: threads.filter(thread => !thread.parentThreadId).map(workspaceThread),
+    connected,
   };
-  if (JSON.stringify(entry) === JSON.stringify(workspaces[initial.activeId])) return;
-  workspaces = { ...workspaces, [initial.activeId]: entry };
-  try { localStorage.setItem("citropy.workspaces", JSON.stringify(workspaces)); } catch {}
+  if (JSON.stringify(entry) === JSON.stringify(workspaces[id])) return;
+  workspaces = { ...workspaces, [id]: entry };
+  saveCatalog();
+  publish();
+}
+
+export function markWorkspaceDisconnected(id: string): void {
+  const current = workspaces[id];
+  if (!current?.connected) return;
+  workspaces = { ...workspaces, [id]: { ...current, connected: false } };
+  saveCatalog();
   publish();
 }
 
@@ -130,26 +104,41 @@ export async function selectEnvironment(id: string, projectId?: string, threadId
     const snapshot = await desktop.connectEnvironment(id);
     if (turn !== selection) return;
     if (id !== "local" && !/^http:\/\/127\.0\.0\.1:\d+$/.test(snapshot.endpoint)) throw new Error("The SSH environment has no local tunnel endpoint.");
-    const [{ connect, disconnect, waitUntilConnected, prepareConnection }, { resetEnvironment, selectProject, selectThread, useApp }] = await Promise.all([import("./socket.ts"), import("./store.ts")]);
+    const [{ connect, connectEnvironment, hasLiveConnection, prepareConnection, refreshBackgroundEnvironments, switchConnection, syncConnections, waitForLiveConnection, waitUntilConnected }, { environmentDefaults, selectProject, selectThread, useApp }] = await Promise.all([import("./socket.ts"), import("./store.ts")]);
     if (turn !== selection) return;
-    const next = pushes === pushesBefore ? snapshot : { ...snapshot, connections: initial.connections };
     if (id !== initial.activeId) {
-      const prepared = await prepareConnection(snapshot.endpoint, pending.signal, threadId);
-      if (turn !== selection) { prepared.socket.close(); return; }
-      disconnect(true);
+      const endpoint = id === "local" ? "" : snapshot.endpoint;
+      if (!hasLiveConnection(id, endpoint)) {
+        const prepared = await prepareConnection(endpoint, pending.signal, threadId);
+        if (turn !== selection) { prepared.socket.close(); return; }
+        const cached = workspaces[id];
+        connectEnvironment(id, endpoint, prepared, environmentDefaults(cached?.projects ?? [], cached?.home ?? "", id));
+      } else await waitForLiveConnection(id, pending.signal);
+      if (turn !== selection) return;
+      const next = pushes === pushesBefore ? snapshot : { ...snapshot, connections: initial.connections };
+      if (id !== "local" && !next.connections.some(entry => entry.id === id && entry.status === "connected" && entry.endpoint === endpoint)) {
+        syncConnections(initial);
+        throw new Error(`The connection to ${connectionName(id)} was closed.`);
+      }
+      const slice = switchConnection(initial.activeId, id);
       controller.abort();
       controller = new AbortController();
-      initial = pushes === pushesBefore ? snapshot : { ...snapshot, connections: initial.connections };
-      resetEnvironment(workspaces[id]?.projects ?? [], workspaces[id]?.home ?? "");
-      connect(prepared);
+      initial = next;
+      useApp.setState(slice);
+      refreshBackgroundEnvironments();
+      syncConnections(initial);
+      publish();
       if (projectId && useApp.getState().projects.some(project => project.id === projectId) && (useApp.getState().activeProjectId !== projectId || (!threadId && useApp.getState().activeThreadId !== null))) selectProject(projectId);
       if (threadId && useApp.getState().threads[threadId]?.projectId === projectId) selectThread(threadId);
-      syncWorkspaces();
-      publish();
+      if (useApp.getState().connected && Object.keys(useApp.getState().offline).length)
+        void import("./offline.ts").then(({ flushHeld }) => flushHeld());
     } else {
+      const next = pushes === pushesBefore ? snapshot : { ...snapshot, connections: initial.connections };
       initial = next;
-      syncWorkspaces();
+      syncConnections(initial);
       publish();
+      if (id !== "local" && !next.connections.some(entry => entry.id === id && entry.status === "connected" && entry.endpoint === snapshot.endpoint))
+        throw new Error(`The connection to ${connectionName(id)} was closed.`);
       connect();
     }
     await waitUntilConnected(controller.signal);

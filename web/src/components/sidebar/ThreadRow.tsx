@@ -2,9 +2,11 @@ import { motion } from "motion/react";
 import type { CSSProperties } from "react";
 import { Clock, GitBranch, GitPullRequest } from "lucide-react";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
-import { finishThread, loadThread, removeThread } from "../../lib/actions.ts";
+import { finishThread, loadThread, openOnEnvironment, removeThread } from "../../lib/actions.ts";
+import { reportError } from "../../lib/api.ts";
 import { modelLabel, threadActivity } from "../../lib/format.ts";
 import { environmentId } from "../../lib/environment.ts";
+import { environmentSlice } from "../../lib/live-environments.ts";
 import { currentLocale, useI18n } from "../../lib/i18n.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
 import { useReducedMotion } from "../../lib/use-reduced-motion.ts";
@@ -17,6 +19,7 @@ import type { ThreadDrag } from "./use-thread-drag.ts";
 import type { ThreadPreviewControls } from "./use-thread-preview.ts";
 import type { SearchMatch } from "./use-thread-search.ts";
 import type { ThreadTree } from "./use-thread-tree.ts";
+import { threadKey } from "./thread-groups.ts";
 
 const SELECTION_TRANSITION = { duration: 0.22, ease: [0.16, 1, 0.3, 1] } as const;
 
@@ -24,8 +27,9 @@ function pullRequestNumber(url: string): string | undefined {
   return url.split("/").at(-1);
 }
 
-export function ThreadRow({ thread, globalMode, query, match, projectName, categoryEnd, drag, preview, tree, onMove, onFinished, onConversation }: {
+export function ThreadRow({ thread, environment, globalMode, query, match, projectName, categoryEnd, drag, preview, tree, onMove, onFinished, onConversation }: {
   thread: ThreadMeta;
+  environment: string;
   globalMode: boolean;
   query: string;
   match?: SearchMatch;
@@ -41,10 +45,12 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
   const t = useI18n();
   const activeThreadId = useApp((state) => state.activeThreadId);
   const activeProjectId = useApp((state) => state.activeProjectId);
-  const connected = useApp((state) => state.connected);
-  const provider = useApp((state) => state.providers.find((entry) => entry.id === thread.provider));
+  const slice = environmentSlice(environment);
+  const connected = slice?.connected ?? false;
+  const provider = slice?.providers.find((entry) => entry.id === thread.provider);
   const reducedMotion = useReducedMotion();
-  const active = thread.id === activeThreadId;
+  const active = environment === environmentId() && thread.id === activeThreadId;
+  const key = threadKey(environment, thread.id);
   const { status, label } = threadActivity(thread);
   const searching = Boolean(query.trim());
   const busy = thread.running || thread.status === "awaiting";
@@ -60,6 +66,12 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
   const open = () => {
     preview.hide();
     onConversation();
+    if (environment !== environmentId()) {
+      void openOnEnvironment(environment, thread.projectId, thread.id).then(() => {
+        useApp.setState({ searchMessageId: match?.messageId ?? null });
+      }).catch(reportError);
+      return;
+    }
     if (thread.projectId !== activeProjectId) selectProject(thread.projectId);
     selectThread(thread.id);
     loadThread(thread.id);
@@ -70,11 +82,11 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
     <div
       className="thread-entry"
       data-thread-id={thread.id}
-      data-environment={environmentId()}
+      data-environment={environment}
       data-category-end={categoryEnd}
-      data-dragging={drag.draggingId === thread.id}
-      style={{ "--thread-shift": `${drag.shifts.get(thread.id) ?? 0}px` } as CSSProperties}
-      onPointerDown={(event) => drag.start(event, thread)}
+      data-dragging={drag.draggingId === key}
+      style={{ "--thread-shift": `${drag.shifts.get(key) ?? 0}px` } as CSSProperties}
+      onPointerDown={(event) => drag.start(event, { thread, environment })}
       onDragStart={(event) => event.preventDefault()}
       onClickCapture={drag.suppressClickAfterDrag}
     >
@@ -109,11 +121,11 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
           data-active={active}
           aria-label={thread.title}
           aria-description={new Date(thread.updatedAt).toLocaleString(currentLocale())}
-          aria-describedby={preview.describedBy(thread.id)}
+          aria-describedby={preview.describedBy(environment, thread.id)}
           aria-current={active ? "page" : undefined}
-          onPointerEnter={(event) => { if (event.pointerType !== "touch") preview.show(event.currentTarget, thread.id); }}
+          onPointerEnter={(event) => { if (event.pointerType !== "touch") preview.show(event.currentTarget, environment, thread.id); }}
           onPointerLeave={preview.leave}
-          onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) preview.show(event.currentTarget, thread.id, true); }}
+          onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) preview.show(event.currentTarget, environment, thread.id, true); }}
           onBlur={preview.hide}
           onClick={open}
         >
@@ -147,7 +159,7 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
           </span>}
         </button>
         <div className="thread-row-actions" onPointerEnter={preview.hide}>
-          <ConversationMenu thread={thread} onMove={onMove} />
+          <ConversationMenu thread={thread} environment={environment} onMove={onMove} />
           {globalMode && thread.pullRequest && <a
             className="thread-row-pr"
             href={thread.pullRequest}
@@ -163,7 +175,7 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
             aria-label={finishLabel}
             disabled={!connected || busy || childRunning}
             onClick={() => {
-              finishThread(thread.id, !thread.finished);
+              finishThread(thread.id, !thread.finished, environment);
               if (!thread.finished) onFinished();
             }}
           >
@@ -174,7 +186,7 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
             type="button"
             aria-label={`${t("Delete")} ${thread.title}`}
             title={`${t("Delete")} ${thread.title}`}
-            onClick={() => removeThread(thread.id)}
+            onClick={() => void removeThread(thread.id, environment).catch(reportError)}
           >
             <Trash2 size={13} />
           </button>
@@ -186,7 +198,7 @@ export function ThreadRow({ thread, globalMode, query, match, projectName, categ
           {t("Pull request")} #{pullRequestNumber(thread.pullRequest)}
         </a>
       )}
-      {!query && <ThreadChildren parent={thread} {...tree} activeThreadId={activeThreadId} onConversation={onConversation} />}
+      {!query && <ThreadChildren parent={thread} environment={environment} {...tree} activeThreadId={environment === environmentId() ? activeThreadId : null} onConversation={onConversation} />}
     </div>
   );
 }

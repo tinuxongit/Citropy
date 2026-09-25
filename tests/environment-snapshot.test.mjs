@@ -30,7 +30,7 @@ test("a connection snapshot that finishes loading late does not erase a newer di
       const connection = { id: "ssh-test", name: "Build server", target: "dev@buildbox", port: 22, node: "node", status: startingEnvironment === "local" ? "disconnected" : "connected" };
       let activeId = startingEnvironment;
       const listeners = new Set();
-      const state = () => ({ activeId, endpoint: activeId === "local" ? "" : "http://127.0.0.1:49121", connections: [{ ...connection }] });
+      const state = () => ({ activeId, endpoint: activeId === "local" ? "" : "http://127.0.0.1:49121", connections: [{ ...connection, endpoint: connection.status === "connected" ? "http://127.0.0.1:49121" : undefined }] });
       const emit = () => { for (const listener of listeners) listener(state()); };
       window.showConnectionProgress = () => { connection.status = "connecting"; connection.message = "Installing remote backend…"; emit(); };
       window.citropyDesktop = {
@@ -94,11 +94,12 @@ test("a connection snapshot that finishes loading late does not erase a newer di
       return [environmentId(), useApp.getState().connected, useApp.getState().threadOrder.length];
     }), ["local", true, 1]);
     releaseHello();
-    await historyReady;
-    assert.equal(await page.evaluate(async () => (await import("/web/src/lib/environment.ts")).environmentId()), "local");
-    releaseHistory();
     await page.evaluate(() => window.selection);
     assert.equal(await page.evaluate(async () => (await import("/web/src/lib/environment.ts")).environmentId()), "ssh-test");
+    await historyReady;
+    releaseHistory();
+    await page.evaluate(async () => { window.environmentStore = (await import("/web/src/lib/store.ts")).useApp; });
+    await page.waitForFunction(() => window.environmentStore.getState().loaded.task);
     assert.equal(await page.evaluate(() => window.navigationNodes.every(node => node?.isConnected)), true);
     assert.deepEqual(await page.evaluate(async () => {
       const state = (await import("/web/src/lib/store.ts")).useApp.getState();
@@ -121,9 +122,11 @@ test("a connection snapshot that finishes loading late does not erase a newer di
       await page.waitForFunction(() => window.releaseSnapshot);
       await page.evaluate(() => window.citropyDesktop.disconnectEnvironment("ssh-test"));
       await page.evaluate(() => window.releaseSnapshot());
-      await page.evaluate(() => window.selection);
+      await assert.rejects(page.evaluate(() => window.selection), /closed/);
       await settle(page);
-      assert.equal(await banner.count(), 1);
+      assert.equal(await page.evaluate(async () => (await import("/web/src/lib/environment.ts")).environmentId()), startingEnvironment);
+      assert.equal(await banner.count(), startingEnvironment === "local" ? 0 : 1);
+      if (startingEnvironment === "local") { assert.deepEqual(errors, []); await page.close(); return; }
       await page.evaluate(() => window.showConnectionProgress());
       for (const width of [1440, 620]) {
         await page.setViewportSize({ width, height: 900 });

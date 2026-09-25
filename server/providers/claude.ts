@@ -1,18 +1,14 @@
-import { commandVersion } from "./binary.ts";
+import { commandVersion, spawnCommand } from "./binary.ts";
 import { stopProcess } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverModels } from "./models.ts";
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { onJson, onLines } from "../lines.ts";
 import { permissionToolName } from "../permissions.ts";
-import type { AgentEvent, AgentSession, Provider, StartOptions } from "./types.ts";
+import type { AgentEvent, AgentSession, Provider, SessionConfig, StartOptions } from "./types.ts";
 import type { Attachment, PermissionMode, TodoItem } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
-
-const run = promisify(execFile);
 
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
 
@@ -95,12 +91,18 @@ class ClaudeSession implements AgentSession {
   #contextTokens = 0;
   #manualCompaction = false;
   #compacted = false;
+  #effort?: string;
+  #fastMode: boolean;
+  #permissionMode: PermissionMode;
 
   constructor(options: StartOptions) {
     this.#emit = options.emit;
     this.#usage = new MessageUsage(options.usage);
     this.#initialUsage = { ...this.#usage.totals };
     this.#model = options.model;
+    this.#effort = options.effort;
+    this.#fastMode = options.fastMode ?? false;
+    this.#permissionMode = options.permissionMode;
     this.#contextMax = options.contextMax ?? 200_000;
     const contextTokens = options.usage?.contextTokens ?? 0;
     this.#contextTokens = contextTokens <= this.#contextMax ? contextTokens : 0;
@@ -135,11 +137,12 @@ class ClaudeSession implements AgentSession {
     );
     if (options.externalId) args.push("--resume", options.externalId);
 
-    this.#child = spawn("claude", args, {
+    this.#child = spawnCommand(options.binary ?? "claude", args, {
       detached: process.platform !== "win32",
       cwd: options.cwd,
       env: {
         ...process.env,
+        ...options.environment,
         FORCE_COLOR: "0",
         ...(options.contextMax
           ? {
@@ -217,15 +220,34 @@ class ClaudeSession implements AgentSession {
 
   stopShell(taskId: string): Promise<void> {
     if (!this.#shells.has(taskId)) return Promise.resolve();
+    return this.#control({ subtype: "stop_task", task_id: taskId }, "Claude did not confirm that the shell stopped.");
+  }
+
+  async configure(config: SessionConfig): Promise<void> {
+    if (config.effort !== this.#effort ||
+      (config.contextMax ?? 200_000) !== this.#contextMax ||
+      (config.fastMode ?? false) !== this.#fastMode)
+      throw new Error("Claude must restart to apply this setting.");
+    if (config.model !== undefined && config.model !== this.#model) {
+      await this.#control({ subtype: "set_model", model: config.model === "default" ? null : config.model.replace(/\[1m\]$/i, "") + (this.#contextMax === 1_000_000 ? "[1m]" : "") }, "Claude did not confirm the model change.");
+      this.#model = config.model;
+    }
+    if (config.permissionMode !== undefined && config.permissionMode !== this.#permissionMode) {
+      await this.#control({ subtype: "set_permission_mode", mode: MODES[config.permissionMode] }, "Claude did not confirm the permission change.");
+      this.#permissionMode = config.permissionMode;
+    }
+  }
+
+  #control(request: Record<string, unknown>, timeoutMessage: string): Promise<void> {
     if (this.#disposed || !this.#child.stdin.writable) return Promise.reject(new Error("Claude session has closed."));
     return new Promise((resolve, reject) => {
-      const requestId = `shell-stop-${++this.#nextControl}`;
+      const requestId = `control-${++this.#nextControl}`;
       const timer = setTimeout(() => {
         this.#controls.delete(requestId);
-        reject(new Error("Claude did not confirm that the shell stopped."));
+        reject(new Error(timeoutMessage));
       }, 10000);
       this.#controls.set(requestId, { resolve, reject, timer });
-      this.#child.stdin.write(`${JSON.stringify({ type: "control_request", request_id: requestId, request: { subtype: "stop_task", task_id: taskId } })}\n`);
+      this.#child.stdin.write(`${JSON.stringify({ type: "control_request", request_id: requestId, request })}\n`);
     });
   }
 
@@ -296,7 +318,7 @@ class ClaudeSession implements AgentSession {
       if (pending) {
         this.#controls.delete(id);
         clearTimeout(pending.timer);
-        if (response?.subtype === "error") pending.reject(new Error(response.error ?? "Claude could not stop this shell."));
+        if (response?.subtype === "error") pending.reject(new Error(response.error ?? "Claude rejected the control request."));
         else pending.resolve();
       }
       return;
@@ -511,18 +533,10 @@ export const claudeProvider: Provider = {
   capabilities: { transport: "stdio", steer: true, compact: true, stopShell: true },
   steerHint: "Claude Code reads it at its next step.",
   models: [],
-  listModels: () => discoverModels("claude"),
-  async detect() {
-    if (process.platform === "win32") {
-      const version = await commandVersion("claude");
-      return { available: Boolean(version), version };
-    }
-    try {
-      const { stdout } = await run("claude", ["--version"], { timeout: 8000 });
-      return { available: true, version: stdout.trim().split("\n")[0] };
-    } catch {
-      return { available: false };
-    }
+  listModels: (launch) => discoverModels("claude", launch),
+  async detect(launch) {
+    const version = await commandVersion(launch?.binary ?? "claude", 8000, launch?.environment);
+    return { available: Boolean(version), version };
   },
   start(options) {
     return new ClaudeSession(options);

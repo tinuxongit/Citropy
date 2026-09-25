@@ -89,7 +89,7 @@ export const cursorProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "rpc", steer: false, compact: false, stopShell: false },
   models: [],
-  listModels: cursorModels,
-  detect: () => acpDetect(cursorConfig),
+  listModels: (launch) => launch ? acpModels(cursorConfig, launch) : cursorModels(),
+  detect: (launch) => acpDetect(cursorConfig, launch),
   start: (options) => new AcpSession(cursorConfig, options),
 };

@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createServer } from "node:http";
 
 async function waitFor(check) {
   for (let attempt = 0; attempt < 200; attempt++) {
@@ -24,6 +25,7 @@ test("Pi maps RPC events and routes tool approval through the app", async t => {
   await writeFile(binary, `#!${process.execPath}
 import { appendFileSync } from "node:fs";
 if (process.argv.includes("--version")) { process.stdout.write("1.0.0\\n"); process.exit(0); }
+appendFileSync(process.env.FAKE_PI_LOG, JSON.stringify({ type: "startup", args: process.argv.slice(2), mcpUrl: process.env.CITROPY_PI_MCP_URL, mcpAuthorization: process.env.CITROPY_PI_MCP_AUTHORIZATION, tools: JSON.parse(process.env.CITROPY_PI_TOOLS || "[]").map(tool => tool.name) }) + "\\n");
 let buffer = "";
 const send = value => process.stdout.write(JSON.stringify(value) + "\\n");
 process.stdin.on("data", chunk => {
@@ -61,7 +63,7 @@ process.stdin.on("data", chunk => {
   const project = store.openProject(root);
   const thread = store.createThread({ projectId: project.id, provider: "pi", title: "Pi check", permissionMode: "manual" });
   const events = [];
-  const session = piProvider.start({ threadId: thread.id, cwd: root, model: "openai/test", permissionMode: "manual", emit: event => events.push(event) });
+  const session = piProvider.start({ threadId: thread.id, cwd: root, model: "openai/test", permissionMode: "manual", mcp: { url: "http://127.0.0.1:1234/mcp/test", headers: { Authorization: "Bearer secret" } }, emit: event => events.push(event) });
   t.after(async () => { session.dispose(); process.env = old; await rm(root, { recursive: true, force: true }); });
   assert.deepEqual(await piProvider.detect(), { available: true, version: "1.0.0" });
   assert.deepEqual((await piProvider.listModels()).map(model => [model.id, model.hint, model.isDefault]), [["openai/test", "openai", true]]);
@@ -76,6 +78,12 @@ process.stdin.on("data", chunk => {
   assert.equal(events.find(event => event.type === "tool.end").output, "files");
   assert.equal(events.find(event => event.type === "usage").usage.input, 10);
   const commands = (await readFile(log, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+  const startup = commands.find(command => command.type === "startup");
+  assert.ok(startup.args.includes("--extension"));
+  assert.ok(startup.args.some(arg => arg.endsWith("pi-tools.mjs")));
+  assert.equal(startup.mcpUrl, "http://127.0.0.1:1234/mcp/test");
+  assert.equal(startup.mcpAuthorization, "Bearer secret");
+  assert.deepEqual(startup.tools, ["ask_user", "tool_help", "run_tool"]);
   assert.equal(commands.find(command => command.type === "extension_ui_response").confirmed, true);
   assert.equal(commands.find(command => command.type === "prompt").message, "hello");
 });
@@ -98,8 +106,38 @@ test("Pi permission extension blocks changes in plan mode and asks in manual mod
     assert.equal(await handler({ toolName: "edit", input: {} }, ctx), undefined);
     process.env.CITROPY_PI_PERMISSION_MODE = "bypass";
     assert.equal(await handler({ toolName: "bash", input: {} }, ctx), undefined);
+    process.env.CITROPY_PI_PERMISSION_MODE = "plan";
+    assert.equal(await handler({ toolName: "run_tool", input: {} }, ctx), undefined);
   } finally {
     if (previous === undefined) delete process.env.CITROPY_PI_PERMISSION_MODE;
     else process.env.CITROPY_PI_PERMISSION_MODE = previous;
   }
+});
+
+test("Pi exposes Citropy tools through its authenticated MCP extension", async t => {
+  const { default: extension } = await import("../server/providers/pi-tools.mjs");
+  const { workspaceTools, discoveryTools } = await import("../server/mcp-catalog.ts");
+  const received = [];
+  const server = createServer(async (request, response) => {
+    let body = "";
+    for await (const chunk of request) body += chunk;
+    received.push({ authorization: request.headers.authorization, body: JSON.parse(body) });
+    response.setHeader("content-type", "application/json");
+    response.end(JSON.stringify({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: "done" }, { type: "image", mimeType: "image/png", data: "aGVsbG8=" }], isError: false } }));
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => server.close());
+  const previous = Object.fromEntries(["CITROPY_PI_MCP_URL", "CITROPY_PI_MCP_AUTHORIZATION", "CITROPY_PI_TOOLS"].map(key => [key, process.env[key]]));
+  process.env.CITROPY_PI_MCP_URL = `http://127.0.0.1:${server.address().port}/mcp/test`;
+  process.env.CITROPY_PI_MCP_AUTHORIZATION = "Bearer secret";
+  process.env.CITROPY_PI_TOOLS = JSON.stringify([workspaceTools.find(tool => tool.name === "ask_user"), ...discoveryTools]);
+  t.after(() => { for (const [key, value] of Object.entries(previous)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } });
+  const tools = [];
+  extension({ registerTool: tool => tools.push(tool) });
+  assert.deepEqual(tools.map(tool => tool.name), ["ask_user", "tool_help", "run_tool"]);
+  assert.deepEqual(tools.find(tool => tool.name === "run_tool").parameters.required, ["name", "arguments"]);
+  const result = await tools.find(tool => tool.name === "run_tool").execute("call", { name: "browser_tabs", arguments: {} }, new AbortController().signal);
+  assert.equal(received[0].authorization, "Bearer secret");
+  assert.deepEqual(received[0].body.params, { name: "run_tool", arguments: { name: "browser_tabs", arguments: {} } });
+  assert.deepEqual(result.content.map(part => part.type), ["text", "image"]);
 });

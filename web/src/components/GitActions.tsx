@@ -162,7 +162,7 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
       </div>
       <footer className="git-panel-footer">
         <span>{t("Commit model")}</span>
-        <ModelPicker label={t("Commit model")} value={selection} fallback={{ provider: thread.provider, model: thread.model ?? "default" }} allowConversation disabled={!connected || busy || savingModel} onChange={(value) => void changeModel(value)} />
+        <ModelPicker label={t("Commit model")} value={selection} fallback={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: thread.model ?? "default" }} allowConversation disabled={!connected || busy || savingModel} onChange={(value) => void changeModel(value)} />
         {!busy && !error && state?.status === "success" && <details className="git-panel-result">
           <summary><ChevronRight size={13} /><span>{t(state.action === "commit" ? "Last commit" : "Last push")}</span>{state.commit && <code>{state.commit.slice(0, 8)}</code>}</summary>
           <p>{state.message || t("Push finished")}</p>

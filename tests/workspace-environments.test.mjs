@@ -18,8 +18,10 @@ test("folder controls work across environments without entering a conversation",
   const errors = [];
   const commands = [];
   const requests = [];
-  const feeds = new Map();
   const sockets = new Map();
+  let holdRemoteHello = false;
+  let releaseRemoteHello;
+  const remoteReconnect = Promise.withResolvers();
   const threads = { local: [], "ssh-test": [] };
   const projects = Object.fromEntries(["local", "ssh-test"].map(environment => [environment, ["shared", "second"].map((id, index) => ({ id, path: `/workspace/${id}`, name: `${environment === "local" ? "Local" : "Remote"} ${index + 1}`, isGit: false, lastOpened: 1 }))]));
   page.on("pageerror", error => errors.push(error.message));
@@ -58,13 +60,7 @@ test("folder controls work across environments without entering a conversation",
   });
   await page.routeWebSocket("**/socket*", socket => {
     const environment = socket.url().includes(":49121/") ? "ssh-test" : "local";
-    if (new URL(socket.url()).searchParams.has("workspace")) {
-      feeds.set(environment, socket);
-      socket.onMessage(raw => commands.push({ environment, background: true, ...JSON.parse(raw) }));
-      socket.onClose(() => { if (feeds.get(environment) === socket) feeds.delete(environment); });
-      socket.send(JSON.stringify({ t: environment === "ssh-test" ? "hello" : "workspace.snapshot", snapshot: { home: "/home", projects: projects[environment], threads: threads[environment] } }));
-      return;
-    }
+    assert.equal(new URL(socket.url()).searchParams.has("workspace"), false);
     sockets.set(environment, socket);
     socket.onMessage(raw => {
       const event = JSON.parse(raw);
@@ -79,8 +75,18 @@ test("folder controls work across environments without entering a conversation",
         projects[environment] = projects[environment].filter(project => project.id !== event.id);
         socket.send(JSON.stringify({ t: "project.remove", id: event.id }));
       }
+      if (event.t === "thread.finish") {
+        const thread = threads[environment].find(thread => thread.id === event.id);
+        if (thread) socket.send(JSON.stringify({ t: "thread.upsert", thread: { ...thread, finished: event.finished } }));
+      }
+      if (event.t === "thread.remove") {
+        threads[environment] = threads[environment].filter(thread => thread.id !== event.id);
+        socket.send(JSON.stringify({ t: "thread.remove", id: event.id }));
+      }
     });
-    socket.send(JSON.stringify({ t: "hello", snapshot: { projects: projects[environment], threads: threads[environment], providers: [], permissions: [], home: "/home" } }));
+    const hello = () => socket.send(JSON.stringify({ t: "hello", snapshot: { projects: projects[environment], threads: threads[environment], providers: [], permissions: [], home: "/home" } }));
+    if (environment === "ssh-test" && holdRemoteHello) { releaseRemoteHello = hello; remoteReconnect.resolve(); }
+    else hello();
   });
   await page.goto(server.resolvedUrls.local[0]);
   const heading = (environment, id) => page.locator(`.global-project-heading[data-environment="${environment}"][data-project-id="${id}"]`);
@@ -154,7 +160,7 @@ test("folder controls work across environments without entering a conversation",
       page.getByRole("dialog", { name: "Remove project?", exact: true }).getByRole("button", { name: "Remove project", exact: true }).click(),
     ]);
     projects["ssh-test"] = projects["ssh-test"].filter(project => project.id !== "second");
-    feeds.get("ssh-test").send(JSON.stringify({ t: "project.remove", id: "second" }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "project.remove", id: "second" }));
     await heading("ssh-test", "second").waitFor({ state: "detached" });
     assert.ok(projects.local.some(project => project.id === "second"));
     assert.equal(await page.evaluate(() => window.hostConnections.length), connections);
@@ -163,7 +169,7 @@ test("folder controls work across environments without entering a conversation",
   await t.test("the workspace picker removes folders from any host", async () => {
     const added = { id: "picker-folder", name: "Picker folder", path: "/workspace/picker", isGit: false, lastOpened: 3 };
     projects["ssh-test"].push(added);
-    feeds.get("ssh-test").send(JSON.stringify({ t: "project.upsert", project: added }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "project.upsert", project: added }));
     await heading("ssh-test", added.id).waitFor();
     await page.getByRole("button", { name: "Add project", exact: true }).click();
     const menu = page.getByRole("menu");
@@ -175,18 +181,18 @@ test("folder controls work across environments without entering a conversation",
         await page.getByRole("dialog", { name: "Remove project?", exact: true }).getByRole("button", { name: "Remove project", exact: true }).click();
       })(),
     ]);
-    feeds.get("ssh-test").send(JSON.stringify({ t: "project.remove", id: added.id }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "project.remove", id: added.id }));
     await heading("ssh-test", added.id).waitFor({ state: "detached" });
     assert.deepEqual(await state(), ["local", "shared", null]);
   });
   assert.ok(!commands.some(event => ["thread.load", "thread.create", "thread.send"].includes(event.t)));
-  await t.test("inactive hosts keep live activity with both current and older SSH backends", async () => {
+  await t.test("inactive hosts keep live activity", async () => {
     await edit("ssh-test", "shared", "Open workspace");
     await page.waitForFunction(async () => (await import("/web/src/lib/environment.ts")).environmentId() === "ssh-test");
     const thread = environment => ({ id: "same-thread", projectId: "shared", provider: "codex", title: `${environment} task`, createdAt: 1, updatedAt: 1, status: "working", running: true, model: "test", permissionMode: "full", usage: {}, unread: false });
     threads.local.push(thread("local"));
     threads["ssh-test"].push(thread("ssh-test"));
-    feeds.get("local").send(JSON.stringify({ t: "workspace.thread", thread: threads.local[0] }));
+    sockets.get("local").send(JSON.stringify({ t: "thread.upsert", thread: threads.local[0] }));
     sockets.get("ssh-test").send(JSON.stringify({ t: "thread.upsert", thread: threads["ssh-test"][0] }));
     const row = environment => page.locator(`.thread-entry[data-environment="${environment}"][data-thread-id="same-thread"]`);
     await row("local").getByRole("img", { name: "Working", exact: true }).waitFor();
@@ -194,7 +200,7 @@ test("folder controls work across environments without entering a conversation",
       await heading("ssh-test", "shared").locator(".global-project-toggle").click();
     await row("ssh-test").getByRole("img", { name: "Working", exact: true }).waitFor();
     threads.local[0] = { ...threads.local[0], status: "awaiting", running: false, title: "Local waiting" };
-    feeds.get("local").send(JSON.stringify({ t: "workspace.thread", thread: threads.local[0] }));
+    sockets.get("local").send(JSON.stringify({ t: "thread.upsert", thread: threads.local[0] }));
     await row("local").getByRole("img", { name: "Needs input", exact: true }).waitFor();
     await row("local").getByText("Local waiting", { exact: true }).waitFor();
     await row("ssh-test").getByRole("img", { name: "Working", exact: true }).waitFor();
@@ -202,22 +208,26 @@ test("folder controls work across environments without entering a conversation",
     await edit("local", "shared", "Open workspace");
     await row("local").getByRole("img", { name: "Needs input", exact: true }).waitFor();
     await row("ssh-test").getByRole("img", { name: "Working", exact: true }).waitFor();
-    feeds.get("ssh-test").close();
+    holdRemoteHello = true;
+    sockets.get("ssh-test").close();
     await row("ssh-test").getByRole("img", { name: "Disconnected", exact: true }).waitFor();
+    await remoteReconnect.promise;
+    holdRemoteHello = false;
+    releaseRemoteHello();
     await row("ssh-test").getByRole("img", { name: "Working", exact: true }).waitFor();
     threads["ssh-test"][0] = { ...threads["ssh-test"][0], status: "error", running: false };
-    feeds.get("ssh-test").send(JSON.stringify({ t: "thread.upsert", thread: threads["ssh-test"][0] }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "thread.upsert", thread: threads["ssh-test"][0] }));
     await row("ssh-test").getByRole("img", { name: "Failed", exact: true }).waitFor();
-    for (let index = 0; index < 20; index++) feeds.get("ssh-test").send(JSON.stringify({ t: "thread.upsert", thread: { ...threads["ssh-test"][0], updatedAt: index, usage: { outputTokens: index } } }));
-    feeds.get("ssh-test").send(JSON.stringify({ t: "term.data", id: "terminal", data: "Background terminal output" }));
-    feeds.get("ssh-test").send(JSON.stringify({ t: "thread.upsert", thread: { ...threads["ssh-test"][0], id: "child", parentThreadId: "same-thread", title: "Background child" } }));
+    for (let index = 0; index < 20; index++) sockets.get("ssh-test").send(JSON.stringify({ t: "thread.upsert", thread: { ...threads["ssh-test"][0], updatedAt: index, usage: { outputTokens: index } } }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "term.data", id: "terminal", data: "Background terminal output" }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "thread.upsert", thread: { ...threads["ssh-test"][0], id: "child", parentThreadId: "same-thread", title: "Background child" } }));
     assert.deepEqual(await state(), ["local", "shared", "same-thread"]);
     const added = { id: "new-folder", name: "Created remotely", path: "/workspace/new", isGit: false, lastOpened: 2 };
-    feeds.get("ssh-test").send(JSON.stringify({ t: "project.upsert", project: added }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "project.upsert", project: added }));
     await heading("ssh-test", added.id).getByText(added.name, { exact: true }).waitFor();
     assert.equal(await page.getByText("Background terminal output", { exact: true }).count(), 0);
     assert.equal(await page.getByText("Background child", { exact: true }).count(), 0);
-    feeds.get("ssh-test").send(JSON.stringify({ t: "project.remove", id: added.id }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "project.remove", id: added.id }));
     await heading("ssh-test", added.id).waitFor({ state: "detached" });
     await page.evaluate(() => window.setRemoteStatus("disconnected"));
     await row("ssh-test").getByRole("img", { name: "Disconnected", exact: true }).waitFor();
@@ -226,14 +236,13 @@ test("folder controls work across environments without entering a conversation",
     await page.evaluate(() => window.setRemoteStatus("connected"));
     await row("ssh-test").getByRole("img", { name: "Disconnected", exact: true }).waitFor({ state: "detached" });
     assert.equal(await row("ssh-test").locator(".thread-status").count(), 0);
-    feeds.get("ssh-test").send(JSON.stringify({ t: "thread.remove", id: "same-thread" }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "thread.remove", id: "same-thread" }));
     await row("ssh-test").waitFor({ state: "detached" });
     assert.equal(await row("local").count(), 1);
-    assert.ok(!commands.some(event => event.background));
   });
   await t.test("threads on an inactive host can be edited without switching to it", async () => {
     const remote = { id: "remote-thread", projectId: "shared", provider: "codex", title: "Remote task", createdAt: 1, updatedAt: 1, status: "idle", running: false };
-    feeds.get("ssh-test").send(JSON.stringify({ t: "workspace.thread", thread: remote }));
+    sockets.get("ssh-test").send(JSON.stringify({ t: "thread.upsert", thread: remote }));
     const row = page.locator('.thread-entry[data-environment="ssh-test"][data-thread-id="remote-thread"]');
     const connections = await page.evaluate(() => window.hostConnections.length);
     await row.waitFor();
@@ -247,17 +256,12 @@ test("folder controls work across environments without entering a conversation",
     await dialog.waitFor({ state: "detached" });
     assert.deepEqual(JSON.parse(sent("PATCH", "threads/organize?threadId=remote-thread").body), { title: "Renamed remote task" });
     await row.hover();
-    const [finish] = await Promise.all([
-      page.waitForRequest(request => request.method() === "POST" && request.url() === "http://127.0.0.1:49121/api/threads/finish?threadId=remote-thread"),
-      row.getByRole("button", { name: "Finish Remote task", exact: true }).click(),
-    ]);
-    assert.deepEqual(JSON.parse(finish.postData()), { finished: true });
+    await row.getByRole("button", { name: "Finish Remote task", exact: true }).click();
+    assert.ok(commands.some(event => event.environment === "ssh-test" && event.t === "thread.finish" && event.id === "remote-thread" && event.finished));
     await row.hover();
     await row.getByRole("button", { name: "Delete Remote task", exact: true }).click();
-    await Promise.all([
-      page.waitForRequest(request => request.method() === "DELETE" && request.url() === "http://127.0.0.1:49121/api/threads?threadId=remote-thread"),
-      page.getByRole("dialog").getByRole("button", { name: "Delete conversation", exact: true }).click(),
-    ]);
+    await page.getByRole("dialog").getByRole("button", { name: "Delete conversation", exact: true }).click();
+    assert.ok(commands.some(event => event.environment === "ssh-test" && event.t === "thread.remove" && event.id === "remote-thread"));
     assert.deepEqual(await state(), ["local", "shared", "same-thread"]);
     assert.equal(await page.evaluate(() => window.hostConnections.length), connections);
   });

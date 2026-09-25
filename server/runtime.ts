@@ -10,6 +10,7 @@ import { workspacePath } from "./workspaces.ts";
 import { mentionedSkills } from "./skills.ts";
 import { expandCommand } from "./commands.ts";
 import { providers } from "./providers/index.ts";
+import { providerInfo } from "./provider-registry.ts";
 import { receiveAgentEvent } from "./providers/events.ts";
 import { beginCheckpoint, finishCheckpoint, checkpointBusy, historyPrompt } from "./checkpoints.ts";
 import { prepareContext, prepareTransferContext, transferPrompt } from "./context.ts";
@@ -114,7 +115,7 @@ export class ThreadRuntime {
     finally { this.#preparing = false; this.#pump(); }
   }
 
-  async transfer(provider: ProviderInfo, modelId: string): Promise<void> {
+  async transfer(provider: ProviderInfo, modelId: string, providerInstanceId?: string): Promise<void> {
     assertApplicationReady();
     assertProviderReady(provider.id);
     const thread = this.#thread;
@@ -124,11 +125,14 @@ export class ThreadRuntime {
       throw new Error("Transfer is only available in an existing chat.");
     if ([...store.threads.values()].some(child => child.parentThreadId === this.id && (child.running || child.status === "awaiting")))
       throw new Error("Wait for this conversation's subagents to finish before transferring.");
-    if (!provider.available || !provider.enabled || store.disabledProviders.has(provider.id))
+    const instance = providerInstanceId ? provider.instances?.find(entry => entry.id === providerInstanceId) : undefined;
+    if (providerInstanceId && (!instance || store.providerInstances.get(providerInstanceId)?.provider !== provider.id)) throw new Error("This provider account is unavailable.");
+    if (!(instance ? instance.available : provider.available) || !provider.enabled || store.disabledProviders.has(provider.id))
       throw new Error("Select an enabled, installed provider.");
-    const model = selectedModel(provider.models, modelId);
+    const models = instance?.models ?? provider.models;
+    const model = selectedModel(models, modelId);
     if (!model) throw new Error("This model is no longer available. Refresh the model list.");
-    if (provider.id === thread.provider && model.id === selectedModel(provider.models, thread.model)?.id)
+    if (providerInstanceId === thread.providerInstanceId && provider.id === thread.provider && model.id === selectedModel(models, thread.model)?.id)
       throw new Error("Choose another model for the transfer.");
     if (workspaceGitBusy(this.#cwd) || checkpointBusy(this.#cwd))
       throw new Error("Wait for workspace changes to finish before transferring.");
@@ -141,7 +145,8 @@ export class ThreadRuntime {
       assertApplicationReady();
       assertProviderReady(provider.id);
       if (store.disabledProviders.has(provider.id)) throw new Error("Enable this provider before transferring.");
-      const previous = { provider: thread.provider, model: thread.model, externalId: thread.externalId, usage: { ...thread.usage }, at: Date.now() };
+      if (providerInstanceId && store.providerInstances.get(providerInstanceId)?.provider !== provider.id) throw new Error("This provider account is unavailable.");
+      const previous = { provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: thread.model, externalId: thread.externalId, usage: { ...thread.usage }, at: Date.now() };
       this.#buildPlan = false;
       this.#closeSession();
       this.#transcript.reset();
@@ -153,10 +158,12 @@ export class ThreadRuntime {
       assertApplicationReady();
       assertProviderReady(provider.id);
       if (store.disabledProviders.has(provider.id)) throw new Error("Enable this provider before transferring.");
+      if (providerInstanceId && store.providerInstances.get(providerInstanceId)?.provider !== provider.id) throw new Error("This provider account is unavailable.");
       store.replaceMessages(this.id, thread.messages.map(message => message.role === "assistant" ? { ...message, provider: message.provider ?? previous.provider, model: message.model ?? previous.model } : message));
       store.patchThread(this.id, {
         provider: provider.id,
-        ...modelSettings(provider.models, { model: model.id }),
+        providerInstanceId,
+        ...modelSettings(models, { model: model.id }),
         pendingConfig: undefined,
         externalId: undefined,
         usage: emptyUsage(),
@@ -477,17 +484,26 @@ export class ThreadRuntime {
     this.#session = null;
   }
 
+  #models(): ProviderInfo["models"] {
+    const provider = providers[this.#thread.provider];
+    return this.#thread.providerInstanceId
+      ? providerInfo().find(entry => entry.id === provider.id)?.instances?.find(entry => entry.id === this.#thread.providerInstanceId)?.models ?? []
+      : provider.models;
+  }
+
   #ensureSession(): AgentSession {
     if (this.#session) return this.#session;
     const provider = providers[this.#thread.provider];
+    const instance = this.#thread.providerInstanceId ? store.providerInstances.get(this.#thread.providerInstanceId) : undefined;
+    if (this.#thread.providerInstanceId && (!instance || instance.provider !== provider.id)) throw new Error("The provider instance for this conversation is unavailable. Restore it in Provider settings.");
+    const models = this.#models();
     const project = store.projects.get(this.#thread.projectId);
     if (!project) throw new Error(`thread ${this.#thread.id} has no project`);
-    store.patchThread(
-      this.#thread.id,
-      modelSettings(provider.models, this.#thread),
-    );
+    if (models.length) store.patchThread(this.#thread.id, modelSettings(models, this.#thread));
     const generation = ++this.#sessionGeneration;
     this.#session = provider.start({
+      binary: instance?.binary,
+      environment: instance?.environment,
       mcp: connectTools(this.#thread.id),
       threadId: this.#thread.id,
       cwd: this.#cwd,
@@ -495,7 +511,7 @@ export class ThreadRuntime {
       effort: this.#thread.effort,
       contextMax: this.#thread.contextWindow,
       fastMode: this.#thread.fastMode,
-      fastModeTier: provider.models.find((model) => model.id === this.#thread.model)?.fastModeTier,
+      fastModeTier: models.find((model) => model.id === this.#thread.model)?.fastModeTier,
       permissionMode: this.#thread.permissionMode,
       externalId: this.#thread.externalId,
       usage: { ...this.#thread.usage },
@@ -516,7 +532,7 @@ export class ThreadRuntime {
   }
 
   #applyUsage(incoming?: Partial<Usage>): void {
-    const model = selectedModel(providers[this.#thread.provider].models, this.#thread.model);
+    const model = selectedModel(this.#models(), this.#thread.model);
     store.setUsage(this.id, mergeUsage({
       previous: this.#thread.usage,
       incoming,
@@ -657,7 +673,7 @@ export class ThreadRuntime {
       externalId: event.externalId || this.#thread.externalId,
       model: this.#thread.model ?? event.model,
     });
-    const contextMax = event.contextMax ?? this.#thread.contextWindow ?? selectedModel(providers[this.#thread.provider].models, sessionModel)?.contextMax;
+    const contextMax = event.contextMax ?? this.#thread.contextWindow ?? selectedModel(this.#models(), sessionModel)?.contextMax;
     if (contextMax) this.#applyUsage({ contextMax });
     if (event.model === undefined || event.model === (this.#thread.model ?? event.model)) {
       const reported: Partial<Thread> = {};

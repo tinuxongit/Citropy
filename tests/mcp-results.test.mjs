@@ -185,3 +185,35 @@ test("invalid subagent model and effort return usable options without creating a
   await assert.rejects(call("subagent_start", { title: "Task", task: "Review", model: "model-1", effort: "unknown" }), /Supported efforts: none for this model\. Omit effort/);
   assert.equal(store.threads.size, before);
 });
+
+test("subagents inherit a named account when its default CLI is unavailable", async () => {
+  const { refreshProvidersNow } = await import("../server/provider-registry.ts");
+  const { disposeRuntime } = await import("../server/runtime.ts");
+  const originals = Object.values(providers).map(provider => ({ provider, detect: provider.detect, listModels: provider.listModels, start: provider.start }));
+  const instance = store.saveProviderInstance({ provider: "pi", name: "Remote account", environment: { CITROPY_TEST_ACCOUNT: "remote" } });
+  const accountParent = store.createThread({ projectId: project.id, provider: "pi", providerInstanceId: instance.id, model: "remote/model", title: "Account parent", permissionMode: "plan" });
+  let launched;
+  try {
+    for (const provider of Object.values(providers)) provider.detect = async () => ({ available: false });
+    providers.pi.detect = async launch => ({ available: launch?.environment?.CITROPY_TEST_ACCOUNT === "remote" });
+    providers.pi.listModels = async () => [{ id: "remote/model", label: "Remote model", efforts: ["high"] }];
+    providers.pi.start = options => { launched = options; return { send() {}, interrupt() {}, dispose() {} }; };
+    await refreshProvidersNow();
+    const help = JSON.parse((await callWorkspaceTool(accountParent.id, "tool_help", { category: "subagent" }))[0].text);
+    assert.ok(help.some(tool => tool.name === "subagent_providers"));
+    const accounts = JSON.parse((await callWorkspaceTool(accountParent.id, "subagent_providers", { provider: "pi" }))[0].text);
+    assert.deepEqual(accounts, [{ provider: "pi", providerInstanceId: instance.id, name: "Remote account", models: [{ id: "remote/model", label: "Remote model", efforts: ["high"] }] }]);
+    const child = JSON.parse((await callWorkspaceTool(accountParent.id, "run_tool", { name: "subagent_start", arguments: { title: "Review", task: "Check the file" } }))[0].text);
+    assert.equal(store.threads.get(child.id).providerInstanceId, instance.id);
+    assert.equal(launched.environment.CITROPY_TEST_ACCOUNT, "remote");
+    assert.equal(store.threads.get(child.id).model, "remote/model");
+    disposeRuntime(child.id);
+    const crossProvider = JSON.parse((await callWorkspaceTool(parent.id, "subagent_start", { title: "Cross provider", task: "Review", provider: "pi", providerInstanceId: instance.id }))[0].text);
+    assert.equal(store.threads.get(crossProvider.id).providerInstanceId, instance.id);
+    assert.equal(store.threads.get(crossProvider.id).model, "remote/model");
+    disposeRuntime(crossProvider.id);
+  } finally {
+    for (const original of originals) Object.assign(original.provider, { detect: original.detect, listModels: original.listModels, start: original.start });
+    store.removeThread(accountParent.id);
+  }
+});

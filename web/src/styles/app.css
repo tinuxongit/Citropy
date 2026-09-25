@@ -25,6 +25,9 @@
 .shell[data-sidebar="true"] {
   --visible-rail: var(--rail);
 }
+.shell[data-navigation="bar"] {
+  --strip: 0px;
+}
 
 .shell-body {
   display: flex;
@@ -660,7 +663,7 @@
   .sidebar-scrim {
     display: block;
     position: absolute;
-    inset: 0;
+    inset: 0 0 0 min(280px, calc(var(--viewport-width) * 0.85));
     background: rgba(0, 0, 0, 0.5);
     z-index: 17;
   }

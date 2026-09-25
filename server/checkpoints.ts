@@ -238,7 +238,7 @@ export async function forkConversation(thread: Thread, messageId: string): Promi
   const index = thread.messages.findIndex(message => message.id === messageId);
   if (index < 0) throw new Error("Message not found.");
   historyPrompt(thread.messages.slice(0, index + 1), "");
-  const fork = store.createThread({ projectId: thread.projectId, provider: thread.provider, model: thread.model, effort: thread.effort, permissionMode: thread.permissionMode, contextWindow: thread.contextWindow, fastMode: thread.fastMode, workspacePath: thread.workspacePath, workspaceBranch: thread.workspaceBranch, title: `${thread.title} (branch)`, branchedFrom: { threadId: thread.id, messageId }, rebuildContext: true });
+  const fork = store.createThread({ projectId: thread.projectId, provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: thread.model, effort: thread.effort, permissionMode: thread.permissionMode, contextWindow: thread.contextWindow, fastMode: thread.fastMode, workspacePath: thread.workspacePath, workspaceBranch: thread.workspaceBranch, title: `${thread.title} (branch)`, branchedFrom: { threadId: thread.id, messageId }, rebuildContext: true });
   try {
     const messages = structuredClone(thread.messages.slice(0, index + 1));
     for (const message of messages) {

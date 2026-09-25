@@ -3,7 +3,7 @@ import { AnimatedText } from "./AnimatedText.tsx";
 import { useEffect, useState, type Ref } from "react";
 import { ArrowRightLeft, ChevronDown, LockKeyhole, Star } from "lucide-react";
 import type { WritingModel } from "../../../shared/assistance.ts";
-import type { ProviderId } from "../../../shared/protocol.ts";
+import type { ModelOption, ProviderId, ProviderInfo } from "../../../shared/protocol.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { toggleFavoriteModel, useApp } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
@@ -12,7 +12,7 @@ import { send } from "../lib/socket.ts";
 import { Menu } from "./Menu.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 
-export function ModelPicker({ value, fallback, label, onChange, onTransfer, transferDisabled = false, disabled = false, allowConversation = false, automaticLabel, lockedProvider, className = "model-picker-trigger", buttonRef }: {
+export function ModelPicker({ value, fallback, label, onChange, onTransfer, transferDisabled = false, disabled = false, allowConversation = false, automaticLabel, lockedProvider, instanceId, defaultOnly = false, className = "model-picker-trigger", buttonRef }: {
   value: WritingModel | null;
   fallback?: WritingModel;
   label: string;
@@ -23,6 +23,8 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   allowConversation?: boolean;
   automaticLabel?: string;
   lockedProvider?: ProviderId;
+  instanceId?: string;
+  defaultOnly?: boolean;
   className?: string;
   buttonRef?: Ref<HTMLButtonElement>;
 }) {
@@ -33,15 +35,40 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const [browsing, setBrowsing] = useState<ProviderId | "favorites" | undefined>(choice?.provider);
   const [transferring, setTransferring] = useState(false);
   useEffect(() => setBrowsing(choice?.provider), [choice?.provider]);
-  const available = providers.filter((entry) => entry.available && entry.enabled);
+  const available = providers.filter((entry) => entry.enabled && (entry.available || (!defaultOnly && entry.instances?.some(instance => instance.available))));
   const provider = providers.find((entry) => entry.id === choice?.provider);
   const locked = transferring ? undefined : lockedProvider;
   const catalog = locked ? providers.find((entry) => entry.id === locked) : available.find((entry) => entry.id === browsing) ?? available[0];
-  const model = selectedModel(provider?.models ?? [], choice?.model);
+  const currentInstanceId = choice?.providerInstanceId ?? instanceId;
+  const choiceModels = currentInstanceId ? provider?.instances?.find(instance => instance.id === currentInstanceId)?.models ?? [] : provider?.models ?? [];
+  const model = selectedModel(choiceModels, choice?.model);
   const automatic = automaticLabel ?? (allowConversation ? t("Use the conversation model") : undefined);
-  const name = !choice && automatic ? automatic : modelLabel(provider?.models ?? [], choice?.model);
+  const name = !choice && automatic ? automatic : modelLabel(choiceModels, choice?.model);
   const favoritesView = browsing === "favorites";
   const catalogs = favoritesView ? available.filter((entry) => !locked || entry.id === locked) : catalog ? [catalog] : [];
+  const accounts = (source: ProviderInfo, restrict: boolean): Array<{ id?: string; name: string; models: ModelOption[] }> => [
+    ...(source.available ? [{ id: undefined, name: source.label, models: source.models }] : []),
+    ...(!defaultOnly ? (source.instances ?? []).filter(instance => instance.available).map(instance => ({ id: instance.id, name: `${source.label} · ${instance.name}`, models: instance.models })) : []),
+  ].filter(account => !restrict || account.id === currentInstanceId);
+  const accountHint = (source: ProviderInfo, name: string, entry: ModelOption) => {
+    const origin = modelSource(source, entry);
+    return origin === name ? name : `${name} · ${origin}`;
+  };
+  const transferItems = catalogs.flatMap(source => accounts(source, false).flatMap(account => account.models.filter(entry => !favoritesView || favorites.some(favorite => favorite.provider === source.id && favorite.providerInstanceId === account.id && favorite.model === entry.id)).map(entry => ({
+    id: `${source.id}:${account.id ?? "default"}:${entry.id}`,
+    label: entry.label,
+    hint: accountHint(source, account.name, entry),
+    hintIcon: <ProviderIcon provider={source.id} />,
+    disabled: transferDisabled || (source.id === choice?.provider && account.id === choice?.providerInstanceId && entry.id === model?.id),
+    selected: false,
+    onSelect: () => onTransfer?.({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
+    action: {
+      label: t("Favorite {model}", { model: entry.label }),
+      icon: <Star size={14} />,
+      pressed: favorites.some(favorite => favorite.provider === source.id && favorite.providerInstanceId === account.id && favorite.model === entry.id),
+      onSelect: () => toggleFavoriteModel({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
+    },
+  }))));
   return <Menu
     width={340}
     className="model-picker-menu"
@@ -78,21 +105,20 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     </>}
     items={[
       ...(automatic && !favoritesView && !transferring ? [{ id: "conversation", label: automatic, selected: !value, onSelect: () => onChange(null) }] : []),
-      ...catalogs.flatMap((source) => source.models.filter((entry) => !favoritesView || favorites.some((favorite) => favorite.provider === source.id && favorite.model === entry.id)).map((entry) => ({
-        id: `${source.id}:${entry.id}`,
+      ...(transferring ? transferItems : catalogs.flatMap(source => accounts(source, Boolean(locked)).flatMap(account => account.models.filter(entry => !favoritesView || favorites.some(favorite => favorite.provider === source.id && favorite.model === entry.id && favorite.providerInstanceId === account.id)).map(entry => ({
+        id: `${source.id}:${account.id ?? "default"}:${entry.id}`,
         label: entry.label,
-        hint: modelSource(source, entry),
+        hint: accountHint(source, account.name, entry),
         hintIcon: <ProviderIcon provider={source.id} />,
-        disabled: !source.available || !source.enabled || (transferring && (transferDisabled || (source.id === choice?.provider && entry.id === model?.id))),
-        selected: Boolean(value && source.id === choice?.provider && entry.id === model?.id),
-        onSelect: () => transferring ? onTransfer?.({ provider: source.id, model: entry.id }) : onChange({ provider: source.id, model: entry.id }),
+        selected: Boolean(value && source.id === choice?.provider && account.id === choice?.providerInstanceId && entry.id === model?.id),
+        onSelect: () => onChange({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
         action: {
           label: t("Favorite {model}", { model: entry.label }),
           icon: <Star size={14} />,
-          pressed: favorites.some((favorite) => favorite.provider === source.id && favorite.model === entry.id),
-          onSelect: () => toggleFavoriteModel({ provider: source.id, model: entry.id }),
+          pressed: favorites.some(favorite => favorite.provider === source.id && favorite.model === entry.id && favorite.providerInstanceId === account.id),
+          onSelect: () => toggleFavoriteModel({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
         },
-      }))),
+      }))))),
     ]}
     trigger={({ toggle, id, open }) => <button
       ref={buttonRef}

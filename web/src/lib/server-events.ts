@@ -17,6 +17,7 @@ import { applySnapshot } from "./snapshot-state.ts";
 export function applyEvents(
   previous: AppState,
   events: ServerEvent[],
+  focused = true,
 ): AppState {
   const state = { ...previous };
   const copied = new Set<HistoryCollection>();
@@ -27,7 +28,7 @@ export function applyEvents(
       Object.assign(state, { [key]: { ...state[key] } });
       copied.add(key);
     }
-    applyEvent(state, event);
+    applyEvent(state, event, focused);
   }
   trimHistories(state, previous);
   return Object.keys(state).some(key => state[key as keyof AppState] !== previous[key as keyof AppState]) ? state : previous;
@@ -169,6 +170,7 @@ function applyProjectEvent(
     ServerEvent,
     { t: "project.chosen" } | { t: "project.upsert" } | { t: "project.remove" }
   >,
+  focused: boolean,
 ): void {
   switch (event.t) {
     case "project.chosen": {
@@ -176,8 +178,10 @@ function applyProjectEvent(
       if (event.projectId) {
         state.activeProjectId = event.projectId;
         state.activeThreadId = null;
-        environmentStorage.setItem("citropy.project", event.projectId);
-        environmentStorage.removeItem("citropy.thread");
+        if (focused) {
+          environmentStorage.setItem("citropy.project", event.projectId);
+          environmentStorage.removeItem("citropy.thread");
+        }
       }
       if (event.error)
         state.toasts = [
@@ -329,7 +333,7 @@ function applyFileEvent(
   }
 }
 
-export function applyEvent(state: AppState, event: ServerEvent): void {
+export function applyEvent(state: AppState, event: ServerEvent, focused = true): void {
   if (unloadedDelta(state, event)) return;
   switch (event.t) {
     case "computer.state":
@@ -346,7 +350,7 @@ export function applyEvent(state: AppState, event: ServerEvent): void {
     case "notification.add":
     case "notifications.update":
     case "notifications.preferences":
-      applyNotificationEvent(state, event);
+      applyNotificationEvent(state, event, focused);
       return;
     case "panel.upsert":
     case "panel.remove":
@@ -358,7 +362,7 @@ export function applyEvent(state: AppState, event: ServerEvent): void {
     case "project.chosen":
     case "project.upsert":
     case "project.remove":
-      applyProjectEvent(state, event);
+      applyProjectEvent(state, event, focused);
       return;
     case "thread.upsert":
     case "thread.remove":
@@ -405,7 +409,7 @@ export function applyEvent(state: AppState, event: ServerEvent): void {
       );
       return;
     case "hello":
-      applySnapshot(state, event.snapshot);
+      applySnapshot(state, event.snapshot, focused);
       sortThreads(state);
       return;
     case "toast": {

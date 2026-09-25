@@ -127,8 +127,8 @@ function acpModelOptions(response: acp.NewSessionResponse): ModelOption[] {
   return values.map(({ id, label }) => describeModel(id, label, undefined));
 }
 
-export async function acpModels(config: AcpConfig): Promise<ModelOption[]> {
-  const { child, stream } = spawnAgent(config, tmpdir());
+export async function acpModels(config: AcpConfig, launch?: import("./types.ts").ProviderLaunch): Promise<ModelOption[]> {
+  const { child, stream } = spawnAgent(config, tmpdir(), launch);
   const connection = acp.client({ name: "citropy" }).connect(stream);
   try {
     await initializeAgent(connection.agent, config);

@@ -1,10 +1,10 @@
-import { commandVersion } from "./binary.ts";
+import { commandVersion, spawnCommand } from "./binary.ts";
 import { stopProcess, waitForStoppedProcesses } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverOpenCodeModels } from "./models.ts";
-import { spawn, execFile, type ChildProcess } from "node:child_process";
-import { promisify } from "node:util";
+import type { ChildProcess } from "node:child_process";
 import { request } from "node:http";
+import { realpath } from "node:fs/promises";
 import { onLines } from "../lines.ts";
 import { askQuestion, answerQuestion, cancelQuestions } from "../questions.ts";
 import { ask, cancelThread } from "../permissions.ts";
@@ -13,8 +13,6 @@ import type { Attachment } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
 import { pathToFileURL } from "node:url";
 import type { ProviderCommand } from "../../shared/features.ts";
-
-const run = promisify(execFile);
 
 const MAX_EVENT_BUFFER = 8 * 1024 * 1024;
 
@@ -25,13 +23,13 @@ interface Instance {
 
 function launch(options: StartOptions, signal: AbortSignal, textOnly = false): Promise<Instance> {
   return new Promise((resolve, reject) => {
-    const inherited = JSON.parse(process.env.OPENCODE_CONFIG_CONTENT || "{}");
+    const inherited = JSON.parse(options.environment?.OPENCODE_CONFIG_CONTENT ?? process.env.OPENCODE_CONFIG_CONTENT ?? "{}");
     const permission = options.permissionMode === "bypass" ? { "*": "allow" } : { "*": options.permissionMode === "plan" ? "deny" : "ask", read: "allow", glob: "allow", grep: "allow", list: "allow", task: "allow", question: "allow", edit: options.permissionMode === "acceptEdits" ? "allow" : options.permissionMode === "plan" ? "deny" : "ask", "citropy_*": "allow" };
     const config = { ...inherited, permission: textOnly ? { "*": "deny" } : permission, mcp: { ...inherited.mcp, ...(options.mcp ? { citropy: { type: "remote", ...options.mcp, oauth: false, enabled: true, timeout: 1_860_000 } } : {}) } };
-    const child = spawn("opencode", ["serve", "--port", "0", "--hostname", "127.0.0.1"], {
+    const child = spawnCommand(options.binary ?? "opencode", ["serve", "--port", "0", "--hostname", "127.0.0.1"], {
       detached: process.platform !== "win32",
       cwd: options.cwd,
-      env: { ...process.env, NO_COLOR: "1", OPENCODE_CONFIG_CONTENT: JSON.stringify(config) },
+      env: { ...process.env, ...options.environment, NO_COLOR: "1", OPENCODE_CONFIG_CONTENT: JSON.stringify(config) },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let settled = false;
@@ -63,10 +61,10 @@ function launch(options: StartOptions, signal: AbortSignal, textOnly = false): P
   });
 }
 
-export async function generateOpenCodeText(cwd: string, model: string, prompt: string, signal: AbortSignal): Promise<string> {
+export async function generateOpenCodeText(cwd: string, model: string, prompt: string, signal: AbortSignal, launchOptions?: import("./types.ts").ProviderLaunch): Promise<string> {
   const [providerID, ...modelParts] = model.split("/");
   if (!providerID || !modelParts.length) throw new Error("Select an OpenCode model with a provider.");
-  const instance = await launch({ cwd, threadId: "writing", permissionMode: "plan", emit: () => {} }, signal, true);
+  const instance = await launch({ cwd, threadId: "writing", permissionMode: "plan", emit: () => {}, ...launchOptions }, signal, true);
   let sessionId: string | undefined;
   try {
     const request = async (path: string, value: unknown) => {
@@ -151,9 +149,25 @@ class OpenCodeSession implements AgentSession {
     if (this.#abort.signal.aborted) { stopProcess(instance.child, true); return; }
     this.#instance = instance;
     let sessionId = this.#options.externalId;
+    if (sessionId) {
+      const response = await fetch(`${instance.base}/session/${encodeURIComponent(sessionId)}`, { signal: this.#abort.signal });
+      if (response.status === 404) {
+        this.#options.emit({ type: "notice", level: "warn", text: "The saved OpenCode session is unavailable. Starting a new session." });
+        sessionId = undefined;
+      } else {
+        if (!response.ok) throw new Error(`OpenCode session lookup failed: ${response.status}`);
+        const saved = await response.json() as { directory?: string };
+        if (saved.directory && await realpath(saved.directory).catch(() => saved.directory) !== await realpath(this.#options.cwd).catch(() => this.#options.cwd)) {
+          const forked = await this.#post(`/session/${encodeURIComponent(sessionId)}/fork?directory=${encodeURIComponent(this.#options.cwd)}`, {});
+          sessionId = String((forked as { id?: string }).id ?? "");
+          if (!sessionId) throw new Error("OpenCode did not return a forked session ID.");
+        }
+      }
+    }
     if (!sessionId) {
       const created = await this.#post("/session", { title: "Citropy thread" });
       sessionId = String((created as { id?: string }).id ?? "");
+      if (!sessionId) throw new Error("OpenCode did not return a session ID.");
     }
     const response = await fetch(`${instance.base}/event`, {
       headers: { accept: "text/event-stream" },
@@ -577,18 +591,10 @@ export const opencodeProvider: Provider = {
   capabilities: { transport: "http", steer: true, compact: true, stopShell: false },
   steerHint: "OpenCode adds it to the run in progress.",
   models: [],
-  listModels: () => discoverOpenCodeModels(),
-  async detect() {
-    if (process.platform === "win32") {
-      const version = await commandVersion("opencode");
-      return { available: Boolean(version), version };
-    }
-    try {
-      const { stdout } = await run("opencode", ["--version"], { timeout: 8000 });
-      return { available: true, version: stdout.trim().split("\n").pop() ?? undefined };
-    } catch {
-      return { available: false };
-    }
+  listModels: (launch) => discoverOpenCodeModels(launch),
+  async detect(launch) {
+    const version = await commandVersion(launch?.binary ?? "opencode", 8000, launch?.environment);
+    return { available: Boolean(version), version };
   },
   start(options) {
     return new OpenCodeSession(options);

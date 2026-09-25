@@ -590,7 +590,7 @@ if (args.includes('--help')) {
             onEnvironmentsState: () => () => {},
             connectEnvironment: async id => {
               window.environmentSelections.push(id);
-              return { ...state, activeId: id, endpoint: id === "local" ? "" : endpoint };
+              return { ...state, activeId: id, endpoint: id === "local" ? "" : endpoint, connections: state.connections.map(connection => ({ ...connection, endpoint: id === connection.id ? endpoint : undefined })) };
             },
           };
         }, origin);

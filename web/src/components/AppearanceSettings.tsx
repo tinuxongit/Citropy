@@ -1,11 +1,14 @@
 import { Check, Moon, Sun } from "lucide-react";
 import { useI18n } from "../lib/i18n.ts";
+import { setNavigationStyle } from "../lib/preferences.ts";
 import { setTheme, setUiScale, useApp } from "../lib/store.ts";
+import type { NavigationStyle } from "../lib/app-state.ts";
 
 export function AppearanceSettings() {
   const t = useI18n();
   const uiScale = useApp((state) => state.uiScale);
   const theme = useApp((state) => state.theme);
+  const navigationStyle = useApp((state) => state.navigationStyle);
 
   return (
     <>
@@ -37,6 +40,19 @@ export function AppearanceSettings() {
           >{" "}{t("Reset to 100%")}{" "}</button>
           <span>{t("Larger")}</span>
         </div>
+      </div>
+      <h2 className="settings-group-heading">{t("Navigation")}</h2>
+      <div className="settings-group">
+        <label className="setting-row">
+          <span>
+            <strong>{t("Navigation layout")}</strong>
+            <small>{t("Side strip keeps source control, GitHub, usage and settings on the left edge. Bottom bar puts them under the conversation list.")}</small>
+          </span>
+          <select value={navigationStyle} onChange={(event) => setNavigationStyle(event.target.value as NavigationStyle)}>
+            <option value="strip">{t("Side strip")}</option>
+            <option value="bar">{t("Bottom bar")}</option>
+          </select>
+        </label>
       </div>
       <h2 className="settings-group-heading">{t("Theme")}</h2>
       <div

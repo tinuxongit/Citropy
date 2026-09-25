@@ -19,7 +19,7 @@ import { Menu } from "./Menu.tsx";
 import { Modal } from "./Modal.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
-import type { CachedThread } from "../lib/environment.ts";
+import { environmentSlice } from "../lib/live-environments.ts";
 import { useApp, confirmAction } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
 
@@ -35,16 +35,17 @@ export function ConversationMenu({
   environment,
   onMove,
 }: {
-  thread: CachedThread & Partial<ThreadMeta>;
+  thread: ThreadMeta;
   environment?: string;
   onMove?: (direction: number) => void;
 }) {
   const t = useI18n();
-  const project = useApp(state => environment ? undefined : state.projects.find(project => project.id === thread.projectId));
+  const projects = useApp(state => state.projects);
+  const project = (environment ? environmentSlice(environment)?.projects : projects)?.find(project => project.id === thread.projectId);
   const worktree = async (action: "copy" | "remove") => {
     if (!await confirmAction({ title: t(action === "copy" ? "Continue in a new worktree?" : "Remove this worktree?"), description: t(action === "copy" ? "Copy the current changes to a new branch and continue this task there. Changes remain in the original folder. The copied changes start unstaged." : "Only a clean worktree unused by other tasks can be removed. The branch and conversation history stay available."), label: t(action === "copy" ? "Copy and continue" : "Remove worktree"), danger: action === "remove" })) return;
     setBusy(true);
-    try { await api(`threads/worktree?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ action }) }); }
+    try { await api(`threads/worktree?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ action }) }, environment); }
     catch (error) { reportError(error); }
     finally { setBusy(false); }
   };
@@ -101,7 +102,7 @@ export function ConversationMenu({
         items={[
           ...(project?.isGit ? [{ id: "worktree", label: t("Continue in new worktree…"), icon: <GitFork size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
           ...(thread.archived && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: t("Remove worktree…"), icon: <Trash2 size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
-          ...(thread.canRedo ? [{ id: "redo", label: t("Redo restored turn"), icon: <RefreshCw size={15} />, disabled: thread.running, onSelect: () => { void api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ redo: true }) }).catch(reportError); } }] : []),
+          ...(thread.canRedo ? [{ id: "redo", label: t("Redo restored turn"), icon: <RefreshCw size={15} />, disabled: thread.running, onSelect: () => { void api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ redo: true }) }, environment).catch(reportError); } }] : []),
           {
             id: "pin",
             label: thread.pinned ? t("Unpin conversation") : t("Pin conversation"),
@@ -135,14 +136,14 @@ export function ConversationMenu({
               onSelect: () => onMove(1),
             },
           ] : []),
-          ...(!environment ? [{
+          {
             id: "pr",
             label: thread.pullRequest
               ? t("Edit pull request link…")
               : t("Link pull request…"),
             icon: <GitPullRequest size={15} />,
             onSelect: () => edit("pullRequest"),
-          }] : []),
+          },
           ...(!thread.running
             ? [
                 {

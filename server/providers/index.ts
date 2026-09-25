@@ -51,6 +51,24 @@ export async function describeProviders(): Promise<ProviderInfo[]> {
       version: detected.version,
       modelsError,
       modelsUpdatedAt,
+      instances: await Promise.all([...store.providerInstances.values()].filter(instance => instance.provider === provider.id).map(async instance => {
+        const launch = { binary: instance.binary, environment: instance.environment };
+        const previousInstance = previous?.instances?.find(entry => entry.id === instance.id);
+        const detected = store.disabledProviders.has(provider.id)
+          ? { available: previousInstance?.available ?? false, version: previousInstance?.version }
+          : await provider.detect(launch);
+        let models = previousInstance?.models ?? [];
+        let modelsError: string | undefined;
+        if (detected.available && !store.disabledProviders.has(provider.id)) {
+          try {
+            const discovered = await provider.listModels(launch);
+            if (!discovered.length) throw new Error("No models returned");
+            models = discovered;
+          }
+          catch (error) { modelsError = `Could not refresh models: ${(error as Error).message}`; }
+        }
+        return { id: instance.id, name: instance.name, available: detected.available, version: detected.version, models, modelsError };
+      })),
     };
     lastInfo.set(provider.id, info);
     return info;

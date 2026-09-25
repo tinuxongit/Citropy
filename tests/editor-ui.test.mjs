@@ -359,7 +359,7 @@ test(
     await dock.getByRole("tab", { name: "Terminal 1", selected: true }).waitFor();
     assert.equal(await page.getByRole("tab", { name: "Files", exact: true }).getAttribute("aria-selected"), "true");
     assert.equal(await inspector.getAttribute("data-expanded"), "true");
-    assert.ok((await inspector.boundingBox()).width >= 1900);
+    assert.ok(Math.abs((await inspector.boundingBox()).width - (await page.locator(".shell-body").boundingBox()).width) < 1);
     assert.equal(await firstTerminal.evaluate(element => element.isConnected), true);
     await dock.getByRole("button", { name: "New terminal", exact: true }).click();
     await dock.getByRole("tab", { name: "Terminal 3", selected: true }).waitFor();

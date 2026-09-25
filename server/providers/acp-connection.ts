@@ -4,6 +4,7 @@ import { Readable, Writable } from "node:stream";
 import { stopProcess } from "./process.ts";
 import { spawnCommand } from "./binary.ts";
 import type { PermissionMode } from "../../shared/protocol.ts";
+import type { ProviderLaunch } from "./types.ts";
 import type { ProviderCommand } from "../../shared/features.ts";
 import packageInfo from "../../package.json" with { type: "json" };
 
@@ -43,11 +44,11 @@ export function signedOut(config: AcpConfig, error: unknown): Error {
   return error instanceof Error ? error : new Error(errorMessage(error));
 }
 
-export function spawnAgent(config: AcpConfig, cwd: string): { child: ChildProcessWithoutNullStreams; stream: acp.Stream } {
-  const child = spawnCommand(config.binary, config.args, {
+export function spawnAgent(config: AcpConfig, cwd: string, launch?: ProviderLaunch): { child: ChildProcessWithoutNullStreams; stream: acp.Stream } {
+  const child = spawnCommand(launch?.binary ?? config.binary, config.args, {
     detached: process.platform !== "win32",
     cwd,
-    env: { ...process.env, NO_COLOR: "1", TERM: "dumb" },
+    env: { ...process.env, ...launch?.environment, NO_COLOR: "1", TERM: "dumb" },
     stdio: ["pipe", "pipe", "pipe"],
   });
   const stream = acp.ndJsonStream(

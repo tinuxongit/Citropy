@@ -14,6 +14,7 @@ import { normalizeTodos } from "../shared/todos.ts";
 import { defaultAssistance, gitActionBusy, type AssistanceSettings } from "../shared/assistance.ts";
 import type {
   ProviderId,
+  ProviderInstance,
   Message,
   Part,
   Project,
@@ -88,6 +89,7 @@ export class Store {
   projects = new Map<string, Project>();
   threads = new Map<string, Thread>();
   disabledProviders = new Set<ProviderId>();
+  providerInstances = new Map<string, ProviderInstance>();
   computerEnabled = false;
   assistance: AssistanceSettings = { ...defaultAssistance };
   projectDefaults: ProjectSettings = {};
@@ -177,7 +179,7 @@ export class Store {
         for (const key of ["titleModel", "commitModel", "reviewModel"] as const) {
           const model = settings.assistance?.[key];
           if (model && ["claude", "codex", "opencode", "cursor", "pi"].includes(model.provider) && typeof model.model === "string" && model.model.trim())
-            this.assistance[key] = { provider: model.provider, model: model.model };
+            this.assistance[key] = { provider: model.provider, model: model.model, ...(typeof model.providerInstanceId === "string" ? { providerInstanceId: model.providerInstanceId } : {}) };
         }
         for (const key of ["toasts", "desktop", "sound", "subagents"] as const) {
           if (typeof settings.notifications?.[key] === "boolean")
@@ -186,6 +188,12 @@ export class Store {
         if (Array.isArray(settings.disabledProviders)) {
           for (const id of settings.disabledProviders) {
             if (["claude", "codex", "opencode", "cursor", "pi"].includes(id)) this.disabledProviders.add(id);
+          }
+        }
+        if (Array.isArray(settings.providerInstances)) {
+          for (const instance of settings.providerInstances) {
+            if (typeof instance?.id === "string" && typeof instance?.name === "string" && ["claude", "codex", "opencode", "cursor", "pi"].includes(instance.provider) && (instance.binary === undefined || typeof instance.binary === "string") && instance.environment && typeof instance.environment === "object" && !Array.isArray(instance.environment) && Object.entries(instance.environment).every(([key, value]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && typeof value === "string"))
+              this.providerInstances.set(instance.id, instance);
           }
         }
       } catch (error) {
@@ -244,24 +252,12 @@ export class Store {
     const disabled = new Set(this.disabledProviders);
     if (enabled) disabled.delete(id);
     else disabled.add(id);
-    save(settingsFile, {
-      disabledProviders: [...disabled],
-      notifications: this.notificationPreferences,
-      computerEnabled: this.computerEnabled,
-      assistance: this.assistance,
-      projectDefaults: this.projectDefaults,
-    });
+    this.#saveSettings({ disabledProviders: [...disabled] });
     this.disabledProviders = disabled;
   }
 
   setComputerEnabled(enabled: boolean): void {
-    save(settingsFile, {
-      disabledProviders: [...this.disabledProviders],
-      notifications: this.notificationPreferences,
-      computerEnabled: enabled,
-      assistance: this.assistance,
-      projectDefaults: this.projectDefaults,
-    });
+    this.#saveSettings({ computerEnabled: enabled });
     this.computerEnabled = enabled;
   }
 
@@ -307,39 +303,69 @@ export class Store {
     )
       throw new Error("Invalid notification preferences");
     const preferences = { ...this.notificationPreferences, ...patch };
-    save(settingsFile, {
-      disabledProviders: [...this.disabledProviders],
-      notifications: preferences,
-      computerEnabled: this.computerEnabled,
-      assistance: this.assistance,
-      projectDefaults: this.projectDefaults,
-    });
+    this.#saveSettings({ notifications: preferences });
     this.notificationPreferences = preferences;
     bus.emit({ t: "notifications.preferences", preferences });
   }
 
   configureAssistance(settings: AssistanceSettings): void {
-    save(settingsFile, {
-      disabledProviders: [...this.disabledProviders],
-      notifications: this.notificationPreferences,
-      computerEnabled: this.computerEnabled,
-      assistance: settings,
-      projectDefaults: this.projectDefaults,
-    });
+    this.#saveSettings({ assistance: settings });
     this.assistance = settings;
     bus.emit({ t: "assistance.settings", settings });
   }
 
   configureProjectDefaults(settings: ProjectSettings): void {
+    this.#saveSettings({ projectDefaults: settings });
+    this.projectDefaults = settings;
+    bus.emit({ t: "project.defaults", settings });
+  }
+
+  saveProviderInstance(input: Omit<ProviderInstance, "id"> & { id?: string }): ProviderInstance {
+    if (
+      !["claude", "codex", "opencode", "cursor", "pi"].includes(input.provider) ||
+      typeof input.name !== "string" || !input.name.trim() || input.name.length > 80 ||
+      (input.binary !== undefined && (typeof input.binary !== "string" || !input.binary.trim() || input.binary.length > 1024)) ||
+      !input.environment || typeof input.environment !== "object" || Array.isArray(input.environment) ||
+      Object.entries(input.environment).some(([key, value]) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || typeof value !== "string" || value.length > 8192)
+    ) throw new Error("Invalid provider instance");
+    if (input.id && this.providerInstances.get(input.id)?.provider !== input.provider) throw new Error("Provider instance not found");
+    if (!input.id && this.providerInstances.size >= 32) throw new Error("Too many provider instances");
+    const previous = input.id ? this.providerInstances.get(input.id) : undefined;
+    const sameEnvironment = previous && Object.keys(previous.environment).length === Object.keys(input.environment).length && Object.entries(previous.environment).every(([key, value]) => input.environment[key] === value);
+    if (previous && this.#providerInstanceUsed(previous.id) && (previous.binary !== input.binary?.trim() || !sameEnvironment))
+      throw new Error("This account is in use. Create a new account to change its CLI configuration.");
+    const instance: ProviderInstance = { id: input.id ?? uid("pvi"), provider: input.provider, name: input.name.trim(), binary: input.binary?.trim(), environment: { ...input.environment } };
+    const instances = new Map(this.providerInstances);
+    instances.set(instance.id, instance);
+    this.#saveSettings({ providerInstances: [...instances.values()] });
+    this.providerInstances = instances;
+    return instance;
+  }
+
+  removeProviderInstance(id: string): void {
+    if (!this.providerInstances.has(id)) throw new Error("Provider instance not found");
+    if (this.#providerInstanceUsed(id)) throw new Error("Remove conversations and writing-model selections using this account before deleting it.");
+    const instances = new Map(this.providerInstances);
+    instances.delete(id);
+    this.#saveSettings({ providerInstances: [...instances.values()] });
+    this.providerInstances = instances;
+  }
+
+  #providerInstanceUsed(id: string): boolean {
+    return [...this.threads.values()].some(thread => thread.providerInstanceId === id) ||
+      [this.assistance.titleModel, this.assistance.commitModel, this.assistance.reviewModel].some(model => model?.providerInstanceId === id);
+  }
+
+  #saveSettings(patch: Record<string, unknown>): void {
     save(settingsFile, {
       disabledProviders: [...this.disabledProviders],
       notifications: this.notificationPreferences,
       computerEnabled: this.computerEnabled,
       assistance: this.assistance,
-      projectDefaults: settings,
+      projectDefaults: this.projectDefaults,
+      providerInstances: [...this.providerInstances.values()],
+      ...patch,
     });
-    this.projectDefaults = settings;
-    bus.emit({ t: "project.defaults", settings });
   }
 
   openProject(path: string): Project {
@@ -484,7 +510,7 @@ export class Store {
     if (!parent) return;
     let child = [...this.threads.values()].find((entry) => entry.parentThreadId === parentId && entry.nativeAgentId === update.id);
     if (!child) {
-      child = this.createThread({ projectId: parent.projectId, provider: parent.provider, workspacePath: parent.workspacePath, workspaceBranch: parent.workspaceBranch, parentThreadId: parentId, nativeAgentId: update.id, title: update.title || "Subagent", model: update.model ?? parent.model, permissionMode: parent.permissionMode });
+      child = this.createThread({ projectId: parent.projectId, provider: parent.provider, providerInstanceId: parent.providerInstanceId, workspacePath: parent.workspacePath, workspaceBranch: parent.workspaceBranch, parentThreadId: parentId, nativeAgentId: update.id, title: update.title || "Subagent", model: update.model ?? parent.model, permissionMode: parent.permissionMode });
       if (update.prompt) this.addMessage(child.id, { id: uid("msg"), ts: Date.now(), role: "user", parts: [{ id: uid("prt"), kind: "text", text: update.prompt }] });
     }
     if (update.result) {

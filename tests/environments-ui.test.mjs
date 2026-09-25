@@ -26,6 +26,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   });
   const threadRequested = Promise.withResolvers();
   let heldLocalMessage = false;
+  let delayedRead;
   let navigations = 0;
   page.on("framenavigated", frame => { if (frame === page.mainFrame()) navigations++; });
   page.on("pageerror", error => errors.push(error.message));
@@ -46,7 +47,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
     window.folderChoices = [];
     window.folderListings = [];
     window.nextFolder = "/home/dev/projects";
-    const state = () => ({ activeId, endpoint: activeId === "local" ? "" : "http://127.0.0.1:49121", connections: [{ ...connection }] });
+    const state = () => ({ activeId, endpoint: activeId === "local" ? "" : "http://127.0.0.1:49121", connections: [{ ...connection, endpoint: connection.status === "connected" ? "http://127.0.0.1:49121" : undefined }] });
     const emit = () => { for (const listener of listeners) listener(state()); };
     window.citropyDesktop = {
       environmentsState: async () => state(),
@@ -92,6 +93,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
     socket.onMessage(raw => {
       const event = JSON.parse(raw);
       messages.push({ remote, ...event });
+      if (event.t === "file.read" && !remote) delayedRead = { socket, requestId: event.requestId };
       if (event.t === "shell.watch" && event.id) socket.send(JSON.stringify({ t: "shell.output", id: event.id, output: "Subscribed remote output" }));
       if (event.t === "thread.load") socket.send(JSON.stringify({ t: "thread.messages", threadId: "task", messages: [{ id: "answer", role: "assistant", ts: 1, parts: [{ id: "text", kind: "text", text: remote ? "REMOTE RESPONSE" : "LOCAL RESPONSE", complete: true }] }] }));
       if (event.t === "github.request") socket.send(JSON.stringify({ t: "github.result", requestId: event.requestId, result: { installed: false } }));
@@ -184,7 +186,8 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   assert.deepEqual(defaultsSaved, [{ provider: "opencode", model: "remote/model", effort: "high", permissionMode: "acceptEdits" }]);
   await page.getByRole("button", { name: "Back to chat", exact: true }).click();
   await delayedThread.fulfill({ json: { id: "stale-local-task", projectId: "remote-project", provider: "claude", model: "test" } }).catch(() => {});
-  assert.equal(await page.evaluate(() => window.oldRead), "AbortError");
+  delayedRead.socket.send(JSON.stringify({ t: "file.content", requestId: delayedRead.requestId, content: "Local file" }));
+  assert.equal(await page.evaluate(() => window.oldRead), "accepted");
   await page.evaluate(() => window.oldCreate);
   assert.deepEqual(await page.evaluate(async () => {
     const { useApp } = await import("/web/src/lib/store.ts");
@@ -230,7 +233,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   await page.getByRole("button", { name: "Switch to Local", exact: true }).click();
   await page.getByText("LOCAL RESPONSE", { exact: true }).waitFor();
   assert.equal(await page.locator("textarea").inputValue(), "LOCAL DRAFT");
-  assert.deepEqual(await page.evaluate(async () => (await import("/web/src/lib/store.ts")).useApp.getState().projectDefaults), defaults);
+  assert.deepEqual(await page.evaluate(async () => (await import("/web/src/lib/store.ts")).useApp.getState().projectDefaults), { provider: "opencode", model: "remote/model", effort: "high", permissionMode: "plan" });
   await page.evaluate(() => { window.nextFolder = null; });
   await page.getByRole("button", { name: "Choose workspace, Local project", exact: true }).click();
   await workspaceMenu.getByRole("menuitem", { name: /Open another folder/ }).nth(1).click();

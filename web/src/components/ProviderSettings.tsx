@@ -6,6 +6,8 @@ import {
   Check,
   FileText,
   RefreshCw,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ProviderInstructions } from "./ProviderInstructions.tsx";
@@ -17,6 +19,37 @@ import type { ProviderMaintenance } from "../../../shared/provider-settings.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { selectEnvironment, useEnvironments } from "../lib/environment.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
+import { Modal } from "./Modal.tsx";
+import type { ProviderInstance } from "../../../shared/protocol.ts";
+
+function InstanceEditor({ provider, instance, onClose, onSaved }: { provider: ProviderInfo; instance?: ProviderInstance; onClose: () => void; onSaved: (instance: ProviderInstance) => void }) {
+  const t = useI18n();
+  const [name, setName] = useState(instance?.name ?? "");
+  const [binary, setBinary] = useState(instance?.binary ?? "");
+  const [environment, setEnvironment] = useState(JSON.stringify(instance?.environment ?? {}, null, 2));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const save = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const variables = JSON.parse(environment);
+      if (!variables || typeof variables !== "object" || Array.isArray(variables)) throw new Error(t("Enter environment variables as a JSON object."));
+      const saved = await api<ProviderInstance>("providers/instances", { method: "POST", body: JSON.stringify({ id: instance?.id, provider: provider.id, name, binary: binary || undefined, environment: variables }) });
+      onSaved(saved);
+    } catch (cause) { setError((cause as Error).message); }
+    finally { setBusy(false); }
+  };
+  return <Modal title={instance ? t("Edit account") : t("Add account")} description={t("Run {provider} with a separate CLI configuration.", { provider: provider.label })} busy={busy} onClose={onClose} onSubmit={() => void save()} initialFocus="#provider-instance-name" footer={<>
+    <button className="btn" type="button" data-cancel onClick={onClose} disabled={busy}>{t("Cancel")}</button>
+    <button className="btn" data-variant="primary" disabled={busy || !name.trim()}>{busy && <PixelLoader size={14} />}{t("Save account")}</button>
+  </>}>
+    <label className="feature-field">{t("Name")}<input id="provider-instance-name" value={name} maxLength={80} onChange={event => setName(event.target.value)} /></label>
+    <label className="feature-field">{t("CLI path (optional)")}<input value={binary} onChange={event => setBinary(event.target.value)} placeholder={provider.binary} /></label>
+    <label className="feature-field">{t("Environment variables (JSON)")}<textarea value={environment} rows={5} spellCheck={false} onChange={event => setEnvironment(event.target.value)} /></label>
+    {error && <p className="dialog-error" role="alert">{error}</p>}
+  </Modal>;
+}
 
 export function ProviderSettings() {
   const t = useI18n();
@@ -32,7 +65,16 @@ export function ProviderSettings() {
   const [refresh, setRefresh] = useState(0);
   const refreshMaintenance = useCallback(() => setRefresh(value => value + 1), []);
   const [editor, setEditor] = useState<ProviderInfo>();
+  const [instances, setInstances] = useState<ProviderInstance[]>([]);
+  const [instanceEditor, setInstanceEditor] = useState<{ provider: ProviderInfo; instance?: ProviderInstance }>();
   const updating = starting || maintenance.some((entry) => entry.status === "updating");
+
+  useEffect(() => {
+    if (!connected) { setInstances([]); return; }
+    const controller = new AbortController();
+    api<ProviderInstance[]>("providers/instances", { signal: controller.signal }).then(setInstances).catch(cause => { if (!controller.signal.aborted) setError((cause as Error).message); });
+    return () => controller.abort();
+  }, [connected, environments.activeId]);
 
   useEffect(() => {
     if (!connected) return;
@@ -124,6 +166,8 @@ export function ProviderSettings() {
               if (id === environments.activeId) return;
               setSwitching(true);
               setEditor(undefined);
+              setInstanceEditor(undefined);
+              setInstances([]);
               try { await selectEnvironment(id); } catch (error) { reportError(error); }
               finally { setSwitching(false); }
             }}>
@@ -181,12 +225,12 @@ export function ProviderSettings() {
                   </div>
                 </div>
                 <div className="provider-setting-status">
-                  <span data-available={provider.available && provider.enabled}>
+                  <span data-available={provider.enabled && (provider.available || provider.instances?.some(entry => entry.available))}>
                     {!provider.enabled
                       ? t("Disabled")
                       : provider.available
                         ? t("Enabled")
-                        : t("Not installed")}
+                        : provider.instances?.some(entry => entry.available) ? t("Account available") : t("Not installed")}
                   </span>
                   <small>
                     {provider.enabled
@@ -301,6 +345,19 @@ export function ProviderSettings() {
                 )}
               </div>
 
+              <div className="provider-instances">
+                <div className="provider-instances-heading"><strong>{t("Accounts")}</strong><button type="button" className="btn" disabled={!connected || switching} onClick={() => setInstanceEditor({ provider })}><Plus size={14} />{t("Add account")}</button></div>
+                {provider.instances?.map(entry => <div className="provider-instance-row" key={entry.id}>
+                  <span><strong>{entry.name}</strong><small>{entry.available ? t("{count} models", { count: entry.models.length }) : t("CLI unavailable")}</small></span>
+                  <button type="button" className="btn" disabled={!connected || switching || !instances.some(value => value.id === entry.id)} onClick={() => setInstanceEditor({ provider, instance: instances.find(value => value.id === entry.id) })}>{t("Edit")}</button>
+                  <button type="button" className="btn" aria-label={t("Remove {name}", { name: entry.name })} disabled={!connected || switching} onClick={() => void (async () => {
+                    if (!await confirmAction({ title: t("Remove {name}?", { name: entry.name }), description: t("Conversations and writing settings using this account must be removed first."), label: t("Remove"), danger: true })) return;
+                    try { await api("providers/instances", { method: "DELETE", body: JSON.stringify({ id: entry.id }) }); setInstances(previous => previous.filter(value => value.id !== entry.id)); }
+                    catch (cause) { reportError(cause); }
+                  })()}><Trash2 size={14} /></button>
+                </div>)}
+              </div>
+
             </section>
           );
         })}
@@ -325,6 +382,7 @@ export function ProviderSettings() {
           onClose={() => setEditor(undefined)}
         />
       )}</AnimatePresence>
+      <AnimatePresence>{instanceEditor && <InstanceEditor key={instanceEditor.instance?.id ?? `${instanceEditor.provider.id}-new`} provider={instanceEditor.provider} instance={instanceEditor.instance} onClose={() => setInstanceEditor(undefined)} onSaved={saved => { setInstances(previous => [...previous.filter(entry => entry.id !== saved.id), saved]); setInstanceEditor(undefined); }} />}</AnimatePresence>
     </>
   );
 }

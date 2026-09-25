@@ -199,6 +199,14 @@
   overflow: hidden;
   text-align: left;
 }
+@container application (max-width: 480px) {
+  .notification-center,
+  :root[data-platform="darwin"] .notification-center {
+    position: fixed;
+    left: 12px;
+    top: var(--topbar);
+  }
+}
 .notification-center header {
   display: flex;
   align-items: center;

@@ -94,7 +94,8 @@ test("chat content and controls adapt when the workspace squeezes the conversati
 
   const resizeChat = width => page.evaluate(async width => {
     const { useApp, viewportWidth } = await import("/web/src/lib/store.ts");
-    useApp.setState({ panelWidths: { inspector: viewportWidth() - 252 - width } });
+    const strip = parseFloat(getComputedStyle(document.querySelector(".shell")).paddingLeft) / (useApp.getState().uiScale / 100);
+    useApp.setState({ panelWidths: { inspector: viewportWidth() - strip - 252 - width } });
   }, width);
   await resizeChat(760);
   await page.waitForTimeout(250);
@@ -134,11 +135,13 @@ test("chat content and controls adapt when the workspace squeezes the conversati
   for (const language of ["en", "es"]) {
     for (const scale of [100, 150]) {
       for (const width of [760, 520, 420, 360]) {
-        await page.evaluate(async ({ language, scale, width }) => {
+        const targetWidth = await page.evaluate(async ({ language, scale, width }) => {
           const { setLanguage, setUiScale, useApp, viewportWidth } = await import("/web/src/lib/store.ts");
           setLanguage(language);
           setUiScale(scale);
-          useApp.setState({ panelWidths: { inspector: viewportWidth() - 252 - width } });
+          const target = Math.min(width, viewportWidth() - 48 - 252 - 260);
+          useApp.setState({ panelWidths: { inspector: viewportWidth() - 48 - 252 - target } });
+          return target;
         }, { language, scale, width });
         await page.waitForTimeout(200);
         const layout = await page.evaluate(() => {
@@ -155,7 +158,7 @@ test("chat content and controls adapt when the workspace squeezes the conversati
             buttons: [...document.querySelectorAll(".composer-bar button")].map(node => node.getBoundingClientRect().toJSON()),
           };
         });
-        assert.ok(Math.abs(layout.width / (scale / 100) - width) < 1, JSON.stringify(layout));
+        assert.ok(Math.abs(layout.width / (scale / 100) - targetWidth) < 1, JSON.stringify(layout));
         assert.ok(layout.head.scroll <= layout.head.width + 1, JSON.stringify({ language, scale, width, layout }));
         assert.ok(layout.action.left >= layout.stage.left && layout.action.right <= layout.stage.right, JSON.stringify(layout));
         if (width >= 600) assert.ok(Math.abs(layout.count.top + layout.count.height / 2 - layout.chevron.top - layout.chevron.height / 2) < 1, JSON.stringify(layout));

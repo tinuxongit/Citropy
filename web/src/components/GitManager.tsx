@@ -1,5 +1,5 @@
 import { AnimatePresence } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   CircleAlert,
@@ -28,11 +28,13 @@ export function GitManager({
   sidebarOpen,
   onCloseSidebar,
   onBack,
+  navigation,
   onBusyChange,
 }: {
   sidebarOpen: boolean;
   onCloseSidebar: () => void;
   onBack: () => void;
+  navigation?: ReactNode;
   onBusyChange: (busy: boolean) => void;
 }) {
   const t = useI18n();
@@ -175,7 +177,7 @@ export function GitManager({
 
   return (
     <section className="section-view" aria-label={t("Git manager")}>
-      <SectionSidebar activeItem={section} open={sidebarOpen} title={t("Source control")} onBack={onBack}>
+      <SectionSidebar activeItem={section} open={sidebarOpen} title={t("Source control")} onBack={onBack} navigation={navigation}>
           {tabs.map(({ name, icon: Icon }) => (
             <button
               className="section-link"

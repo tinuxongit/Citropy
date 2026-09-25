@@ -571,14 +571,38 @@
 .thread-child > svg {
   flex: none;
 }
+.thread-child {
+  --child-surface: var(--canvas-deep);
+}
 .thread-child .provider-icon {
   width: 14px;
   height: 14px;
 }
 .thread-child:hover,
 .thread-child[data-active="true"] {
+  --child-surface: var(--raised);
   background: var(--raised);
   color: var(--text);
+}
+.subagent-icon {
+  position: relative;
+  display: grid;
+  flex: none;
+}
+.subagent-parent-icon {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--child-surface);
+}
+.thread-child .subagent-parent-icon .provider-icon {
+  width: 8px;
+  height: 8px;
 }
 .subagent-managed {
   display: flex;
@@ -617,26 +641,6 @@
 .thread-children .thread-children-list {
   margin: 0 0 0 8px;
 }
-.thread-subagents-toggle {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  padding: 9px 6px;
-  color: var(--text-3);
-  font-size: var(--text-xs);
-  border-radius: var(--r-xs);
-}
-.thread-subagents-toggle:hover {
-  color: var(--text);
-  background: var(--raised);
-}
-.thread-completed-count {
-  margin-left: auto;
-  color: var(--text-4);
-  font-variant-numeric: tabular-nums;
-}
-
 .shell-body .sliding-panel[data-side="right"]:has(> .inspector[data-expanded="true"]) {
   position: absolute;
   inset: 0;

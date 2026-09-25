@@ -36,10 +36,12 @@ test("transfers start a fresh agent in the same chat with durable context and se
     return { id: provider.id, label: provider.label, models: provider.models, available: true, enabled: true };
   });
   const project = store.openProject(directory);
+  const account = store.saveProviderInstance({ provider: "codex", name: "Second account", environment: { CITROPY_TEST_ACCOUNT: "second" } });
+  catalog.find(provider => provider.id === "codex").instances = [{ id: account.id, name: account.name, available: true, models: catalog.find(provider => provider.id === "codex").models }];
   const server = http.createServer((req, res) => void handleFeatures(req, res, catalog));
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
-  const transfer = async (thread, provider, model = `${provider}-first`) => {
-    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/threads/transfer?threadId=${thread.id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ provider, model }) });
+  const transfer = async (thread, provider, model = `${provider}-first`, providerInstanceId) => {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/threads/transfer?threadId=${thread.id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ provider, model, providerInstanceId }) });
     return { status: response.status, data: await response.json() };
   };
   const create = () => {
@@ -70,11 +72,13 @@ test("transfers start a fresh agent in the same chat with durable context and se
     await runtimeFor(thread.id).send("Keep going");
     const old = sessions.at(-1);
     await finish(thread, old);
-    assert.equal((await transfer(thread, "codex")).status, 200);
+    assert.equal((await transfer(thread, "codex", "codex-first", account.id)).status, 200);
     const next = sessions.at(-1);
     assert.equal(store.threads.size, originalCount);
     assert.equal(old.disposed, true);
     assert.equal(next.options.externalId, undefined);
+    assert.equal(thread.providerInstanceId, account.id);
+    assert.equal(next.options.environment.CITROPY_TEST_ACCOUNT, "second");
     assert.equal(next.options.cwd, directory);
     assert.equal(next.options.permissionMode, "plan");
     assert.equal(thread.workspaceBranch, "feature/transfer");
@@ -103,6 +107,7 @@ test("transfers start a fresh agent in the same chat with durable context and se
     assert.equal(sessions.at(-1).options.externalId, undefined);
     assert.equal(thread.transfers.length, 2);
     assert.equal(thread.transfers[1].usage.input, 200);
+    assert.equal(thread.transfers[1].providerInstanceId, account.id);
     await finish(thread, sessions.at(-1));
     assert.equal((await transfer(thread, "opencode")).status, 200);
     assert.equal(thread.provider, "opencode");

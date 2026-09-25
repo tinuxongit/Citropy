@@ -1,7 +1,6 @@
-import { commandVersion } from "./binary.ts";
+import { commandVersion, spawnCommand } from "./binary.ts";
 import { stopProcess } from "./process.ts";
-import { spawn, execFile, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { promisify } from "node:util";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { discoverModels } from "./models.ts";
 import { onJson, onLines } from "../lines.ts";
 import { askQuestion, cancelQuestions } from "../questions.ts";
@@ -9,8 +8,6 @@ import { ask, cancelThread } from "../permissions.ts";
 import type { AgentSession, Provider, StartOptions } from "./types.ts";
 import type { Attachment, PermissionMode } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
-
-const run = promisify(execFile);
 
 const MODES: Record<PermissionMode, { approvalPolicy: string; sandbox: string; approvalsReviewer: string }> = {
   manual: { approvalPolicy: "untrusted", sandbox: "read-only", approvalsReviewer: "user" },
@@ -48,6 +45,24 @@ interface Item {
   kind?: string;
 }
 
+function elicitationContent(schema: unknown): Record<string, unknown> | undefined {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return;
+  const form = schema as { type?: unknown; properties?: Record<string, unknown>; required?: unknown };
+  if (form.type !== "object" || !form.properties || typeof form.properties !== "object" || Array.isArray(form.properties)) return;
+  const content: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(form.properties)) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const field = raw as { type?: unknown; enum?: unknown; oneOf?: unknown };
+    const choices = Array.isArray(field.enum) ? field.enum : Array.isArray(field.oneOf) ? field.oneOf.map((choice: unknown) => choice && typeof choice === "object" ? (choice as { const?: unknown }).const : undefined) : [];
+    const once = choices.find((choice: unknown) => typeof choice === "string" && /^(allow[_ -]?once|approve[_ -]?once|accept[_ -]?once|once)$/i.test(choice));
+    if (once !== undefined) content[key] = once;
+    else if (field.type === "boolean" && /persist|remember|always/i.test(key)) content[key] = false;
+  }
+  if (!Object.keys(content).length) return;
+  if (Array.isArray(form.required) && form.required.some(key => typeof key !== "string" || !Object.hasOwn(content, key))) return;
+  return content;
+}
+
 class CodexSession implements AgentSession {
   #options: StartOptions;
   #child: ChildProcessWithoutNullStreams;
@@ -71,15 +86,16 @@ class CodexSession implements AgentSession {
   #backgroundTimer: NodeJS.Timeout | undefined;
   #backgroundRefresh: Promise<void> | undefined;
   #backgroundRevision = 0;
+  #reloadMcp = true;
 
   constructor(options: StartOptions) {
     this.#options = options;
     const args = ["app-server"];
     if (options.mcp) args.push("-c", `mcp_servers.citropy.url=${JSON.stringify(options.mcp.url)}`, "-c", 'mcp_servers.citropy.bearer_token_env_var="CITROPY_MCP_TOKEN"', "-c", "mcp_servers.citropy.tool_timeout_sec=1860");
-    this.#child = spawn("codex", args, {
+    this.#child = spawnCommand(options.binary ?? "codex", args, {
       detached: process.platform !== "win32",
       cwd: options.cwd,
-      env: { ...process.env, RUST_LOG: "error", ...(options.mcp ? { CITROPY_MCP_TOKEN: options.mcp.headers.Authorization?.replace(/^Bearer /, "") } : {}) },
+      env: { ...process.env, ...options.environment, RUST_LOG: "error", ...(options.mcp ? { CITROPY_MCP_TOKEN: options.mcp.headers.Authorization?.replace(/^Bearer /, "") } : {}) },
       stdio: ["pipe", "pipe", "pipe"],
     });
     onJson(this.#child.stdout, (raw) => this.#receive(raw as Wire), (line) => this.#options.emit({ type: "notice", level: "warn", text: line }), (error) => this.#fail(`Could not process a Codex event: ${error instanceof Error ? error.message : String(error)}`));
@@ -186,6 +202,13 @@ class CodexSession implements AgentSession {
     try {
       await this.#ready;
       if (this.#disposed || this.#failed) return;
+      if (this.#options.mcp && this.#reloadMcp) {
+        try { await this.#request("config/mcpServer/reload", {}, false, 5_000); }
+        catch (error) {
+          if (/method not found|unknown method|not supported/i.test(String(error))) this.#reloadMcp = false;
+          else this.#options.emit({ type: "notice", level: "warn", text: `Could not refresh Codex MCP tools: ${String(error)}` });
+        }
+      }
       const review = /^\/review(?:\s+([\s\S]*))?$/.exec(next.text.trim());
       if (review && (next.attachments.length || next.skills.length)) throw new Error("Send attachments and skills in a message before starting a review.");
       const result = review ? await this.#request("review/start", {
@@ -528,6 +551,21 @@ class CodexSession implements AgentSession {
       }
       return;
     }
+    if (method === "mcpServer/elicitation/request") {
+      const mode = String(params.mode ?? "");
+      const content = ["form", "openai/form", "openaiForm"].includes(mode) ? elicitationContent(params.requestedSchema) : undefined;
+      if (!content) {
+        this.#write({ id, result: { action: "decline" } });
+        return;
+      }
+      const metadata = params._meta && typeof params._meta === "object" && !Array.isArray(params._meta) ? params._meta as Wire : {};
+      const app = [metadata.app_name, metadata.appName, params.serverName].find(value => typeof value === "string" && value.trim());
+      this.#options.emit({ type: "status", status: "awaiting" });
+      const decision = await ask(this.#options.threadId, `App access: ${String(app ?? "MCP server")}`, { message: params.message, server: params.serverName, content });
+      this.#write({ id, result: decision === "deny" ? { action: "decline" } : { action: "accept", content } });
+      if (!this.#disposed) this.#options.emit({ type: "status", status: "working" });
+      return;
+    }
     if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") {
       const fileChange = method === "item/fileChange/requestApproval";
       const item = this.#items.get(String(params.itemId));
@@ -552,18 +590,10 @@ export const codexProvider: Provider = {
   capabilities: { transport: "rpc", steer: true, compact: true, stopShell: true },
   steerHint: "Codex adds it to the turn in progress.",
   models: [],
-  listModels: () => discoverModels("codex"),
-  async detect() {
-    if (process.platform === "win32") {
-      const version = await commandVersion("codex");
-      return { available: Boolean(version), version };
-    }
-    try {
-      const { stdout } = await run("codex", ["--version"], { timeout: 8000 });
-      return { available: true, version: stdout.trim().split("\n")[0] };
-    } catch {
-      return { available: false };
-    }
+  listModels: (launch) => discoverModels("codex", launch),
+  async detect(launch) {
+    const version = await commandVersion(launch?.binary ?? "codex", 8000, launch?.environment);
+    return { available: Boolean(version), version };
   },
   start: (options) => new CodexSession(options),
 };

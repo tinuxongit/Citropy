@@ -38,7 +38,7 @@ test("the macOS title bar inset keeps its fixed clearance while the gap scales",
   const from = styles + "app.css";
   const { css } = await postcss([scalePixels()]).process(readFileSync(from, "utf8"), { from });
   assert.ok(
-    css.includes("calc(round(76px * var(--ui-scale), 1px) / var(--ui-scale) + round(6px * var(--ui-scale), 1px))"),
+    css.includes("calc(round(76px * var(--ui-scale), 1px) / var(--ui-scale) + round(6px * var(--ui-scale), 1px) - var(--strip))"),
     "the title bar padding no longer cancels the scale for its fixed part",
   );
   const browser = await chromium.launch();
@@ -55,7 +55,7 @@ test("the macOS title bar inset keeps its fixed clearance while the gap scales",
           const style = getComputedStyle(element);
           return { padding: parseFloat(style.paddingLeft), width: parseFloat(style.width) };
         });
-        const expectedPadding = 76 + 6 * (scale / 100);
+        const expectedPadding = Math.max(18 * (scale / 100), 76 + (6 - 48) * (scale / 100));
         const expectedWidth = 76 + 186 * (scale / 100);
         assert.ok(Math.abs(computed.padding - expectedPadding) < 1.5, `padding ${computed.padding} at ${scale}% and ${width}px`);
         if (width === 1200) assert.ok(Math.abs(computed.width - expectedWidth) < 1.5, `width ${computed.width} at ${scale}%`);

@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
 
-export type ThreadTree = ReturnType<typeof useThreadTree>;
+export interface ThreadTree {
+  childrenByParent: Map<string, ThreadMeta[]>;
+  selectedPath: Set<string>;
+  activePaths: Set<string>;
+}
 
 function ancestry(threads: Record<string, ThreadMeta>, start: ThreadMeta | undefined, into: Set<string>): void {
   let thread = start;
@@ -17,29 +21,22 @@ export function rootThread(threads: Record<string, ThreadMeta>, id: string | nul
   return thread;
 }
 
-export function useThreadTree(threads: Record<string, ThreadMeta>, activeThreadId: string | null) {
-  const childrenByParent = useMemo(() => {
-    const children = new Map<string, ThreadMeta[]>();
+export function useThreadTree(threadsByEnvironment: Record<string, Record<string, ThreadMeta>>, environment: string, activeThreadId: string | null): Record<string, ThreadTree> {
+  return useMemo(() => Object.fromEntries(Object.entries(threadsByEnvironment).map(([id, threads]) => {
+    const childrenByParent = new Map<string, ThreadMeta[]>();
     for (const thread of Object.values(threads)) {
       if (!thread.parentThreadId) continue;
-      const siblings = children.get(thread.parentThreadId);
+      const siblings = childrenByParent.get(thread.parentThreadId);
       if (siblings) siblings.push(thread);
-      else children.set(thread.parentThreadId, [thread]);
+      else childrenByParent.set(thread.parentThreadId, [thread]);
     }
-    for (const siblings of children.values()) siblings.sort((a, b) => a.createdAt - b.createdAt);
-    return children;
-  }, [threads]);
-  const selectedPath = useMemo(() => {
-    const path = new Set<string>();
-    ancestry(threads, activeThreadId ? threads[activeThreadId] : undefined, path);
-    return path;
-  }, [threads, activeThreadId]);
-  const activePaths = useMemo(() => {
-    const paths = new Set<string>();
+    for (const siblings of childrenByParent.values()) siblings.sort((a, b) => a.createdAt - b.createdAt);
+    const selectedPath = new Set<string>();
+    if (id === environment) ancestry(threads, activeThreadId ? threads[activeThreadId] : undefined, selectedPath);
+    const activePaths = new Set<string>();
     for (const thread of Object.values(threads)) {
-      if (thread.running || !["idle", "stopped"].includes(thread.status)) ancestry(threads, thread, paths);
+      if (thread.running || !["idle", "stopped"].includes(thread.status)) ancestry(threads, thread, activePaths);
     }
-    return paths;
-  }, [threads]);
-  return { childrenByParent, selectedPath, activePaths };
+    return [id, { childrenByParent, selectedPath, activePaths }];
+  })), [threadsByEnvironment, environment, activeThreadId]);
 }

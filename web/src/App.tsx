@@ -16,6 +16,7 @@ import {
 import { Titlebar } from "./components/Titlebar.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { NavigationStrip } from "./components/NavigationStrip.tsx";
+import { SidebarFooter } from "./components/SidebarFooter.tsx";
 import { Conversation } from "./components/Conversation.tsx";
 import { Composer } from "./components/Composer.tsx";
 import { Inspector } from "./components/Inspector.tsx";
@@ -73,6 +74,7 @@ export function App() {
   const newThreadProvider = useApp((state) => state.newThreadProvider);
   const language = useApp((state) => state.language);
   const sidebarOpen = useApp((state) => state.sidebarOpen);
+  const navigationStyle = useApp((state) => state.navigationStyle);
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const panelWidths = useApp((state) => state.panelWidths);
   const uiScale = useApp((state) => state.uiScale);
@@ -122,19 +124,19 @@ export function App() {
     if (view === "chat") toggleSidebar();
     else setSectionSidebarOpen((open) => !open);
   };
-  const navigation = (
-    <NavigationStrip
+  const openSettings = () => {
+    setSettingsSection("General");
+    openView("settings");
+  };
+  const footer = navigationStyle === "bar" ? (
+    <SidebarFooter
       activeView={view}
-      onChat={() => (view === "chat" ? toggleSidebar() : openView("chat"))}
       onGit={() => openView("git")}
       onGitHub={() => openView("github")}
-      onSettings={() => {
-        setSettingsSection("General");
-        openView("settings");
-      }}
+      onSettings={openSettings}
       onUsage={() => openView("usage")}
     />
-  );
+  ) : undefined;
 
   useEffect(() => {
     if (githubStatus.data)
@@ -221,6 +223,7 @@ export function App() {
     <div
       className="shell"
       data-sidebar={navigationOpen}
+      data-navigation={navigationStyle}
       data-inspector={inspectorOpen && view === "chat"}
       data-composer={view === "chat" && hasProject && hasActiveThread}
       style={
@@ -232,7 +235,14 @@ export function App() {
         ) as CSSProperties
       }
     >
-      {navigation}
+      {navigationStyle === "strip" && <NavigationStrip
+        activeView={view}
+        onChat={() => (view === "chat" ? toggleSidebar() : openView("chat"))}
+        onGit={() => openView("git")}
+        onGitHub={() => openView("github")}
+        onSettings={openSettings}
+        onUsage={() => openView("usage")}
+      />}
       <Titlebar
         onNotification={openNotification}
         view={view}
@@ -252,6 +262,7 @@ export function App() {
         )}
         {view === "chat" && <SlidingPanel open={sidebarOpen} side="left">
           <Sidebar
+            footer={footer}
             onConversation={() => openView("chat")}
           />
         </SlidingPanel>}
@@ -263,12 +274,14 @@ export function App() {
           >
             {view === "usage" ? (
               <UsageView
+                navigation={footer}
                 key={environment}
                 sidebarOpen={sectionSidebarOpen}
                 onBack={() => openView("chat")}
               />
             ) : view === "git" ? (
               <GitManager
+                navigation={footer}
                 onBusyChange={setGitBusy}
                 key={`${environment}:${activeProjectId}:${activeThreadId}`}
                 sidebarOpen={sectionSidebarOpen}
@@ -277,6 +290,7 @@ export function App() {
               />
             ) : view === "github" ? (
               <GitHub
+                navigation={footer}
                 status={githubStatus}
                 onGit={() => openView("git")}
                 key={`${environment}:${activeProjectId}`}
@@ -286,6 +300,7 @@ export function App() {
               />
             ) : view === "settings" ? (
               <Settings
+                navigation={footer}
                 initialSection={settingsSection}
                 sidebarOpen={sectionSidebarOpen}
                 onCloseSidebar={() => setSectionSidebarOpen(false)}

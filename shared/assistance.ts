@@ -3,6 +3,7 @@ import type { ProviderId } from "./protocol.ts";
 export interface WritingModel {
   provider: ProviderId;
   model: string;
+  providerInstanceId?: string;
 }
 
 export interface AssistanceSettings {

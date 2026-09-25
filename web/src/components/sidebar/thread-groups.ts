@@ -7,23 +7,25 @@ import { Folder } from "../icons.ts";
 
 type Category = "pinned" | "active" | "snoozed" | "archived" | "finished";
 
+export type SidebarThread =
+  | { environment: string; thread: ThreadMeta; cached?: false }
+  | { environment: string; thread: CachedThread; cached: true };
+
 export interface ThreadGroup {
   id: string;
   label: string;
   icon: ComponentType<{ size?: number; className?: string }>;
-  threads: ThreadMeta[];
-  cachedThreads?: CachedThread[];
+  threads: SidebarThread[];
   open: boolean;
   toggle: () => void;
   project?: Project;
   environment?: string;
 }
 
-export interface ThreadRow {
+export interface ThreadListRow {
   key: string;
   group: ThreadGroup;
-  thread?: ThreadMeta;
-  cached?: CachedThread;
+  item?: SidebarThread;
   empty: boolean;
 }
 
@@ -40,15 +42,18 @@ type Sortable = Pick<ThreadMeta, "position" | "updatedAt">;
 export const sortThreads = (a: Sortable, b: Sortable) =>
   (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || b.updatedAt - a.updatedAt;
 
-function categorize(threads: ThreadMeta[], searching: boolean): Record<Category, ThreadMeta[]> {
-  const roots = threads.filter((thread) => !thread.parentThreadId || searching);
-  const awake = roots.filter((thread) => !thread.archived && !thread.snoozedUntil);
+export const threadKey = (environment: string, id: string) => `thread:${environment}:${id}`;
+const sortItems = (a: SidebarThread, b: SidebarThread) => sortThreads(a.thread, b.thread);
+
+function categorize(threads: SidebarThread[], searching: boolean): Record<Category, SidebarThread[]> {
+  const roots = threads.filter((item) => item.cached || !item.thread.parentThreadId || searching);
+  const awake = roots.filter(({ thread }) => !thread.archived && !thread.snoozedUntil);
   return {
-    pinned: awake.filter((thread) => !thread.finished && thread.pinned).sort(sortThreads),
-    active: awake.filter((thread) => !thread.finished && !thread.pinned).sort(sortThreads),
-    snoozed: roots.filter((thread) => !thread.archived && thread.snoozedUntil).sort(sortThreads),
-    archived: roots.filter((thread) => thread.archived).sort(sortThreads),
-    finished: awake.filter((thread) => thread.finished).sort(sortThreads),
+    pinned: awake.filter(({ thread }) => !thread.finished && thread.pinned).sort(sortItems),
+    active: awake.filter(({ thread }) => !thread.finished && !thread.pinned).sort(sortItems),
+    snoozed: roots.filter(({ thread }) => !thread.archived && thread.snoozedUntil).sort(sortItems),
+    archived: roots.filter(({ thread }) => thread.archived).sort(sortItems),
+    finished: awake.filter(({ thread }) => thread.finished).sort(sortItems),
   };
 }
 
@@ -60,22 +65,23 @@ function revealedCategory(root: ThreadMeta | undefined): Category | undefined {
   return undefined;
 }
 
-export function movableSiblings(groups: ThreadGroup[], thread: ThreadMeta, globalMode: boolean): ThreadMeta[] {
-  const group = groups.find((entry) => entry.threads.some((sibling) => sibling.id === thread.id));
+export function movableSiblings(groups: ThreadGroup[], item: SidebarThread, globalMode: boolean): SidebarThread[] {
+  const group = groups.find((entry) => entry.threads.some((sibling) => sibling.environment === item.environment && sibling.thread.id === item.thread.id));
   if (!group) return [];
-  return globalMode ? group.threads.filter((sibling) => sibling.projectId === thread.projectId) : group.threads;
+  return group.threads.filter((sibling) => !sibling.cached && sibling.environment === item.environment && (!globalMode || sibling.thread.projectId === item.thread.projectId));
 }
 
 export function threadOrderAfterMove(
   groups: ThreadGroup[],
   globalMode: boolean,
+  environment: string,
   projectId: string,
   source: string,
   target: string,
   edge?: "before" | "after",
 ): string[] | undefined {
-  if (!groups.some((group) => group.threads.some((thread) => thread.id === source) && group.threads.some((thread) => thread.id === target))) return undefined;
-  const ordered = groups.flatMap((group) => group.threads.filter((thread) => !globalMode || thread.projectId === projectId).map((thread) => thread.id));
+  if (!groups.some((group) => group.threads.some((item) => !item.cached && item.environment === environment && item.thread.id === source) && group.threads.some((item) => !item.cached && item.environment === environment && item.thread.id === target))) return undefined;
+  const ordered = groups.flatMap((group) => group.threads.filter((item) => !item.cached && item.environment === environment && (!globalMode || item.thread.projectId === projectId)).map((item) => item.thread.id));
   const from = ordered.indexOf(source);
   const to = ordered.indexOf(target);
   if (from < 0 || to < 0) return undefined;
@@ -87,17 +93,18 @@ export function threadOrderAfterMove(
 export interface EnvironmentFolders {
   environment: string;
   server: boolean;
-  cached?: { projects: Project[]; threads: CachedThread[] };
+  projects: Project[];
+  cachedThreads?: CachedThread[];
 }
 
 const DEFAULT_OPEN: Record<string, boolean> = { pinned: true, active: true, snoozed: false, archived: false, finished: false };
 
-export function useThreadGroups({ threads, query, globalMode, projects, environments, activeRoot, activeThreadId }: {
-  threads: ThreadMeta[];
+export function useThreadGroups({ threads, query, globalMode, environments, activeEnvironment, activeRoot, activeThreadId }: {
+  threads: SidebarThread[];
   query: string;
   globalMode: boolean;
-  projects: Project[];
   environments: EnvironmentFolders[];
+  activeEnvironment: string;
   activeRoot: ThreadMeta | undefined;
   activeThreadId: string | null;
 }) {
@@ -105,13 +112,13 @@ export function useThreadGroups({ threads, query, globalMode, projects, environm
   const isOpen = (key: string) => stored[key] ?? DEFAULT_OPEN[key] ?? true;
   const reveal = (key: string) => { if (!isOpen(key)) setSidebarGroupOpen(key, true); };
   const revealed = revealedCategory(activeRoot);
-  const revealedKey = useRef(`${activeThreadId}:${revealed}`);
+  const revealedKey = useRef(`${activeEnvironment}:${activeThreadId}:${revealed}`);
   useEffect(() => {
-    const key = `${activeThreadId}:${revealed}`;
+    const key = `${activeEnvironment}:${activeThreadId}:${revealed}`;
     if (revealedKey.current === key) return;
     revealedKey.current = key;
     if (revealed) reveal(revealed);
-  }, [activeThreadId, revealed]);
+  }, [activeEnvironment, activeThreadId, revealed]);
 
   const searching = Boolean(query);
   const categories = useMemo(() => categorize(threads, searching), [threads, searching]);
@@ -120,52 +127,45 @@ export function useThreadGroups({ threads, query, globalMode, projects, environm
       const open = isOpen(key);
       return { ...base, open, toggle: () => setSidebarGroupOpen(key, !open) };
     };
-    const category = (id: Category, groupThreads: ThreadMeta[]) => group({ ...CATEGORIES.find((entry) => entry.id === id)!, threads: groupThreads }, id);
+    const category = (id: Category, groupThreads: SidebarThread[]) => group({ ...CATEGORIES.find((entry) => entry.id === id)!, threads: groupThreads }, id);
     if (!globalMode) return CATEGORIES.map(({ id }) => category(id, categories[id])).filter((entry) => entry.threads.length > 0);
 
-    const finished = threads.filter((thread) => (!thread.parentThreadId || searching) && thread.finished).sort(sortThreads);
-    const grouped = new Set([...categories.pinned, ...finished].map((thread) => thread.id));
-    const byProject = new Map<string, ThreadMeta[]>();
-    for (const thread of threads) {
-      if ((thread.parentThreadId && !searching) || grouped.has(thread.id)) continue;
-      const entry = byProject.get(thread.projectId);
-      if (entry) entry.push(thread);
-      else byProject.set(thread.projectId, [thread]);
+    const cached = searching ? [] : environments.flatMap(({ environment, cachedThreads }) => (cachedThreads ?? []).map((thread): SidebarThread => ({ thread, environment, cached: true })));
+    const pinned = [...categories.pinned, ...cached.filter(({ thread }) => !thread.finished && thread.pinned && !thread.archived && !thread.snoozedUntil)].sort(sortItems);
+    const finished = [...threads.filter((item) => (!item.cached && (!item.thread.parentThreadId || searching) && item.thread.finished)), ...cached.filter(({ thread }) => thread.finished)].sort(sortItems);
+    const grouped = new Set([...pinned, ...finished].map((item) => threadKey(item.environment, item.thread.id)));
+    const byProject = new Map<string, SidebarThread[]>();
+    for (const item of [...threads, ...cached]) {
+      if ((!item.cached && item.thread.parentThreadId && !searching) || grouped.has(threadKey(item.environment, item.thread.id))) continue;
+      if (item.cached && (item.thread.archived || item.thread.snoozedUntil)) continue;
+      const key = `${item.environment}:${item.thread.projectId}`;
+      const entry = byProject.get(key);
+      if (entry) entry.push(item);
+      else byProject.set(key, [item]);
     }
-    const folders = environments.flatMap(({ environment, server, cached }): ThreadGroup[] => {
+    const folders = environments.flatMap(({ environment, server, projects }): ThreadGroup[] => {
       const icon = server ? Server : Folder;
       const projectKey = (id: string) => environment === "local" ? `project:${id}` : `environment:${environment}:project:${id}`;
-      if (!cached) return projects.map((project) => group({
+      return projects.map((project) => group({
         id: projectKey(project.id),
         label: project.name,
         icon,
-        threads: (byProject.get(project.id) ?? []).sort(sortThreads),
+        threads: (byProject.get(`${environment}:${project.id}`) ?? []).sort(sortItems),
         project,
         environment,
       }, projectKey(project.id))).filter((entry) => !searching || entry.threads.length > 0);
-      if (searching) return [];
-      return cached.projects.map((project) => group({
-        id: projectKey(project.id),
-        label: project.name,
-        icon,
-        threads: [],
-        cachedThreads: cached.threads.filter((thread) => thread.projectId === project.id && !thread.archived && !thread.snoozedUntil && !thread.finished).sort(sortThreads),
-        project,
-        environment,
-      }, projectKey(project.id)));
     });
     return [
-      ...(categories.pinned.length ? [category("pinned", categories.pinned)] : []),
+      ...(pinned.length ? [category("pinned", pinned)] : []),
       ...folders,
       ...(finished.length ? [category("finished", finished)] : []),
     ];
-  }, [globalMode, threads, projects, environments, stored, searching, categories]);
+  }, [globalMode, threads, environments, stored, searching, categories]);
 
-  const rows = useMemo(() => groups.flatMap((group): ThreadRow[] => [
+  const rows = useMemo(() => groups.flatMap((group): ThreadListRow[] => [
     { key: group.id, group, empty: false },
-    ...(group.open || searching ? group.threads.map((thread) => ({ key: thread.id, group, thread, empty: false })) : []),
-    ...(group.open && group.cachedThreads ? group.cachedThreads.map((cached) => ({ key: `${group.id}:${cached.id}`, group, cached, empty: false })) : []),
-    ...(group.project && group.open && !searching && !group.threads.length && !group.cachedThreads?.length ? [{ key: `${group.id}:empty`, group, empty: true }] : []),
+    ...(group.open || searching ? group.threads.map((item) => ({ key: threadKey(item.environment, item.thread.id), group, item, empty: false })) : []),
+    ...(group.project && group.open && !searching && !group.threads.length ? [{ key: `${group.id}:empty`, group, empty: true }] : []),
   ]), [groups, searching]);
 
   return { groups, rows, revealFinished: () => reveal("finished") };

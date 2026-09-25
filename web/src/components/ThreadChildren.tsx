@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { CornerDownRight, Network, ChevronUp, ChevronDown } from "lucide-react";
+import { CornerDownRight } from "lucide-react";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
-import { loadThread } from "../lib/actions.ts";
+import { loadThread, openOnEnvironment } from "../lib/actions.ts";
+import { reportError } from "../lib/api.ts";
+import { environmentId } from "../lib/environment.ts";
 import { selectThread } from "../lib/store.ts";
 import { groupSubagents } from "../lib/subagents.ts";
 import { Check } from "./icons.ts";
@@ -12,89 +13,70 @@ import { useI18n } from "../lib/i18n.ts";
 
 interface Props {
   parent: ThreadMeta;
+  environment: string;
   childrenByParent: Map<string, ThreadMeta[]>;
   selectedPath: Set<string>;
   activePaths: Set<string>;
   activeThreadId: string | null;
   onConversation: () => void;
-  nested?: boolean;
 }
 
 export function ThreadChildren(props: Props) {
   const t = useI18n();
   const {
     parent,
+    environment,
     childrenByParent,
     selectedPath,
     activePaths,
     activeThreadId,
     onConversation,
-    nested,
   } = props;
   const children = childrenByParent.get(parent.id) ?? [];
   const { current } = groupSubagents(children);
-  const visible = children.filter(
+  const listed = children.filter(
     (child) =>
       current.includes(child) ||
       activePaths.has(child.id) ||
       selectedPath.has(child.id),
   );
-  const selected = children.some((child) => selectedPath.has(child.id));
-  const [open, setOpen] = useState(selected);
-  useEffect(() => {
-    if (selected) setOpen(true);
-  }, [selected, activeThreadId]);
-  if (!visible.length) return null;
+  const shown = children.some((child) => activePaths.has(child.id) || selectedPath.has(child.id));
+  if (!listed.length) return null;
   return (
-    <div
-      className="thread-children-disclosure"
-      data-open={open}
-      data-nested={Boolean(nested)}
-      aria-label={t("Subagents for {title}", { title: parent.title })}
-    >
-      <div className="thread-children-clip">
-        <button
-          type="button"
-          className="thread-subagents-toggle"
-          aria-expanded={open}
-          aria-label={t(open ? "Hide subagents for {title}" : "Show subagents for {title}", { title: parent.title })}
-          onClick={() => setOpen(!open)}
-        >
-          {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          <Network size={13} className="panel-icon-subagents" />
-          <span>{t("Subagents")}</span>
-          <span className="thread-completed-count">{visible.length}</span>
-        </button>
-        <Collapsible open={open} className="thread-children">
-          <div className="thread-children-list">
-            {visible.map((child) => (
-              <div key={child.id}>
-                <button
-                  type="button"
-                  className="thread-child"
-                  data-active={child.id === activeThreadId}
-                  title={`${child.title} · ${t(child.status)}`}
-                  onClick={() => {
-                    onConversation();
-                    selectThread(child.id);
-                    loadThread(child.id);
-                  }}
-                >
-                  <CornerDownRight size={12} />
-                  <ProviderIcon provider={child.provider} />
-                  <span className="truncate">{child.title}</span>
-                  {activePaths.has(child.id) ? (
-                    <ThreadPulse status={child.status} />
-                  ) : (
-                    <Check size={12} className="subagent-complete" />
-                  )}
-                </button>
-                <ThreadChildren {...props} parent={child} nested />
-              </div>
-            ))}
+    <Collapsible open={shown} className="thread-children">
+      <div className="thread-children-list" aria-label={t("Subagents for {title}", { title: parent.title })}>
+        {listed.map((child) => (
+          <div key={child.id}>
+            <button
+              type="button"
+              className="thread-child"
+              data-active={child.id === activeThreadId}
+              title={`${child.title} · ${t(child.status)}`}
+              onClick={() => {
+                onConversation();
+                if (environment !== environmentId()) void openOnEnvironment(environment, child.projectId, child.id).catch(reportError);
+                else {
+                  selectThread(child.id);
+                  loadThread(child.id);
+                }
+              }}
+            >
+              <CornerDownRight size={12} />
+              <span className="subagent-icon">
+                <ProviderIcon provider={child.provider} />
+                <span className="subagent-parent-icon"><ProviderIcon provider={parent.provider} /></span>
+              </span>
+              <span className="truncate">{child.title}</span>
+              {activePaths.has(child.id) ? (
+                <ThreadPulse status={child.status} />
+              ) : (
+                <Check size={12} className="subagent-complete" />
+              )}
+            </button>
+            <ThreadChildren {...props} parent={child} />
           </div>
-        </Collapsible>
+        ))}
       </div>
-    </div>
+    </Collapsible>
   );
 }
