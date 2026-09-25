@@ -1,9 +1,8 @@
 import { Attachments } from "./Attachments.tsx";
-import { memo, type ReactNode } from "react";
+import { memo, useState, type ReactNode } from "react";
 import { PartView } from "./PartView.tsx";
 import { WorkGroup } from "./WorkGroup.tsx";
 import { WorkDetails } from "./WorkDetails.tsx";
-import { Reasoning } from "./parts/Reasoning.tsx";
 import { MessageActions } from "./MessageActions.tsx";
 import type { TimelineRow } from "../lib/timeline.ts";
 import { useApp } from "../lib/store.ts";
@@ -15,7 +14,6 @@ import {
   clock,
   modelLabel,
   modelSource,
-  providerLabels,
 } from "../lib/format.ts";
 
 interface Props extends Omit<TimelineRow, "key" | "messageId"> {
@@ -37,6 +35,7 @@ export const MessageBlock = memo(function MessageBlock({
 }: Props) {
   const t = useI18n();
   const shell = useApp((state) => messageId ? state.messages[messageId] : undefined);
+  const [fresh] = useState(() => Boolean(shell && Date.now() - shell.ts < 2000));
   const partKind = useApp((state) => row?.kind === "part" ? state.parts[row.id]?.kind : undefined);
   const threadId = useApp((state) => state.activeThreadId && state.threads[state.activeThreadId] ? state.activeThreadId : undefined);
   const provider = useApp((state) => shell?.provider ?? state.threads[threadId ?? ""]?.provider);
@@ -57,7 +56,7 @@ export const MessageBlock = memo(function MessageBlock({
 
   if (shell?.role === "user") {
     return (
-      <article id={`message-${messageId}`} className="turn turn-user">
+      <article id={`message-${messageId}`} className="turn turn-user" data-fresh={fresh || undefined}>
         <div
           className="message-avatar user-avatar"
           aria-label={account?.login ?? t("You")}
@@ -78,8 +77,10 @@ export const MessageBlock = memo(function MessageBlock({
         <div className="message-content">
           <div className="turn-heading">
             <strong title={account?.login ?? t("You")}>{account?.login ?? t("You")}</strong>
-            <time>{clock(shell.ts)}</time>
-            {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} user />}
+            <span className="turn-meta">
+              <time>{clock(shell.ts)}</time>
+              {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} user />}
+            </span>
           </div>
           {shell.attachments?.length && threadId && projectId ? (
             <Attachments
@@ -102,12 +103,13 @@ export const MessageBlock = memo(function MessageBlock({
   const modelId = shell?.model ?? threadModel;
   const modelName = modelLabel(catalog?.models ?? [], modelId);
   const model = selectedModel(catalog?.models ?? [], modelId);
-  const activity = Boolean(row && row.kind !== "part") || Boolean(partKind && partKind !== "text");
+  const activity = Boolean(row && row.kind !== "part") || Boolean(partKind && partKind !== "text" && partKind !== "reasoning");
 
   return (
     <article
       id={first && messageId ? `message-${messageId}` : undefined}
       className="turn turn-agent"
+      data-fresh={fresh && first || undefined}
       data-continuation={!first || undefined}
       data-last={last}
       data-activity={activity || undefined}
@@ -121,17 +123,11 @@ export const MessageBlock = memo(function MessageBlock({
       <div className="message-content">
         {first && (
           <div className="turn-heading">
-            {threadId && messageId && !streaming && <MessageActions threadId={threadId} messageId={messageId} user={false} />}
-            <strong title={modelName}>{modelName}</strong>
-            {provider && (
-              <span
-                className="turn-provider"
-                title={modelSource(catalog, model)}
-              >
-                {catalog?.label ?? providerLabels[provider]}
-              </span>
-            )}
-            <time>{clock(timestamp)}</time>
+            <strong title={provider ? `${modelName} · ${modelSource(catalog, model)}` : modelName}>{modelName}</strong>
+            <span className="turn-meta">
+              <time>{clock(timestamp)}</time>
+              {threadId && messageId && !streaming && <MessageActions threadId={threadId} messageId={messageId} user={false} />}
+            </span>
           </div>
         )}
         {separator && <hr className="work-separator" />}
@@ -140,9 +136,7 @@ export const MessageBlock = memo(function MessageBlock({
             {row.kind === "activity" ? (
               <WorkDetails id={row.id} ids={row.ids} messageIds={row.messageIds} open={row.open} active={row.active} previewId={row.previewId} transitionActivity={transitionActivity} />
             ) : row.kind === "group" ? (
-              <WorkGroup key={row.ids[0]} ids={row.ids} />
-            ) : row.kind === "thoughts" ? (
-              <Reasoning ids={row.ids} live={streaming} />
+              <WorkGroup key={row.ids[0]} ids={row.ids} live={streaming} />
             ) : (
               <PartView key={row.id} partId={row.id} live={streaming} />
             )}

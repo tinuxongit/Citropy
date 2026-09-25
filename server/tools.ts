@@ -21,6 +21,11 @@ function shorten(value: string, root: string): string {
   return value.split(`${root}/`).join("").split(root).join(".");
 }
 
+function place(path: string, root: string): string | undefined {
+  const short = shorten(path, root);
+  return short === "." ? undefined : short || undefined;
+}
+
 function folder(path: string, root: string): string | undefined {
   if (!path) return undefined;
   const dir = dirname(path);
@@ -79,12 +84,12 @@ export function describeTool(name: string, rawInput: unknown, root = ""): ToolDe
     case "NotebookEdit":
       return { shape: "edit", headline: short || "file", detail: dir };
     case "Glob":
-      return { shape: "search", headline: str(input.pattern) || "glob", detail: str(input.path) || undefined };
+      return { shape: "search", headline: str(input.pattern) || "glob", detail: place(str(input.path), root) };
     case "Grep":
       return {
         shape: "search",
         headline: str(input.pattern) || "search",
-        detail: [str(input.path), str(input.glob)].filter(Boolean).join(" ") || undefined,
+        detail: [place(str(input.path), root), str(input.glob)].filter(Boolean).join(" ") || undefined,
       };
     case "WebSearch":
       return { shape: "web", headline: str(input.query) || "search", detail: "web search" };

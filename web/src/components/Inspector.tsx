@@ -1,6 +1,7 @@
 import { flushSync } from "react-dom";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { AnimatedText } from "./AnimatedText.tsx";
+import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { isRemote } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -89,7 +90,18 @@ export function Inspector({ visible }: { visible: boolean }) {
   const focusTab = useRef(false);
   const [expandedProject, setExpandedProject] = useState<string>();
   const expanded = Boolean(projectId && expandedProject === projectId);
-  const toggleExpanded = () => setExpandedProject(expanded ? undefined : projectId ?? undefined);
+  const inspector = useRef<HTMLElement>(null);
+  const reducedMotion = useReducedMotion();
+  const toggleExpanded = () => {
+    const panel = inspector.current?.parentElement;
+    const before = panel?.getBoundingClientRect();
+    flushSync(() => setExpandedProject(expanded ? undefined : projectId ?? undefined));
+    if (!panel || !before || reducedMotion) return;
+    const after = panel.getBoundingClientRect();
+    const timing = { duration: 280, easing: "cubic-bezier(0.32, 0.72, 0, 1)" };
+    if (expanded) panel.animate([{ transform: "translateX(-40px)", opacity: 0.6 }, { transform: "none", opacity: 1 }], timing);
+    else panel.animate([{ transform: `translateX(${before.left - after.left}px)` }, { transform: "none" }], timing);
+  };
   const [tabWidth, setTabWidth] = useState(0);
   const tabs = panels.filter((panel) => panel.projectId === projectId);
   const tabActions = usePanelTabActions(tabs, tabStrip, visible);
@@ -128,6 +140,7 @@ export function Inspector({ visible }: { visible: boolean }) {
 
   return (
     <aside
+      ref={inspector}
       className="inspector workbench"
       data-visible={visible}
       data-expanded={expanded}

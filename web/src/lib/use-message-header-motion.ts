@@ -26,7 +26,7 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
     let width = stage.clientWidth;
     let layout = getComputedStyle(root).getPropertyValue("--message-header-layout");
     const measure = () => new Map(Array.from(root.querySelectorAll<HTMLElement>(
-      ".message-avatar, .turn-heading > strong, .turn-heading > time, .turn-heading > .turn-provider, .turn-heading > .message-actions",
+      ".message-avatar, .turn-heading > strong, .turn-heading > .turn-meta",
     ), element => [element, position(element)]));
     let positions = measure();
     const mutations = new MutationObserver(records => {

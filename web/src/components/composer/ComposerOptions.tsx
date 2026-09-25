@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import { useState, type CSSProperties, type Ref } from "react";
 import { LockKeyhole, UnlockKeyhole } from "lucide-react";
 import {
   Brain,
@@ -61,100 +61,140 @@ export function hasModelOptions(model: ModelOption | undefined) {
   );
 }
 
-export function ModelOptionsMenu({
+export function ModelDetail({
   thread,
   model,
-  disabled,
-  buttonRef,
 }: {
   thread: ThreadMeta;
   model: ModelOption | undefined;
-  disabled: boolean;
-  buttonRef: Ref<HTMLButtonElement>;
 }) {
   const t = useI18n();
   const effort = effectiveEffort(model, thread.effort);
-  const effortLabel = effort ? formatEffort(effort) : t("Model options");
   const contextWindow = thread.contextWindow ?? model?.contextMax;
-  const contextDescription = contextWindow
-    ? t("Context window: {count} tokens", { count: contextWindow.toLocaleString(currentLocale()) })
-    : undefined;
+  if (!hasModelOptions(model)) return null;
   return (
-    <Menu
-      header={thread.pendingConfig ? t("Applies to the next turn") : undefined}
-      width={280}
-      items={[
-        ...(model?.efforts ?? []).map((value) => ({
-          id: `effort-${value}`,
-          section: t("Reasoning effort"),
-          icon: <Brain size={16} className="option-reasoning" />,
-          label: formatEffort(value),
-          selected: effort === value,
-          onSelect: () => configureThread(thread.id, { effort: value }),
-        })),
-        ...(model?.contextWindows ?? []).map((size) => ({
-          id: `context-${size}`,
-          section: t("Context window"),
-          icon: <Layers size={16} className="option-context" />,
-          label: `${contextLabel(size)} tokens`,
-          selected: contextWindow === size,
-          onSelect: () =>
-            configureThread(thread.id, { contextWindow: size }),
-        })),
-        ...(model?.fastMode
-          ? [true, false].map((on) => ({
-              id: `fast-${on}`,
-              section: t("Fast mode"),
-              icon: (
-                <Zap
-                  size={16}
-                  className={on ? "option-fast" : "muted"}
-                />
-              ),
-              label: on ? t("On") : t("Off"),
-              hint: on
-                ? (model.fastModeHint ?? t("Faster responses, increased usage"))
-                : t("Standard speed and usage"),
-              selected: Boolean(thread.fastMode) === on,
-              onSelect: () =>
-                configureThread(thread.id, { fastMode: on }),
-            }))
-          : []),
-      ]}
-      trigger={({ toggle, id, open }) => (
-        <button
-          id={id}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          className="composer-select"
-          type="button"
-          disabled={disabled}
-          onClick={toggle}
-          ref={buttonRef}
-          title={contextDescription ? `${t("Model options")} · ${contextDescription}` : t("Model options")}
-          aria-label={`${t("Model options")}: ${effortLabel}${contextWindow ? `, ${contextLabel(contextWindow)} ${t("context")}` : ""}${thread.fastMode ? `, ${t("fast mode on")}` : ""}`}
-        >
-          {thread.fastMode ? (
-            <Zap size={14} className="option-fast" />
-          ) : (
-            <Brain size={14} className="option-reasoning" />
-          )}
+    <span className="composer-detail">
+      {effort && <span>{formatEffort(effort)}</span>}
+      {(thread.fastMode || contextWindow) && (
+        <span className="composer-detail-more">
           <span>
-            {effort
-              ? effortLabel
-              : contextWindow
-                ? contextLabel(contextWindow)
-                : t("Options")}
+            {contextWindow && (
+              <span
+                className="composer-context"
+                title={t("Context window: {count} tokens", { count: contextWindow.toLocaleString(currentLocale()) })}
+              >
+                {contextLabel(contextWindow)}
+              </span>
+            )}
+            {thread.fastMode && <Zap size={12} className="option-fast" aria-label={t("fast mode on")} />}
           </span>
-          {effort && contextWindow && (
-            <span className="composer-context" title={contextDescription}>
-              {contextLabel(contextWindow)}
-            </span>
-          )}
-          <ChevronDown size={11} />
-        </button>
+        </span>
       )}
-    />
+    </span>
+  );
+}
+
+type TuningTab = "effort" | "context" | "speed";
+
+export type TuningSettings = Partial<Pick<ThreadMeta, "effort" | "contextWindow" | "fastMode">>;
+
+export function ModelTuning({
+  settings,
+  model,
+  onChange,
+}: {
+  settings: TuningSettings;
+  model: ModelOption | undefined;
+  onChange: (patch: TuningSettings) => void;
+}) {
+  const t = useI18n();
+  const efforts = model?.efforts ?? [];
+  const effort = effectiveEffort(model, settings.effort);
+  const level = effort ? efforts.indexOf(effort) : 0;
+  const contextWindow = settings.contextWindow ?? model?.contextMax;
+  const tabs: Array<{ id: TuningTab; label: string; icon: typeof Brain }> = [
+    ...(efforts.length ? [{ id: "effort" as const, label: t("Effort"), icon: Brain }] : []),
+    ...(model?.contextWindows?.length ? [{ id: "context" as const, label: t("Context"), icon: Layers }] : []),
+    ...(model?.fastMode ? [{ id: "speed" as const, label: t("Speed"), icon: Zap }] : []),
+  ];
+  const [chosen, setChosen] = useState<TuningTab>();
+  const tab = tabs.find((entry) => entry.id === chosen)?.id ?? tabs[0]?.id;
+  if (!tab) return null;
+  return (
+    <div className="model-tuning">
+      {tabs.length > 1 && (
+        <div className="tuning-tabs" role="tablist" aria-orientation="vertical" aria-label={t("Model options")}>
+          {tabs.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === entry.id}
+              aria-label={entry.label}
+              title={entry.label}
+              onClick={() => setChosen(entry.id)}
+            >
+              <entry.icon size={16} />
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="tuning-panel">
+      {tab === "effort" && (
+        <div className="effort-slider">
+          <div className="effort-slider-value">{effort && formatEffort(effort)}</div>
+          <div
+            className="effort-slider-track"
+            style={{ "--fill": efforts.length > 1 ? level / (efforts.length - 1) : 1 } as CSSProperties}
+          >
+            {efforts.map((value, index) => (
+              <span key={value} className="effort-slider-stop" data-passed={index <= level || undefined} />
+            ))}
+            <input
+              type="range"
+              min={0}
+              max={efforts.length - 1}
+              step={1}
+              value={level}
+              aria-label={t("Reasoning effort")}
+              aria-valuetext={effort && formatEffort(effort)}
+              disabled={efforts.length < 2}
+              onChange={(event) => onChange({ effort: efforts[Number(event.target.value)] })}
+            />
+          </div>
+        </div>
+      )}
+      {tab === "context" && (
+        <div className="tuning-chips" role="group" aria-label={t("Context window")}>
+          {model!.contextWindows!.map((size) => (
+            <button
+              key={size}
+              type="button"
+              aria-pressed={contextWindow === size}
+              onClick={() => onChange({ contextWindow: size })}
+            >
+              {contextLabel(size)} {t("tokens")}
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === "speed" && (
+        <label className="tuning-speed">
+          <span>
+            <strong>{t("Fast mode")}</strong>
+            <small>{settings.fastMode ? (model?.fastModeHint ?? t("Faster responses, increased usage")) : t("Standard speed and usage")}</small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            className="setting-switch"
+            checked={Boolean(settings.fastMode)}
+            onChange={(event) => onChange({ fastMode: event.target.checked })}
+          />
+        </label>
+      )}
+      </div>
+    </div>
   );
 }
 

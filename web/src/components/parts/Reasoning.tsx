@@ -1,10 +1,8 @@
 import { Prose } from "./Prose.tsx";
-import { Brain, ChevronRight } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useApp } from "../../lib/store.ts";
 import { useDisclosure } from "../../lib/use-disclosure.ts";
-import { useI18n } from "../../lib/i18n.ts";
-import { Collapsible } from "../Collapsible.tsx";
 import type { ReasoningPart } from "../../../../shared/protocol.ts";
 
 interface Props {
@@ -13,25 +11,55 @@ interface Props {
 }
 
 export function Reasoning({ ids, live }: Props) {
-  const t = useI18n();
   const [open, setOpen] = useDisclosure(ids[0], "reasoning");
+  const [long, setLong] = useState(false);
+  const body = useRef<HTMLDivElement>(null);
+  const press = useRef<{ x: number; y: number } | null>(null);
   const parts = useApp(useShallow(state => ids.map(id => state.parts[id]).filter((part): part is ReasoningPart => part?.kind === "reasoning" && Boolean(part.text.trim()))));
-  if (!parts.length) return null;
-  const label = parts.length > 1 ? t("Thoughts ({count})", { count: parts.length }) : t("Thoughts");
-  const excerpt = parts.at(-1)!.text.trim().split("\n")[0]!.replace(/^#{1,6}\s+/, "").replace(/[*`]/g, "");
-  return <div className="reasoning">
-    <button className="reasoning-head" type="button" aria-label={label} title={excerpt} aria-expanded={open} aria-controls={`thoughts-${ids[0]}`} onClick={() => setOpen(!open)}>
-      <ChevronRight size={12} className="group-chevron" aria-hidden="true" />
-      <Brain size={14} aria-hidden="true" />
-      <span className="reasoning-label">{label}</span>
-      {!open && <span className="reasoning-excerpt truncate">{excerpt}</span>}
-    </button>
-    <div id={`thoughts-${ids[0]}`}>
-      <Collapsible open={open} className="reasoning-content">
-        <div className="reasoning-body">
-          {parts.map(part => <Prose key={part.id} partId={part.id} text={part.text} live={live && part.complete !== true} className="reason-text" />)}
-        </div>
-      </Collapsible>
+  const hasParts = parts.length > 0;
+
+  useLayoutEffect(() => {
+    const element = body.current;
+    if (!element || long) return;
+    const measure = () => {
+      if (element.scrollHeight > element.clientHeight + 1) setLong(true);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const child of element.children) observer.observe(child);
+    return () => observer.disconnect();
+  }, [hasParts, parts.length, long]);
+
+  if (!hasParts) return null;
+  const toggle = () => {
+    if (long) setOpen(value => !value);
+  };
+  return <div
+    className="reasoning"
+    data-long={long || undefined}
+    data-open={open || undefined}
+    role={long ? "button" : undefined}
+    tabIndex={long ? 0 : undefined}
+    aria-expanded={long ? open : undefined}
+    onPointerDown={event => {
+      press.current = event.button === 0 ? { x: event.clientX, y: event.clientY } : null;
+    }}
+    onClick={event => {
+      const start = press.current;
+      press.current = null;
+      if (event.detail > 1 || (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 4)) return;
+      if ((event.target as HTMLElement).closest("a, button, summary")) return;
+      toggle();
+    }}
+    onKeyDown={event => {
+      if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+      event.preventDefault();
+      toggle();
+    }}
+  >
+    <div ref={body} className="reasoning-body">
+      {parts.map(part => <Prose key={part.id} partId={part.id} text={part.text} live={live && part.complete !== true} />)}
     </div>
+    {long && !open && <span className="reasoning-more" aria-hidden="true"><span>···</span></span>}
   </div>;
 }

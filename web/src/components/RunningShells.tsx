@@ -1,36 +1,19 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Copy, ExternalLink, Square, Terminal, X } from "lucide-react";
+import { ExternalLink, Square, Terminal, X } from "lucide-react";
 import type { NotificationTarget, ShellProcess } from "../../../shared/protocol.ts";
-import type { PanelTab } from "../../../shared/workbench.ts";
-import { scaled, selectPanel, useApp, viewportWidth } from "../lib/store.ts";
-import { playUiSound } from "../lib/ui-sound.ts";
-import { onShellOutput, send } from "../lib/socket.ts";
+import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { api } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 
-type ShellEntry = Omit<ShellProcess, "status"> & { status: ShellProcess["status"] | "open" };
+type ShellEntry = ShellProcess;
 
-function entries(shells: Record<string, ShellProcess>, panels: PanelTab[], projects: { id: string; path: string }[]): ShellEntry[] {
-  const tracked = Object.values(shells);
-  const panelIds = new Set(tracked.map(shell => shell.panelId));
-  return [...tracked, ...panels.filter(panel => panel.kind === "terminal" && !panelIds.has(panel.id)).map(panel => ({
-    id: `terminal:${panel.id}`, panelId: panel.id, projectId: panel.projectId, threadId: panel.threadId,
-    command: "", cwd: projects.find(project => project.id === panel.projectId)?.path || "",
-    status: "open" as const, background: false, stopMode: "shell" as const, output: "", startedAt: 0,
-  }))];
-}
-
-const active = (shell: ShellEntry) => shell.status === "open" || shell.status === "running" || shell.status === "stopping";
+const active = (shell: ShellEntry) => !shell.panelId && (shell.status === "running" || shell.status === "stopping");
 
 export function RunningShells({ onOpen }: { onOpen: (target: NotificationTarget) => void }) {
   const t = useI18n();
-  const count = useApp(state => {
-    const tracked = Object.values(state.shells);
-    const panelIds = new Set(tracked.map(shell => shell.panelId));
-    return tracked.filter(active).length + state.panels.filter(panel => panel.kind === "terminal" && !panelIds.has(panel.id)).length;
-  });
+  const count = useApp(state => Object.values(state.shells).filter(active).length);
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const id = useId();
@@ -40,7 +23,7 @@ export function RunningShells({ onOpen }: { onOpen: (target: NotificationTarget)
   };
   return <div className="shells-wrap">
     {(count > 0 || open) && <button ref={trigger} type="button" className="icon-btn shells-trigger" title={t("Running shells")} aria-label={t("Running shells, {count} active", { count })} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
-      <Terminal size={16} /><span>{count}</span>
+      <Terminal size={13} /><span>{count}</span>
     </button>}
     <AnimatePresence>{open && <ShellsPanel id={id} trigger={trigger} onClose={close} onOpen={onOpen} />}</AnimatePresence>
   </div>;
@@ -57,41 +40,17 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
   const shells = useApp(state => state.shells);
   const threads = useApp(state => state.threads);
   const projects = useApp(state => state.projects);
-  const panels = useApp(state => state.panels);
   const connected = useApp(state => state.connected);
   const uiScale = useApp(state => state.uiScale);
   const [pending, setPending] = useState<string>();
   const [error, setError] = useState<{ id: string; message: string }>();
-  const [copied, setCopied] = useState(false);
-  const [preview, setPreview] = useState<{ id: string; output: string }>();
   const panel = useRef<HTMLElement>(null);
-  const output = useRef<HTMLPreElement>(null);
-  const followOutput = useRef(true);
-  const ordered = useMemo(() => entries(shells, panels, projects).sort((a, b) => Number(active(b)) - Number(active(a)) || b.startedAt - a.startedAt), [shells, panels, projects]);
-  const [selectedId, setSelectedId] = useState<string | undefined>(() => ordered[0]?.id);
-  const running = ordered.filter(active);
-  const finished = ordered.filter(shell => !active(shell));
-  const selected = ordered.find(shell => shell.id === selectedId) || ordered[0];
-  const selectedOutput = preview?.id === selected?.id ? preview?.output || "" : selected?.output || "";
-  const terminal = selected?.panelId && panels.some(panel => panel.id === selected.panelId);
-  const owner = (shell: ShellEntry) => !shell.panelId && shell.threadId && threads[shell.threadId]?.title || projects.find(project => project.id === shell.projectId)?.name || t("Workspace");
-  const label = (shell: ShellEntry) => panels.find(panel => panel.id === shell.panelId)?.title || shell.command || t(shell.panelId ? "Terminal" : "Shell command");
-  const status = (shell: ShellEntry) => {
-    if (shell.status === "open") return t("Open");
-    if (shell.status === "running") {
-      if (shell.panelId) return t(shell.busy === true ? "Running" : shell.busy === false ? "Idle" : "Open");
-      return t(shell.background ? "Background" : "Running");
-    }
-    return t(shell.status === "stopping" ? "Stopping…" : shell.status === "finished" ? "Finished" : shell.status === "failed" ? "Failed" : "Stopped");
-  };
-
-  useEffect(() => {
-    if (!selected?.id || !connected) return;
-    const id = selected.id;
-    const unsubscribe = onShellOutput(event => { if (event.id === id) setPreview(event); });
-    send({ t: "shell.watch", id });
-    return () => { unsubscribe(); send({ t: "shell.watch", id: null }); };
-  }, [selected?.id, connected]);
+  const running = useMemo(() => Object.values(shells).filter(active).sort((a, b) => b.startedAt - a.startedAt), [shells]);
+  const [selectedId, setSelectedId] = useState<string | undefined>(() => running[0]?.id);
+  const selected = running.find(shell => shell.id === selectedId) || running[0];
+  const owner = (shell: ShellEntry) => shell.threadId && threads[shell.threadId]?.title || projects.find(project => project.id === shell.projectId)?.name || t("Workspace");
+  const label = (shell: ShellEntry) => shell.command || t("Shell command");
+  const status = (shell: ShellEntry) => t(shell.status === "stopping" ? "Stopping…" : shell.background ? "Background" : "Running");
 
   useLayoutEffect(() => {
     const element = panel.current;
@@ -104,8 +63,8 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
       const width = Math.min(420, viewportWidth() - 24);
       element.style.width = `${scaled(width)}px`;
       element.style.left = `${scaled(Math.max(12, Math.min(anchor.right / scale - width, viewportWidth() - width - 12)))}px`;
-      element.style.top = `${scaled(anchor.bottom / scale + 10)}px`;
-      element.style.maxHeight = `${scaled(Math.max(0, (innerHeight - anchor.bottom) / scale - 22))}px`;
+      element.style.bottom = `${scaled((innerHeight - anchor.top) / scale + 8)}px`;
+      element.style.maxHeight = `${scaled(Math.max(0, anchor.top / scale - 22))}px`;
     };
     position();
     const resize = new ResizeObserver(position);
@@ -128,11 +87,7 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", key); };
   }, [onClose, trigger]);
 
-  useEffect(() => { setCopied(false); setError(undefined); }, [selected?.id]);
-  useLayoutEffect(() => { followOutput.current = true; }, [selected?.id]);
-  useLayoutEffect(() => {
-    if (output.current && followOutput.current) output.current.scrollTop = output.current.scrollHeight;
-  }, [selectedOutput, selected?.id]);
+  useEffect(() => { setError(undefined); }, [selected?.id]);
 
   const stop = async (shell: ShellEntry) => {
     setPending(shell.id);
@@ -146,11 +101,10 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
     <span className="shell-row-copy"><code title={shell.command}>{label(shell)}</code><small>{owner(shell)}</small></span>
     <span className="shell-status" data-status={shell.status}>{status(shell)}</span>
   </button>);
-  return <motion.section ref={panel} id={id} popover="manual" role="dialog" aria-label={t("Running shells")} className="shells-panel" initial={{ opacity: 0, y: reducedMotion ? 0 : -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -5, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
+  return <motion.section ref={panel} id={id} popover="manual" role="dialog" aria-label={t("Running shells")} className="shells-panel" initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }} animate={{ opacity: 1, transform: "none" }} exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
     <header><Terminal size={16} /><h2>{t("Running shells")}</h2><span>{t("{count} active", { count: running.length })}</span><button type="button" className="icon-btn" autoFocus aria-label={t("Close running shells")} onClick={onClose}><X size={16} /></button></header>
     <div className="shells-list scroll">
       {rows(running)}
-      {finished.length > 0 && <><h3>{t("Recently finished")}</h3>{rows(finished)}</>}
     </div>
     {selected ? <div className="shell-detail">
       <code className="shell-command">{label(selected)}</code>
@@ -160,16 +114,13 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
       <div className="shell-actions">
         <button type="button" className="btn btn-sm" onClick={() => {
           onOpen({ view: "chat", projectId: selected.projectId, threadId: selected.threadId });
-          if (terminal && selected.panelId) selectPanel(selected.panelId);
-          else if (!selected.panelId && selected.threadId) useApp.setState({ searchMessageId: null, searchShellId: selected.id });
+          if (selected.threadId) useApp.setState({ searchMessageId: null, searchShellId: selected.id });
           onClose();
-        }}><ExternalLink size={13} />{t(terminal ? "Open terminal" : selected.panelId ? "Open task" : "Show command")}</button>
-        {active(selected) && selected.status !== "open" && <button type="button" className="btn btn-sm" disabled={!connected || Boolean(pending) || selected.status === "stopping"} onClick={() => void stop(selected)}><Square size={12} />{t(selected.status === "stopping" || pending === selected.id ? "Stopping…" : selected.stopMode === "shell" ? "Stop shell" : "Stop task")}</button>}
+        }}><ExternalLink size={13} />{t("Show command")}</button>
+        {<button type="button" className="btn btn-sm" disabled={!connected || Boolean(pending) || selected.status === "stopping"} onClick={() => void stop(selected)}><Square size={12} />{t(selected.status === "stopping" || pending === selected.id ? "Stopping…" : selected.stopMode === "shell" ? "Stop shell" : "Stop task")}</button>}
       </div>
-      {active(selected) && selected.stopMode === "task" && <p className="shell-stop-hint">{t("Stopping this shell also stops its AI task.")}</p>}
+      {selected.stopMode === "task" && <p className="shell-stop-hint">{t("Stopping this shell also stops its AI task.")}</p>}
       {error?.id === selected.id && <p className="shell-error" role="alert">{error.message}</p>}
-      <div className="shell-output-heading"><span>{t("Recent output")}</span>{selectedOutput && <button type="button" className="icon-btn" data-ui-sound="off" aria-label={t(copied ? "Copied" : "Copy output")} onClick={() => { void navigator.clipboard.writeText(selectedOutput).then(() => { setCopied(true); playUiSound("copy"); }).catch(error => setError({ id: selected.id, message: (error as Error).message })); }}>{copied ? <Check size={13} /> : <Copy size={13} />}</button>}</div>
-      {selectedOutput ? <pre ref={output} className="shell-output scroll" tabIndex={0} aria-label={t("Recent output")} onScroll={event => { const element = event.currentTarget; followOutput.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24; }}>{selectedOutput}</pre> : <p className="shell-output-empty">{t(selected.status === "open" ? "Open the terminal to view its output." : "Output appears when the provider reports it.")}</p>}
     </div> : <p className="shell-output-empty">{t("No shells are running.")}</p>}
   </motion.section>;
 }

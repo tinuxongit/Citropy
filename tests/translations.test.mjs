@@ -35,8 +35,8 @@ test("tool activity summaries keep their language and count distinct files", () 
     { shape: "read", headline: "two.ts" },
     { shape: "command", headline: "npm test" },
   ];
-  assert.equal(summarize(tools, english), "Read 2 files and ran 1 command");
-  assert.equal(summarize(tools, spanish), "Leyó 2 archivos y ejecutó 1 comando");
+  assert.equal(summarize(tools, english), "Read 2 files · ran 1 command");
+  assert.equal(summarize(tools, spanish), "Leyó 2 archivos · ejecutó 1 comando");
   assert.equal(summarize([], english), "Worked");
   assert.equal(summarize([], spanish), "Trabajó");
 });

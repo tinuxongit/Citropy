@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import type { ThreadStatus } from "../../../shared/protocol.ts";
 import { duration } from "../lib/format.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { AnimatedText } from "./AnimatedText.tsx";
 
 interface Props {
   status: ThreadStatus | undefined;
@@ -45,7 +46,7 @@ export function Working({ status, tool, compacting, startedAt }: Props) {
       <span className="working-grid" aria-hidden="true">
         {Array.from({ length: 9 }, (_, index) => <i key={index} style={{ "--pixel-delay": `${(Math.floor(index / 3) + index % 3) * -120}ms` } as CSSProperties} />)}
       </span>
-      <span className="working-text" role="status">{text}</span>
+      <span className="working-text" role="status"><AnimatedText text={text} /></span>
       <span className="working-time">{duration(Math.max(0, now - startedAt))}</span>
     </span>
   );

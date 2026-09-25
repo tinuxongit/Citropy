@@ -1,4 +1,5 @@
 import { Check, ChevronRight, Circle, CircleDot, ListTodo, Minus } from "lucide-react";
+import type { CSSProperties } from "react";
 import { useI18n } from "../../lib/i18n.ts";
 import type { TodoItem } from "../../../../shared/protocol.ts";
 import { normalizeTodos } from "../../../../shared/todos.ts";
@@ -30,8 +31,8 @@ export function TodoBoard({ partId, items }: { partId: string; items: TodoItem[]
             const Icon = item.status === "completed" ? Check : item.status === "in_progress" ? CircleDot : item.status === "cancelled" ? Minus : Circle;
             const label = item.status === "completed" ? t("Completed") : item.status === "in_progress" ? t("In progress") : item.status === "cancelled" ? t("Cancelled") : t("Pending");
             return (
-              <li key={`${index}-${item.text}`} className="todo-item" data-status={item.status}>
-                <span className="todo-mark" role="img" aria-label={label} title={label}>
+              <li key={`${index}-${item.text}`} className="todo-item" data-status={item.status} style={{ "--todo-step": Math.min(index, 10) } as CSSProperties}>
+                <span key={item.status} className="todo-mark" role="img" aria-label={label} title={label}>
                   <Icon size={14} aria-hidden="true" />
                 </span>
                 <span>{item.text}</span>

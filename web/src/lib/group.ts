@@ -4,17 +4,16 @@ import { normalizeTodos } from "../../../shared/todos.ts";
 import { translate } from "./i18n.ts";
 import type { Translator } from "./translations.ts";
 
-export type Row = { kind: "part"; id: string } | { kind: "group"; ids: string[] } | { kind: "thoughts"; ids: string[] };
+export type Row = { kind: "part"; id: string } | { kind: "group"; ids: string[] };
 
 export function buildRows(parts: Array<Part | undefined>): Row[] {
   const rows: Row[] = [];
   const hasQuestion = parts.some(part => part?.kind === "question");
   let batch: string[] = [];
-  let batchKind: "group" | "thoughts" = "group";
 
   const flush = () => {
     if (batch.length === 0) return;
-    rows.push({ kind: batchKind, ids: batch });
+    rows.push({ kind: "group", ids: batch });
     batch = [];
   };
 
@@ -22,16 +21,13 @@ export function buildRows(parts: Array<Part | undefined>): Row[] {
     if (!part) continue;
     if ((part.kind === "text" || part.kind === "reasoning") && part.text.trim() === "") continue;
     if (part.kind === "todo" && normalizeTodos(part.items).length === 0) continue;
-    if (part.kind === "tool" || part.kind === "reasoning") {
-      if (part.kind === "tool" && hasQuestion && isQuestionTool(part.name)) continue;
-      if (part.kind === "tool" && (part.images?.length || part.imageFiles?.length)) {
+    if (part.kind === "tool") {
+      if (hasQuestion && isQuestionTool(part.name)) continue;
+      if ((part.images?.length || part.imageFiles?.length)) {
         flush();
         rows.push({ kind: "part", id: part.id });
         continue;
       }
-      const kind = part.kind === "tool" ? "group" : "thoughts";
-      if (kind !== batchKind) flush();
-      batchKind = kind;
       batch.push(part.id);
       continue;
     }
@@ -45,9 +41,9 @@ export function buildRows(parts: Array<Part | undefined>): Row[] {
 const NOUN: Record<ToolShape, [string, string, string]> = {
   read: ["Read", "file", "files"],
   write: ["Wrote", "file", "files"],
-  edit: ["Changed", "file", "files"],
+  edit: ["Edited", "file", "files"],
   command: ["Ran", "command", "commands"],
-  search: ["Searched code", "time", "times"],
+  search: ["Searched", "time", "times"],
   web: ["Searched the web", "time", "times"],
   computer: ["Used the computer", "time", "times"],
   task: ["Ran", "subagent", "subagents"],
@@ -75,7 +71,7 @@ export function summarize(tools: ToolPart[], t: Translator = translate): string 
   }
 
   const parts: string[] = [];
-  const order: ToolShape[] = ["read", "edit", "write", "command", "search", "web", "computer", "task", "generic", "todo"];
+  const order: ToolShape[] = ["edit", "write", "read", "command", "search", "web", "computer", "task", "generic", "todo"];
   for (const shape of order) {
     const unique = counts.get(shape);
     if (unique) parts.push(phrase(shape, unique.size, t));
@@ -87,8 +83,7 @@ export function summarize(tools: ToolPart[], t: Translator = translate): string 
   const sentence = parts.map((text, index) =>
     index === 0 ? text : `${text.charAt(0).toLowerCase()}${text.slice(1)}`,
   );
-  if (sentence.length === 1) return sentence[0] as string;
-  return t("{first} and {last}", { first: sentence.slice(0, -1).join(", "), last: sentence.at(-1)! });
+  return sentence.join(" · ");
 }
 
 export function groupStats(tools: ToolPart[]): { added: number; removed: number; failed: number; running: boolean } {

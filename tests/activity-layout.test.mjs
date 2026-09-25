@@ -43,10 +43,10 @@ test("all tool shapes share a group without crossing message content", () => {
     { id: "notice", kind: "notice", level: "info", text: "Review ready" }, parts[8],
     { id: "answer", kind: "text", text: "Done" },
   ]), [
-    { kind: "thoughts", ids: ["reason-1"] }, { kind: "group", ids: shapes },
+    { kind: "group", ids: ["reason-1", ...shapes] },
     { kind: "part", id: "notice" }, { kind: "group", ids: ["write-2"] }, { kind: "part", id: "answer" },
   ]);
-  assert.equal(summarize(parts.slice(1, 4)), "Read 1 file, wrote 1 file and ran 1 command");
+  assert.equal(summarize(parts.slice(1, 4)), "Wrote 1 file · read 1 file · ran 1 command");
   assert.deepEqual(groupStats([parts[1], { ...parts[5], status: "denied" }, { ...parts[3], status: "running" }]), {
     added: 2, removed: 0, failed: 1, running: true,
   });
@@ -159,8 +159,7 @@ test("a live turn keeps repeated thoughts and tools in one stable disclosure", (
   assert.equal(rows[0].row.ids.length, 301);
   assert.equal(rows[1].row.id, "warning");
   const expanded = timelineRows({ ...state, disclosures: { progress: { activity: true } } }, "chat");
-  assert.equal(expanded.filter(row => row.row?.kind === "thoughts").length, 150);
-  assert.equal(expanded.filter(row => row.row?.kind === "group").length, 150);
+  assert.equal(expanded.filter(row => row.row?.kind === "group").length, 1);
   assert.equal(expanded.find(row => row.row?.kind === "activity").key, rows[0].key);
   assert.equal(expanded[0].row.kind, "activity");
   const ended = timelineRows({ ...state, threads: { chat: { ...thread, running: false, status: "stopped" } } }, "chat");
@@ -189,7 +188,7 @@ test("plans, questions and warnings remain visible outside compact activity", ()
   assert.ok(timelineRows(finished, "chat").some(row => row.row?.kind === "part" && row.row.id === "answer"));
 });
 
-test("consecutive thought fragments share one disclosure without crossing updates or tools", () => {
+test("thoughts and tools share one tree without crossing updates", () => {
   assert.deepEqual(buildRows([
     { id: "first-thought", kind: "reasoning", text: "Checking the sequence." },
     { id: "empty-thought", kind: "reasoning", text: "  " },
@@ -198,10 +197,9 @@ test("consecutive thought fragments share one disclosure without crossing update
     tool("render", "command", "render video"),
     { id: "last-thought", kind: "reasoning", text: "Checking the result." },
   ]), [
-    { kind: "thoughts", ids: ["first-thought", "next-thought"] },
+    { kind: "group", ids: ["first-thought", "next-thought"] },
     { kind: "part", id: "update" },
-    { kind: "group", ids: ["render"] },
-    { kind: "thoughts", ids: ["last-thought"] },
+    { kind: "group", ids: ["render", "last-thought"] },
   ]);
 });
 
@@ -672,7 +670,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     assert.equal(await page.locator(".group").count(), 3);
     assert.equal(await page.locator(".tool").count(), 0);
     const first = page.locator(".group").first();
-    assert.equal(await first.locator(".group-label").innerText(), "Read 1 file, wrote 1 file and ran 1 command");
+    assert.equal(await first.locator(".group-label").innerText(), "Wrote 1 file · read 1 file · ran 1 command");
     await first.locator(".group-head").click();
     await first.locator(".tool").last().waitFor();
     assert.equal(await first.locator(".tool").count(), 3);

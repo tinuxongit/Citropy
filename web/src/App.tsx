@@ -313,6 +313,7 @@ export function App() {
                 <PermissionPanel />
                 <Composer
                   onUsage={() => openView("usage")}
+                  onShell={openNotification}
                   onSkills={() => {
                     setSettingsSection("Skills");
                     openView("settings");

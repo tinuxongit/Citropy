@@ -7,7 +7,7 @@ import { saveToolImages } from "./tool-images.ts";
 import { describeTool } from "./tools.ts";
 import { workspacePath } from "./workspaces.ts";
 import type { AgentEvent } from "./providers/types.ts";
-import type { ImageFile, Message, Part, Thread, TodoItem, ToolPart } from "../shared/protocol.ts";
+import type { FilePatch, ImageFile, Message, Part, Thread, TodoItem, ToolPart } from "../shared/protocol.ts";
 
 type Event<T extends AgentEvent["type"]> = Extract<AgentEvent, { type: T }>;
 
@@ -35,16 +35,16 @@ function imageFilesFor(name: string, raw: unknown, cwd: string): ImageFile[] | u
   return undefined;
 }
 
-function previewPatch(name: string, rawInput: unknown): unknown {
+function previewPatch(name: string, rawInput: unknown): FilePatch | undefined {
   const input = (rawInput ?? {}) as Record<string, unknown>;
-  const path = typeof input.file_path === "string" ? input.file_path : "";
+  const text = (...keys: string[]) => keys.map((key) => input[key]).find((value): value is string => typeof value === "string");
+  const path = text("file_path", "filePath", "path");
   if (!path) return undefined;
-  if (name === "Edit" && typeof input.old_string === "string" && typeof input.new_string === "string") {
-    return diffLines(input.old_string, input.new_string, basename(path));
-  }
-  if (name === "Write" && typeof input.content === "string") {
-    return diffLines("", input.content, basename(path));
-  }
+  const before = text("old_string", "oldString");
+  const after = text("new_string", "newString");
+  if (name === "Edit" && before !== undefined && after !== undefined) return diffLines(before, after, basename(path));
+  const content = text("content");
+  if (name === "Write" && content !== undefined) return diffLines("", content, basename(path));
   return undefined;
 }
 
@@ -112,6 +112,7 @@ export class ThreadTranscript {
       input: event.input,
       status: "running",
       imageFiles: imageFilesFor(event.name, event.input, this.#cwd),
+      patch: previewPatch(event.name, event.input),
       startedAt: Date.now(),
     };
     this.#tools.set(event.callId, this.#add(part));

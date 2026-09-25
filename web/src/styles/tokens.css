@@ -4,6 +4,7 @@
   --viewport-height: 100dvh;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --dur-instant: 90ms;
   --dur-fast: 160ms;
   --dur-base: 240ms;
@@ -11,7 +12,7 @@
   --field-focus-ring: inset 0 0 0 2px var(--field-focus-color);
 
   --font-ui:
-    "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    "Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Droid Sans Mono", monospace;
   --font-terminal: monospace;
 

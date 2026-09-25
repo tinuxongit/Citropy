@@ -23,7 +23,6 @@ export function NavigationStrip({
     { name: "Conversations", icon: MessagesSquare, run: onChat, view: "chat" },
     { name: "Source control", icon: GitBranch, run: onGit, view: "git" },
     { name: "GitHub", icon: Github, run: onGitHub, view: "github" },
-    { name: "Usage", icon: BarChart3, run: onUsage, view: "usage" },
   ];
   const button = ({ name, icon: Icon, run, view }: typeof top[number]) => (
     <button
@@ -42,6 +41,7 @@ export function NavigationStrip({
     <nav className="navigation-strip" aria-label={t("Workspace navigation")}>
       {top.map(button)}
       <div className="navigation-strip-end">
+        {button({ name: "Usage", icon: BarChart3, run: onUsage, view: "usage" })}
         <AppUpdateControl />
         {button({ name: "Settings", icon: Settings, run: onSettings, view: "settings" })}
       </div>

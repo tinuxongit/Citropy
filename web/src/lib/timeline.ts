@@ -146,7 +146,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     if (!rows.length) return [];
     let visible: NonNullable<TimelineRow["row"]>[] = rows;
     let answer: Row | undefined;
-    const hasWork = rows.some(row => row.kind === "thoughts" || isActionRow(row, state.parts));
+    const hasWork = rows.some(row => isActionRow(row, state.parts) || row.kind === "part" && state.parts[row.id]?.kind === "reasoning");
     if (hasWork) {
       const continuing = running && startedAt !== undefined && messageIds.some(id => state.messages[id]!.ts >= startedAt);
       const containsLatestReply = messageIds.includes(lastAssistantId ?? "");

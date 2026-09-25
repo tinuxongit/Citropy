@@ -1,7 +1,7 @@
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { AnimatedText } from "./AnimatedText.tsx";
-import { useEffect, useState, type Ref } from "react";
-import { ArrowRightLeft, ChevronDown, LockKeyhole, Star } from "lucide-react";
+import { useEffect, useState, type ReactNode, type Ref } from "react";
+import { ArrowRightLeft, Check, ChevronDown, LockKeyhole, Star } from "lucide-react";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../../shared/protocol.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
@@ -12,7 +12,7 @@ import { send } from "../lib/socket.ts";
 import { Menu } from "./Menu.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 
-export function ModelPicker({ value, fallback, label, onChange, onTransfer, transferDisabled = false, disabled = false, allowConversation = false, automaticLabel, lockedProvider, instanceId, defaultOnly = false, className = "model-picker-trigger", buttonRef }: {
+export function ModelPicker({ value, fallback, label, onChange, onTransfer, transferDisabled = false, disabled = false, allowConversation = false, automaticLabel, lockedProvider, instanceId, defaultOnly = false, className = "model-picker-trigger", buttonRef, detail, tuning, menuClearOf }: {
   value: WritingModel | null;
   fallback?: WritingModel;
   label: string;
@@ -27,6 +27,9 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   defaultOnly?: boolean;
   className?: string;
   buttonRef?: Ref<HTMLButtonElement>;
+  detail?: ReactNode;
+  tuning?: (target: WritingModel | undefined) => ReactNode;
+  menuClearOf?: string;
 }) {
   const t = useI18n();
   const providers = useApp((state) => state.providers);
@@ -35,6 +38,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const choice = value ?? fallback;
   const [browsing, setBrowsing] = useState<ProviderId | "favorites" | undefined>(choice?.provider);
   const [transferring, setTransferring] = useState(false);
+  const [target, setTarget] = useState<WritingModel>();
   useEffect(() => setBrowsing(choice?.provider), [choice?.provider]);
   const available = providers.filter((entry) => entry.enabled && (entry.available || (!defaultOnly && entry.instances?.some(instance => instance.available))));
   const provider = providers.find((entry) => entry.id === choice?.provider);
@@ -61,8 +65,9 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     hint: accountHint(source, account.name, entry),
     hintIcon: <ProviderIcon provider={source.id} />,
     disabled: transferDisabled || (source.id === choice?.provider && account.id === choice?.providerInstanceId && entry.id === model?.id),
-    selected: false,
-    onSelect: () => onTransfer?.({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
+    selected: Boolean(target && target.provider === source.id && target.providerInstanceId === account.id && target.model === entry.id),
+    keepOpen: Boolean(tuning),
+    onSelect: () => tuning ? setTarget({ provider: source.id, providerInstanceId: account.id, model: entry.id }) : onTransfer?.({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
     action: {
       label: t("Favorite {model}", { model: entry.label }),
       icon: <Star size={14} />,
@@ -70,15 +75,38 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
       onSelect: () => toggleFavoriteModel({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
     },
   }))));
+  const targetProvider = target && providers.find(entry => entry.id === target.provider);
+  const targetModels = target?.providerInstanceId ? targetProvider?.instances?.find(instance => instance.id === target.providerInstanceId)?.models : targetProvider?.models;
+  const targetName = target && selectedModel(targetModels ?? [], target.model)?.label;
+  const transferLabel = transferring && target ? t("Transfer to {model}", { model: targetName ?? target.model }) : t("Transfer to another agent");
+  const transferButton = onTransfer && <button
+    className="model-picker-transfer"
+    type="button"
+    title={transferLabel}
+    aria-label={transferLabel}
+    aria-pressed={transferring}
+    data-ready={Boolean(transferring && target) || undefined}
+    disabled={transferDisabled}
+    onClick={() => {
+      if (transferring && target) { onTransfer(target); return; }
+      setTransferring(!transferring);
+      setTarget(undefined);
+      setBrowsing(choice?.provider);
+    }}
+  >
+    {transferring && target ? <Check size={16} /> : <ArrowRightLeft size={16} />}
+  </button>;
   return <Menu
     width={340}
     className="model-picker-menu"
     searchable
-    onClose={() => setTransferring(false)}
+    onClose={() => { setTransferring(false); setTarget(undefined); }}
+    footer={tuning && <div className="model-picker-footer" inert={transferring && !target}>{tuning(transferring ? target : undefined)}</div>}
+    clearOf={menuClearOf}
     emptyMessage={favoritesView ? t("Star models to find them here.") : undefined}
     controls={<>
       {onTransfer && transferring && <p className="model-picker-note" role="status">{t("Choose a model for a new agent in this chat. Reading the conversation again consumes extra usage.")}</p>}
-      <div className="model-picker-toolbar sliding-selection">
+      <div className="model-picker-toolbar sliding-selection" data-rail={tuning ? true : undefined}>
         <SelectionHighlight value={favoritesView ? "favorites" : catalog?.id} />
         {locked && catalog ? <button className="model-picker-locked" type="button" aria-label={`${catalog.label} · ${t("Provider locked")}`} title={`${catalog.label} · ${t("Provider locked")}`} aria-pressed={!favoritesView} onClick={() => setBrowsing(catalog.id)}>
           <ProviderIcon provider={catalog.id} /><LockKeyhole size={11} />
@@ -88,20 +116,11 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
           </button>)}
         </div>}
         <div className="model-picker-actions">
-          {onTransfer && <button
-            className="model-picker-transfer"
-            type="button"
-            title={t("Transfer to another agent")}
-            aria-label={t("Transfer to another agent")}
-            aria-pressed={transferring}
-            disabled={transferDisabled}
-            onClick={() => { setTransferring(!transferring); setBrowsing(choice?.provider); }}
-          >
-            <ArrowRightLeft size={16} />
-          </button>}
+          {!tuning && transferButton}
           <button className="model-picker-favorites" type="button" aria-label={t("Favorite models")} title={t("Favorite models")} aria-pressed={favoritesView} onClick={() => setBrowsing(favoritesView ? choice?.provider : "favorites")}><Star size={17} fill={favoritesView ? "currentColor" : "none"} /></button>
         </div>
       </div>
+      {tuning && transferButton && <div className="model-picker-side-end">{transferButton}</div>}
       {catalog?.modelsError && <p className="model-picker-note" role="status">{t("Models · refresh unavailable")}</p>}
     </>}
     items={[
@@ -112,6 +131,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
         hint: accountHint(source, account.name, entry),
         hintIcon: <ProviderIcon provider={source.id} />,
         selected: Boolean(value && source.id === choice?.provider && account.id === choice?.providerInstanceId && entry.id === model?.id),
+        keepOpen: Boolean(tuning),
         onSelect: () => onChange({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
         action: {
           label: t("Favorite {model}", { model: entry.label }),
@@ -130,10 +150,11 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
       aria-haspopup="menu"
       aria-expanded={open}
       disabled={disabled}
-      onClick={() => { if (!open) { setBrowsing(choice?.provider); setTransferring(false); if (connected) send({ t: "providers.refresh" }); } toggle(); }}
+      onClick={() => { if (!open) { setBrowsing(choice?.provider); setTransferring(false); setTarget(undefined); if (connected) send({ t: "providers.refresh" }); } toggle(); }}
     >
       {choice && <ProviderIcon provider={choice.provider} />}
       <AnimatedText className="truncate" text={name} />
+      {detail}
       <ChevronDown size={12} />
     </button>}
   />;

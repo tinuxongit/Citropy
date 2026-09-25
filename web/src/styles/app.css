@@ -42,7 +42,7 @@
   flex: none;
   width: var(--panel-width);
   min-height: 0;
-  transition: margin var(--panel-duration) var(--ease-out);
+  transition: margin var(--panel-duration) var(--ease-drawer);
 }
 .sliding-panel[hidden] { display: none; }
 .sliding-panel[data-animate="false"],
@@ -53,18 +53,18 @@
 .sliding-panel > .inspector {
   height: 100%;
   width: var(--panel-width);
-  transition: translate var(--panel-duration) var(--ease-out), opacity var(--panel-duration) var(--ease-out);
+  transition: translate var(--panel-duration) var(--ease-drawer), opacity var(--panel-duration) var(--ease-out);
 }
 .sliding-panel[data-open="false"] { pointer-events: none; }
 .sliding-panel[data-side="left"][data-open="false"] { margin-left: calc(-1 * var(--panel-width)); }
 .sliding-panel[data-side="right"][data-open="false"] { margin-right: calc(-1 * var(--panel-width)); }
-.sliding-panel[data-side="left"][data-open="false"] > .rail { translate: -16px 0; opacity: 0; }
-.sliding-panel[data-side="right"][data-open="false"] > .inspector { translate: 16px 0; opacity: 0; }
+.sliding-panel[data-side="left"][data-open="false"] > .rail { translate: -32px 0; opacity: 0; }
+.sliding-panel[data-side="right"][data-open="false"] > .inspector { translate: 32px 0; opacity: 0; }
 @starting-style {
   .sliding-panel[data-animate="true"][data-side="left"][data-open="true"] { margin-left: calc(-1 * var(--panel-width)); }
   .sliding-panel[data-animate="true"][data-side="right"][data-open="true"] { margin-right: calc(-1 * var(--panel-width)); }
-  .sliding-panel[data-animate="true"][data-side="left"][data-open="true"] > .rail { translate: -16px 0; opacity: 0; }
-  .sliding-panel[data-animate="true"][data-side="right"][data-open="true"] > .inspector { translate: 16px 0; opacity: 0; }
+  .sliding-panel[data-animate="true"][data-side="left"][data-open="true"] > .rail { translate: -32px 0; opacity: 0; }
+  .sliding-panel[data-animate="true"][data-side="right"][data-open="true"] > .inspector { translate: 32px 0; opacity: 0; }
 }
 :root[data-resizing] .sliding-panel,
 :root[data-resizing] .sliding-panel > *,
@@ -350,13 +350,6 @@
   font-weight: 600;
   letter-spacing: -0.025em;
   user-select: none;
-}
-
-.brand-mark {
-  display: block;
-  flex: none;
-  width: 28px;
-  height: 28px;
 }
 
 .workspace-breadcrumb {
@@ -713,7 +706,6 @@
 }
 .topbar[data-desktop="true"] button,
 .topbar[data-desktop="true"] .notifications-wrap,
-.topbar[data-desktop="true"] .shells-wrap,
 .topbar[data-desktop="true"] .git-actions,
 .topbar[data-desktop="true"] .menu-wrap,
 .topbar[data-desktop="true"] a {

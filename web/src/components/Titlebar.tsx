@@ -8,7 +8,6 @@ import { NotificationCenter } from "./NotificationCenter.tsx";
 import { ComputerIndicator } from "./ComputerPane.tsx";
 import { WindowControls } from "./WindowControls.tsx";
 import { GitActions } from "./GitActions.tsx";
-import { RunningShells } from "./RunningShells.tsx";
 import { WorkspaceSelector } from "./WorkspaceSelector.tsx";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
 
@@ -75,14 +74,6 @@ export function Titlebar({
     <header ref={header} className="topbar" data-desktop={Boolean(window.citropyDesktop)}>
       <div className="topbar-left">
         <div className="brand">
-          <img
-            className="brand-mark"
-            src="/citropy.svg"
-            alt=""
-            width={28}
-            height={28}
-            aria-hidden="true"
-          />
           <span>Citropy</span>
         </div>
         <div className="topbar-navigation">
@@ -125,7 +116,6 @@ export function Titlebar({
 
       <div className="topbar-right">
         <ComputerIndicator />
-        <RunningShells key={environment} onOpen={onNotification} />
         {project && (project.isGit && gitThread ? <GitActions key={`${environment}:${gitThread.id}`} thread={gitThread} /> : <button type="button" className="icon-btn git-panel-trigger" aria-label={t("Git actions")} title={t("Git actions")} onClick={() => useApp.setState({ activeView: "git", readingThreadId: null })}><GitCommitHorizontal size={16} /><span className="git-trigger-label">Git</span></button>)}
         {view === "chat" && (
           <button

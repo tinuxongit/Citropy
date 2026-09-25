@@ -24,6 +24,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
       "Open the installed Citropy desktop app to manage release updates.",
   });
   const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const id = useId();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const alive = useRef(true);
@@ -49,6 +50,12 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
       clearTimeout(timer.current);
     };
   }, []);
+  useEffect(() => {
+    if (state.status !== "current") return;
+    setConfirming(true);
+    const reset = setTimeout(() => setConfirming(false), 1500);
+    return () => clearTimeout(reset);
+  }, [state]);
   const downloading = state.status === "downloading";
   const busy =
     downloading || state.status === "checking" || state.status === "installing";
@@ -114,7 +121,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
       ? TriangleAlert
       : ready
         ? RefreshCw
-        : state.status === "current"
+        : state.status === "current" && confirming
           ? Check
           : Download;
   return (
@@ -151,7 +158,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
       <AnimatePresence>{open && (
         <motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="tooltip">
           <div className="app-update-heading">
-            <Icon size={16} />
+            {state.status === "current" ? <Check size={16} /> : <Icon size={16} />}
             <strong>{t(title)}</strong>
           </div>
           {state.currentVersion && (

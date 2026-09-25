@@ -456,7 +456,8 @@ export async function handleFeatures(
       const input = await body(req);
       const provider = providers.find(entry => entry.id === input.provider);
       if (!provider || typeof input.model !== "string" || !input.model || (input.providerInstanceId !== undefined && typeof input.providerInstanceId !== "string")) throw new Error("Choose a provider and model for the transfer.");
-      await runtimeFor(threadId ?? "").transfer(provider, input.model, input.providerInstanceId);
+      if ((input.effort !== undefined && typeof input.effort !== "string") || (input.contextWindow !== undefined && typeof input.contextWindow !== "number") || (input.fastMode !== undefined && typeof input.fastMode !== "boolean")) throw new Error("Transfer settings are invalid.");
+      await runtimeFor(threadId ?? "").transfer(provider, input.model, input.providerInstanceId, { effort: input.effort, contextWindow: input.contextWindow, fastMode: input.fastMode });
       respond({ ok: true });
     } else if (
       url.pathname === "/api/threads/compact" &&

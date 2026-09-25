@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@fontsource-variable/inter/standard.css";
-import "@fontsource-variable/inter/standard-italic.css";
+import "@fontsource-variable/geist/wght.css";
+import "@fontsource-variable/geist/wght-italic.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";

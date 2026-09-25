@@ -533,7 +533,7 @@ app.whenReady().then(() => {
     f.emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", runStartedAt: Date.now() - 3200 } });
     await page.getByRole("button", { name: "Work details", exact: true }).click();
     const activity = page.locator(".turn-agent").filter({ has: page.locator(".group") });
-    await activity.getByRole("button", { name: "Read 1 file and ran 1 command", exact: true }).waitFor();
+    await activity.getByRole("button", { name: "Read 1 file · ran 1 command", exact: true }).waitFor();
     assert.equal(await activity.locator(".message-bubble").count(), 0);
     assert.equal(await activity.locator(".group-count").count(), 0);
     await page.locator(".working-text").getByText("Thinking", { exact: true }).waitFor();
@@ -1667,7 +1667,7 @@ app.whenReady().then(() => {
       await page.locator(".working-time").getByText("5.3s", { exact: true }).waitFor();
       await page.waitForFunction(() => getComputedStyle(document.querySelector(".working")).opacity === "1");
       await page.locator(".turn-agent .turn-heading strong").getByText("Muse Spark 1.3 Free", { exact: true }).waitFor();
-      assert.equal(await page.locator(".turn-agent .turn-heading .turn-provider").textContent(), "OpenCode");
+      assert.match(await page.locator(".turn-agent .turn-heading strong").getAttribute("title"), /OpenCode/);
       assert.equal(await page.locator('.turn-agent .agent-avatar .provider-icon[data-provider="opencode"]').count(), 1);
       const before = await page.locator(".working").boundingBox();
       f.emit(

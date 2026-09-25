@@ -101,25 +101,25 @@ test("chat content and controls adapt when the workspace squeezes the conversati
   await page.waitForTimeout(250);
   for (const width of [520, 760, 520]) {
     await resizeChat(width);
-    await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > time')].some(node =>
+    await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].some(node =>
       node.getAnimations().some(animation => animation.playState === 'running' && animation.effect.getKeyframes().some(frame => frame.translate)),
     ));
-    assert.equal(await page.locator('#message-answer .turn-heading time').evaluate(node => getComputedStyle(node).translate !== 'none'), true);
+    assert.equal(await page.locator('#message-answer .turn-heading .turn-meta').evaluate(node => getComputedStyle(node).translate !== 'none'), true);
     await page.screenshot({ path: `/tmp/citropy-header-moving-${width}.png` });
   }
-  await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > time')].every(node =>
+  await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].every(node =>
     node.getAnimations().every(animation => animation.playState !== 'running'),
   ));
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await resizeChat(760);
   await page.waitForTimeout(50);
-  assert.equal(await page.locator('#message-answer .turn-heading time').evaluate(node => node.getAnimations().some(animation => animation.effect.getKeyframes().some(frame => frame.translate))), false);
+  assert.equal(await page.locator('#message-answer .turn-heading .turn-meta').evaluate(node => node.getAnimations().some(animation => animation.effect.getKeyframes().some(frame => frame.translate))), false);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await resizeChat(590);
   await page.waitForFunction(() => {
-    const animation = document.querySelector('#message-answer .turn-heading time').getAnimations().find(animation =>
+    const animation = document.querySelector('#message-answer .turn-heading .turn-meta').getAnimations().find(animation =>
       animation.playState === 'running' && animation.effect.getKeyframes().some(frame => frame.translate),
     );
     if (!animation) return false;
@@ -175,7 +175,7 @@ test("chat content and controls adapt when the workspace squeezes the conversati
               name: name.getBoundingClientRect().toJSON(),
               avatar: turn.querySelector('.message-avatar').getBoundingClientRect().toJSON(),
               heading: heading.getBoundingClientRect().toJSON(),
-              metadata: [...heading.querySelectorAll('time, .turn-provider')].map(node => node.getBoundingClientRect().toJSON()),
+              metadata: [...heading.querySelectorAll('time')].map(node => node.getBoundingClientRect().toJSON()),
             };
           }));
           for (const header of headers) {

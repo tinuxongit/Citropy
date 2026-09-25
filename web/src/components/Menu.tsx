@@ -23,6 +23,7 @@ export interface MenuItem {
   selected?: boolean;
   danger?: boolean;
   disabled?: boolean;
+  keepOpen?: boolean;
   section?: string;
   action?: { label: string; icon: ReactNode; pressed?: boolean; onSelect: () => void };
   children?: MenuItem[];
@@ -39,6 +40,8 @@ interface Props {
   align?: "start" | "end";
   header?: string;
   controls?: ReactNode;
+  footer?: ReactNode;
+  clearOf?: string;
   width?: number;
   searchable?: boolean;
   searchPlaceholder?: string;
@@ -54,6 +57,8 @@ export function Menu({
   align = "start",
   header,
   controls,
+  footer,
+  clearOf,
   width = 232,
   searchable = false,
   searchPlaceholder = "Search models",
@@ -105,19 +110,21 @@ export function Menu({
       const bounds = (anchor ?? wrap.current)?.getBoundingClientRect();
       if (!bounds) return;
       const scale = uiScale / 100;
-      const anchorLeft = bounds.left / scale;
+      const clearance = clearOf ? wrap.current?.closest(clearOf)?.getBoundingClientRect() : undefined;
+      const anchorLeft = (clearance?.left ?? bounds.left) / scale;
       const menuWidth = Math.min(width, viewportWidth() - 24);
       const preferred = align === "end" ? bounds.right / scale - menuWidth : anchorLeft;
       element.style.width = `${scaled(menuWidth)}px`;
       element.style.maxHeight = "";
       const height = element.offsetHeight / scale;
-      const above = Math.max(0, bounds.top / scale - 18);
+      const top = clearance?.top ?? bounds.top;
+      const above = Math.max(0, top / scale - 18);
       const below = Math.max(0, (innerHeight - bounds.bottom) / scale - 18);
       const upwards = height > below && above > below;
       const available = upwards ? above : below;
       element.style.maxHeight = `${scaled(available)}px`;
       element.style.left = `${scaled(Math.max(12, Math.min(preferred, viewportWidth() - menuWidth - 12)))}px`;
-      element.style.top = `${scaled(upwards ? bounds.top / scale - Math.min(height, available) - 6 : bounds.bottom / scale + 6)}px`;
+      element.style.top = `${scaled(upwards ? top / scale - Math.min(height, available) - 6 : bounds.bottom / scale + 6)}px`;
     };
     position();
     if (searchable) {
@@ -150,7 +157,7 @@ export function Menu({
       window.removeEventListener("resize", position);
       window.removeEventListener("scroll", scroll, true);
     };
-  }, [open, width, align, searchable, uiScale, anchor]);
+  }, [open, width, align, searchable, uiScale, anchor, clearOf]);
 
   useEffect(() => {
     if (!open) return;
@@ -281,8 +288,10 @@ export function Menu({
                         title={item.hint}
                         onClick={() => {
                           if (item.children) { toggleGroup(item.id); return; }
-                          setOpen(false);
-                          (anchor ?? document.getElementById(id))?.focus({ preventScroll: true });
+                          if (!item.keepOpen) {
+                            setOpen(false);
+                            (anchor ?? document.getElementById(id))?.focus({ preventScroll: true });
+                          }
                           item.onSelect?.();
                         }}
                       >
@@ -322,6 +331,7 @@ export function Menu({
                 </div>
               )}
             </div>
+            {footer}
           </motion.div>
         )}
       </AnimatePresence>

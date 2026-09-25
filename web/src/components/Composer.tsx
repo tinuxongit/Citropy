@@ -6,7 +6,7 @@ import { QueueList } from "./QueueList.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { QueuedMessage } from "../../../shared/protocol.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { ArrowUp, Square } from "./icons.ts";
 import { Paperclip, CheckCircle2 } from "lucide-react";
 import { nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
@@ -20,13 +20,17 @@ import {
 } from "../lib/actions.ts";
 import { confirmAction, selectThread, useApp } from "../lib/store.ts";
 import { playUiSound } from "../lib/ui-sound.ts";
+import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
+import { RunningShells } from "./RunningShells.tsx";
+import type { NotificationTarget } from "../../../shared/protocol.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import {
-  ModelOptionsMenu,
+  ModelDetail,
+  ModelTuning,
   PermissionMenu,
-  hasModelOptions,
+  type TuningSettings,
 } from "./composer/ComposerOptions.tsx";
 import { useComposerDraft } from "./composer/use-composer-draft.ts";
 import { useAttachmentUpload } from "./composer/use-attachment-upload.ts";
@@ -35,9 +39,11 @@ import { useComposerCommands } from "./composer/use-composer-commands.tsx";
 export function Composer({
   onUsage,
   onSkills,
+  onShell,
 }: {
   onUsage?: () => void;
   onSkills?: () => void;
+  onShell: (target: NotificationTarget) => void;
 }) {
   const t = useI18n();
   const [scope] = useState(environmentId);
@@ -62,7 +68,6 @@ export function Composer({
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const modelButton = useRef<HTMLButtonElement>(null);
-  const effortButton = useRef<HTMLButtonElement>(null);
   const permissionButton = useRef<HTMLButtonElement>(null);
   // Stable so the memoized ContextUsage only re-renders when the draft or thread changes.
   const compact = useCallback(() => {
@@ -71,11 +76,19 @@ export function Composer({
         method: "POST",
       }).catch(reportError);
   }, [threadId]);
+  const [transferSettings, setTransferSettings] = useState<{ key: string; settings: TuningSettings }>({ key: "", settings: {} });
+  const transferKey = (choice: WritingModel) => `${choice.provider}:${choice.providerInstanceId ?? ""}:${choice.model}`;
+  const settingsFor = (choice: WritingModel) => transferSettings.key === transferKey(choice) ? transferSettings.settings : {};
+  const modelFor = (choice: WritingModel) => {
+    const target = providers.find((entry) => entry.id === choice.provider);
+    const account = target?.instances?.find(entry => entry.id === choice.providerInstanceId);
+    return selectedModel(account?.models ?? target?.models ?? [], choice.model);
+  };
   const transfer = async (choice: WritingModel) => {
     if (!thread || transferring) return;
     const target = providers.find((entry) => entry.id === choice.provider);
     const account = target?.instances?.find(entry => entry.id === choice.providerInstanceId);
-    const name = selectedModel(account?.models ?? target?.models ?? [], choice.model)?.label ?? choice.model;
+    const name = modelFor(choice)?.label ?? choice.model;
     if (!await confirmAction({
       title: t("Transfer to {model}?", { model: name }),
       description: t("A new agent will read the conversation and continue here. This consumes extra usage on the selected provider, and may incur additional costs. Your chat history, workspace and draft stay in place."),
@@ -84,7 +97,7 @@ export function Composer({
     }) || scopeSignal.aborted || !useApp.getState().connected) return;
     setTransferring(true);
     try {
-      await api(`threads/transfer?threadId=${thread.id}`, { method: "POST", body: JSON.stringify(choice) });
+      await api(`threads/transfer?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ ...choice, ...settingsFor(choice) }) });
     } catch (error) { reportError(error); }
     finally { if (!scopeSignal.aborted) setTransferring(false); }
   };
@@ -116,9 +129,24 @@ export function Composer({
     onUsage,
     onSkills,
     modelButton,
-    effortButton,
     permissionButton,
   });
+
+  const starting = !hasMessages && !running && !thread?.parentThreadId;
+  const composerRef = useRef<HTMLDivElement>(null);
+  const startTop = useRef<number>(undefined);
+  const reducedMotion = useReducedMotion();
+  useLayoutEffect(() => {
+    const element = composerRef.current;
+    if (!element) return;
+    const top = element.getBoundingClientRect().top;
+    if (starting) { startTop.current = top; return; }
+    if (startTop.current === undefined) return;
+    const distance = startTop.current - top;
+    startTop.current = undefined;
+    if (reducedMotion || Math.abs(distance) < 1) return;
+    element.animate([{ transform: `translateY(${distance}px)` }, { transform: "none" }], { duration: 320, easing: "cubic-bezier(0.65, 0, 0.35, 1)" });
+  }, [starting, reducedMotion]);
 
   const submit = async () => {
     const text = value.trim();
@@ -162,7 +190,7 @@ export function Composer({
     );
 
   return (
-    <div className="composer">
+    <div className="composer" ref={composerRef} data-start={starting || undefined}>
       {thread.parentThreadId && (
         <div className="subagent-managed">
           {t("Subagent conversation")}
@@ -205,6 +233,7 @@ export function Composer({
         }}
       >
         <span className="composer-focus-ring" aria-hidden="true" />
+        <RunningShells onOpen={onShell} />
         {thread.finished && !running && (
           <div className="composer-finished" role="status">
             <CheckCircle2 size={14} aria-hidden="true" />
@@ -274,24 +303,20 @@ export function Composer({
             disabled={!connected || sending || transferring}
             lockedProvider={running || hasMessages || thread.externalId || thread.usage.turns || thread.queue?.length ? thread.provider : undefined}
             instanceId={thread.providerInstanceId}
-            onTransfer={hasMessages && !thread.parentThreadId ? (choice) => void transfer(choice) : undefined}
-            transferDisabled={Boolean(running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
+            onTransfer={thread.parentThreadId ? undefined : (choice) => void transfer(choice)}
+            transferDisabled={Boolean(!hasMessages || running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
             onChange={(choice) => { if (choice) configureThread(thread.id, { ...choice, providerInstanceId: choice.providerInstanceId ?? null, effort: null }); }}
+            detail={<ModelDetail thread={configuredThread!} model={model} />}
+            menuClearOf=".composer-shell"
+            tuning={(target) => target
+              ? <ModelTuning key={transferKey(target)} settings={settingsFor(target)} model={modelFor(target)} onChange={(patch) => setTransferSettings({ key: transferKey(target), settings: { ...settingsFor(target), ...patch } })} />
+              : <ModelTuning settings={configuredThread!} model={model} onChange={(patch) => configureThread(thread.id, patch)} />}
           />
 
           {provider?.instances?.length ? <select className="composer-select composer-account" aria-label={t("Account")} title={t("Account")} value={thread.providerInstanceId ?? ""} disabled={!connected || sending || transferring || running || hasMessages || Boolean(thread.externalId || thread.parentThreadId || thread.queue?.length)} onChange={event => void configureThread(thread.id, { providerInstanceId: event.target.value || null })}>
             {provider.available && <option value="">{t("Default")}</option>}
             {provider.instances.map(entry => <option key={entry.id} value={entry.id} disabled={!entry.available}>{entry.name}</option>)}
           </select> : null}
-
-          {hasModelOptions(model) && (
-            <ModelOptionsMenu
-              thread={configuredThread!}
-              model={model}
-              disabled={!connected || sending || transferring}
-              buttonRef={effortButton}
-            />
-          )}
 
           <PermissionMenu
             thread={configuredThread!}

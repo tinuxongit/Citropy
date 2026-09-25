@@ -31,6 +31,7 @@ import type {
   QueuedMessage,
   ProviderInfo,
   Usage,
+  ThreadMeta,
 } from "../shared/protocol.ts";
 
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
@@ -115,7 +116,7 @@ export class ThreadRuntime {
     finally { this.#preparing = false; this.#pump(); }
   }
 
-  async transfer(provider: ProviderInfo, modelId: string, providerInstanceId?: string): Promise<void> {
+  async transfer(provider: ProviderInfo, modelId: string, providerInstanceId?: string, settings: Partial<Pick<ThreadMeta, "effort" | "contextWindow" | "fastMode">> = {}): Promise<void> {
     assertApplicationReady();
     assertProviderReady(provider.id);
     const thread = this.#thread;
@@ -163,7 +164,7 @@ export class ThreadRuntime {
       store.patchThread(this.id, {
         provider: provider.id,
         providerInstanceId,
-        ...modelSettings(models, { model: model.id }),
+        ...modelSettings(models, { ...settings, model: model.id }),
         pendingConfig: undefined,
         externalId: undefined,
         usage: emptyUsage(),

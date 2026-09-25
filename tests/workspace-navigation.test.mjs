@@ -112,9 +112,10 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     const { page, emit } = await fixture(test);
     emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", effort: "high", runStartedAt: Date.now() } });
     await page.locator(".composer-stop").waitFor();
-    await page.getByRole("button", { name: /^Model options:/ }).click();
-    await page.getByRole("menuitem", { name: /^Low/ }).click();
-    await page.getByRole("button", { name: /^Model options: Low/ }).waitFor();
+    await page.getByRole("button", { name: "Model: Claude Fast", exact: true }).click();
+    await page.getByRole("slider", { name: "Reasoning effort" }).fill("0");
+    await page.locator(".composer-model .composer-detail", { hasText: "Low" }).waitFor();
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Ask before changes", exact: true }).click();
     await page.getByRole("menuitem", { name: /^Full access/ }).click();
     await page.getByRole("button", { name: "Full access", exact: true }).waitFor();
@@ -393,8 +394,8 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.getByRole("group", { name: "Model · Provider", exact: true }).getByRole("button", { name: "Codex", exact: true }).click();
     await page.getByRole("menuitem", { name: /^Codex Extended/ }).click();
     await page.getByRole("button", { name: "Model: Codex Extended", exact: true }).waitFor();
-    await page.getByRole("button", { name: /^Model options:/ }).click();
-    await page.getByRole("menuitem", { name: /^Low/ }).click();
+    await page.getByRole("button", { name: "Model: Codex Extended", exact: true }).click();
+    await page.getByRole("slider", { name: "Reasoning effort" }).fill("0");
     await page.waitForFunction(() => JSON.parse(localStorage.getItem("citropy.threadDefaults")).effort === "low");
     await page.getByRole("textbox", { name: "Message", exact: true }).fill("Keep this draft in the first thread");
     await page.locator(".thread-toolbar").getByRole("button", { name: "New thread", exact: true }).click();
@@ -441,8 +442,8 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.getByRole("button", { name: "Model: Claude Fast", exact: true }).click();
     await page.getByRole("group", { name: "Model · Provider", exact: true }).getByRole("button", { name: "Codex", exact: true }).click();
     await page.getByRole("menuitem", { name: /^Codex Extended/ }).click();
-    await page.getByRole("button", { name: /^Model options:/ }).click();
-    await page.getByRole("menuitem", { name: /^High/ }).click();
+    await page.getByRole("button", { name: "Model: Codex Extended", exact: true }).click();
+    await page.getByRole("slider", { name: "Reasoning effort" }).fill("2");
     await page.waitForFunction(() => JSON.parse(localStorage.getItem("citropy.threadDefaults")).effort === "high");
     await page.locator(".thread-toolbar").getByRole("button", { name: "New thread", exact: true }).click();
     await page.waitForFunction(() => document.querySelectorAll(".thread-row").length === 4);
@@ -682,7 +683,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.getByRole("button", { name: "Model: Codex Extended", exact: true }).waitFor();
     assert.equal(await page.locator(".composer-model").isEnabled(), true);
     assert.equal(await draft.inputValue(), "Keep this unsent draft.");
-    assert.equal(await page.locator(".turn-agent .turn-provider").first().textContent(), "Claude Code");
+    assert.match(await page.locator(".turn-agent .turn-heading strong").first().getAttribute("title"), /Claude Code/);
     assert.equal(await page.locator(".turn-agent .turn-heading strong").first().textContent(), "Claude Fast");
     assert.deepEqual(requests.filter(event => event.t === "transfer"), [1, 2].map(() => ({ t: "transfer", threadId: "chat", provider: "codex", model: "codex-extended" })));
     assert.equal(requests.some(event => event.t === "thread.config" || event.t === "create"), false);
@@ -792,13 +793,14 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     const catalogs = [{ ...providers[2], models: [{ id: "muse", label: "Muse Spark 1.3 Free", efforts: ["xhigh"], defaultEffort: "xhigh", contextMax: 1048576 }] }];
     const { page, emit } = await fixture(test, { catalogs });
     emit({ t: "thread.upsert", thread: { ...thread, provider: "opencode", model: "muse", effort: "xhigh", contextWindow: 1048576 } });
-    const options = page.getByRole("button", { name: "Model options: Extra high, 1.05M context", exact: true });
+    const options = page.locator(".composer-model");
+    await options.locator(".composer-detail", { hasText: "Extra high" }).waitFor();
     await options.waitFor();
     assert.equal(await options.locator(".composer-context").textContent(), "1.05M");
     assert.equal(await options.locator(".composer-context").getAttribute("title"), "Context window: 1,048,576 tokens");
     for (const width of [1440, 700, 420]) {
       await page.setViewportSize({ width, height: 900 });
-      const text = await options.locator("span").first().evaluate(node => ({ height: node.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(node).lineHeight) * 1.2 }));
+      const text = await options.locator(".composer-detail").evaluate(node => ({ height: node.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(node).lineHeight) * 1.2 }));
       assert.ok(text.height < text.lineHeight + 1, JSON.stringify(text));
       assert.ok(await options.evaluate(node => node.scrollWidth <= node.clientWidth));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);

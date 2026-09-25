@@ -119,9 +119,8 @@ export function cost(value: number): string {
 }
 
 export function duration(ms: number): string {
-  if (ms < 950) return `${Math.max(ms, 1).toFixed(0)}ms`;
   const seconds = ms / 1000;
-  if (seconds < 59.5) return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`;
+  if (seconds < 59.5) return `${Math.round(seconds)}s`;
   const rounded = Math.round(seconds);
   const minutes = Math.floor(rounded / 60);
   const rest = rounded % 60;

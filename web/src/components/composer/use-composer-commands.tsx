@@ -18,7 +18,6 @@ export function useComposerCommands({
   onUsage,
   onSkills,
   modelButton,
-  effortButton,
   permissionButton,
 }: {
   thread: ThreadMeta | undefined;
@@ -28,7 +27,6 @@ export function useComposerCommands({
   onUsage?: () => void;
   onSkills?: () => void;
   modelButton: RefObject<HTMLButtonElement | null>;
-  effortButton: RefObject<HTMLButtonElement | null>;
   permissionButton: RefObject<HTMLButtonElement | null>;
 }) {
   const t = useI18n();
@@ -88,7 +86,7 @@ export function useComposerCommands({
             hint: t("Choose reasoning effort and context size"),
             icon: <Brain size={16} />,
             idleOnly: false,
-            run: () => effortButton.current?.click(),
+            run: () => modelButton.current?.click(),
           },
         ]
       : []),

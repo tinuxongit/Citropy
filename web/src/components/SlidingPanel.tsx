@@ -10,7 +10,7 @@ export function SlidingPanel({ open, side, keepMounted = false, children }: {
   const reducedMotion = useReducedMotion();
   const [present, setPresent] = useState(open);
   const [animate, setAnimate] = useState(false);
-  const duration = reducedMotion ? 0 : 200;
+  const duration = reducedMotion ? 0 : 280;
   useEffect(() => {
     let ready = 0;
     const frame = requestAnimationFrame(() => {
