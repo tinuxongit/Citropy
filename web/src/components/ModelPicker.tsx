@@ -105,7 +105,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     clearOf={menuClearOf}
     emptyMessage={favoritesView ? t("Star models to find them here.") : undefined}
     controls={<>
-      {onTransfer && transferring && <p className="model-picker-note" role="status">{t("Choose a model for a new agent in this chat. Reading the conversation again consumes extra usage.")}</p>}
+      {onTransfer && transferring && <p className="model-picker-note" role="status">{t("Choose a model for a new agent in this chat. Reading the conversation again uses extra usage.")}</p>}
       <div className="model-picker-toolbar sliding-selection" data-rail={tuning ? true : undefined}>
         <SelectionHighlight value={favoritesView ? "favorites" : catalog?.id} />
         {locked && catalog ? <button className="model-picker-locked" type="button" aria-label={`${catalog.label} · ${t("Provider locked")}`} title={`${catalog.label} · ${t("Provider locked")}`} aria-pressed={!favoritesView} onClick={() => setBrowsing(catalog.id)}>

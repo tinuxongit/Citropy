@@ -131,7 +131,7 @@ export async function callWorkspaceTool(
         : { behavior: "allow", updatedInput: input },
     );
   }
-  if (name.startsWith("browser_") && resolveProjectSettings(store.projectDefaults, project.settings).browserAccess === false) throw new Error("Browser access is disabled in this project’s settings.");
+  if (name.startsWith("browser_") && resolveProjectSettings(store.projectDefaults, project.settings).browserAccess === false) throw new Error("Browser access is disabled in this project's settings.");
   const definition = workspaceTools.find((tool) => tool.name === name);
   if (!definition) throw new Error(`Unknown tool: ${name}`);
   for (const key of definition.inputSchema.required ?? []) {

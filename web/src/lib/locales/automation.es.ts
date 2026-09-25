@@ -90,7 +90,7 @@ export const automationEs: Record<string, string> = {
   "Review scope": "Ámbito de revisión",
   "Refresh review": "Actualizar revisión",
   "AI review": "Revisión con IA",
-  "Changes have changed since this review. Run it again before relying on the findings.": "Los cambios han variado desde esta revisión. Ejecútala de nuevo antes de basarte en sus resultados.",
+  "The files changed after this review. Run it again before relying on the findings.": "Los archivos cambiaron después de esta revisión. Ejecútala de nuevo antes de basarte en sus resultados.",
   "Add findings to feedback": "Añadir resultados a los comentarios",
   "Show more files": "Mostrar más archivos",
   "No changes in this scope.": "No hay cambios en este ámbito.",

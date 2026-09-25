@@ -169,7 +169,7 @@ export function NotificationCenter({
                     }}
                   >
                     <strong>{t(entry.title)}</strong>
-                    <span>{entry.kind === "update" ? t("{release} is available. Open settings to update when you’re ready.", { release: entry.text }) : entry.text}</span>
+                    <span>{entry.kind === "update" ? t("{release} is available. Open settings to update when you're ready.", { release: entry.text }) : entry.text}</span>
                     <time
                       dateTime={new Date(entry.createdAt).toISOString()}
                       title={new Date(entry.createdAt).toLocaleString(currentLocale())}

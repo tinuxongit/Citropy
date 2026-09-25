@@ -140,8 +140,8 @@ export function SkillsSettings() {
       <details className="skills-about">
         <summary>{t("How skills are shared")}</summary>
         <p>{" "}{t("Personal skills are available across projects for their provider. Project skills belong to the selected workspace. Plugin skills come from installed plugins.")}{" "}</p>
-        <p>{" "}{t("Citropy also reads shared skills from")}{" "}<code>~/.agents/skills</code>{" "}{" "}{t("and the workspace’s")}{" "}<code>.agents/skills</code>{t(". The provider filter shows which providers can use each skill. Codex uses its own reported inventory. A shared file can affect several providers when disabled or deleted.")}{" "}</p>
-        <p>{" "}{t("Type")}{" "}<code>@</code>{" "}{t("in a conversation to choose an enabled skill. Citropy passes its instructions or native skill reference to that conversation’s provider.")}{" "}</p>
+        <p>{" "}{t("Citropy also reads shared skills from")}{" "}<code>~/.agents/skills</code>{" "}{" "}{t("and the workspace's")}{" "}<code>.agents/skills</code>{t(". The provider filter shows which providers can use each skill. Codex uses its own reported inventory. A shared file can affect several providers when disabled or deleted.")}{" "}</p>
+        <p>{" "}{t("Type")}{" "}<code>@</code>{" "}{t("in a conversation to choose an enabled skill. Citropy passes its instructions or native skill reference to that conversation's provider.")}{" "}</p>
       </details>
       {error && (
         <p className="feature-error" role="alert">

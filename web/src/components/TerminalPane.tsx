@@ -151,7 +151,7 @@ export function TerminalPane({
         event.stopPropagation();
         try {
           if (!document.execCommand("copy")) {
-            if (!navigator.clipboard) throw new Error(t("Could not copy terminal selection. Try your browser’s Copy command."));
+            if (!navigator.clipboard) throw new Error(t("Could not copy terminal selection. Try your browser's Copy command."));
             void navigator.clipboard.writeText(instance.getSelection()).catch(reportError);
           }
         } catch (error) { reportError(error); }

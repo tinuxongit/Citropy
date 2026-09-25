@@ -250,7 +250,7 @@
   place-items: center;
   height: 18px;
   padding: 0 7px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   background: var(--raised-2);
   color: var(--text-3);
   font-size: var(--text-xs);

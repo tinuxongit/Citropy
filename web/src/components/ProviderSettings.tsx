@@ -372,7 +372,7 @@ export function ProviderSettings() {
           >{" "}{t("Retry")}{" "}</button>
         </p>
       )}
-      <p className="settings-note">{" "}{t("Updates use the provider’s existing installer. Disabling a provider stops its active work and removes it from new thread choices. Saved conversations stay available.")}{" "}</p>
+      <p className="settings-note">{" "}{t("Updates use the provider's existing installer. Disabling a provider stops its active work and removes it from new thread choices. Saved conversations stay available.")}{" "}</p>
       <p className="settings-connection" role="status">
         {connected ? t("Connected to Citropy") : t("Disconnected from Citropy")}
       </p>

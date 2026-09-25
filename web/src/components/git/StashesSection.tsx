@@ -54,7 +54,7 @@ export function StashesSection({
     <div className="git-stash-layout">
       <header className="git-section-heading">
         <div>
-          <p>{" "}{t("Set unfinished work aside and restore it when you’re ready.")}{" "}</p>
+          <p>{" "}{t("Set unfinished work aside and restore it when you're ready.")}{" "}</p>
         </div>
         {data.hasCommits && data.stashes.length > 0 && (
           <button

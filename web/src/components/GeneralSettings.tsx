@@ -74,7 +74,7 @@ export function GeneralSettings() {
         <label className="setting-row">
           <span>
             <strong>{t("Use GitHub profile in chat")}</strong>
-            <small>{" "}{t("Show your connected GitHub username and photo on your messages. Turn off to show “You” and a generic avatar.")}{" "}</small>
+            <small>{" "}{t("Show your connected GitHub username and photo on your messages. Turn off to show 'You' and a generic avatar.")}{" "}</small>
           </span>
           <input
             className="setting-switch"
@@ -154,7 +154,7 @@ export function GeneralSettings() {
           </div>
         </div>
       </div>
-      <p className="settings-note">{" "}{t("Tool activity stays live. Saved conversations appear immediately. Typing animation respects your system’s reduced-motion setting.")}{" "}</p>
+      <p className="settings-note">{" "}{t("Tool activity stays live. Saved conversations appear immediately. Typing animation respects your system's reduced-motion setting.")}{" "}</p>
     </>
   );
 }

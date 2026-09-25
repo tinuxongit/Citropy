@@ -42,7 +42,7 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
         error={error || list.error}
         loading={list.loading && !list.data}
         empty={
-          list.data?.items.length === 0 ? "You’re all caught up" : undefined
+          list.data?.items.length === 0 ? "No notifications" : undefined
         }
       />
       <div className="github-notifications">

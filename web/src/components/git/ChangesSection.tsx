@@ -157,7 +157,7 @@ export function ChangesSection({
             <FileGroup title="Staged for commit" list={staged} inIndex={true} disabled={disabled} selection={selection} t={t} match={match} act={act} setSelection={setSelection} />
             {filter && !files.some((file) => match(file.path)) && (
               <p className="git-list-hint">
-                {t("No files match “{filter}”.", { filter })}
+                {t("No files match '{filter}'.", { filter })}
               </p>
             )}
           </div>
@@ -314,7 +314,7 @@ export function ChangesSection({
                   ? t("Choose a file on the left to see exactly what will change.")
                   : data.hasCommits
                     ? t("Your files match the latest commit. New edits will appear here.")
-                    : t("Create or copy files into this workspace. They’ll appear here, ready for your first commit.")}
+                    : t("Create or copy files into this workspace. They'll appear here, ready for your first commit.")}
               </p>
             </EmptyState>
           )}

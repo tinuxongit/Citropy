@@ -36,12 +36,12 @@ export function readableError(error: string, t: ReturnType<typeof useI18n>) {
   if (/not fully merged/i.test(error))
     return t("This branch has unmerged commits. Merge them before deleting the branch.");
   if (/authentication|permission denied|could not read username/i.test(error))
-    return t("Git couldn’t authenticate with this remote. Check your Git credentials.");
+    return t("Git couldn't authenticate with this remote. Check your Git credentials.");
   return (
     error
       .split("\n")
       .find((line) => line.trim() && !line.startsWith("Command failed:"))
       ?.replace(/^(fatal|error):\s*/i, "") ??
-    t("Git couldn’t complete the action.")
+    t("Git couldn't complete the action.")
   );
 }

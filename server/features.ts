@@ -252,7 +252,7 @@ export async function handleFeatures(
       const eligible = maintenance.filter(entry =>
         entry.available && !entry.install && entry.binaryPath && entry.updateStatus !== "current" && !providerBusy(entry.provider));
       respond(startProviderUpdates(eligible.map(entry => entry.provider), async provider => {
-        if (providerBusy(provider)) throw new Error("Finish or stop this provider’s active conversations before updating.");
+        if (providerBusy(provider)) throw new Error("Finish or stop this provider's active conversations before updating.");
         reloadProviderSessions(new Set([provider]));
         await waitForStoppedProcesses();
       }, refreshProviders));
@@ -260,7 +260,7 @@ export async function handleFeatures(
       const input = await body(req);
       if (!["claude", "codex", "opencode", "cursor", "pi"].includes(input.provider)) throw new Error("Unknown provider.");
       const provider = input.provider as ProviderId;
-      if (providerBusy(provider)) throw new Error("Finish or stop this provider’s active conversations before updating.");
+      if (providerBusy(provider)) throw new Error("Finish or stop this provider's active conversations before updating.");
       respond(startProviderUpdate(provider, async () => {
         reloadProviderSessions(new Set([provider]));
         await waitForStoppedProcesses();
@@ -272,7 +272,7 @@ export async function handleFeatures(
       else {
         const input = await body(req);
         assertProviderReady(provider);
-        if (providerBusy(provider)) throw new Error("Finish or stop this provider’s active conversations before saving global instructions.");
+        if (providerBusy(provider)) throw new Error("Finish or stop this provider's active conversations before saving global instructions.");
         const saved = saveGlobalInstructions(provider, input.content, input.revision);
         reloadProviderSessions(new Set([provider]));
         respond(saved);

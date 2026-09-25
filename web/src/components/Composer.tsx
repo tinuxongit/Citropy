@@ -91,7 +91,7 @@ export function Composer({
     const name = modelFor(choice)?.label ?? choice.model;
     if (!await confirmAction({
       title: t("Transfer to {model}?", { model: name }),
-      description: t("A new agent will read the conversation and continue here. This consumes extra usage on the selected provider, and may incur additional costs. Your chat history, workspace and draft stay in place."),
+      description: t("A new agent reads the conversation and continues here. This uses extra usage on the selected provider and may cost more. Your chat history, workspace and draft stay in place."),
       context: account ? `${target?.label} · ${account.name}` : target?.label,
       label: t("Transfer and continue"),
     }) || scopeSignal.aborted || !useApp.getState().connected) return;

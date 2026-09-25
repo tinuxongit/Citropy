@@ -34,7 +34,7 @@ Geist Variable by Vercel is the UI font, and Droid Sans Mono is the code font. S
 - Group related settings behind one trigger. The model picker holds effort, context and speed as tabs instead of separate buttons.
 - Panels size to their content. Side buttons that switch them stay in place, so the window can change height without anything you click moving.
 - Prefer native elements with custom styling, like `<input type="range">` for the effort slider and a checkbox with `role="switch"` for toggles.
-- Rounded corners use the `--r-*` scale. Pills (`--r-full`) are for sliders and toggles.
+- Rounded corners use the `--r-*` scale. Pills (`--r-full`) are for sliders, toggles and small markers like the icon stack and the thought dots.
 
 ## Motion
 

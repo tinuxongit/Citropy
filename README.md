@@ -51,7 +51,7 @@ Citropy runs the coding agents you already use, side by side in one window. Each
 - **Browser, terminal, and files beside the chat.** Agents can drive the same browser and terminals you see.
 - **Computer use.** Let a conversation click and type in native apps on Linux and macOS.
 - **Remote work.** Open folders on another machine over SSH, or in a Docker container.
-- **Usage at a glance.** Claude Code and Codex limits with reset times, token totals, and live CPU and memory use.
+- **Usage.** Claude Code and Codex limits with reset times, token totals, and live CPU and memory use.
 
 ## Review every change
 
@@ -81,7 +81,7 @@ The Git panel shows the branch, change counts, and commits waiting to push. AI c
   <img alt="The browser panel showing a local dashboard next to the conversation" src="docs/assets/browser-light.png">
 </picture>
 
-The side panel holds a browser, terminals, a file tree, the changes view, subagents, and the list of tools agents can call. Tabs stay open while you switch between them. Agents use the same browser and terminals through Citropy's MCP tools, and phone-sized page presets are one click away.
+The side panel holds a browser, terminals, a file tree, the changes view, subagents, and the list of tools agents can call. Tabs stay open while you switch between them. Agents use the same browser and terminals through Citropy's MCP tools. The browser has phone and tablet size presets.
 
 ## Code editor
 
@@ -103,7 +103,7 @@ The editor loads separately from the initial app bundle. It supports UTF-8 text 
   <img alt="The Computer panel sharing a Linux desktop with recent activity" src="docs/assets/computer-light.png">
 </picture>
 
-Share a screen and a conversation can move the mouse, click, drag, scroll, and type in desktop apps. Input follows the conversation's permission mode. An on-screen indicator keeps pause and stop within reach, and the session ends after five idle minutes. Available on Linux and macOS.
+Share a screen and a conversation can move the mouse, click, drag, scroll, and type in desktop apps. Input follows the conversation's permission mode. An on-screen indicator has Pause and Stop buttons, and the session ends after five idle minutes. Available on Linux and macOS.
 
 ## Questions in one place
 
@@ -178,4 +178,4 @@ The [guide](docs/guide.md) explains each part of the app in detail, plus storage
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The bundled Inter and Geist Mono fonts are under the SIL Open Font License, with copies in `public/fonts`.
+MIT. See [LICENSE](LICENSE). The Geist font is bundled from `@fontsource-variable/geist` under the SIL Open Font License.

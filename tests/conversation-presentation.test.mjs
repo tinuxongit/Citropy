@@ -574,7 +574,7 @@ app.whenReady().then(() => {
       { ...message("greeting", [textPart("greeting-text", "Hello!")]), role: "user" },
       { ...message("reply", [textPart("reply-text", "Hi. What do you need?")]), model: "claude-sonnet-5[1m]" },
       { ...message("multiline", [textPart("multiline-text", "First line\nSecond line")]), role: "user" },
-      message("work", [textPart("work-start", "I’ll check the workspace."), ...tools, textPart("work-end", "The review is complete.")]),
+      message("work", [textPart("work-start", "I'll check the workspace."), ...tools, textPart("work-end", "The review is complete.")]),
     ] });
     const { page } = f;
     f.emit(

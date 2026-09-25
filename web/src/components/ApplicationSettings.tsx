@@ -102,7 +102,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
         <div className="setting-row">
           <span>
             <strong>{t("Citropy updates")}</strong>
-            <small>{t("You’ll be notified when an update is available. Download and apply it when you choose.")}</small>
+            <small>{t("You'll be notified when an update is available. Download and apply it when you choose.")}</small>
           </span>
           <AppUpdateControl variant="settings" />
         </div>

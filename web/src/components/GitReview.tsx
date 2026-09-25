@@ -94,7 +94,7 @@ export function GitReview({
       ) : error ? (
         <div className="git-preview-placeholder" role="alert">
           <FileCode2 size={28} />
-          <h3>{t("Couldn’t load this preview")}</h3>
+          <h3>{t("Couldn't load this preview")}</h3>
           <p>{error}</p>
           <button className="btn" onClick={() => setRetry((value) => value + 1)}>
             <RotateCcw size={14} /> {t("Try again")}
