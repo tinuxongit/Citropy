@@ -349,7 +349,10 @@ test(
     await dock.locator(".editor-terminal-body:not([hidden]) .xterm-helper-textarea").pressSequentially("second");
     assert.equal(await page.getByRole("tab", { name: "Files", exact: true }).getAttribute("aria-selected"), "true");
     const secondId = terminalEvents.findLast((event) => event.t === "panel.open").id;
-    assert.equal(terminalEvents.filter((event) => event.t === "term.data" && event.termId === secondId).map((event) => event.data).join(""), "second");
+    const secondData = () => terminalEvents.filter((event) => event.t === "term.data" && event.termId === secondId).map((event) => event.data).join("");
+    for (let attempt = 0; attempt < 100 && secondData() !== "second"; attempt++)
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(secondData(), "second");
     await page.locator(".workbench-tabs").getByRole("tab", { name: "Terminal 1", exact: true }).click();
     await dock.getByRole("tab", { name: "Terminal 1", selected: true }).waitFor();
     await dock.locator(".editor-terminal-body:not([hidden]) .xterm-screen").waitFor();
