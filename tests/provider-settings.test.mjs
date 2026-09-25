@@ -22,6 +22,7 @@ test(
     const originalEnv = { ...process.env };
     const originalFetch = globalThis.fetch;
     let latest = "1.1.0";
+    let standaloneLatest = "1.1.0";
     let cursorLatest = "1.0.0";
     let cursorChecks = 0;
     const versionChecks = [];
@@ -29,6 +30,10 @@ test(
     let installerDownloads = 0;
     let installer = '#!/bin/sh\nexec "$CODEX_INSTALL_DIR/codex" standalone-install';
     globalThis.fetch = (input, options) => {
+      if (String(input) === "https://releases.openai.com/codex/channels/latest") {
+        versionChecks.push(String(input));
+        return versionGate.then(() => Response.json({ tag_name: `rust-v${standaloneLatest}` }));
+      }
       if (String(input).startsWith("https://registry.npmjs.org/")) {
         versionChecks.push(String(input));
         return versionGate.then(() => Response.json({ version: latest }));
@@ -357,6 +362,35 @@ if (args.includes('--help')) {
         assertProviderReady("codex");
       } finally {
         installer = validInstaller;
+      }
+    });
+    await t.test("standalone Codex checks the installer's release channel", async () => {
+      latest = "1.2.0";
+      try {
+        const state = (await providerMaintenance(true)).find(entry => entry.provider === "codex");
+        assert.equal(state.latestVersion, "1.1.0");
+        assert.equal(state.updateStatus, "current");
+      } finally {
+        latest = "1.1.0";
+      }
+    });
+    await t.test("an unchanged CLI does not report a successful update when a newer release is available", async () => {
+      const previousInstaller = installer;
+      installer = "#!/bin/sh\nexit 0";
+      standaloneLatest = "1.2.0";
+      try {
+        let refreshed = false;
+        startProviderUpdate("codex", async () => {}, async () => { refreshed = true; });
+        const state = await settle("codex");
+        assert.equal(state.status, "error");
+        assert.equal(refreshed, false);
+        assert.equal(state.version, "codex 1.1.0");
+        assert.equal(state.latestVersion, "1.2.0");
+        assert.equal(state.updateStatus, "available");
+        assert.match(state.message, /still reports codex 1\.1\.0.*1\.2\.0 is available/);
+      } finally {
+        installer = previousInstaller;
+        standaloneLatest = "1.1.0";
       }
     });
     await t.test("update notifications are emitted once per release and survive being marked read", async () => {

@@ -252,6 +252,13 @@ export function cursorVersionNewer(
   return Number(`${target[1]}${target[2]}${target[3]}`) > Number(`${current[1]}${current[2]}${current[3]}`);
 }
 
+function updateAvailable(provider: ProviderId, installed?: string, latest?: string): boolean | undefined {
+  if (provider === "cursor") return cursorVersionNewer(installed, latest);
+  const current = versionNumber(installed);
+  const target = versionNumber(latest);
+  return current && target ? gt(target, current) : undefined;
+}
+
 async function latestVersion(
   provider: ProviderId,
   plan: UpdatePlan,
@@ -282,6 +289,14 @@ async function latestVersion(
         /FINAL_DIR="[^"]*\/versions\/([^"/]+)"/.exec(script) ??
         /downloads\.cursor\.com\/lab\/([^/]+)\//.exec(script);
       return match?.[1];
+    }
+    if (provider === "codex" && plan.method === "Standalone installer") {
+      const response = await fetch("https://releases.openai.com/codex/channels/latest", {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) throw new Error("Version check failed");
+      const data = (await response.json()) as { tag_name?: string };
+      return data.tag_name?.startsWith("rust-v") ? versionNumber(data.tag_name.slice(6)) : undefined;
     }
     let channel = "latest";
     if (provider === "claude" && plan.method === "Native updater") {
@@ -339,14 +354,8 @@ export async function providerMaintenance(
         installationVersion(provider.id, fresh),
         plan.binaryPath ? latestVersion(provider.id, plan, fresh) : undefined,
       ]);
-      const current = versionNumber(version);
       const target = versionNumber(latest);
-      const newer =
-        provider.id === "cursor"
-          ? cursorVersionNewer(version, latest)
-          : current && target
-            ? gt(target, current)
-            : undefined;
+      const newer = updateAvailable(provider.id, version, latest);
       const advertised = provider.id === "cursor" ? latest : target;
       if (newer && advertised) notifyUpdateAvailable(provider.label, advertised, "Providers");
       return {
@@ -553,6 +562,11 @@ async function performProviderUpdate(
     state.version = after.version;
     installed.delete(provider);
     versions.delete(provider);
+    if (!plan.install && before.version === after.version) {
+      const latest = await latestVersion(provider, plan, true);
+      if (updateAvailable(provider, after.version, latest))
+        throw new Error(`The updater finished, but ${providers[provider].label} still reports ${after.version}; ${latest} is available for this installation. Check the update details and CLI path.`);
+    }
     state.message =
       plan.install
         ? `Installed ${after.version}. Sign in to this provider to start using it.`
