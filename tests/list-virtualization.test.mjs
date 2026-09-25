@@ -100,7 +100,7 @@ test("large workspace lists preserve state and navigation with bounded rendered 
     };
   </script></body></html>`);
   await page.route("**/lists.html", (route) => route.fulfill({ contentType: "text/html", body: html }));
-  await page.goto(`${server.resolvedUrls.local[0]}lists.html`);
+  await page.goto(`${server.resolvedUrls.local[0]}lists.html`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(window.show));
   const show = (view) => page.evaluate((view) => window.show(view), view);
   const scroll = async (selector, bottom) => {

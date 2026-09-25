@@ -35,7 +35,7 @@ export function useThreadTree(threadsByEnvironment: Record<string, Record<string
     if (id === environment) ancestry(threads, activeThreadId ? threads[activeThreadId] : undefined, selectedPath);
     const activePaths = new Set<string>();
     for (const thread of Object.values(threads)) {
-      if (thread.running || !["idle", "stopped"].includes(thread.status)) ancestry(threads, thread, activePaths);
+      if (thread.running || ["thinking", "working", "awaiting", "queued"].includes(thread.status)) ancestry(threads, thread, activePaths);
     }
     return [id, { childrenByParent, selectedPath, activePaths }];
   })), [threadsByEnvironment, environment, activeThreadId]);

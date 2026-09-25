@@ -131,6 +131,7 @@ test("Codex app-server streams turns, resumes, reports usage and routes approval
     assert.equal(start.params.approvalPolicy, "untrusted");
     assert.equal(start.params.sandbox, "read-only");
     await reply("thread/start", { thread: { id: "external" }, model: "test-model" });
+    await reply("config/mcpServer/reload", {});
     const turn = wire.messages.find((m) => m.method === "turn/start");
     assert.equal(turn.params.effort, "high");
     assert.equal(turn.params.serviceTier, "priority");
@@ -181,6 +182,7 @@ test("Codex app-server streams turns, resumes, reports usage and routes approval
     assert.equal(events.findLast((e) => e.type === "notice").text, "Provider warning");
     codex.send("Follow-up");
     await tick();
+    await reply("config/mcpServer/reload", {});
     assert.equal(invocations.length, 2);
     assert.equal(wire.messages.filter((m) => m.method === "turn/start").length, 2);
     await reply("turn/start", { turn: { id: "turn2" } });
@@ -202,6 +204,7 @@ test("Codex app-server streams turns, resumes, reports usage and routes approval
     assert.equal(events.filter((entry) => entry.type === "compacted").length, 1);
     codex.send("Continue after compaction");
     await tick();
+    await reply("config/mcpServer/reload", {});
     notify("turn/completed", { threadId: "external", turn: { id: "compact1", status: "completed" } });
     assert.equal(events.filter((entry) => entry.type === "turn.end").length, 2);
     await reply("turn/start", { turn: { id: "after-compact" } });
@@ -216,6 +219,7 @@ test("Codex app-server streams turns, resumes, reports usage and routes approval
     const completedBeforeReview = events.filter(event => event.type === "turn.end").length;
     codex.send("/review");
     await tick();
+    await reply("config/mcpServer/reload", {});
     assert.deepEqual(wire.messages.findLast(message => message.method === "review/start").params, { threadId: "external", delivery: "inline", target: { type: "uncommittedChanges" } });
     await reply("review/start", { turn: { id: "review-turn" } });
     notify("item/agentMessage/delta", { threadId: "external", itemId: "review-result", delta: "No findings" });
@@ -247,6 +251,8 @@ test("Codex app-server streams turns, resumes, reports usage and routes approval
     resumed.send("Resume");
     resumeWire.child.stdout.write(JSON.stringify({ id: resumeRequest.id, result: { thread: { id: "external" } } }) + "\n");
     await tick();
+    resumeWire.child.stdout.write(JSON.stringify({ id: resumeWire.messages.find((m) => m.method === "config/mcpServer/reload").id, result: {} }) + "\n");
+    await tick();
     resumeWire.child.stdout.write(JSON.stringify({ method: "thread/tokenUsage/updated", params: { threadId: "external", tokenUsage: { total: { inputTokens: 150, outputTokens: 30, cachedInputTokens: 80 }, last: { totalTokens: 60 }, modelContextWindow: 1000 } } }) + "\n");
     assert.equal(events.findLast((e) => e.type === "usage").usage.input, 150);
     const resumedTurn = resumeWire.messages.find((m) => m.method === "turn/start");
@@ -260,6 +266,8 @@ test("Codex app-server streams turns, resumes, reports usage and routes approval
     await tick();
     assert.equal(legacyWire.messages.find((message) => message.method === "thread/start").params.serviceTier, "fast");
     resumed.send("Try again");
+    await tick();
+    resumeWire.child.stdout.write(JSON.stringify({ id: resumeWire.messages.findLast((m) => m.method === "config/mcpServer/reload").id, result: {} }) + "\n");
     await tick();
     resumeWire.child.stderr.write("App-server connection failed\n");
     resumeWire.child.emit("close", 1);

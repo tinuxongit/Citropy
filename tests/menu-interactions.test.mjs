@@ -71,7 +71,7 @@ test("menu surfaces retain focus while outside interaction and selection dismiss
     await search.pressSequentially('go gpt');
     assert.equal(await search.inputValue(), 'go gpt');
     assert.deepEqual(await menu.locator('.menu-item .menu-label').allTextContents(), ['GPT 5']);
-    assert.deepEqual(await menu.locator('.menu-item .menu-hint').allTextContents(), ['OpenCode Go']);
+    assert.deepEqual(await menu.locator('.menu-item .menu-hint').allTextContents(), ['Pi · OpenCode Go']);
     await search.fill('open code go  ');
     assert.deepEqual(await menu.locator('.menu-item .menu-label').allTextContents(), ['GPT 5']);
     await search.fill('   ');

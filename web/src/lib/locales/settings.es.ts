@@ -51,6 +51,7 @@ export const settingsEs: Record<string, string> = {
   "Show the failure count in work summaries. Tool results remain available when hidden.": "Muestra el número de fallos en los resúmenes de trabajo. Los resultados siguen disponibles cuando se oculta.",
 
   "Conversation navigation": "Navegación de conversaciones",
+  "Navigation": "Navegación",
   "Sidebar mode": "Modo de barra lateral",
   "Navigation layout": "Diseño de navegación",
   "Side strip keeps source control, GitHub, usage and settings on the left edge. Bottom bar puts them under the conversation list.": "La franja lateral mantiene control de código, GitHub, uso y ajustes en el borde izquierdo. La barra inferior los pone debajo de la lista de conversaciones.",

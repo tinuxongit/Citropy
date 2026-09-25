@@ -30,6 +30,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
 }) {
   const t = useI18n();
   const providers = useApp((state) => state.providers);
+  const connected = useApp((state) => state.connected);
   const favorites = useApp((state) => state.favoriteModels);
   const choice = value ?? fallback;
   const [browsing, setBrowsing] = useState<ProviderId | "favorites" | undefined>(choice?.provider);
@@ -129,7 +130,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
       aria-haspopup="menu"
       aria-expanded={open}
       disabled={disabled}
-      onClick={() => { if (!open) { setBrowsing(choice?.provider); setTransferring(false); send({ t: "providers.refresh" }); } toggle(); }}
+      onClick={() => { if (!open) { setBrowsing(choice?.provider); setTransferring(false); if (connected) send({ t: "providers.refresh" }); } toggle(); }}
     >
       {choice && <ProviderIcon provider={choice.provider} />}
       <AnimatedText className="truncate" text={name} />

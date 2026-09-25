@@ -34,9 +34,10 @@ export function ThreadChildren(props: Props) {
   } = props;
   const children = childrenByParent.get(parent.id) ?? [];
   const { current } = groupSubagents(children);
+  const active = children.some((child) => activePaths.has(child.id));
   const listed = children.filter(
     (child) =>
-      current.includes(child) ||
+      (active && current.includes(child)) ||
       activePaths.has(child.id) ||
       selectedPath.has(child.id),
   );
