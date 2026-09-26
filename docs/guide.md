@@ -92,6 +92,18 @@ Providers can use the MCP `browser_action` tool with `action: "resize"`, `width`
 
 Running shells appears as a tab above the composer while provider shell commands are running. Workspace terminals are not listed. It shows each command, its owner, a link to its conversation, and a stop action. Codex and Claude background tasks support individual stops; other provider commands show Stop task when stopping requires ending the owning provider session. Providers can use `terminal_open` with `command` for a managed background server. Arbitrary detached processes that a provider does not report are not discovered by scanning the operating system. `server/shells.ts` keeps transient status, up to 32,000 output characters per shell and 30 completed entries. Output events are batched; Codex checks background terminal status only while reported background work remains, with a discovery check when commands finish.
 
+### Code editor
+
+Open **Files** from the workspace panel menu to browse and edit code. The editor uses [Microsoft Monaco](https://github.com/microsoft/monaco-editor), with new-file creation, file tabs, filename search, syntax highlighting, multiple cursors, folding, undo and redo, find and replace, and a command palette. Images, videos, and other previews open alongside code in the same tab strip. Expand the panel for more room, or keep it beside the conversation.
+
+While Files is selected, terminal buttons, tabs, and the panel menu open shells beneath the editor without changing the view or leaving expanded mode. Hiding and reopening the dock reuses the selected shell. Drag the file explorer or terminal divider to resize it; sizes are remembered. Dividers also support arrow keys, Home/End, and double-click or Enter to reset.
+
+Save with Ctrl+S or Cmd+S. F1 opens editor commands, including formatting for supported languages. JavaScript, TypeScript, JSON, HTML, and CSS language features run in workers. Language intelligence covers loaded files and Monaco's built-in libraries; this does not run the project's language servers, debugger, or VS Code extensions.
+
+Edits use the selected conversation's worktree. Saves check the disk revision and replace the file using a temporary file, preserving its permission bits. Conflicts keep your draft open; copy any edits you want to retain before reloading the disk version. Open drafts and undo history survive panel and workspace switches within the current app session. Save before quitting; drafts are not persisted across restarts.
+
+The editor loads separately from the initial app bundle. It supports UTF-8 text files up to 2 MB and keeps at most 24 files open. Binary files, non-UTF-8 files, and symbolic links cannot be edited.
+
 ## Computer use
 
 Computer use controls native Linux and macOS desktop applications through the same MCP connection. Enable it in Settings > Computer use, open Computer in the workspace panel, and choose Share a screen. On Wayland, the operating system asks you to select screens and allow keyboard and pointer input. X11 shares the current desktop. macOS shares every connected display; the first session asks you to allow Citropy under Privacy & Security > Screen & System Audio Recording and, for control, Accessibility, and Screen Recording takes effect after Citropy is reopened. One conversation owns the session; other conversations cannot capture it or send input. Plan only sessions can view the screen. Other input follows the conversation's permission setting.
