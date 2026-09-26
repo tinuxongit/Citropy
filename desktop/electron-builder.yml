@@ -4,6 +4,7 @@ directories:
   app: .desktop-build
   output: release
 asar: false
+npmRebuild: false
 files:
   - desktop/**
   - server/**
@@ -21,6 +22,7 @@ files:
   - '!desktop/smoke.mjs'
   - '!desktop/smoke-mac.mjs'
   - '!desktop/smoke-win.mjs'
+  - '!desktop/smoke-terminal.mjs'
 linux:
   target: AppImage
   category: Development

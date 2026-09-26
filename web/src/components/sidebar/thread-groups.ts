@@ -20,6 +20,7 @@ export interface ThreadGroup {
   toggle: () => void;
   project?: Project;
   environment?: string;
+  offline?: boolean;
 }
 
 export interface ThreadListRow {
@@ -143,7 +144,7 @@ export function useThreadGroups({ threads, query, globalMode, environments, acti
       if (entry) entry.push(item);
       else byProject.set(key, [item]);
     }
-    const folders = environments.flatMap(({ environment, server, projects }): ThreadGroup[] => {
+    const folders = environments.flatMap(({ environment, server, projects, cachedThreads }): ThreadGroup[] => {
       const icon = server ? Server : Folder;
       const projectKey = (id: string) => environment === "local" ? `project:${id}` : `environment:${environment}:project:${id}`;
       return projects.map((project) => group({
@@ -153,6 +154,7 @@ export function useThreadGroups({ threads, query, globalMode, environments, acti
         threads: (byProject.get(`${environment}:${project.id}`) ?? []).sort(sortItems),
         project,
         environment,
+        offline: cachedThreads !== undefined,
       }, projectKey(project.id))).filter((entry) => !searching || entry.threads.length > 0);
     });
     return [

@@ -3,15 +3,12 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("question choices, custom answers, drafts, reconnect and skip work at desktop and narrow widths", { timeout: 120000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-questions-ui-"));
-  const server = await createServer({ configFile: false, cacheDir: join(directory, "cache"), root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], server: { host: "127.0.0.1", port: 0 } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, reducedMotion: "reduce" });
@@ -48,7 +45,7 @@ test("question choices, custom answers, drafts, reconnect and skip work at deskt
     }
     return route.fulfill({ status: 404, json: { error: "Fixture route unavailable" } });
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   const panel = page.getByRole("region", { name: "Your input", exact: true });
   await panel.waitFor();
   assert.equal(await page.getByText("Running question", { exact: true }).count(), 0);

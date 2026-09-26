@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:net";
 import { _electron as electron } from "playwright";
+import { checkPackagedTerminal } from "./smoke-terminal.mjs";
 
 const root = fileURLToPath(new URL("../release/linux-unpacked/", import.meta.url));
 const directory = await mkdtemp(join(tmpdir(), "citropy-release-smoke-"));
@@ -28,10 +29,11 @@ try {
   }
   await access(join(appRoot, "desktop/apply-appimage-update.sh"));
   await access(join(appRoot, "desktop/appimage-relaunch.mjs"));
-  for (const path of [".env", "tests", ".git", "web", "desktop/start.mjs", "desktop/install.mjs", "desktop/smoke.mjs", "desktop/smoke-mac.mjs", "desktop/smoke-win.mjs", "node_modules/vite", "node_modules/playwright", "node_modules/lucide-react", "node_modules/shiki", "node_modules/motion"]) {
+  for (const path of [".env", "tests", ".git", "web", "desktop/start.mjs", "desktop/install.mjs", "desktop/smoke.mjs", "desktop/smoke-mac.mjs", "desktop/smoke-win.mjs", "desktop/smoke-terminal.mjs", "node_modules/vite", "node_modules/playwright", "node_modules/lucide-react", "node_modules/shiki", "node_modules/motion"]) {
     const present = await access(join(appRoot, path)).then(() => true, () => false);
     assert.equal(present, false, `Development file in release: ${path}`);
   }
+  await checkPackagedTerminal(join(root, "citropy"), appRoot);
   const { version } = JSON.parse(await readFile(join(appRoot, "package.json"), "utf8"));
   const artifact = (await readdir(join(root, ".."))).find(name => name.startsWith(`Citropy-${version}-`) && name.endsWith(".AppImage"));
   assert.ok(artifact, "Build the AppImage before running the release smoke check.");
@@ -68,7 +70,7 @@ try {
   await desktop.close();
   desktop = undefined;
   await assert.rejects(fetch(`${base}/api/health`, { signal: AbortSignal.timeout(1000) }));
-  console.log(`Citropy ${version}: packaged startup, shutdown, release contents, and development restrictions passed.`);
+  console.log(`Citropy ${version}: packaged startup, terminal, shutdown, release contents, and development restrictions passed.`);
 } finally {
   await desktop?.close();
   display.kill();

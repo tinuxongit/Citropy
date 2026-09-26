@@ -3,15 +3,12 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("a connection snapshot that finishes loading late does not erase a newer disconnect", { timeout: 120000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-environment-snapshot-"));
-  const server = await createServer({ configFile: false, root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error", cacheDir: join(directory, "cache"), server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
 
@@ -72,7 +69,7 @@ test("a connection snapshot that finishes loading late does not erase a newer di
       if (delayHello && socket.url().includes(":49121/")) { releaseHello = sendHello; helloReady.resolve(); }
       else sendHello();
     });
-    await page.goto(server.resolvedUrls.local[0]);
+    await page.goto(server.url);
     await page.getByRole("button", { name: "Settings", exact: true }).waitFor();
     return { page, errors, helloReady: helloReady.promise, releaseHello: () => releaseHello?.(), historyReady: historyReady.promise, releaseHistory: () => releaseHistory?.() };
   }

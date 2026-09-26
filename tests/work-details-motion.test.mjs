@@ -3,10 +3,8 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("work details transitions preserve virtualized layout and interaction", { timeout: 30000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-work-motion-"));
@@ -16,12 +14,7 @@ test("work details transitions preserve virtualized layout and interaction", { t
     await server?.close();
     await rm(directory, { recursive: true, force: true });
   });
-  server = await createServer({
-    configFile: false, root: fileURLToPath(new URL("..", import.meta.url)),
-    cacheDir: join(directory, "cache"), plugins: [react()], logLevel: "error",
-    server: { host: "127.0.0.1", port: 0, watch: null },
-  });
-  await server.listen();
+  server = await appServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: "no-preference" });
   page.setDefaultTimeout(10000);
@@ -49,7 +42,7 @@ test("work details transitions preserve virtualized layout and interaction", { t
     });
     socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [project], threads: [thread], providers: [{ id: "claude", label: "Claude Code", available: true, enabled: true, models: [{ id: "sample", label: "Example model" }] }], permissions: [], home: "/example" } }));
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   const details = page.getByRole("button", { name: "Work details", exact: true });
   await details.waitFor();
   await page.locator('[data-part-id="answer"]').waitFor();

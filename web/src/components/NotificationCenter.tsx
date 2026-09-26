@@ -5,6 +5,7 @@ import { currentLocale, useI18n } from "../lib/i18n.ts";
 import { useEffect, useRef, useState } from "react";
 import {
   Bell,
+  BellDot,
   BellRing,
   CheckCheck,
   Check,
@@ -80,10 +81,10 @@ export function NotificationCenter({
         }
         aria-expanded={open}
         aria-haspopup="dialog"
+        data-unread={unread > 0 || undefined}
         onClick={() => setOpen(!open)}
       >
-        <Bell size={17} />
-        {unread > 0 && <span className="notification-dot" />}
+        {unread > 0 ? <BellDot size={17} /> : <Bell size={17} />}
       </button>
       <AnimatePresence>{open && (
         <motion.section initial={{ opacity: 0, y: reducedMotion ? 0 : -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -5, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}

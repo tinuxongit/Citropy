@@ -3,15 +3,12 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("grouped workspaces switch hosts without reloading and use the system folder dialog", { timeout: 120000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-environments-ui-"));
-  const server = await createServer({ configFile: false, root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error", cacheDir: join(directory, "cache"), server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.setDefaultTimeout(20000);
@@ -112,7 +109,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
       permissions: [], home: remote ? "/home/dev" : "/local", shells: [{ id: "shell", projectId, threadId: "task", command: "npm run dev", cwd: "/project", status: "running", background: true, stopMode: "shell", output: "Server ready", startedAt: 1 }],
     } }));
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   await page.getByText("LOCAL RESPONSE", { exact: true }).waitFor();
   await page.evaluate(async () => {
     const actions = await import("/web/src/lib/actions.ts");
@@ -124,7 +121,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   assert.equal(await page.getByRole("button", { name: "Running shells, 1 active", exact: true }).count(), 1);
   await page.getByRole("button", { name: "Git actions", exact: true }).click();
   await page.getByRole("dialog", { name: "Git actions", exact: true }).waitFor();
-  await page.getByRole("button", { name: "Hide Git panel", exact: true }).click();
+  await page.getByRole("button", { name: "Git actions", exact: true }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.locator("button[data-settings-section='environments']").click();
   await page.getByRole("button", { name: "Add connection", exact: true }).click();
@@ -155,13 +152,13 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   const shells = page.getByRole("dialog", { name: "Running shells", exact: true });
   await shells.getByRole("button", { name: "Stop shell", exact: true }).waitFor();
   assert.equal(await shells.locator(".shell-row").count(), 1);
-  assert.equal(await shells.locator(".shell-command").first().innerText(), "npm run dev");
+  assert.equal(await shells.locator(".shell-row code").first().getAttribute("title"), "npm run dev");
   assert.equal(await shells.getByText("Remote build").count(), 0);
   for (const width of [1440, 620]) {
     await page.setViewportSize({ width, height: 900 });
     await page.screenshot({ path: `/tmp/citropy-shell-list-${width}.png`, animations: "disabled" });
   }
-  await shells.getByRole("button", { name: "Close running shells", exact: true }).click();
+  await page.keyboard.press("Escape");
   await shells.waitFor({ state: "hidden" });
   await page.setViewportSize({ width: 1440, height: 900 });
 

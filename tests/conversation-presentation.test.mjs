@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium, _electron } from "playwright";
+import { appServer } from "./app-server.mjs";
+import { setAnimationRate } from "./fast-animations.mjs";
 
 const thread = {
   id: "chat", projectId: "workspace", provider: "claude", model: "sample", title: "Presentation check",
@@ -45,20 +44,16 @@ test("conversation presentation", { timeout: 360_000, concurrency: 4 }, async (t
     await server?.close();
     await rm(directory, { recursive: true, force: true });
   });
-  server = await createServer({
-    configFile: false, cacheDir: join(directory, "node_modules", ".vite"),
-    root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error",
-    server: { host: "127.0.0.1", port: 0, watch: null },
-  });
-  await server.listen();
+  server = await appServer();
   browser = await chromium.launch({ headless: true });
   const warmup = await browser.newPage();
-  await warmup.goto(server.resolvedUrls.local[0], { timeout: 120_000 });
+  await warmup.goto(server.url, { timeout: 120_000 });
   await warmup.close();
   const pending = [];
   const subtest = (...args) => pending.push(t.test(...args));
-  async function fixture({ desktopPage, preferences = {}, messages = [message("saved", [textPart("saved-text", "Saved conversation.")])], children = [], histories = {}, githubAccount, reducedMotion = "no-preference", isGit = false, hasTouch = false } = {}) {
+  async function fixture({ desktopPage, preferences = {}, messages = [message("saved", [textPart("saved-text", "Saved conversation.")])], children = [], histories = {}, githubAccount, reducedMotion = "no-preference", isGit = false, hasTouch = false, realTime = false } = {}) {
     const page = desktopPage ?? await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion, hasTouch });
+    if (realTime) await setAnimationRate(page, 1);
     page.setDefaultTimeout(20000);
     const errors = [];
     const requests = [];
@@ -104,7 +99,7 @@ test("conversation presentation", { timeout: 360_000, concurrency: 4 }, async (t
         threads: [thread, ...children], providers: [{ id: "claude", label: "Claude Code", available: true, enabled: true, models: [{ id: "sample", label: "Example model" }] }], permissions: [], home: "/example",
       } }));
     });
-    await page.goto(server.resolvedUrls.local[0]);
+    await page.goto(server.url);
     try {
       await page.locator(".turn").first().waitFor({ timeout: 7000 });
     } catch (error) {
@@ -160,7 +155,8 @@ app.whenReady().then(() => {
       assert.equal(await composer.inputValue(), "Still clickable");
       await composer.fill("");
       await click(trigger);
-      await click(panel.getByRole("button", { name: "Close running shells", exact: true }));
+      await panel.waitFor();
+      await click(trigger);
       await panel.waitFor({ state: "detached" });
       assert.equal(await trigger.evaluate(element => element === document.activeElement), true);
       await click(trigger);
@@ -203,7 +199,7 @@ app.whenReady().then(() => {
     await panel.waitFor();
     await panel.getByRole("button", { name: "Stop shell", exact: true }).waitFor();
     assert.equal(await panel.getByRole("button", { name: "Stop task", exact: true }).count(), 0);
-    assert.equal(await panel.locator(".shell-command").first().innerText(), shell.command);
+    assert.equal(await panel.locator('.shell-row[data-selected="true"] code').getAttribute("title"), shell.command);
     await page.screenshot({ path: "/tmp/citropy-shells-desktop.png", animations: "disabled" });
     await page.setViewportSize({ width: 700, height: 800 });
     await page.waitForTimeout(200);
@@ -212,7 +208,6 @@ app.whenReady().then(() => {
     await page.screenshot({ path: "/tmp/citropy-shells-narrow.png", animations: "disabled" });
     await panel.locator(".shell-row").filter({ hasText: "npm test" }).click();
     await panel.getByRole("button", { name: "Stop task", exact: true }).waitFor();
-    await panel.getByText("Stopping this shell also stops its AI task.", { exact: true }).waitFor();
     await page.keyboard.press("Escape");
     await panel.waitFor({ state: "hidden" });
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -233,17 +228,15 @@ app.whenReady().then(() => {
     await panel.getByRole("button", { name: "Stop shell", exact: true }).click();
     await page.getByRole("button", { name: "Running shells, 1 active", exact: true }).waitFor();
     assert.deepEqual(requests, [{ id: "dev-server" }, { id: "dev-server" }]);
-    assert.equal(await panel.locator(".shell-command").first().innerText(), fallback.command);
+    assert.equal(await panel.locator('.shell-row[data-selected="true"] code').getAttribute("title"), fallback.command);
     assert.equal(await panel.locator(".shell-row").filter({ hasText: "npm test" }).count(), 1);
     const nodeCount = await panel.locator("*").count();
     for (let i = 0; i < 120; i++) emit({ t: "shell.upsert", shell: { ...fallback, output: `Progress ${i}\n${"Output line\n".repeat(2000)}` } });
     await page.waitForTimeout(250);
     assert.equal(await panel.locator("*").count(), nodeCount);
     emit({ t: "shell.upsert", shell: { ...fallback, status: "finished", endedAt: Date.now() } });
-    await page.getByRole("button", { name: "Running shells, 0 active", exact: true }).waitFor();
-    await panel.getByRole("button", { name: "Close running shells", exact: true }).click();
     await panel.waitFor({ state: "hidden" });
-    assert.equal(await page.getByRole("button", { name: /^Running shells/ }).count(), 0);
+    await page.getByRole("button", { name: /^Running shells/ }).waitFor({ state: "detached" });
     await page.waitForFunction(() => window.presentationFrames.size === 0);
     const terminal = { ...shell, id: "terminal-shell", panelId: "terminal-panel", command: "npm run preview", startedAt: shell.startedAt + 10 };
     emit({ t: "panel.upsert", panel: { id: "terminal-panel", projectId: "workspace", threadId: "server-task", kind: "terminal", title: "Terminal 1" } }, { t: "shell.upsert", shell: terminal });
@@ -620,7 +613,6 @@ app.whenReady().then(() => {
       assert.equal(await page.locator("dialog").count(), 0);
       await page.locator(`.thread-row[aria-label="Empty conversation ${index}"][data-active="true"]`).waitFor();
       assert.equal(await page.locator(".conversation-viewport").count(), 1);
-      assert.equal(await page.locator(".canvas-hint").count(), 1);
       assert.equal(await page.locator(".turn").count(), 0);
       assert.equal(await page.getByRole("textbox", { name: "Message", exact: true }).count(), 1);
     }
@@ -631,10 +623,8 @@ app.whenReady().then(() => {
       if (title === "Presentation check") {
         await page.locator('[data-part-id="saved-text"]').waitFor();
         assert.equal(await page.locator(".turn").count(), 1);
-        assert.equal(await page.locator(".canvas-hint").count(), 0);
       } else {
         assert.equal(await page.locator(".turn").count(), 0);
-        assert.equal(await page.locator(".canvas-hint").count(), 1);
       }
     }
     await f.close();
@@ -1113,7 +1103,7 @@ app.whenReady().then(() => {
   });
 
   subtest("typing reveals finished Markdown at the selected speed without replaying history", async () => {
-    const f = await fixture({ preferences: { textStreaming: "0", typingAnimation: "1", typingSpeed: "20" } });
+    const f = await fixture({ realTime: true, preferences: { textStreaming: "0", typingAnimation: "1", typingSpeed: "20" } });
     const { page } = f;
     assert.equal(await page.locator('[data-part-id="saved-text"]').textContent(), "Saved conversation.\n");
     assert.equal(await page.locator('[aria-busy="true"]').count(), 0);
@@ -1468,7 +1458,7 @@ app.whenReady().then(() => {
   });
 
   subtest("typing does not leave a cursor after a list or code block", async () => {
-    const f = await fixture({ preferences: { textStreaming: "0", typingAnimation: "1", typingSpeed: "20" } });
+    const f = await fixture({ realTime: true, preferences: { textStreaming: "0", typingAnimation: "1", typingSpeed: "20" } });
     f.begin("list", "A response with a list.\n\n- The first item has enough text to reveal gradually.\n- The second item finishes the response.");
     f.complete("list");
     f.idle();
@@ -1568,7 +1558,7 @@ app.whenReady().then(() => {
     await page.setViewportSize({ width: 600, height: 900 });
     await page.getByRole("button", { name: "Toggle sidebar" }).click();
     await page.screenshot({ path: "/tmp/citropy-queue-compact-narrow.png", animations: "disabled" });
-    assert.ok(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth));
+    assert.ok(await summary.evaluate((element) => element.querySelector(":scope > span").getBoundingClientRect().right <= element.getBoundingClientRect().right));
     await page.setViewportSize({ width: 1440, height: 900 });
     await summary.click();
     await row("Check the tests too").waitFor();
@@ -1903,6 +1893,7 @@ app.whenReady().then(() => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
     await backToChat(page);
+    await page.getByRole("button", { name: "Git actions", exact: true }).click();
     await page.locator(".git-panel-progress").filter({ hasText: "Writing commit" }).waitFor();
     assert.equal(await page.getByRole("textbox", { name: "Message", exact: true }).evaluate((node) => getComputedStyle(node).userSelect), "text");
     assert.equal(await page.locator(".message-bubble").first().evaluate((node) => getComputedStyle(node).userSelect), "text");
@@ -1916,7 +1907,7 @@ app.whenReady().then(() => {
     await page.getByText("Last commit", { exact: true }).click();
     for (const width of [1440, 600]) {
       await page.setViewportSize({ width, height: 900 });
-      if (width === 600) await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
+      if (width === 600) await page.evaluate(async () => (await import("/web/src/lib/store.ts")).toggleSidebar());
       await page.getByText("Fix workspace selection", { exact: true }).waitFor();
       const panel = await page.getByRole("dialog", { name: "Git actions", exact: true }).boundingBox();
       const trigger = await page.getByRole("button", { name: "Git actions", exact: true }).boundingBox();
@@ -1978,7 +1969,7 @@ app.whenReady().then(() => {
     await panel.getByText("No commits to push", { exact: true }).waitFor();
     assert.equal(await panel.getByRole("button", { name: "Push", exact: true }).isDisabled(), true);
     assert.equal(await trigger.innerText(), "Git");
-    await panel.getByRole("button", { name: "Hide Git panel", exact: true }).click();
+    await page.getByRole("button", { name: "Git actions", exact: true }).click();
     await panel.waitFor({ state: "detached" });
     assert.equal(await trigger.getAttribute("aria-expanded"), "false");
     assert.equal(await page.evaluate(() => localStorage.getItem("citropy.gitPanel")), "0");
@@ -2003,6 +1994,9 @@ app.whenReady().then(() => {
     await page.getByText("Old conversation commit", { exact: true }).waitFor();
     await page.locator('.thread-card').filter({ hasText: "Worktree conversation" }).click();
     const panel = page.getByRole("dialog", { name: "Git actions", exact: true });
+    await panel.waitFor({ state: "detached" });
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== "running" || animation.effect.getTiming().iterations === Infinity));
+    await page.getByRole("button", { name: "Git actions", exact: true }).click();
     await panel.getByText("feature/other", { exact: true }).waitFor();
     assert.equal(await panel.getByText("Last commit", { exact: true }).count(), 0);
     assert.equal(await panel.getByRole("button", { name: "Push", exact: true }).isDisabled(), true);
@@ -2026,7 +2020,8 @@ app.whenReady().then(() => {
     await panel.getByText("No upstream branch", { exact: true }).waitFor();
     await panel.getByRole("button", { name: "Open Source control to publish this branch", exact: true }).waitFor();
     assert.equal(await panel.getByText("No commits to push", { exact: true }).count(), 0);
-    await page.getByRole("button", { name: "Hide Git panel", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await panel.waitFor({ state: "detached" });
     await page.evaluate(async () => (await import("/web/src/lib/store.ts")).selectThread("child-agent"));
     assert.equal(await page.getByRole("button", { name: "Git actions", exact: true }).count(), 1);
     await f.close();

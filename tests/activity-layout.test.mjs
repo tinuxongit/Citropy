@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
 import { buildRows, groupStats, summarize } from "../web/src/lib/group.ts";
 import { timelineRows, sameTimelineRows } from "../web/src/lib/timeline.ts";
+import { appServer } from "./app-server.mjs";
 
 const project = { id: "workspace", name: "VideoPresentationCitropyTest", path: "/example/VideoPresentationCitropyTest", isGit: false, lastOpened: 1 };
 const thread = {
@@ -247,15 +245,10 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     await server?.close();
     await rm(directory, { recursive: true, force: true });
   });
-  server = await createServer({
-    configFile: false, cacheDir: join(directory, "node_modules", ".vite"),
-    root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error",
-    server: { host: "127.0.0.1", port: 0, watch: null },
-  });
-  await server.listen();
+  server = await appServer();
   browser = await chromium.launch({ headless: true });
   const warmup = await browser.newPage();
-  await warmup.goto(server.resolvedUrls.local[0], { timeout: 120_000 });
+  await warmup.goto(server.url, { timeout: 120_000 });
   await warmup.close();
   const pending = [];
   const subtest = (...args) => pending.push(t.test(...args));
@@ -278,7 +271,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
       });
       socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [project], threads: [thread], providers: [{ id: "claude", label: "Claude Code", available: true, enabled: true, models: [{ id: "sample", label: "Claude Opus 5" }] }], permissions: [], home: "/example" } }));
     });
-    await page.goto(server.resolvedUrls.local[0]);
+    await page.goto(server.url);
     await page.locator(".working").waitFor();
     await page.locator(".activity-head").waitFor();
     return { page, emit: event => connection.send(JSON.stringify(event)) };
@@ -411,7 +404,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     await group.click();
     await page.locator("#tool-plain-file").waitFor();
     for (const theme of ["dark", "light"]) {
-      await page.evaluate(async theme => (await import("/web/src/lib/store.ts")).setTheme(theme), theme);
+      await page.evaluate(async theme => (await import("/web/src/lib/store.ts")).setScheme(theme), theme);
       for (const width of [1440, 420]) {
         await page.setViewportSize({ width, height: 900 });
         await page.mouse.move(0, 0);
@@ -565,7 +558,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
       assert.ok((await thought.textContent()).includes('<span onclick="alert(1)">Raw HTML</span>'));
       for (const [width, theme] of [[1440, "dark"], [600, "light"], [420, "dark"]]) {
         await page.setViewportSize({ width, height: 1000 });
-        await page.evaluate(async theme => (await import("/web/src/lib/store.ts")).setTheme(theme), theme);
+        await page.evaluate(async theme => (await import("/web/src/lib/store.ts")).setScheme(theme), theme);
         await thought.locator(`pre.citropy-${theme} code`).getByText(/const digest/).waitFor();
         await page.waitForFunction(() => !document.querySelector(".reasoning").getAnimations().some(animation => animation.playState === "running"));
         assert.equal(await thought.evaluate(node => node.scrollWidth > node.clientWidth + 1), false);

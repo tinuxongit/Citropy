@@ -39,16 +39,16 @@ export function NavigationStrip({
       aria-describedby={view === "usage" ? usagePeek.describedBy : undefined}
       {...(view === "usage" ? usagePeek.bind : {})}
     >
-      <Icon size={18} />
+      <span className="strip-action-face"><Icon size={18} /></span>
     </button>
   );
   return (
     <nav className="navigation-strip sliding-selection" aria-label={t("Workspace navigation")}>
-      <SelectionHighlight value={activeView} selector='.strip-action[aria-current="page"]' />
+      <SelectionHighlight value={activeView} selector='.strip-action[aria-current="page"] > .strip-action-face' />
       {top.map(button)}
       <div className="navigation-strip-end">
         {button({ name: "Usage", icon: BarChart3, run: onUsage, view: "usage" })}
-        <AppUpdateControl />
+        <AppUpdateControl variant="strip" />
         {button({ name: "Settings", icon: Settings, run: onSettings, view: "settings" })}
       </div>
       {usagePeek.card}

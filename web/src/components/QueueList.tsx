@@ -10,6 +10,7 @@ import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
 import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { ComposerTab } from "./composer/ComposerTab.tsx";
 import type {
   ProviderInfo,
   QueuedMessage,
@@ -50,7 +51,6 @@ export function QueueList({
   };
   useAnchoredPanel(panel, trigger, { open: expanded, width: 460 });
   useDismiss(panel, trigger, close, { open: expanded, outside: true });
-  if (!queued.length && !held.length) return null;
   const state = !connected
       ? t("Sends when Citropy reconnects")
     : queued.length && thread.running
@@ -82,10 +82,9 @@ export function QueueList({
 
   return (
     <>
-      <button
+      <AnimatePresence>{count > 0 && <ComposerTab
+        key="queue"
         ref={trigger}
-        type="button"
-        className="composer-tab"
         aria-haspopup="dialog"
         aria-expanded={expanded}
         aria-controls={id}
@@ -96,7 +95,7 @@ export function QueueList({
         <Clock3 size={13} />
         {t("Queued")}
         <span>{count}</span>
-      </button>
+      </ComposerTab>}</AnimatePresence>
       <AnimatePresence>{expanded && <motion.section
         ref={panel}
         id={id}

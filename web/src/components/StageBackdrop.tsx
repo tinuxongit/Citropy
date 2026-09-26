@@ -62,11 +62,12 @@ function useStageMetrics(root: RefObject<HTMLElement | null>): RefObject<StageMe
 
 function useLayerColors(layer: RefObject<HTMLElement | null>) {
   const theme = useApp((state) => state.theme);
+  const scheme = useApp((state) => state.scheme);
   const [colors, setColors] = useState<{ theme: string; color: string; star: string }>();
   useLayoutEffect(() => {
     const style = getComputedStyle(layer.current!);
-    setColors({ theme, color: style.color, star: style.getPropertyValue("--text-2").trim() });
-  }, [layer, theme]);
+    setColors({ theme: `${scheme}-${theme}`, color: style.color, star: style.getPropertyValue("--text-2").trim() });
+  }, [layer, theme, scheme]);
   return colors;
 }
 
@@ -90,6 +91,8 @@ const CONTRAST_GROUPS = [".topbar-left", ".topbar-center", ".topbar-right", ".wi
 
 function useTopbarContrast(map: LightMap | undefined, layer: RefObject<HTMLElement | null>, dim: number, focus: number, metrics: RefObject<StageMetrics>) {
   const theme = useApp((state) => state.theme);
+  const scheme = useApp((state) => state.scheme);
+  const customColor = useApp((state) => state.customColor);
   useEffect(() => {
     const element = layer.current;
     if (!element || !map) return;
@@ -132,7 +135,7 @@ function useTopbarContrast(map: LightMap | undefined, layer: RefObject<HTMLEleme
       observer.disconnect();
       for (const group of groups) delete group.dataset.contrast;
     };
-  }, [map, dim, focus, theme, layer, metrics]);
+  }, [map, dim, focus, theme, scheme, customColor, layer, metrics]);
 }
 
 async function animationDecoder(file: Blob): Promise<ImageDecoder | undefined> {
@@ -210,7 +213,10 @@ function StillImage({ bitmap, blur, dim, focus, layer }: { bitmap: ImageBitmap; 
   const band = useRef<HTMLDivElement>(null);
   const focusSource = useRef<OffscreenCanvas>(null);
   const theme = useApp((state) => state.theme);
+  const scheme = useApp((state) => state.scheme);
+  const customColor = useApp((state) => state.customColor);
   const uiScale = useApp((state) => state.uiScale);
+  const spread = useApp((state) => state.backgroundFocusSpread);
   const feather = useCallback(() => {
     const canvas = focused.current;
     const source = focusSource.current;
@@ -264,7 +270,8 @@ function StillImage({ bitmap, blur, dim, focus, layer }: { bitmap: ImageBitmap; 
     focusSource.current ??= new OffscreenCanvas(1, 1);
     paintBlurred(focusSource.current.getContext("2d")!, bitmap, look, Math.hypot((18 * focus) / 100, blur), focus / 100);
     feather();
-  }, [bitmap, blur, dim, focus, theme, layer, size, feather]);
+  }, [bitmap, blur, dim, focus, theme, scheme, customColor, layer, size, feather]);
+  useLayoutEffect(feather, [feather, spread]);
   useEffect(() => {
     const root = layer.current!.parentElement!;
     root.addEventListener("stage-metrics", feather);
@@ -370,8 +377,9 @@ function BackdropLayers({ background }: { background: "ascii" | "image" }) {
   const root = useRef<HTMLDivElement>(null);
   const metrics = useStageMetrics(root);
   const focus = useApp((state) => state.backgroundFocus);
+  const spread = useApp((state) => state.backgroundFocusSpread);
   return (
-    <div ref={root} className="backdrop-layers" data-kind={background} style={{ "--focus": focus / 100 } as CSSProperties}>
+    <div ref={root} className="backdrop-layers" data-kind={background} style={{ "--focus": focus / 100, "--focus-spread": `${spread}px` } as CSSProperties}>
       {background === "ascii" ? <AsciiNoise metrics={metrics} /> : <CustomImage metrics={metrics} />}
       <div className="shell-glass" aria-hidden="true" />
     </div>

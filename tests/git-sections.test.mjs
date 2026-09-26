@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 const hash = "c".repeat(40);
 const files = [
@@ -30,15 +28,7 @@ const overview = {
 
 test("every Git section renders from the panel", { timeout: 120_000 }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-git-sections-"));
-  const server = await createServer({
-    configFile: false,
-    cacheDir: join(directory, "cache"),
-    root: fileURLToPath(new URL("..", import.meta.url)),
-    plugins: [react()],
-    logLevel: "error",
-    server: { host: "127.0.0.1", port: 0, watch: null },
-  });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => {
     await browser.close();
@@ -75,7 +65,7 @@ test("every Git section renders from the panel", { timeout: 120_000 }, async (t)
         snapshot: { projects: [{ id: "workspace", name: "Sections workspace", path: "/example", isGit: true, lastOpened: 1 }], threads: [], providers: [], permissions: [], home: "/example", panels: [] },
       }));
     });
-    await page.goto(server.resolvedUrls.local[0]);
+    await page.goto(server.url);
     await page.getByRole("button", { name: "Source control", exact: true }).click();
     page.section = name => page.locator(".section-link").filter({ has: page.getByText(name, { exact: true }) });
     return page;

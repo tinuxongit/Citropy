@@ -3,15 +3,12 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("restore choices stay clickable, explain unavailable files and preserve keyboard navigation", { timeout: 60000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-restore-ui-"));
-  const server = await createServer({ configFile: false, cacheDir: join(directory, "cache"), root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], server: { host: "127.0.0.1", port: 0 }, logLevel: "error" });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -37,7 +34,7 @@ test("restore choices stay clickable, explain unavailable files and preserve key
     }
     return route.fulfill({ json: [] });
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   await page.getByText("The request handler now reports failures.", { exact: true }).waitFor();
   const trigger = page.getByRole("button", { name: "Restore before this message", exact: true });
   const dialog = page.getByRole("dialog", { name: "Restore before this message", exact: true });

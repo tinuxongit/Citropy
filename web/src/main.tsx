@@ -22,6 +22,7 @@ import "./styles/computer.css";
 import "./styles/environments.css";
 import { initializeEnvironment } from "./lib/environment.ts";
 import { applyReleaseDefaults } from "./lib/release-defaults.ts";
+import { applyCustomColor } from "./lib/custom-theme.ts";
 
 async function start() {
   if (/Mac|iPhone|iPad/.test(navigator.platform)) {
@@ -41,7 +42,10 @@ async function start() {
   if (!window.citropyDesktop && window.loomDesktop)
     window.citropyDesktop = window.loomDesktop;
 
-  document.documentElement.dataset.theme = useApp.getState().theme;
+  const { theme, scheme, customColor } = useApp.getState();
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.dataset.scheme = scheme;
+  applyCustomColor(customColor, scheme);
   document.documentElement.style.setProperty(
     "--ui-scale",
     String(useApp.getState().uiScale / 100),

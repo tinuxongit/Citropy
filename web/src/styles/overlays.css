@@ -174,18 +174,8 @@
 .notifications-wrap {
   position: relative;
 }
-.notification-trigger {
-  position: relative;
-}
-.notification-dot {
-  position: absolute;
-  top: 4px;
-  right: 5px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ok);
-  box-shadow: 0 0 0 2px var(--panel);
+.notification-trigger[data-unread] {
+  color: var(--text);
 }
 .notification-center {
   position: absolute;
@@ -405,7 +395,7 @@
 .shell[data-composer="true"] .toasts {
   bottom: 154px;
 }
-.composer-tabs { position: absolute; right: 18px; bottom: 100%; display: flex; align-items: flex-end; gap: 4px; }
+.composer-tabs { --tab-fillet: 6px; position: absolute; right: calc(18px - var(--tab-fillet)); bottom: 100%; display: flex; align-items: flex-end; gap: calc(2 * var(--tab-fillet)); padding: 0 var(--tab-fillet); overflow: clip; }
 .composer-tabs:empty { display: none; }
 .composer-tabs > .git-actions { display: contents; }
 .composer-tab {
@@ -415,18 +405,22 @@
   height: 24px;
   padding: 0 9px;
   border-radius: 8px 8px 0 0;
-  background: var(--surface);
   color: var(--text-3);
   font-size: var(--text-xs);
   font-weight: 500;
-  transition: color var(--dur-instant) ease, transform var(--dur-base) var(--ease-out);
+  transition: color var(--dur-instant) ease;
+}
+.composer-tab { position: relative; }
+.composer-tab::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(color-mix(in srgb, var(--text) 9%, transparent), transparent); opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-out); }
+.composer-tab[aria-expanded="true"]::before { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .composer-tab:hover::before { opacity: 1; }
 }
 .composer-tab:hover, .composer-tab[aria-expanded="true"] { color: var(--text); }
 .composer-tab[data-error] { color: var(--bad); }
 .composer-tab[data-tone="warn"] { color: var(--warn); }
 .composer-tab[data-tone="warn"]:hover, .composer-tab[data-tone="warn"][aria-expanded="true"] { color: var(--text); }
 .tab-panel.usage-limit-panel { padding: 14px; }
-.shell[data-backdrop] .tab-panel { background: var(--overlay-solid); }
 .usage-limit-panel > header { display: flex; align-items: center; gap: 8px; }
 .usage-limit-panel > header svg { flex: none; color: var(--warn); }
 .usage-limit-panel h2 { margin: 0; font-size: var(--text-base); font-weight: 600; }
@@ -437,13 +431,7 @@
 .usage-limit-action:hover:not(:disabled) { background: var(--raised); color: var(--text); }
 .usage-limit-action[aria-pressed="true"] { color: var(--text); }
 .composer-tab > span { color: var(--text-2); font-variant-numeric: tabular-nums; }
-@starting-style { .composer-tab { transform: translateY(100%); } }
-@media (prefers-reduced-motion: reduce) { @starting-style { .composer-tab { transform: none; } } }
 .tab-panel { position: fixed; inset: auto; margin: 0; padding: 0; overflow: auto; border: 0; border-radius: var(--r-lg); background: var(--overlay); color: var(--text); font-size: var(--text-sm); box-shadow: var(--shadow-lg); transform-origin: bottom right; }
-.shells-panel > header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--raised); }
-.shells-panel h2 { margin: 0; font-size: var(--text-base); font-weight: 600; flex: 1; }
-.shells-panel header > span { color: var(--text-3); font-size: var(--text-xs); }
-.shells-panel .icon-btn { flex-shrink: 0; }
 .shells-list { max-height: 200px; overflow: auto; padding: 6px; overscroll-behavior: contain; }
 .shells-list h3 { margin: 9px 8px 5px; color: var(--text-3); font-size: var(--text-xs); font-weight: 500; }
 .shell-row { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 48px; padding: 8px; border: 0; border-radius: var(--r-sm); text-align: left; background: transparent; transition: background var(--dur-instant); }
@@ -476,20 +464,14 @@
 .usage-peek-note { margin: 0; }
 @keyframes usage-peek-in { from { opacity: 0; transform: translateY(2px); } }
 @media (prefers-reduced-motion: reduce) { .usage-peek { animation-name: thread-preview-enter; } }
-.shell-status-dot { width: 5px; height: 5px; flex-shrink: 0; border-radius: 50%; background: var(--text-4); }
-.shell-status-dot[data-status="running"] { background: var(--ok); }
-.shell-status-dot[data-status="stopping"] { background: var(--heat); }
-.shell-status-dot[data-status="failed"] { background: var(--bad); }
 .shell-row-copy { min-width: 0; flex: 1; display: grid; gap: 3px; }
 .shell-row-copy code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); }
 .shell-row-copy small { color: var(--text-3); font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shell-status { flex-shrink: 0; color: var(--text-3); font-size: var(--text-xs); }
 .shell-status[data-status="failed"] { color: var(--bad); }
 .shell-detail { padding: 12px 14px 14px; background: var(--panel); }
-.shell-command { display: block; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 80px; overflow: auto; font-size: var(--text-sm); user-select: text; }
-.shell-directory { margin-top: 5px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); user-select: text; }
-.shell-actions { display: flex; gap: 8px; margin-top: 12px; }
-.shell-stop-hint, .shell-output-empty { margin: 9px 0 0; color: var(--text-3); font-size: var(--text-xs); line-height: 1.5; }
+.shell-command { display: block; margin-bottom: 12px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 80px; overflow: auto; font-size: var(--text-sm); user-select: text; }
+.shell-actions { display: flex; gap: 8px; }
 .shell-error { color: var(--bad); font-size: var(--text-xs); }
 .shell-output-heading { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin-top: 12px; color: var(--text-3); font-size: var(--text-xs); }
 .shell-output { margin: 0; padding: 10px; max-height: 220px; overflow: auto; background: var(--canvas); border-radius: var(--r-sm); font: 11px/1.6 var(--font-terminal); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; overscroll-behavior: contain; }

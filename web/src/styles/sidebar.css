@@ -60,6 +60,15 @@
   border-radius: var(--r-sm);
   transition: height 200ms var(--ease-out);
 }
+.navigation-footer .navigation-actions > * {
+  transition:
+    opacity var(--dur-instant) var(--ease-out),
+    background var(--dur-instant),
+    color var(--dur-instant);
+}
+.navigation-footer .navigation-actions[data-fading] > * {
+  opacity: 0;
+}
 .navigation-actions > .rail-action:nth-child(-n + 3) {
   grid-column: 1 / -1;
 }
@@ -80,7 +89,7 @@
 }
 .navigation-footer[data-compact="true"]
   .rail-action
-  > span:not(.update-available-dot, .pixel-loader) {
+  > span:not(.pixel-loader) {
   display: none;
 }
 .navigation-actions .rail-action[data-tone] > svg { color: var(--text-3); }
@@ -96,19 +105,14 @@
   inset: 0 auto 0 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
   width: var(--strip);
   padding: 9px 0 10px;
-  -webkit-app-region: drag;
   background: color-mix(in srgb, var(--canvas-deep) 94%, var(--text));
   z-index: 19;
 }
 .navigation-strip-end {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
   margin-top: auto;
 }
 .navigation-strip .app-update-control {
@@ -116,23 +120,41 @@
 }
 .strip-action,
 .navigation-strip .rail-action.app-update-button {
-  -webkit-app-region: no-drag;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--text-3);
+  transition: color var(--dur-instant);
+}
+.strip-action-face {
+  position: relative;
   display: grid;
   place-items: center;
   width: 34px;
   height: 34px;
-  min-height: 34px;
-  padding: 0;
   border-radius: var(--r-sm);
-  color: var(--text-3);
-  transition: background var(--dur-instant), color var(--dur-instant);
+  transition: background var(--dur-instant);
 }
-.strip-action:hover {
-  background: var(--raised);
-  color: var(--text);
-}
+.strip-action:hover,
+.navigation-strip .rail-action.app-update-button:hover,
 .strip-action[aria-current="page"] {
   color: var(--text);
+}
+.strip-action:hover > .strip-action-face,
+.navigation-strip .app-update-button:hover > .strip-action-face {
+  background: var(--raised);
+}
+.navigation-strip :is(.strip-action, .app-update-button):focus-visible {
+  outline: none;
+}
+.navigation-strip :is(.strip-action, .app-update-button):focus-visible > .strip-action-face {
+  outline: 2px solid var(--field-focus-color);
+  outline-offset: -2px;
 }
 .navigation-strip { --selection-fill: var(--raised); }
 .app-update-control {
@@ -158,16 +180,11 @@
   padding: 8px;
   color: var(--text-3);
 }
-.rail-action.app-update-button[data-state="available"],
-.rail-action.app-update-button[data-state="downloading"] {
-  color: var(--file-icon);
-}
-.rail-action.app-update-button[data-state="ready"],
-.rail-action.app-update-button[data-state="current"] {
-  color: var(--ok);
-}
 .rail-action.app-update-button[data-state="error"] {
   color: var(--heat);
+}
+.rail-action.app-update-button[data-state="available"] {
+  color: var(--ok);
 }
 .rail-action.app-update-button[data-state="downloading"] {
   flex-direction: column;
@@ -178,15 +195,6 @@
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
-}
-.update-available-dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 4px;
-  height: 4px;
-  background: var(--ok);
-  border-radius: 50%;
 }
 .navigation-strip .app-update-popover {
   left: calc(100% + 10px);
@@ -202,7 +210,7 @@
   padding: 14px;
   border: 0;
   border-radius: var(--r-md);
-  background: var(--raised-solid);
+  background: var(--overlay);
   box-shadow: var(--shadow-lg);
   font-size: var(--text-sm);
   line-height: 1.5;
@@ -433,6 +441,13 @@
 .thread-card[data-active="true"] { --thread-surface: var(--raised); }
 .thread-list { --selection-fill: var(--raised); }
 .thread-card[data-active="true"] .thread-row-title { color: var(--accent-text); }
+@property --thread-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+.thread-card { --thread-actions: 90px; }
+.thread-card:has(.thread-row-pr) { --thread-actions: 115px; }
 .thread-row {
   display: block;
   width: 100%;
@@ -440,6 +455,16 @@
   border-radius: var(--r-sm);
   text-align: left;
   color: var(--text-2);
+  --thread-fade: -16px;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 32px) no-repeat,
+    linear-gradient(to left, transparent var(--thread-fade), #000 calc(var(--thread-fade) + 16px)) bottom / 100% 32px no-repeat;
+  transition: --thread-fade var(--dur-fast) var(--ease-out);
+}
+.thread-card:hover .thread-row,
+.thread-card:has(:focus-visible) .thread-row,
+.thread-card:has(.thread-row-actions [aria-expanded="true"]) .thread-row {
+  --thread-fade: var(--thread-actions);
 }
 .thread-row-body {
   display: grid;
@@ -570,7 +595,6 @@
   right: 8px;
   gap: 1px;
   padding-left: 8px;
-  background: linear-gradient(90deg, transparent, var(--thread-surface) 8px);
   opacity: 0;
   pointer-events: none;
   transform: translateX(4px);
@@ -697,6 +721,7 @@
 .global-project-toggle { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; height: 36px; padding: 0 10px 0 8px; text-align: left; font-size: var(--text-sm); font-weight: 400; cursor: grab; }
 .global-project-toggle:active { cursor: grabbing; }
 .global-project-toggle > svg { flex: none; color: var(--text-2); }
+.global-project-offline { display: inline-flex; flex: none; margin-left: -3px; color: var(--text-3); }
 .global-status-heading .global-project-toggle,
 .global-status-heading .global-project-toggle:active { cursor: default; }
 .global-pinned-heading .global-project-toggle > svg { color: var(--warn); }

@@ -837,8 +837,10 @@
 }
 .composer-shell[data-dragging="true"] {
   outline: none;
-  background: color-mix(in srgb, var(--file-icon) 14%, var(--raised));
   box-shadow: 0 0 12px color-mix(in srgb, var(--file-icon) 30%, transparent);
+}
+.composer-shell[data-dragging="true"] > .composer-glass {
+  background: color-mix(in srgb, var(--file-icon) 14%, var(--raised));
 }
 .upload-progress {
   color: var(--file-icon);

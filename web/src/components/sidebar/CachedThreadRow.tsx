@@ -5,8 +5,9 @@ import { currentLocale, useI18n } from "../../lib/i18n.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { Unplug } from "lucide-react";
 
-export function CachedThreadRow({ thread, categoryEnd, environment, onConversation }: {
+export function CachedThreadRow({ thread, categoryEnd, environment, showDisconnected, onConversation }: {
   thread: CachedThread;
+  showDisconnected: boolean;
   categoryEnd: boolean;
   environment: string;
   onConversation: () => void;
@@ -32,7 +33,7 @@ export function CachedThreadRow({ thread, categoryEnd, environment, onConversati
             <span className="thread-row-heading">
               <ProviderIcon provider={thread.provider} />
               <span className="thread-row-title">{thread.title}</span>
-              <span className="thread-status" role="img" aria-label={t("Disconnected")} title={t("Disconnected")}><Unplug size={12} /></span>
+              {showDisconnected && <span className="thread-status" role="img" aria-label={t("Disconnected")} title={t("Disconnected")}><Unplug size={12} /></span>}
             </span>
           </span>
         </button>

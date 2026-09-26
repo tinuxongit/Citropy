@@ -3,10 +3,8 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 const projects = [
   { id: "first", name: "First workspace", path: "/example/first", isGit: false, lastOpened: 2 },
@@ -23,8 +21,7 @@ const providers = [
 
 test("sidebar mode shows compact conversations across open projects", { timeout: 60000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-sidebar-mode-"));
-  const server = await createServer({ configFile: false, root: fileURLToPath(new URL("..", import.meta.url)), cacheDir: join(directory, "cache"), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -60,7 +57,7 @@ test("sidebar mode shows compact conversations across open projects", { timeout:
     });
     socket.send(JSON.stringify({ t: "hello", snapshot: { projects, threads: [thread, secondThread, pinnedThread, finishedThread], providers, permissions: [], home: "/example" } }));
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   await page.locator('.rail[data-sidebar-mode="workspaces"]').waitFor();
   const checkContextMenu = async title => {
     const row = page.getByRole('button', { name: title, exact: true });

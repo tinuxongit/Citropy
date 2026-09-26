@@ -5,7 +5,7 @@ import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { TaskReview } from "./TaskReview.tsx";
 import type { AssistanceSettings, WritingModel } from "../../../shared/assistance.ts";
-import { GitCommitHorizontal, GitBranch, FileDiff, ArrowUpFromLine, CircleAlert, RefreshCw, ChevronRight, X } from "lucide-react";
+import { GitCommitHorizontal, GitBranch, FileDiff, ArrowUpFromLine, CircleAlert, RefreshCw, ChevronRight } from "lucide-react";
 import { selectThread, useApp } from "../lib/store.ts";
 import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
 import { api } from "../lib/api.ts";
@@ -15,6 +15,7 @@ import { openWorkbenchPanel } from "../lib/actions.ts";
 import { gitActionBusy, type GitActionState } from "../../../shared/assistance.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
+import { ComposerTab } from "./composer/ComposerTab.tsx";
 
 export function GitActions({ thread }: { thread: ThreadMeta }) {
   const [reviewing, setReviewing] = useState(false);
@@ -67,7 +68,7 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
   }, [thread.projectId, thread.id]);
 
   useAnchoredPanel(panel, trigger, { open, width: 300 });
-  useDismiss(panel, trigger, hide, { open, outside: false });
+  useDismiss(panel, trigger, hide, { open, outside: true });
 
   useEffect(() => {
     if (!open || !connected || !project?.isGit || busy) return;
@@ -93,19 +94,15 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
   const Icon = failed ? CircleAlert : GitCommitHorizontal;
   if (!project?.isGit) return null;
   return <div className="git-actions">
-    <button ref={trigger} type="button" className="composer-tab" aria-label={t("Git actions")} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} data-error={failed || undefined} title={activity || t("Git actions")} onClick={() => setOpen(!open)}>
+    <ComposerTab ref={trigger} aria-label={t("Git actions")} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} data-error={failed || undefined} title={activity || t("Git actions")} onClick={() => setOpen(!open)}>
       {busy ? <PixelLoader size={13} /> : <Icon size={13} />}Git{hasChanges && <span>{status!.files.length}</span>}
-    </button>
+    </ComposerTab>
     <AnimatePresence>{open && <motion.section ref={panel} id={id} popover="manual" className="tab-panel git-panel scroll" role="dialog" aria-label={t("Git actions")}
       initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }} animate={{ opacity: 1, transform: "none" }} exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
-      <header className="git-panel-heading">
-        <h2>{t("Git actions")}</h2>
-        <button type="button" className="icon-btn" aria-label={t("Refresh Git status")} title={t("Refresh Git status")} disabled={!connected || busy} onClick={refresh}><RefreshCw size={14} /></button>
-        <button type="button" className="icon-btn" aria-label={t("Hide Git panel")} title={t("Hide Git panel")} onClick={hide}><X size={15} /></button>
-      </header>
       <div className="git-panel-context" title={thread.workspacePath ?? project.path}>
         <GitBranch size={15} /><span className="truncate">{status?.branch || thread.workspaceBranch || project.branch || t("Branch")}</span>
         <small>{isRemote() ? environmentName() : t(thread.workspacePath && thread.workspacePath !== project.path ? "Worktree" : "Local")}</small>
+        <button type="button" className="icon-btn" aria-label={t("Refresh Git status")} title={t("Refresh Git status")} disabled={!connected || busy} onClick={refresh}><RefreshCw size={14} /></button>
       </div>
       <button type="button" className="git-panel-changes" disabled={!connected || !status} onClick={() => { setOpen(false); selectThread(thread.id); useApp.setState({ activeView: "chat", readingThreadId: null }); openWorkbenchPanel("changes"); }} aria-label={t("Review changes")}>
         <FileDiff size={16} />
@@ -114,7 +111,7 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
         <ChevronRight size={13} />
       </button>
       <div className="git-panel-body">
-        <button type="button" className="git-panel-combined" disabled={!connected} onClick={() => setReviewing(true)}><FileDiff size={15} />{t("Review task changes")}</button>
+        <button type="button" className="git-panel-combined" disabled={!connected} onClick={() => { setOpen(false); setReviewing(true); }}><FileDiff size={15} />{t("Review task changes")}</button>
         {status && <p className="git-panel-sync">{status.upstream === null ? t("No upstream branch") : status.behind > 0 ? t(status.behind === 1 ? "1 commit behind upstream" : "{count} commits behind upstream", { count: status.behind }) : status.ahead > 0 ? t(status.ahead === 1 ? "1 commit to push" : "{count} commits to push", { count: status.ahead }) : t("No commits to push")}</p>}
         {hasChanges && <p className="git-panel-scope" title={t(scope === "staged" ? "Commit staged changes only" : "Commit all changes in this workspace")}><span>{t("Commit scope")}</span><span>{scope === "staged" ? t(staged === 1 ? "1 staged file" : "{count} staged files", { count: staged }) : t("All changes")}</span></p>}
         {busy && <div className="git-panel-progress" role="status"><PixelLoader size={14} />{activity}</div>}
@@ -124,7 +121,6 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
           <button type="button" className="btn" data-variant={!hasChanges ? "primary" : undefined} disabled={blocked || !canPush} title={pushHint} onClick={() => void run("push")}><ArrowUpFromLine size={15} />{t("Push")}</button>
         </div>
         {hasChanges && <button type="button" className="git-panel-combined" disabled={blocked || Boolean(status?.behind) || status?.upstream === null} title={status?.upstream === null || status?.behind ? pushHint : t("Generate a message, commit, then push to the upstream branch")} onClick={() => void run("commitPush")}><ArrowUpFromLine size={13} />{t("AI commit & push")}</button>}
-        {(thread.running || thread.status === "awaiting") && <p className="git-panel-note">{t("Available when this conversation finishes.")}</p>}
         {!connected && <p className="git-panel-note">{t("Disconnected from Citropy")}</p>}
         {(status?.upstream === null || Boolean(status?.behind)) && <button type="button" className="git-panel-combined" onClick={() => { setOpen(false); selectThread(thread.id); useApp.setState({ activeView: "git", readingThreadId: null }); }}>{t(status?.upstream === null ? "Open Source control to publish this branch" : "Open Source control to sync this branch")}</button>}
       </div>

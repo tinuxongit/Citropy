@@ -326,22 +326,6 @@ export function Conversation() {
           className="canvas-inner"
           ref={content}
         >
-          <AnimatePresence initial={false}>
-            {!ids?.length && !busy && (
-              <motion.div
-                key="hint"
-                className="canvas-hint"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, transform: "translateY(-8px)" }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <p>
-                  {t("This thread is empty. Describe what you want changed and the provider will work in your repository.")}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
           <div
             className="timeline-rows"
             style={{

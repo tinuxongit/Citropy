@@ -18,10 +18,10 @@
 .workbench-panel-menu {
   box-shadow: none;
 }
-:root:not([data-theme="light"]) .workbench-panel-menu {
+:root[data-scheme="dark"] .workbench-panel-menu {
   background: var(--canvas);
 }
-:root:not([data-theme="light"]) .workbench-panel-menu .menu-item:is(:hover, :focus-visible) {
+:root[data-scheme="dark"] .workbench-panel-menu .menu-item:is(:hover, :focus-visible) {
   background: var(--raised);
 }
 .workbench-open {
@@ -280,12 +280,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-}
-.browser-live {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--ok);
 }
 .browser-viewport {
   background: var(--panel);

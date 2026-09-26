@@ -86,7 +86,7 @@ export function TerminalPane({
   const [signal] = useState(environmentSignal);
   const projectId = panel.projectId;
   const connected = useApp((state) => state.connected);
-  const theme = useApp((state) => state.theme);
+  const scheme = useApp((state) => state.scheme);
   const uiScale = useApp((state) => state.uiScale);
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export function TerminalPane({
       attached.current = false;
     };
     if (term.current) {
-      term.current.options.theme = useApp.getState().theme === "light" ? LIGHT : DARK;
+      term.current.options.theme = useApp.getState().scheme === "light" ? LIGHT : DARK;
       term.current.options.fontSize = 13 * useApp.getState().uiScale / 100;
       fit.current?.fit();
       if (!attached.current) {
@@ -139,7 +139,7 @@ export function TerminalPane({
         cursorStyle: "bar",
         allowProposedApi: true,
         scrollback: 8000,
-        theme: theme === "light" ? LIGHT : DARK,
+        theme: scheme === "light" ? LIGHT : DARK,
       });
       const fitAddon = new Fit();
       instance.loadAddon(fitAddon);
@@ -230,8 +230,8 @@ export function TerminalPane({
 
   useEffect(() => {
     if (!active || !term.current) return;
-    term.current.options.theme = theme === "light" ? LIGHT : DARK;
-  }, [theme]);
+    term.current.options.theme = scheme === "light" ? LIGHT : DARK;
+  }, [scheme]);
 
   useEffect(() => {
     if (!active || !term.current) return;

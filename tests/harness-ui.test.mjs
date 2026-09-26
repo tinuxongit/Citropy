@@ -3,15 +3,12 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("review, context and composer remain usable at desktop and narrow widths", { timeout: 120000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-harness-ui-"));
-  const server = await createServer({ configFile: false, cacheDir: join(directory, "cache"), root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], server: { host: "127.0.0.1", port: 0 } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, reducedMotion: "reduce" });
@@ -46,7 +43,7 @@ test("review, context and composer remain usable at desktop and narrow widths", 
     if (url.pathname === "/api/threads/context") return route.fulfill({ json: route.request().method() === "GET" ? [{ path: "src/request.ts", dir: false }] : { references: [{ path: "src/request.ts", startLine: 1, endLine: 2 }], lastSources: [{ path: "src/request.ts", kind: "file", characters: 120 }], instructions: ["/example/AGENTS.md"], rebuilt: false } });
     return route.fulfill({ status: 404, json: { error: "Fixture route unavailable" } });
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   await page.getByText(messages[1].parts[0].text, { exact: true }).waitFor();
   await page.getByRole("button", { name: "Git actions", exact: true }).click();
   await page.getByRole("button", { name: "Review task changes", exact: true }).click();
@@ -70,7 +67,6 @@ test("review, context and composer remain usable at desktop and narrow widths", 
   await review.getByRole("button", { name: "Send feedback", exact: true }).click();
   await review.waitFor({ state: "hidden" });
   assert.ok(calls.some(call => call.t === "thread.send" && call.text.includes("src/request.ts:2 (new)") && call.text.includes("Handle rejection")));
-  await page.getByRole("button", { name: "Hide Git panel", exact: true }).click();
   if (await page.getByRole("button", { name: "Close navigation", exact: true }).isVisible()) await page.getByRole("button", { name: "Close navigation", exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "Workflows", exact: true }).count(), 0);
   await page.getByPlaceholder("Ask a question or describe a change…").fill("@[src/request.ts]#L1-L2");

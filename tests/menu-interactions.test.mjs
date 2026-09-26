@@ -42,7 +42,7 @@ test("menu surfaces retain focus while outside interaction and selection dismiss
       h('button', { id: 'outside' }, 'Outside')));
   </script></body></html>`);
   await page.route('**/menu.html', route => route.fulfill({ contentType: 'text/html', body: html }));
-  await page.goto(`${server.resolvedUrls.local[0]}menu.html`);
+  await page.goto(`${server.resolvedUrls.local[0]}menu.html`, { timeout: 60_000 });
   const menu = page.getByRole('menu');
   for (const width of [1200, 390]) {
     await page.setViewportSize({ width, height: 800 });

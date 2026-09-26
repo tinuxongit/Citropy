@@ -5,6 +5,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkPackagedTerminal } from "./smoke-terminal.mjs";
 
 const root = fileURLToPath(new URL("../release/", import.meta.url));
 const directory = await mkdtemp(join(tmpdir(), "citropy-win-smoke-"));
@@ -31,10 +32,11 @@ try {
   for (const path of ["react/LICENSE", "lucide-react/LICENSE", "monaco-editor/LICENSE", "tslib/CopyrightNotice.txt"]) {
     assert.ok(notices.includes(await readFile(new URL(`../node_modules/${path}`, import.meta.url), "utf8")), `Missing bundled dependency notice: ${path}`);
   }
-  for (const path of [".env", "tests", ".git", "web", "desktop/start.mjs", "desktop/install.mjs", "desktop/smoke.mjs", "desktop/smoke-mac.mjs", "desktop/smoke-win.mjs", "node_modules/vite", "node_modules/playwright", "node_modules/lucide-react", "node_modules/shiki", "node_modules/motion"]) {
+  for (const path of [".env", "tests", ".git", "web", "desktop/start.mjs", "desktop/install.mjs", "desktop/smoke.mjs", "desktop/smoke-mac.mjs", "desktop/smoke-win.mjs", "desktop/smoke-terminal.mjs", "node_modules/vite", "node_modules/playwright", "node_modules/lucide-react", "node_modules/shiki", "node_modules/motion"]) {
     assert.equal(await exists(join(appRoot, path)), false, `Development file in release: ${path}`);
   }
   assert.equal(JSON.parse(await readFile(join(appRoot, "package.json"), "utf8")).version, version);
+  await checkPackagedTerminal(join(app, "Citropy.exe"), appRoot);
   const probe = createServer();
   await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
   const port = probe.address().port;

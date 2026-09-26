@@ -7,6 +7,8 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
   const readingExpanded = useRef(false);
   const lastTop = useRef(0);
   const lastHeight = useRef(0);
+  const lastClientHeight = useRef(0);
+  const pointerHeld = useRef(false);
   const [atBottom, setAtBottom] = useState(true);
   const [nearBottom, setNearBottom] = useState(true);
   const stopFollowing = useCallback(() => {
@@ -24,6 +26,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     node.scrollTo({ top: node.scrollHeight, behavior });
     lastTop.current = node.scrollTop;
     lastHeight.current = node.scrollHeight;
+    lastClientHeight.current = node.clientHeight;
   }, []);
 
   useEffect(() => {
@@ -36,10 +39,11 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
       const near = distance < 2;
       if (!readingExpanded.current) {
         if (near) stuck.current = true;
-        else if (node.scrollTop < lastTop.current - 1 && node.scrollHeight >= lastHeight.current) stuck.current = false;
+        else if (node.scrollTop < lastTop.current - 1 && (pointerHeld.current || (node.scrollHeight === lastHeight.current && node.clientHeight === lastClientHeight.current))) stuck.current = false;
       }
       lastTop.current = node.scrollTop;
       lastHeight.current = node.scrollHeight;
+      lastClientHeight.current = node.clientHeight;
       setAtBottom(near);
       setNearBottom(distance < 96);
     };
@@ -51,6 +55,11 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
 
     const onPointerDown = () => {
       readingExpanded.current = false;
+      pointerHeld.current = true;
+    };
+
+    const onPointerUp = () => {
+      pointerHeld.current = false;
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -72,6 +81,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
       if (stuck.current) node.scrollTop = node.scrollHeight;
       lastTop.current = node.scrollTop;
       lastHeight.current = node.scrollHeight;
+      lastClientHeight.current = node.clientHeight;
       const distance = node.scrollHeight - node.scrollTop - node.clientHeight;
       if (!readingExpanded.current && distance < 2) stuck.current = true;
       setAtBottom(distance < 2);
@@ -84,10 +94,14 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     node.addEventListener("wheel", onWheel, { passive: true });
     node.addEventListener("click", onToggle, true);
     node.addEventListener("pointerdown", onPointerDown, { passive: true });
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("touchend", onPointerUp);
+    window.addEventListener("touchcancel", onPointerUp);
     node.addEventListener("keydown", onKeyDown);
     node.scrollTop = node.scrollHeight;
     lastTop.current = node.scrollTop;
     lastHeight.current = node.scrollHeight;
+    lastClientHeight.current = node.clientHeight;
 
     return () => {
       observer.disconnect();
@@ -95,6 +109,9 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
       node.removeEventListener("wheel", onWheel);
       node.removeEventListener("click", onToggle, true);
       node.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("touchend", onPointerUp);
+      window.removeEventListener("touchcancel", onPointerUp);
       node.removeEventListener("keydown", onKeyDown);
     };
   }, []);

@@ -39,6 +39,7 @@ import { useComposerDraft } from "./composer/use-composer-draft.ts";
 import { useAttachmentUpload } from "./composer/use-attachment-upload.ts";
 import { useComposerCommands } from "./composer/use-composer-commands.tsx";
 import { GitActions } from "./GitActions.tsx";
+import { ComposerFrame } from "./composer/ComposerFrame.tsx";
 
 export function Composer({
   onUsage,
@@ -246,7 +247,7 @@ export function Composer({
           void upload(Array.from(event.dataTransfer.files));
         }}
       >
-        <span className="composer-focus-ring" aria-hidden="true" />
+        <ComposerFrame />
         <div className="composer-tabs">
           <UsageLimitTab threadId={thread.id} />
           <QueueList thread={thread} provider={provider} onEdit={restore} />
@@ -316,7 +317,6 @@ export function Composer({
           thread={thread}
           commands={commands}
         />
-        {thread.pendingConfig && <div className="composer-pending-settings" role="status">{t("Applies to the next turn")}</div>}
         <div className="composer-bar">
           <ModelPicker
             value={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: configuredThread?.model ?? model?.id ?? "default" }}
