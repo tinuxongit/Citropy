@@ -396,7 +396,7 @@ async function main() {
   }
 
   async function shot(name, theme, { preferences = {}, snapshot: data = snapshot(), desktop, onMessage, api, boot, act } = {}) {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, reducedMotion: "reduce" });
+    const page = await browser.newPage({ viewport: { width: 2560, height: 1440 }, deviceScaleFactor: 1, reducedMotion: "reduce" });
     page.setDefaultTimeout(20000);
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
