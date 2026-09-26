@@ -322,6 +322,57 @@ const questionMessages = [
   },
 ];
 
+const editorTree = {
+  "": [
+    { path: "src", name: "src", dir: true },
+    { path: "tests", name: "tests", dir: true },
+    { path: "package.json", name: "package.json", dir: false },
+    { path: "README.md", name: "README.md", dir: false },
+  ],
+  src: [
+    { path: "src/dashboard", name: "dashboard", dir: true },
+    { path: "src/lib", name: "lib", dir: true },
+    { path: "src/main.tsx", name: "main.tsx", dir: false },
+  ],
+  "src/dashboard": [
+    { path: "src/dashboard/Dashboard.tsx", name: "Dashboard.tsx", dir: false },
+    { path: "src/dashboard/RainfallChart.tsx", name: "RainfallChart.tsx", dir: false },
+    { path: "src/dashboard/TemperatureGraph.tsx", name: "TemperatureGraph.tsx", dir: false },
+  ],
+};
+
+const rainfallChartSource = `import { useMemo } from "react";
+import { bucketByHour } from "../lib/buckets";
+import type { Reading } from "../lib/readings";
+
+export function RainfallChart({ readings, now }: { readings: Reading[]; now: number }) {
+  const buckets = useMemo(() => bucketByHour(readings, "rainfall"), [readings]);
+  const peak = Math.max(1, ...buckets.map((bucket) => bucket.total));
+  const currentHour = new Date(now).getHours();
+
+  return (
+    <figure className="rainfall-chart">
+      <figcaption>Rainfall by hour</figcaption>
+      <div className="bars">
+        {buckets.map((bucket) => (
+          <span
+            key={bucket.hour}
+            className={bucket.hour === currentHour ? "bar current" : "bar"}
+            style={{ height: \`\${(bucket.total / peak) * 100}%\` }}
+            title={\`\${bucket.total.toFixed(1)} mm\`}
+          />
+        ))}
+      </div>
+      <div className="axis">
+        <span>00:00</span>
+        <span>12:00</span>
+        <span>24:00</span>
+      </div>
+    </figure>
+  );
+}
+`;
+
 const ok = (route) => route.fulfill({ json: [] });
 
 async function main() {
@@ -483,6 +534,30 @@ async function main() {
           await page.getByText("RainfallChart.tsx", { exact: true }).waitFor();
           await page.getByText("buckets.ts", { exact: true }).first().click();
           await page.getByText("bucketByHour", { exact: false }).first().waitFor();
+        },
+      });
+    },
+
+    async editor(theme) {
+      const panel = { id: "files", kind: "files", projectId: "workspace", title: "Files", threadId: "rainfall" };
+      await shot("editor", theme, {
+        preferences: { inspector: "1", panelWidths: JSON.stringify({ inspector: 840 }) },
+        snapshot: snapshot({ panels: [panel] }),
+        api: (route) => {
+          const url = new URL(route.request().url());
+          if (url.pathname === "/api/editor/tree") return editorTree[url.searchParams.get("path") ?? ""] ?? [];
+          if (url.pathname === "/api/editor/file") return { text: rainfallChartSource, revision: "a".repeat(64) };
+        },
+        onMessage: (event, connection) => {
+          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+        },
+        act: async (page, connection) => {
+          await page.locator(".turn").first().waitFor();
+          connection().send(JSON.stringify({ t: "panel.upsert", panel }));
+          await page.getByRole("button", { name: "src", exact: true }).click();
+          await page.getByRole("button", { name: "dashboard", exact: true }).click();
+          await page.getByRole("button", { name: "RainfallChart.tsx", exact: true }).click();
+          await page.waitForFunction(() => document.querySelector(".view-lines")?.textContent?.includes("bucketByHour"));
         },
       });
     },
