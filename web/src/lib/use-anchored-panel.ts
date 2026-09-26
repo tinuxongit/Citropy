@@ -7,9 +7,15 @@ export function useAnchoredPanel(panel: RefObject<HTMLElement | null>, anchor: R
     const element = panel.current;
     if (!open || !element) return;
     if (!element.matches(":popover-open")) element.showPopover();
+    let placed = "";
+    let frame = 0;
     const position = () => {
+      frame = requestAnimationFrame(position);
       const target = anchor.current?.getBoundingClientRect();
       if (!target) return;
+      const key = `${target.top}:${target.right}:${innerWidth}:${innerHeight}`;
+      if (key === placed) return;
+      placed = key;
       const scale = uiScale / 100;
       const size = Math.min(width, viewportWidth() - 24);
       element.style.width = `${scaled(size)}px`;
@@ -18,15 +24,7 @@ export function useAnchoredPanel(panel: RefObject<HTMLElement | null>, anchor: R
       element.style.maxHeight = `${scaled(Math.max(0, target.top / scale - 22))}px`;
     };
     position();
-    const resize = new ResizeObserver(position);
-    if (anchor.current) resize.observe(anchor.current);
-    const surroundings = anchor.current?.closest(".composer");
-    if (surroundings) resize.observe(surroundings);
-    window.addEventListener("resize", position);
-    return () => {
-      resize.disconnect();
-      window.removeEventListener("resize", position);
-    };
+    return () => cancelAnimationFrame(frame);
   }, [open, width, uiScale, panel, anchor]);
 }
 
