@@ -353,8 +353,7 @@ async function main() {
       ({ values, theme }) => {
         for (const [key, value] of Object.entries({ project: "workspace", thread: "rainfall", inspector: "0", uiScale: "100", ...values }))
           localStorage.setItem(`citropy.${key}`, String(value));
-        localStorage.setItem("citropy.theme", theme);
-        localStorage.setItem("citropy.sidebarMode", "workspaces");
+        localStorage.setItem("citropy.scheme", theme);
       },
       { values: preferences, theme },
     );
@@ -446,7 +445,7 @@ async function main() {
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
           await page.getByRole("button", { name: "Usage", exact: true }).click();
-          await page.locator(".allowance-row").first().waitFor();
+          await page.locator(".limit-card").first().waitFor();
         },
       });
     },
@@ -581,7 +580,7 @@ async function main() {
         },
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
-          await page.getByRole("button", { name: "Choose workspace, weather-station", exact: true }).click();
+          await page.getByRole("button", { name: "Add project", exact: true }).click();
           await page.locator(".workspace-menu").waitFor();
           await page.getByText("citropy-vps", { exact: true }).waitFor();
           await page.getByText("sandbox", { exact: true }).waitFor();
