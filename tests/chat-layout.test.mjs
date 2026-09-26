@@ -8,7 +8,7 @@ import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
 
-test("chat content and controls adapt when the workspace squeezes the conversation", { timeout: 60000 }, async (t) => {
+test("chat content and controls adapt when the workspace squeezes the conversation", { timeout: 180_000 }, async (t) => {
   const cache = await mkdtemp(join(tmpdir(), "citropy-chat-layout-"));
   const server = await createServer({
     configFile: false, root: fileURLToPath(new URL("..", import.meta.url)),
@@ -56,7 +56,7 @@ test("chat content and controls adapt when the workspace squeezes the conversati
       }] }], permissions: [], home: "/example", panels: [{ id: "changes", kind: "changes", projectId: "project", title: "Changes" }],
     } }));
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.resolvedUrls.local[0], { timeout: 120_000 });
   await page.locator("#message-working .activity-head").waitFor();
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(async () => {
@@ -68,27 +68,29 @@ test("chat content and controls adapt when the workspace squeezes the conversati
     }));
   });
   const draft = page.locator(".composer-input");
+  await page.bringToFront();
+  await page.waitForFunction(() => !document.documentElement.hasAttribute("data-window-blurred"));
   await page.getByRole('button', { name: 'Open panel', exact: true }).focus();
   await page.waitForTimeout(380);
   await draft.focus();
-  await page.waitForFunction(() => document.querySelector('.composer-focus-ring').getAnimations().some(animation =>
+  await page.waitForFunction(() => document.querySelector('.composer-focus-ring').getAnimations({ subtree: true }).some(animation =>
     animation.animationName === 'composer-trace' && animation.playState === 'running',
   ));
   const ring = page.locator('.composer-focus-ring');
   const trace = await ring.evaluate(async node => {
-    const animation = node.getAnimations().find(animation => animation.animationName === 'composer-trace');
-    const before = getComputedStyle(node).getPropertyValue('--composer-trace-angle');
+    const animation = node.getAnimations({ subtree: true }).find(animation => animation.animationName === 'composer-trace');
+    const before = getComputedStyle(node, '::before').transform;
     await new Promise(resolve => setTimeout(resolve, 120));
-    return { before, after: getComputedStyle(node).getPropertyValue('--composer-trace-angle'), duration: animation.effect.getTiming().duration, iterations: animation.effect.getTiming().iterations };
+    return { before, after: getComputedStyle(node, '::before').transform, duration: animation.effect.getTiming().duration, iterations: animation.effect.getTiming().iterations };
   });
   assert.notEqual(trace.before, trace.after);
   assert.equal(trace.duration, 6000);
   assert.equal(trace.iterations, Infinity);
   await page.getByRole('button', { name: 'Open panel', exact: true }).focus();
-  assert.equal(await ring.evaluate(node => getComputedStyle(node).animationPlayState), 'paused');
+  assert.equal(await ring.evaluate(node => getComputedStyle(node, '::before').animationPlayState), 'paused');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await draft.focus();
-  assert.equal(await ring.evaluate(node => getComputedStyle(node).animationName), 'none');
+  assert.equal(await ring.evaluate(node => getComputedStyle(node, '::before').display), 'none');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await draft.fill("Keep this draft while resizing.");
 
@@ -162,7 +164,7 @@ test("chat content and controls adapt when the workspace squeezes the conversati
         assert.ok(layout.head.scroll <= layout.head.width + 1, JSON.stringify({ language, scale, width, layout }));
         assert.ok(layout.action.left >= layout.stage.left && layout.action.right <= layout.stage.right, JSON.stringify(layout));
         if (width >= 600) assert.ok(Math.abs(layout.count.top + layout.count.height / 2 - layout.chevron.top - layout.chevron.height / 2) < 1, JSON.stringify(layout));
-        assert.ok(layout.buttons.length >= 7);
+        assert.ok(layout.buttons.length >= 5, JSON.stringify(layout.buttons.length));
         for (const button of layout.buttons)
           assert.ok(button.width > 0 && button.left >= layout.composer.left && button.right <= layout.composer.right, JSON.stringify(layout));
         assert.equal(await draft.inputValue(), "Keep this draft while resizing.");

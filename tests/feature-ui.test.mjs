@@ -389,7 +389,7 @@ test(
     await page.getByRole("button", { name: "Usage", exact: true }).click();
     await page.getByText("76% left", { exact: true }).waitFor();
     await page.getByText("12% left", { exact: true }).waitFor();
-    await page.getByText(/^Resets \d/).waitFor();
+    await page.getByText(/^Resets in \d/).first().waitFor();
     assert.deepEqual(
       await page.getByLabel("Filter usage by provider").locator("option").allTextContents(),
       ["All providers", "Claude Code", "Codex", "OpenCode", "Cursor", "Pi"],
@@ -398,9 +398,7 @@ test(
       animations: "disabled",
       path: "/tmp/citropy-feature-usage.png",
     });
-    await page
-      .getByRole("button", { name: "Back to chat", exact: true })
-      .click();
+    await (await page.getByRole("button", { name: "Back to chat", exact: true }).count() ? page.getByRole("button", { name: "Back to chat", exact: true }) : page.getByRole("button", { name: "Conversations", exact: true }).first()).click();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByRole("button", { name: "Projects", exact: true }).click();
     const global = page.getByRole("region", { name: "Global defaults", exact: true });

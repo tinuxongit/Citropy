@@ -562,7 +562,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     await navigation.waitFor();
     await settle();
     assert.equal(await navigation.locator(".selection-highlight").evaluate(node => node.hidden), false);
-    await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+    await (await page.getByRole("button", { name: "Back to chat", exact: true }).count() ? page.getByRole("button", { name: "Back to chat", exact: true }) : page.getByRole("button", { name: "Conversations", exact: true }).first()).click();
     await navigation.waitFor({ state: "detached" });
     assert.equal(await page.evaluate(() => [...window.navigationResources.observers].some(observer => [...observer.targets].some(node => !node.isConnected))), false);
   });

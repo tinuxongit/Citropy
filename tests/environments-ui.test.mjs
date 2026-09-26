@@ -121,12 +121,12 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   });
   const delayedThread = await threadRequested.promise;
   await page.getByRole("button", { name: "Git actions", exact: true }).waitFor();
-  assert.equal(await page.locator(".shells-trigger").count(), 1);
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.locator("button[data-settings-section='environments']").click();
+  assert.equal(await page.getByRole("button", { name: "Running shells, 1 active", exact: true }).count(), 1);
   await page.getByRole("button", { name: "Git actions", exact: true }).click();
   await page.getByRole("dialog", { name: "Git actions", exact: true }).waitFor();
   await page.getByRole("button", { name: "Hide Git panel", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.locator("button[data-settings-section='environments']").click();
   await page.getByRole("button", { name: "Add connection", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Connect over SSH", exact: true });
   await dialog.waitFor();
@@ -145,7 +145,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   await page.getByRole("button", { name: "Connect", exact: true }).click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).waitFor();
   assert.equal(await page.locator("h1[data-settings-section='environments']").count(), 1);
-  await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+  await (await page.getByRole("button", { name: "Back to chat", exact: true }).count() ? page.getByRole("button", { name: "Back to chat", exact: true }) : page.getByRole("button", { name: "Conversations", exact: true }).first()).click();
   await page.getByText("REMOTE RESPONSE", { exact: true }).waitFor();
   await page.evaluate(async () => {
     const { useApp } = await import("/web/src/lib/store.ts");
@@ -184,7 +184,7 @@ test("grouped workspaces switch hosts without reloading and use the system folde
   await globalDefaults.getByRole("button", { name: "Save global defaults", exact: true }).click();
   await globalDefaults.getByText("Global defaults saved", { exact: true }).waitFor();
   assert.deepEqual(defaultsSaved, [{ provider: "opencode", model: "remote/model", effort: "high", permissionMode: "acceptEdits" }]);
-  await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+  await (await page.getByRole("button", { name: "Back to chat", exact: true }).count() ? page.getByRole("button", { name: "Back to chat", exact: true }) : page.getByRole("button", { name: "Conversations", exact: true }).first()).click();
   await delayedThread.fulfill({ json: { id: "stale-local-task", projectId: "remote-project", provider: "claude", model: "test" } }).catch(() => {});
   delayedRead.socket.send(JSON.stringify({ t: "file.content", requestId: delayedRead.requestId, content: "Local file" }));
   assert.equal(await page.evaluate(() => window.oldRead), "accepted");

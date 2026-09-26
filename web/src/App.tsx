@@ -55,10 +55,18 @@ const UsageView = lazy(() => screens.usage().then((module) => ({ default: module
 export function App() {
   const t = useI18n();
   useEffect(() => {
-    const preload = setTimeout(() => {
-      for (const load of Object.values(screens)) void load().catch(reportError);
-    }, 2000);
-    return () => clearTimeout(preload);
+    let preload: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      preload = setTimeout(() => {
+        for (const load of Object.values(screens)) void load().catch(reportError);
+      }, 2000);
+    };
+    if (document.readyState === "complete") schedule();
+    else window.addEventListener("load", schedule, { once: true });
+    return () => {
+      window.removeEventListener("load", schedule);
+      clearTimeout(preload);
+    };
   }, []);
   const { activeId: environment } = useEnvironments();
   const view = useApp((state) => state.activeView);

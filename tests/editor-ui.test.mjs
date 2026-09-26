@@ -235,7 +235,7 @@ test(
     const explorerGrip = await explorerResize.boundingBox();
     await page.mouse.move(explorerGrip.x + explorerGrip.width / 2, explorerGrip.y + 100);
     await page.mouse.down();
-    await page.mouse.move(explorerGrip.x + 220, explorerGrip.y + 100, { steps: 10 });
+    await page.mouse.move(explorerGrip.x - 220, explorerGrip.y + 100, { steps: 10 });
     await page.mouse.up();
     assert.ok((await tree.boundingBox()).width > explorerStart.width + 200);
     await explorerResize.press("ArrowLeft");

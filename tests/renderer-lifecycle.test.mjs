@@ -370,9 +370,9 @@ test("renderer panels release background work and ignore stale replies", { timeo
       await page.setViewportSize({ width, height: 900 });
       for (const name of ["Settings", "Source control", "GitHub"]) {
         await page.getByRole("button", { name, exact: true }).click();
-        await page.getByRole("button", { name: "Back to chat", exact: true }).waitFor();
+        await page.locator(".section-view").waitFor();
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
-        await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+        await (await page.getByRole("button", { name: "Back to chat", exact: true }).count() ? page.getByRole("button", { name: "Back to chat", exact: true }) : page.getByRole("button", { name: "Conversations", exact: true }).first()).click();
       }
     }
   });
