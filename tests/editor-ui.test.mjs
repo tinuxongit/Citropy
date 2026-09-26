@@ -553,7 +553,7 @@ test(
     await tree.getByRole("button", { name: "diagram.png", exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.media-preview img')?.naturalWidth > 0);
     assert.equal(await page.locator(".editor-tab").count(), 2);
-    assert.equal(await page.getByRole("button", { name: "Find and replace", exact: true }).isDisabled(), true);
+    assert.equal(await page.locator(".code-editor-surface").isVisible(), false);
     await tree.getByRole("button", { name: "diagram.png", exact: true }).click();
     assert.equal(await page.locator(".editor-tab").count(), 2);
     await tree.getByRole("button", { name: "demo.webm", exact: true }).click();
@@ -634,9 +634,8 @@ test(
       .filter({ hasText: "changed on disk" })
       .waitFor();
     await page.locator('.editor-tab .editor-dirty[aria-label="Unsaved changes"]').waitFor();
-    await page
-      .getByRole("button", { name: "Find and replace", exact: true })
-      .click();
+    await input.focus();
+    await input.press("Control+h");
     await page.locator(".find-widget.visible").waitFor();
     await page.keyboard.press("Escape");
     await page.screenshot({
