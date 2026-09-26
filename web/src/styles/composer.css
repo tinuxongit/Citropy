@@ -29,6 +29,10 @@
   border-radius: 0;
   background: transparent;
 }
+.composer-finished {
+  border-radius: 0;
+  background: transparent;
+}
 .composer-limit {
   display: flex;
   align-items: center;

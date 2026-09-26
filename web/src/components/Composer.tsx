@@ -1,6 +1,6 @@
 import { QuestionPanel } from "./QuestionPanel.tsx";
 import { PermissionPanel } from "./PermissionPanel.tsx";
-import { UsageLimitStrip } from "./UsageLimitNotice.tsx";
+import { UsageLimitTab } from "./UsageLimitNotice.tsx";
 import { environmentId, environmentSignal } from "../lib/environment.ts";
 import { ComposerInput } from "./ComposerInput.tsx";
 import { gitActionBusy } from "../../../shared/assistance.ts";
@@ -248,6 +248,7 @@ export function Composer({
       >
         <span className="composer-focus-ring" aria-hidden="true" />
         <div className="composer-tabs">
+          <UsageLimitTab threadId={thread.id} />
           <QueueList thread={thread} provider={provider} onEdit={restore} />
           {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
           <RunningShells onOpen={onShell} />
@@ -255,7 +256,6 @@ export function Composer({
         <div className="composer-dock">
           <QuestionPanel />
           <PermissionPanel />
-          <UsageLimitStrip threadId={thread.id} />
           {thread.finished && !running && (
             <div className="composer-finished" role="status">
               <CheckCircle2 size={14} aria-hidden="true" />

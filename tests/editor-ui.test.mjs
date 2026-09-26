@@ -229,6 +229,7 @@ test(
     await page
       .getByRole("button", { name: "Expand workspace", exact: true })
       .click();
+    await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== "running" || !(animation.effect?.target instanceof Element && animation.effect.target.closest(".sliding-panel, .stage"))));
     const explorerResize = page.getByRole("separator", { name: "File explorer size", exact: true });
     const tree = page.locator(".editor-explorer");
     const explorerStart = await tree.boundingBox();
@@ -503,9 +504,9 @@ test(
     await terminalResize.press("Home");
     assert.ok((await dock.boundingBox()).height >= 119);
     await explorerResize.press("End");
-    const statusBounds = await page.locator(".editor-status").boundingBox();
+    const surfaceBounds = await page.locator(".code-editor-surface").boundingBox();
     const documentBounds = await page.locator(".editor-document").boundingBox();
-    assert.ok(statusBounds.y + statusBounds.height <= documentBounds.y + documentBounds.height + 1);
+    assert.ok(surfaceBounds.y + surfaceBounds.height <= documentBounds.y + documentBounds.height + 1);
     assert.ok((await page.locator(".code-editor-surface").boundingBox()).height > 50);
     await explorerResize.press("Enter");
     await page.screenshot({
@@ -521,9 +522,9 @@ test(
     });
     await page.waitForFunction((size) => Math.abs(document.querySelector('.editor-explorer').getBoundingClientRect().width - size * 1.5) < 2, resizedExplorer);
     await terminalResize.press("End");
-    const scaledStatus = await page.locator(".editor-status").boundingBox();
+    const scaledSurface = await page.locator(".code-editor-surface").boundingBox();
     const scaledDocument = await page.locator(".editor-document").boundingBox();
-    assert.ok(scaledStatus.y + scaledStatus.height <= scaledDocument.y + scaledDocument.height + 1);
+    assert.ok(scaledSurface.y + scaledSurface.height <= scaledDocument.y + scaledDocument.height + 1);
     await terminalResize.press("Enter");
     await page.evaluate(async () => {
       const { setUiScale } = await import("/web/src/lib/store.ts");
@@ -539,9 +540,7 @@ test(
     await input.pressSequentially("export const answer = 42;");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await page.waitForFunction(() =>
-      document
-        .querySelector(".editor-status")
-        ?.textContent?.startsWith("Saved"),
+      !document.querySelector(".editor-tab .editor-dirty"),
     );
     assert.match(text, /answer = 42/);
     assert.equal(writes, 1);
@@ -575,7 +574,7 @@ test(
       return useDocuments.getState().documents.find((document) => document.path === "hello.ts").model.getValue();
     }), draft);
     await input.press("Control+s");
-    await page.waitForFunction(() => document.querySelector(".editor-status")?.textContent.startsWith("Saved"));
+    await page.waitForFunction(() => !document.querySelector(".editor-tab .editor-dirty"));
     await page.getByRole("button", { name: "Close demo.webm", exact: true }).click();
     await page.locator(".editor-tab").getByRole("button", { name: "diagram.png", exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.media-preview img')?.naturalWidth > 0);
@@ -634,10 +633,7 @@ test(
       .getByRole("alert")
       .filter({ hasText: "changed on disk" })
       .waitFor();
-    assert.match(
-      await page.locator(".editor-status").textContent(),
-      /Unsaved changes/,
-    );
+    await page.locator('.editor-tab .editor-dirty[aria-label="Unsaved changes"]').waitFor();
     await page
       .getByRole("button", { name: "Find and replace", exact: true })
       .click();
@@ -671,7 +667,7 @@ test(
     await input.pressSequentially('\nconst broken: number = "wrong";');
     await page.waitForFunction(() =>
       /[1-9][0-9]* problems/.test(
-        document.querySelector(".editor-status")?.textContent ?? "",
+        document.querySelector(".editor-problems")?.textContent ?? "",
       ),
     );
     await page.evaluate(async () => {
@@ -701,9 +697,7 @@ test(
       .getByRole("button", { name: "Discard changes", exact: true })
       .click();
     await page.waitForFunction(() =>
-      document
-        .querySelector(".editor-status")
-        ?.textContent?.startsWith("Saved"),
+      !document.querySelector(".editor-tab .editor-dirty"),
     );
     await toggleExplorer.click();
     assert.equal(await explorer.isVisible(), false);

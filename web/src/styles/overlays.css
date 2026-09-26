@@ -423,6 +423,19 @@
 }
 .composer-tab:hover, .composer-tab[aria-expanded="true"] { color: var(--text); }
 .composer-tab[data-error] { color: var(--bad); }
+.composer-tab[data-tone="warn"] { color: var(--warn); }
+.composer-tab[data-tone="warn"]:hover, .composer-tab[data-tone="warn"][aria-expanded="true"] { color: var(--text); }
+.tab-panel.usage-limit-panel { padding: 14px; }
+.shell[data-backdrop] .tab-panel { background: var(--overlay-solid); }
+.usage-limit-panel > header { display: flex; align-items: center; gap: 8px; }
+.usage-limit-panel > header svg { flex: none; color: var(--warn); }
+.usage-limit-panel h2 { margin: 0; font-size: var(--text-base); font-weight: 600; }
+.usage-limit-panel > p { margin: 8px 0 0; color: var(--text-2); line-height: 1.5; }
+.usage-limit-panel > .usage-limit-message { padding: 8px 10px; border-radius: var(--r-sm); background: var(--raised); color: var(--text-3); font-size: var(--text-xs); overflow-wrap: anywhere; }
+.usage-limit-actions { display: grid; gap: 2px; margin: 10px -6px -6px; }
+.usage-limit-action { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 8px; border-radius: var(--r-sm); color: var(--text-2); font-weight: 500; text-align: left; transition: background var(--dur-instant) var(--ease-out), color var(--dur-instant) var(--ease-out); }
+.usage-limit-action:hover:not(:disabled) { background: var(--raised); color: var(--text); }
+.usage-limit-action[aria-pressed="true"] { color: var(--text); }
 .composer-tab > span { color: var(--text-2); font-variant-numeric: tabular-nums; }
 @starting-style { .composer-tab { transform: translateY(100%); } }
 @media (prefers-reduced-motion: reduce) { @starting-style { .composer-tab { transform: none; } } }

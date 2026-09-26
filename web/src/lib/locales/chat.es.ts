@@ -331,11 +331,11 @@ export const chatEs: Record<string, string> = {
   "Usage limit": "Límite de uso",
   "Usage limit reached. Resets at {time}.": "Límite de uso alcanzado. Se restablece a las {time}.",
   "Usage limit reached.": "Límite de uso alcanzado.",
-  "Resets at {time}": "Se restablece a las {time}",
-  "Checking whether usage is back": "Comprobando si el uso volvió",
-  "Checked every 15 minutes": "Se comprueba cada 15 minutos",
   "Resume at reset": "Reanudar al restablecerse",
   "Resuming at reset": "Se reanudará al restablecerse",
   "Snooze until reset": "Posponer hasta el restablecimiento",
-  "Snoozed until reset": "Pospuesto hasta el restablecimiento"
+  "Snoozed until reset": "Pospuesto hasta el restablecimiento",
+  "Your allowance resets at {time}.": "Tu cuota se restablece a las {time}.",
+  "The reset time has passed. Citropy is checking whether usage is back.": "Ya pasó la hora de restablecimiento. Citropy está comprobando si el uso volvió.",
+  "The provider did not say when usage resets. Citropy checks every 15 minutes.": "El proveedor no indicó cuándo se restablece el uso. Citropy lo comprueba cada 15 minutos."
 };
