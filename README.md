@@ -85,6 +85,12 @@ The side panel holds a browser, terminals, a file tree, the changes view, subage
 
 ## Code editor
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/editor-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/editor-light.png">
+  <img alt="The Files panel with a TypeScript file open in the editor beside the conversation" src="docs/assets/editor-light.png">
+</picture>
+
 Open **Files** from the workspace panel menu to browse and edit code. The editor uses [Microsoft Monaco](https://github.com/microsoft/monaco-editor), with new-file creation, file tabs, filename search, syntax highlighting, multiple cursors, folding, undo and redo, find and replace, and a command palette. Images, videos, and other previews open alongside code in the same tab strip. Expand the panel for more room, or keep it beside the conversation.
 
 While Files is selected, terminal buttons, tabs, and the panel menu open shells beneath the editor without changing the view or leaving expanded mode. Hiding and reopening the dock reuses the selected shell. Drag the file explorer or terminal divider to resize it; sizes are remembered. Dividers also support arrow keys, Home/End, and double-click or Enter to reset.
