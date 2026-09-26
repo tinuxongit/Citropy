@@ -14,6 +14,8 @@ While a response runs, Work details shows thoughts as regular text between tool 
 
 Long conversations render only nearby timeline sections, including sections inside a single long reply. Tool expansion state survives scrolling. The renderer caches up to five conversation histories with a 16 MiB estimated content budget; the active conversation is retained even if it exceeds that budget. Evicted histories reload from the server when selected, and background updates do not accumulate unloaded history in the renderer. Saved conversations are unaffected.
 
+When a chat stops because a provider usage limit was reached, the conversation shows when the allowance resets. Turn on Resume when usage returns there, or Settings > Providers > Resume after usage limits for every chat, and Citropy continues the task after the reset. It reads the reset time from the provider message or from Claude Code and Codex limits, and checks every 15 minutes when neither says.
+
 The notification center keeps the last 100 completion notices, including responses, Git actions, and GitHub actions. Settings > Notifications controls popups, desktop alerts, and the alert sound. Settings > General has interface sounds and volume. Desktop alerts appear when Citropy is in the background.
 
 Settings > Appearance > Conversation display controls text streaming. Turn streaming off to wait for a complete text block, then show it immediately or reveal it with a typing animation. The speed slider controls characters per second. Existing history appears immediately, and reduced-motion preferences disable typing animation. Tool activity stays live.

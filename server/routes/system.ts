@@ -29,6 +29,9 @@ export const systemRoutes: Routes = {
     store.configureLogging(event.enabled);
     if (event.enabled) writeLog("info", "server", "Logging turned on");
   },
+  "limits.configure": (event) => {
+    store.configureResumeAfterLimits(event.resumeAfterLimits);
+  },
   "client.error": (event) => {
     writeLog("error", "interface", String(event.message));
   },

@@ -35,6 +35,7 @@ import { serveStatic } from "./static.ts";
 import { requestHandler } from "./http-handler.ts";
 import { store } from "./store.ts";
 import { logFile, setLogging, writeLog } from "./logs.ts";
+import { startUsageResume } from "./usage-resume.ts";
 import * as terminals from "./terminals.ts";
 import type { ClientEvent, ServerEvent, Snapshot } from "../shared/protocol.ts";
 
@@ -66,6 +67,7 @@ function snapshot(): Snapshot {
     notifications: store.notifications,
     notificationPreferences: store.notificationPreferences,
     logging: { enabled: store.logging, file: logFile },
+    resumeAfterLimits: store.resumeAfterLimits,
     panels: panelList(),
     browsers: browser.browserStates(),
     tools: workspaceTools,
@@ -280,6 +282,7 @@ desktopEvents.on("event", (event) => {
 });
 
 let stopProviderUpdateChecks: (() => void) | undefined;
+let stopUsageResume: (() => void) | undefined;
 const providerTimer = setInterval(() => {
   closeIdleSessions();
   if (wss.clients.size) void refreshProviders();
@@ -300,6 +303,7 @@ onShutdown(async () => {
   server.closeAllConnections();
   clearInterval(providerTimer);
   stopProviderUpdateChecks?.();
+  stopUsageResume?.();
   clearInterval(gitTimer);
   disposeAll();
   terminals.detach();
@@ -322,6 +326,7 @@ server.listen(port, host, async () => {
   await terminals.restore();
   await refreshProviders();
   stopProviderUpdateChecks = startProviderUpdateChecks();
+  stopUsageResume = startUsageResume();
   process.send?.({ t: "ready" });
   parentPort?.postMessage({ t: "ready" });
   const available = providerInfo().filter((entry) => entry.available).map((entry) => entry.label);

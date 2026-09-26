@@ -79,7 +79,7 @@ export function parseProviderLimits(
   };
 }
 
-async function limits(provider: ProviderId): Promise<ProviderUsage> {
+export async function providerLimits(provider: ProviderId): Promise<ProviderUsage> {
   const saved = cached.get(provider);
   if (saved && Date.now() - saved.updatedAt < 30_000) return saved;
   const existing = pending.get(provider);
@@ -164,6 +164,6 @@ export async function usageReport(
   return {
     totals,
     conversations,
-    providers: await Promise.all(providers.map(limits)),
+    providers: await Promise.all(providers.map(providerLimits)),
   };
 }

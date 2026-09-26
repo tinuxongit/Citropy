@@ -275,7 +275,15 @@ export interface ThreadMeta {
   parentMessageId?: string;
   nativeAgentId?: string;
   error?: string;
+  usageLimit?: UsageLimitState;
   queue?: QueuedMessage[];
+}
+
+export interface UsageLimitState {
+  at: number;
+  resetsAt?: number;
+  checkedAt?: number;
+  resume: boolean;
 }
 
 export type PermissionMode = "plan" | "manual" | "acceptEdits" | "bypass";
@@ -388,6 +396,7 @@ export interface Snapshot {
   notifications?: AppNotification[];
   notificationPreferences?: NotificationPreferences;
   logging?: { enabled: boolean; file: string };
+  resumeAfterLimits?: boolean;
   panels?: PanelTab[];
   browsers?: BrowserState[];
   toolConnections?: ToolConnection[];
@@ -415,6 +424,7 @@ export type ServerEvent = (
   | { t: "notifications.update"; notifications: AppNotification[] }
   | { t: "notifications.preferences"; preferences: NotificationPreferences }
   | { t: "logging"; enabled: boolean }
+  | { t: "limits.resume"; enabled: boolean }
   | { t: "panel.upsert"; panel: PanelTab; background?: boolean }
   | { t: "panel.remove"; id: string }
   | { t: "panel.order"; projectId: string; ids: string[] }
@@ -470,6 +480,8 @@ export type ClientEvent = (
   | { t: "browser.action"; id: string; input: BrowserAction }
   | { t: "desktop.open" }
   | { t: "logging.configure"; enabled: boolean }
+  | { t: "limits.configure"; resumeAfterLimits: boolean }
+  | { t: "thread.resumeAfterLimit"; id: string; enabled: boolean }
   | { t: "client.error"; message: string }
   | { t: "server.restart" }
   | { t: "thread.finish"; id: string; finished: boolean }

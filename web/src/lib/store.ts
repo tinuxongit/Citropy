@@ -51,6 +51,7 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     connected: false,
     development: false,
     logging: { enabled: false, file: "" },
+    resumeAfterLimits: false,
     githubAccount: null,
     offline: readOffline(id),
     choosingWorkspace: false,

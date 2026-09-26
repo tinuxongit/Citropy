@@ -89,6 +89,7 @@ export interface AppState {
   connected: boolean;
   development: boolean;
   logging: { enabled: boolean; file: string };
+  resumeAfterLimits: boolean;
   githubAccount: GitHubUser | null;
   showGitHubIdentity: boolean;
   showFailedTools: boolean;
@@ -251,6 +252,7 @@ export const useApp = create<AppState>(() => ({
   connected: false,
   development: false,
   logging: { enabled: false, file: "" },
+  resumeAfterLimits: false,
   githubAccount: null,
   showFailedTools: readFlag("citropy.showFailedTools", true),
   showGitHubIdentity: readFlag("citropy.showGitHubIdentity", true),

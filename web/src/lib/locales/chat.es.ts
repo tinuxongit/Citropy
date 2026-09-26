@@ -325,5 +325,16 @@ export const chatEs: Record<string, string> = {
   "Writing": "Escribiendo",
   "Wrote": "Escrito",
   "You": "Tú",
-  "Your conversations will appear here.": "Tus conversaciones aparecerán aquí."
+  "Your conversations will appear here.": "Tus conversaciones aparecerán aquí.",
+  "Usage limit reached": "Límite de uso alcanzado",
+  "Your allowance resets at {time}.": "Tu cuota se restablece a las {time}.",
+  "The reset time has passed. Citropy is checking whether your allowance is back.": "Ya pasó la hora de restablecimiento. Citropy está comprobando si tu cuota volvió.",
+  "The provider did not say when your allowance resets. Citropy checks again every 15 minutes.": "El proveedor no indicó cuándo se restablece tu cuota. Citropy vuelve a comprobarlo cada 15 minutos.",
+  "Continue this task automatically once the limit resets.": "Continúa esta tarea automáticamente cuando el límite se restablezca.",
+  "Continues automatically at {time}.": "Continúa automáticamente a las {time}.",
+  "Continues automatically as soon as usage is available.": "Continúa automáticamente en cuanto haya uso disponible.",
+  "Resume when usage returns": "Reanudar cuando vuelva el uso",
+  "Provider message": "Mensaje del proveedor",
+  "Resumes after reset": "Se reanuda tras el restablecimiento",
+  "Usage limit": "Límite de uso"
 };

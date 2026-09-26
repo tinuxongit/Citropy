@@ -76,7 +76,10 @@ export function modelSource(
   return source.split(/[-_]/).map(part => part[0]!.toUpperCase() + part.slice(1)).join(" ");
 }
 
-export function threadActivity(thread: Pick<ThreadMeta, "running" | "status">): { status: ThreadStatus; label: string } {
+export function threadActivity(thread: Pick<ThreadMeta, "running" | "status" | "usageLimit">): { status: ThreadStatus; label: string } {
+  if (!thread.running && thread.usageLimit) return thread.usageLimit.resume
+    ? { status: "queued", label: "Resumes after reset" }
+    : { status: "error", label: "Usage limit" };
   const status = thread.running && ["idle", "stopped"].includes(thread.status) ? "working" : thread.status;
   const label = status === "idle" ? "Ready" : status === "error" ? "Failed" : status === "awaiting" ? "Needs input"
     : status.charAt(0).toUpperCase() + status.slice(1);

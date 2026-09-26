@@ -1,3 +1,4 @@
+import { checkUsageResume } from "../usage-resume.ts";
 import { searchConversations } from "../conversation-search.ts";
 import { answer as answerPermission } from "../permissions.ts";
 import { providerInfo } from "../provider-registry.ts";
@@ -105,6 +106,13 @@ export const threadRoutes: Routes = {
   "thread.load": (event, send) => {
     const thread = store.threads.get(event.id);
     if (thread) send({ t: "thread.messages", threadId: thread.id, messages: store.readMessages(thread.id) });
+  },
+  "thread.resumeAfterLimit": (event) => {
+    const thread = store.threads.get(event.id);
+    if (!thread?.usageLimit) throw new Error("This conversation is not waiting for a usage limit.");
+    if (typeof event.enabled !== "boolean") throw new Error("Invalid resume preference");
+    store.patchThread(thread.id, { usageLimit: { ...thread.usageLimit, resume: event.enabled } });
+    checkUsageResume();
   },
   "thread.config": async (event, send) => {
     const thread = store.threads.get(event.id);

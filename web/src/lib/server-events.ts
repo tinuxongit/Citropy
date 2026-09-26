@@ -355,6 +355,9 @@ export function applyEvent(state: AppState, event: ServerEvent, focused = true):
     case "logging":
       state.logging = { ...state.logging, enabled: event.enabled };
       return;
+    case "limits.resume":
+      state.resumeAfterLimits = event.enabled;
+      return;
     case "panel.upsert":
     case "panel.remove":
     case "panel.order":

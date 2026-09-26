@@ -1,3 +1,4 @@
+import { limitAfterError } from "./usage-limits.ts";
 import { assertApplicationReady } from "./update-lock.ts";
 import { generateThreadTitle, workspaceGitBusy } from "./assistance.ts";
 import { stopTextGeneration, textGenerationBusy } from "./text-generation.ts";
@@ -58,6 +59,7 @@ export class ThreadRuntime {
   #enqueuing: Promise<void> | undefined;
   #stopGeneration = 0;
   #resume = false;
+  #limitResume = false;
   #buildPlan = false;
   #compactionTimer: NodeJS.Timeout | undefined;
   #stopping: { promise: Promise<void>; ended: () => void; release: () => void } | null = null;
@@ -106,7 +108,8 @@ export class ThreadRuntime {
     }
   }
 
-  async send(text: string, files: Attachment[] = []): Promise<void> {
+  async send(text: string, files: Attachment[] = [], limitResume = false): Promise<void> {
+    this.#limitResume = limitResume;
     if (typeof text === "string" && text.trim() === "/compact" && Array.isArray(files) && !files.length) return this.compact();
     if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");
     if (this.#preparing || this.#thread.running || this.#enqueuing) return this.#enqueue(text, files);
@@ -357,12 +360,12 @@ export class ThreadRuntime {
     if (this.#thread.canRedo) store.patchThread(this.id, { canRedo: false });
     this.#outputAtTurnStart = this.#thread.usage.output;
     this.#usagePulse = 0;
-    store.patchThread(this.#thread.id, { status: "queued", running: true, runStartedAt: Date.now(), error: undefined, archived: false, snoozedUntil: undefined });
+    store.patchThread(this.#thread.id, { status: "queued", running: true, runStartedAt: Date.now(), error: undefined, usageLimit: undefined, archived: false, snoozedUntil: undefined });
     try { await this.#ensureSession().send(prepared.prompt, prepared.attachments, prepared.skills); }
     catch (error) {
       if (!this.#disposed && prepared.generation === this.#stopGeneration) {
         this.#resume = false;
-        store.patchThread(this.id, { status: "error", running: false, error: (error as Error).message });
+        store.patchThread(this.id, { status: "error", running: false, error: (error as Error).message, usageLimit: limitAfterError((error as Error).message, store.resumeAfterLimits || this.#limitResume) });
       }
       throw error;
     }
@@ -388,7 +391,7 @@ export class ThreadRuntime {
     } catch (error) {
       this.#resume = false;
       if (!this.#disposed && generation === this.#stopGeneration)
-        store.patchThread(this.id, { status: "error", running: false, error: (error as Error).message });
+        store.patchThread(this.id, { status: "error", running: false, error: (error as Error).message, usageLimit: limitAfterError((error as Error).message, store.resumeAfterLimits || this.#limitResume) });
     } finally {
       this.#preparing = false;
       this.#pump();
@@ -735,15 +738,19 @@ export class ThreadRuntime {
     this.#finishParts();
     const build = this.#buildPlan && completed && !event.error;
     this.#buildPlan = false;
+    const usageLimit = stopped ? undefined : limitAfterError(event.error, store.resumeAfterLimits || this.#limitResume);
+    if (!usageLimit) this.#limitResume = false;
     store.patchThread(this.#thread.id, {
       status: stopped ? "stopped" : event.error ? "error" : "idle",
       running: false,
       compacting: false,
       activeTool: undefined,
       error: stopped ? undefined : event.error,
+      usageLimit,
     });
     if (completed && !this.#thread.parentThreadId) {
-      if (event.error) this.#notifyChat("error", "Chat needs attention", event.error);
+      if (usageLimit) this.#notifyChat("error", "Usage limit reached", this.#thread.title);
+      else if (event.error) this.#notifyChat("error", "Chat needs attention", event.error);
       else this.#notifyChat("success", "Response finished", this.#thread.title);
     }
     const settle = () => {

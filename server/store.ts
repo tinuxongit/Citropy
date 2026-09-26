@@ -108,6 +108,7 @@ export class Store {
     subagents: false,
   };
   logging = true;
+  resumeAfterLimits = false;
   #savedProjects = "";
   #loaded = new Map<string, Message[]>();
 
@@ -188,6 +189,7 @@ export class Store {
           this.projectDefaults = settings.projectDefaults;
         this.computerEnabled = settings.computerEnabled === true;
         this.logging = settings.logging !== false;
+        this.resumeAfterLimits = settings.resumeAfterLimits === true;
         if (typeof settings.assistance?.automaticTitles === "boolean") this.assistance.automaticTitles = settings.assistance.automaticTitles;
         for (const key of ["titleModel", "commitModel", "reviewModel"] as const) {
           const model = settings.assistance?.[key];
@@ -329,6 +331,13 @@ export class Store {
     bus.emit({ t: "logging", enabled });
   }
 
+  configureResumeAfterLimits(enabled: boolean): void {
+    if (typeof enabled !== "boolean") throw new Error("Invalid usage limit preference");
+    this.#saveSettings({ resumeAfterLimits: enabled });
+    this.resumeAfterLimits = enabled;
+    bus.emit({ t: "limits.resume", enabled });
+  }
+
   configureAssistance(settings: AssistanceSettings): void {
     this.#saveSettings({ assistance: settings });
     this.assistance = settings;
@@ -383,6 +392,7 @@ export class Store {
       notifications: this.notificationPreferences,
       computerEnabled: this.computerEnabled,
       logging: this.logging,
+      resumeAfterLimits: this.resumeAfterLimits,
       assistance: this.assistance,
       projectDefaults: this.projectDefaults,
       providerInstances: [...this.providerInstances.values()],

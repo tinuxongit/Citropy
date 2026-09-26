@@ -59,6 +59,7 @@ export function ProviderSettings() {
   const providers = useApp((state) => state.providers);
   const connected = useApp((state) => state.connected);
   const threads = useApp((state) => state.threads);
+  const resumeAfterLimits = useApp((state) => state.resumeAfterLimits);
   const [maintenance, setMaintenance] = useState<ProviderMaintenance[]>([]);
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
@@ -177,6 +178,20 @@ export function ProviderSettings() {
           </select>
         </label>
         {switching && <p className="provider-maintenance-note" role="status">{t("Connecting…")}</p>}
+        <label className="setting-row">
+          <span>
+            <strong>{t("Resume after usage limits")}</strong>
+            <small>{t("When a chat stops because a usage limit is reached, continue it automatically once the limit resets. You can also turn this on for a single chat.")}</small>
+          </span>
+          <input
+            className="setting-switch"
+            type="checkbox"
+            role="switch"
+            checked={resumeAfterLimits}
+            disabled={!connected}
+            onChange={(event) => send({ t: "limits.configure", resumeAfterLimits: event.target.checked })}
+          />
+        </label>
       </div>
       <div className="provider-maintenance-heading">
       <h2 className="settings-group-heading">{t("Installed providers")}</h2>
