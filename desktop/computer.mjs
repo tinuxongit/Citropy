@@ -54,7 +54,7 @@ function send(method, params = {}) {
     if (!child?.stdin.writable) return reject(new Error("Start a computer session first."));
     const id = ++sequence;
     const text = method === "action" && params.action === "type" && typeof params.text === "string" ? params.text : "";
-    const typeTimeout = Math.max(80000, 20000 + [...text].reduce((time, character) => time + (character.codePointAt(0) > 127 ? 50 : 12), 0));
+    const typeTimeout = Math.max(80000, 20000 + [...text].reduce((time, character) => time + (character.codePointAt(0) > 127 ? 150 : 12), 0));
     const timer = setTimeout(() => stopComputer("Computer control timed out. Start a new session to continue.", true), method === "start" ? 125000 : text ? typeTimeout : 25000);
     pending.set(id, { resolve, reject, timer });
     child.stdin.write(`${JSON.stringify({ id, method, params })}\n`);

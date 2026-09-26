@@ -294,6 +294,13 @@ class X11:
         self.x.XFlush.argtypes = self.x.XCloseDisplay.argtypes = [ctypes.c_void_p]
         self.xt.XTestFakeMotionEvent.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_ulong]
         self.xt.XTestFakeButtonEvent.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_int, ctypes.c_ulong]
+        self.xt.XTestFakeKeyEvent.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_int, ctypes.c_ulong]
+        self.x.XDisplayKeycodes.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)]
+        self.x.XGetKeyboardMapping.argtypes = [ctypes.c_void_p, ctypes.c_ubyte, ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
+        self.x.XGetKeyboardMapping.restype = ctypes.POINTER(ctypes.c_ulong)
+        self.x.XChangeKeyboardMapping.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_ulong), ctypes.c_int]
+        self.x.XSync.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        self.x.XFree.argtypes = [ctypes.c_void_p]
         self.display = self.x.XOpenDisplay(None)
         if not self.display:
             raise RuntimeError("Could not connect to the X11 desktop.")
@@ -373,8 +380,41 @@ class X11:
     def type(self, text):
         for ascii_only, characters in groupby(text, str.isascii):
             segment = "".join(characters)
-            delay = 12 if ascii_only else 50
-            self.command(["type", "--clearmodifiers", "--delay", str(delay), "--file", "-"], segment, max(75, len(segment) * delay / 1000 + 20))
+            if ascii_only:
+                self.command(["type", "--clearmodifiers", "--delay", "12", "--file", "-"], segment, max(75, len(segment) * 0.012 + 20))
+            else:
+                self.type_unicode(segment)
+
+    def spare_keycode(self):
+        low, high, per = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
+        self.x.XDisplayKeycodes(self.display, ctypes.byref(low), ctypes.byref(high))
+        count = high.value - low.value + 1
+        mapping = self.x.XGetKeyboardMapping(self.display, low.value, count, ctypes.byref(per))
+        try:
+            for index in range(count - 1, -1, -1):
+                if not any(mapping[index * per.value + level] for level in range(per.value)):
+                    return low.value + index
+        finally:
+            self.x.XFree(mapping)
+        raise RuntimeError("No free key is available to type this character.")
+
+    def type_unicode(self, text):
+        # Apps translate a key press with the keymap they hold when they read the event, so each remap waits until the previous press has been read.
+        code = self.spare_keycode()
+        try:
+            for character in text:
+                point = ord(character)
+                symbol = point if 0xa0 <= point <= 0xff else 0x01000000 + point
+                self.x.XChangeKeyboardMapping(self.display, code, 2, (ctypes.c_ulong * 2)(symbol, symbol), 1)
+                self.x.XSync(self.display, 0)
+                time.sleep(0.05)
+                self.xt.XTestFakeKeyEvent(self.display, code, 1, 0)
+                self.xt.XTestFakeKeyEvent(self.display, code, 0, 0)
+                self.x.XSync(self.display, 0)
+                time.sleep(0.08)
+        finally:
+            self.x.XChangeKeyboardMapping(self.display, code, 2, (ctypes.c_ulong * 2)(0, 0), 1)
+            self.x.XSync(self.display, 0)
 
     def scroll(self, dx, dy):
         for delta, positive, negative in [(dy, 5, 4), (dx, 7, 6)]:
