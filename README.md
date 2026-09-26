@@ -38,7 +38,7 @@ Nothing needs an administrator password. Manual downloads are on the [releases p
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/chat-dark.png">
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/chat-light.png">
-  <img alt="Citropy running a Claude Code conversation beside the task list and Git status" src="docs/assets/chat-light.png">
+  <img alt="Citropy running a Claude Code conversation beside the conversation list" src="docs/assets/chat-light.png">
 </picture>
 
 ## What it does
@@ -68,10 +68,10 @@ Changed files are grouped into added, changed, and deleted, with the diff inline
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/git-dark.png">
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/git-light.png">
-  <img alt="The Git panel showing the branch, changed files, and AI commit buttons" src="docs/assets/git-light.png">
+  <img alt="The Git menu above the composer showing the branch, changed files, and AI commit buttons" src="docs/assets/git-light.png">
 </picture>
 
-The Git panel shows the branch, change counts, and commits waiting to push. AI commit writes the message from the diff in a separate session, so it doesn't touch your conversation.
+The Git tab above the composer shows the branch, change counts, and commits waiting to push. AI commit writes the message from the diff in a separate session, so it doesn't touch your conversation.
 
 ## Browser and terminals
 
@@ -120,10 +120,10 @@ When an agent needs a decision, it asks above the composer. Pick an option, choo
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/workspaces-dark.png">
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/workspaces-light.png">
-  <img alt="The workspace picker showing local folders, an SSH host, and Docker" src="docs/assets/workspaces-light.png">
+  <img alt="The Add project menu showing local folders, an SSH host, and Docker" src="docs/assets/workspaces-light.png">
 </picture>
 
-Connect to a host over SSH or start a Docker container. Files, Git, terminals, and agents run on that machine while the window stays on yours. Citropy sets up Node.js on the remote host by itself if it's missing, on Linux and macOS hosts.
+Open the Add project menu next to Search to connect to a host over SSH or start a Docker container. Files, Git, terminals, and agents run on that machine while the window stays on yours. Citropy sets up Node.js on the remote host by itself if it's missing, on Linux and macOS hosts.
 
 ## Usage
 
