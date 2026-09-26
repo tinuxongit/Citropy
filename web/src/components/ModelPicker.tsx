@@ -98,6 +98,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   </button>;
   return <Menu
     width={340}
+    gutter={tuning ? 50 : 0}
     className="model-picker-menu"
     searchable
     onClose={() => { setTransferring(false); setTarget(undefined); }}

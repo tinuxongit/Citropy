@@ -44,6 +44,7 @@ interface Props {
   footer?: ReactNode;
   clearOf?: string;
   width?: number;
+  gutter?: number;
   searchable?: boolean;
   searchPlaceholder?: string;
   className?: string;
@@ -61,6 +62,7 @@ export function Menu({
   footer,
   clearOf,
   width = 232,
+  gutter = 0,
   searchable = false,
   searchPlaceholder = "Search models",
   className = "",
@@ -115,10 +117,11 @@ export function Menu({
       const scale = uiScale / 100;
       const clearance = clearOf ? wrap.current?.closest(clearOf)?.getBoundingClientRect() : undefined;
       const anchorLeft = (clearance?.left ?? bounds.left) / scale;
-      const menuWidth = Math.min(width, viewportWidth() - 24);
+      const menuWidth = Math.min(width, viewportWidth() - 24 - 2 * gutter);
       const preferred = align === "end" ? bounds.right / scale - menuWidth : anchorLeft;
       element.style.width = `${scaled(menuWidth)}px`;
       element.style.maxHeight = "";
+      element.style.minHeight = "";
       const height = element.offsetHeight / scale;
       const top = clearance?.top ?? bounds.top;
       const above = Math.max(0, top / scale - 18);
@@ -126,7 +129,8 @@ export function Menu({
       const upwards = height > below && above > below;
       const available = upwards ? above : below;
       element.style.maxHeight = `${scaled(available)}px`;
-      element.style.left = `${scaled(Math.max(12, Math.min(preferred, viewportWidth() - menuWidth - 12)))}px`;
+      if (parseFloat(getComputedStyle(element).minHeight) > scaled(available)) element.style.minHeight = `${scaled(available)}px`;
+      element.style.left = `${scaled(Math.max(12 + gutter, Math.min(preferred, viewportWidth() - menuWidth - 12 - gutter)))}px`;
       element.style.top = `${scaled(upwards ? top / scale - Math.min(height, available) - 6 : bounds.bottom / scale + 6)}px`;
     };
     position();
@@ -160,7 +164,7 @@ export function Menu({
       window.removeEventListener("resize", position);
       window.removeEventListener("scroll", scroll, true);
     };
-  }, [open, width, align, searchable, uiScale, anchor, clearOf]);
+  }, [open, width, gutter, align, searchable, uiScale, anchor, clearOf]);
 
   useEffect(() => {
     if (!open) return;

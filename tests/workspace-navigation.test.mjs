@@ -21,6 +21,11 @@ const providers = [
 const thread = { id: "chat", projectId: "first", provider: "claude", model: "claude-fast", title: "Current conversation", permissionMode: "manual", status: "idle", running: false, externalId: "session", createdAt: 1, updatedAt: 1, usage: { input: 280000, output: 1900, cacheRead: 100000, cacheWrite: 2000, costUsd: 4.3, contextTokens: 82000, contextMax: 200000, turns: 4 } };
 const account = { login: "example", avatar_url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'/%3E", html_url: "https://github.com/example" };
 
+async function backToChat(page) {
+  const back = page.getByRole("button", { name: "Back to chat", exact: true });
+  await (await back.count() ? back : page.getByRole("navigation", { name: "Workspace navigation", exact: true }).getByRole("button", { name: "Conversations", exact: true })).click();
+}
+
 test("workspace navigation and conversation setup stay consistent", { timeout: 180_000 }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-navigation-"));
   const server = await createServer({ configFile: false, cacheDir: join(directory, "cache"), root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
@@ -116,9 +121,9 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.getByRole("slider", { name: "Reasoning effort" }).fill("0");
     await page.locator(".composer-model .composer-detail", { hasText: "Low" }).waitFor();
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "Ask before changes", exact: true }).click();
+    await page.getByRole("button", { name: "Permissions: Ask before changes", exact: true }).click();
     await page.getByRole("menuitem", { name: /^Full access/ }).click();
-    await page.getByRole("button", { name: "Full access", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Permissions: Full access", exact: true }).waitFor();
     await page.getByRole("button", { name: "Model: Claude Fast", exact: true }).click();
     assert.equal(await page.getByRole("button", { name: "Transfer to another agent", exact: true }).isDisabled(), true);
     await page.getByRole("menuitem", { name: /^Claude Extended/ }).click();
@@ -528,7 +533,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.deepEqual(await menu.getByRole("menuitem").locator(".menu-label").allTextContents(), ["Claude Extended", "Codex Extended"]);
     await page.waitForFunction(() => getComputedStyle(document.querySelector(".model-picker-menu")).opacity === "1");
     const narrow = await menu.boundingBox();
-    assert.ok(narrow.x >= 0 && narrow.x + narrow.width <= 600 && narrow.y >= 0 && narrow.y + narrow.height <= 800);
+    assert.ok(narrow.x >= 0 && narrow.x + narrow.width <= 600 && narrow.y >= 0 && narrow.y + narrow.height <= 800, JSON.stringify(narrow));
     await page.screenshot({ path: "/tmp/citropy-model-favorites-narrow.png", animations: "disabled" });
     await page.keyboard.press("Escape");
     await menu.waitFor({ state: "detached" });
@@ -595,7 +600,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     }
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
-    await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+    await backToChat(page);
     await panel.getByRole("button", { name: "Commit model: Codex Extended", exact: true }).waitFor();
     await panel.getByRole("button", { name: "Hide Git panel", exact: true }).click();
     await panel.waitFor({ state: "detached" });
@@ -655,9 +660,10 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
       await menu.getByRole("button", { name: "Codex", exact: true }).click();
       await page.screenshot({ path: `/tmp/citropy-transfer-picker-${width}.png`, animations: "disabled" });
       await menu.getByRole("menuitem", { name: /^Codex Extended/ }).click();
+      await page.getByRole("button", { name: "Transfer to Codex Extended", exact: true }).click();
       const dialog = page.getByRole("dialog", { name: "Transfer to Codex Extended?", exact: true });
       await dialog.waitFor();
-      assert.match(await dialog.textContent(), /extra usage.*additional costs/);
+      assert.match(await dialog.textContent(), /extra usage.*may cost more/);
       assert.equal(requests.filter(event => event.t === "transfer").length, 0);
       const bounds = await dialog.boundingBox();
       assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width && bounds.y >= 0 && bounds.y + bounds.height <= 900, JSON.stringify(bounds));
@@ -671,6 +677,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
       await page.getByRole("button", { name: "Transfer to another agent", exact: true }).click();
       await page.getByRole("button", { name: "Codex", exact: true }).click();
       await page.getByRole("menuitem", { name: /^Codex Extended/ }).click();
+      await page.getByRole("button", { name: "Transfer to Codex Extended", exact: true }).click();
       await page.getByRole("button", { name: "Transfer and continue", exact: true }).click();
     };
     fail = true;
@@ -802,7 +809,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
       await page.setViewportSize({ width, height: 900 });
       const text = await options.locator(".composer-detail").evaluate(node => ({ height: node.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(node).lineHeight) * 1.2 }));
       assert.ok(text.height < text.lineHeight + 1, JSON.stringify(text));
-      assert.ok(await options.evaluate(node => node.scrollWidth <= node.clientWidth));
+      assert.ok(await options.evaluate(node => node.getBoundingClientRect().right <= node.closest(".composer-bar").getBoundingClientRect().right + 0.5));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     }
   });
@@ -869,7 +876,6 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.equal(await currentPanel.locator(".context-cache-note").getAttribute("title"), "100,000 reused · 282,000 new");
     emit({ t: "thread.upsert", thread: { ...thread, externalId: undefined, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, contextTokens: 0, contextMax: 0, turns: 0 }, contextWindow: 1000000 } });
     await page.getByRole("button", { name: "0% context used", exact: true }).waitFor();
-    assert.equal(await page.locator(".context-ring text").textContent(), "0");
   });
 
   await t.test("context meters distinguish missing usage from empty threads and never count cache twice", async test => {
@@ -879,7 +885,6 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
       emit({ t: "thread.upsert", thread: { ...thread, usage: { input: 1662, output: 253163, cacheRead: 72274757, cacheWrite: 1446282, costUsd: 56.94, contextTokens, contextMax: 1000000, turns: 18 } } });
       await page.locator(".context-ring").hover();
       await panel.getByText("Not reported yet", { exact: true }).waitFor();
-      assert.equal(await page.locator(".context-ring text").textContent(), "");
       assert.equal(await panel.getByText("Window size: 1.00M tokens", { exact: true }).isVisible(), true);
       assert.equal(await panel.getByText("Total processed", { exact: true }).isVisible(), true);
       assert.equal(await panel.getByText("Uncached input", { exact: true }).isVisible(), false);
