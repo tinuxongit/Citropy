@@ -10,6 +10,7 @@ import { Menu } from "../Menu.tsx";
 import { PixelLoader } from "../PixelLoader.tsx";
 import { RenameProjectModal } from "./RenameProjectModal.tsx";
 import type { Project } from "../../../../shared/protocol.ts";
+import { Unplug } from "lucide-react";
 import type { ThreadGroup } from "./thread-groups.ts";
 
 export function ProjectHeading({ group, project, searching, dragging, isFirst, isLast, canCreateThread, onDragStart, consumeDrag, onMove, onNewThread, onConversation }: {
@@ -85,12 +86,13 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
       }}
     >
       <button className="global-project-toggle" type="button"
-        aria-label={`${group.open ? t("Collapse") : t("Expand")} ${group.label}`} aria-expanded={expanded}
+        aria-label={`${group.open ? t("Collapse") : t("Expand")} ${group.label}${group.offline ? `, ${t("Disconnected")}` : ""}`} aria-expanded={expanded}
         title={environment === "local" ? project.path : `${connectionName(environment)}: ${project.path}`}
         onPointerDown={onDragStart} onClick={event => { if (!consumeDrag(event)) group.toggle(); }}
       >
         {pending || connecting ? <PixelLoader size={16} /> : <Icon size={16} strokeWidth={1.75} />}
         <span className="truncate">{group.label}</span>
+        {group.offline && <span className="global-project-offline" title={t("Disconnected")}><Unplug size={12} /></span>}
       </button>
       <Menu align="end" items={[
         { id: "open", label: t("Open workspace"), icon: <FolderOpen size={15} />, disabled, onSelect: () => void run(() => { selectProject(project.id); onConversation(); }) },

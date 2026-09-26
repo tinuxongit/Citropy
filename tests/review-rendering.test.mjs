@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 const hash = "a".repeat(40);
 const smallHash = "b".repeat(40);
@@ -28,8 +26,7 @@ const overview = {
 
 test("reviews and source previews keep rendering bounded", { timeout: 120_000 }, async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-review-"));
-  const server = await createServer({ configFile: false, cacheDir: join(directory, "cache"), root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
   async function fixture(test, { files = [], panels = [], attachments = [] } = {}) {
@@ -69,7 +66,7 @@ test("reviews and source previews keep rendering bounded", { timeout: 120_000 },
       socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [{ id: "workspace", name: "Review workspace", path: "/example", isGit: true, lastOpened: 1 }], threads: attachments.length ? [{ id: "attachments", projectId: "workspace", title: "Uploaded files", provider: "codex", permissionMode: "bypass", status: "idle", running: false, createdAt: 1, updatedAt: 1, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, turns: 0 } }] : [], providers: [], permissions: [], home: "/example", panels } }));
     });
     if (attachments.length) await page.addInitScript(() => localStorage.setItem("citropy.thread", "attachments"));
-    await page.goto(server.resolvedUrls.local[0]);
+    await page.goto(server.url);
     await page.getByRole("button", { name: "Source control", exact: true }).waitFor();
     return { page, requests, state, failCommit: value => { failCommit = value; }, emit: event => connection.send(JSON.stringify(event)) };
   }
@@ -207,7 +204,7 @@ test("reviews and source previews keep rendering bounded", { timeout: 120_000 },
     await page.getByText("export const value4999 = 4999;", { exact: true }).waitFor();
     const loadedFetches = fetches;
     const color = await page.locator('.source-line[data-index="4999"] code span[style]').first().getAttribute("style");
-    await page.evaluate(async () => (await import("/web/src/lib/store.ts")).setTheme("light"));
+    await page.evaluate(async () => (await import("/web/src/lib/store.ts")).setScheme("light"));
     await page.waitForFunction(color => {
       const token = document.querySelector('.source-line[data-index="4999"] code span[style]');
       return token && token.getAttribute("style") !== color;

@@ -3,17 +3,14 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("the sidebar and titlebar agree without borrowing another worktree's cached branch", { timeout: 120000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-branch-labels-ui-"));
   let server, browser;
   t.after(async () => { await browser?.close(); await server?.close(); await rm(directory, { recursive: true, force: true }); });
-  server = await createServer({ configFile: false, root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error", cacheDir: join(directory, "cache"), server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
+  server = await appServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.setDefaultTimeout(20000);
@@ -52,7 +49,7 @@ test("the sidebar and titlebar agree without borrowing another worktree's cached
       permissions: [], home: "/home",
     } }));
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   await page.getByRole("button", { name: selected.title, exact: true }).waitFor();
   const status = branch => ({ branch, ahead: 0, behind: 0, files: [], clean: true });
   const send = event => connection.send(JSON.stringify(event));

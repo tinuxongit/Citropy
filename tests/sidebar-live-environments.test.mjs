@@ -3,10 +3,8 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, contextTokens: 0, contextMax: 200000, turns: 0 };
 const makeThread = (id, title, extra = {}) => ({
@@ -25,8 +23,7 @@ const remoteThreads = [
 
 test("live SSH threads share sidebar groups and actions with local threads", { timeout: 60000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-sidebar-live-"));
-  const server = await createServer({ configFile: false, root: fileURLToPath(new URL("..", import.meta.url)), cacheDir: join(directory, "cache"), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -86,7 +83,7 @@ test("live SSH threads share sidebar groups and actions with local threads", { t
       permissions: [], home: remote ? "/remote" : "/local",
     } }));
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   const sidebar = page.locator('.rail[data-sidebar-mode="global"]');
   const local = sidebar.locator('.thread-entry[data-environment="local"][data-thread-id="same"]');
   const remote = sidebar.locator('.thread-entry[data-environment="ssh"][data-thread-id="same"]');
@@ -147,8 +144,7 @@ test("live SSH threads share sidebar groups and actions with local threads", { t
 
 test("disconnected SSH catalog threads appear in Pinned and Finished", { timeout: 60000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-sidebar-cached-"));
-  const server = await createServer({ configFile: false, root: fileURLToPath(new URL("..", import.meta.url)), cacheDir: join(directory, "cache"), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
   const page = await browser.newPage();
@@ -177,7 +173,7 @@ test("disconnected SSH catalog threads appear in Pinned and Finished", { timeout
       threads: localThreads, providers: [], permissions: [], home: "/local",
     } }));
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   const sidebar = page.locator('.rail[data-sidebar-mode="global"]');
   const pinned = sidebar.locator('.thread-category[data-category="pinned"]');
   await pinned.getByRole("button", { name: "Cached pinned", exact: true }).waitFor();

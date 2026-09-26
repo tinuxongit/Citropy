@@ -8,7 +8,6 @@ import opencodeDark from "../assets/providers/opencode-dark.svg";
 import piLight from "../assets/providers/pi-light.svg";
 import piDark from "../assets/providers/pi-dark.svg";
 import { useApp } from "../lib/store.ts";
-import { schemeOf } from "../lib/app-state.ts";
 import type { ProviderId } from "../../../shared/protocol.ts";
 
 const logos = {
@@ -20,7 +19,7 @@ const logos = {
 };
 
 export function ProviderIcon({ provider }: { provider: ProviderId }) {
-  const scheme = useApp((state) => schemeOf(state.theme));
+  const scheme = useApp((state) => state.scheme);
   return (
     <img
       className="provider-icon"

@@ -3,15 +3,12 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("folder controls work across environments without entering a conversation", { timeout: 90000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-workspace-environments-"));
-  const server = await createServer({ configFile: false, root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error", cacheDir: join(directory, "cache"), server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.setDefaultTimeout(15000);
@@ -88,7 +85,7 @@ test("folder controls work across environments without entering a conversation",
     if (environment === "ssh-test" && holdRemoteHello) { releaseRemoteHello = hello; remoteReconnect.resolve(); }
     else hello();
   });
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   const heading = (environment, id) => page.locator(`.global-project-heading[data-environment="${environment}"][data-project-id="${id}"]`);
   const edit = async (environment, id, label) => {
     await heading(environment, id).locator(".global-project-edit").click();
@@ -210,7 +207,8 @@ test("folder controls work across environments without entering a conversation",
     await row("ssh-test").getByRole("img", { name: "Working", exact: true }).waitFor();
     holdRemoteHello = true;
     sockets.get("ssh-test").close();
-    await row("ssh-test").getByRole("img", { name: "Disconnected", exact: true }).waitFor();
+    await heading("ssh-test", "shared").locator(".global-project-offline").waitFor();
+    assert.equal(await row("ssh-test").getByRole("img", { name: "Disconnected", exact: true }).count(), 0);
     await remoteReconnect.promise;
     holdRemoteHello = false;
     releaseRemoteHello();
@@ -230,11 +228,12 @@ test("folder controls work across environments without entering a conversation",
     sockets.get("ssh-test").send(JSON.stringify({ t: "project.remove", id: added.id }));
     await heading("ssh-test", added.id).waitFor({ state: "detached" });
     await page.evaluate(() => window.setRemoteStatus("disconnected"));
-    await row("ssh-test").getByRole("img", { name: "Disconnected", exact: true }).waitFor();
+    await heading("ssh-test", "shared").locator(".global-project-offline").waitFor();
+    assert.equal(await row("ssh-test").getByRole("img", { name: "Disconnected", exact: true }).count(), 0);
     assert.equal(await row("ssh-test").getByRole("img", { name: "Failed", exact: true }).count(), 0);
     threads["ssh-test"][0] = { ...threads["ssh-test"][0], status: "idle" };
     await page.evaluate(() => window.setRemoteStatus("connected"));
-    await row("ssh-test").getByRole("img", { name: "Disconnected", exact: true }).waitFor({ state: "detached" });
+    await heading("ssh-test", "shared").locator(".global-project-offline").waitFor({ state: "detached" });
     assert.equal(await row("ssh-test").locator(".thread-status").count(), 0);
     sockets.get("ssh-test").send(JSON.stringify({ t: "thread.remove", id: "same-thread" }));
     await row("ssh-test").waitFor({ state: "detached" });

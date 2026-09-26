@@ -14,7 +14,7 @@ import { PixelLoader } from "./PixelLoader.tsx";
 const size = (bytes?: number) =>
   bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : "";
 
-export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "settings" }) {
+export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "strip" | "settings" }) {
   const t = useI18n();
   const reducedMotion = useReducedMotion();
   const [state, setState] = useState<AppUpdateState>({
@@ -126,6 +126,12 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
         : state.status === "current" && confirming
           ? Check
           : Download;
+  const face = (
+    <>
+      {state.status !== "error" && busy && !downloading ? <PixelLoader size={17} /> : <Icon size={17} />}
+      {variant === "settings" ? t(label) : downloading && <small>{Math.floor(state.percent || 0)}%</small>}
+    </>
+  );
   return (
     <div
       className={`app-update-control${variant === "settings" ? " app-update-settings" : ""}`}
@@ -151,11 +157,9 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
         aria-disabled={busy || state.status === "unsupported"}
         onClick={() => void run()}
       >
-        {state.status !== "error" && busy && !downloading ? <PixelLoader size={17} /> : <Icon size={17} />}
-        {variant === "settings" ? t(label) : downloading && <small>{Math.floor(state.percent || 0)}%</small>}
-        {variant === "rail" && state.status === "available" && (
-          <span className="update-available-dot" />
-        )}
+        {variant === "strip" ? (
+          <span className="strip-action-face">{face}</span>
+        ) : face}
       </button>
       <AnimatePresence>{open && (
         <motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="tooltip">

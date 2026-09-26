@@ -279,7 +279,6 @@ export function BrowserPane({
       </div>
       <div className="browser-footer">
         <span>
-          <span className="browser-live" />
           {native
             ? t("{profile} · Shared with providers", { profile: state?.profileName ?? t("Workspace") })
             : t("Desktop browser")}

@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
 import { modelSettings, nextTurnSettings } from "../shared/model-options.ts";
+import { appServer } from "./app-server.mjs";
 
 const projects = [
   { id: "first", name: "First workspace", path: "/example/first", isGit: true, lastOpened: 1 },
@@ -26,10 +24,11 @@ async function backToChat(page) {
   await (await back.count() ? back : page.getByRole("navigation", { name: "Workspace navigation", exact: true }).getByRole("button", { name: "Conversations", exact: true })).click();
 }
 
-test("workspace navigation and conversation setup stay consistent", { timeout: 180_000 }, async (t) => {
+test("workspace navigation and conversation setup stay consistent", { timeout: 180_000, concurrency: 4 }, async (t) => {
+  const pending = [];
+  const subtest = (...args) => { pending.push(t.test(...args)); };
   const directory = await mkdtemp(join(tmpdir(), "citropy-navigation-"));
-  const server = await createServer({ configFile: false, cacheDir: join(directory, "cache"), root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await server.close(); await rm(directory, { recursive: true, force: true }); });
 
@@ -108,12 +107,12 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
       });
       socket.send(JSON.stringify({ t: "hello", snapshot: { projects, threads: chat ? [thread] : [], providers: catalogs, permissions: [], home: "/example", notificationPreferences } }));
     });
-    await page.goto(server.resolvedUrls.local[0]);
+    await page.goto(server.url);
     await page.getByRole("button", { name: "Choose workspace, First workspace", exact: true }).waitFor();
     return { page, requests, states, emit: event => { if (event.t === "thread.upsert") created.set(event.thread.id, event.thread); connection.send(JSON.stringify(event)); } };
   }
 
-  await t.test("model, effort and access remain editable for the next turn while running", async test => {
+  subtest("model, effort and access remain editable for the next turn while running", async test => {
     const { page, emit } = await fixture(test);
     emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", effort: "high", runStartedAt: Date.now() } });
     await page.locator(".composer-stop").waitFor();
@@ -128,7 +127,6 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.equal(await page.getByRole("button", { name: "Transfer to another agent", exact: true }).isDisabled(), true);
     await page.getByRole("menuitem", { name: /^Claude Extended/ }).click();
     await page.getByRole("button", { name: "Model: Claude Extended", exact: true }).waitFor();
-    await page.locator(".composer-pending-settings").getByText("Applies to the next turn", { exact: true }).waitFor();
     assert.deepEqual(await page.evaluate(async () => {
       const { useApp } = await import("/web/src/lib/store.ts");
       const thread = useApp.getState().threads.chat;
@@ -142,7 +140,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     }
   });
 
-  await t.test("provider session import supports filtering, errors, and opening imported conversations", async test => {
+  subtest("provider session import supports filtering, errors, and opening imported conversations", async test => {
     const { page } = await fixture(test);
     let fail = true;
     await page.route("**/api/providers/sessions**", async route => {
@@ -177,7 +175,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.equal(await page.evaluate(async () => (await import("/web/src/lib/store.ts")).useApp.getState().activeThreadId), "chat");
   });
 
-  await t.test("subagent completion alerts default off and can be changed in settings", async test => {
+  subtest("subagent completion alerts default off and can be changed in settings", async test => {
     const { page, requests } = await fixture(test);
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.locator('button[data-settings-section="notifications"]').click();
@@ -202,7 +200,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     }
   });
 
-  await t.test("workspace actions and pinned, active, and finished categories are distinct", async test => {
+  subtest("workspace actions and pinned, active, and finished categories are distinct", async test => {
     const { page, emit } = await fixture(test, { navigationStyle: "bar" });
     assert.equal(await page.locator(".topbar .workspace-select").count(), 1);
     assert.equal(await page.locator(".rail .workspace-select").count(), 0);
@@ -255,7 +253,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.screenshot({ path: "/tmp/citropy-open-panel-menu.png", animations: "disabled" });
   });
 
-  await t.test("workspace tabs shrink inside the panel and keep overflow panels reachable", async test => {
+  subtest("workspace tabs shrink inside the panel and keep overflow panels reachable", async test => {
     const { page } = await fixture(test);
     const panels = [
       ...["changes", "files", "tools", "subagents"].map(kind => ({ id: kind, kind, projectId: "first", title: kind[0].toUpperCase() + kind.slice(1) })),
@@ -338,7 +336,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.screenshot({ path: "/tmp/citropy-workspace-tabs-wide.png", animations: "disabled" });
   });
 
-  await t.test("update notifications open the relevant settings without starting a download", async test => {
+  subtest("update notifications open the relevant settings without starting a download", async test => {
     const { page, emit } = await fixture(test);
     await page.route("**/api/providers/maintenance*", route => route.fulfill({ json: [] }));
     await page.evaluate(() => {
@@ -389,7 +387,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   });
 
-  await t.test("new-thread buttons open chat directly and remember the last provider, model, and effort", async test => {
+  subtest("new-thread buttons open chat directly and remember the last provider, model, and effort", async test => {
     const { page, requests } = await fixture(test, { chat: false });
     assert.equal(await page.locator(".welcome .pill, .welcome .status-dot").count(), 0);
     await page.locator(".welcome").getByRole("button", { name: "New thread", exact: true }).click();
@@ -424,7 +422,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.equal(await page.locator(".thread-toolbar").getByRole("button", { name: "New thread", exact: true }).isEnabled(), true);
   });
 
-  await t.test("global and folder defaults take precedence while automatic selection remembers the last model", async test => {
+  subtest("global and folder defaults take precedence while automatic selection remembers the last model", async test => {
     const { page, requests, emit } = await fixture(test, { chat: false });
     emit({ t: "project.defaults", settings: { provider: "codex", model: "codex-extended", effort: "low", workspace: "new" } });
     await page.locator(".welcome").getByRole("button", { name: "New thread", exact: true }).click();
@@ -466,7 +464,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.equal(requests.filter(event => event.t === "create").at(-1).effort, "low");
   });
 
-  await t.test("workspace setup remains available and preserves choices when the provider changes", async test => {
+  subtest("workspace setup remains available and preserves choices when the provider changes", async test => {
     const { page, requests } = await fixture(test, { chat: false });
     await page.locator(".workspace-select").click();
     await page.getByRole("menuitem", { name: "New thread with workspace options…", exact: true }).click();
@@ -487,7 +485,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.getByRole("button", { name: "Model: Codex Extended", exact: true }).waitFor();
   });
 
-  await t.test("model favorites persist, respect provider locks, and keep a steady scrollable picker", async test => {
+  subtest("model favorites persist, respect provider locks, and keep a steady scrollable picker", async test => {
     const catalogs = providers.map(provider => provider.id === "codex" ? { ...provider, models: [...provider.models, ...Array.from({ length: 40 }, (_, index) => ({ id: `codex-${index}`, label: `Codex model ${index}` }))] } : provider);
     const { page, requests, emit } = await fixture(test, { chat: false, catalogs });
     await page.locator(".welcome").getByRole("button", { name: "New thread", exact: true }).click();
@@ -556,7 +554,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.deepEqual(await menu.getByRole("menuitem").locator(".menu-label").allTextContents(), ["Claude Fast", "Claude Extended"]);
   });
 
-  await t.test("Git model selection stays synced with settings and provider cards stay separate", async test => {
+  subtest("Git model selection stays synced with settings and provider cards stay separate", async test => {
     const { page, emit } = await fixture(test);
     let settings = { automaticTitles: true, titleModel: null, commitModel: null };
     const patches = [];
@@ -601,8 +599,9 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
     await backToChat(page);
+    await page.getByRole("button", { name: "Git actions", exact: true }).click();
     await panel.getByRole("button", { name: "Commit model: Codex Extended", exact: true }).waitFor();
-    await panel.getByRole("button", { name: "Hide Git panel", exact: true }).click();
+    await page.getByRole("button", { name: "Git actions", exact: true }).click();
     await panel.waitFor({ state: "detached" });
     await page.getByRole("button", { name: "Model: Claude Fast", exact: true }).click();
     await page.getByRole("button", { name: "Claude Code · Provider locked", exact: true }).waitFor();
@@ -632,7 +631,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     }
   });
 
-  await t.test("chat transfers require an explicit usage confirmation and preserve the draft and agent identities", async test => {
+  subtest("chat transfers require an explicit usage confirmation and preserve the draft and agent identities", async test => {
     const { page, requests, emit } = await fixture(test);
     let fail = false;
     await page.route("**/api/threads/transfer?*", route => {
@@ -698,7 +697,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.equal(await page.locator(".context-totals summary strong").textContent(), "384k");
   });
 
-  await t.test("notifications stay reachable beside the sidebar controls at every window size", async test => {
+  subtest("notifications stay reachable beside the sidebar controls at every window size", async test => {
     const { page } = await fixture(test);
     const sidebar = page.getByRole("button", { name: "Toggle sidebar", exact: true });
     for (const platform of ["linux", "darwin"]) {
@@ -721,7 +720,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     }
   });
 
-  await t.test("dialogs and popovers finish closing and respect reduced motion", async test => {
+  subtest("dialogs and popovers finish closing and respect reduced motion", async test => {
     const { page } = await fixture(test);
     await page.locator(".workspace-select").click();
     await page.getByRole("menuitem", { name: "New thread with workspace options…", exact: true }).click();
@@ -732,7 +731,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.waitForFunction(() => { const node = document.querySelector('.citropy-dialog[data-exiting]'); return node?.inert && !node.open && getComputedStyle(node).display !== "none" && Number(getComputedStyle(node).opacity) < 1; });
     await dialog.waitFor({ state: "detached" });
     const toggle = page.getByRole("button", { name: "Git actions", exact: true });
-    for (const [open, close, selector] of [["Git actions", "Hide Git panel", ".git-panel"], ["Notifications", "Close notifications", ".notification-center"]]) {
+    for (const [open, close, selector] of [["Git actions", "Git actions", ".git-panel"], ["Notifications", "Close notifications", ".notification-center"]]) {
       await page.getByRole("button", { name: open, exact: true }).click();
       await page.waitForFunction(selector => {
         const panel = document.querySelector(selector);
@@ -757,12 +756,12 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.emulateMedia({ reducedMotion: "reduce" });
     await toggle.click();
     await page.locator(".git-panel").waitFor();
-    await page.getByRole("button", { name: "Hide Git panel", exact: true }).click();
+    await page.getByRole("button", { name: "Git actions", exact: true }).click();
     await page.locator(".git-panel").waitFor({ state: "detached" });
     await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== "running"));
   });
 
-  await t.test("source control and GitHub switch workspaces without returning to chat", async test => {
+  subtest("source control and GitHub switch workspaces without returning to chat", async test => {
     const { page, requests, states } = await fixture(test);
     await page.getByRole("button", { name: "Source control", exact: true }).click();
     await page.getByRole("button", { name: "Stage all", exact: true }).waitFor();
@@ -796,7 +795,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.screenshot({ path: "/tmp/citropy-github-workspace.png", animations: "disabled" });
   });
 
-  await t.test("irregular context limits stay compact, explain their exact capacity, and keep effort on one line", async test => {
+  subtest("irregular context limits stay compact, explain their exact capacity, and keep effort on one line", async test => {
     const catalogs = [{ ...providers[2], models: [{ id: "muse", label: "Muse Spark 1.3 Free", efforts: ["xhigh"], defaultEffort: "xhigh", contextMax: 1048576 }] }];
     const { page, emit } = await fixture(test, { catalogs });
     emit({ t: "thread.upsert", thread: { ...thread, provider: "opencode", model: "muse", effort: "xhigh", contextWindow: 1048576 } });
@@ -814,7 +813,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     }
   });
 
-  await t.test("context hover crosses into the panel, never latches on click, and uses reported capacity during the first turn", async test => {
+  subtest("context hover crosses into the panel, never latches on click, and uses reported capacity during the first turn", async test => {
     const { page, emit } = await fixture(test);
     for (const width of [1440, 600]) {
       await page.setViewportSize({ width, height: 1000 });
@@ -878,7 +877,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.getByRole("button", { name: "0% context used", exact: true }).waitFor();
   });
 
-  await t.test("context meters distinguish missing usage from empty threads and never count cache twice", async test => {
+  subtest("context meters distinguish missing usage from empty threads and never count cache twice", async test => {
     const { page, emit } = await fixture(test);
     const panel = page.getByRole("group", { name: "Context usage", exact: true });
     for (const contextTokens of [0, 44200000]) {
@@ -907,7 +906,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     }
   });
 
-  await t.test("context panel shows cache hits, generation speed, and Cursor estimates", async test => {
+  subtest("context panel shows cache hits, generation speed, and Cursor estimates", async test => {
     const { page, emit } = await fixture(test);
     const panel = page.getByRole("group", { name: "Context usage", exact: true });
     emit({ t: "thread.upsert", thread: { ...thread, usage: { ...thread.usage, tokensPerSecond: 42.4 } } });
@@ -931,7 +930,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await panel.getByText("Estimated from conversation", { exact: true }).waitFor();
   });
 
-  await t.test("compaction has one conversation status and a spaced usage action", async test => {
+  subtest("compaction has one conversation status and a spaced usage action", async test => {
     const { page, requests, emit } = await fixture(test);
     const compacting = { ...thread, compacting: true, running: true, status: "working", activeTool: "Compacting context" };
     emit({ t: "thread.upsert", thread: compacting });
@@ -961,7 +960,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     assert.equal(await page.locator(".working-text").textContent(), "Compacting context");
   });
 
-  await t.test("language changes immediately, persists, and preserves conversation content", async test => {
+  subtest("language changes immediately, persists, and preserves conversation content", async test => {
     const { page } = await fixture(test, { navigationStyle: "bar" });
     await page.getByRole("textbox", { name: "Message", exact: true }).fill("Keep my draft: source.ts /compact @review");
     await page.locator('.navigation-actions [data-tone="settings"]').click();
@@ -1007,4 +1006,5 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
     await page.getByRole("textbox", { name: "Mensaje", exact: true }).waitFor();
     await page.getByText("Your changes are ready to review.", { exact: true }).waitFor();
   });
+  await Promise.all(pending);
 });

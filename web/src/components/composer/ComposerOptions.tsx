@@ -215,7 +215,7 @@ export function PermissionMenu({
   const ModeIcon = mode?.icon ?? ShieldCheck;
   return (
     <Menu
-      header={thread.pendingConfig ? t("Applies to the next turn") : t("Permissions")}
+      header={t("Permissions")}
       width={290}
       items={MODES.map((entry) => ({
         id: entry.id,

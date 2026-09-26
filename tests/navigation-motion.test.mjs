@@ -1,25 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
-test("navigation stays bounded and motion releases its resources", { timeout: 120_000 }, async (t) => {
-  const cacheDir = await mkdtemp(join(tmpdir(), "citropy-navigation-motion-"));
-  const server = await createServer({
-    configFile: false, cacheDir,
-    root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error",
-    server: { host: "127.0.0.1", port: 0, watch: null },
-  });
-  await server.listen();
+test("navigation stays bounded and motion releases its resources", { timeout: 120_000, concurrency: 4 }, async (t) => {
+  const pending = [];
+  const subtest = (...args) => { pending.push(t.test(...args)); };
+  const measured = [];
+  const measuredSubtest = (...args) => { measured.push(args); };
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
-  t.after(async () => { await browser.close(); await server.close(); await rm(cacheDir, { recursive: true, force: true }); });
+  t.after(async () => { await browser.close(); await server.close(); });
   const warmup = await browser.newPage();
-  await warmup.goto(server.resolvedUrls.local[0], { timeout: 120_000 });
+  await warmup.goto(server.url, { timeout: 120_000 });
   await warmup.close();
   const threads = Array.from({ length: 1000 }, (_, index) => ({
     id: `thread-${index}`, projectId: "workspace", provider: "claude", model: "sample",
@@ -78,7 +71,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
         permissions: [], home: "/example", panels: [{ id: "changes", projectId: "workspace", kind: "changes", title: "Changes" }],
       } }));
     });
-    await page.goto(server.resolvedUrls.local[0]);
+    await page.goto(server.url);
     await page.locator(".thread-card").first().waitFor();
     await page.evaluate(() => document.fonts.ready);
     const settle = () => page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== "running" || animation.effect.getTiming().iterations === Infinity));
@@ -86,7 +79,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     return { page, settle, requests, emit: event => connection.send(JSON.stringify(event)) };
   }
 
-  for (const count of [6, 1000]) await t.test(`live list changes cancel dragging cleanly with ${count} tasks`, async test => {
+  for (const count of [6, 1000]) subtest(`live list changes cancel dragging cleanly with ${count} tasks`, async test => {
     const { page, settle, requests, emit } = await fixture(test, { count });
     const entry = page.locator('.thread-entry[data-thread-id="thread-2"]');
     const bounds = await entry.boundingBox();
@@ -120,7 +113,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.equal(requests.some(event => event.t === "reorder"), false);
   });
 
-  await t.test("thread rows omit passive metadata and show compact, named activity without changing height", async test => {
+  subtest("thread rows omit passive metadata and show compact, named activity without changing height", async test => {
     const { page, emit } = await fixture(test, { count: 6 });
     const card = page.locator('.thread-entry[data-thread-id="thread-2"] .thread-card');
     const height = (await card.boundingBox()).height;
@@ -134,7 +127,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     }
   });
 
-  await t.test("thread previews reveal details without moving rows, blocking clicks, or surviving navigation", async test => {
+  measuredSubtest("thread previews reveal details without moving rows, blocking clicks, or surviving navigation", async test => {
     const { page, emit, requests } = await fixture(test);
     const details = { ...threads[2], status: "stopped", changedFiles: 12, workspacePath: "/example/a-long-workspace-folder", workspaceBranch: "feature/improve-the-workspace-navigation" };
     emit({ t: "thread.upsert", thread: details });
@@ -193,7 +186,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.equal(await preview.count(), 0);
   });
 
-  await t.test("the whole thread card opens its conversation while actions stay independent", async test => {
+  subtest("the whole thread card opens its conversation while actions stay independent", async test => {
     const { page, requests } = await fixture(test, { count: 6 });
     const card = page.locator('.thread-entry[data-thread-id="thread-1"] .thread-card');
     const reset = () => page.locator('.thread-entry[data-thread-id="thread-0"] .thread-row').click();
@@ -241,7 +234,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.equal(requests.filter(event => event.t === "reorder").length, 0);
   });
 
-  await t.test("large lists stay bounded, remain searchable, and keep keyboard focus while scrolling", async (test) => {
+  subtest("large lists stay bounded, remain searchable, and keep keyboard focus while scrolling", async (test) => {
     const { page, requests } = await fixture(test);
     assert.ok(await page.locator(".thread-card").count() < 25);
     await page.locator(".rail-list").evaluate((node) => { node.scrollTop = node.scrollHeight; });
@@ -263,7 +256,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.ok(await page.locator(".thread-card").count() < 25);
   });
 
-  await t.test("dragging moves the original row, shifts neighbors, and releases its resources", async test => {
+  measuredSubtest("dragging moves the original row, shifts neighbors, and releases its resources", async test => {
     const { page, settle, requests } = await fixture(test);
     await page.setViewportSize({ width: 1440, height: 1100 });
     const entry = id => page.locator(`.thread-entry[data-thread-id="thread-${id}"]`);
@@ -354,7 +347,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.equal(await entry(3).locator('.thread-row').getAttribute("aria-current"), "page");
   });
 
-  await t.test("short lists sort in narrow windows and restore their order after a failed save", async test => {
+  subtest("short lists sort in narrow windows and restore their order after a failed save", async test => {
     const { page, requests } = await fixture(test, { count: 6 });
     await page.setViewportSize({ width: 600, height: 1000 });
     const entry = id => page.locator(`.thread-entry[data-thread-id="thread-${id}"]`);
@@ -384,7 +377,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.equal(await page.locator('.thread-entry[data-dragging="true"]').count(), 0);
   });
 
-  await t.test("dragging stops at the first and last row of its category", async test => {
+  subtest("dragging stops at the first and last row of its category", async test => {
     for (const { count, width } of [{ count: 3, width: 1440 }, { count: 6, width: 600 }, { count: 1000, width: 1440 }]) {
       await test.test(`${count} threads at ${width}px`, async test => {
         const { page, requests } = await fixture(test, { count });
@@ -445,7 +438,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     }
   });
 
-  await t.test("opening and closing repeatedly does not accumulate nodes, listeners, or animation frames", async (test) => {
+  measuredSubtest("opening and closing repeatedly does not accumulate nodes, listeners, or animation frames", async (test) => {
     const { page, settle } = await fixture(test);
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Performance.enable");
@@ -479,7 +472,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.equal(await page.getByRole("button", { name: "New thread", exact: true }).count(), 0);
   });
 
-  await t.test("panels reverse cleanly, fit narrow windows, and honor changes to reduced motion", async (test) => {
+  subtest("panels reverse cleanly, fit narrow windows, and honor changes to reduced motion", async (test) => {
     const { page, settle } = await fixture(test);
     const toggle = page.getByRole("button", { name: "Toggle inspector", exact: true });
     await toggle.click();
@@ -520,7 +513,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.equal(await page.locator(".rail").evaluate((node) => getComputedStyle(node).animationPlayState), "paused");
   });
 
-  await t.test("selection highlights slide, follow resizing, and release their observer", async test => {
+  subtest("selection highlights slide, follow resizing, and release their observer", async test => {
     const { page, settle } = await fixture(test, { count: 6 });
     await page.evaluate(async () => {
       const { useApp } = await import("/web/src/lib/store.ts");
@@ -567,7 +560,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.equal(await page.evaluate(() => [...window.navigationResources.observers].some(observer => [...observer.targets].some(node => !node.isConnected))), false);
   });
 
-  await t.test("the thinking timer sleeps while hidden and resumes from the original start time", async (test) => {
+  subtest("the thinking timer sleeps while hidden and resumes from the original start time", async (test) => {
     const { page } = await fixture(test);
     await page.clock.install();
     await page.evaluate(async () => {
@@ -596,4 +589,6 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     });
     assert.match(await page.locator(".working-time").textContent(), /^1m 1[5-7]s$/);
   });
+  await Promise.all(pending);
+  for (const args of measured) await t.test(...args);
 });

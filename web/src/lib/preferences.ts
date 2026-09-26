@@ -1,7 +1,8 @@
 import { environmentStorage } from "./environment.ts";
-import { useApp, type NavigationStyle, type PanelId, type SidebarMode, type StageBackground, type Theme } from "./app-state.ts";
+import { useApp, type NavigationStyle, type PanelId, type SidebarMode, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import { loadSpanish, type Language } from "./translations.ts";
+import { applyCustomColor } from "./custom-theme.ts";
 
 export function toggleFavoriteModel(model: WritingModel): void {
   const current = useApp.getState().favoriteModels;
@@ -31,6 +32,19 @@ export function setTheme(theme: Theme): void {
   useApp.setState({ theme });
   environmentStorage.setItem("citropy.theme", theme);
   document.documentElement.dataset.theme = theme;
+}
+
+export function setScheme(scheme: Scheme): void {
+  applyCustomColor(useApp.getState().customColor, scheme);
+  useApp.setState({ scheme });
+  environmentStorage.setItem("citropy.scheme", scheme);
+  document.documentElement.dataset.scheme = scheme;
+}
+
+export function setCustomColor(color: string): void {
+  applyCustomColor(color, useApp.getState().scheme);
+  useApp.setState({ customColor: color });
+  environmentStorage.setItem("citropy.customColor", color);
 }
 
 export function toggleInspector(): void {
@@ -75,6 +89,13 @@ export function setBackgroundFocus(value: number): void {
   const backgroundFocus = Math.max(0, Math.min(100, Math.round(value)));
   useApp.setState({ backgroundFocus });
   environmentStorage.setItem("citropy.backgroundFocus", String(backgroundFocus));
+}
+
+export function setBackgroundFocusSpread(value: number): void {
+  if (!Number.isFinite(value)) return;
+  const backgroundFocusSpread = Math.max(0, Math.min(400, Math.round(value)));
+  useApp.setState({ backgroundFocusSpread });
+  environmentStorage.setItem("citropy.backgroundFocusSpread", String(backgroundFocusSpread));
 }
 
 export function setUiTransparency(value: number): void {

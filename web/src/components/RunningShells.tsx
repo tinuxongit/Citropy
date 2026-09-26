@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ExternalLink, Square, Terminal, X } from "lucide-react";
+import { ExternalLink, Square, Terminal } from "lucide-react";
 import type { NotificationTarget, ShellProcess } from "../../../shared/protocol.ts";
 import { useApp } from "../lib/store.ts";
 import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
@@ -8,6 +8,7 @@ import { api } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
+import { ComposerTab } from "./composer/ComposerTab.tsx";
 
 type ShellEntry = ShellProcess;
 
@@ -19,15 +20,16 @@ export function RunningShells({ onOpen }: { onOpen: (target: NotificationTarget)
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const id = useId();
+  useEffect(() => { if (!count) setOpen(false); }, [count]);
   const close = () => {
     setOpen(false);
     trigger.current?.focus({ preventScroll: true });
   };
   return <>
-    {(count > 0 || open) && <button ref={trigger} type="button" className="composer-tab" title={t("Running shells")} aria-label={t("Running shells, {count} active", { count })} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+    <AnimatePresence>{count > 0 && <ComposerTab key="shells" ref={trigger} title={t("Running shells")} aria-label={t("Running shells, {count} active", { count })} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
       <Terminal size={13} /><span>{count}</span>
-    </button>}
-    <AnimatePresence>{open && <ShellsPanel id={id} trigger={trigger} onClose={close} onOpen={onOpen} />}</AnimatePresence>
+    </ComposerTab>}</AnimatePresence>
+    <AnimatePresence>{open && count > 0 && <ShellsPanel id={id} trigger={trigger} onClose={close} onOpen={onOpen} />}</AnimatePresence>
   </>;
 }
 
@@ -65,22 +67,17 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
     catch (error) { setError({ id: shell.id, message: (error as Error).message }); }
     finally { setPending(undefined); }
   };
-  const rows = (entries: ShellEntry[]) => entries.map(shell => <button key={shell.id} type="button" className="shell-row" data-selected={selected?.id === shell.id} aria-pressed={selected?.id === shell.id} onClick={() => setSelectedId(shell.id)}>
-    <span className="shell-status-dot" data-status={shell.status} />
+  const rows = (entries: ShellEntry[]) => entries.map(shell => <button key={shell.id} type="button" className="shell-row" autoFocus={selected?.id === shell.id} data-selected={selected?.id === shell.id} aria-pressed={selected?.id === shell.id} onClick={() => setSelectedId(shell.id)}>
     <span className="shell-row-copy"><code title={shell.command}>{label(shell)}</code><small>{owner(shell)}</small></span>
     <span className="shell-status" data-status={shell.status}>{status(shell)}</span>
   </button>);
   return <motion.section ref={panel} id={id} popover="manual" role="dialog" aria-label={t("Running shells")} className="tab-panel shells-panel" initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }} animate={{ opacity: 1, transform: "none" }} exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
-    <header><Terminal size={16} /><h2>{t("Running shells")}</h2><span>{t("{count} active", { count: running.length })}</span><button type="button" className="icon-btn" autoFocus aria-label={t("Close running shells")} onClick={onClose}><X size={16} /></button></header>
     <div className="shells-list scroll sliding-selection">
       <SelectionHighlight value={selected?.id} selector='.shell-row[data-selected="true"]' />
       {rows(running)}
     </div>
-    {selected ? <div className="shell-detail">
-      <code className="shell-command">{label(selected)}</code>
-      {selected.command && selected.command !== label(selected) && <code className="shell-command">{selected.command}</code>}
+    {selected && <div className="shell-detail">
       {selected.busy && selected.process && <code className="shell-command">{selected.process}</code>}
-      <div className="shell-directory" title={selected.cwd}>{selected.cwd}</div>
       <div className="shell-actions">
         <button type="button" className="btn btn-sm" onClick={() => {
           onOpen({ view: "chat", projectId: selected.projectId, threadId: selected.threadId });
@@ -89,8 +86,7 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
         }}><ExternalLink size={13} />{t("Show command")}</button>
         {<button type="button" className="btn btn-sm" disabled={!connected || Boolean(pending) || selected.status === "stopping"} onClick={() => void stop(selected)}><Square size={12} />{t(selected.status === "stopping" || pending === selected.id ? "Stopping…" : selected.stopMode === "shell" ? "Stop shell" : "Stop task")}</button>}
       </div>
-      {selected.stopMode === "task" && <p className="shell-stop-hint">{t("Stopping this shell also stops its AI task.")}</p>}
       {error?.id === selected.id && <p className="shell-error" role="alert">{error.message}</p>}
-    </div> : <p className="shell-output-empty">{t("No shells are running.")}</p>}
+    </div>}
   </motion.section>;
 }

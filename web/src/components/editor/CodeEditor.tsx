@@ -72,6 +72,8 @@ export function CodeEditor({
   const instance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const current = useRef(document);
   const theme = useApp((state) => state.theme);
+  const scheme = useApp((state) => state.scheme);
+  const customColor = useApp((state) => state.customColor);
   const clearBackground = useApp((state) => state.stageBackground !== "default");
   const surfaceAlpha = useApp((state) => state.stageBackground === "default" ? 1 : 1 - state.uiTransparency / 100);
   const scale = useApp((state) => state.uiScale);
@@ -153,9 +155,9 @@ export function CodeEditor({
 
   useEffect(() => {
     if (!container.current) return;
-    const name = `citropy-${theme}`;
+    const name = `citropy-${scheme}-${theme}`;
     monaco.editor.defineTheme(name, {
-      base: theme === "light" ? "vs" : "vs-dark",
+      base: scheme === "light" ? "vs" : "vs-dark",
       inherit: true,
       rules: [],
       colors: {
@@ -164,7 +166,7 @@ export function CodeEditor({
       },
     });
     monaco.editor.setTheme(name);
-  }, [theme, clearBackground, surfaceAlpha]);
+  }, [theme, scheme, customColor, clearBackground, surfaceAlpha]);
 
   useEffect(() => {
     instance.current?.updateOptions({

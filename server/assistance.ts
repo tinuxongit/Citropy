@@ -71,7 +71,7 @@ export async function generateThreadTitle(threadId: string, automatic = false): 
   titleJobs.add(threadId);
   const original = thread.title;
   try {
-    const result = await generateText(writingModel(thread, "titleModel"), "Write a short, specific title for this conversation, in the user's language. Describe their task, not your response. Use at most 60 characters. Do not add quotation marks. Leave body empty.", messages);
+    const result = await generateText(writingModel(thread, "titleModel"), "Write a short, specific title for this conversation in the language the user writes in; use English when their language is unclear. Describe their task, not your response. Use at most 60 characters. Do not add quotation marks. Leave body empty.", messages);
     if (store.threads.get(threadId) === thread && thread.title === original && (!automatic || store.assistance.automaticTitles))
       store.patchThread(threadId, { title: result.title.slice(0, 80) });
   } catch (error) {

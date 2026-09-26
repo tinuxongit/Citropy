@@ -217,7 +217,7 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
     onConversation={rowHandlers.conversation}
   />;
   const renderItem = (item: SidebarThread, group: ThreadGroup) => item.cached
-    ? <CachedThreadRow thread={item.thread} categoryEnd={group.threads.at(-1) === item} environment={item.environment} onConversation={onConversation} />
+    ? <CachedThreadRow thread={item.thread} categoryEnd={group.threads.at(-1) === item} environment={item.environment} showDisconnected={!group.offline} onConversation={onConversation} />
     : renderThread(item);
 
   const renderGroup = (group: ThreadGroup) => {

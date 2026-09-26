@@ -1,19 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("computer panel setup, preview, controls and settings", { timeout: 45000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-computer-ui-"));
   let server, browser;
   t.after(async () => { await browser?.close(); await server?.close(); await rm(directory, { recursive: true, force: true }); });
-  server = await createServer({ configFile: false, cacheDir: join(directory, "cache"), root: fileURLToPath(new URL("..", import.meta.url)), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0 } });
-  await server.listen();
+  server = await appServer();
   browser = await chromium.launch();
   const desktop = await browser.newPage({ viewport: { width: 1200, height: 800 } });
   await desktop.setContent('<style>body{margin:0;background:#17212b;color:#e5e9ed;font:18px sans-serif}header{padding:20px;background:#23303c}main{margin:50px;padding:35px;background:#263440;border-radius:12px;width:700px}h1{font-size:24px}p{color:#aab9c6;line-height:1.7}button{padding:12px 20px;background:#65a5ec;color:#122331;border:0;border-radius:8px;font:inherit}</style><header>Desktop test workspace</header><main><h1>Project notes</h1><p>Review the release checklist and prepare the next build.</p><p>Screen sharing keeps this application visible to the current conversation.</p><button>Open checklist</button></main>');
@@ -64,7 +61,7 @@ test("computer panel setup, preview, controls and settings", { timeout: 45000 },
     } else if (path === "/api/computer/skill") result = { ok: true };
     await route.fulfill({ json: result });
   });
-  await page.goto(server.resolvedUrls.local[0], { timeout: 20000 });
+  await page.goto(server.url, { timeout: 20000 });
   await page.getByRole("button", { name: "Enable computer use", exact: true }).click();
   await page.getByRole("button", { name: "Share a screen", exact: true }).click();
   const preview = page.locator(".computer-preview img");

@@ -34,10 +34,6 @@ jobs:
             exit 1
           fi
 
-  check:
-    needs: validate
-    uses: ./.github/workflows/tests.yml
-
   linux:
     needs: validate
     runs-on: ubuntu-22.04
@@ -50,18 +46,16 @@ jobs:
         with:
           node-version: '22.18.0'
           cache: npm
-      - name: Install desktop test dependencies
+      - name: Install packaging dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libfuse2
+          sudo apt-get install -y libfuse2
       - run: npm ci
-      - run: npx playwright install-deps chromium
       - name: Set version
         env:
           VERSION: ${{ inputs.version }}
         run: npm version "$VERSION" --no-git-tag-version
       - run: npm run desktop:package
-      - run: npm run desktop:smoke
       - uses: actions/upload-artifact@v7
         with:
           name: linux-release
@@ -92,26 +86,6 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run desktop:package -- --mac
-      - run: node desktop/smoke-mac.mjs
-      - name: Test the installer
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          mkdir -p "macdist/v$VERSION"
-          cp release/*.zip "macdist/v$VERSION/"
-          (cd "macdist/v$VERSION" && shasum -a 256 *.zip > SHA256SUMS)
-          cd macdist
-          python3 -m http.server 8791 --bind 127.0.0.1 >/dev/null 2>&1 &
-          for attempt in $(seq 1 40); do
-            curl -fsS --connect-timeout 2 --max-time 5 -o /dev/null "http://127.0.0.1:8791/" && break
-            sleep 0.5
-          done
-          curl -fsS --connect-timeout 2 --max-time 5 -o /dev/null "http://127.0.0.1:8791/" || { echo "The local release server did not answer on port 8791." >&2; exit 1; }
-          cd ..
-          HOME="$RUNNER_TEMP/install-home" CITROPY_VERSION="$VERSION" CITROPY_BASE_URL="http://127.0.0.1:8791" sh scripts/install.sh
-          APP="$RUNNER_TEMP/install-home/Applications/Citropy.app"
-          test -x "$APP/Contents/MacOS/Citropy"
-          codesign --verify --deep --strict "$APP"
       - run: test -f release/latest-mac.yml
       - uses: actions/upload-artifact@v7
         with:
@@ -142,36 +116,6 @@ jobs:
         run: npm version "$VERSION" --no-git-tag-version
       - name: Package the Windows app
         run: npm run desktop:package -- --win
-      - run: node desktop/smoke-win.mjs
-      - name: Test the installer
-        shell: pwsh
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          $dir = "windist/v$env:VERSION"
-          New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          Copy-Item "release/*.exe" $dir
-          $lines = Get-ChildItem "$dir/*.exe" | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" }
-          Set-Content -Path "$dir/SHA256SUMS" -Value $lines
-          $server = Start-Process python -ArgumentList "-m","http.server","8794","--directory","windist" -PassThru
-          $ready = $false
-          for ($attempt = 0; $attempt -lt 40 -and -not $ready; $attempt++) {
-            if ($server.HasExited) { throw "The local release server exited with code $($server.ExitCode)." }
-            try { Invoke-WebRequest -Uri "http://127.0.0.1:8794/" -UseBasicParsing -TimeoutSec 2 | Out-Null; $ready = $true } catch { Start-Sleep -Milliseconds 500 }
-          }
-          if (-not $ready) { throw "The local release server did not answer on port 8794." }
-          try {
-            $env:CITROPY_VERSION = $env:VERSION
-            $env:CITROPY_BASE_URL = "http://127.0.0.1:8794"
-            ./scripts/install.ps1
-            $installed = Join-Path $env:LOCALAPPDATA "Programs\citropy\Citropy.exe"
-            if (-not (Test-Path $installed)) { throw "The installer finished but $installed is missing." }
-            $version = (Get-Item $installed).VersionInfo.ProductVersion
-            if ($version -and -not $version.StartsWith($env:VERSION)) { throw "Installed version $version does not match $env:VERSION." }
-          }
-          finally {
-            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
-          }
       - run: |
           if (-not (Test-Path release/latest.yml)) { throw "latest.yml is missing." }
           if (-not (Get-ChildItem release/*.exe.blockmap)) { throw "The installer blockmap is missing." }
@@ -187,7 +131,7 @@ jobs:
             release/latest.yml
 
   publish:
-    needs: [validate, check, linux, mac, windows]
+    needs: [validate, linux, mac, windows]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     permissions:

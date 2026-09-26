@@ -174,11 +174,10 @@
   color: var(--bad);
 }
 
-.change-body {
+.change-body-inner {
   overflow: hidden;
   border-radius: var(--r-sm);
   background: var(--code-bg);
-  border: 0;
   margin: 2px 0 6px;
 }
 

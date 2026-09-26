@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("renderer panels release background work and ignore stale replies", { timeout: 60_000 }, async (t) => {
   const cacheDir = await mkdtemp(join(tmpdir(), "citropy-renderer-"));
@@ -17,15 +15,7 @@ test("renderer panels release background work and ignore stale replies", { timeo
     await server?.close();
     await rm(cacheDir, { recursive: true, force: true });
   });
-  server = await createServer({
-    configFile: false,
-    cacheDir: join(cacheDir, "node_modules", ".vite"),
-    root: fileURLToPath(new URL("..", import.meta.url)),
-    plugins: [react()],
-    logLevel: "error",
-    server: { host: "127.0.0.1", port: 0 },
-  });
-  await server.listen();
+  server = await appServer();
   browser = await chromium.launch({ headless: true, args: ["--enable-unsafe-swiftshader"] });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -132,7 +122,7 @@ test("renderer panels release background work and ignore stale replies", { timeo
     socket.send(JSON.stringify({ t: "hello", snapshot }));
   });
   const settle = () => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await page.goto(server.resolvedUrls.local[0]);
+  await page.goto(server.url);
   await page.getByRole("tab", { name: "Second browser", exact: true }).waitFor();
 
   await t.test("browser resolution controls share presets and custom sizes with provider updates", async () => {

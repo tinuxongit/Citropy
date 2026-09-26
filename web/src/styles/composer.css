@@ -118,6 +118,13 @@
   margin: 0 auto;
   border: 0;
   border-radius: 14px;
+}
+
+.composer-glass {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background: var(--surface);
 }
 
@@ -135,13 +142,11 @@
 .composer-focus-ring {
   position: absolute;
   inset: 0;
+  z-index: 1;
+  container-type: size;
   overflow: hidden;
-  padding: 2px;
-  border-radius: inherit;
   pointer-events: none;
   background: color-mix(in srgb, var(--text-3) 16%, transparent);
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
   opacity: 0;
   transition: opacity var(--dur-base) var(--ease-out);
 }
@@ -150,7 +155,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(100% + 40px);
+  width: hypot(100cqw, 100cqh);
   aspect-ratio: 1;
   background: conic-gradient(
     transparent 0turn 0.55turn,
@@ -197,12 +202,6 @@
 
 .composer-input::placeholder {
   color: var(--text-3);
-}
-
-.composer-pending-settings {
-  padding: 0 18px 4px;
-  color: var(--text-3);
-  font-size: var(--text-xs);
 }
 
 .composer-bar {

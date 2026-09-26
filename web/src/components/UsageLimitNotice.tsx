@@ -10,6 +10,8 @@ import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
 import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import type { ThreadMeta } from "../../../shared/protocol.ts";
+import { ComposerTab } from "./composer/ComposerTab.tsx";
 
 function resetTime(resetsAt: number): string {
   const sameDay = new Date(resetsAt).toDateString() === new Date().toDateString();
@@ -35,8 +37,23 @@ export function UsageLimitLine({ threadId }: { threadId: string }) {
 }
 
 export function UsageLimitTab({ threadId }: { threadId: string }) {
-  const t = useI18n();
   const thread = useApp((state) => state.threads[threadId]);
+  const limit = thread?.usageLimit;
+  return (
+    <AnimatePresence>
+      {thread && limit && !thread.running && (
+        <UsageLimitTabContent key="usage-limit" threadId={threadId} thread={thread} limit={limit} />
+      )}
+    </AnimatePresence>
+  );
+}
+
+function UsageLimitTabContent({ threadId, thread, limit }: {
+  threadId: string;
+  thread: ThreadMeta;
+  limit: NonNullable<ThreadMeta["usageLimit"]>;
+}) {
+  const t = useI18n();
   const connected = useApp((state) => state.connected);
   const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
@@ -47,11 +64,8 @@ export function UsageLimitTab({ threadId }: { threadId: string }) {
     setOpen(false);
     trigger.current?.focus({ preventScroll: true });
   };
-  const limit = thread?.usageLimit;
-  const visible = Boolean(thread && limit && !thread.running);
-  useAnchoredPanel(panel, trigger, { open: open && visible, width: 300 });
-  useDismiss(panel, trigger, close, { open: open && visible, outside: true });
-  if (!thread || !limit || !visible) return null;
+  useAnchoredPanel(panel, trigger, { open, width: 300 });
+  useDismiss(panel, trigger, close, { open, outside: true });
   const time = upcoming(limit.resetsAt);
   const snoozed = Boolean(limit.resetsAt && thread.snoozedUntil === limit.resetsAt);
   const status = time
@@ -61,10 +75,8 @@ export function UsageLimitTab({ threadId }: { threadId: string }) {
       : t("The provider did not say when usage resets. Citropy checks every 15 minutes.");
   return (
     <>
-      <button
+      <ComposerTab
         ref={trigger}
-        type="button"
-        className="composer-tab"
         data-tone="warn"
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -75,7 +87,7 @@ export function UsageLimitTab({ threadId }: { threadId: string }) {
       >
         {limit.resume ? <Check size={13} aria-hidden="true" /> : <Hourglass size={13} aria-hidden="true" />}
         {time ?? t("Usage limit")}
-      </button>
+      </ComposerTab>
       <AnimatePresence>{open && <motion.section
         ref={panel}
         id={id}

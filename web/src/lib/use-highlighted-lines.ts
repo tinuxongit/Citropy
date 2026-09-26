@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { highlightTokens } from "./highlight.ts";
 import { useApp } from "./store.ts";
-import { schemeOf } from "./app-state.ts";
 
 export function useHighlightedLines(code: string, lang?: string): string[] | null {
-  const theme = useApp((state) => schemeOf(state.theme));
+  const theme = useApp((state) => state.scheme);
   const [result, setResult] = useState<{
     code: string;
     lang?: string;

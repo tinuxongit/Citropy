@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Flame, ImagePlus, Moon, Sparkles, Sun } from "lucide-react";
+import { Check, Cherry, Circle, Citrus, Droplet, Flame, Flower2, ImagePlus, Leaf, Moon, Palette, Pipette, Sparkles, Sun, Waves } from "lucide-react";
 import { reportError } from "../lib/api.ts";
 import { saveBackgroundFile, useBackgroundFile, type BackgroundFileKind } from "../lib/background-files.ts";
 import { useI18n } from "../lib/i18n.ts";
-import { setBackgroundBlur, setBackgroundDim, setBackgroundFocus, setNavigationStyle, setStageBackground, setUiTransparency } from "../lib/preferences.ts";
+import { setBackgroundBlur, setBackgroundDim, setBackgroundFocus, setBackgroundFocusSpread, setNavigationStyle, setStageBackground, setUiTransparency } from "../lib/preferences.ts";
 import {
   setShowFailedTools,
   setSidebarMode,
   setTextStreaming,
   setTheme,
+  setScheme,
+  setCustomColor,
   setTypingAnimation,
   setTypingSpeed,
   setUiScale,
@@ -17,19 +19,35 @@ import {
   useApp,
   type SidebarMode,
 } from "../lib/store.ts";
-import { THEMES, type NavigationStyle, type StageBackground, type Theme } from "../lib/app-state.ts";
+import { SCHEMES, THEMES, type NavigationStyle, type Scheme, type StageBackground, type Theme } from "../lib/app-state.ts";
+import { SelectionHighlight } from "./SelectionHighlight.tsx";
+import { OptionStrip } from "./OptionStrip.tsx";
 import { Range } from "./Range.tsx";
+import { Collapsible } from "./Collapsible.tsx";
+import { HexColorPicker } from "react-colorful";
+import { isHexColor } from "../lib/custom-theme.ts";
 
-const THEME_DETAILS: Record<Theme, { label: string; icon: typeof Moon; note: string }> = {
-  dark: { label: "Dark", icon: Moon, note: "Charcoal surfaces with white accents." },
-  light: { label: "Light", icon: Sun, note: "Neutral surfaces with dark accents." },
-  orange: { label: "Orange", icon: Flame, note: "Warm ember surfaces with orange accents." },
-  purple: { label: "Purple", icon: Sparkles, note: "Dusk surfaces with violet accents." },
+const THEME_DETAILS: Record<Theme, { label: string; icon: typeof Moon }> = {
+  neutral: { label: "Neutral", icon: Circle },
+  orange: { label: "Orange", icon: Flame },
+  purple: { label: "Purple", icon: Sparkles },
+  blue: { label: "Blue", icon: Droplet },
+  green: { label: "Green", icon: Leaf },
+  teal: { label: "Teal", icon: Waves },
+  pink: { label: "Pink", icon: Flower2 },
+  red: { label: "Red", icon: Cherry },
+  yellow: { label: "Yellow", icon: Citrus },
+  custom: { label: "Custom color", icon: Palette },
+};
+
+const SCHEME_DETAILS: Record<Scheme, { label: string; icon: typeof Moon }> = {
+  dark: { label: "Dark", icon: Moon },
+  light: { label: "Light", icon: Sun },
 };
 
 const BACKGROUNDS: { id: StageBackground; label: string }[] = [
-  { id: "default", label: "Default" },
   { id: "ascii", label: "ASCII noise" },
+  { id: "default", label: "Default" },
 ];
 
 const ASCII_TEXTURE = ".·:-=+*#=-:·. ·:=+*#*+=:· .·:-=+*#".repeat(8);
@@ -47,7 +65,7 @@ function CustomImageOption({ selected }: { selected: boolean }) {
     return () => URL.revokeObjectURL(next);
   }, [file]);
   return (
-    <div className="custom-background">
+    <div className="custom-background" data-option={kind}>
       <button
         className="theme-option"
         type="button"
@@ -86,15 +104,61 @@ function CustomImageOption({ selected }: { selected: boolean }) {
   );
 }
 
+function CustomColorPicker() {
+  const t = useI18n();
+  const saved = useApp((state) => state.customColor);
+  const [draft, setDraft] = useState(saved);
+  const [text, setText] = useState(saved);
+  const latest = useRef(saved);
+  const preview = (color: string) => {
+    latest.current = color;
+    setDraft(color);
+    setText(color);
+  };
+  const commit = () => {
+    if (latest.current !== useApp.getState().customColor) setCustomColor(latest.current);
+  };
+  return (
+    <div className="settings-group custom-color-picker" id="custom-color-picker">
+      <HexColorPicker
+        color={draft}
+        onChange={preview}
+        onPointerDown={() => window.addEventListener("pointerup", commit, { once: true })}
+        onKeyUp={commit}
+      />
+      <label className="custom-color-hex">
+        <span className="custom-color-swatch" style={{ background: draft }} aria-hidden="true" />
+        <input
+          value={text}
+          spellCheck={false}
+          aria-label={t("Hex color")}
+          onChange={(event) => {
+            setText(event.target.value);
+            const color = `#${event.target.value.replace(/^#/, "").toLowerCase()}`;
+            if (!isHexColor(color)) return;
+            latest.current = color;
+            setDraft(color);
+            commit();
+          }}
+          onBlur={() => setText(latest.current)}
+        />
+      </label>
+    </div>
+  );
+}
+
 export function AppearanceSettings() {
   const t = useI18n();
   const uiScale = useApp((state) => state.uiScale);
   const theme = useApp((state) => state.theme);
+  const scheme = useApp((state) => state.scheme);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const navigationStyle = useApp((state) => state.navigationStyle);
   const stageBackground = useApp((state) => state.stageBackground);
   const backgroundDim = useApp((state) => state.backgroundDim);
   const backgroundBlur = useApp((state) => state.backgroundBlur);
   const backgroundFocus = useApp((state) => state.backgroundFocus);
+  const backgroundFocusSpread = useApp((state) => state.backgroundFocusSpread);
   const uiTransparency = useApp((state) => state.uiTransparency);
   const sidebar = useApp((state) => state.sidebarOpen);
   const inspector = useApp((state) => state.inspectorOpen);
@@ -172,21 +236,33 @@ export function AppearanceSettings() {
         </label>
       </div>
       <p className="settings-note">{" "}{t("Layout preferences are saved on this device.")}{" "}</p>
-      <h2 className="settings-group-heading">{t("Theme")}</h2>
-      <div
-        className="theme-options"
-        role="group"
-        aria-label={t("Color theme")}
-      >
+      <h2 className="settings-group-heading settings-group-heading-centered">{t("Theme")}</h2>
+      <div className="scheme-switch sliding-selection" role="group" aria-label={t("Mode")}>
+        <SelectionHighlight value={scheme} />
+        {SCHEMES.map((value) => {
+          const { label, icon: Icon } = SCHEME_DETAILS[value];
+          return (
+            <button key={value} type="button" aria-pressed={scheme === value} onClick={() => setScheme(value)}>
+              <Icon size={15} />
+              {t(label)}
+            </button>
+          );
+        })}
+      </div>
+      <OptionStrip label={t("Color theme")} selected={theme}>
         {THEMES.map((value) => {
           const { label, icon: Icon } = THEME_DETAILS[value];
-          return (
+          const card = (
             <button
               className="theme-option"
               key={value}
+              data-option={value === "custom" ? undefined : value}
               type="button"
               aria-pressed={theme === value}
-              onClick={() => setTheme(value)}
+              onClick={() => {
+                setTheme(value);
+                setColorPickerOpen(false);
+              }}
             >
               <span
                 className="theme-preview"
@@ -211,15 +287,38 @@ export function AppearanceSettings() {
               </span>
             </button>
           );
+          if (value !== "custom") return card;
+          const pickerShown = colorPickerOpen && theme === "custom";
+          return (
+            <div className="custom-color" key={value} data-option={value}>
+              {card}
+              <button
+                className="custom-color-toggle"
+                type="button"
+                aria-label={t("Edit custom color")}
+                aria-expanded={pickerShown}
+                aria-controls="custom-color-picker"
+                onClick={() => {
+                  setTheme("custom");
+                  setColorPickerOpen(!pickerShown);
+                }}
+              >
+                <Pipette size={14} />
+              </button>
+            </div>
+          );
         })}
-      </div>
-      <p className="settings-note">{t(THEME_DETAILS[theme].note)}</p>
-      <h2 className="settings-group-heading">{t("Background", undefined, "background")}</h2>
-      <div className="theme-options" role="group" aria-label={t("Conversation background")}>
+      </OptionStrip>
+      <Collapsible open={colorPickerOpen && theme === "custom"} className="custom-color-reveal">
+        <CustomColorPicker />
+      </Collapsible>
+      <h2 className="settings-group-heading settings-group-heading-centered">{t("Background", undefined, "background")}</h2>
+      <OptionStrip label={t("Conversation background")} selected={stageBackground}>
         {BACKGROUNDS.map(({ id, label }) => (
           <button
             className="theme-option"
             key={id}
+            data-option={id}
             type="button"
             aria-pressed={stageBackground === id}
             onClick={() => setStageBackground(id)}
@@ -234,14 +333,14 @@ export function AppearanceSettings() {
           </button>
         ))}
         <CustomImageOption selected={stageBackground === "image"} />
-      </div>
-      <p className="settings-note">{t("Shown behind the main area of every screen. Custom images stay on this computer.")}</p>
+      </OptionStrip>
       {stageBackground === "image" && (
         <div className="settings-group settings-group-spaced">
           {[
             { label: "Dim", hint: "Darken the image so text stays easy to read.", value: backgroundDim, max: 90, unit: "%", change: setBackgroundDim },
             { label: "Blur", hint: "Soften the whole image. 0 keeps it sharp.", value: backgroundBlur, max: 40, unit: "px", change: setBackgroundBlur },
             { label: "Reading area", hint: "Darken and blur the image behind the content column. 0 turns it off.", value: backgroundFocus, max: 100, unit: "%", change: setBackgroundFocus },
+            ...(backgroundFocus ? [{ label: "Reading area width", hint: "How far the reading area reaches past the conversation on each side.", value: backgroundFocusSpread, max: 400, unit: "px", change: setBackgroundFocusSpread }] : []),
           ].map(({ label, hint, value, max, unit, change }) => (
             <div className="setting-row" key={label}>
               <span>

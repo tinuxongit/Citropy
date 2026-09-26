@@ -37,7 +37,8 @@ afterEach(() => {
 
 test("the shared app state loads migrated preferences with existing validation and defaults", () => {
   assert.strictEqual(store.useApp, useApp);
-  assert.equal(initial.theme, "dark");
+  assert.equal(initial.theme, "neutral");
+  assert.equal(initial.scheme, "dark");
   assert.equal(stored.get("citropy.theme"), "dark");
   assert.equal(stored.has("loom.theme"), false);
   assert.equal(initial.uiScale, 100);
@@ -88,10 +89,10 @@ test("preference actions keep the public store API, persistence and DOM updates 
   store.setSidebarMode("workspaces");
   assert.equal(useApp.getState().sidebarMode, "workspaces");
   assert.equal(stored.get("citropy.sidebarMode"), "workspaces");
-  store.setTheme("light");
-  assert.equal(useApp.getState().theme, "light");
-  assert.equal(stored.get("citropy.theme"), "light");
-  assert.equal(document.documentElement.dataset.theme, "light");
+  store.setTheme("purple");
+  assert.equal(useApp.getState().theme, "purple");
+  assert.equal(stored.get("citropy.theme"), "purple");
+  assert.equal(document.documentElement.dataset.theme, "purple");
   await store.setLanguage("es");
   await store.setLanguage("invalid");
   assert.equal(useApp.getState().language, "es");
@@ -120,7 +121,7 @@ test("panel and favorite actions update the same store without changing prior sn
 });
 
 test("environment reset reloads workspace state while preserving display preferences", async () => {
-  store.setTheme("light");
+  store.setTheme("purple");
   store.setTypingSpeed(180);
   const confirmation = store.confirmAction({ title: "Pending", description: "Pending choice", label: "Confirm" });
   stored.set("citropy.project", "next-project");
@@ -129,7 +130,7 @@ test("environment reset reloads workspace state while preserving display prefere
   useApp.setState({ connected: true, activeThreadId: "old", parts: { old: { id: "old", kind: "text", text: "Old" } }, toasts: [{ id: "notice", level: "info", text: "Notice" }] });
   store.resetEnvironment([{ id: "next-project", path: "/next", name: "Next" }], "/next");
   const state = useApp.getState();
-  assert.equal(state.theme, "light");
+  assert.equal(state.theme, "purple");
   assert.equal(state.typingSpeed, 180);
   assert.equal(state.activeProjectId, "next-project");
   assert.equal(state.activeThreadId, "next-thread");

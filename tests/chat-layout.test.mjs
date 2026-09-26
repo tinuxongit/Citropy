@@ -3,19 +3,12 @@ import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createServer } from "vite";
-import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { appServer } from "./app-server.mjs";
 
 test("chat content and controls adapt when the workspace squeezes the conversation", { timeout: 180_000 }, async (t) => {
   const cache = await mkdtemp(join(tmpdir(), "citropy-chat-layout-"));
-  const server = await createServer({
-    configFile: false, root: fileURLToPath(new URL("..", import.meta.url)),
-    cacheDir: cache, plugins: [react()], logLevel: "error",
-    server: { host: "127.0.0.1", port: 0, watch: null },
-  });
-  await server.listen();
+  const server = await appServer();
   const browser = await chromium.launch({ headless: true });
   t.after(async () => {
     await browser.close();
@@ -56,7 +49,7 @@ test("chat content and controls adapt when the workspace squeezes the conversati
       }] }], permissions: [], home: "/example", panels: [{ id: "changes", kind: "changes", projectId: "project", title: "Changes" }],
     } }));
   });
-  await page.goto(server.resolvedUrls.local[0], { timeout: 120_000 });
+  await page.goto(server.url, { timeout: 120_000 });
   await page.locator("#message-working .activity-head").waitFor();
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(async () => {

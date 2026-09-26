@@ -1,5 +1,6 @@
 import type { QuestionRequest } from "../../../shared/questions.ts";
 import { environmentStorage } from "./environment.ts";
+import { DEFAULT_CUSTOM_COLOR, isHexColor } from "./custom-theme.ts";
 import type { ComputerState } from "../../../shared/computer.ts";
 import "./migrate-preferences.ts";
 import { create } from "zustand";
@@ -55,12 +56,12 @@ export interface Confirmation {
   resolve: (confirmed: boolean) => void;
 }
 
-export const THEMES = ["dark", "light", "orange", "purple"] as const;
-export type Theme = typeof THEMES[number];
-export type Scheme = "dark" | "light";
-export function schemeOf(theme: Theme): Scheme {
-  return theme === "light" ? "light" : "dark";
-}
+export const COLOR_THEMES = ["pink", "red", "orange", "yellow", "green", "teal", "blue", "purple"] as const;
+export type Theme = typeof COLOR_THEMES[number] | "neutral" | "custom";
+const half = Math.ceil(COLOR_THEMES.length / 2);
+export const THEMES: readonly Theme[] = [...COLOR_THEMES.slice(0, half), "neutral", "custom", ...COLOR_THEMES.slice(half)];
+export const SCHEMES = ["dark", "light"] as const;
+export type Scheme = typeof SCHEMES[number];
 export type SidebarMode = "workspaces" | "global";
 export type NavigationStyle = "strip" | "bar";
 export const STAGE_BACKGROUNDS = ["default", "ascii", "image"] as const;
@@ -133,9 +134,12 @@ export interface AppState {
   backgroundDim: number;
   backgroundBlur: number;
   backgroundFocus: number;
+  backgroundFocusSpread: number;
   uiTransparency: number;
   sidebarGroups: Record<string, boolean>;
   theme: Theme;
+  scheme: Scheme;
+  customColor: string;
   language: Language;
   uiScale: number;
   panelWidths: Partial<Record<PanelId, number>>;
@@ -178,6 +182,9 @@ const initialScale =
 const storedSpeed = Number(readPref("citropy.typingSpeed", "100"));
 const storedVolume = Number(readPref("citropy.uiSoundVolume", "60"));
 const storedDim = Number(readPref("citropy.backgroundDim", "68"));
+const storedFocusSpread = Number(readPref("citropy.backgroundFocusSpread", "140"));
+const storedCustomColor = readPref<string>("citropy.customColor", "");
+const storedTheme = readPref<string>("citropy.theme", "neutral");
 
 function readPanelWidths(): Partial<Record<PanelId, number>> {
   try {
@@ -303,9 +310,12 @@ export const useApp = create<AppState>(() => ({
   backgroundDim: Number.isFinite(storedDim) ? Math.max(0, Math.min(90, storedDim)) : 68,
   backgroundBlur: readLevel("citropy.backgroundBlur", 0, 40, { on: 14, off: 0 }, 0),
   backgroundFocus: readLevel("citropy.backgroundFocus", 0, 100, { on: 70, off: 0 }, 70),
+  backgroundFocusSpread: Number.isFinite(storedFocusSpread) ? Math.max(0, Math.min(400, storedFocusSpread)) : 140,
   uiTransparency: readLevel("citropy.uiTransparency", 0, 60, { on: 20, off: 0 }, 20),
   sidebarGroups: readSidebarGroups(),
-  theme: oneOf(THEMES, readPref<string>("citropy.theme", "dark"), "dark"),
+  theme: oneOf(THEMES, storedTheme, "neutral"),
+  scheme: oneOf(SCHEMES, readPref<string>("citropy.scheme", storedTheme === "light" ? "light" : "dark"), "dark"),
+  customColor: isHexColor(storedCustomColor) ? storedCustomColor : DEFAULT_CUSTOM_COLOR,
   uiScale: initialScale,
   language: readPref<Language>("citropy.language", "en") === "es" ? "es" : "en",
   panelWidths: readPanelWidths(),

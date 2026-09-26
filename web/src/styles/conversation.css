@@ -189,18 +189,6 @@
   padding-bottom: 2px;
 }
 
-.canvas-hint {
-  position: absolute;
-  inset: auto 0 20px;
-  margin: 0 auto;
-  padding: 0 var(--chat-gutter);
-  color: var(--text-3);
-  font-size: var(--text-base);
-  text-align: center;
-  max-width: 52ch;
-  pointer-events: none;
-}
-
 .stage:has(> .composer[data-start]) {
   grid-template-rows: minmax(0, 1fr) auto minmax(0, 1.2fr);
 }
@@ -1015,7 +1003,7 @@
   padding: 0 11px;
   border-radius: var(--r-full);
   border: 0;
-  background: var(--overlay);
+  background: var(--surface);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   color: var(--text-2);

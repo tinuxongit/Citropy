@@ -1,8 +1,10 @@
 .settings {
   --settings-inset: 18px;
+  --settings-gutter: clamp(20px, calc(var(--viewport-width) * 0.04), 56px);
   flex: 1;
   min-width: 0;
-  padding: 28px clamp(20px, calc(var(--viewport-width) * 0.04), 56px) 64px;
+  padding: 28px var(--settings-gutter) 64px;
+  container-type: inline-size;
 }
 
 .settings-inner {
@@ -68,8 +70,12 @@
   font-weight: 500;
   letter-spacing: 0;
 }
-.settings-inner :is(.settings-group, .theme-options, .settings-note) + .settings-group-heading {
+.settings-inner :is(.settings-group, .option-strip-zone, .custom-color-reveal, .settings-note) + .settings-group-heading {
   margin-top: 30px;
+}
+.settings-group-heading-centered {
+  margin-left: 0;
+  text-align: center;
 }
 .settings-group {
   background: var(--panel);
@@ -286,10 +292,73 @@
   color: var(--text-3);
 }
 
-.theme-options {
+.scheme-switch {
+  display: flex;
+  width: fit-content;
+  gap: 4px;
+  margin: 0 auto 16px;
+  padding: 4px;
+  border-radius: var(--r-md);
+  background: var(--panel);
+}
+.scheme-switch button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  transition: color var(--dur-instant);
+}
+.scheme-switch button[aria-pressed="true"] {
+  color: var(--text);
+}
+.option-strip-zone {
+  width: calc(100cqw + 2 * var(--settings-gutter));
+  margin-inline: calc(50% - 50cqw - var(--settings-gutter));
+}
+.option-strip-frame {
+  position: relative;
+  width: min(100cqw, 760px);
+  margin-inline: auto;
+}
+.option-strip {
+  --option-width: 168px;
+  --option-gap: 12px;
+  position: relative;
+  display: flex;
+  gap: var(--option-gap);
+  padding-inline: max(0px, 50% - var(--option-width) * 1.5 - var(--option-gap));
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+}
+.option-strip-arrow {
+  position: absolute;
+  top: 53px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 12px;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  background: var(--overlay);
+  box-shadow: var(--shadow-md);
+  color: var(--text-2);
+  translate: 0 -50%;
+  transition: color var(--dur-instant), opacity var(--dur-fast);
+}
+.option-strip-arrow[data-side="start"] { left: 4px; }
+.option-strip-arrow[data-side="end"] { right: 4px; }
+.option-strip-arrow:disabled { opacity: 0; pointer-events: none; }
+@media (hover: hover) and (pointer: fine) {
+  .option-strip-arrow:hover { color: var(--text); }
+}
+.option-strip > * {
+  flex: 0 0 var(--option-width);
+  scroll-snap-align: center;
 }
 .theme-option {
   width: 100%;
@@ -345,7 +414,7 @@
   overflow: hidden;
   background: var(--preview-canvas);
 }
-.theme-preview[data-theme="light"] {
+:root[data-scheme="light"] .theme-preview {
   --preview-canvas: #f9f9f8;
   --preview-rail: #f1f1f0;
   --preview-bar: #d8d8d6;
@@ -354,7 +423,7 @@
   --preview-bubble: #ececeb;
   --preview-input: #ffffff;
 }
-.theme-preview[data-theme="orange"] {
+:root:not([data-scheme="light"]) .theme-preview[data-theme="orange"] {
   --preview-canvas: #1c1714;
   --preview-rail: #171210;
   --preview-bar: #3b2f27;
@@ -363,7 +432,7 @@
   --preview-bubble: #2c231e;
   --preview-input: #2c231e;
 }
-.theme-preview[data-theme="purple"] {
+:root:not([data-scheme="light"]) .theme-preview[data-theme="purple"] {
   --preview-canvas: #19171f;
   --preview-rail: #14121a;
   --preview-bar: #353044;
@@ -371,6 +440,133 @@
   --preview-text: #877f9a;
   --preview-bubble: #292533;
   --preview-input: #292533;
+}
+:root:not([data-scheme="light"]) .theme-preview[data-theme="blue"] {
+  --preview-canvas: #16181d;
+  --preview-rail: #121419;
+  --preview-bar: #2f343f;
+  --preview-strong: #5b9dff;
+  --preview-text: #7f8796;
+  --preview-bubble: #242830;
+  --preview-input: #242830;
+}
+:root:not([data-scheme="light"]) .theme-preview[data-theme="green"] {
+  --preview-canvas: #161a17;
+  --preview-rail: #121512;
+  --preview-bar: #303831;
+  --preview-strong: #6fd08c;
+  --preview-text: #808d83;
+  --preview-bubble: #242a25;
+  --preview-input: #242a25;
+}
+:root:not([data-scheme="light"]) .theme-preview[data-theme="teal"] {
+  --preview-canvas: #151a1a;
+  --preview-rail: #111616;
+  --preview-bar: #2e3838;
+  --preview-strong: #4fd1c5;
+  --preview-text: #7d8f8d;
+  --preview-bubble: #232a2a;
+  --preview-input: #232a2a;
+}
+:root:not([data-scheme="light"]) .theme-preview[data-theme="pink"] {
+  --preview-canvas: #1d171a;
+  --preview-rail: #181215;
+  --preview-bar: #3c2f35;
+  --preview-strong: #ff7ab8;
+  --preview-text: #927e88;
+  --preview-bubble: #2d2328;
+  --preview-input: #2d2328;
+}
+:root[data-scheme="light"] .theme-preview[data-theme="orange"] {
+  --preview-canvas: #f8f2ee;
+  --preview-rail: #efe7e1;
+  --preview-bar: #d8c8bc;
+  --preview-strong: #d9651b;
+  --preview-text: #968a80;
+  --preview-bubble: #eae1da;
+}
+:root[data-scheme="light"] .theme-preview[data-theme="purple"] {
+  --preview-canvas: #f3f1f7;
+  --preview-rail: #e9e6ef;
+  --preview-bar: #cbc5d7;
+  --preview-strong: #7c4ddb;
+  --preview-text: #8f89a0;
+  --preview-bubble: #e3dfea;
+}
+:root[data-scheme="light"] .theme-preview[data-theme="pink"] {
+  --preview-canvas: #f7f0f3;
+  --preview-rail: #efe4e8;
+  --preview-bar: #d8c1ca;
+  --preview-strong: #d6337f;
+  --preview-text: #9c8b93;
+  --preview-bubble: #eadde2;
+}
+:root[data-scheme="light"] .theme-preview[data-theme="blue"] {
+  --preview-canvas: #f0f3f7;
+  --preview-rail: #e3e8ef;
+  --preview-bar: #c0c9d7;
+  --preview-strong: #2f6fe0;
+  --preview-text: #8a92a0;
+  --preview-bubble: #dde2ea;
+}
+:root[data-scheme="light"] .theme-preview[data-theme="green"] {
+  --preview-canvas: #eff4f0;
+  --preview-rail: #e3eae4;
+  --preview-bar: #bfcdc2;
+  --preview-strong: #23884a;
+  --preview-text: #879489;
+  --preview-bubble: #dce4de;
+}
+:root[data-scheme="light"] .theme-preview[data-theme="teal"] {
+  --preview-canvas: #eff4f3;
+  --preview-rail: #e2eae8;
+  --preview-bar: #bdcdca;
+  --preview-strong: #148a82;
+  --preview-text: #859494;
+  --preview-bubble: #dbe4e3;
+}
+:root:not([data-scheme="light"]) .theme-preview[data-theme="red"] {
+  --preview-canvas: #1d1616;
+  --preview-rail: #181212;
+  --preview-bar: #3d2f2f;
+  --preview-strong: #ff6b6b;
+  --preview-text: #927e7e;
+  --preview-bubble: #2d2323;
+  --preview-input: #2d2323;
+}
+:root:not([data-scheme="light"]) .theme-preview[data-theme="yellow"] {
+  --preview-canvas: #1c1a14;
+  --preview-rail: #171510;
+  --preview-bar: #3b372b;
+  --preview-strong: #f5c542;
+  --preview-text: #8f8873;
+  --preview-bubble: #2c2920;
+  --preview-input: #2c2920;
+}
+:root[data-scheme="light"] .theme-preview[data-theme="red"] {
+  --preview-canvas: #f8f0ef;
+  --preview-rail: #efe4e3;
+  --preview-bar: #d8c1c0;
+  --preview-strong: #d93636;
+  --preview-text: #9c8b8b;
+  --preview-bubble: #eadddd;
+}
+:root[data-scheme="light"] .theme-preview[data-theme="yellow"] {
+  --preview-canvas: #f7f5ed;
+  --preview-rail: #eeebdf;
+  --preview-bar: #d6cfb8;
+  --preview-strong: #c99700;
+  --preview-text: #978f79;
+  --preview-bubble: #e9e5d8;
+}
+:root .theme-preview[data-theme="custom"] {
+  --preview-canvas: var(--custom-canvas);
+  --preview-rail: var(--custom-canvas-deep);
+  --preview-bar: var(--custom-tree-line);
+  --preview-strong: var(--custom-accent);
+  --preview-text: #8a8a8a;
+  --preview-bubble: var(--custom-raised-solid);
+  --preview-input: var(--custom-surface-solid);
 }
 .theme-preview-rail {
   width: 29%;
@@ -421,6 +617,85 @@
 }
 
 .custom-background { position: relative; display: grid; }
+.custom-color { position: relative; display: grid; }
+.custom-color-toggle {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--overlay) 88%, transparent);
+  box-shadow: var(--shadow-md);
+  color: var(--text-2);
+  transition: color var(--dur-instant);
+}
+.custom-color-toggle[aria-expanded="true"] { color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .custom-color-toggle:hover { color: var(--text); }
+}
+.custom-color-picker {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 320px);
+  margin: 16px auto 0;
+  padding: 12px;
+}
+.custom-color-picker .react-colorful {
+  width: 100%;
+  height: auto;
+  gap: 12px;
+}
+.custom-color-picker .react-colorful__saturation {
+  height: 150px;
+  border: 0;
+  border-radius: var(--r-sm);
+}
+.custom-color-picker .react-colorful__hue {
+  flex: none;
+  height: 12px;
+  border-radius: var(--r-full);
+}
+.custom-color-picker .react-colorful__pointer {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.custom-color-picker .react-colorful__interactive:focus-visible .react-colorful__pointer {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+.custom-color-hex {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: var(--raised);
+}
+.custom-color-hex:focus-within {
+  box-shadow: var(--field-focus-ring);
+}
+.custom-color-swatch {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-full);
+}
+.custom-color-hex input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  outline: none;
+}
 .background-preview[data-empty] {
   display: grid;
   place-content: center;
@@ -509,7 +784,8 @@
 @container application (max-width: 720px) {
   .settings {
     --settings-inset: 16px;
-    padding: 24px 20px 40px;
+    --settings-gutter: 20px;
+    padding: 24px var(--settings-gutter) 40px;
   }
   .settings-heading {
     gap: 14px;
@@ -533,9 +809,6 @@
   .assistance-model-row > .assistance-model-choice {
     flex: 1 1 100%;
     width: 100%;
-  }
-  .theme-options {
-    gap: 12px;
   }
   .provider-setting-identity {
     gap: 10px;

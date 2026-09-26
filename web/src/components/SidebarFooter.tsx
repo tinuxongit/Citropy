@@ -1,11 +1,13 @@
 import { useI18n } from "../lib/i18n.ts";
-import { useRef, useState } from "react";
-import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { GitBranch, Github, Settings, BarChart3 } from "lucide-react";
 
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
+
+const FADE_MS = 90;
+const RESIZE_MS = 200;
 
 export function SidebarFooter({
   onGit,
@@ -24,13 +26,27 @@ export function SidebarFooter({
   const [compact, setCompact] = useState(
     () => localStorage.getItem("citropy.compactNavigation") !== "0",
   );
+  const [fading, setFading] = useState(false);
+  const target = useRef(compact);
+  const timers = useRef<number[]>([]);
   const drag = useRef<number | undefined>(undefined);
   const moved = useRef(false);
   const reducedMotion = useReducedMotion();
   const usagePeek = useUsagePeek("top");
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
   const change = (value: boolean) => {
-    setCompact(value);
+    target.current = value;
     localStorage.setItem("citropy.compactNavigation", value ? "1" : "0");
+    if (reducedMotion) {
+      setCompact(value);
+      return;
+    }
+    timers.current.forEach(clearTimeout);
+    setFading(true);
+    timers.current = [
+      window.setTimeout(() => setCompact(value), FADE_MS),
+      window.setTimeout(() => setFading(false), FADE_MS + RESIZE_MS),
+    ];
   };
   const actions = [
     { name: "Source control", icon: GitBranch, run: onGit, tone: "git" },
@@ -56,7 +72,7 @@ export function SidebarFooter({
           const distance = event.clientY - drag.current;
           if (Math.abs(distance) >= 20) {
             moved.current = true;
-            if (compact !== distance > 0) change(distance > 0);
+            if (target.current !== distance > 0) change(distance > 0);
           }
         }}
         onPointerUp={() => {
@@ -67,14 +83,13 @@ export function SidebarFooter({
           moved.current = true;
         }}
         onClick={() => {
-          if (!moved.current) change(!compact);
+          if (!moved.current) change(!target.current);
           moved.current = false;
         }}
       />
-      <nav className="navigation-actions" aria-label={t("Workspace navigation")}>
+      <nav className="navigation-actions" data-fading={fading || undefined} aria-label={t("Workspace navigation")}>
         {actions.map(({ name, icon: Icon, run, tone }) => (
-          <motion.button
-            layout="position"
+          <button
             type="button"
             className="rail-action"
             data-tone={tone}
@@ -85,14 +100,10 @@ export function SidebarFooter({
             title={compact && tone !== "usage" ? t(name) : undefined}
             aria-describedby={tone === "usage" ? usagePeek.describedBy : undefined}
             {...(tone === "usage" ? usagePeek.bind : {})}
-            transition={{
-              duration: reducedMotion ? 0 : 0.2,
-              ease: [0.2, 0, 0, 1],
-            }}
           >
             <Icon size={17} />
             <span>{t(name)}</span>
-          </motion.button>
+          </button>
         ))}
         <span className="navigation-update-divider" aria-hidden="true" />
         <AppUpdateControl />

@@ -78,11 +78,13 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
       </button>
 
       <Collapsible open={open} className="change-body">
-        {patch ? (
-          <DiffView patch={patch} showHeader={false} limit={40} expanded={expanded} onExpand={onExpand} />
-        ) : (
-          <div className="change-loading">{loading ? t("Reading diff…") : error || t("No textual diff")}</div>
-        )}
+        <div className="change-body-inner">
+          {patch ? (
+            <DiffView patch={patch} showHeader={false} limit={40} expanded={expanded} onExpand={onExpand} />
+          ) : (
+            <div className="change-loading">{loading ? t("Reading diff…") : error || t("No textual diff")}</div>
+          )}
+        </div>
       </Collapsible>
     </div>
   );

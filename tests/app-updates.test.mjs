@@ -376,7 +376,7 @@ createRoot(root).render(React.createElement(React.Fragment, null, React.createEl
       });
     await page.screenshot({ path: "/tmp/citropy-update-footer-desktop.png" });
     const colors = await page
-      .locator(".strip-action > svg")
+      .locator(".strip-action svg")
       .evaluateAll((nodes) =>
         nodes.map((node) => getComputedStyle(node).color),
       );
