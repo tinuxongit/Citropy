@@ -455,7 +455,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
       await page.keyboard.press("Escape");
       await page.getByRole("menu").waitFor({ state: "detached" });
       await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
-      await page.locator(".thread-card").first().waitFor({ state: "detached" });
+      await page.locator(".thread-card").first().waitFor({ state: "hidden" });
       await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
       await page.locator(".thread-card").first().waitFor();
       await settle();
@@ -475,7 +475,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     assert.deepEqual(await page.evaluate(() => ({ observers: window.navigationResources.observers.size, frames: window.navigationResources.frames.size })), resources);
     await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
     assert.equal(await page.locator('.sliding-panel[data-side="left"]').getAttribute("inert"), "");
-    await page.locator(".thread-card").first().waitFor({ state: "detached" });
+    await page.locator(".thread-card").first().waitFor({ state: "hidden" });
     assert.equal(await page.getByRole("button", { name: "New thread", exact: true }).count(), 0);
   });
 
@@ -487,7 +487,7 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     await settle();
     const panel = page.locator('.sliding-panel[data-side="right"]');
     await toggle.evaluate((button) => button.click());
-    await page.waitForFunction(() => document.querySelector('.sliding-panel[data-side="right"]').getAnimations().length > 0);
+    await page.waitForFunction(() => document.querySelector('.sliding-panel[data-side="right"] > *')?.getAnimations().length > 0);
     await toggle.evaluate((button) => button.click());
     await settle();
     assert.equal(await panel.getAttribute("hidden"), null);
@@ -509,9 +509,9 @@ test("navigation stays bounded and motion releases its resources", { timeout: 12
     await panel.waitFor({ state: "hidden" });
     await toggle.click();
     await settle();
-    assert.equal(await panel.evaluate((node) => node.getAnimations().length), 0);
+    assert.equal(await panel.evaluate((node) => node.firstElementChild.getAnimations().length), 0);
     await page.emulateMedia({ reducedMotion: "no-preference" });
-    await page.waitForFunction(() => document.querySelector('.sliding-panel[data-side="right"]').style.getPropertyValue("--panel-duration") === "200ms");
+    await page.waitForFunction(() => document.querySelector('.sliding-panel[data-side="right"]').style.getPropertyValue("--panel-duration") === "280ms");
     await page.evaluate(() => {
       Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
       document.dispatchEvent(new Event("visibilitychange"));

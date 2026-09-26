@@ -20,6 +20,8 @@ export function useAnchoredPanel(panel: RefObject<HTMLElement | null>, anchor: R
     position();
     const resize = new ResizeObserver(position);
     if (anchor.current) resize.observe(anchor.current);
+    const surroundings = anchor.current?.closest(".composer");
+    if (surroundings) resize.observe(surroundings);
     window.addEventListener("resize", position);
     return () => {
       resize.disconnect();

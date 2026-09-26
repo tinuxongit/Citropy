@@ -1805,6 +1805,37 @@ app.whenReady().then(() => {
     await f.close();
   });
 
+  subtest("usage limits show a composer tab that resumes or snoozes the chat at the reset", async () => {
+    const f = await fixture();
+    const { page } = f;
+    const resetsAt = Date.now() + 2 * 3_600_000;
+    const error = "You've hit your usage limit. Try again in 2 hours.";
+    f.emit({ t: "thread.upsert", thread: { ...thread, running: false, status: "error", error, usageLimit: { at: Date.now(), resetsAt, resume: false } } });
+    await page.locator(".thread-limit").getByText(/^Usage limit reached\. Resets at /).waitFor();
+    assert.equal(await page.locator(".thread-error").count(), 0);
+    const tab = page.getByRole("button", { name: "Usage limit reached", exact: true });
+    assert.equal(await tab.evaluate(node => Boolean(node.closest(".composer-tabs"))), true);
+    await tab.click();
+    const panel = page.getByRole("dialog", { name: "Usage limit reached", exact: true });
+    await panel.getByText(error, { exact: true }).waitFor();
+    await panel.getByRole("button", { name: "Resume at reset", exact: true }).click();
+    await until(() => f.requests.some(event => event.t === "thread.resumeAfterLimit" && event.id === "chat" && event.enabled === true));
+    f.emit({ t: "thread.upsert", thread: { ...thread, running: false, status: "error", error, usageLimit: { at: Date.now(), resetsAt, resume: true } } });
+    await panel.getByRole("button", { name: "Resuming at reset", exact: true }).waitFor();
+    for (const width of [1440, 600]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.waitForFunction(width => document.querySelector(".usage-limit-panel").getBoundingClientRect().right <= width, width);
+      const bounds = await panel.boundingBox();
+      assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width && bounds.y >= 0, JSON.stringify(bounds));
+      await page.screenshot({ path: `/tmp/citropy-usage-limit-${width}.png`, animations: "disabled" });
+    }
+    await page.keyboard.press("Escape");
+    await panel.waitFor({ state: "detached" });
+    f.emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", runStartedAt: Date.now() } });
+    await tab.waitFor({ state: "detached" });
+    await f.close();
+  });
+
   subtest("the elapsed turn time survives settings navigation and resets only for a new run", async () => {
     const f = await fixture();
     const { page } = f;
