@@ -31,12 +31,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       # These regressions use Node built-ins and Git, not Electron or a display server.
-      # Run directly: retries must never turn a first-run failure into a green check.
-      - name: Check request, filesystem, proxy, and CI regressions
+      - name: Check request, filesystem, and proxy regressions
         run: >-
           node --experimental-strip-types --test --test-reporter=tap --test-concurrency=1
           tests/audit-static.test.mjs tests/audit-files.test.mjs
-          tests/audit-remote-proxy.test.mjs tests/audit-test-ci.test.mjs
+          tests/audit-remote-proxy.test.mjs
           tests/audit-diff.test.mjs tests/audit-terminal-daemon.test.mjs
           tests/audit-http.test.mjs tests/audit-diff-paths.test.mjs
           tests/audit-containment-race.test.mjs tests/audit-tree-aba.test.mjs

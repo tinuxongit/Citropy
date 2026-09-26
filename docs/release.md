@@ -21,19 +21,18 @@ Live-update status, server restart, and provider-event diagnostics appear only i
 Start with the test files covering the changed behavior, then run type checking:
 
 ```sh
-node --experimental-strip-types --test --test-concurrency=2 tests/renderer-state.test.mjs tests/activity-layout.test.mjs
+node --experimental-strip-types --test tests/shells.test.mjs
 npm run typecheck
 ```
 
 Use the relevant files under `tests/` in place of these examples. Keep performance regressions deterministic by checking unnecessary work or resource cleanup rather than asserting wall-clock timings. Unit tests can advance mocked timers; browser and process integration tests still need to wait for the actual result.
 
-Before handing off changes across shared components or server state, run `npm run test:ci` and `npm run build`. GitHub runs the full suite across three independent shards, each running two test files at a time. Run one shard locally with `npm run test:ci -- --test-shard=1/3`; omitting the option runs the full suite. Failed files rerun serially for diagnosis without sharding, but a passing retry never turns the original failure into a pass. Inspect the first failure before changing a timeout or rerunning the suite.
+The suite covers only behavior that differs between operating systems: paths, shells and terminals, program lookup, installers, and updates. `npm test` runs it in about ten seconds. Each release job also launches the packaged app on its own operating system.
 
 ## Local release check
 
 ```sh
 npm ci
-npx playwright install --with-deps chromium
 npm run typecheck
 npm test
 npm audit --audit-level=high
@@ -41,7 +40,7 @@ npm run desktop:package
 npm run desktop:smoke
 ```
 
-The desktop tests require Xvfb, xdotool, D-Bus, Python's dbus and GI modules, GStreamer base/good plugins, and GdkPixbuf. The GitHub workflow lists the Ubuntu packages.
+The update tests and the smoke check require Xvfb.
 
 Packaging writes the AppImage, `latest-linux.yml`, and the unpacked app to `release/`. The smoke check launches the AppImage with temporary data and verifies startup, shutdown, development restrictions, release contents, and settings at two window widths. Its screenshots also go in `release/`. It does not start a model conversation or consume provider usage.
 

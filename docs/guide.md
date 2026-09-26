@@ -140,7 +140,7 @@ Conversations and workspaces are stored in `~/.citropy`. Desktop preferences and
 
 On Linux, `npm run desktop:install` adds Citropy to the application menu with live updates enabled. In Settings > Application, reload the interface or restart the desktop after changing its native code. Server changes need a server restart after active work has finished. `npm run desktop:package` builds a Linux AppImage and its update manifest in `release/`, using a separate staging directory for native dependencies. The packaged app starts and stops its own local server. Close the development server before launching a release build.
 
-Run `npm run typecheck`, `npm test`, and `npm run build` to verify changes. The native integration tests use Electron, Xvfb, and xdotool on Linux. SSH integration tests also use the OpenSSH client, sshd, and ssh-keygen with temporary keys, a loopback listener, and an isolated remote home; they do not use personal SSH keys or contact an external host. Portal protocol tests use a private D-Bus session and a synthetic GStreamer video source. A real Wayland sharing session still requires the operating system's consent dialog.
+Run `npm run typecheck`, `npm test`, and `npm run build` to verify changes. The update tests launch Electron under Xvfb on Linux.
 
 ## Code layout
 
