@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
@@ -73,6 +73,8 @@ const platform =
   ) ?? "--linux";
 await rm(join(staging, "desktop/computer-mac"), { force: true });
 if (platform === "--mac") {
+  for (const arch of ["arm64", "x64"])
+    await chmod(join(staging, `node_modules/node-pty/prebuilds/darwin-${arch}/spawn-helper`), 0o755);
   const { buildComputerHelper } = await import("./computer-mac-build.mjs");
   await buildComputerHelper({ output: join(staging, "desktop/computer-mac"), architectures: ["arm64", "x86_64"] });
 }
