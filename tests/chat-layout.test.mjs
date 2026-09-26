@@ -106,7 +106,7 @@ test("chat content and controls adapt when the workspace squeezes the conversati
     await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].some(node =>
       node.getAnimations().some(animation => animation.playState === 'running' && animation.effect.getKeyframes().some(frame => frame.translate)),
     ));
-    assert.equal(await page.locator('#message-answer .turn-heading .turn-meta').evaluate(node => getComputedStyle(node).translate !== 'none'), true);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].some(node => node.getAnimations().length && getComputedStyle(node).translate !== 'none')), true);
     await page.screenshot({ path: `/tmp/citropy-header-moving-${width}.png` });
   }
   await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].every(node =>

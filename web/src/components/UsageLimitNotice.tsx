@@ -46,10 +46,7 @@ export function UsageLimitNotice({ threadId, error }: { threadId: string; error:
           onChange={(event) => send({ t: "thread.resumeAfterLimit", id: threadId, enabled: event.target.checked })}
         />
       </label>
-      <details className="usage-limit-message">
-        <summary>{t("Provider message")}</summary>
-        <p>{error}</p>
-      </details>
+      <p className="usage-limit-message" title={error}>{error}</p>
     </section>
   );
 }

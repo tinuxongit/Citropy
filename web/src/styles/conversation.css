@@ -1122,17 +1122,17 @@
   margin: 2px -8px 0;
   border-radius: var(--r-sm);
 }
-.usage-limit-message summary {
-  width: fit-content;
+.usage-limit-notice .usage-limit-message {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--raised);
   color: var(--text-3);
   font-size: var(--text-xs);
-  cursor: pointer;
-}
-.usage-limit-message p {
-  margin-top: 6px;
-  color: var(--text-3);
-  font-size: var(--text-xs);
-  white-space: pre-wrap;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 

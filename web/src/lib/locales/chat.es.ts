@@ -334,7 +334,6 @@ export const chatEs: Record<string, string> = {
   "Continues automatically at {time}.": "Continúa automáticamente a las {time}.",
   "Continues automatically as soon as usage is available.": "Continúa automáticamente en cuanto haya uso disponible.",
   "Resume when usage returns": "Reanudar cuando vuelva el uso",
-  "Provider message": "Mensaje del proveedor",
   "Resumes after reset": "Se reanuda tras el restablecimiento",
   "Usage limit": "Límite de uso"
 };
