@@ -99,7 +99,6 @@ export function startAsciiNoise(canvas: HTMLCanvasElement, { color, starColor, a
   const touched = new Set<Star>();
   let atlas: HTMLCanvasElement | undefined;
   let slice = 0;
-  let frame = 0;
   let timer = 0;
   let pausedFor = 0;
   let pausedAt: number | undefined;
@@ -230,14 +229,11 @@ export function startAsciiNoise(canvas: HTMLCanvasElement, { color, starColor, a
   };
 
   const tick = () => {
-    frame = requestAnimationFrame((now) => {
-      draw(now);
-      timer = window.setTimeout(tick, FRAME_MS);
-    });
+    draw(performance.now());
+    timer = window.setTimeout(tick, FRAME_MS);
   };
 
   const stop = () => {
-    cancelAnimationFrame(frame);
     clearTimeout(timer);
     pausedAt ??= performance.now();
   };

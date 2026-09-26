@@ -168,6 +168,7 @@ test("chat content and controls adapt when the workspace squeezes the conversati
           assert.ok(button.width > 0 && button.left >= layout.composer.left && button.right <= layout.composer.right, JSON.stringify(layout));
         assert.equal(await draft.inputValue(), "Keep this draft while resizing.");
         if (width <= 600) {
+          await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading, .turn-heading *, .message-avatar')].every(node => node.getAnimations().every(animation => animation.playState !== 'running')));
           const headers = await page.locator('.turn:has(.turn-heading)').evaluateAll(turns => turns.map(turn => {
             const heading = turn.querySelector('.turn-heading');
             const name = heading.querySelector('strong');
