@@ -101,11 +101,18 @@ test("chat content and controls adapt when the workspace squeezes the conversati
   }, width);
   await resizeChat(760);
   await page.waitForTimeout(250);
+  await page.evaluate(() => {
+    window.headerGlides = 0;
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      if (this.matches?.('.turn-heading > .turn-meta') && Array.isArray(keyframes) && keyframes.some(frame => frame.translate)) window.headerGlides += 1;
+      return animate.call(this, keyframes, options);
+    };
+  });
   for (const width of [520, 760, 520]) {
+    const glides = await page.evaluate(() => window.headerGlides);
     await resizeChat(width);
-    await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].some(node =>
-      node.getAnimations().some(animation => animation.playState === 'running' && animation.effect.getKeyframes().some(frame => frame.translate)),
-    ));
+    await page.waitForFunction(count => window.headerGlides > count, glides);
     await page.screenshot({ path: `/tmp/citropy-header-moving-${width}.png` });
   }
   await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].every(node =>
