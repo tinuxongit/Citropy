@@ -33,6 +33,7 @@ jobs:
             echo "Tag v$VERSION already exists."
             exit 1
           fi
+          node scripts/release-notes.mjs "$VERSION" > /dev/null
 
   check:
     needs: validate
@@ -226,4 +227,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ inputs.version }}
-        run: gh release create "v$VERSION" dist/SHA256SUMS dist/*.AppImage dist/latest-linux.yml dist/*.zip dist/latest-mac.yml dist/*.exe dist/*.exe.blockmap dist/latest.yml --verify-tag --draft --title "Citropy $VERSION" --generate-notes
+        run: |
+          node scripts/release-notes.mjs "$VERSION" > "$RUNNER_TEMP/notes.md"
+          gh release create "v$VERSION" dist/SHA256SUMS dist/*.AppImage dist/latest-linux.yml dist/*.zip dist/latest-mac.yml dist/*.exe dist/*.exe.blockmap dist/latest.yml --verify-tag --draft --title "Citropy $VERSION" --notes-file "$RUNNER_TEMP/notes.md"

@@ -56,8 +56,11 @@ export function ComposerInput({
   useLayoutEffect(() => {
     const node = box.current;
     if (!node) return;
+    const editor = node.parentElement!;
+    editor.style.minHeight = `${editor.offsetHeight}px`;
     node.style.height = "0px";
     node.style.height = `${Math.min(node.scrollHeight, scaled(320))}px`;
+    editor.style.minHeight = "";
     if (highlights.current) highlights.current.scrollTop = node.scrollTop;
   }, [value]);
   useEffect(() => {
