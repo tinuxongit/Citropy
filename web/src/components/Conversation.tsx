@@ -1,4 +1,4 @@
-import { UsageLimitNotice } from "./UsageLimitNotice.tsx";
+import { UsageLimitLine } from "./UsageLimitNotice.tsx";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
@@ -375,7 +375,7 @@ export function Conversation() {
             })}
           </div>
           {status === "error" && error && threadId && (usageLimited
-            ? <UsageLimitNotice threadId={threadId} error={error} />
+            ? <UsageLimitLine threadId={threadId} />
             : <div className="thread-error" role="alert">{error}</div>)}
           {busy && !activityRunning && <MessageBlock
             messageId={lastMessage?.role === "assistant" ? lastMessage.id : undefined}

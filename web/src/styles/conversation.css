@@ -1090,50 +1090,17 @@
   .turn:not(:hover, :focus-within) .turn-meta { transform: none; }
 }
 
-.usage-limit-notice {
-  display: grid;
-  gap: 8px;
-  margin: 16px 0;
-  padding: 14px;
-  border-radius: var(--r-md);
-  background: var(--panel);
-  color: var(--text-2);
-  font-size: var(--text-sm);
-}
-.usage-limit-heading {
+.thread-limit {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text);
-}
-.usage-limit-heading svg {
+  margin: 14px 0;
   color: var(--warn);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.thread-limit svg {
   flex: none;
-}
-.usage-limit-heading strong {
-  font-weight: 600;
-}
-.usage-limit-notice p {
-  margin: 0;
-}
-.usage-limit-notice .usage-limit-resume {
-  --settings-inset: 8px;
-  min-height: 0;
-  margin: 2px -8px 0;
-  border-radius: var(--r-sm);
-}
-.usage-limit-notice .usage-limit-message {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  padding: 8px 10px;
-  border-radius: var(--r-sm);
-  background: var(--raised);
-  color: var(--text-3);
-  font-size: var(--text-xs);
-  line-height: 1.5;
-  overflow-wrap: anywhere;
 }
 
 .thread-error {

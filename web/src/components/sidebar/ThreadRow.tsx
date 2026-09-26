@@ -4,7 +4,7 @@ import type { ThreadMeta } from "../../../../shared/protocol.ts";
 import { finishThread, loadThread, openOnEnvironment, removeThread } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { formatDate, modelLabel, threadActivity } from "../../lib/format.ts";
-import { environmentId } from "../../lib/environment.ts";
+import { environmentId, useEnvironments } from "../../lib/environment.ts";
 import { environmentSlice } from "../../lib/live-environments.ts";
 import { currentLocale, useI18n } from "../../lib/i18n.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
@@ -45,7 +45,8 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
   const slice = environmentSlice(environment);
   const connected = slice?.connected ?? false;
   const provider = slice?.providers.find((entry) => entry.id === thread.provider);
-  const active = environment === environmentId() && thread.id === activeThreadId;
+  const current = useEnvironments().activeId === environment;
+  const active = current && thread.id === activeThreadId;
   const key = threadKey(environment, thread.id);
   const { status, label } = threadActivity(thread);
   const searching = Boolean(query.trim());
@@ -187,7 +188,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
           {t("Pull request")} #{pullRequestNumber(thread.pullRequest)}
         </a>
       )}
-      {!query && <ThreadChildren parent={thread} environment={environment} {...tree} activeThreadId={environment === environmentId() ? activeThreadId : null} onConversation={onConversation} />}
+      {!query && <ThreadChildren parent={thread} environment={environment} {...tree} activeThreadId={current ? activeThreadId : null} onConversation={onConversation} />}
     </div>
   );
 });

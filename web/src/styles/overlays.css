@@ -67,6 +67,7 @@
 
 .citropy-dialog {
   pointer-events: auto;
+  white-space: normal;
   width: min(480px, calc(var(--viewport-width) - 48px));
   max-height: calc(var(--viewport-height) - 48px);
   padding: 0;

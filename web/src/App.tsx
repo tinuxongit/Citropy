@@ -1,4 +1,3 @@
-import { QuestionPanel } from "./components/QuestionPanel.tsx";
 import { LinkActions } from "./components/LinkActions.tsx";
 import { RemoteConnectionBanner } from "./components/EnvironmentSettings.tsx";
 import { environmentStorage, selectEnvironment, useEnvironments } from "./lib/environment.ts";
@@ -22,7 +21,6 @@ import { Composer } from "./components/Composer.tsx";
 import { Inspector } from "./components/Inspector.tsx";
 import { SlidingPanel } from "./components/SlidingPanel.tsx";
 import { StageBackdrop } from "./components/StageBackdrop.tsx";
-import { PermissionPanel } from "./components/PermissionPanel.tsx";
 import { Toasts } from "./components/Toasts.tsx";
 import { ConfirmationDialog } from "./components/ConfirmationDialog.tsx";
 import { RemoteFolderDialog } from "./components/RemoteFolderDialog.tsx";
@@ -328,8 +326,6 @@ export function App() {
             ) : hasProject && activeThreadId ? (
               <Fragment key={`${environment}:${activeThreadId}`}>
                 <Conversation />
-                <QuestionPanel />
-                <PermissionPanel />
                 <Composer
                   onUsage={() => openView("usage")}
                   onShell={openNotification}

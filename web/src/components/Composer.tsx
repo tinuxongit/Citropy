@@ -1,3 +1,6 @@
+import { QuestionPanel } from "./QuestionPanel.tsx";
+import { PermissionPanel } from "./PermissionPanel.tsx";
+import { UsageLimitStrip } from "./UsageLimitNotice.tsx";
 import { environmentId, environmentSignal } from "../lib/environment.ts";
 import { ComposerInput } from "./ComposerInput.tsx";
 import { gitActionBusy } from "../../../shared/assistance.ts";
@@ -249,24 +252,29 @@ export function Composer({
           {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
           <RunningShells onOpen={onShell} />
         </div>
-        {thread.finished && !running && (
-          <div className="composer-finished" role="status">
-            <CheckCircle2 size={14} aria-hidden="true" />
-            <div className="composer-finished-copy">
-              <strong>{t("Conversation finished")}</strong>
-              <span>{t("Send a message to reopen it.")}</span>
+        <div className="composer-dock">
+          <QuestionPanel />
+          <PermissionPanel />
+          <UsageLimitStrip threadId={thread.id} />
+          {thread.finished && !running && (
+            <div className="composer-finished" role="status">
+              <CheckCircle2 size={14} aria-hidden="true" />
+              <div className="composer-finished-copy">
+                <strong>{t("Conversation finished")}</strong>
+                <span>{t("Send a message to reopen it.")}</span>
+              </div>
+              <button
+                className="btn"
+                data-variant="ghost"
+                type="button"
+                disabled={!connected}
+                onClick={() => finishThread(thread.id, false)}
+              >
+                {t("Reopen")}
+              </button>
             </div>
-            <button
-              className="btn"
-              data-variant="ghost"
-              type="button"
-              disabled={!connected}
-              onClick={() => finishThread(thread.id, false)}
-            >
-              {t("Reopen")}
-            </button>
-          </div>
-        )}
+          )}
+        </div>
         <input
           ref={fileInput}
           type="file"

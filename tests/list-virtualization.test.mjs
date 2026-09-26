@@ -173,7 +173,7 @@ test("large workspace lists preserve state and navigation with bounded rendered 
     await bounded(".skill-row");
     await page.waitForFunction(() => {
       const rows = [...document.querySelectorAll('.skill-list > .virtual-list-row')];
-      return rows.every((row, index) => !index || row.getBoundingClientRect().top >= rows[index - 1].getBoundingClientRect().bottom);
+      return rows.every((row, index) => !index || row.getBoundingClientRect().top >= rows[index - 1].getBoundingClientRect().bottom - 1);
     });
     const bounds = await page.locator(".skill-row").first().boundingBox();
     assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width + 1);

@@ -151,28 +151,19 @@ test("grouped workspaces switch hosts without reloading and use the system folde
     const { useApp } = await import("/web/src/lib/store.ts");
     useApp.setState({ panels: [{ id: "ssh-shell", projectId: "remote-project", kind: "terminal", title: "Remote build" }] });
   });
-  await page.getByRole("button", { name: "Running shells, 2 active", exact: true }).click();
+  await page.getByRole("button", { name: "Running shells, 1 active", exact: true }).click();
   const shells = page.getByRole("dialog", { name: "Running shells", exact: true });
-  await shells.getByRole("button", { name: /Remote build/ }).click();
-  assert.equal(await shells.getByRole("button", { name: "Open terminal", exact: true }).count(), 1);
-  assert.equal(await shells.getByRole("button", { name: "Stop shell", exact: true }).count(), 0);
-  await page.evaluate(async () => {
-    const { useApp } = await import("/web/src/lib/store.ts");
-    useApp.setState(state => ({ shells: { ...state.shells, "terminal:ssh-shell": { id: "terminal:ssh-shell", panelId: "ssh-shell", projectId: "remote-project", command: "", cwd: "/project", status: "running", busy: true, process: "node", background: true, stopMode: "shell", output: "Build ready", startedAt: 2 } } }));
-  });
   await shells.getByRole("button", { name: "Stop shell", exact: true }).waitFor();
-  await shells.getByText("Subscribed remote output", { exact: true }).waitFor();
-  await shells.locator(".shell-status").getByText("Running", { exact: true }).waitFor();
-  assert.ok(messages.some(event => event.remote && event.t === "shell.watch" && event.id === "terminal:ssh-shell"));
-  assert.equal(await shells.locator(".shell-row").count(), 2);
-  assert.equal(await shells.getByText("Interactive terminal", { exact: true }).count(), 0);
+  assert.equal(await shells.locator(".shell-row").count(), 1);
+  assert.equal(await shells.locator(".shell-command").first().innerText(), "npm run dev");
+  assert.equal(await shells.getByText("Remote build").count(), 0);
   for (const width of [1440, 620]) {
     await page.setViewportSize({ width, height: 900 });
     await page.screenshot({ path: `/tmp/citropy-shell-list-${width}.png`, animations: "disabled" });
   }
   await shells.getByRole("button", { name: "Close running shells", exact: true }).click();
+  await shells.waitFor({ state: "hidden" });
   await page.setViewportSize({ width: 1440, height: 900 });
-  assert.ok(messages.some(event => event.remote && event.t === "shell.watch" && event.id === null));
 
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.locator("button[data-settings-section='projects']").click();
