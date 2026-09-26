@@ -16,6 +16,7 @@ import {
   createTimelineSelector,
 } from "../lib/timeline.ts";
 import { useI18n } from "../lib/i18n.ts";
+import { onPanelSettled, panelMoving } from "../lib/panel-motion.ts";
 
 function slideRows(elements: HTMLElement[], direction: "open" | "close"): Animation[] {
   const heights = elements.map(element => element.offsetHeight);
@@ -89,6 +90,7 @@ export function Conversation() {
   const virtualized = rows.length > 40;
   const pinnedActivity = useRef<{ id: string }>(undefined);
   const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);
+  const rowHeights = useRef(new WeakMap<Element, number>());
   const timeline = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: rows.length,
     getScrollElement: () => viewport.current,
@@ -97,7 +99,13 @@ export function Conversation() {
     initialOffset: () => viewport.current?.scrollTop ?? rows.length * scaled(180),
     paddingStart: scaled(30),
     overscan: virtualized ? 4 : 40,
-    measureElement: (element) => element.offsetHeight,
+    measureElement: (element) => {
+      const cached = rowHeights.current.get(element);
+      if (cached !== undefined && panelMoving()) return cached;
+      const height = element.offsetHeight;
+      rowHeights.current.set(element, height);
+      return height;
+    },
     rangeExtractor: (range) => {
       const indexes = defaultRangeExtractor(range);
       if (!pinnedActivity.current) return indexes;
@@ -106,6 +114,9 @@ export function Conversation() {
       return defaultRangeExtractor({ ...range, startIndex: Math.min(range.startIndex, pinned), endIndex: Math.max(range.endIndex, pinned) });
     },
   });
+  useEffect(() => onPanelSettled(() => {
+    for (const row of viewport.current?.querySelectorAll(".timeline-row") ?? []) timeline.measureElement(row as HTMLDivElement);
+  }), [timeline]);
   timeline.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) => {
     if (following()) return false;
     return item.end <= (instance.scrollOffset ?? 0) + instance.scrollAdjustments;

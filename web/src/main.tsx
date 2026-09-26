@@ -21,6 +21,7 @@ import "./styles/virtual-list.css";
 import "./styles/computer.css";
 import "./styles/environments.css";
 import { initializeEnvironment } from "./lib/environment.ts";
+import { applyReleaseDefaults } from "./lib/release-defaults.ts";
 
 async function start() {
   if (/Mac|iPhone|iPad/.test(navigator.platform)) {
@@ -33,7 +34,9 @@ async function start() {
     );
   }
   await initializeEnvironment();
-  const [{ App }, { connect }, { useApp }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts")]);
+  applyReleaseDefaults();
+  const [{ App }, { connect, logClientError }, { useApp }, { loadSpanish }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts"), import("./lib/translations.ts")]);
+  if (useApp.getState().language === "es") await loadSpanish();
 
   if (!window.citropyDesktop && window.loomDesktop)
     window.citropyDesktop = window.loomDesktop;
@@ -44,6 +47,8 @@ async function start() {
     String(useApp.getState().uiScale / 100),
   );
   connect();
+  window.addEventListener("error", (event) => logClientError(event.error ?? event.message));
+  window.addEventListener("unhandledrejection", (event) => logClientError(event.reason));
 
   const root = document.getElementById("root");
   if (!root) throw new Error("missing #root");

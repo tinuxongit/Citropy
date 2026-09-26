@@ -5,6 +5,7 @@ import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { GitBranch, Github, Settings, BarChart3 } from "lucide-react";
 
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
+import { useUsagePeek } from "./UsagePeek.tsx";
 
 export function SidebarFooter({
   onGit,
@@ -26,6 +27,7 @@ export function SidebarFooter({
   const drag = useRef<number | undefined>(undefined);
   const moved = useRef(false);
   const reducedMotion = useReducedMotion();
+  const usagePeek = useUsagePeek("top");
   const change = (value: boolean) => {
     setCompact(value);
     localStorage.setItem("citropy.compactNavigation", value ? "1" : "0");
@@ -78,9 +80,11 @@ export function SidebarFooter({
             data-tone={tone}
             aria-current={activeView === tone ? "page" : undefined}
             key={t(name)}
-            onClick={run}
+            onClick={() => { usagePeek.hide(); run(); }}
             aria-label={t(name)}
-            title={compact ? t(name) : undefined}
+            title={compact && tone !== "usage" ? t(name) : undefined}
+            aria-describedby={tone === "usage" ? usagePeek.describedBy : undefined}
+            {...(tone === "usage" ? usagePeek.bind : {})}
             transition={{
               duration: reducedMotion ? 0 : 0.2,
               ease: [0.2, 0, 0, 1],
@@ -93,6 +97,7 @@ export function SidebarFooter({
         <span className="navigation-update-divider" aria-hidden="true" />
         <AppUpdateControl />
       </nav>
+      {usagePeek.card}
     </div>
   );
 }

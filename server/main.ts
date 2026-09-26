@@ -11,6 +11,7 @@ import { shellList, readShellOutput, watchShellOutput } from "./shells.ts";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parentPort } from "node:worker_threads";
 import { WebSocketServer, type WebSocket } from "ws";
 import { bus } from "./bus.ts";
 import { eventJournal } from "./event-journal.ts";
@@ -33,6 +34,7 @@ import { closeIdleSessions, disposeAll } from "./runtime.ts";
 import { serveStatic } from "./static.ts";
 import { requestHandler } from "./http-handler.ts";
 import { store } from "./store.ts";
+import { logFile, setLogging, writeLog } from "./logs.ts";
 import * as terminals from "./terminals.ts";
 import type { ClientEvent, ServerEvent, Snapshot } from "../shared/protocol.ts";
 
@@ -42,7 +44,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const distDir = join(here, "..", "dist");
 const connectionEpoch = randomUUID();
 
+setLogging(store.logging);
+process.on("uncaughtExceptionMonitor", (error, origin) => writeLog("error", origin, error.stack ?? error.message));
+
 bus.subscribe((event) => {
+  if (event.t === "toast" && event.level !== "info" && event.level !== "success") writeLog(event.level, "toast", event.text);
+  if (event.t === "notification.add" && event.notification.level === "error") writeLog("error", "notification", `${event.notification.title}: ${event.notification.text}`);
   if (event.t === "notification.add" && store.notificationPreferences.desktop)
     void desktopRequest("notification", {
       ...event.notification,
@@ -58,6 +65,7 @@ function snapshot(): Snapshot {
     computer: computerState(),
     notifications: store.notifications,
     notificationPreferences: store.notificationPreferences,
+    logging: { enabled: store.logging, file: logFile },
     panels: panelList(),
     browsers: browser.browserStates(),
     tools: workspaceTools,
@@ -258,6 +266,7 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
         } else await handle(event, send);
       });
     } catch (error) {
+      writeLog("error", event.t, (error as Error).stack ?? (error as Error).message);
       if ("requestId" in event && event.requestId)
         send({ t: "request.error", requestId: event.requestId, error: (error as Error).message });
       else send({ t: "toast", level: "error", text: (error as Error).message });
@@ -284,6 +293,7 @@ const gitTimer = setInterval(() => {
 gitTimer.unref();
 
 onShutdown(async () => {
+  writeLog("info", "server", "Shutting down");
   const closed = new Promise<void>((resolve) => server.close(() => resolve()));
   for (const client of wss.clients) client.terminate();
   wss.close();
@@ -313,7 +323,9 @@ server.listen(port, host, async () => {
   await refreshProviders();
   stopProviderUpdateChecks = startProviderUpdateChecks();
   process.send?.({ t: "ready" });
+  parentPort?.postMessage({ t: "ready" });
   const available = providerInfo().filter((entry) => entry.available).map((entry) => entry.label);
+  writeLog("info", "server", `Started on ${origin} with ${available.join(", ") || "no providers"}`);
   process.stdout.write(`\n  Citropy listening on ${origin}\n`);
   process.stdout.write(`  providers: ${available.join(", ") || "none detected"}\n`);
   if (dev) {
@@ -330,6 +342,8 @@ server.on("error", (error) => {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-process.on("message", (message) => {
+const onParentMessage = (message: unknown) => {
   if (message && typeof message === "object" && "t" in message && message.t === "shutdown") void shutdown();
-});
+};
+process.on("message", onParentMessage);
+parentPort?.on("message", onParentMessage);

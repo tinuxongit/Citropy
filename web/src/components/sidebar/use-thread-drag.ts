@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { autoscrollDistance, canStartPointerDrag, followPointerDrag } from "./pointer-drag.ts";
 import { movableSiblings, threadKey, type SidebarThread, type ThreadGroup } from "./thread-groups.ts";
 import type { DropEdge } from "./use-project-order.ts";
@@ -9,6 +9,8 @@ interface ThreadDrop {
 }
 
 export type ThreadDrag = ReturnType<typeof useThreadDrag>;
+
+const NO_SHIFTS = new Map<string, number>();
 
 export function useThreadDrag({ viewport, groups, globalMode, disabled, resetKey, onDrop }: {
   viewport: RefObject<HTMLElement | null>;
@@ -24,8 +26,11 @@ export function useThreadDrag({ viewport, groups, globalMode, disabled, resetKey
   const suppressClick = useRef(false);
   const cancel = useRef(() => {});
   useEffect(() => () => cancel.current(), [resetKey]);
+  const latest = useRef({ groups, globalMode, disabled, onDrop });
+  latest.current = { groups, globalMode, disabled, onDrop };
 
-  const start = (event: ReactPointerEvent<HTMLElement>, item: SidebarThread) => {
+  const start = useCallback((event: ReactPointerEvent<HTMLElement>, item: SidebarThread) => {
+    const { groups, globalMode, disabled, onDrop } = latest.current;
     cancel.current();
     suppressClick.current = false;
     const control = (event.target as HTMLElement).closest("button, a, input, textarea");
@@ -106,11 +111,11 @@ export function useThreadDrag({ viewport, groups, globalMode, disabled, resetKey
         setDrop(undefined);
       },
     });
-  };
+  }, [viewport]);
 
   const shifts = useMemo(() => {
+    if (!dragging || !drop) return NO_SHIFTS;
     const shifts = new Map<string, number>();
-    if (!dragging || !drop) return shifts;
     const siblings = movableSiblings(groups, dragging, globalMode);
     const from = siblings.findIndex((item) => item.thread.id === dragging.thread.id);
     const target = siblings.findIndex((item) => item.thread.id === drop.id);
@@ -122,13 +127,14 @@ export function useThreadDrag({ viewport, groups, globalMode, disabled, resetKey
     return shifts;
   }, [dragging, drop, groups, globalMode]);
 
-  const suppressClickAfterDrag = (event: MouseEvent) => {
+  const suppressClickAfterDrag = useCallback((event: MouseEvent) => {
     if (!suppressClick.current) return;
     suppressClick.current = false;
     if (event.detail === 0) return;
     event.preventDefault();
     event.stopPropagation();
-  };
+  }, []);
 
-  return { draggingId: dragging && threadKey(dragging.environment, dragging.thread.id), shifts, start, suppressClickAfterDrag };
+  const draggingId = dragging && threadKey(dragging.environment, dragging.thread.id);
+  return useMemo(() => ({ draggingId, shifts, start, suppressClickAfterDrag }), [draggingId, shifts, start, suppressClickAfterDrag]);
 }

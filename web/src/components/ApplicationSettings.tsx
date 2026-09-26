@@ -5,13 +5,12 @@ import type { DesktopWindowState } from "../desktop.d.ts";
 import { isRemote } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { send } from "../lib/socket.ts";
-import { confirmAction, setSidebarMode, useApp, type SidebarMode } from "../lib/store.ts";
+import { confirmAction, useApp } from "../lib/store.ts";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
 
 export function ApplicationSettings({ active }: { active: boolean }) {
   const t = useI18n();
   const connected = useApp((state) => state.connected);
-  const sidebarMode = useApp((state) => state.sidebarMode);
   const running = useApp((state) =>
     Object.values(state.threads).some((thread) => thread.running),
   );
@@ -83,19 +82,6 @@ export function ApplicationSettings({ active }: { active: boolean }) {
               : t("Open the desktop app to use the embedded browser and window controls.")}
           </p>
         </div>
-      </div>
-      <h2 className="settings-group-heading">{t("Conversation navigation")}</h2>
-      <div className="settings-group">
-        <label className="setting-row">
-          <span>
-            <strong>{t("Sidebar mode")}</strong>
-            <small>{t("Workspaces shows one folder at a time. Global lists every open folder and its conversations.")}</small>
-          </span>
-          <select value={sidebarMode} onChange={(event) => setSidebarMode(event.target.value as SidebarMode)}>
-            <option value="workspaces">{t("Workspaces")}</option>
-            <option value="global">{t("Global")}</option>
-          </select>
-        </label>
       </div>
       <h2 className="settings-group-heading">{t("Updates and restart")}</h2>
       <div className="settings-group">

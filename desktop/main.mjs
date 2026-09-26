@@ -3,7 +3,9 @@ import { chooseNativeFolder, listRemoteFolder } from "./folder-picker.mjs";
 import { randomBytes } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { release } from "node:os";
+import v8 from "node:v8";
 import { createAppUpdater } from "./updates.mjs";
+import { fetchReleaseNotes } from "./release-notes.mjs";
 import { spawnAppImageRelaunch } from "./appimage-relaunch.mjs";
 import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-reveal.mjs";
 import { packagedBackend } from "./backend.mjs";
@@ -70,7 +72,11 @@ if (app.isPackaged) {
   process.env.CITROPY_UI_URL = process.env.CITROPY_URL;
   process.env.CITROPY_DESKTOP_TOKEN = randomBytes(32).toString("hex");
 }
+// js-flags only reaches child processes; the backend worker shares this process's V8 flags.
+v8.setFlagsFromString("--optimize-for-size");
 app.commandLine.appendSwitch("js-flags", "--optimize-for-size");
+app.commandLine.appendSwitch("enable-features", "NetworkServiceInProcess2");
+app.commandLine.appendSwitch("disable-features", "AudioServiceOutOfProcess");
 const backend = app.isPackaged ? packagedBackend(process.env, diagnose) : undefined;
 let updates;
 let environments;
@@ -782,6 +788,7 @@ app
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
+        spellcheck: false,
       },
     });
     window.on("close", () => {
@@ -923,6 +930,7 @@ app
       version,
       unavailable: unavailableUpdate,
       external: scriptedUpdates ? scriptInstaller : undefined,
+      releaseNotes: (target) => fetchReleaseNotes(updateRepository, target),
       applyInstall:
         process.platform === "linux" && process.env.APPIMAGE
           ? async (file) => {
@@ -1043,6 +1051,7 @@ app
     window.webContents.on("will-navigate", (event, url) => {
       if (new URL(url).origin !== ui.origin) event.preventDefault();
     });
+    void window.webContents.setVisualZoomLevelLimits(1, 1);
     window.webContents.setWindowOpenHandler(({ url }) => {
       try {
         if (["http:", "https:", "mailto:"].includes(new URL(url).protocol)) void shell.openExternal(url).catch(() => {});

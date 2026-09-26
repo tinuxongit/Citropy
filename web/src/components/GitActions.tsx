@@ -1,12 +1,13 @@
 import { isRemote, environmentName } from "../lib/environment.ts";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { TaskReview } from "./TaskReview.tsx";
 import type { AssistanceSettings, WritingModel } from "../../../shared/assistance.ts";
 import { GitCommitHorizontal, GitBranch, FileDiff, ArrowUpFromLine, CircleAlert, RefreshCw, ChevronRight, X } from "lucide-react";
-import { scaled, selectThread, useApp, viewportWidth } from "../lib/store.ts";
+import { selectThread, useApp } from "../lib/store.ts";
+import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
 import { api } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { send } from "../lib/socket.ts";
@@ -27,7 +28,6 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
   const selection = useApp((state) => state.assistance.commitModel);
   const savedOpen = useApp((state) => state.gitPanelOpen);
   const open = savedOpen && (view === "chat" || panelView === view);
-  const uiScale = useApp((state) => state.uiScale);
   const [pending, setPending] = useState<GitActionState["action"] | null>(null);
   const [error, setError] = useState("");
   const [savingModel, setSavingModel] = useState(false);
@@ -66,29 +66,8 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
     if (document.visibilityState === "visible") send({ t: "git.refresh", projectId: thread.projectId, threadId: thread.id });
   }, [thread.projectId, thread.id]);
 
-  useLayoutEffect(() => {
-    const element = panel.current;
-    if (!open || !element) return;
-    element.showPopover();
-    const position = () => {
-      const anchor = trigger.current?.getBoundingClientRect();
-      if (!anchor) return;
-      const scale = uiScale / 100;
-      const width = Math.min(300, viewportWidth() - 24);
-      element.style.width = `${scaled(width)}px`;
-      element.style.left = `${scaled(Math.max(12, Math.min(anchor.right / scale - width, viewportWidth() - width - 12)))}px`;
-      element.style.top = `${scaled(anchor.bottom / scale + 12)}px`;
-      element.style.maxHeight = `${scaled(Math.max(0, (innerHeight - anchor.bottom) / scale - 24))}px`;
-    };
-    position();
-    const resize = new ResizeObserver(position);
-    if (trigger.current) resize.observe(trigger.current);
-    window.addEventListener("resize", position);
-    return () => {
-      resize.disconnect();
-      window.removeEventListener("resize", position);
-    };
-  }, [open, uiScale, project?.isGit]);
+  useAnchoredPanel(panel, trigger, { open, width: 300 });
+  useDismiss(panel, trigger, hide, { open, outside: false });
 
   useEffect(() => {
     if (!open || !connected || !project?.isGit || busy) return;
@@ -100,17 +79,6 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
       window.removeEventListener("focus", refresh);
     };
   }, [open, connected, project?.isGit, busy, refresh]);
-
-  useEffect(() => {
-    if (!open) return;
-    const key = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
-      event.preventDefault();
-      hide();
-    };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
-  }, [open]);
 
   const run = async (action: GitActionState["action"]) => {
     setPending(action);
@@ -125,11 +93,11 @@ export function GitActions({ thread }: { thread: ThreadMeta }) {
   const Icon = failed ? CircleAlert : GitCommitHorizontal;
   if (!project?.isGit) return null;
   return <div className="git-actions">
-    <button ref={trigger} type="button" className="icon-btn git-panel-trigger" aria-label={t("Git actions")} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} data-active={open} data-error={failed || undefined} title={activity || t("Git actions")} onClick={() => setOpen(!open)}>
-      {busy ? <PixelLoader size={16} /> : <Icon size={16} />}<span className="git-trigger-label">Git</span>
+    <button ref={trigger} type="button" className="composer-tab" aria-label={t("Git actions")} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} data-error={failed || undefined} title={activity || t("Git actions")} onClick={() => setOpen(!open)}>
+      {busy ? <PixelLoader size={13} /> : <Icon size={13} />}Git{hasChanges && <span>{status!.files.length}</span>}
     </button>
-    <AnimatePresence>{open && <motion.section ref={panel} id={id} popover="manual" className="git-panel scroll" role="dialog" aria-label={t("Git actions")}
-      initial={{ opacity: 0, y: reducedMotion ? 0 : -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -5, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
+    <AnimatePresence>{open && <motion.section ref={panel} id={id} popover="manual" className="tab-panel git-panel scroll" role="dialog" aria-label={t("Git actions")}
+      initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }} animate={{ opacity: 1, transform: "none" }} exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
       <header className="git-panel-heading">
         <h2>{t("Git actions")}</h2>
         <button type="button" className="icon-btn" aria-label={t("Refresh Git status")} title={t("Refresh Git status")} disabled={!connected || busy} onClick={refresh}><RefreshCw size={14} /></button>

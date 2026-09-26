@@ -23,15 +23,14 @@ export function SectionSidebar({
   const t = useI18n();
   return (
     <SlidingPanel open={open} side="left"><aside className="rail section-rail" aria-label={t(title)}>
-      <div className="section-rail-heading">{t(title)}</div>
       <nav className="section-nav scroll sliding-selection" aria-label={t("{title} sections", { title: t(title) })}>
         <SelectionHighlight value={activeItem} />
         {children}
       </nav>
-      <div className="section-back">
+      {navigation && <div className="section-back">
         <button className="rail-action" type="button" onClick={onBack}>
           <ArrowLeft size={16} />{t("Back to chat")}</button>
-      </div>
+      </div>}
       {navigation}
       <ResizeHandle panel="sidebar" />
     </aside></SlidingPanel>

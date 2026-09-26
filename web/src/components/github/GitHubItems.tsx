@@ -20,6 +20,7 @@ import {
 import { GitHubItemDetail, githubItemState } from "./GitHubItemDetail.tsx";
 import { GitHubItemDialog, type ItemAction } from "./GitHubItemDialog.tsx";
 import type { GitHubRepository } from "../../../../shared/github.ts";
+import { SelectionHighlight } from "../SelectionHighlight.tsx";
 
 export function GitHubItems({
   repository,
@@ -112,7 +113,8 @@ export function GitHubItems({
         </div>
       )}
       <div className="github-split" data-detail={Boolean(selected)}>
-        <div className="github-list scroll">
+        <div className="github-list scroll sliding-selection">
+          <SelectionHighlight value={selected === null ? undefined : String(selected)} selector='.github-item[aria-pressed="true"]' />
           <div className="github-list-caption">
             {list.data?.total ?? ""} {pull ? t("pull requests") : t("issues")}
           </div>

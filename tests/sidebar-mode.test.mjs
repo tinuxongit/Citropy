@@ -85,12 +85,12 @@ test("sidebar mode shows compact conversations across open projects", { timeout:
   };
   await checkContextMenu('Pinned project task');
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.locator('button[data-settings-section="application"]').click();
+  await page.locator('button[data-settings-section="appearance"]').click();
   const mode = page.getByLabel("Sidebar mode");
   assert.equal(await mode.inputValue(), "workspaces");
   await mode.selectOption("global");
   assert.equal(await page.evaluate(() => localStorage.getItem("citropy.sidebarMode")), "global");
-  await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+  await page.getByRole("button", { name: "Conversations", exact: true }).click();
   const sidebar = page.locator('.rail[data-sidebar-mode="global"]');
   const second = sidebar.locator('.thread-category[data-category="project:second"]');
   await second.getByRole("button", { name: "Second project task", exact: true }).waitFor();
@@ -179,9 +179,9 @@ test("sidebar mode shows compact conversations across open projects", { timeout:
   await second.waitFor({ state: 'detached' });
   assert.ok(events.some(event => event.t === 'project.close' && event.id === 'second'));
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.locator('button[data-settings-section="application"]').click();
+  await page.locator('button[data-settings-section="appearance"]').click();
   await page.getByLabel("Sidebar mode").selectOption("workspaces");
-  await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+  await page.getByRole("button", { name: "Conversations", exact: true }).click();
   await page.locator('.rail[data-sidebar-mode="workspaces"] .thread-category[data-category="active"]').waitFor();
   assert.equal(await page.locator('.rail .global-project-heading').count(), 0);
   assert.equal(await page.locator('.topbar .workspace-select').count(), 1);

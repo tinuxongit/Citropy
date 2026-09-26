@@ -13,7 +13,7 @@ interface AssetContext {
   threadId: string;
 }
 
-function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, assets: AssetContext | undefined, images: boolean, language: Language) {
+function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, assets: AssetContext | undefined, images: boolean, language: Language, live: boolean) {
   let linkedImage = false;
   const marked = new Marked({
     gfm: true,
@@ -23,9 +23,16 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
 
   marked.use({
     async: true,
+    extensions: [{
+      name: "singleTilde",
+      level: "inline",
+      start: (source) => /~(?!~)/.exec(source)?.index,
+      tokenizer: (source) => source.startsWith("~") && !source.startsWith("~~") ? { type: "text", raw: "~", text: "~" } : undefined,
+    }],
     walkTokens: async (token) => {
       if (token.type !== "code" || signal?.aborted) return;
       const code = token as CodeToken;
+      if (live && !/(^|\n) {0,3}(`{3,}|~{3,})\s*$/.test(code.raw.trimEnd())) return;
       code.rendered = await highlight(code.text, code.lang, theme, signal);
     },
     renderer: {
@@ -80,7 +87,7 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
   return marked;
 }
 
-export async function renderMarkdown(text: string, mode: "dark" | "light", signal?: AbortSignal, assets?: AssetContext, { images = true, language = "en" }: { images?: boolean; language?: Language } = {}): Promise<string> {
+export async function renderMarkdown(text: string, mode: "dark" | "light", signal?: AbortSignal, assets?: AssetContext, { images = true, language = "en", live = false }: { images?: boolean; language?: Language; live?: boolean } = {}): Promise<string> {
   if (/^\s*\d+[.)]\s*$/.test(text)) return `<p>${escapeHtml(text.trim())}</p>`;
-  return (await createParser(mode, signal, assets, images, language).parse(text)) as string;
+  return (await createParser(mode, signal, assets, images, language, live).parse(text)) as string;
 }

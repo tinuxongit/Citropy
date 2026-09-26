@@ -3,9 +3,9 @@ import { join } from "node:path";
 
 export function desktopDiagnostics(directory) {
   const file = join(directory, "desktop.log");
-  return (event, { version, electron, platform, packaged, childPid, code, signal, reason, type } = {}) => {
+  return (event, { version, electron, platform, packaged, threadId, code, signal, reason, type } = {}) => {
     try {
-      const line = `${JSON.stringify({ time: new Date().toISOString(), pid: process.pid, event, version, electron, platform, packaged, childPid, code, signal, reason, type })}\n`;
+      const line = `${JSON.stringify({ time: new Date().toISOString(), pid: process.pid, event, version, electron, platform, packaged, threadId, code, signal, reason, type })}\n`;
       const bytes = Buffer.byteLength(line);
       if (bytes > 4096) return;
       mkdirSync(directory, { recursive: true, mode: 0o700 });

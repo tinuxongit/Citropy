@@ -91,6 +91,8 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
           : ready
             ? "Your update is ready"
             : label;
+  const notesVersion = state.version && state.status !== "current" ? state.version : state.currentVersion;
+  const notes = state.notes?.version === notesVersion ? state.notes : undefined;
   const show = () => {
     clearTimeout(timer.current);
     setOpen(true);
@@ -204,6 +206,19 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "set
             <p>{t("Saving your work and restarting Citropy.")}</p>
           ) : (
             <p>{t("Check the latest Citropy release.")}</p>
+          )}
+          {notes ? (
+            <div className="app-update-notes">
+              <strong>{t("What's in {version}", { version: notes.version })}</strong>
+              {notes.sections.map((section) => (
+                <section key={section.title}>
+                  {section.title && <span>{section.title}</span>}
+                  <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>
+                </section>
+              ))}
+            </div>
+          ) : state.notesError && (
+            <p className="app-update-notes-error">{t("Could not load what this release includes.")}</p>
           )}
         </motion.div>
       )}</AnimatePresence>

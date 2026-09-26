@@ -71,7 +71,6 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
   const disabled = pending || connecting || (current && !connected && !window.citropyDesktop?.connectEnvironment);
 
   return <>
-    {isFirst && environment !== "local" && !searching && <div className="machine-label">{connectionName(environment)}</div>}
     <div className="global-project-heading" data-project-id={project.id} data-environment={environment} data-drag-id={group.id} data-active={current && project.id === activeProjectId} data-dragging={dragging}
       onContextMenu={event => {
         if ((event.target as HTMLElement).closest('[role="menu"], dialog')) return;
@@ -90,9 +89,8 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         title={environment === "local" ? project.path : `${connectionName(environment)}: ${project.path}`}
         onPointerDown={onDragStart} onClick={event => { if (!consumeDrag(event)) group.toggle(); }}
       >
-        {pending || connecting ? <PixelLoader size={15} /> : <Icon size={15} />}
+        {pending || connecting ? <PixelLoader size={16} /> : <Icon size={16} strokeWidth={1.75} />}
         <span className="truncate">{group.label}</span>
-        {!expanded && group.threads.length > 0 && <span className="global-project-count">{group.threads.length}</span>}
       </button>
       <Menu align="end" items={[
         { id: "open", label: t("Open workspace"), icon: <FolderOpen size={15} />, disabled, onSelect: () => void run(() => { selectProject(project.id); onConversation(); }) },
@@ -118,7 +116,6 @@ export function StatusHeading({ group, searching }: { group: ThreadGroup; search
       <button className="global-project-toggle" type="button" aria-label={`${group.open ? t("Collapse") : t("Expand")} ${label}`} aria-expanded={expanded} onClick={group.toggle}>
         <group.icon size={15} />
         <span className="truncate">{label}</span>
-        {!expanded && <span className="global-project-count">{group.threads.length}</span>}
       </button>
     </div>
   );

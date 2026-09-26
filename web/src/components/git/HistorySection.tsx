@@ -10,8 +10,10 @@ import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview, type GitSelection } from "../GitReview.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import { currentLocale, type useI18n } from "../../lib/i18n.ts";
+import { formatDate } from "../../lib/format.ts";
 import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
 import type { ReactNode } from "react";
+import { SelectionHighlight } from "../SelectionHighlight.tsx";
 
 export function HistorySection({
   data,
@@ -72,7 +74,8 @@ export function HistorySection({
               {branch}
             </p>
           </header>
-          <div className="scroll git-commits">
+          <div className="scroll git-commits sliding-selection">
+            <SelectionHighlight value={selection?.kind === "commit" ? selection.hash : undefined} />
             {data.commits.map((commit) => (
               <button
                 className="git-history-row"
@@ -93,10 +96,7 @@ export function HistorySection({
                   <strong>{commit.subject}</strong>
                   <small>
                     {commit.author} ·{" "}
-                    {new Date(commit.date).toLocaleDateString(
-                      currentLocale(),
-                      { month: "short", day: "numeric" },
-                    )}
+                    {formatDate(commit.date, { month: "short", day: "numeric" })}
                   </small>
                   <code>{commit.hash.slice(0, 7)}</code>
                 </span>

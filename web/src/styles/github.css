@@ -183,6 +183,21 @@
   gap: 16px;
   padding: 22px 4px;
 }
+.shell[data-backdrop] :is(.github-repositories, .github-releases, .github-notifications) {
+  display: grid;
+  gap: 4px;
+}
+.shell[data-backdrop] .github-local-workspace {
+  margin: 0 26px;
+}
+.shell[data-backdrop] .github-detail {
+  background: var(--panel);
+}
+.shell[data-backdrop] :is(.github-repositories article, .github-releases article, .github-notifications article, .github-local-workspace) {
+  padding: 18px 16px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--canvas) 72%, transparent);
+}
 .github-repository-icon {
   display: block;
   width: 36px;
@@ -304,8 +319,9 @@
   background: var(--panel);
 }
 .github-item[aria-pressed="true"] {
-  background: var(--raised-2);
+  background: transparent;
 }
+.github-list { --selection-fill: var(--raised-2); }
 .github-item strong {
   font-size: var(--text-base);
   font-weight: 500;
@@ -479,7 +495,7 @@
   gap: 9px;
   padding: 12px;
   background: var(--panel);
-  cursor: pointer;
+  cursor: default;
   font-size: var(--text-xs);
 }
 .github-files summary > span:first-of-type {
@@ -546,7 +562,7 @@
   flex-wrap: wrap;
   gap: 15px;
   align-items: center;
-  cursor: pointer;
+  cursor: default;
   font-size: var(--text-sm);
 }
 .github-jobs ol {
@@ -755,7 +771,7 @@
   color: var(--text-2);
   font-size: var(--text-sm);
   padding: 5px 0;
-  cursor: pointer;
+  cursor: default;
 }
 .github-checkbox input {
   accent-color: var(--accent);

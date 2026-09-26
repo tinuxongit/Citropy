@@ -21,6 +21,7 @@ import { Conversation } from "./components/Conversation.tsx";
 import { Composer } from "./components/Composer.tsx";
 import { Inspector } from "./components/Inspector.tsx";
 import { SlidingPanel } from "./components/SlidingPanel.tsx";
+import { StageBackdrop } from "./components/StageBackdrop.tsx";
 import { PermissionPanel } from "./components/PermissionPanel.tsx";
 import { Toasts } from "./components/Toasts.tsx";
 import { ConfirmationDialog } from "./components/ConfirmationDialog.tsx";
@@ -40,29 +41,25 @@ import { createThread } from "./lib/actions.ts";
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
 
-const GitHub = lazy(() =>
-  import("./components/github/GitHub.tsx").then((module) => ({
-    default: module.GitHub,
-  })),
-);
-const GitManager = lazy(() =>
-  import("./components/GitManager.tsx").then((module) => ({
-    default: module.GitManager,
-  })),
-);
-const Settings = lazy(() =>
-  import("./components/Settings.tsx").then((module) => ({
-    default: module.Settings,
-  })),
-);
-const UsageView = lazy(() =>
-  import("./components/UsageView.tsx").then((module) => ({
-    default: module.UsageView,
-  })),
-);
+const screens = {
+  github: () => import("./components/github/GitHub.tsx"),
+  git: () => import("./components/GitManager.tsx"),
+  settings: () => import("./components/Settings.tsx"),
+  usage: () => import("./components/UsageView.tsx"),
+};
+const GitHub = lazy(() => screens.github().then((module) => ({ default: module.GitHub })));
+const GitManager = lazy(() => screens.git().then((module) => ({ default: module.GitManager })));
+const Settings = lazy(() => screens.settings().then((module) => ({ default: module.Settings })));
+const UsageView = lazy(() => screens.usage().then((module) => ({ default: module.UsageView })));
 
 export function App() {
   const t = useI18n();
+  useEffect(() => {
+    const preload = setTimeout(() => {
+      for (const load of Object.values(screens)) void load().catch(reportError);
+    }, 2000);
+    return () => clearTimeout(preload);
+  }, []);
   const { activeId: environment } = useEnvironments();
   const view = useApp((state) => state.activeView);
   const setView = (activeView: typeof view) => useApp.setState({ activeView });
@@ -75,9 +72,11 @@ export function App() {
   const language = useApp((state) => state.language);
   const sidebarOpen = useApp((state) => state.sidebarOpen);
   const navigationStyle = useApp((state) => state.navigationStyle);
+  const stageBackground = useApp((state) => state.stageBackground);
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const panelWidths = useApp((state) => state.panelWidths);
   const uiScale = useApp((state) => state.uiScale);
+  const uiTransparency = useApp((state) => state.uiTransparency);
   const activeThreadId = useApp((state) => state.activeThreadId);
   const activeProjectId = useApp((state) => state.activeProjectId);
   const githubStatus = useGitHub("status", {
@@ -101,12 +100,21 @@ export function App() {
   }, [language]);
 
   useEffect(() => {
-    const update = () => document.documentElement.toggleAttribute("data-page-hidden", document.hidden);
+    const root = document.documentElement;
+    const update = () => {
+      root.toggleAttribute("data-page-hidden", document.hidden);
+      root.toggleAttribute("data-window-blurred", !document.hasFocus());
+    };
     update();
     document.addEventListener("visibilitychange", update);
+    window.addEventListener("focus", update);
+    window.addEventListener("blur", update);
     return () => {
       document.removeEventListener("visibilitychange", update);
-      document.documentElement.removeAttribute("data-page-hidden");
+      window.removeEventListener("focus", update);
+      window.removeEventListener("blur", update);
+      root.removeAttribute("data-page-hidden");
+      root.removeAttribute("data-window-blurred");
     };
   }, []);
 
@@ -226,15 +234,18 @@ export function App() {
       data-navigation={navigationStyle}
       data-inspector={inspectorOpen && view === "chat"}
       data-composer={view === "chat" && hasProject && hasActiveThread}
-      style={
-        Object.fromEntries(
+      data-backdrop={stageBackground !== "default" ? stageBackground : undefined}
+      style={{
+        ...Object.fromEntries(
           Object.entries(panelWidths).map(([panel, width]) => [
             `--${panel}-width`,
             `${Math.round((width * uiScale) / 100)}px`,
           ]),
-        ) as CSSProperties
-      }
+        ),
+        "--ui-alpha": 1 - uiTransparency / 100,
+      } as CSSProperties}
     >
+      <StageBackdrop />
       {navigationStyle === "strip" && <NavigationStrip
         activeView={view}
         onChat={() => (view === "chat" ? toggleSidebar() : openView("chat"))}
@@ -260,7 +271,7 @@ export function App() {
             onClick={toggleNavigation}
           />
         )}
-        {view === "chat" && <SlidingPanel open={sidebarOpen} side="left">
+        {view === "chat" && <SlidingPanel open={sidebarOpen} side="left" keepMounted pauseHidden>
           <Sidebar
             footer={footer}
             onConversation={() => openView("chat")}

@@ -1,26 +1,55 @@
 import { useLayoutEffect, useRef } from "react";
 
-export function SelectionHighlight({ value, selector = '[aria-selected="true"], [aria-pressed="true"], [aria-current="page"]' }: {
+const SELECTED = '[aria-selected="true"], [aria-pressed="true"], [aria-current="page"]';
+
+type Bounds = [x: number, y: number, width: number, height: number];
+const WATCHED_CHILDREN = 24;
+
+function visibleBounds(host: HTMLElement, selected: HTMLElement): Bounds {
+  const origin = host.getBoundingClientRect();
+  let { top, right, bottom, left } = selected.getBoundingClientRect();
+  for (let parent = selected.parentElement; parent && parent !== host; parent = parent.parentElement) {
+    if (getComputedStyle(parent).overflow === "visible") continue;
+    const clip = parent.getBoundingClientRect();
+    top = Math.max(top, clip.top);
+    right = Math.min(right, clip.right);
+    bottom = Math.min(bottom, clip.bottom);
+    left = Math.max(left, clip.left);
+  }
+  return [
+    left - origin.left - host.clientLeft + host.scrollLeft,
+    top - origin.top - host.clientTop + host.scrollTop,
+    Math.max(0, right - left),
+    Math.max(0, bottom - top),
+  ];
+}
+
+export function SelectionHighlight({ value, layout, selector = SELECTED }: {
   value: string | undefined;
+  layout?: string;
   selector?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const previous = useRef<{ value: string | undefined; bounds: number[] } | undefined>(undefined);
+  const previous = useRef<{ value: string | undefined; bounds: Bounds } | undefined>(undefined);
 
   useLayoutEffect(() => {
     const pill = ref.current;
     const host = pill?.parentElement;
     if (!pill || !host) return;
     const selected = host.querySelector<HTMLElement>(selector);
-    if (!selected) {
+    const hide = () => {
       pill.hidden = true;
       previous.current = undefined;
-      return;
-    }
+    };
+    if (!selected) return hide();
     const position = (animate: boolean) => {
-      const bounds = [selected.offsetLeft, selected.offsetTop, selected.offsetWidth, selected.offsetHeight];
-      if (!bounds[2] || !bounds[3]) { pill.hidden = true; previous.current = undefined; return; }
-      if (previous.current?.bounds.every((number, index) => Math.abs(number - bounds[index]!) < 0.1)) { previous.current.value = value; return; }
+      const bounds = visibleBounds(host, selected);
+      if (bounds[2] < 1 || bounds[3] < 1) return hide();
+      const last = previous.current;
+      if (last && bounds.every((number, index) => Math.abs(number - last.bounds[index]!) < 0.5)) {
+        last.value = value;
+        return;
+      }
       pill.style.transition = animate ? "" : "none";
       pill.style.transform = `translate(${bounds[0]}px, ${bounds[1]}px)`;
       pill.style.width = `${bounds[2]}px`;
@@ -32,9 +61,9 @@ export function SelectionHighlight({ value, selector = '[aria-selected="true"], 
     const resize = new ResizeObserver(() => position(false));
     resize.observe(host);
     resize.observe(selected);
-    for (const child of host.children) if (child !== pill) resize.observe(child);
+    if (host.children.length <= WATCHED_CHILDREN) for (const child of host.children) if (child !== pill) resize.observe(child);
     return () => resize.disconnect();
-  }, [value, selector]);
+  }, [value, layout, selector]);
 
   return <span ref={ref} className="selection-highlight" aria-hidden="true" hidden />;
 }

@@ -30,20 +30,6 @@ export function WorkDetails({ id, ids, messageIds, open, active, previewId, tran
   const latestImages = Boolean(latest?.images?.length || latest?.imageFiles?.length);
   return (
     <div className="activity-summary" data-active={active || undefined}>
-      <Collapsible open={!open && (preview?.kind === "text" || latestImages)} className="activity-update-collapse">
-        {preview?.kind === "text" && <div className="activity-update" role="note" aria-label={t("Latest update")}>
-          <span className="activity-caption">{t("Latest update")}</span>
-          <Prose text={preview.text} live={active && preview.complete !== true} />
-        </div>}
-        {latest && Icon && latestImages && <div className="activity-preview" title={`${latest.name}: ${latest.headline}`}>
-          {!active && <>
-            <Icon size={13} aria-hidden="true" />
-            <span>{action}</span>
-            {detail && <span className="truncate">{detail}</span>}
-          </>}
-          <ImageStrip key={latest.id} part={latest} compact />
-        </div>}
-      </Collapsible>
       <button className="activity-head" type="button" aria-label={t("Work details")} aria-describedby={`activity-count-${id}`} aria-expanded={open} onClick={() => {
         const update = () => setOpen(value => !value);
         if (transitionActivity) transitionActivity(id, update);
@@ -64,6 +50,20 @@ export function WorkDetails({ id, ids, messageIds, open, active, previewId, tran
           {detail && <span className="truncate">{detail}</span>}
         </span>}
       </button>
+      <Collapsible open={!open && (preview?.kind === "text" || latestImages)} className="activity-update-collapse">
+        {preview?.kind === "text" && <div className="activity-update" role="note" aria-label={t("Latest update")}>
+          <span className="activity-caption">{t("Latest update")}</span>
+          <Prose text={preview.text} live={active && preview.complete !== true} />
+        </div>}
+        {latest && Icon && latestImages && <div className="activity-preview" title={`${latest.name}: ${latest.headline}`}>
+          {!active && <>
+            <Icon size={13} aria-hidden="true" />
+            <span>{action}</span>
+            {detail && <span className="truncate">{detail}</span>}
+          </>}
+          <ImageStrip key={latest.id} part={latest} compact />
+        </div>}
+      </Collapsible>
     </div>
   );
 }

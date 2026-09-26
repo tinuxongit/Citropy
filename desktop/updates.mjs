@@ -9,6 +9,7 @@ export function createAppUpdater({
   emit,
   prepareInstall,
   recoverInstall = async () => {},
+  releaseNotes,
 }) {
   let state = {
     status: unavailable ? "unsupported" : "idle",
@@ -53,6 +54,15 @@ export function createAppUpdater({
               : "Could not check for updates. Check your connection and try again.";
     publish({ status: "error", retry: action, message });
   };
+  const loadNotes = (target) => {
+    if (!releaseNotes || !target || state.notes?.version === target) return;
+    releaseNotes(target).then(
+      (sections) => {
+        if (sections.length) publish({ notes: { version: target, sections } });
+      },
+      (error) => publish({ notesError: String(error?.message || error) }),
+    );
+  };
   const listen = (name, handler) => {
     updater.on(name, handler);
     listeners.push([name, handler]);
@@ -81,6 +91,7 @@ export function createAppUpdater({
         percent: undefined,
         message: undefined,
       });
+      loadNotes(info.version);
     });
     listen("update-not-available", () =>
       publish({
@@ -169,6 +180,7 @@ export function createAppUpdater({
               percent: undefined,
               message: `The installer will download Citropy ${next} and reopen the app.`,
             });
+            loadNotes(next);
           }
         } else if (action === "check") {
           const result = await updater.checkForUpdates();
@@ -212,6 +224,7 @@ export function createAppUpdater({
         },
         4 * 60 * 60 * 1000,
       );
+  if (!unavailable) loadNotes(version);
   startup?.unref();
   interval?.unref();
   return {

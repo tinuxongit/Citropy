@@ -7,7 +7,7 @@ import { backgroundEnvironments, pickEnvironmentSlice, subscribeBackgroundEnviro
 export const ENVIRONMENT_KEYS = [
   "shells", "projectDefaults", "assistance", "newThreadProvider", "creatingThread",
   "notifications", "notificationPreferences", "searchResult", "searchMessageId",
-  "searchShellId", "connected", "development", "githubAccount", "offline",
+  "searchShellId", "connected", "development", "logging", "githubAccount", "offline",
   "choosingWorkspace", "home", "projects", "providers", "threads", "threadOrder",
   "messages", "parts", "reveals", "order", "loaded", "historyBytes",
   "timelineVersions", "disclosures", "git", "permissions", "questions",

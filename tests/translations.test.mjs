@@ -4,7 +4,10 @@ import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, relative } from "node:path";
 import ts from "typescript";
-import { spanish, translateFor } from "../web/src/lib/translations.ts";
+import { loadSpanish, translateFor } from "../web/src/lib/translations.ts";
+import { spanish } from "../web/src/lib/locales/es.ts";
+
+await loadSpanish();
 import { summarize } from "../web/src/lib/group.ts";
 
 const placeholders = text => [...text.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();

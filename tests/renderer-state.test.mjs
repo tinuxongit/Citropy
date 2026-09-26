@@ -245,6 +245,7 @@ test("Markdown image references stay scoped to the current thread and previews p
   assert.match(html, new RegExp(`/api/tool-images\\?threadId=thr_current&amp;id=${id}`));
   assert.match(html, /<button class="markdown-image" type="button" aria-label="Preview Saved">/);
   assert.match(html, /class="markdown-image-error" hidden>Image unavailable/);
+  await (await import("../web/src/lib/translations.ts")).loadSpanish();
   const spanish = await renderMarkdown(`![Saved](citropy-image:${id})`, "dark", undefined, assets, { language: "es" });
   assert.match(spanish, /aria-label="Vista previa Saved"/);
   assert.doesNotMatch(spanish, />Image unavailable</);

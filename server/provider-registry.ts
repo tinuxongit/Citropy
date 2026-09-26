@@ -1,9 +1,11 @@
 import { bus } from "./bus.ts";
+import { clearCommandCache } from "./providers/binary.ts";
 import { describeProviders } from "./providers/index.ts";
 import { store } from "./store.ts";
 import type { ProviderInfo } from "../shared/protocol.ts";
 
 const THROTTLE = 30_000;
+const MODELS_MAX_AGE = 15 * 60_000;
 
 let info: ProviderInfo[] = [];
 let refreshing: Promise<void> | null = null;
@@ -20,10 +22,13 @@ export function providerInfo(): ProviderInfo[] {
 export function refreshProviders(force = false): Promise<void> {
   if (refreshing) return force ? refreshing.then(() => refreshProviders(true)) : refreshing;
   if (!force && Date.now() - lastRefresh < THROTTLE) return Promise.resolve();
-  refreshing = describeProviders()
+  if (force) clearCommandCache();
+  refreshing = describeProviders(force ? 0 : MODELS_MAX_AGE)
     .then((described) => {
-      info = withEnabled(described);
+      const next = withEnabled(described);
       lastRefresh = Date.now();
+      if (JSON.stringify(next) === JSON.stringify(info)) return;
+      info = next;
       bus.emit({ t: "providers.update", providers: info });
     })
     .catch((error) => {
@@ -42,6 +47,5 @@ export function publishProviderStatus(): void {
 
 export async function refreshProvidersNow(): Promise<void> {
   if (refreshing) await refreshing;
-  lastRefresh = 0;
-  await refreshProviders();
+  await refreshProviders(true);
 }

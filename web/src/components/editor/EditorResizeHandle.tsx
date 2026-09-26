@@ -9,6 +9,7 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
   const scale = useApp((state) => state.uiScale) / 100;
   const [metrics, setMetrics] = useState({
     horizontal: pane === "terminal",
+    reversed: false,
     size: 0,
     minimum: 0,
     maximum: 0,
@@ -25,7 +26,7 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
   } | null>(null);
   const horizontal = metrics.horizontal;
   const property = `--editor-${pane}-${horizontal ? "height" : "width"}`;
-  const direction = pane === "terminal" ? -1 : 1;
+  const direction = pane === "terminal" || metrics.reversed ? -1 : 1;
   const clamp = (size: number) =>
     Math.round(Math.max(metrics.minimum, Math.min(metrics.maximum, size)));
   const save = (size?: number) => {
@@ -66,8 +67,9 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
         root.style.setProperty(name, `calc(${saved}px * var(--ui-scale))`);
     }
     const measure = () => {
-      const horizontal =
-        pane === "terminal" || getComputedStyle(root).flexDirection === "column";
+      const flow = getComputedStyle(root).flexDirection;
+      const horizontal = pane === "terminal" || flow === "column";
+      const reversed = pane === "explorer" && flow === "row-reverse";
       if (drag.current && drag.current.horizontal !== horizontal) cancel();
       if (drag.current) return;
       const dimension = horizontal ? "height" : "width";
@@ -80,11 +82,12 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
       );
       setMetrics((previous) =>
         previous.horizontal === horizontal &&
+        previous.reversed === reversed &&
         previous.size === size &&
         previous.minimum === minimum &&
         previous.maximum === maximum
           ? previous
-          : { horizontal, size, minimum, maximum },
+          : { horizontal, reversed, size, minimum, maximum },
       );
     };
     measure();

@@ -67,9 +67,34 @@ async function render(
   });
 }
 
+const HTML_CACHE_LIMIT = 2 * 1024 * 1024;
+const htmlCache = new Map<string, string>();
+let htmlCacheSize = 0;
+
+function rememberHtml(key: string, html: string): void {
+  const size = (key.length + html.length) * 2;
+  if (size > HTML_CACHE_LIMIT) return;
+  while (htmlCacheSize + size > HTML_CACHE_LIMIT) {
+    const [oldKey, oldHtml] = htmlCache.entries().next().value!;
+    htmlCache.delete(oldKey);
+    htmlCacheSize -= (oldKey.length + oldHtml.length) * 2;
+  }
+  htmlCache.set(key, html);
+  htmlCacheSize += size;
+}
+
 export async function highlight(code: string, lang: string | undefined, theme: "dark" | "light", signal?: AbortSignal): Promise<string> {
+  const key = `${theme}\0${lang ?? ""}\0${code}`;
+  const cached = htmlCache.get(key);
+  if (cached !== undefined) {
+    htmlCache.delete(key);
+    htmlCache.set(key, cached);
+    return cached;
+  }
   const result = await render({ kind: "html", code, lang, theme }, signal);
-  return typeof result === "string" ? result : `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
+  if (typeof result !== "string") return `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
+  rememberHtml(key, result);
+  return result;
 }
 
 export async function highlightTokens(code: string, lang: string | undefined, theme: "dark" | "light", signal?: AbortSignal): Promise<string[] | null> {

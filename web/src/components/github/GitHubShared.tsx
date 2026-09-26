@@ -12,7 +12,8 @@ import {
   X,
 } from "lucide-react";
 import { useApp } from "../../lib/store.ts";
-import { currentLocale, useI18n } from "../../lib/i18n.ts";
+import { useI18n } from "../../lib/i18n.ts";
+import { formatDate } from "../../lib/format.ts";
 import { PixelLoader } from "../PixelLoader.tsx";
 
 export function GitHubLink({
@@ -231,10 +232,7 @@ export function GitHubDialog({
 }
 
 export function githubDate(date: string) {
-  return new Intl.DateTimeFormat(currentLocale(), {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(date));
+  return formatDate(date, { month: "short", day: "numeric" });
 }
 
 export function formText(data: FormData, name: string) {

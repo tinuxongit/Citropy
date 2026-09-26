@@ -55,9 +55,16 @@ export interface Confirmation {
   resolve: (confirmed: boolean) => void;
 }
 
-export type Theme = "dark" | "light";
+export const THEMES = ["dark", "light", "orange", "purple"] as const;
+export type Theme = typeof THEMES[number];
+export type Scheme = "dark" | "light";
+export function schemeOf(theme: Theme): Scheme {
+  return theme === "light" ? "light" : "dark";
+}
 export type SidebarMode = "workspaces" | "global";
 export type NavigationStyle = "strip" | "bar";
+export const STAGE_BACKGROUNDS = ["default", "ascii", "image"] as const;
+export type StageBackground = typeof STAGE_BACKGROUNDS[number];
 export type PanelId = "sidebar" | "inspector" | "git" | "github";
 
 export interface AppState {
@@ -81,6 +88,7 @@ export interface AppState {
   searchShellId: string | null;
   connected: boolean;
   development: boolean;
+  logging: { enabled: boolean; file: string };
   githubAccount: GitHubUser | null;
   showGitHubIdentity: boolean;
   showFailedTools: boolean;
@@ -120,6 +128,11 @@ export interface AppState {
   sidebarOpen: boolean;
   sidebarMode: SidebarMode;
   navigationStyle: NavigationStyle;
+  stageBackground: StageBackground;
+  backgroundDim: number;
+  backgroundBlur: number;
+  backgroundFocus: number;
+  uiTransparency: number;
   sidebarGroups: Record<string, boolean>;
   theme: Theme;
   language: Language;
@@ -133,9 +146,21 @@ export interface AppState {
   uiSoundVolume: number;
 }
 
+function oneOf<T extends string>(options: readonly T[], value: string, fallback: T): T {
+  return (options as readonly string[]).includes(value) ? value as T : fallback;
+}
+
 function readPref<T extends string>(key: string, fallback: T, id?: string): T {
   if (typeof localStorage === "undefined") return fallback;
   return (environmentStorage.getItem(key, id) as T | null) ?? fallback;
+}
+
+function readLevel(key: string, min: number, max: number, flags: { on: number; off: number }, fallback: number): number {
+  const stored = readPref<string>(key, "");
+  if (stored === "1") return flags.on;
+  if (stored === "0") return flags.off;
+  const value = Number(stored);
+  return stored && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
 }
 
 function readFlag(key: string, fallback: boolean): boolean {
@@ -151,6 +176,7 @@ const initialScale =
     : 100;
 const storedSpeed = Number(readPref("citropy.typingSpeed", "100"));
 const storedVolume = Number(readPref("citropy.uiSoundVolume", "60"));
+const storedDim = Number(readPref("citropy.backgroundDim", "68"));
 
 function readPanelWidths(): Partial<Record<PanelId, number>> {
   try {
@@ -224,6 +250,7 @@ export const useApp = create<AppState>(() => ({
   searchShellId: null,
   connected: false,
   development: false,
+  logging: { enabled: false, file: "" },
   githubAccount: null,
   showFailedTools: readFlag("citropy.showFailedTools", true),
   showGitHubIdentity: readFlag("citropy.showGitHubIdentity", true),
@@ -270,11 +297,13 @@ export const useApp = create<AppState>(() => ({
   ),
   sidebarMode: readPref<SidebarMode>("citropy.sidebarMode", "global") === "workspaces" ? "workspaces" : "global",
   navigationStyle: readPref<NavigationStyle>("citropy.navigationStyle", "strip") === "bar" ? "bar" : "strip",
+  stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "ascii"), "ascii"),
+  backgroundDim: Number.isFinite(storedDim) ? Math.max(0, Math.min(90, storedDim)) : 68,
+  backgroundBlur: readLevel("citropy.backgroundBlur", 0, 40, { on: 14, off: 0 }, 0),
+  backgroundFocus: readLevel("citropy.backgroundFocus", 0, 100, { on: 70, off: 0 }, 70),
+  uiTransparency: readLevel("citropy.uiTransparency", 0, 60, { on: 20, off: 0 }, 20),
   sidebarGroups: readSidebarGroups(),
-  theme: readPref<Theme>(
-    "citropy.theme",
-    typeof window !== "undefined" && window.citropyDesktop ? "dark" : "light",
-  ),
+  theme: oneOf(THEMES, readPref<string>("citropy.theme", "dark"), "dark"),
   uiScale: initialScale,
   language: readPref<Language>("citropy.language", "en") === "es" ? "es" : "en",
   panelWidths: readPanelWidths(),

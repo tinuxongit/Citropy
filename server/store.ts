@@ -1,4 +1,5 @@
 import { dataRoot } from "./paths.ts";
+import { setLogging } from "./logs.ts";
 import { dev } from "./config.ts";
 import { mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, existsSync, renameSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -45,6 +46,12 @@ const projectsFile = join(root, "projects.json");
 const notificationsFile = join(root, "notifications.json");
 
 mkdirSync(threadsDir, { recursive: true });
+
+function sameValue(current: unknown, next: unknown): boolean {
+  if (Object.is(current, next)) return true;
+  if (typeof current !== "object" || typeof next !== "object" || !current || !next) return false;
+  return JSON.stringify(current) === JSON.stringify(next);
+}
 
 function save(path: string, value: unknown): void {
   const temporary = `${path}.${randomUUID()}.tmp`;
@@ -100,6 +107,7 @@ export class Store {
     sound: false,
     subagents: false,
   };
+  logging = true;
   #savedProjects = "";
   #loaded = new Map<string, Message[]>();
 
@@ -164,6 +172,10 @@ export class Store {
     return messages;
   }
 
+  readMessages(threadId: string): Message[] {
+    return this.#loaded.get(threadId) ?? eventJournal.messages(threadId);
+  }
+
   searchText(threadId: string): Array<{ id: string; text: string }> {
     return eventJournal.messageTexts(threadId);
   }
@@ -175,6 +187,7 @@ export class Store {
         if (settings.projectDefaults && typeof settings.projectDefaults === "object" && !Array.isArray(settings.projectDefaults))
           this.projectDefaults = settings.projectDefaults;
         this.computerEnabled = settings.computerEnabled === true;
+        this.logging = settings.logging !== false;
         if (typeof settings.assistance?.automaticTitles === "boolean") this.assistance.automaticTitles = settings.assistance.automaticTitles;
         for (const key of ["titleModel", "commitModel", "reviewModel"] as const) {
           const model = settings.assistance?.[key];
@@ -308,6 +321,14 @@ export class Store {
     bus.emit({ t: "notifications.preferences", preferences });
   }
 
+  configureLogging(enabled: boolean): void {
+    if (typeof enabled !== "boolean") throw new Error("Invalid logging preference");
+    this.#saveSettings({ logging: enabled });
+    this.logging = enabled;
+    setLogging(enabled);
+    bus.emit({ t: "logging", enabled });
+  }
+
   configureAssistance(settings: AssistanceSettings): void {
     this.#saveSettings({ assistance: settings });
     this.assistance = settings;
@@ -361,6 +382,7 @@ export class Store {
       disabledProviders: [...this.disabledProviders],
       notifications: this.notificationPreferences,
       computerEnabled: this.computerEnabled,
+      logging: this.logging,
       assistance: this.assistance,
       projectDefaults: this.projectDefaults,
       providerInstances: [...this.providerInstances.values()],
@@ -494,6 +516,7 @@ export class Store {
   patchThread(id: string, patch: Partial<ThreadMeta>): void {
     const thread = this.threads.get(id);
     if (!thread) return;
+    if (Object.entries(patch).every(([key, value]) => sameValue(thread[key as keyof Thread], value))) return;
     const finished = thread.parentThreadId && thread.running && patch.running === false && patch.status !== "stopped";
     if (!thread.running && patch.running) thread.runCount = (thread.runCount ?? 0) + 1;
     Object.assign(thread, patch);

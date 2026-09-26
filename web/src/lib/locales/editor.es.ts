@@ -1,4 +1,10 @@
 export const editorEs: Record<string, string> = {
+  "Cut": "Cortar",
+  "Copy": "Copiar",
+  "Paste": "Pegar",
+  "Select all": "Seleccionar todo",
+  "Format document": "Dar formato al documento",
+  "Editor actions": "Acciones del editor",
   "Rename terminal": "Renombrar terminal",
   "Move tab left": "Mover pestaña a la izquierda",
   "Move tab right": "Mover pestaña a la derecha",

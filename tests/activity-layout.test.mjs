@@ -35,7 +35,7 @@ const parts = [
   tool("command-3", "command", "python keystrokes.py", { output: "Sequence checked." }),
 ];
 
-test("all tool shapes share a group without crossing message content", () => {
+test("all tool shapes share a group beside thoughts without crossing message content", () => {
   const shapes = ["read", "write", "edit", "command", "search", "web", "computer", "task", "todo", "generic"];
   const tools = shapes.map(shape => tool(shape, shape, `${shape}.txt`));
   assert.deepEqual(buildRows([
@@ -43,7 +43,7 @@ test("all tool shapes share a group without crossing message content", () => {
     { id: "notice", kind: "notice", level: "info", text: "Review ready" }, parts[8],
     { id: "answer", kind: "text", text: "Done" },
   ]), [
-    { kind: "group", ids: ["reason-1", ...shapes] },
+    { kind: "part", id: "reason-1" }, { kind: "group", ids: shapes },
     { kind: "part", id: "notice" }, { kind: "group", ids: ["write-2"] }, { kind: "part", id: "answer" },
   ]);
   assert.equal(summarize(parts.slice(1, 4)), "Wrote 1 file · read 1 file · ran 1 command");
@@ -137,7 +137,7 @@ test("reply fragments share work details without hiding the answer or crossing u
   assert.equal(separate.filter(row => row.row?.kind === "activity").length, 2);
 });
 
-test("a live turn keeps repeated thoughts and tools in one stable disclosure", () => {
+test("a live turn keeps repeated thoughts and tools in one stable disclosure with a row per thought", () => {
   const content = [
     { id: "progress", kind: "text", text: "Checking the playback timeline.", complete: true },
     ...Array.from({ length: 150 }, (_, index) => [
@@ -159,7 +159,8 @@ test("a live turn keeps repeated thoughts and tools in one stable disclosure", (
   assert.equal(rows[0].row.ids.length, 301);
   assert.equal(rows[1].row.id, "warning");
   const expanded = timelineRows({ ...state, disclosures: { progress: { activity: true } } }, "chat");
-  assert.equal(expanded.filter(row => row.row?.kind === "group").length, 1);
+  assert.equal(expanded.filter(row => row.row?.kind === "group").length, 150);
+  assert.equal(expanded.filter(row => row.row?.kind === "part" && state.parts[row.row.id]?.kind === "reasoning").length, 150);
   assert.equal(expanded.find(row => row.row?.kind === "activity").key, rows[0].key);
   assert.equal(expanded[0].row.kind, "activity");
   const ended = timelineRows({ ...state, threads: { chat: { ...thread, running: false, status: "stopped" } } }, "chat");
@@ -188,7 +189,7 @@ test("plans, questions and warnings remain visible outside compact activity", ()
   assert.ok(timelineRows(finished, "chat").some(row => row.row?.kind === "part" && row.row.id === "answer"));
 });
 
-test("thoughts and tools share one tree without crossing updates", () => {
+test("thoughts sit beside tool groups without crossing updates", () => {
   assert.deepEqual(buildRows([
     { id: "first-thought", kind: "reasoning", text: "Checking the sequence." },
     { id: "empty-thought", kind: "reasoning", text: "  " },
@@ -197,9 +198,11 @@ test("thoughts and tools share one tree without crossing updates", () => {
     tool("render", "command", "render video"),
     { id: "last-thought", kind: "reasoning", text: "Checking the result." },
   ]), [
-    { kind: "group", ids: ["first-thought", "next-thought"] },
+    { kind: "part", id: "first-thought" },
+    { kind: "part", id: "next-thought" },
     { kind: "part", id: "update" },
-    { kind: "group", ids: ["render", "last-thought"] },
+    { kind: "group", ids: ["render"] },
+    { kind: "part", id: "last-thought" },
   ]);
 });
 
@@ -319,7 +322,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
           head: element.querySelector(".tool-head").getBoundingClientRect().toJSON(),
           preview: element.querySelector(".image-strip").getBoundingClientRect().toJSON(),
         }));
-        assert.ok(preview.x >= head.x + head.width - 1 && Math.abs(preview.y + preview.height / 2 - head.y - head.height / 2) <= 2, JSON.stringify({ width, head, preview }));
+        assert.ok(Math.abs(preview.x - head.x - head.width) <= 1 && Math.abs(preview.y + preview.height / 2 - head.y - head.height / 2) <= 2, JSON.stringify({ width, head, preview }));
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.screenshot({ path: `/tmp/citropy-inline-images-${width}.png`, animations: "disabled" });

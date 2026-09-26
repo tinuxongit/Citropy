@@ -12,6 +12,7 @@ import {
 import { Menu } from "../Menu.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import { currentLocale, type useI18n } from "../../lib/i18n.ts";
+import { formatDate } from "../../lib/format.ts";
 import type { Section } from "./labels.ts";
 import type { GitDialogAction } from "../GitDialog.tsx";
 import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
@@ -161,10 +162,7 @@ export function BranchesSection({
                     className="git-row-date"
                     title={new Date(entry.date).toLocaleString(currentLocale())}
                   >
-                    {new Date(entry.date).toLocaleDateString(
-                      currentLocale(),
-                      { month: "short", day: "numeric" },
-                    )}
+                    {formatDate(entry.date, { month: "short", day: "numeric" })}
                   </time>
                   {!entry.current && (
                     <div className="git-inline-actions">
@@ -265,10 +263,7 @@ export function BranchesSection({
                     <p className="truncate">{entry.subject}</p>
                   </div>
                   <time className="git-row-date">
-                    {new Date(entry.date).toLocaleDateString(
-                      currentLocale(),
-                      { month: "short", day: "numeric" },
-                    )}
+                    {formatDate(entry.date, { month: "short", day: "numeric" })}
                   </time>
                 </div>
               ))

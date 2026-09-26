@@ -1,21 +1,11 @@
 import { createServer } from "node:net";
-import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
-
-function sendShutdown(running) {
-  if (!running.connected) return false;
-  try {
-    return running.send({ t: "shutdown" });
-  } catch {
-    return false;
-  }
-}
+import { Worker } from "node:worker_threads";
 
 function waitForExit(running) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       running.off("exit", exited);
-      running.kill("SIGTERM");
+      void running.terminate();
       reject(
         new Error(
           "Citropy's server is still shutting down. The update has not been applied.",
@@ -27,42 +17,40 @@ function waitForExit(running) {
       resolve();
     };
     running.once("exit", exited);
-    if (!sendShutdown(running)) running.kill("SIGTERM");
+    running.postMessage({ t: "shutdown" });
   });
 }
 
 export function packagedBackend(env, diagnose = () => {}) {
-  let child;
+  let worker;
   const start = async () => {
-    if (child) return;
+    if (worker) return;
     await new Promise((resolve, reject) => {
       const probe = createServer();
       probe.once("error", () => reject(new Error("Another server is using Citropy's port. Close it before opening this release.")));
       probe.listen(Number(env.CITROPY_PORT || 4177), "127.0.0.1", () => probe.close(resolve));
     });
-    child = spawn(
-      process.execPath,
-      [
-        "--experimental-strip-types",
-        "--optimize-for-size",
-        fileURLToPath(new URL("../server/main.ts", import.meta.url)),
-        "--packaged",
-      ],
-      {
-        cwd: fileURLToPath(new URL("..", import.meta.url)),
-        env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
-        stdio: ["ignore", "ignore", "pipe", "ipc"],
-      },
-    );
-    const running = child;
-    diagnose("backend.started", { childPid: running.pid });
+    worker = new Worker(new URL("../server/main.ts", import.meta.url), {
+      argv: ["--packaged"],
+      execArgv: [],
+      env: { ...env },
+      stdout: true,
+      stderr: true,
+    });
+    const running = worker;
+    const threadId = running.threadId;
+    diagnose("backend.started", { threadId });
+    running.stdout.resume();
     let output = "";
     running.stderr.on("data", (chunk) => {
       output = `${output}${chunk}`.slice(-2000);
     });
-    running.once("exit", (code, signal) => {
-      diagnose("backend.exited", { childPid: running.pid, code, signal });
-      if (child === running) child = undefined;
+    running.on("error", (error) => {
+      output = `${output}${error?.stack ?? error}\n`.slice(-2000);
+    });
+    running.once("exit", (code) => {
+      diagnose("backend.exited", { threadId, code });
+      if (worker === running) worker = undefined;
     });
     try {
       await new Promise((resolve, reject) => {
@@ -77,7 +65,7 @@ export function packagedBackend(env, diagnose = () => {}) {
         );
         const ready = (message) => {
           if (message?.t === "ready") {
-            diagnose("backend.ready", { childPid: running.pid });
+            diagnose("backend.ready", { threadId });
             finish();
           }
         };
@@ -92,12 +80,10 @@ export function packagedBackend(env, diagnose = () => {}) {
         const finish = (error) => {
           clearTimeout(timer);
           running.off("message", ready);
-          running.off("error", failed);
           running.off("exit", failed);
           error ? reject(error) : resolve();
         };
         running.on("message", ready);
-        running.once("error", failed);
         running.once("exit", failed);
       });
     } catch (error) {
@@ -106,13 +92,9 @@ export function packagedBackend(env, diagnose = () => {}) {
     }
   };
   const stop = async () => {
-    if (!child || child.exitCode !== null) return;
-    diagnose("backend.stop-requested", { childPid: child.pid });
-    await waitForExit(child);
+    if (!worker) return;
+    diagnose("backend.stop-requested", { threadId: worker.threadId });
+    await waitForExit(worker);
   };
-  process.once("exit", () => {
-    // An exit handler cannot wait for IPC delivery, so the shutdown message would not arrive.
-    child?.kill("SIGTERM");
-  });
   return { start, stop };
 }

@@ -11,6 +11,7 @@ import { type useI18n } from "../../lib/i18n.ts";
 import type { GitDialogAction } from "../GitDialog.tsx";
 import type { GitFile, GitOperation, GitOverview } from "../../../../shared/protocol.ts";
 import type { ReactNode } from "react";
+import { SelectionHighlight } from "../SelectionHighlight.tsx";
 
 export function StashesSection({
   data,
@@ -107,7 +108,8 @@ export function StashesSection({
           className="git-split"
           data-detail={selection?.kind === "stash"}
         >
-          <div className="git-stash-list scroll">
+          <div className="git-stash-list scroll sliding-selection">
+            <SelectionHighlight value={selection?.kind === "stash" ? selection.ref : undefined} />
             {data.stashes.map((entry) => (
               <button
                 className="git-history-row"

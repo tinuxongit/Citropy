@@ -9,6 +9,8 @@ import { selectedModel } from "../../../shared/model-options.ts";
 import { estimateConversationTokens, estimateTokensFromChars, newInputTokens, reportedContext, uncachedInput } from "../../../shared/usage-metrics.ts";
 import { ContextInspector } from "./ContextInspector.tsx";
 
+const ESTIMATE_STEP_BYTES = 4096;
+
 const PANEL_WIDTH = 304;
 
 function percentage(value: number): string {
@@ -33,7 +35,9 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
   const connected = useApp((state) => state.connected);
   const activeThreadId = useApp((state) => state.activeThreadId);
   const thread = useApp((state) => state.threads[state.activeThreadId ?? ""]);
-  const historyBytes = useApp((state) => state.historyBytes[state.activeThreadId ?? ""] ?? 0);
+  const historyStep = useApp((state) => state.threads[state.activeThreadId ?? ""]?.provider === "cursor"
+    ? Math.floor((state.historyBytes[state.activeThreadId ?? ""] ?? 0) / ESTIMATE_STEP_BYTES)
+    : 0);
   const provider = useApp((state) => state.providers.find((entry) => entry.id === thread?.provider));
   const canCompact = provider?.capabilities?.compact !== false;
   const usage = thread?.usage;
@@ -50,10 +54,10 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
   const reported = Boolean(usage && reportedContext(usage.contextTokens, contextMax));
   const hasTotals = Boolean(totals.input || totals.output || totals.cacheRead || totals.cacheWrite || totals.costUsd);
   const fresh = !thread?.externalId && !thread?.running && !usage?.turns && !(usage?.input || usage?.output || usage?.cacheRead || usage?.cacheWrite || usage?.costUsd);
-  const estimateCache = useRef<{ threadId: string | null; provider: string | undefined; bytes: number; tokens: number }>({
+  const estimateCache = useRef<{ threadId: string | null; provider: string | undefined; step: number; tokens: number }>({
     threadId: null,
     provider: undefined,
-    bytes: -1,
+    step: -1,
     tokens: 0,
   });
   const estimated = useMemo(() => {
@@ -62,7 +66,7 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
     const changed =
       cache.threadId !== activeThreadId ||
       cache.provider !== thread?.provider ||
-      Math.abs(historyBytes - cache.bytes) > 4096;
+      historyStep !== cache.step;
     if (!changed) return cache.tokens;
     const state = useApp.getState();
     const messages = !activeThreadId
@@ -82,9 +86,9 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
           }];
         });
     const value = estimateConversationTokens(messages);
-    estimateCache.current = { threadId: activeThreadId, provider: thread?.provider, bytes: historyBytes, tokens: value };
+    estimateCache.current = { threadId: activeThreadId, provider: thread?.provider, step: historyStep, tokens: value };
     return value;
-  }, [activeThreadId, fresh, historyBytes, reported, thread?.provider]);
+  }, [activeThreadId, fresh, historyStep, reported, thread?.provider]);
   const draftTokens = estimateTokensFromChars(draft.length);
   const totalEstimated = estimated + draftTokens;
   const contextTokens = fresh ? 0 : reported ? usage?.contextTokens ?? 0 : totalEstimated;
@@ -103,7 +107,6 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
       : 0;
   const contextPercent = percentage(fill);
   const cachePercent = percentage(cacheRate);
-  const ringPercent = fill > 0 && fill < 0.01 ? "<1" : Math.round(fill * 100);
   const label = known
     ? t("{percent}% context used", { percent: contextPercent })
     : t("Context usage");
@@ -201,17 +204,6 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
             strokeDasharray={`${fill * 100} 100`}
             transform="rotate(-90 16 16)"
           />
-          <text
-            x="16"
-            y="16"
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill="currentColor"
-            fontSize="9"
-            fontWeight="500"
-          >
-            {known || fresh ? ringPercent : ""}
-          </text>
         </svg>
       </button>
       <AnimatePresence>{open && (

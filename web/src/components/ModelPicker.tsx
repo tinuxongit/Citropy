@@ -110,7 +110,8 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
         <SelectionHighlight value={favoritesView ? "favorites" : catalog?.id} />
         {locked && catalog ? <button className="model-picker-locked" type="button" aria-label={`${catalog.label} · ${t("Provider locked")}`} title={`${catalog.label} · ${t("Provider locked")}`} aria-pressed={!favoritesView} onClick={() => setBrowsing(catalog.id)}>
           <ProviderIcon provider={catalog.id} /><LockKeyhole size={11} />
-        </button> : <div className="model-picker-providers" role="group" aria-label={`${label} · ${t("Provider")}`}>
+        </button> : <div className="model-picker-providers sliding-selection" role="group" aria-label={`${label} · ${t("Provider")}`}>
+          <SelectionHighlight value={favoritesView ? undefined : catalog?.id} />
           {available.map((entry) => <button key={entry.id} type="button" aria-label={entry.label} title={entry.label} aria-pressed={!favoritesView && catalog?.id === entry.id} onClick={() => setBrowsing(entry.id)}>
             <ProviderIcon provider={entry.id} />
           </button>)}

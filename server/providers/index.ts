@@ -3,8 +3,9 @@ import { codexProvider } from "./codex.ts";
 import { cursorProvider } from "./cursor.ts";
 import { opencodeProvider } from "./opencode.ts";
 import { piProvider } from "./pi.ts";
-import type { Provider } from "./types.ts";
-import type { ProviderId, ProviderInfo } from "../../shared/protocol.ts";
+import { commandIdentity } from "./binary.ts";
+import type { Provider, ProviderLaunch } from "./types.ts";
+import type { ModelOption, ProviderId, ProviderInfo } from "../../shared/protocol.ts";
 
 export const providers: Record<ProviderId, Provider> = {
   claude: claudeProvider,
@@ -17,8 +18,20 @@ export const providers: Record<ProviderId, Provider> = {
 import { store } from "../store.ts";
 
 const lastInfo = new Map<ProviderId, ProviderInfo>();
+const modelLists = new Map<string, { identity: string; at: number; models: ModelOption[] }>();
 
-export async function describeProviders(): Promise<ProviderInfo[]> {
+async function listModels(provider: Provider, key: string, maxAge: number, launch?: ProviderLaunch): Promise<{ at: number; models: ModelOption[] }> {
+  const identity = `${commandIdentity(launch?.binary ?? provider.binary)}\0${JSON.stringify(launch?.environment ?? {})}`;
+  const cached = modelLists.get(key);
+  if (cached?.identity === identity && Date.now() - cached.at < maxAge) return cached;
+  const models = await provider.listModels(launch);
+  if (!models.length) throw new Error("No models returned");
+  const listed = { identity, at: Date.now(), models };
+  modelLists.set(key, listed);
+  return listed;
+}
+
+export async function describeProviders(modelsMaxAge = 0): Promise<ProviderInfo[]> {
   return Promise.all(Object.values(providers).map(async (provider) => {
     const previous = lastInfo.get(provider.id);
     const detected = store.disabledProviders.has(provider.id)
@@ -29,11 +42,10 @@ export async function describeProviders(): Promise<ProviderInfo[]> {
     let modelsUpdatedAt = previous?.modelsUpdatedAt;
     if (detected.available && !store.disabledProviders.has(provider.id)) {
       try {
-        const discovered = await provider.listModels();
-        if (!discovered.length) throw new Error("No models returned");
-        models = discovered;
-        provider.models = discovered;
-        modelsUpdatedAt = Date.now();
+        const listed = await listModels(provider, provider.id, modelsMaxAge);
+        models = listed.models;
+        provider.models = listed.models;
+        modelsUpdatedAt = listed.at;
       } catch (error) {
         modelsError = `Could not refresh models: ${(error as Error).message}`;
       }
@@ -61,9 +73,7 @@ export async function describeProviders(): Promise<ProviderInfo[]> {
         let modelsError: string | undefined;
         if (detected.available && !store.disabledProviders.has(provider.id)) {
           try {
-            const discovered = await provider.listModels(launch);
-            if (!discovered.length) throw new Error("No models returned");
-            models = discovered;
+            models = (await listModels(provider, `${provider.id}:${instance.id}`, modelsMaxAge, launch)).models;
           }
           catch (error) { modelsError = `Could not refresh models: ${(error as Error).message}`; }
         }

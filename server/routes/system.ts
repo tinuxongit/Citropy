@@ -4,6 +4,7 @@ import { dev } from "../config.ts";
 import { desktopConnected, openDesktop } from "../desktop.ts";
 import { relaunchServer } from "../development.ts";
 import { shutdown } from "../lifecycle.ts";
+import { writeLog } from "../logs.ts";
 import { remoteId } from "../remote.ts";
 import { store } from "../store.ts";
 import type { Routes } from "./types.ts";
@@ -23,5 +24,12 @@ export const systemRoutes: Routes = {
   },
   "server.restart": async () => {
     await restartDevelopmentServer();
+  },
+  "logging.configure": (event) => {
+    store.configureLogging(event.enabled);
+    if (event.enabled) writeLog("info", "server", "Logging turned on");
+  },
+  "client.error": (event) => {
+    writeLog("error", "interface", String(event.message));
   },
 };

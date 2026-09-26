@@ -42,30 +42,17 @@
   flex: none;
   width: var(--panel-width);
   min-height: 0;
-  transition: margin var(--panel-duration) var(--ease-drawer);
 }
 .sliding-panel[hidden] { display: none; }
-.sliding-panel[data-animate="false"],
-.sliding-panel[data-animate="false"] > .rail,
-.sliding-panel[data-animate="false"] > .inspector { transition: none; }
 .sliding-panel[data-side="right"] { --panel-width: var(--inspector); }
 .sliding-panel > .rail,
 .sliding-panel > .inspector {
   height: 100%;
   width: var(--panel-width);
-  transition: translate var(--panel-duration) var(--ease-drawer), opacity var(--panel-duration) var(--ease-out);
 }
 .sliding-panel[data-open="false"] { pointer-events: none; }
 .sliding-panel[data-side="left"][data-open="false"] { margin-left: calc(-1 * var(--panel-width)); }
 .sliding-panel[data-side="right"][data-open="false"] { margin-right: calc(-1 * var(--panel-width)); }
-.sliding-panel[data-side="left"][data-open="false"] > .rail { translate: -32px 0; opacity: 0; }
-.sliding-panel[data-side="right"][data-open="false"] > .inspector { translate: 32px 0; opacity: 0; }
-@starting-style {
-  .sliding-panel[data-animate="true"][data-side="left"][data-open="true"] { margin-left: calc(-1 * var(--panel-width)); }
-  .sliding-panel[data-animate="true"][data-side="right"][data-open="true"] { margin-right: calc(-1 * var(--panel-width)); }
-  .sliding-panel[data-animate="true"][data-side="left"][data-open="true"] > .rail { translate: -32px 0; opacity: 0; }
-  .sliding-panel[data-animate="true"][data-side="right"][data-open="true"] > .inspector { translate: 32px 0; opacity: 0; }
-}
 :root[data-resizing] .sliding-panel,
 :root[data-resizing] .sliding-panel > *,
 :root[data-resizing] .topbar-left { transition: none; }
@@ -96,7 +83,7 @@
   align-self: stretch;
   padding: 0 12px 0 18px;
   width: 206px;
-  transition: width 200ms var(--ease-out);
+  transition: width 280ms var(--ease-drawer);
 }
 
 .shell[data-sidebar="true"] .topbar-left {
@@ -125,19 +112,7 @@
 }
 
 .git-panel {
-  position: fixed;
-  inset: auto;
-  margin: 0;
-  padding: 0;
   max-width: calc(var(--viewport-width) - 24px);
-  overflow: auto;
-  border: 0;
-  border-radius: var(--r-lg);
-  background: var(--overlay);
-  color: var(--text);
-  font-size: var(--text-sm);
-  box-shadow: var(--shadow-md);
-  transform-origin: top right;
 }
 
 .git-panel-heading {
@@ -258,7 +233,6 @@
 .git-panel-error { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
 .git-panel-progress > .pixel-loader,
 .git-panel-error > svg { flex: none; margin-top: 2px; }
-.git-panel-trigger[data-error],
 .git-panel-error { color: var(--bad); }
 .git-panel-error p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 
@@ -275,7 +249,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  cursor: pointer;
+  cursor: default;
   color: var(--text-2);
 }
 
@@ -295,7 +269,7 @@
   color: var(--text-2);
   font-size: var(--text-sm);
   text-align: left;
-  transition: background var(--dur-fast);
+  transition: background var(--dur-instant);
 }
 .model-picker-trigger:hover:not(:disabled),
 .model-picker-trigger[aria-expanded="true"] { background: var(--raised-2); }
@@ -403,7 +377,7 @@
   font-weight: 500;
   text-align: left;
   transition:
-    background var(--dur-fast);
+    background var(--dur-instant);
 }
 .workspace-select > span {
   flex: 1;
@@ -502,6 +476,152 @@
   min-height: 0;
 }
 
+@property --glass-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+.backdrop-layers {
+  --glass-width: var(--visible-rail);
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: --glass-width 280ms var(--ease-drawer);
+}
+.backdrop-layers[data-kind="ascii"] > .stage-backdrop {
+  clip-path: inset(0 0 0 var(--stage-left, 0px));
+}
+.backdrop-layers[data-kind="ascii"] > .shell-glass {
+  backdrop-filter: none;
+}
+.stage-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--text-4);
+  opacity: 0.55;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 36% 60% at var(--stage-center, 50%) 45%, rgb(0 0 0 / 0.45), #000);
+}
+.stage-backdrop-image {
+  background: center / cover no-repeat;
+  object-fit: cover;
+  image-rendering: pixelated;
+  mask-image: none;
+}
+.stage-backdrop-image[data-blurred] {
+  object-fit: fill;
+  image-rendering: auto;
+}
+.shell-glass {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--strip);
+  z-index: 0;
+  width: var(--glass-width);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--canvas-deep) calc(var(--ui-alpha) * 100%), transparent);
+  backdrop-filter: blur(22px);
+}
+.stage-focus-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--stage-center, 50%) - var(--stage-column, var(--reading)) / 2 - 140px);
+  width: calc(var(--stage-column, var(--reading)) + 280px);
+  visibility: hidden;
+  pointer-events: none;
+}
+.stage-backdrop.stage-backdrop-focus {
+  mask-image: none;
+  clip-path: inset(0 var(--stage-right, 0px) 0 var(--stage-left, 0px));
+}
+.stage-backdrop:is(.stage-backdrop-glass, .stage-backdrop-focus) {
+  opacity: 1;
+}
+.stage-backdrop.stage-backdrop-glass {
+  mask: none;
+  clip-path: inset(0 calc(100% - var(--strip) - var(--glass-width)) 0 var(--strip));
+}
+.stage-backdrop.stage-backdrop-inspector {
+  opacity: 0;
+  transition: opacity 280ms var(--ease-out);
+  mask: none;
+  clip-path: inset(var(--topbar) 0 0 calc(100% - var(--stage-right, 0px)) round 14px 0 0 0);
+}
+.shell:has(> .shell-body > .sliding-panel[data-side="right"][data-open="true"]) .stage-backdrop-inspector {
+  opacity: 1;
+}
+.shell:has(> .shell-body > .sliding-panel[data-side="right"][data-animate="false"]) .stage-backdrop-inspector {
+  transition: none;
+}
+.backdrop-layers[data-soft] > .shell-glass,
+.shell[data-backdrop="image"][data-backdrop-soft] .inspector:not([data-expanded="true"]) {
+  backdrop-filter: none;
+}
+.shell[data-backdrop] :is(.rail, .topbar-left) {
+  background: transparent;
+}
+.shell[data-backdrop] {
+  --panel: color-mix(in srgb, var(--panel-solid) calc(var(--ui-alpha) * 100%), transparent);
+  --overlay: color-mix(in srgb, var(--overlay-solid) calc(var(--ui-alpha) * 100% + 12%), transparent);
+  --surface: color-mix(in srgb, var(--surface-solid) calc(var(--ui-alpha) * 100%), transparent);
+  --raised: color-mix(in srgb, var(--raised-solid) calc(var(--ui-alpha) * 100%), transparent);
+  --raised-2: color-mix(in srgb, var(--raised-2-solid) calc(var(--ui-alpha) * 100%), transparent);
+  --muted-2: var(--text-2);
+  --muted-3: var(--text-3);
+}
+.shell[data-backdrop] .stage {
+  --text-2: color-mix(in srgb, var(--text) 75%, var(--muted-2));
+  --text-3: color-mix(in srgb, var(--text) 60%, var(--muted-2));
+  --text-4: color-mix(in srgb, var(--text) 45%, var(--muted-3));
+}
+.shell[data-backdrop] .stage :is(.activity-head, .group-head, .group-summary, .tool-head, .todo-head, .turn-meta) {
+  --text-2: var(--text);
+  --text-3: var(--text);
+}
+.shell[data-backdrop] .stage :is(.activity-head, .group-head, .group-summary, .tool-head, .todo-head, .turn-meta, .activity-caption, .activity-preview, .activity-action) {
+  text-shadow: 0 0 3px color-mix(in srgb, var(--canvas) 90%, transparent), 0 0 10px color-mix(in srgb, var(--canvas) 75%, transparent);
+}
+.shell[data-backdrop="image"] :is(.inspector, .composer-shell, .question-form, .permission-card, .toast) {
+  backdrop-filter: blur(18px);
+}
+.shell[data-backdrop="image"] :is([popover], dialog) {
+  backdrop-filter: blur(28px) saturate(1.1);
+}
+.shell[data-backdrop] .composer-shell::before { background: none; }
+.shell[data-backdrop] .inspector :is(.editor-workspace, .editor-tabbar, .editor-tabs, .editor-explorer, .editor-resize, .browser-pane, .browser-toolbar, .browser-footer, .browser-viewport, .commit) {
+  background: transparent;
+}
+.shell[data-backdrop] .inspector :is(.editor-main, .editor-document > .rich-preview, .editor-document .media-preview) {
+  background: color-mix(in srgb, var(--canvas) calc(var(--ui-alpha) * 50%), transparent);
+}
+.shell[data-backdrop="image"] [data-contrast] :is(.icon-btn, .brand, .branch, .thread-title, .breadcrumb-separator, .environment-breadcrumb, .workspace-select, .window-controls button):not(:is([popover], dialog) *) {
+  color: var(--contrast-ink);
+  text-shadow: 0 0 4px var(--contrast-halo);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.shell[data-backdrop="image"] [data-contrast] :is(.icon-btn, .branch, .environment-breadcrumb, .workspace-select, .window-controls button):not(:is([popover], dialog) *) svg {
+  filter: drop-shadow(0 0 2px var(--contrast-halo));
+}
+[data-contrast="light"] { --contrast-ink: rgba(255, 255, 255, 0.92); --contrast-halo: rgba(0, 0, 0, 0.55); }
+[data-contrast="dark"] { --contrast-ink: rgba(0, 0, 0, 0.82); --contrast-halo: rgba(255, 255, 255, 0.6); }
+@media (prefers-reduced-motion: reduce) {
+  .topbar-left,
+  .backdrop-layers,
+  .stage-backdrop.stage-backdrop-inspector { transition: none; }
+}
+:root[data-resizing] .backdrop-layers { transition: none; }
+
+.shell[data-backdrop] :is(.topbar, .composer, .git-manager) { background: transparent; }
+.shell[data-backdrop] .conversation-viewport::before,
+.shell[data-backdrop] .conversation-viewport::after { content: none; }
+.shell[data-backdrop] .canvas { mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); }
+
 .section-view {
   display: flex;
   grid-row: 1 / -1;
@@ -553,8 +673,8 @@
   color: var(--text-2);
   text-align: left;
   transition:
-    background var(--dur-fast),
-    color var(--dur-fast);
+    background var(--dur-instant),
+    color var(--dur-instant);
 }
 
 .recent-item:hover {
@@ -604,7 +724,7 @@
   border-radius: 2px;
   background: var(--text-4);
   opacity: 0;
-  transition: background var(--dur-fast), opacity var(--dur-fast);
+  transition: background var(--dur-instant), opacity var(--dur-fast);
 }
 .panel-resize:hover::after,
 .panel-resize:focus-visible::after,
@@ -614,7 +734,7 @@
 }
 .panel-resize:focus-visible::after {
   outline: none;
-  box-shadow: 0 0 8px var(--accent-line);
+  box-shadow: 0 0 0 2px var(--field-focus-color);
   background: var(--accent);
 }
 :root[data-resizing] * {
@@ -644,9 +764,13 @@
     margin: 0;
   }
   .sliding-panel > .rail,
-  .sliding-panel > .inspector { box-shadow: var(--shadow-md); }
-  .sliding-panel[data-side="left"][data-open="false"] > .rail { translate: -100% 0; }
-  .sliding-panel[data-side="right"][data-open="false"] > .inspector { translate: 100% 0; }
+  .sliding-panel > .inspector {
+    box-shadow: var(--shadow-md);
+    transition: translate var(--panel-duration) var(--ease-drawer), opacity var(--panel-duration) var(--ease-out);
+  }
+  .sliding-panel[data-animate="false"] > :is(.rail, .inspector) { transition: none; }
+  .sliding-panel[data-side="left"][data-open="false"] > .rail { translate: -100% 0; opacity: 0; }
+  .sliding-panel[data-side="right"][data-open="false"] > .inspector { translate: 100% 0; opacity: 0; }
   @starting-style {
     .shell-body .sliding-panel[data-animate="true"][data-open="true"] { margin: 0; }
     .sliding-panel[data-animate="true"][data-side="left"][data-open="true"] > .rail { translate: -100% 0; }
@@ -706,7 +830,6 @@
 }
 .topbar[data-desktop="true"] button,
 .topbar[data-desktop="true"] .notifications-wrap,
-.topbar[data-desktop="true"] .git-actions,
 .topbar[data-desktop="true"] .menu-wrap,
 .topbar[data-desktop="true"] a {
   -webkit-app-region: no-drag;

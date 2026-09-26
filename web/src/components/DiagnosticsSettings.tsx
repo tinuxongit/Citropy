@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Activity, Cpu, MemoryStick, RefreshCw } from "lucide-react";
-import { api } from "../lib/api.ts";
+import { Activity, Copy, Cpu, MemoryStick, RefreshCw } from "lucide-react";
+import { api, reportError } from "../lib/api.ts";
+import { send } from "../lib/socket.ts";
 import type { DiagnosticReport } from "../../../shared/features.ts";
 import { useApp } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
@@ -14,6 +15,8 @@ export function DiagnosticsSettings() {
   const t = useI18n();
   const development = useApp(state => state.development);
   const providers = useApp(state => state.providers);
+  const connected = useApp(state => state.connected);
+  const logging = useApp(state => state.logging);
   const [data, setData] = useState<DiagnosticReport>();
   const [history, setHistory] = useState<
     Array<{ time: number; memory: number }>
@@ -50,6 +53,37 @@ export function DiagnosticsSettings() {
   const max = Math.max(...history.map((sample) => sample.memory), 1);
   return (
     <div className="feature-stack">
+      <div className="settings-group">
+        <label className="setting-row">
+          <span>
+            <strong>{t("Save logs")}</strong>
+            <small>{t("Write errors and app events to a file on this computer so problems are easier to trace. Conversation content is not saved.")}</small>
+          </span>
+          <input
+            className="setting-switch"
+            type="checkbox"
+            role="switch"
+            checked={logging.enabled}
+            disabled={!connected}
+            onChange={(event) => send({ t: "logging.configure", enabled: event.target.checked })}
+          />
+        </label>
+        {logging.enabled && logging.file && (
+          <div className="setting-row">
+            <span>
+              <strong>{t("Log file")}</strong>
+              <small><code>{logging.file}</code></small>
+            </span>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => void navigator.clipboard.writeText(logging.file).catch(reportError)}
+            >
+              <Copy size={14} />{t("Copy path")}
+            </button>
+          </div>
+        )}
+      </div>
       <div className="feature-inline">
         <label>
           <input
@@ -106,10 +140,8 @@ export function DiagnosticsSettings() {
           <section className="resource-chart">
             <div className="feature-section-heading">
               <h2>{t("Server memory")}</h2>
-              <span>{" "}{t("Last")}{" "}
-                {history.length > 1
-                  ? Math.round((history.at(-1)!.time - history[0]!.time) / 1000)
-                  : 0}{" "}{" "}{t("seconds")}{" "}</span>
+              {history.length > 1 && <span>{" "}{t("Last")}{" "}
+                {Math.round((history.at(-1)!.time - history[0]!.time) / 1000)}{" "}{" "}{t("seconds")}{" "}</span>}
             </div>
             <svg
               viewBox="0 0 600 90"

@@ -14,7 +14,7 @@ export const providerRoutes: Routes = {
     publishProviderStatus();
     if (event.enabled) await refreshProvidersNow();
   },
-  "providers.refresh": async () => {
-    await refreshProviders();
+  "providers.refresh": async (event) => {
+    await refreshProviders(event.force === true);
   },
 };

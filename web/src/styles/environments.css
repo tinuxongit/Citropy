@@ -12,7 +12,7 @@
 .ssh-form > label:not(:first-child) { margin-top: 6px; }
 .ssh-form input { min-width: 0; width: 100%; padding: 10px 12px; }
 .ssh-form details { margin-top: 8px; }
-.ssh-form summary { cursor: pointer; color: var(--text-3); }
+.ssh-form summary { cursor: default; color: var(--text-3); }
 .ssh-options { padding-top: 14px; }
 .ssh-error { color: var(--bad) !important; overflow-wrap: anywhere; white-space: pre-wrap; }
 .ssh-progress { display: flex; align-items: center; gap: 8px; }
@@ -39,14 +39,12 @@
 .remote-connection-banner > span { flex: 1; min-width: 0; font-size: var(--text-sm); overflow-wrap: anywhere; }
 .remote-connection-banner > svg { flex: none; }
 .environment-breadcrumb { max-width: 130px; }
-.icon-btn.git-panel-trigger { display: inline-flex; align-items: center; width: auto; gap: 5px; padding-inline: 8px; }
-.git-trigger-label { font-size: var(--text-sm); }
 @media (max-width: 720px) {
   .environment-row { flex-wrap: wrap; }
   .environment-actions { margin-left: auto; }
   .remote-connection-banner { flex-wrap: wrap; }
   .remote-connection-banner > span { flex-basis: calc(100% - 40px); }
-  .environment-breadcrumb, .git-trigger-label { display: none; }
+  .environment-breadcrumb { display: none; }
 }
 
 .ssh-form .settings-note { margin: 6px 0 0; }

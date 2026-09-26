@@ -10,6 +10,7 @@ import { scaled, selectProject, useApp } from "../lib/store.ts";
 import { Collapsible } from "./Collapsible.tsx";
 import { MessageSquarePlus, Search } from "./icons.ts";
 import { ResizeHandle } from "./ResizeHandle.tsx";
+import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { ThreadPreview } from "./ThreadPreview.tsx";
 import { WorkspaceSelector } from "./WorkspaceSelector.tsx";
 import { CachedThreadRow } from "./sidebar/CachedThreadRow.tsx";
@@ -21,9 +22,10 @@ import { useProjectOrder, type DropEdge } from "./sidebar/use-project-order.ts";
 import { useThreadDrag } from "./sidebar/use-thread-drag.ts";
 import { useThreadPreview } from "./sidebar/use-thread-preview.ts";
 import { useThreadSearch } from "./sidebar/use-thread-search.ts";
-import { rootThread, useThreadTree } from "./sidebar/use-thread-tree.ts";
+import { rootThread, useThreadTree, type ThreadTree } from "./sidebar/use-thread-tree.ts";
 
 const VIRTUALIZE_AFTER = 40;
+const EMPTY_TREE: ThreadTree = { childrenByParent: new Map(), selectedPath: new Set(), activePaths: new Set() };
 
 function estimateRowHeight(globalMode: boolean, row: { item?: SidebarThread; empty: boolean } | undefined): number {
   if (row?.item?.cached) return 34;
@@ -115,6 +117,13 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
     disabled: Boolean(threadDrag.draggingId),
     resetKey: [environment, activeProjectId, activeThreadId, query, rowOrder, uiScale].join("\n"),
   });
+  const handlers = useRef({ moveThread, revealFinished, onConversation });
+  handlers.current = { moveThread, revealFinished, onConversation };
+  const rowHandlers = useMemo(() => ({
+    move: (item: SidebarThread, direction: number) => handlers.current.moveThread(item, direction),
+    finished: () => handlers.current.revealFinished(),
+    conversation: () => handlers.current.onConversation(),
+  }), []);
 
   const virtualized = rows.length > VIRTUALIZE_AFTER;
   const focusedIndex = rows.findIndex((row) => row.key === focusedRow);
@@ -200,11 +209,12 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
     projectName={!globalMode && query.trim() && allProjects ? (projects.find((project) => project.id === item.thread.projectId)?.name ?? "") : undefined}
     categoryEnd={groups.some((group) => group.threads.at(-1) === item)}
     drag={threadDrag}
-    preview={preview}
-    tree={trees[item.environment]!}
-    onMove={(direction) => moveThread(item, direction)}
-    onFinished={revealFinished}
-    onConversation={onConversation}
+    preview={preview.controls}
+    describedBy={preview.describedBy(item.environment, item.thread.id)}
+    tree={trees[item.environment]!.childrenByParent.has(item.thread.id) ? trees[item.environment]! : EMPTY_TREE}
+    onMove={rowHandlers.move}
+    onFinished={rowHandlers.finished}
+    onConversation={rowHandlers.conversation}
   />;
   const renderItem = (item: SidebarThread, group: ThreadGroup) => item.cached
     ? <CachedThreadRow thread={item.thread} categoryEnd={group.threads.at(-1) === item} environment={item.environment} onConversation={onConversation} />
@@ -256,11 +266,8 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
         >
           <MessageSquarePlus size={18} />
         </button>}
+        {globalMode && <WorkspaceSelector addOnly />}
       </div>
-      {globalMode && <div className="rail-section-label">
-        {t("Projects")}
-        <WorkspaceSelector addOnly />
-      </div>}
       {query.trim() && !globalMode && (
         <label className="search-scope">
           <input type="checkbox" checked={allProjects} onChange={(event) => setAllProjects(event.target.checked)} />
@@ -270,7 +277,7 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
       <div className="rail-scroll">
         <div className="rail-list scroll" ref={viewport}
           onScroll={(event) => {
-            preview.hide();
+            preview.controls.hide();
             event.currentTarget.parentElement?.toggleAttribute("data-scrolled", event.currentTarget.scrollTop > 0);
           }}
           onFocusCapture={(event) => {
@@ -281,7 +288,8 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
             if (!event.currentTarget.contains(event.relatedTarget)) setFocusedRow(undefined);
           }}
         >
-          <div className="thread-list" ref={threadList} data-virtualized={virtualized} data-dragging={Boolean(threadDrag.draggingId)} style={virtualized ? { height: list.getTotalSize(), position: "relative" } : undefined}>
+          <div className="thread-list sliding-selection" ref={threadList} data-virtualized={virtualized} data-dragging={Boolean(threadDrag.draggingId)} style={virtualized ? { height: list.getTotalSize(), position: "relative" } : undefined}>
+            <SelectionHighlight value={activeThreadId ? threadKey(environment, activeThreadId) : undefined} layout={rowOrder} selector='.thread-card[data-active="true"], .thread-child[data-active="true"]' />
             {groups.map((group) => <section className="thread-category" data-category={group.id} key={group.id} style={virtualized ? { display: "contents" } : undefined}>
               {renderGroup(group)}
             </section>)}
@@ -295,9 +303,9 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
         thread={threadsByEnvironment[preview.shown.environment]![preview.shown.threadId]!}
         environment={preview.shown.environment}
         anchor={preview.shown.anchor}
-        onClose={preview.hide}
-        onPointerEnter={preview.clearTimer}
-        onPointerLeave={preview.leave}
+        onClose={preview.controls.hide}
+        onPointerEnter={preview.controls.clearTimer}
+        onPointerLeave={preview.controls.leave}
       />}
       {footer}
       <ResizeHandle panel="sidebar" />

@@ -34,7 +34,7 @@
 .computer-preview[data-interactive="true"] {
   box-shadow: 0 0 8px color-mix(in srgb, var(--web-icon) 35%, transparent); }
 .computer-preview[data-interactive="true"] img { cursor: crosshair; touch-action: none; }
-.computer-preview:focus-visible { outline: none; box-shadow: 0 0 8px var(--accent-line); }
+.computer-preview:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--field-focus-color); }
 .computer-capturing { display: flex; gap: 10px; align-items: center; color: var(--text-3); font-size: var(--text-sm); padding: 45px 10px; }
 .computer-preview-caption { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; font-size: var(--text-xs); color: var(--text-4); }
 .computer-preview-caption button { display: inline-flex; gap: 5px; align-items: center; padding: 4px; color: var(--text-3); }

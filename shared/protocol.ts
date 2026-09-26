@@ -387,6 +387,7 @@ export interface Snapshot {
   computer?: ComputerState;
   notifications?: AppNotification[];
   notificationPreferences?: NotificationPreferences;
+  logging?: { enabled: boolean; file: string };
   panels?: PanelTab[];
   browsers?: BrowserState[];
   toolConnections?: ToolConnection[];
@@ -413,6 +414,7 @@ export type ServerEvent = (
   | { t: "notification.add"; notification: AppNotification }
   | { t: "notifications.update"; notifications: AppNotification[] }
   | { t: "notifications.preferences"; preferences: NotificationPreferences }
+  | { t: "logging"; enabled: boolean }
   | { t: "panel.upsert"; panel: PanelTab; background?: boolean }
   | { t: "panel.remove"; id: string }
   | { t: "panel.order"; projectId: string; ids: string[] }
@@ -467,13 +469,15 @@ export type ClientEvent = (
   | { t: "panel.move"; id: string; targetId: string; edge: "before" | "after" }
   | { t: "browser.action"; id: string; input: BrowserAction }
   | { t: "desktop.open" }
+  | { t: "logging.configure"; enabled: boolean }
+  | { t: "client.error"; message: string }
   | { t: "server.restart" }
   | { t: "thread.finish"; id: string; finished: boolean }
   | { t: "github.request"; requestId: string; request: GitHubRequest }
   | { t: "git.manage"; requestId: string; projectId: string; operation: GitOperation; value?: string; offset?: number; remote?: string }
   | { t: "thread.search"; query: string; projectId?: string }
   | { t: "project.choose"; path?: string }
-  | { t: "providers.refresh" }
+  | { t: "providers.refresh"; force?: boolean }
   | { t: "providers.configure"; provider: ProviderId; enabled: boolean }
   | { t: "project.open"; path: string }
   | { t: "project.rename"; id: string; name: string }

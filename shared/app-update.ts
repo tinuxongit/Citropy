@@ -20,4 +20,11 @@ export interface AppUpdateState {
   message?: string;
   checkedAt?: number;
   retry?: "check" | "download" | "install";
+  notes?: { version: string; sections: ReleaseNoteSection[] };
+  notesError?: string;
+}
+
+export interface ReleaseNoteSection {
+  title: string;
+  items: string[];
 }

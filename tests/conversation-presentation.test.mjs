@@ -1221,6 +1221,7 @@ app.whenReady().then(() => {
     const f = await fixture();
     const { page } = f;
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.locator('button[data-settings-section="appearance"]').click();
     const streaming = page.getByRole("switch", { name: /^Text streaming/ });
     const animation = page.getByRole("switch", { name: /^Typing animation/ });
     await streaming.waitFor();

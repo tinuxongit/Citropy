@@ -88,7 +88,7 @@
   background: var(--text-4);
   border-radius: 2px;
   opacity: 0.28;
-  transition: width var(--dur-fast), background var(--dur-fast), opacity var(--dur-fast);
+  transition: width var(--dur-fast), background var(--dur-instant), opacity var(--dur-fast);
 }
 .message-nav:hover .message-nav-stop > span,
 .message-nav:has(:focus-visible) .message-nav-stop > span {
@@ -233,7 +233,7 @@
   overflow: hidden;
 }
 .reasoning[data-open] .reasoning-body { display: block; -webkit-line-clamp: none; }
-.reasoning[data-long] { position: relative; cursor: pointer; border-radius: var(--r-sm); }
+.reasoning[data-long] { position: relative; cursor: default; border-radius: var(--r-sm); }
 .reasoning-more {
   position: absolute;
   right: 0;
@@ -317,7 +317,7 @@
   gap: 10px;
   flex-wrap: wrap;
 }
-.activity-update { padding: 2px 0 8px; }
+.activity-update { padding: 6px 0 2px; }
 .activity-caption { display: block; margin-bottom: 4px; color: var(--text-3); font-size: var(--text-xs); font-weight: 500; }
 .activity-update .prose { font-size: var(--text-base); color: var(--text-2); }
 .activity-preview {
@@ -638,7 +638,7 @@
   padding: 0;
   border: 0;
   background: none;
-  cursor: pointer;
+  cursor: default;
   border-radius: var(--r-md);
   min-width: 0;
   max-width: 100%;
@@ -657,6 +657,14 @@
 .tool[data-images] {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.tool[data-images][data-open="false"] {
+  grid-template-columns: fit-content(calc(100% - min(140px, 24cqw) - 8px)) minmax(0, 1fr);
+}
+
+.tool[data-images][data-open="false"] > .tool-head {
+  max-width: none;
 }
 
 .tool[data-images] > .tool-head {
@@ -742,10 +750,6 @@
   display: none;
 }
 
-.activity-preview .image-strip[data-compact] {
-  margin-left: auto;
-}
-
 .image-strip button:hover img,
 .image-strip button:focus-visible img {
   box-shadow: 0 0 0 1px var(--accent-line);
@@ -769,7 +773,7 @@
   color: var(--text-3);
   font-size: var(--text-xs);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 .image-gallery-item img {
@@ -962,15 +966,15 @@
 
 .working-grid i {
   display: block;
-  border-radius: 1px;
+  border-radius: 0.5px;
   background: var(--text-2);
-  opacity: 0;
-  animation: citropy-pixel 1.2s steps(1, end) var(--pixel-delay) infinite;
+  opacity: 0.12;
+  animation: citropy-pixel 1.35s ease-in-out infinite paused;
 }
 
 @keyframes citropy-pixel {
-  0%, 75%, 100% { opacity: 0; }
-  35% { opacity: 1; }
+  0%, 45%, 100% { opacity: 0.12; }
+  15% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

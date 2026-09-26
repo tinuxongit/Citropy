@@ -1,4 +1,4 @@
-import { GitCommitHorizontal, Server } from "lucide-react";
+import { Server } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { environmentName, isRemote, useEnvironments } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
@@ -7,7 +7,6 @@ import { toggleInspector, useApp } from "../lib/store.ts";
 import { NotificationCenter } from "./NotificationCenter.tsx";
 import { ComputerIndicator } from "./ComputerPane.tsx";
 import { WindowControls } from "./WindowControls.tsx";
-import { GitActions } from "./GitActions.tsx";
 import { WorkspaceSelector } from "./WorkspaceSelector.tsx";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
 
@@ -33,15 +32,6 @@ export function Titlebar({
   const thread = useApp((state) =>
     activeThreadId ? state.threads[activeThreadId] : undefined,
   );
-  const gitThread = useApp(state => {
-    let selected = thread;
-    const visited = new Set<string>();
-    while (selected?.parentThreadId && !visited.has(selected.id)) {
-      visited.add(selected.id);
-      selected = state.threads[selected.parentThreadId];
-    }
-    return selected?.parentThreadId ? undefined : selected;
-  });
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const globalMode = useApp((state) => state.sidebarMode === "global");
 
@@ -116,7 +106,6 @@ export function Titlebar({
 
       <div className="topbar-right">
         <ComputerIndicator />
-        {project && (project.isGit && gitThread ? <GitActions key={`${environment}:${gitThread.id}`} thread={gitThread} /> : <button type="button" className="icon-btn git-panel-trigger" aria-label={t("Git actions")} title={t("Git actions")} onClick={() => useApp.setState({ activeView: "git", readingThreadId: null })}><GitCommitHorizontal size={16} /><span className="git-trigger-label">Git</span></button>)}
         {view === "chat" && (
           <button
             className="icon-btn"

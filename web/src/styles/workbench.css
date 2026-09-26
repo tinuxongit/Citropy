@@ -18,10 +18,10 @@
 .workbench-panel-menu {
   box-shadow: none;
 }
-:root[data-theme="dark"] .workbench-panel-menu {
+:root:not([data-theme="light"]) .workbench-panel-menu {
   background: var(--canvas);
 }
-:root[data-theme="dark"] .workbench-panel-menu .menu-item:is(:hover, :focus-visible) {
+:root:not([data-theme="light"]) .workbench-panel-menu .menu-item:is(:hover, :focus-visible) {
   background: var(--raised);
 }
 .workbench-open {
@@ -35,7 +35,7 @@
   background: var(--raised);
   color: var(--text);
   font-size: var(--text-sm);
-  transition: background var(--dur-fast);
+  transition: background var(--dur-instant);
 }
 .workbench-open:hover,
 .workbench-open[aria-expanded="true"] {
@@ -535,7 +535,7 @@
   padding: 12px 0;
 }
 .tool-definition summary {
-  cursor: pointer;
+  cursor: default;
   font-size: var(--text-sm);
   text-transform: capitalize;
 }
@@ -584,6 +584,7 @@
   background: var(--raised);
   color: var(--text);
 }
+.thread-child[data-active="true"] { background: transparent; }
 .subagent-icon {
   position: relative;
   display: grid;

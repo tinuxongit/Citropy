@@ -1,11 +1,13 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ExternalLink, Square, Terminal, X } from "lucide-react";
 import type { NotificationTarget, ShellProcess } from "../../../shared/protocol.ts";
-import { scaled, useApp, viewportWidth } from "../lib/store.ts";
+import { useApp } from "../lib/store.ts";
+import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
 import { api } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { SelectionHighlight } from "./SelectionHighlight.tsx";
 
 type ShellEntry = ShellProcess;
 
@@ -21,12 +23,12 @@ export function RunningShells({ onOpen }: { onOpen: (target: NotificationTarget)
     setOpen(false);
     trigger.current?.focus({ preventScroll: true });
   };
-  return <div className="shells-wrap">
-    {(count > 0 || open) && <button ref={trigger} type="button" className="icon-btn shells-trigger" title={t("Running shells")} aria-label={t("Running shells, {count} active", { count })} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+  return <>
+    {(count > 0 || open) && <button ref={trigger} type="button" className="composer-tab" title={t("Running shells")} aria-label={t("Running shells, {count} active", { count })} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
       <Terminal size={13} /><span>{count}</span>
     </button>}
     <AnimatePresence>{open && <ShellsPanel id={id} trigger={trigger} onClose={close} onOpen={onOpen} />}</AnimatePresence>
-  </div>;
+  </>;
 }
 
 function ShellsPanel({ id, trigger, onClose, onOpen }: {
@@ -41,7 +43,6 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
   const threads = useApp(state => state.threads);
   const projects = useApp(state => state.projects);
   const connected = useApp(state => state.connected);
-  const uiScale = useApp(state => state.uiScale);
   const [pending, setPending] = useState<string>();
   const [error, setError] = useState<{ id: string; message: string }>();
   const panel = useRef<HTMLElement>(null);
@@ -52,40 +53,8 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
   const label = (shell: ShellEntry) => shell.command || t("Shell command");
   const status = (shell: ShellEntry) => t(shell.status === "stopping" ? "Stopping…" : shell.background ? "Background" : "Running");
 
-  useLayoutEffect(() => {
-    const element = panel.current;
-    if (!element) return;
-    element.showPopover();
-    const position = () => {
-      const anchor = trigger.current?.getBoundingClientRect();
-      if (!anchor) return;
-      const scale = uiScale / 100;
-      const width = Math.min(420, viewportWidth() - 24);
-      element.style.width = `${scaled(width)}px`;
-      element.style.left = `${scaled(Math.max(12, Math.min(anchor.right / scale - width, viewportWidth() - width - 12)))}px`;
-      element.style.bottom = `${scaled((innerHeight - anchor.top) / scale + 8)}px`;
-      element.style.maxHeight = `${scaled(Math.max(0, anchor.top / scale - 22))}px`;
-    };
-    position();
-    const resize = new ResizeObserver(position);
-    if (trigger.current) resize.observe(trigger.current);
-    window.addEventListener("resize", position);
-    return () => { resize.disconnect(); window.removeEventListener("resize", position); };
-  }, [uiScale, trigger]);
-
-  useEffect(() => {
-    const outside = (event: PointerEvent) => {
-      if (!panel.current?.contains(event.target as Node) && !trigger.current?.contains(event.target as Node)) onClose();
-    };
-    const key = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
-      event.preventDefault();
-      onClose();
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", key);
-    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", key); };
-  }, [onClose, trigger]);
+  useAnchoredPanel(panel, trigger, { open: true, width: 420 });
+  useDismiss(panel, trigger, onClose, { open: true, outside: true });
 
   useEffect(() => { setError(undefined); }, [selected?.id]);
 
@@ -101,9 +70,10 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
     <span className="shell-row-copy"><code title={shell.command}>{label(shell)}</code><small>{owner(shell)}</small></span>
     <span className="shell-status" data-status={shell.status}>{status(shell)}</span>
   </button>);
-  return <motion.section ref={panel} id={id} popover="manual" role="dialog" aria-label={t("Running shells")} className="shells-panel" initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }} animate={{ opacity: 1, transform: "none" }} exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
+  return <motion.section ref={panel} id={id} popover="manual" role="dialog" aria-label={t("Running shells")} className="tab-panel shells-panel" initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }} animate={{ opacity: 1, transform: "none" }} exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
     <header><Terminal size={16} /><h2>{t("Running shells")}</h2><span>{t("{count} active", { count: running.length })}</span><button type="button" className="icon-btn" autoFocus aria-label={t("Close running shells")} onClick={onClose}><X size={16} /></button></header>
-    <div className="shells-list scroll">
+    <div className="shells-list scroll sliding-selection">
+      <SelectionHighlight value={selected?.id} selector='.shell-row[data-selected="true"]' />
       {rows(running)}
     </div>
     {selected ? <div className="shell-detail">

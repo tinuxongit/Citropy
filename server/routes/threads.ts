@@ -104,7 +104,7 @@ export const threadRoutes: Routes = {
   },
   "thread.load": (event, send) => {
     const thread = store.threads.get(event.id);
-    if (thread) send({ t: "thread.messages", threadId: thread.id, messages: thread.messages });
+    if (thread) send({ t: "thread.messages", threadId: thread.id, messages: store.readMessages(thread.id) });
   },
   "thread.config": async (event, send) => {
     const thread = store.threads.get(event.id);

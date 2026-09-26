@@ -1,4 +1,5 @@
 import { environmentId, environmentSignal, environmentUrl } from "./environment.ts";
+import { logClientError } from "./socket.ts";
 import { useApp } from "./store.ts";
 
 export async function api<T>(
@@ -28,6 +29,7 @@ export async function api<T>(
 
 export function reportError(error: unknown): void {
   if ((error as Error).name === "AbortError") return;
+  logClientError(error);
   useApp.setState((state) => ({
     toasts: [
       ...state.toasts,

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { renderMarkdown } from "./markdown.ts";
 import { escapeHtml } from "./escape-html.ts";
 import { useApp } from "./store.ts";
+import { schemeOf } from "./app-state.ts";
 
 const cache = new Map<string, string>();
 const MAX_CACHE_SIZE = 4 * 1024 * 1024;
@@ -25,7 +26,7 @@ function fallback(text: string): string {
 }
 
 export function useMarkdown(text: string, live: boolean, images = true): { html: string; ready: boolean } {
-  const theme = useApp((state) => state.theme);
+  const theme = useApp((state) => schemeOf(state.theme));
   const language = useApp((state) => state.language);
   const projectId = useApp((state) => state.activeProjectId);
   const threadId = useApp((state) => state.activeThreadId);
@@ -47,7 +48,7 @@ export function useMarkdown(text: string, live: boolean, images = true): { html:
     const controller = new AbortController();
     const run = async () => {
       const assets = projectId && threadId ? { projectId, threadId } : undefined;
-      const result = await renderMarkdown(text, theme, controller.signal, assets, { images, language }).catch(() => fallback(text));
+      const result = await renderMarkdown(text, theme, controller.signal, assets, { images, language, live }).catch(() => fallback(text));
       if (cancelled || latest.current !== key) return;
       if (!live) remember(key, result);
       setRendered({ html: result, key });

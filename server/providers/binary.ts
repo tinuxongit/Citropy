@@ -1,5 +1,5 @@
 import { execFile, spawn, type ChildProcessWithoutNullStreams, type SpawnOptions } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, posix, win32 } from "node:path";
 
@@ -48,9 +48,12 @@ export interface ResolveInOptions {
 const DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD";
 const CACHE_TTL = 30_000;
 const cache = new Map<string, { at: number; value: ResolvedCommand }>();
+const VERSION_TTL = 15 * 60_000;
+const versions = new Map<string, { identity: string; at: number; version: string }>();
 
 export function clearCommandCache(): void {
   cache.clear();
+  versions.clear();
 }
 
 function findInDirs(name: string, dirs: string[], exists: (path: string) => boolean, win: boolean): string | undefined {
@@ -141,8 +144,25 @@ export function spawnCommand(
   return spawn(call.file, call.args, { ...options, windowsHide: true, windowsVerbatimArguments: call.verbatim }) as ChildProcessWithoutNullStreams;
 }
 
+/** The installed file behind a command, which changes whenever the CLI is installed, updated or removed. */
+export function commandIdentity(binary: string): string | undefined {
+  const path = resolveCommand(binary).path;
+  if (!path) return undefined;
+  try {
+    const target = realpathSync(path);
+    const { ino, size, mtimeMs, ctimeMs } = statSync(target);
+    return `${target}:${ino}:${size}:${mtimeMs}:${ctimeMs}`;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Read the first non-empty version line from `binary --version`, or undefined if it fails. */
 export function commandVersion(binary: string, timeoutMs = 8000, environment?: Record<string, string>): Promise<string | undefined> {
+  const key = `${binary}\0${JSON.stringify(environment ?? {})}`;
+  const identity = commandIdentity(binary);
+  const cached = versions.get(key);
+  if (identity && cached?.identity === identity && Date.now() - cached.at < VERSION_TTL) return Promise.resolve(cached.version);
   const call = invocation(resolveCommand(binary), ["--version"]);
   return new Promise((resolve) => {
     execFile(
@@ -154,7 +174,9 @@ export function commandVersion(binary: string, timeoutMs = 8000, environment?: R
           resolve(undefined);
           return;
         }
-        resolve((stdout || stderr).split(/\r?\n/).map((line) => line.trim()).find(Boolean));
+        const version = (stdout || stderr).split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+        if (identity && version) versions.set(key, { identity, at: Date.now(), version });
+        resolve(version);
       },
     );
   });

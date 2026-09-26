@@ -6,11 +6,9 @@ import {
   FolderTree,
   RefreshCw,
   Save,
-  Search,
   TerminalSquare,
   WrapText,
   X,
-  Command,
   Download,
 } from "lucide-react";
 import { useApp, confirmAction, setEditorTerminal } from "../../lib/store.ts";
@@ -45,16 +43,18 @@ export default function EditorWorkspace({
 }) {
   const t = useI18n();
   const projectId = useApp((state) => state.activeProjectId);
-  const thread = useApp((state) => state.threads[state.activeThreadId ?? ""]);
+  const threadProjectId = useApp((state) => state.threads[state.activeThreadId ?? ""]?.projectId);
+  const activeThreadId = useApp((state) => state.activeThreadId);
+  const workspacePath = useApp((state) => state.threads[state.activeThreadId ?? ""]?.workspacePath);
   const project = useApp((state) =>
     state.projects.find((project) => project.id === state.activeProjectId),
   );
   const environment = useEnvironments();
-  const threadId = thread?.projectId === projectId ? thread.id : undefined;
+  const threadId = threadProjectId !== undefined && threadProjectId === projectId ? activeThreadId ?? undefined : undefined;
   const scope = JSON.stringify([
     environment.activeId,
     projectId,
-    threadId ? (thread?.workspacePath ?? project?.path) : project?.path,
+    threadId ? (workspacePath ?? project?.path) : project?.path,
   ]);
   if (!projectId)
     return <div className="pane-empty">{t("Open a workspace first.")}</div>;
@@ -169,85 +169,15 @@ function Workspace({
     }
   }
 
-  function command(id: string) {
-    editor.current?.focus();
-    editor.current?.trigger("toolbar", id, null);
-  }
-
   return (
     <section
       className="editor-workspace"
       aria-label={t("Code workspace")}
     >
-      <div className="editor-toolbar">
-        <button
-          className="icon-btn"
-          type="button"
-          title={t("Toggle file explorer")}
-          aria-label={t("Toggle file explorer")}
-          aria-pressed={showExplorer}
-          disabled={!current}
-          onClick={() => setExplorer((value) => !value)}
-        >
-          <FolderTree size={16} />
-        </button>
-        <strong>{t("Editor")}</strong>
-        <div className="editor-toolbar-actions">
-          <button
-            className="icon-btn"
-            type="button"
-            title={t("Find and replace (Ctrl/Cmd+F)")}
-            aria-label={t("Find and replace")}
-            disabled={!textDocument}
-            onClick={() => command("editor.action.startFindReplaceAction")}
-          >
-            <Search size={15} />
-          </button>
-          <button
-            className="icon-btn"
-            type="button"
-            title={t("Command palette (F1)")}
-            aria-label={t("Command palette")}
-            disabled={!textDocument}
-            onClick={() => command("editor.action.quickCommand")}
-          >
-            <Command size={15} />
-          </button>
-          <button
-            className="icon-btn"
-            type="button"
-            title={t("Word wrap")}
-            aria-label={t("Word wrap")}
-            aria-pressed={wrap}
-            disabled={!textDocument}
-            onClick={() => setWrap((value) => !value)}
-          >
-            <WrapText size={15} />
-          </button>
-          <button
-            className="icon-btn"
-            type="button"
-            title={t(terminalVisible ? "Hide terminal" : "Open terminal")}
-            aria-label={t(terminalVisible ? "Hide terminal" : "Open terminal")}
-            aria-pressed={terminalVisible}
-            disabled={!connected && !terminalVisible}
-            onClick={() => {
-              if (terminalVisible) {
-                setEditorTerminal(panelId);
-                editor.current?.focus();
-                return;
-              }
-              openEditorTerminal(panelId);
-            }}
-          >
-            <TerminalSquare size={15} />
-          </button>
-        </div>
-      </div>
       <div className="editor-layout" data-explorer={showExplorer}>
         <aside className="editor-explorer" hidden={!showExplorer}>
           <div className="editor-explorer-heading">
-            <span>{t("FILES")}</span>
+            <span>{t("Files")}</span>
             <button
               className="icon-btn"
               type="button"
@@ -319,6 +249,7 @@ function Workspace({
         </aside>
         {showExplorer && <EditorResizeHandle pane="explorer" />}
         <div className="editor-main">
+          <div className="editor-tabbar">
           {documents.length > 0 && (
             <div className="editor-tabs sliding-selection" ref={tabStrip} aria-label={t("Open files")}>
               <SelectionHighlight value={current?.id} selector='.editor-tab[data-active="true"]' />
@@ -363,11 +294,56 @@ function Workspace({
               ))}
             </div>
           )}
+            <div className="editor-tabbar-actions">
+              <button
+                className="icon-btn"
+                type="button"
+                title={t("Word wrap")}
+                aria-label={t("Word wrap")}
+                aria-pressed={wrap}
+                disabled={!textDocument}
+                onClick={() => setWrap((value) => !value)}
+              >
+                <WrapText size={15} />
+              </button>
+              <button
+                className="icon-btn"
+                type="button"
+                title={t(terminalVisible ? "Hide terminal" : "Open terminal")}
+                aria-label={t(terminalVisible ? "Hide terminal" : "Open terminal")}
+                aria-pressed={terminalVisible}
+                disabled={!connected && !terminalVisible}
+                onClick={() => {
+                  if (terminalVisible) {
+                    setEditorTerminal(panelId);
+                    editor.current?.focus();
+                    return;
+                  }
+                  openEditorTerminal(panelId);
+                }}
+              >
+                <TerminalSquare size={15} />
+              </button>
+              <button
+                className="icon-btn"
+                type="button"
+                title={t("Toggle file explorer")}
+                aria-label={t("Toggle file explorer")}
+                aria-pressed={showExplorer}
+                disabled={!current}
+                onClick={() => setExplorer((value) => !value)}
+              >
+                <FolderTree size={16} />
+              </button>
+            </div>
+          </div>
           <div className="editor-document">
             {current && (
               <div className="editor-filebar">
-                <span className="truncate" title={current.path}>
-                  {current.path}
+                <span className="editor-breadcrumb truncate" title={current.path}>
+                  {current.path.split(/[\\/]/).map((part, index, parts) => (
+                    <span key={index} data-current={index === parts.length - 1 || undefined}>{part}</span>
+                  ))}
                 </span>
                 {textDocument ? (
                   <>
@@ -381,15 +357,15 @@ function Workspace({
                     >
                       <RefreshCw size={13} />
                     </button>
-                    <button
+                    {(textDocument.dirty || textDocument.saving) && <button
                       className="btn"
                       type="button"
-                      disabled={!connected || !textDocument.dirty || textDocument.saving}
+                      disabled={!connected || textDocument.saving}
                       onClick={() => void saveDocument(textDocument)}
                     >
                       <Save size={13} />
                       {t(textDocument.saving ? "Saving…" : "Save")}
-                    </button>
+                    </button>}
                   </>
                 ) : (
                   <a
@@ -450,10 +426,6 @@ function Workspace({
                   <div>
                     <dt>{t("Go to line")}</dt>
                     <dd>Ctrl / ⌘ G</dd>
-                  </div>
-                  <div>
-                    <dt>{t("All commands")}</dt>
-                    <dd>F1</dd>
                   </div>
                 </dl>
               </div>

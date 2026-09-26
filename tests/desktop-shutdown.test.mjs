@@ -50,6 +50,5 @@ test("stopping the packaged backend resolves without a last-resort signal", asyn
   await backend.stop();
   assert.deepEqual(diagnostics.map(entry => entry.event), ["backend.started", "backend.ready", "backend.stop-requested", "backend.exited"]);
   assert.equal(diagnostics.at(-1).code, 0);
-  assert.equal(diagnostics.at(-1).signal, null);
-  assert.ok(diagnostics.every(entry => entry.childPid === diagnostics[0].childPid));
+  assert.ok(diagnostics.every(entry => entry.threadId === diagnostics[0].threadId));
 });

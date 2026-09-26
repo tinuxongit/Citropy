@@ -18,6 +18,7 @@ import type {
   GitHubRepository,
   GitHubMutation,
 } from "../../../../shared/github.ts";
+import { SelectionHighlight } from "../SelectionHighlight.tsx";
 
 export function GitHubActions({
   repository,
@@ -105,7 +106,8 @@ export function GitHubActions({
         </p>
       )}
       <div className="github-split" data-detail={Boolean(selected)}>
-        <div className="github-list scroll">
+        <div className="github-list scroll sliding-selection">
+          <SelectionHighlight value={selected === null ? undefined : String(selected)} selector='.github-item[aria-pressed="true"]' />
           <GitHubFeedback
             error={list.error}
             loading={list.loading && !list.data}

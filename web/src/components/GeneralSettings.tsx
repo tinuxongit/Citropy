@@ -1,27 +1,25 @@
+import { useRef } from "react";
 import { ExperimentalTag } from "./ExperimentalTag.tsx";
+import { reportError } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.ts";
 import {
   setLanguage,
   setShowGitHubIdentity,
-  setShowFailedTools,
-  setTextStreaming,
-  setTypingAnimation,
-  setTypingSpeed,
-  toggleInspector,
-  toggleSidebar,
+  setUiSoundVolume,
+  setUiSounds,
   useApp,
 } from "../lib/store.ts";
+import { configureUiSounds, playUiSound, previewUiSound } from "../lib/ui-sound.ts";
+import { Range } from "./Range.tsx";
 
 export function GeneralSettings() {
   const t = useI18n();
   const language = useApp((state) => state.language);
-  const sidebar = useApp((state) => state.sidebarOpen);
-  const inspector = useApp((state) => state.inspectorOpen);
-  const textStreaming = useApp((state) => state.textStreaming);
-  const typingAnimation = useApp((state) => state.typingAnimation);
-  const typingSpeed = useApp((state) => state.typingSpeed);
-  const showFailedTools = useApp(state => state.showFailedTools);
   const showGitHubIdentity = useApp((state) => state.showGitHubIdentity);
+  const uiSounds = useApp((state) => state.uiSounds);
+  const uiAlertSounds = useApp((state) => state.uiAlertSounds);
+  const uiSoundVolume = useApp((state) => state.uiSoundVolume);
+  const volumePreview = useRef(0);
 
   return (
     <>
@@ -31,44 +29,12 @@ export function GeneralSettings() {
             <strong>{t("Language")} <ExperimentalTag /></strong>
             <small>{t("Choose the language used in Citropy.")}</small>
           </span>
-          <select value={language} onChange={(event) => setLanguage(event.target.value as "en" | "es")}>
+          <select value={language} onChange={(event) => void setLanguage(event.target.value as "en" | "es").catch(reportError)}>
             <option value="en">English</option>
             <option value="es">Español</option>
           </select>
         </label>
       </div>
-      <h2 className="settings-group-heading">{t("Layout")}</h2>
-      <div className="settings-group">
-        <label className="setting-row">
-          <span>
-            <strong>{t("Conversation sidebar")}</strong>
-            <small>{t("Keep your conversations alongside the chat.")}</small>
-          </span>
-          <input
-            className="setting-switch"
-            type="checkbox"
-            role="switch"
-            checked={sidebar}
-            onChange={toggleSidebar}
-          />
-        </label>
-        <label className="setting-row">
-          <span>
-            <strong>{t("Inspector")}</strong>
-            <small>
-              {t("Show changes, files, and the terminal next to your chat.")}
-            </small>
-          </span>
-          <input
-            className="setting-switch"
-            type="checkbox"
-            role="switch"
-            checked={inspector}
-            onChange={toggleInspector}
-          />
-        </label>
-      </div>
-      <p className="settings-note">{" "}{t("Layout preferences are saved on this device.")}{" "}</p>
       <h2 className="settings-group-heading settings-group-spaced">{" "}{t("Chat identity")}{" "}</h2>
       <div className="settings-group">
         <label className="setting-row">
@@ -85,76 +51,54 @@ export function GeneralSettings() {
           />
         </label>
       </div>
-      <h2 className="settings-group-heading settings-group-spaced">{t("Tool activity")}</h2>
+      <h2 className="settings-group-heading settings-group-spaced">{t("Sounds")}</h2>
       <div className="settings-group">
         <label className="setting-row">
           <span>
-            <strong>{t("Show failed-tools badge")}</strong>
-            <small>{t("Show the failure count in work summaries. Tool results remain available when hidden.")}</small>
+            <strong>{t("Interface sounds")}</strong>
+            <small>{" "}{t("A quiet click when you press a button, a switch, or a tab.")}{" "}</small>
           </span>
-          <input className="setting-switch" type="checkbox" role="switch"
-            checked={showFailedTools} onChange={event => setShowFailedTools(event.target.checked)} />
-        </label>
-      </div>
-      <h2 className="settings-group-heading settings-group-spaced">{" "}{t("Response text")}{" "}</h2>
-      <div className="settings-group">
-        <label className="setting-row">
-          <span>
-            <strong>{t("Text streaming")}</strong>
-            <small>{" "}{t("Show text as it arrives. Turn off to wait for each text block to finish.")}{" "}</small>
+          <span className="sound-row-controls">
+            <button
+              className="btn btn-sm"
+              type="button"
+              data-ui-sound="off"
+              onClick={() => void previewUiSound("click")}
+            >{t("Preview")}</button>
+            <input
+              className="setting-switch"
+              type="checkbox"
+              role="switch"
+              checked={uiSounds}
+              onChange={(event) => setUiSounds(event.target.checked)}
+            />
           </span>
-          <input
-            className="setting-switch"
-            type="checkbox"
-            role="switch"
-            checked={textStreaming}
-            onChange={(event) => setTextStreaming(event.target.checked)}
-          />
         </label>
-        <label className="setting-row" data-disabled={textStreaming}>
-          <span>
-            <strong>{t("Typing animation")}</strong>
-            <small>{" "}{t("Reveal finished text gradually. Available when text streaming is off.")}{" "}</small>
-          </span>
-          <input
-            className="setting-switch"
-            type="checkbox"
-            role="switch"
-            disabled={textStreaming}
-            checked={typingAnimation}
-            onChange={(event) =>
-              setTypingAnimation(event.target.checked)
-            }
-          />
-        </label>
-        <div
-          className="typing-speed-setting"
-          data-disabled={textStreaming || !typingAnimation}
-        >
-          <div>
-            <label htmlFor="typing-speed">{t("Typing speed")}</label>
-            <output htmlFor="typing-speed">
-              {typingSpeed}{" "}{t("characters / second")}{" "}</output>
+        <div className="sound-volume">
+          <div className="sound-volume-heading">
+            <label htmlFor="sound-volume">{t("Volume")}</label>
+            <output htmlFor="sound-volume">{uiSoundVolume}%</output>
           </div>
-          <input
-            id="typing-speed"
-            type="range"
-            min={20}
-            max={300}
-            step={10}
-            value={typingSpeed}
-            disabled={textStreaming || !typingAnimation}
-            onChange={(event) =>
-              setTypingSpeed(Number(event.target.value))
-            }
+          <Range
+            id="sound-volume"
+            min={0}
+            max={100}
+            step="5"
+            value={uiSoundVolume}
+            aria-valuetext={t("{value} percent", { value: uiSoundVolume })}
+            onChange={(event) => {
+              const volume = Number(event.target.value);
+              setUiSoundVolume(volume);
+              const now = Date.now();
+              if (!uiSounds || now - volumePreview.current < 150) return;
+              volumePreview.current = now;
+              configureUiSounds({ volume, interfaceSounds: uiSounds, alertSounds: uiAlertSounds });
+              playUiSound("click");
+            }}
           />
-          <div className="typing-speed-labels">
-            <span>{t("Slower")}</span>
-            <span>{t("Faster")}</span>
-          </div>
         </div>
       </div>
-      <p className="settings-note">{" "}{t("Tool activity stays live. Saved conversations appear immediately. Typing animation respects your system's reduced-motion setting.")}{" "}</p>
+      <p className="settings-note">{" "}{t("Volume also applies to the Citropy chime chosen in Notifications.")}{" "}</p>
     </>
   );
 }

@@ -35,6 +35,7 @@ import {
 import { useComposerDraft } from "./composer/use-composer-draft.ts";
 import { useAttachmentUpload } from "./composer/use-attachment-upload.ts";
 import { useComposerCommands } from "./composer/use-composer-commands.tsx";
+import { GitActions } from "./GitActions.tsx";
 
 export function Composer({
   onUsage,
@@ -55,6 +56,16 @@ export function Composer({
   const connected = useApp((state) => state.connected);
   const providers = useApp((state) => state.providers);
   const hasMessages = useApp((state) => Boolean(threadId && state.order[threadId]?.length));
+  const gitThread = useApp((state) => {
+    let selected = thread;
+    const visited = new Set<string>();
+    while (selected?.parentThreadId && !visited.has(selected.id)) {
+      visited.add(selected.id);
+      selected = state.threads[selected.parentThreadId];
+    }
+    return selected?.parentThreadId ? undefined : selected;
+  });
+  const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
   const { value, setValue, attachments, setAttachments } = useComposerDraft(threadId, scope);
   const { uploading, upload } = useAttachmentUpload({
     threadId,
@@ -132,7 +143,8 @@ export function Composer({
     permissionButton,
   });
 
-  const starting = !hasMessages && !running && !thread?.parentThreadId;
+  const started = hasMessages || (!loaded && Boolean(thread && (thread.usage.turns || thread.externalId || thread.branchedFrom || thread.transfers?.length)));
+  const starting = !started && !running && !thread?.parentThreadId;
   const composerRef = useRef<HTMLDivElement>(null);
   const startTop = useRef<number>(undefined);
   const reducedMotion = useReducedMotion();
@@ -215,7 +227,6 @@ export function Composer({
           {instance?.modelsError ?? provider?.modelsError}
         </div>
       )}
-      <QueueList thread={thread} provider={provider} onEdit={restore} />
       <div
         className="composer-shell"
         data-dragging={dragging}
@@ -233,7 +244,11 @@ export function Composer({
         }}
       >
         <span className="composer-focus-ring" aria-hidden="true" />
-        <RunningShells onOpen={onShell} />
+        <div className="composer-tabs">
+          <QueueList thread={thread} provider={provider} onEdit={restore} />
+          {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
+          <RunningShells onOpen={onShell} />
+        </div>
         {thread.finished && !running && (
           <div className="composer-finished" role="status">
             <CheckCircle2 size={14} aria-hidden="true" />
@@ -334,7 +349,7 @@ export function Composer({
               disabled={!connected || Boolean(uploading)}
               onClick={() => fileInput.current?.click()}
             >
-              <Paperclip size={17} className="attachment-file-icon" />
+              <Paperclip size={17} />
             </button>
 
             {running ? (

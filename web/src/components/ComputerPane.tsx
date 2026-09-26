@@ -5,7 +5,8 @@ import { Modal } from "./Modal.tsx";
 import { api, reportError } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
 import type { ComputerCapabilities, ComputerFrame, ComputerAction } from "../../../shared/computer.ts";
-import { currentLocale, useI18n } from "../lib/i18n.ts";
+import { useI18n } from "../lib/i18n.ts";
+import { clock } from "../lib/format.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 
 export function ComputerPane({ active }: { active: boolean }) {
@@ -163,7 +164,7 @@ export function ComputerPane({ active }: { active: boolean }) {
         {frame && <img className="computer-large-image" src={`data:image/jpeg;base64,${frame.image}`} alt={t("Shared desktop at a larger size")} />}
       </Modal>}</AnimatePresence>
       {(error || state.error) && <p className="feature-error" role="alert"><AlertCircle size={16} /> {error || state.error}</p>}
-      {state.activity.length > 0 && <div className="computer-activity"><h4>{t("Recent activity")}</h4>{state.activity.slice(0, 20).map((item) => <div className="computer-activity-row" key={item.id}>{item.status === "running" ? <PixelLoader size={14} /> : item.status === "error" ? <AlertCircle size={14} className="text-err" /> : <Check size={14} className="text-ok" />}<span>{item.action}<small>{item.error || (item.actor === "user" ? t("You") : t("Provider"))}</small></span><time>{new Date(item.at).toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" })}</time></div>)}</div>}
+      {state.activity.length > 0 && <div className="computer-activity"><h4>{t("Recent activity")}</h4>{state.activity.slice(0, 20).map((item) => <div className="computer-activity-row" key={item.id}>{item.status === "running" ? <PixelLoader size={14} /> : item.status === "error" ? <AlertCircle size={14} className="text-err" /> : <Check size={14} className="text-ok" />}<span>{item.action}<small>{item.error || (item.actor === "user" ? t("You") : t("Provider"))}</small></span><time>{clock(item.at)}</time></div>)}</div>}
     </section>
   );
 }

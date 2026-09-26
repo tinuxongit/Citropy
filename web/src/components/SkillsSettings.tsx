@@ -148,7 +148,7 @@ export function SkillsSettings() {
           {error}
         </p>
       )}
-      <VirtualList className="skill-list" items={filtered} itemKey="id" estimateSize={160} gap={4}>
+      <VirtualList className="skill-list" items={filtered} itemKey="id" estimateSize={160}>
         {(skill) => (
           <article className="skill-row" key={skill.id}>
             <div className="skill-summary">
@@ -156,6 +156,7 @@ export function SkillsSettings() {
               <button
                 className="skill-copy"
                 type="button"
+                title={skill.path}
                 aria-expanded={expanded === skill.id}
                 onClick={() =>
                   setExpanded(expanded === skill.id ? "" : skill.id)

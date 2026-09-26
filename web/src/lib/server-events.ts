@@ -352,6 +352,9 @@ export function applyEvent(state: AppState, event: ServerEvent, focused = true):
     case "notifications.preferences":
       applyNotificationEvent(state, event, focused);
       return;
+    case "logging":
+      state.logging = { ...state.logging, enabled: event.enabled };
+      return;
     case "panel.upsert":
     case "panel.remove":
     case "panel.order":

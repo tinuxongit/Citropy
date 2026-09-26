@@ -4,11 +4,13 @@ import {
   Bell,
   BookOpen,
   FolderCog,
+  AppWindow,
   Globe,
-  Monitor,
+  MousePointerClick,
   Palette,
   PencilLine,
   RefreshCw,
+  Server,
   SlidersHorizontal,
   Workflow,
 } from "lucide-react";
@@ -31,74 +33,21 @@ import { ProviderSettings } from "./ProviderSettings.tsx";
 import { SectionSidebar } from "./SectionSidebar.tsx";
 import { SkillsSettings } from "./SkillsSettings.tsx";
 
-const sections = [
-  { name: "Environments", group: "Workspace", icon: Monitor, description: "Choose this computer or an SSH host for your workspaces." },
-  {
-    name: "General",
-    group: "Workspace",
-    icon: SlidersHorizontal,
-    description: "Set up your conversation workspace.",
-  },
-  {
-    name: "Appearance",
-    group: "Workspace",
-    icon: Palette,
-    description: "Choose how Citropy looks.",
-  },
-  {
-    name: "Projects",
-    group: "Workspace",
-    icon: FolderCog,
-    description: "Manage global defaults and folder overrides.",
-  },
-  {
-    name: "Providers",
-    group: "Providers & tools",
-    icon: Workflow,
-    description: "Choose which providers you use in Citropy.",
-  },
-  {
-    name: "Skills",
-    group: "Providers & tools",
-    icon: BookOpen,
-    description: "Browse and manage the skills available to your providers.",
-  },
-  {
-    name: "AI assistance",
-    group: "Providers & tools",
-    icon: PencilLine,
-    description: "Choose models for conversation titles and commit messages.",
-  },
-  {
-    name: "Browser",
-    group: "Providers & tools",
-    icon: Globe,
-    description: "Manage browser profiles, saved logins, and site data.",
-  },
-  {
-    name: "Computer use",
-    group: "Providers & tools",
-    icon: Monitor,
-    description: "Share screens and control native desktop applications.",
-  },
-  {
-    name: "Resources",
-    group: "Application",
-    icon: Activity,
-    description: "Inspect memory, processor use, and running processes.",
-  },
-  {
-    name: "Notifications",
-    group: "Workspace",
-    icon: Bell,
-    description: "Choose how Citropy lets you know when work is done.",
-  },
-  {
-    name: "Application",
-    group: "Application",
-    icon: Monitor,
-    description: "Manage the desktop app and updates.",
-  },
+const GROUPS = ["Preferences", "Workspaces", "Agents", "Tools", "System"] as const;
+
+const sections: { name: string; group: typeof GROUPS[number]; icon: typeof Activity; description: string }[] = [
+  { name: "General", group: "Preferences", icon: SlidersHorizontal, description: "Set up your conversation workspace." },
+  { name: "Appearance", group: "Preferences", icon: Palette, description: "Choose how Citropy looks." },
+  { name: "Notifications", group: "Preferences", icon: Bell, description: "Choose how Citropy lets you know when work is done." },
+  { name: "Projects", group: "Workspaces", icon: FolderCog, description: "Manage global defaults and folder overrides." },
+  { name: "Environments", group: "Workspaces", icon: Server, description: "Choose this computer or an SSH host for your workspaces." },
+  { name: "Providers", group: "Agents", icon: Workflow, description: "Choose which providers you use in Citropy." },
+  { name: "AI assistance", group: "Agents", icon: PencilLine, description: "Choose models for conversation titles and commit messages." },
+  { name: "Skills", group: "Agents", icon: BookOpen, description: "Browse and manage the skills available to your providers." },
+  { name: "Browser", group: "Tools", icon: Globe, description: "Manage browser profiles, saved logins, and site data." },
+  { name: "Computer use", group: "Tools", icon: MousePointerClick, description: "Share screens and control native desktop applications." },
+  { name: "Resources", group: "System", icon: Activity, description: "Inspect memory, processor use, running processes, and saved logs." },
+  { name: "Application", group: "System", icon: AppWindow, description: "Manage the desktop app and updates." },
 ];
 
 export function Settings({
@@ -127,10 +76,12 @@ export function Settings({
   return (
     <section className="section-view" aria-label={t("Settings")}>
       <SectionSidebar activeItem={section} open={sidebarOpen} title={t("Settings")} onBack={onBack} navigation={navigation}>
-          {["Workspace", "Providers & tools", "Application"].map((group) => (
-            <Fragment key={group}>
+          {GROUPS.map((group) => {
+            const entries = sections.filter((entry) => entry.group === group && (!isRemote() || entry.group !== "Tools"));
+            if (!entries.length) return null;
+            return <Fragment key={group}>
               <h2 className="section-nav-label">{t(group)}</h2>
-              {sections.filter((entry) => entry.group === group && (!isRemote() || !["Browser", "Computer use"].includes(entry.name))).map(({ name, icon: Icon }) => (
+              {entries.map(({ name, icon: Icon }) => (
                 <button
                   className="section-link"
                   data-settings-section={name.toLowerCase()}
@@ -146,8 +97,8 @@ export function Settings({
                   <span>{t(name)}</span>
                 </button>
               ))}
-            </Fragment>
-          ))}
+            </Fragment>;
+          })}
       </SectionSidebar>
       <div className="settings scroll">
         <div className="settings-inner">
@@ -158,7 +109,7 @@ export function Settings({
                   className="settings-title"
                   data-settings-section={section.toLowerCase()}
                 >
-                  <SectionIcon size={25} aria-hidden="true" />
+                  <span className="settings-title-icon" aria-hidden="true"><SectionIcon size={19} /></span>
                   <AnimatedText text={t(section)} />
                 </h1>
                 <p><AnimatedText text={t(selectedSection.description)} /></p>
@@ -167,7 +118,7 @@ export function Settings({
                 <button
                   className="btn"
                   disabled={!connected}
-                  onClick={() => send({ t: "providers.refresh" })}
+                  onClick={() => send({ t: "providers.refresh", force: true })}
                 >
                   <RefreshCw size={14} />
                   {t("Refresh models")}

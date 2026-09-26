@@ -1,7 +1,7 @@
 import { environmentStorage } from "./environment.ts";
-import { useApp, type NavigationStyle, type PanelId, type SidebarMode, type Theme } from "./app-state.ts";
+import { useApp, type NavigationStyle, type PanelId, type SidebarMode, type StageBackground, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
-import type { Language } from "./translations.ts";
+import { loadSpanish, type Language } from "./translations.ts";
 
 export function toggleFavoriteModel(model: WritingModel): void {
   const current = useApp.getState().favoriteModels;
@@ -20,8 +20,9 @@ export function setPanelWidth(panel: PanelId, width?: number): void {
   environmentStorage.setItem("citropy.panelWidths", JSON.stringify(panelWidths));
 }
 
-export function setLanguage(language: Language): void {
+export async function setLanguage(language: Language): Promise<void> {
   if (language !== "en" && language !== "es") return;
+  if (language === "es") await loadSpanish();
   useApp.setState({ language });
   environmentStorage.setItem("citropy.language", language);
 }
@@ -53,6 +54,39 @@ export function setSidebarMode(mode: SidebarMode): void {
 export function setNavigationStyle(style: NavigationStyle): void {
   useApp.setState({ navigationStyle: style });
   environmentStorage.setItem("citropy.navigationStyle", style);
+}
+
+export function setBackgroundDim(value: number): void {
+  if (!Number.isFinite(value)) return;
+  const backgroundDim = Math.max(0, Math.min(90, Math.round(value)));
+  useApp.setState({ backgroundDim });
+  environmentStorage.setItem("citropy.backgroundDim", String(backgroundDim));
+}
+
+export function setBackgroundBlur(value: number): void {
+  if (!Number.isFinite(value)) return;
+  const backgroundBlur = Math.max(0, Math.min(40, Math.round(value)));
+  useApp.setState({ backgroundBlur });
+  environmentStorage.setItem("citropy.backgroundBlur", String(backgroundBlur));
+}
+
+export function setBackgroundFocus(value: number): void {
+  if (!Number.isFinite(value)) return;
+  const backgroundFocus = Math.max(0, Math.min(100, Math.round(value)));
+  useApp.setState({ backgroundFocus });
+  environmentStorage.setItem("citropy.backgroundFocus", String(backgroundFocus));
+}
+
+export function setUiTransparency(value: number): void {
+  if (!Number.isFinite(value)) return;
+  const uiTransparency = Math.max(0, Math.min(60, Math.round(value)));
+  useApp.setState({ uiTransparency });
+  environmentStorage.setItem("citropy.uiTransparency", String(uiTransparency));
+}
+
+export function setStageBackground(background: StageBackground): void {
+  useApp.setState({ stageBackground: background });
+  environmentStorage.setItem("citropy.stageBackground", background);
 }
 
 export function setSidebarGroupOpen(id: string, open: boolean): void {

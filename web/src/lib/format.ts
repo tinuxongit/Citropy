@@ -98,6 +98,14 @@ export function tokens(value: number): string {
 }
 
 const formatters = new Map<string, Intl.NumberFormat>();
+const dateFormatters = new Map<string, Intl.DateTimeFormat>();
+
+export function formatDate(date: number | string, options: Intl.DateTimeFormatOptions): string {
+  const key = `${currentLocale()}:${JSON.stringify(options)}`;
+  let formatter = dateFormatters.get(key);
+  if (!formatter) dateFormatters.set(key, formatter = new Intl.DateTimeFormat(currentLocale(), options));
+  return formatter.format(new Date(date));
+}
 
 export function decimal(value: number, fractionDigits = 1): string {
   const key = `${currentLocale()}:${fractionDigits}`;
@@ -136,10 +144,7 @@ export function ago(ts: number, now = Date.now()): string {
   if (hours < 24) return translate("{count}h ago", { count: hours });
   const days = Math.round(delta / 86_400_000);
   if (days < 7) return translate("{count}d ago", { count: days });
-  return new Date(ts).toLocaleDateString(currentLocale(), {
-    month: "short",
-    day: "numeric",
-  });
+  return formatDate(ts, { month: "short", day: "numeric" });
 }
 
 export function until(ts: number, now = Date.now()): string {
@@ -147,21 +152,18 @@ export function until(ts: number, now = Date.now()): string {
   if (delta < 60_000) return translate("under a minute");
   const minutes = Math.round(delta / 60_000);
   if (minutes < 60) return translate("{count}m", { count: minutes });
+  if (minutes < 24 * 60) return minutes % 60
+    ? translate("{hours}h {minutes}m", { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
+    : translate("{count}h", { count: minutes / 60 });
   const hours = Math.round(delta / 3_600_000);
-  if (hours < 24) return translate("{count}h", { count: hours });
-  const days = Math.round(delta / 86_400_000);
-  if (days < 7) return translate("{count}d", { count: days });
-  return new Date(ts).toLocaleDateString(currentLocale(), {
-    month: "short",
-    day: "numeric",
-  });
+  if (hours < 7 * 24) return hours % 24
+    ? translate("{days}d {hours}h", { days: Math.floor(hours / 24), hours: hours % 24 })
+    : translate("{count}d", { count: hours / 24 });
+  return formatDate(ts, { month: "short", day: "numeric" });
 }
 
 export function clock(ts: number): string {
-  return new Date(ts).toLocaleTimeString(currentLocale(), {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDate(ts, { hour: "2-digit", minute: "2-digit" });
 }
 
 export function shortPath(path: string, home: string): string {

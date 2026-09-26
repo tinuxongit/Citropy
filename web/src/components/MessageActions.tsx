@@ -11,15 +11,19 @@ import type { ThreadMeta } from "../../../shared/protocol.ts";
 
 export function MessageActions({ threadId, messageId, user }: { threadId: string; messageId: string; user: boolean }) {
   const t = useI18n();
-  const thread = useApp(state => state.threads[threadId]!);
   const [dialog, setDialog] = useState<"restore" | "review">();
+  const checkpoints = useApp(state => state.threads[threadId]?.checkpoints);
+  const running = useApp(state => Boolean(state.threads[threadId]?.running));
+  const compacting = useApp(state => Boolean(state.threads[threadId]?.compacting));
+  const nativeAgent = useApp(state => Boolean(state.threads[threadId]?.nativeAgentId));
+  const reviewThread = useApp(state => dialog === "review" ? state.threads[threadId] : undefined);
   const [mode, setMode] = useState<"conversation" | "files" | "both">("conversation");
   const id = useId();
   const connected = useApp(state => state.connected);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const checkpoint = thread.checkpoints?.find(entry => entry.messageId === messageId);
-  const fileIssue = fileRestoreIssue(thread.checkpoints, messageId);
+  const checkpoint = checkpoints?.find(entry => entry.messageId === messageId);
+  const fileIssue = fileRestoreIssue(checkpoints, messageId);
   const unavailable = fileIssue === "missing"
     ? t("No file checkpoint was saved for this message.")
     : fileIssue === "incomplete"
@@ -27,7 +31,7 @@ export function MessageActions({ threadId, messageId, user }: { threadId: string
       : fileIssue === "shared"
         ? t("Another task worked in this folder. Only conversation history can be restored.")
         : undefined;
-  const restoreDisabled = busy || thread.running || thread.compacting || !connected || (mode !== "conversation" && Boolean(fileIssue));
+  const restoreDisabled = busy || running || compacting || !connected || (mode !== "conversation" && Boolean(fileIssue));
   const choices = [
     { value: "conversation", label: t("Conversation only"), description: t("Rewind the chat and start a new provider session."), icon: MessagesSquare },
     { value: "files", label: t("Files only"), description: t("Restore file changes since this message. Keep the chat."), icon: FileDiff },
@@ -36,25 +40,25 @@ export function MessageActions({ threadId, messageId, user }: { threadId: string
   const restore = async () => {
     if (restoreDisabled) return;
     setBusy(true); setError("");
-    try { await api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ messageId, mode }) }); setDialog(undefined); }
+    try { await api(`threads/restore?threadId=${threadId}`, { method: "POST", body: JSON.stringify({ messageId, mode }) }); setDialog(undefined); }
     catch (error) { setError((error as Error).message); } finally { setBusy(false); }
   };
   const fork = async () => {
     setBusy(true);
     try {
-      const next = await api<ThreadMeta>(`threads/fork?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ messageId }) });
+      const next = await api<ThreadMeta>(`threads/fork?threadId=${threadId}`, { method: "POST", body: JSON.stringify({ messageId }) });
       useApp.setState(state => ({ threads: { ...state.threads, [next.id]: next } }));
       selectThread(next.id);
     } catch (error) { reportError(error); } finally { setBusy(false); }
   };
-  if (thread.nativeAgentId) return null;
+  if (nativeAgent) return null;
   return <><span className="message-actions">
     <button className="icon-btn" type="button" aria-label={t("Branch from this message")} title={t("Branch from this message")} disabled={busy} onClick={() => void fork()}><GitBranch size={13} /></button>
-    {user && <button className="icon-btn" type="button" aria-label={t("Restore before this message")} title={t("Restore before this message")} disabled={busy || thread.running} onClick={() => { setMode("conversation"); setDialog("restore"); setError(""); }}><RotateCcw size={13} /></button>}
+    {user && <button className="icon-btn" type="button" aria-label={t("Restore before this message")} title={t("Restore before this message")} disabled={busy || running} onClick={() => { setMode("conversation"); setDialog("restore"); setError(""); }}><RotateCcw size={13} /></button>}
     {checkpoint?.before && <button className="icon-btn" type="button" aria-label={t("Review this turn")} title={t("Review this turn")} onClick={() => setDialog("review")}><FileDiff size={13} /></button>}
   </span>
     <AnimatePresence>
-      {dialog === "review" && <TaskReview thread={thread} messageId={messageId} onClose={() => setDialog(undefined)} />}
+      {reviewThread && <TaskReview thread={reviewThread} messageId={messageId} onClose={() => setDialog(undefined)} />}
       {dialog === "restore" && <Modal
         title={t("Restore before this message")}
         className="restore-dialog"

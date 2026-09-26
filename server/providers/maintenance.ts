@@ -6,7 +6,7 @@ import { homedir, tmpdir } from "node:os";
 import { promisify, stripVTControlCharacters } from "node:util";
 import { valid, gt } from "semver";
 import { providers } from "./index.ts";
-import { clearCommandCache, invocation, resolveCommand } from "./binary.ts";
+import { clearCommandCache, commandIdentity, invocation, resolveCommand } from "./binary.ts";
 import { bus } from "../bus.ts";
 import { notifyUpdateAvailable } from "../update-notifications.ts";
 import type { ProviderId } from "../../shared/protocol.ts";
@@ -72,6 +72,18 @@ async function probe(executable: string, args: string[]): Promise<string> {
     env: { ...process.env, NO_COLOR: "1" },
   });
   return (result.stdout || result.stderr).trim();
+}
+
+const updaterHelp = new Map<string, { identity: string; help: string }>();
+
+async function nativeUpdaterHelp(binaryPath: string, args: string[]): Promise<string> {
+  const key = `${binaryPath}\0${args.join(" ")}`;
+  const identity = commandIdentity(binaryPath);
+  const cached = updaterHelp.get(key);
+  if (identity && cached?.identity === identity) return cached.help;
+  const help = await probe(binaryPath, [...args, "--help"]).catch(() => "");
+  if (identity && help) updaterHelp.set(key, { identity, help });
+  return help;
 }
 
 async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
@@ -194,7 +206,7 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
           : false;
   if (native) {
     const args = provider === "opencode" ? ["upgrade"] : ["update"];
-    const help = await probe(binaryPath, [...args, "--help"]).catch(() => "");
+    const help = await nativeUpdaterHelp(binaryPath, args);
     if (
       /\b(update|upgrade)\b/i.test(help) &&
       (/\bUsage:/i.test(help) || /^opencode upgrade\b/m.test(help))
@@ -346,12 +358,13 @@ export function assertProviderReady(provider: ProviderId): void {
 
 export async function providerMaintenance(
   fresh = false,
+  freshInstallations = fresh,
 ): Promise<ProviderMaintenance[]> {
   return Promise.all(
     Object.values(providers).map(async (provider) => {
-      const plan = await updatePlan(provider.id, fresh);
+      const plan = await updatePlan(provider.id, freshInstallations);
       const [version, latest] = await Promise.all([
-        installationVersion(provider.id, fresh),
+        installationVersion(provider.id, freshInstallations),
         plan.binaryPath ? latestVersion(provider.id, plan, fresh) : undefined,
       ]);
       const target = versionNumber(latest);
@@ -390,7 +403,7 @@ export function startProviderUpdateChecks(): () => void {
     if (checking) return;
     checking = true;
     try {
-      await providerMaintenance(true);
+      await providerMaintenance(true, false);
     } catch {} finally {
       checking = false;
     }

@@ -28,13 +28,7 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
     const measure = () => new Map(Array.from(root.querySelectorAll<HTMLElement>(
       ".message-avatar, .turn-heading > strong, .turn-heading > .turn-meta",
     ), element => [element, position(element)]));
-    let positions = measure();
-    const mutations = new MutationObserver(records => {
-      if (records.some(record => [...record.addedNodes, ...record.removedNodes].some(node =>
-        node instanceof HTMLElement && (node.matches(".turn, .turn-heading") || node.querySelector(".turn, .turn-heading")),
-      ))) positions = measure();
-    });
-    mutations.observe(root, { childList: true, subtree: true });
+    let positions = new WeakMap(measure());
 
     const observer = new ResizeObserver(() => {
       if (stage.clientWidth === width) return;
@@ -42,7 +36,7 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
       const next = measure();
       const nextLayout = getComputedStyle(root).getPropertyValue("--message-header-layout");
       if (nextLayout === layout) {
-        positions = next;
+        positions = new WeakMap(next);
         return;
       }
       layout = nextLayout;
@@ -59,7 +53,7 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
       });
       for (const animation of animations.values()) animation.cancel();
       animations.clear();
-      positions = next;
+      positions = new WeakMap(next);
       for (const { element, x, y } of moves) {
         if (Math.abs(x) < 0.5 && Math.abs(y) < 0.5) continue;
         const animation = element.animate([
@@ -73,7 +67,6 @@ export function useMessageHeaderMotion(viewport: RefObject<HTMLDivElement | null
     observer.observe(stage);
     return () => {
       observer.disconnect();
-      mutations.disconnect();
       for (const animation of animations.values()) animation.cancel();
     };
   }, [viewport, threadId, reducedMotion]);

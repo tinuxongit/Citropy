@@ -11,6 +11,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { Check, ChevronRight } from "./icons.ts";
+import { SelectionHighlight } from "./SelectionHighlight.tsx";
 
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 
@@ -95,6 +96,8 @@ export function Menu({
     }
   };
   collect(items, 0, terms);
+  const selectedItems = visibleItems.filter(item => item.selected);
+  const soleSelection = selectedItems.length === 1 ? selectedItems[0]!.id : undefined;
   const toggleGroup = (itemId: string, collapse = !collapsed.has(itemId)) => setCollapsed(previous => {
     const next = new Set(previous);
     if (collapse) next.add(itemId); else next.delete(itemId);
@@ -266,7 +269,8 @@ export function Menu({
                 onChange={(event) => setQuery(event.target.value)}
               />
             )}
-            <div className="menu-list scroll" data-large={visibleItems.length > 40}>
+            <div className="menu-list scroll sliding-selection" data-large={visibleItems.length > 40} data-sliding={soleSelection ? true : undefined}>
+              {soleSelection && <SelectionHighlight value={soleSelection} selector=".menu-option[data-selected]" />}
               {visibleItems.map((item, index) => (
                   <Fragment key={item.id}>
                     {item.section &&

@@ -1,5 +1,6 @@
 import { useMarkdown } from "../../lib/use-markdown.ts";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { patchHtml } from "../../lib/patch-html.ts";
 import { useApp } from "../../lib/store.ts";
 import { useTextReveal } from "../../lib/use-text-reveal.ts";
 import { ImageViewer, type ViewerImage } from "../ImageViewer.tsx";
@@ -20,9 +21,12 @@ export function Prose({ partId, text, live, className, images = true }: Props) {
   const { html, ready } = useMarkdown(waiting ? "" : text, live && streaming, images);
   const root = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<{ images: ViewerImage[]; index: number } | null>(null);
+  const shown = Boolean(text) && !waiting && (streaming || ready);
+  useLayoutEffect(() => {
+    if (root.current) patchHtml(root.current, html);
+  }, [html, shown]);
   const revealing = useTextReveal(root, partId, html, live, ready);
-  const markup = useMemo(() => ({ __html: html }), [html]);
-  if (!text || waiting || (!streaming && !ready)) return null;
+  if (!shown) return null;
   return (
     <><div
       className={className ? `prose ${className}` : "prose"}
@@ -53,7 +57,6 @@ export function Prose({ partId, text, live, className, images = true }: Props) {
           if (fallback) fallback.hidden = false;
         }
       }}
-      dangerouslySetInnerHTML={markup}
     />{preview && <ImageViewer images={preview.images} index={preview.index} onIndexChange={index => setPreview({ ...preview, index })} onClose={() => setPreview(null)} />}</>
   );
 }

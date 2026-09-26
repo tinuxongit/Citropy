@@ -173,12 +173,14 @@ button.markdown-image:focus-visible { box-shadow: 0 0 0 1px var(--accent-line); 
 
 .prose a {
   text-decoration: underline;
-  text-decoration-color: var(--line-bright);
-  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 22%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: text-decoration-color var(--dur-instant) var(--ease-out);
 }
 
 .prose a:hover {
-  text-decoration-color: var(--text);
+  text-decoration-color: currentColor;
 }
 
 .prose strong {

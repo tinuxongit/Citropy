@@ -25,6 +25,7 @@ import type {
   GitOverview,
 } from "../../../../shared/protocol.ts";
 import { PixelLoader } from "../PixelLoader.tsx";
+import { SelectionHighlight } from "../SelectionHighlight.tsx";
 
 export function ChangesSection({
   data,
@@ -152,7 +153,8 @@ export function ChangesSection({
               </button>
             )}
           </label>
-          <div className="git-file-groups scroll">
+          <div className="git-file-groups scroll sliding-selection">
+            <SelectionHighlight value={selection?.kind === "file" ? `${selection.staged}:${selection.path}` : undefined} selector='.git-file-row[data-selected="true"]' />
             <FileGroup title="Unstaged changes" list={unstaged} inIndex={false} disabled={disabled} selection={selection} t={t} match={match} act={act} setSelection={setSelection} />
             <FileGroup title="Staged for commit" list={staged} inIndex={true} disabled={disabled} selection={selection} t={t} match={match} act={act} setSelection={setSelection} />
             {filter && !files.some((file) => match(file.path)) && (

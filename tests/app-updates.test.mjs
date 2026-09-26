@@ -9,6 +9,7 @@ import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
 import { createAppUpdater } from "../desktop/updates.mjs";
+import { parseReleaseNotes } from "../desktop/release-notes.mjs";
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 function fixture(overrides = {}) {
@@ -43,6 +44,40 @@ function fixture(overrides = {}) {
   });
   return { updater, calls, history, control };
 }
+
+test("release notes keep their sections as plain text", () => {
+  assert.deepEqual(parseReleaseNotes("## What's new\n\n- Use **bold** and `code` in [links](https://example.test).\n- Second\n\n## Fixes\n\n* Fixed a thing\n\n[Full changelog](https://example.test)"), [
+    { title: "What's new", items: ["Use bold and code in links.", "Second"] },
+    { title: "Fixes", items: ["Fixed a thing"] },
+  ]);
+  assert.deepEqual(parseReleaseNotes(null), []);
+});
+
+test("the updater loads notes for the running version and for an available release", async (t) => {
+  const requested = [];
+  const { control } = fixture({
+    releaseNotes: async (version) => {
+      requested.push(version);
+      return [{ title: "What's new", items: [`Changes in ${version}`] }];
+    },
+  });
+  t.after(() => control.dispose());
+  await tick();
+  assert.deepEqual(control.state().notes, { version: "0.1.0", sections: [{ title: "What's new", items: ["Changes in 0.1.0"] }] });
+  await control.command("check");
+  await tick();
+  await tick();
+  assert.deepEqual(requested, ["0.1.0", "0.2.0"]);
+  assert.equal(control.state().notes.version, "0.2.0");
+});
+
+test("the updater reports release notes that could not load", async (t) => {
+  const { control } = fixture({ releaseNotes: async () => { throw new Error("GitHub answered 403"); } });
+  t.after(() => control.dispose());
+  await tick();
+  assert.equal(control.state().notesError, "GitHub answered 403");
+  assert.equal(control.state().status, "idle");
+});
 
 test("release updates require separate download and apply actions and clean up listeners", async (t) => {
   const { updater, control, calls, history } = fixture();

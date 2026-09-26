@@ -598,6 +598,7 @@ if (args.includes('--help')) {
         await page
           .getByRole("button", { name: "Settings", exact: true })
           .click();
+        await page.locator('button[data-settings-section="appearance"]').click();
         const failedBadge = page.getByRole("switch", { name: /Show failed-tools badge/ });
         assert.equal(await failedBadge.isChecked(), true);
         await failedBadge.click();

@@ -2,7 +2,6 @@ import { useState, type CSSProperties, type Ref } from "react";
 import { LockKeyhole, UnlockKeyhole } from "lucide-react";
 import {
   Brain,
-  ChevronDown,
   Layers,
   ListChecks,
   Pencil,
@@ -14,6 +13,7 @@ import { configureThread } from "../../lib/actions.ts";
 import { effortLabel as formatEffort, tokens } from "../../lib/format.ts";
 import { currentLocale, useI18n } from "../../lib/i18n.ts";
 import { effectiveEffort } from "../../../../shared/model-options.ts";
+import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import type {
   ModelOption,
   PermissionMode,
@@ -76,7 +76,7 @@ export function ModelDetail({
     <span className="composer-detail">
       {effort && <span>{formatEffort(effort)}</span>}
       {(thread.fastMode || contextWindow) && (
-        <span className="composer-detail-more">
+        <span className="hover-reveal">
           <span>
             {contextWindow && (
               <span
@@ -123,7 +123,8 @@ export function ModelTuning({
   return (
     <div className="model-tuning">
       {tabs.length > 1 && (
-        <div className="tuning-tabs" role="tablist" aria-orientation="vertical" aria-label={t("Model options")}>
+        <div className="tuning-tabs sliding-selection" role="tablist" aria-orientation="vertical" aria-label={t("Model options")}>
+          <SelectionHighlight value={tab} />
           {tabs.map((entry) => (
             <button
               key={entry.id}
@@ -165,7 +166,8 @@ export function ModelTuning({
         </div>
       )}
       {tab === "context" && (
-        <div className="tuning-chips" role="group" aria-label={t("Context window")}>
+        <div className="tuning-chips sliding-selection" role="group" aria-label={t("Context window")}>
+          <SelectionHighlight value={String(contextWindow)} />
           {model!.contextWindows!.map((size) => (
             <button
               key={size}
@@ -218,12 +220,7 @@ export function PermissionMenu({
       items={MODES.map((entry) => ({
         id: entry.id,
         label: t(entry.label),
-        icon: (
-          <entry.icon
-            size={17}
-            className={`option-permission ${entry.id}`}
-          />
-        ),
+        icon: <entry.icon size={17} />,
         hint: t(entry.hint),
         selected: entry.id === thread.permissionMode,
         onSelect: () =>
@@ -234,19 +231,20 @@ export function PermissionMenu({
           id={id}
           aria-haspopup="menu"
           aria-expanded={open}
-          className="composer-select"
+          className="composer-select composer-access"
           type="button"
           disabled={disabled}
           onClick={toggle}
           ref={buttonRef}
           data-tone={thread.permissionMode}
+          aria-label={`${t("Permissions")}: ${mode ? t(mode.label) : ""}`}
         >
-          <ModeIcon
-            size={14}
-            className={`option-permission ${thread.permissionMode}`}
-          />
-          <span className="truncate">{mode && t(mode.label)}</span>
-          <ChevronDown size={11} className="muted" />
+          <ModeIcon size={14} />
+          <span className="hover-reveal">
+            <span>
+              {mode && t(mode.label)}
+            </span>
+          </span>
         </button>
       )}
     />

@@ -1,15 +1,13 @@
-import { motion } from "motion/react";
-import type { CSSProperties } from "react";
+import { memo, type CSSProperties } from "react";
 import { Clock, GitBranch, GitPullRequest } from "lucide-react";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
 import { finishThread, loadThread, openOnEnvironment, removeThread } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
-import { modelLabel, threadActivity } from "../../lib/format.ts";
+import { formatDate, modelLabel, threadActivity } from "../../lib/format.ts";
 import { environmentId } from "../../lib/environment.ts";
 import { environmentSlice } from "../../lib/live-environments.ts";
 import { currentLocale, useI18n } from "../../lib/i18n.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
-import { useReducedMotion } from "../../lib/use-reduced-motion.ts";
 import { ConversationMenu } from "../ConversationMenu.tsx";
 import { Check, Folder, RotateCcw, Trash2 } from "../icons.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
@@ -21,13 +19,11 @@ import type { SearchMatch } from "./use-thread-search.ts";
 import type { ThreadTree } from "./use-thread-tree.ts";
 import { threadKey } from "./thread-groups.ts";
 
-const SELECTION_TRANSITION = { duration: 0.22, ease: [0.16, 1, 0.3, 1] } as const;
-
 function pullRequestNumber(url: string): string | undefined {
   return url.split("/").at(-1);
 }
 
-export function ThreadRow({ thread, environment, globalMode, query, match, projectName, categoryEnd, drag, preview, tree, onMove, onFinished, onConversation }: {
+export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMode, query, match, projectName, categoryEnd, drag, preview, describedBy, tree, onMove, onFinished, onConversation }: {
   thread: ThreadMeta;
   environment: string;
   globalMode: boolean;
@@ -37,8 +33,9 @@ export function ThreadRow({ thread, environment, globalMode, query, match, proje
   categoryEnd: boolean;
   drag: ThreadDrag;
   preview: ThreadPreviewControls;
+  describedBy?: string;
   tree: ThreadTree;
-  onMove: (direction: number) => void;
+  onMove: (item: { thread: ThreadMeta; environment: string }, direction: number) => void;
   onFinished: () => void;
   onConversation: () => void;
 }) {
@@ -48,7 +45,6 @@ export function ThreadRow({ thread, environment, globalMode, query, match, proje
   const slice = environmentSlice(environment);
   const connected = slice?.connected ?? false;
   const provider = slice?.providers.find((entry) => entry.id === thread.provider);
-  const reducedMotion = useReducedMotion();
   const active = environment === environmentId() && thread.id === activeThreadId;
   const key = threadKey(environment, thread.id);
   const { status, label } = threadActivity(thread);
@@ -108,20 +104,13 @@ export function ThreadRow({ thread, environment, globalMode, query, match, proje
           openMenu(event.currentTarget);
         }}
       >
-        {active && <motion.span
-          className="thread-selection"
-          aria-hidden="true"
-          layoutId="sidebar-thread-selection"
-          layoutDependency={activeThreadId}
-          transition={reducedMotion ? { duration: 0 } : SELECTION_TRANSITION}
-        />}
         <button
           type="button"
           className="thread-row"
           data-active={active}
           aria-label={thread.title}
           aria-description={new Date(thread.updatedAt).toLocaleString(currentLocale())}
-          aria-describedby={preview.describedBy(environment, thread.id)}
+          aria-describedby={describedBy}
           aria-current={active ? "page" : undefined}
           onPointerEnter={(event) => { if (event.pointerType !== "touch") preview.show(event.currentTarget, environment, thread.id); }}
           onPointerLeave={preview.leave}
@@ -146,7 +135,7 @@ export function ThreadRow({ thread, environment, globalMode, query, match, proje
               <span className="thread-row-meta">
                 <Clock size={12} />
                 {t("Until")} {" "}
-                {new Date(thread.snoozedUntil).toLocaleString(currentLocale(), { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                {formatDate(thread.snoozedUntil, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
               </span>
             )}
             {!globalMode && searching && <span className="search-snippet">{match?.snippet}</span>}
@@ -159,7 +148,7 @@ export function ThreadRow({ thread, environment, globalMode, query, match, proje
           </span>}
         </button>
         <div className="thread-row-actions" onPointerEnter={preview.hide}>
-          <ConversationMenu thread={thread} environment={environment} onMove={onMove} />
+          <ConversationMenu thread={thread} environment={environment} onMove={(direction) => onMove({ thread, environment }, direction)} />
           {globalMode && thread.pullRequest && <a
             className="thread-row-pr"
             href={thread.pullRequest}
@@ -201,4 +190,4 @@ export function ThreadRow({ thread, environment, globalMode, query, match, proje
       {!query && <ThreadChildren parent={thread} environment={environment} {...tree} activeThreadId={environment === environmentId() ? activeThreadId : null} onConversation={onConversation} />}
     </div>
   );
-}
+});

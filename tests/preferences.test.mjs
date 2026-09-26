@@ -54,7 +54,7 @@ test("the shared app state loads migrated preferences with existing validation a
   assert.equal(initial.notificationPreferences.subagents, false);
 });
 
-test("preference actions keep the public store API, persistence and DOM updates in sync", () => {
+test("preference actions keep the public store API, persistence and DOM updates in sync", async () => {
   for (const name of Object.keys(preferences)) assert.strictEqual(store[name], preferences[name], name);
   for (const [action, field] of [
     [store.setTextStreaming, "textStreaming"],
@@ -92,8 +92,8 @@ test("preference actions keep the public store API, persistence and DOM updates 
   assert.equal(useApp.getState().theme, "light");
   assert.equal(stored.get("citropy.theme"), "light");
   assert.equal(document.documentElement.dataset.theme, "light");
-  store.setLanguage("es");
-  store.setLanguage("invalid");
+  await store.setLanguage("es");
+  await store.setLanguage("invalid");
   assert.equal(useApp.getState().language, "es");
   assert.equal(stored.get("citropy.language"), "es");
 });

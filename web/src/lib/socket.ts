@@ -96,6 +96,10 @@ function flush(connection: Connection): void {
 
 function enqueue(connection: Connection, event: ServerEvent): void {
   connection.queue.push(event);
+  if (event.t === "part.append") {
+    if (connection.timer === null) connection.timer = setTimeout(() => flush(connection), 50);
+    return;
+  }
   if (!connection.frame) connection.frame = requestAnimationFrame(() => flush(connection));
   if (connection.timer === null) connection.timer = setTimeout(() => flush(connection), 40);
 }
@@ -295,6 +299,12 @@ export function sendToEnvironment(environment: string, event: ClientEvent): bool
   if (["browser.action", "desktop.open", "panel.open", "panel.close", "panel.rename", "panel.move", "term.data", "term.ack", "term.unsubscribe", "shell.watch"].includes(event.t)) return true;
   connection.outbox.push(event);
   return true;
+}
+
+export function logClientError(error: unknown): void {
+  if (!useApp.getState().logging.enabled) return;
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  sendToEnvironment(environmentId(), { t: "client.error", message });
 }
 
 export function send(event: ClientEvent): void {

@@ -10,7 +10,8 @@
   width: min(var(--reading), 100%);
   max-height: calc(var(--viewport-height) * 0.48);
   margin: 0 auto;
-  background: var(--raised);
+  background: var(--surface);
+  box-shadow: var(--surface-shadow);
   border-radius: var(--r-xl);
   overflow: hidden;
 }
@@ -71,7 +72,7 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--r-sm);
-  cursor: pointer;
+  cursor: default;
   transition: background var(--dur-instant) var(--ease-out);
 }
 
@@ -82,7 +83,7 @@
 
 .question-option:has(input:focus-visible) {
   outline: none;
-  box-shadow: 0 0 8px var(--accent-line);
+  box-shadow: 0 0 0 2px var(--field-focus-color);
   background: var(--raised-2);
 }
 
@@ -167,7 +168,7 @@
 
 .question-history summary {
   width: fit-content;
-  cursor: pointer;
+  cursor: default;
   list-style: none;
 }
 
