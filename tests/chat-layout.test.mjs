@@ -104,9 +104,9 @@ test("chat content and controls adapt when the workspace squeezes the conversati
   for (const width of [520, 760, 520]) {
     await resizeChat(width);
     await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].some(node =>
-      node.getAnimations().some(animation => animation.playState === 'running' && animation.effect.getKeyframes().some(frame => frame.translate)),
+      node.getAnimations().some(animation => animation.playState === 'running' && animation.effect.getKeyframes().some(frame => frame.translate)) &&
+      getComputedStyle(node).translate !== 'none',
     ));
-    assert.equal(await page.evaluate(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].some(node => node.getAnimations().length && getComputedStyle(node).translate !== 'none')), true);
     await page.screenshot({ path: `/tmp/citropy-header-moving-${width}.png` });
   }
   await page.waitForFunction(() => [...document.querySelectorAll('.turn-heading > .turn-meta')].every(node =>
