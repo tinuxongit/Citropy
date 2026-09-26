@@ -29,7 +29,7 @@ try {
     const appRoot = join(app, "Contents/Resources/app");
     await access(join(appRoot, "LICENSE"));
     await access(join(appRoot, "dist/index.html"));
-    await access(join(appRoot, "node_modules/@fontsource-variable/inter/files/inter-latin-standard-normal.woff2"));
+    await access(join(appRoot, "node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2"));
     const notices = await readFile(join(appRoot, "dist/THIRD_PARTY_NOTICES.txt"), "utf8");
     for (const path of ["react/LICENSE", "lucide-react/LICENSE", "monaco-editor/LICENSE", "tslib/CopyrightNotice.txt"]) {
       assert.ok(notices.includes(await readFile(new URL(`../node_modules/${path}`, import.meta.url), "utf8")), `Missing bundled dependency notice: ${path}`);

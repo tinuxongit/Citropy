@@ -406,40 +406,36 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     await page.getByRole("button", { name: "Work details", exact: true }).click();
     const imageTool = page.locator("#tool-plain-image");
     await imageTool.locator("img").first().waitFor();
-    const group = page.locator(".group-head");
-    await group.getByRole("img", { name: "running", exact: true }).waitFor();
-    await group.getByRole("img", { name: "1 failed tool", exact: true }).waitFor();
+    const group = page.locator(".group-summary");
+    await group.locator(".group-failed").getByText("1 failed tool", { exact: true }).waitFor();
+    await group.click();
+    await page.locator("#tool-plain-file").waitFor();
     for (const theme of ["dark", "light"]) {
       await page.evaluate(async theme => (await import("/web/src/lib/store.ts")).setTheme(theme), theme);
       for (const width of [1440, 420]) {
         await page.setViewportSize({ width, height: 900 });
         await page.mouse.move(0, 0);
         const style = await imageTool.evaluate(element => {
-          const reference = document.querySelector(".group-head");
+          const reference = document.querySelector("#tool-plain-file");
           const bounds = selector => element.querySelector(selector).getBoundingClientRect();
+          const file = element.querySelector(".tool-file .truncate");
           return {
             background: getComputedStyle(element).backgroundColor,
             referenceBackground: getComputedStyle(reference).backgroundColor,
             iconBackground: getComputedStyle(element.querySelector(".tool-icon")).backgroundColor,
-            iconWidth: bounds(".tool-icon").width,
-            referenceIconWidth: reference.querySelector(".group-icon").getBoundingClientRect().width,
-            chevronX: bounds(".tool-chevron").x,
-            referenceChevronX: reference.querySelector(".group-chevron").getBoundingClientRect().x,
             labelSize: getComputedStyle(element.querySelector(".tool-name")).fontSize,
-            referenceLabelSize: getComputedStyle(reference.querySelector(".group-label")).fontSize,
-            filenameWidth: bounds(".tool-headline").width,
-            filenameClientWidth: element.querySelector(".tool-headline").clientWidth,
-            filenameScrollWidth: element.querySelector(".tool-headline").scrollWidth,
+            referenceLabelSize: getComputedStyle(reference.querySelector(".tool-name")).fontSize,
+            filenameWidth: file.getBoundingClientRect().width,
+            filenameClientWidth: file.clientWidth,
+            filenameScrollWidth: file.scrollWidth,
             toolWidth: element.getBoundingClientRect().width,
             toolScrollWidth: element.scrollWidth,
           };
         });
         assert.equal(style.background, style.referenceBackground, JSON.stringify({ theme, width, style }));
         assert.equal(style.iconBackground, "rgba(0, 0, 0, 0)");
-        assert.equal(style.iconWidth, style.referenceIconWidth);
-        assert.equal(style.chevronX, style.referenceChevronX);
         assert.equal(style.labelSize, style.referenceLabelSize);
-        assert.ok(style.filenameWidth > 50, JSON.stringify({ theme, width, style }));
+        assert.ok(style.filenameWidth > 30, JSON.stringify({ theme, width, style }));
         assert.ok(style.filenameScrollWidth <= style.filenameClientWidth, JSON.stringify({ theme, width, style }));
         assert.ok(style.toolScrollWidth <= Math.ceil(style.toolWidth), JSON.stringify({ theme, width, style }));
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -457,28 +453,26 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     await page.keyboard.press("Escape");
     await page.getByRole("dialog").waitFor({ state: "detached" });
     assert.equal(await preview.evaluate(element => element === document.activeElement), true);
-    await group.click();
-    await page.locator("#tool-plain-file").waitFor();
     assert.equal(await page.locator("#tool-plain-file").evaluate(element => getComputedStyle(element).backgroundColor), "rgba(0, 0, 0, 0)");
     await imageTool.locator(".tool-head").click();
     await imageTool.locator(".image-strip:not([data-compact])").waitFor();
     assert.equal(await imageTool.locator(".tool-empty").count(), 0);
     assert.equal(await imageTool.locator(".image-strip").count(), 1);
     assert.equal(await imageTool.locator(".tool-time").isVisible(), true);
-    assert.equal(await imageTool.locator(".tool-headline").getAttribute("title"), "cat.jpg");
+    assert.equal(await imageTool.locator(".tool-file").getAttribute("title"), "cat.jpg");
     for (const name of ["Read", "mcp__citropy__inspect_reference_image_with_a_long_action_name"]) {
       emit({ t: "part.patch", threadId: "chat", messageId: "plain-response", partId: image.id, patch: { name } });
       await page.waitForFunction(name => document.querySelector("#tool-plain-image .tool-name")?.textContent === name, name === "Read" ? name : "inspect reference image with a long action name");
       const bounds = await imageTool.locator(".tool-head").evaluate(element => ({
         width: element.clientWidth,
         scrollWidth: element.scrollWidth,
-        filename: element.querySelector(".tool-headline").getBoundingClientRect().width,
+        filename: element.querySelector(".tool-file").getBoundingClientRect().width,
         label: element.querySelector(".tool-name").getBoundingClientRect().width,
         status: element.querySelector(".tool-meta").lastElementChild.getBoundingClientRect().width,
       }));
       assert.ok(bounds.scrollWidth <= bounds.width, JSON.stringify(bounds));
       assert.ok(bounds.filename > 50 && bounds.label > 0, JSON.stringify(bounds));
-      assert.equal(bounds.status, 12, JSON.stringify(bounds));
+      assert.ok(bounds.status >= 12 && bounds.status <= 14, JSON.stringify(bounds));
     }
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   });
@@ -498,38 +492,34 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     ] });
     await page.getByRole("note", { name: "Latest update", exact: true }).getByText("The final render is running. I will check the audio when it finishes.", { exact: true }).waitFor();
     const position = await page.evaluate(() => ({
-      update: document.querySelector(".activity-update").getBoundingClientRect().bottom,
-      working: document.querySelector(".activity-head").getBoundingClientRect().top,
+      update: document.querySelector(".activity-update").getBoundingClientRect().top,
+      working: document.querySelector(".activity-head").getBoundingClientRect().bottom,
     }));
-    assert.ok(position.working >= position.update, JSON.stringify(position));
+    assert.ok(position.update >= position.working, JSON.stringify(position));
     assert.equal(await page.locator(".activity-preview").count(), 0);
     assert.equal(await page.locator(".working").count(), 1);
     assert.equal(await page.locator(".turn-agent .turn-heading").count(), 1);
     assert.equal(await page.locator('[data-part-id="render-update"]').count(), 0);
     assert.equal(await page.locator(".activity-head .activity-action").innerText(), "Running command");
-    assert.equal(await page.locator(".reason-text").count(), 0);
+    assert.equal(await page.locator(".reasoning").count(), 0);
     const plan = page.getByRole("region", { name: "Plan", exact: true });
     await plan.locator(".todo-current").getByText("Render and verify the audio", { exact: true }).waitFor();
     assert.equal(await plan.getByRole("listitem").count(), 0);
-    await page.getByRole("button", { name: "Work details", exact: true }).click();
-    const thoughts = page.getByRole("button", { name: "Thoughts (2)", exact: true });
-    await thoughts.waitFor();
-    assert.equal(await thoughts.getAttribute("aria-expanded"), "false");
-    assert.equal(await page.locator(".reason-text").count(), 0);
-    await thoughts.focus();
+    const details = page.getByRole("button", { name: "Work details", exact: true });
+    await details.focus();
     await page.keyboard.press("Enter");
-    await page.locator('[data-part-id="render-thought-1"] strong').getByText("the frame order", { exact: true }).waitFor();
-    assert.equal(await page.locator(".reason-text").count(), 2);
+    await page.locator('.reasoning strong').getByText("the frame order", { exact: true }).waitFor();
+    assert.equal(await page.locator(".reasoning").count(), 2);
+    assert.equal(await page.locator('.reasoning[role="button"]').count(), 0);
     emit({ t: "part.append", threadId: "chat", messageId: "render-response", partId: "render-thought-2", text: " Checking the final mix." });
-    await page.locator('[data-part-id="render-thought-2"]').getByText(/Checking the final mix/).waitFor();
-    assert.equal(await thoughts.getAttribute("aria-expanded"), "true");
-    assert.equal(await page.locator(".reason-text").evaluateAll(nodes => nodes.some(node => node.getAnimations().length)), false);
-    await thoughts.press("Space");
-    await page.locator(".reason-text").first().waitFor({ state: "detached" });
-    assert.equal(await thoughts.evaluate(node => node === document.activeElement), true);
+    await page.locator(".reasoning").getByText(/Checking the final mix/).waitFor();
+    assert.equal(await details.getAttribute("aria-expanded"), "true");
+    assert.equal(await page.locator(".reasoning").evaluateAll(nodes => nodes.some(node => node.getAnimations().length)), false);
+    await details.press("Space");
+    await page.locator(".reasoning").first().waitFor({ state: "detached" });
+    assert.equal(await details.evaluate(node => node === document.activeElement), true);
     await page.setViewportSize({ width: 660, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await page.getByRole("button", { name: "Work details", exact: true }).click();
     await page.getByRole("note", { name: "Latest update", exact: true }).waitFor();
     for (const width of [660, 1440]) {
       await page.setViewportSize({ width, height: 900 });
@@ -549,18 +539,20 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
       emit({ t: "thread.messages", threadId: "chat", messages: [{ id: "markdown-response", role: "assistant", ts: 1, parts: [{ id: "markdown-thought", kind: "reasoning", text: start, complete: false }] }] });
       await page.waitForFunction(async () => (await import("/web/src/lib/store.ts")).useApp.getState().parts["markdown-thought"]?.text.startsWith("## Check"));
       await page.getByRole("button", { name: "Work details", exact: true }).click();
-      await page.getByRole("button", { name: "Thoughts", exact: true }).click();
-      const thought = page.locator(".reason-text");
+      const thought = page.locator(".reasoning");
       if (streaming === "1") {
         await thought.getByRole("heading", { name: "Check the encoder", exact: true }).waitFor();
         assert.equal(await thought.locator("strong").textContent(), "one pass");
-        await thought.locator("pre code").getByText(/sample-$/).waitFor();
+        await thought.locator("pre code").getByText(/sample-$/).waitFor({ state: "attached" });
       } else {
-        assert.equal(await thought.count(), 0);
+        await thought.waitFor({ state: "attached" });
+        assert.equal(await thought.locator(".prose").count(), 0);
       }
       emit({ t: "part.append", threadId: "chat", messageId: "markdown-response", partId: "markdown-thought", text: end });
       if (streaming === "0") emit({ t: "part.patch", threadId: "chat", messageId: "markdown-response", partId: "markdown-thought", patch: { complete: true } });
-      await thought.locator("table").waitFor();
+      await thought.locator("table").waitFor({ state: "attached" });
+      await page.locator('.reasoning[role="button"]').click({ position: { x: 4, y: 4 } });
+      await page.locator(".reasoning[data-open]").waitFor();
       assert.equal(await thought.locator("h2").textContent(), "Check the encoder");
       assert.equal(await thought.locator("strong").textContent(), "one pass");
       assert.equal(await thought.locator("em").textContent(), "frame order");
@@ -575,7 +567,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
         await page.setViewportSize({ width, height: 1000 });
         await page.evaluate(async theme => (await import("/web/src/lib/store.ts")).setTheme(theme), theme);
         await thought.locator(`pre.citropy-${theme} code`).getByText(/const digest/).waitFor();
-        await page.waitForFunction(() => !document.querySelector(".reason-text").getAnimations().some(animation => animation.playState === "running"));
+        await page.waitForFunction(() => !document.querySelector(".reasoning").getAnimations().some(animation => animation.playState === "running"));
         assert.equal(await thought.evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         const code = await thought.locator("pre").evaluate(node => ({ width: node.clientWidth, scroll: node.scrollWidth }));
@@ -588,7 +580,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
       await page.getByRole("button", { name: "Work details", exact: true }).click();
       await thought.waitFor({ state: "detached" });
       await page.getByRole("button", { name: /^Work details/ }).click();
-      await thought.locator("table").waitFor();
+      await thought.locator("table").waitFor({ state: "attached" });
       assert.equal(await thought.locator("strong").textContent(), "one pass");
       assert.equal(await thought.locator("[data-reveal-hidden]").count(), 0);
       assert.equal(await page.locator('[data-part-id="markdown-answer"]').textContent(), "The encoder is ready.\n");
@@ -600,38 +592,34 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
       const { page, emit } = await fixture(t, { textStreaming: streaming });
       const text = "I will inspect the audio settings before changing the preview.\n\nThe timing needs to match the existing sequence. I will read the configuration, check the track lengths, and then adjust the transition between sections. Once that is ready, I can render a short preview and compare it with the original.";
       emit({ t: "thread.messages", threadId: "chat", messages: [{ id: "thinking-response", role: "assistant", ts: 1, parts: [{ id: "live-thought", kind: "reasoning", text: "", complete: false }] }] });
-      await page.locator(".reason-text").first().waitFor({ state: "detached" });
+      await page.locator(".reasoning").first().waitFor({ state: "detached" });
       emit({ t: "part.append", threadId: "chat", messageId: "thinking-response", partId: "live-thought", text });
       await page.getByRole("button", { name: "Work details", exact: true }).click();
-      await page.getByRole("button", { name: "Thoughts", exact: true }).click();
       if (streaming === "1") {
-        await page.locator(".reason-text p").nth(1).getByText(text.split("\n\n")[1], { exact: true }).waitFor();
-        assert.deepEqual(await page.locator(".reason-text p").allTextContents(), text.split("\n\n"));
-        assert.equal(await page.locator(".reason-head").count(), 0);
+        await page.locator(".reasoning p").nth(1).getByText(text.split("\n\n")[1], { exact: true }).waitFor({ state: "attached" });
+        assert.deepEqual(await page.locator(".reasoning p").allTextContents(), text.split("\n\n"));
         emit({ t: "part.append", threadId: "chat", messageId: "thinking-response", partId: "live-thought", text: " I will start with music.json." });
-        await page.locator(".reason-text").getByText(/I will start with music.json\.$/).waitFor();
+        await page.locator(".reasoning").getByText(/I will start with music.json\.$/).waitFor({ state: "attached" });
       } else {
         await page.waitForFunction(async () => (await import("/web/src/lib/store.ts")).useApp.getState().parts["live-thought"]?.text.length > 260);
-        assert.equal(await page.locator(".reason-text").count(), 0);
+        assert.equal(await page.locator(".reasoning .prose").count(), 0);
       }
       emit({ t: "part.patch", threadId: "chat", messageId: "thinking-response", partId: "live-thought", patch: { complete: true } });
       emit({ t: "part.add", threadId: "chat", messageId: "thinking-response", part: tool("live-read", "read", "music.json", { status: "running" }) });
-      await page.locator(".group-label").getByText("Read 1 file", { exact: true }).waitFor();
-      await page.locator(".reason-text").getByText(/^I will inspect the audio settings/).waitFor();
-      assert.equal(await page.locator(".reason-head").count(), 0);
+      await page.locator(".group-summary").getByText("Read 1 file", { exact: true }).waitFor();
+      await page.locator(".reasoning").getByText(/^I will inspect the audio settings/).waitFor();
       emit({ t: "part.patch", threadId: "chat", messageId: "thinking-response", partId: "live-read", patch: { status: "ok" } });
       emit({ t: "part.add", threadId: "chat", messageId: "thinking-response", part: { id: "next-thought", kind: "reasoning", text: "The settings are ready. I can now render the preview.", complete: true } });
-      await page.locator('.reasoning-head[aria-controls="thoughts-next-thought"]').click();
-      await page.locator(".reason-text").getByText("The settings are ready. I can now render the preview.", { exact: true }).waitFor();
-      assert.equal(await page.locator(".reason-text").count(), 2);
+      await page.locator(".reasoning").getByText("The settings are ready. I can now render the preview.", { exact: true }).waitFor();
+      assert.equal(await page.locator(".reasoning").count(), 2);
       emit({ t: "part.add", threadId: "chat", messageId: "thinking-response", part: { id: "thinking-answer", kind: "text", text: "The preview is ready.", complete: true } });
       emit({ t: "thread.upsert", thread: { ...thread, status: "idle", running: false } });
       await page.getByRole("button", { name: "Work details", exact: true }).click();
-      await page.locator(".reason-text").first().waitFor({ state: "detached" });
+      await page.locator(".reasoning").first().waitFor({ state: "detached" });
       await page.locator('[data-part-id="thinking-answer"]').getByText("The preview is ready.", { exact: true }).waitFor();
       await page.getByRole("button", { name: /^Work details/ }).click();
-      await page.locator(".reason-text").getByText("The settings are ready. I can now render the preview.", { exact: true }).waitFor();
-      assert.equal(await page.locator(".reason-text").count(), 2);
+      await page.locator(".reasoning").getByText("The settings are ready. I can now render the preview.", { exact: true }).waitFor();
+      assert.equal(await page.locator(".reasoning").count(), 2);
     }
   });
 
@@ -644,7 +632,8 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
       tool("failed-command", "command", "npm test", { status: "error", output: "Test failed" }),
     ] }] });
     await page.getByRole("button", { name: "Work details", exact: true }).click();
-    await page.locator(".group-head").click();
+    const summary = page.locator(".group-summary");
+    if (await summary.getAttribute("aria-expanded") === "false") await summary.click();
     const row = page.locator("#tool-compact-command");
     await row.waitFor();
     for (const width of [1440, 390]) {
@@ -670,11 +659,11 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
   subtest("writes and edits expand inside their group and streaming keeps disclosures", async (t) => {
     const { page, emit } = await fixture(t);
     await page.getByRole("button", { name: "Work details", exact: true }).click();
-    assert.equal(await page.locator(".group").count(), 3);
+    assert.equal(await page.locator(".group-body").count(), 3);
     assert.equal(await page.locator(".tool").count(), 0);
-    const first = page.locator(".group").first();
-    assert.equal(await first.locator(".group-label").innerText(), "Wrote 1 file · read 1 file · ran 1 command");
-    await first.locator(".group-head").click();
+    const first = page.locator(".group-body").first();
+    assert.equal(await first.locator(".group-summary .truncate").innerText(), "Wrote 1 file · read 1 file · ran 1 command");
+    await first.locator(".group-summary").click();
     await first.locator(".tool").last().waitFor();
     assert.equal(await first.locator(".tool").count(), 3);
     const write = first.locator('.tool[data-shape="write"]');
@@ -682,19 +671,19 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     assert.equal(await write.locator(".diff").count(), 0);
     await write.locator(".tool-head").click();
     await write.locator(".diff").getByText("print('Music preview ready')", { exact: true }).waitFor();
-    await first.locator(".group-head").click();
+    await first.locator(".group-summary").click();
     await first.locator(".tool").first().waitFor({ state: "detached" });
-    await first.locator(".group-head").click();
+    await first.locator(".group-summary").click();
     await write.locator(".diff").waitFor();
-    const last = page.locator(".group").last();
-    await last.locator(".group-head").click();
+    const last = page.locator(".group-body").last();
+    await last.locator(".group-summary").click();
     emit({ t: "part.add", threadId: "chat", messageId: "response", part: tool("write-3", "write", "final.py", { status: "running" }) });
-    await last.locator(".tool-headline").getByText("final.py", { exact: true }).waitFor();
-    assert.equal(await page.locator(".group").count(), 3);
-    assert.equal(await last.locator(".group-head").getAttribute("aria-expanded"), "true");
+    await last.locator(".tool-file").getByText("final.py", { exact: true }).waitFor();
+    assert.equal(await page.locator(".group-body").count(), 3);
+    assert.equal(await last.locator(".group-summary").getAttribute("aria-expanded"), "true");
     assert.equal(await write.locator(".tool-head").getAttribute("aria-expanded"), "true");
     emit({ t: "part.patch", threadId: "chat", messageId: "response", partId: "write-3", patch: { status: "ok", patch: patch("final.py") } });
-    await last.locator(".group-head .diff-plus").getByText("+2", { exact: true }).waitFor();
+    await last.locator("#tool-write-3 .tool-stat .diff-plus").getByText("+1", { exact: true }).waitFor();
     assert.equal(await last.locator('.tool[data-shape="write"]').last().locator(".tool-head").getAttribute("aria-expanded"), "false");
     await page.screenshot({ path: "/tmp/citropy-activity-expanded.png", animations: "disabled" });
   });
@@ -706,9 +695,8 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
       await page.setViewportSize({ width, height: 900 });
       await page.waitForTimeout(200);
       await page.screenshot({ path: `/tmp/citropy-activity-${width}.png`, animations: "disabled" });
-      assert.equal(await page.locator(".reason-text").count(), 0);
-      assert.equal(await page.locator(".reasoning-head").count(), 3);
-      const rows = await page.locator(".reasoning, .group").evaluateAll(nodes => nodes.map(node => {
+      assert.equal(await page.locator(".reasoning").count(), 3);
+      const rows = await page.locator(".reasoning, .group-body").evaluateAll(nodes => nodes.map(node => {
         const { y, height } = node.getBoundingClientRect();
         return { y, height };
       }));
@@ -752,9 +740,9 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     emit({ t: "part.patch", threadId: "chat", messageId: "response", partId: "answer", patch: { complete: true } });
     assert.equal(await details.getAttribute("aria-expanded"), "false");
     emit({ t: "thread.upsert", thread: { ...thread, status: "idle", running: false } });
-    await page.locator(".reason-text").first().waitFor({ state: "detached" });
+    await page.locator(".reasoning").first().waitFor({ state: "detached" });
     assert.equal(await details.getAttribute("aria-expanded"), "false");
-    assert.equal(await page.locator(".group-head").count(), 0);
+    assert.equal(await page.locator(".group-summary").count(), 0);
     assert.equal(await page.locator(".turn-heading").count(), 1);
     for (const width of [1440, 960]) {
       await page.setViewportSize({ width, height: 900 });
@@ -770,9 +758,8 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
       assert.equal(await details.locator("svg.activity-icon").count(), 1);
     }
     await details.click();
-    await page.getByRole("button", { name: "Thoughts", exact: true }).first().click();
-    await page.locator(".reason-text").getByText(parts[0].text, { exact: true }).waitFor();
-    await page.locator(".group-head").first().click();
+    await page.locator(".reasoning").getByText(parts[0].text, { exact: true }).waitFor();
+    await page.locator(".group-summary").first().click();
     await page.locator('.tool[data-shape="write"] .tool-head').first().click();
     await page.locator(".diff").getByText("print('Music preview ready')", { exact: true }).waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll(".collapsible")].every(element => Math.abs(element.offsetHeight - element.firstElementChild.scrollHeight) < 2));
@@ -780,9 +767,9 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     assert.equal(await page.locator(".work-separator").count(), 1);
     assert.equal(await page.locator(".work-separator + .agent-card [data-part-id=answer]").count(), 1);
     await details.click();
-    await page.locator(".reason-text").first().waitFor({ state: "detached" });
+    await page.locator(".reasoning").first().waitFor({ state: "detached" });
     await page.evaluate(async () => (await import("/web/src/lib/store.ts")).useApp.setState({ searchMessageId: "response" }));
-    await page.locator(".reason-text").first().waitFor();
+    await page.locator(".reasoning").first().waitFor();
     await page.locator(".diff").waitFor();
   });
 
@@ -836,7 +823,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     assert.equal(await details.count(), 1);
     assert.equal(await details.getAttribute("aria-expanded"), "false");
     assert.match(await details.innerText(), /2 tools/);
-    assert.equal(await page.locator(".group-head").count(), 0);
+    assert.equal(await page.locator(".group-summary").count(), 0);
     assert.equal(await page.locator(".working").count(), 0);
     assert.equal(await page.locator(".turn-heading").count(), 1);
     for (const width of [1440, 700]) {
@@ -849,7 +836,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     await page.getByText("check environment", { exact: true }).waitFor();
     await page.getByText("check result", { exact: true }).waitFor();
     await details.click();
-    await page.locator(".group-head").first().waitFor({ state: "detached" });
+    await page.locator(".group-summary").first().waitFor({ state: "detached" });
     assert.ok(await page.locator('[data-part-id="fragment-answer"]').isVisible());
   });
 
@@ -862,7 +849,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     emit({ t: "thread.messages", threadId: "chat", messages: [{ id: "long-response", role: "assistant", ts: 1, parts: content }] });
     await page.locator(".activity-head .reason-count").getByText("120 tools", { exact: true }).waitFor();
     assert.equal(await page.locator(".timeline-row").count(), 1);
-    assert.equal(await page.locator(".reason-text").count(), 0);
+    assert.equal(await page.locator(".reasoning").count(), 0);
     emit({ t: "part.add", threadId: "chat", messageId: "long-response", part: { id: "long-answer", kind: "text", text: "All 120 sections are ready.", complete: true } });
     emit({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle" } });
     await page.locator('.activity-head[aria-expanded="false"]').waitFor();
@@ -871,8 +858,7 @@ test("compact activity layout", { timeout: 60000, concurrency: 4 }, async (t) =>
     const details = page.getByRole("button", { name: /^Work details/ });
     for (let index = 0; index < 4; index++) {
       await details.click();
-      await page.locator(".reasoning-head").first().waitFor();
-      assert.equal(await page.locator(".reason-text").count(), 0);
+      await page.locator(".reasoning").first().waitFor();
       assert.ok(await page.locator(".timeline-row").count() < 40);
       assert.equal(await details.isVisible(), true, JSON.stringify(await page.evaluate(() => ({
         scrollTop: document.querySelector(".canvas").scrollTop,

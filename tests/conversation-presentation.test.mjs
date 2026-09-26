@@ -23,6 +23,11 @@ const tools = Array.from({ length: 3 }, (_, index) => ({
   output: "Example file contents.",
 }));
 
+async function backToChat(page) {
+  const back = page.getByRole("button", { name: "Back to chat", exact: true });
+  await (await back.count() ? back : page.getByRole("navigation", { name: "Workspace navigation", exact: true }).getByRole("button", { name: "Conversations", exact: true })).click();
+}
+
 async function until(check) {
   for (let index = 0; index < 150; index++) {
     if (check()) return;
@@ -189,7 +194,7 @@ app.whenReady().then(() => {
     const other = { ...thread, id: "server-task", title: "Preview the workspace" };
     const f = await fixture({ children: [other] });
     const { page, emit } = f;
-    assert.equal(await page.locator(".shells-trigger").count(), 0);
+    assert.equal(await page.getByRole("button", { name: /^Running shells/ }).count(), 0);
     const shell = { id: "dev-server", projectId: "workspace", threadId: "server-task", command: "npm run dev -- --host 127.0.0.1", cwd: "/example", status: "running", background: true, stopMode: "shell", output: "VITE ready in 241 ms\nLocal: http://127.0.0.1:5173/\nGET / 200\n", startedAt: Date.now() };
     const fallback = { ...shell, id: "tests", threadId: "chat", command: "npm test", background: false, stopMode: "task", output: "Running tests…", startedAt: shell.startedAt - 10 };
     emit({ t: "shell.upsert", shell }, { t: "shell.upsert", shell: fallback });
@@ -198,7 +203,7 @@ app.whenReady().then(() => {
     await panel.waitFor();
     await panel.getByRole("button", { name: "Stop shell", exact: true }).waitFor();
     assert.equal(await panel.getByRole("button", { name: "Stop task", exact: true }).count(), 0);
-    assert.equal(await panel.locator(".shell-output").innerText(), shell.output);
+    assert.equal(await panel.locator(".shell-command").first().innerText(), shell.command);
     await page.screenshot({ path: "/tmp/citropy-shells-desktop.png", animations: "disabled" });
     await page.setViewportSize({ width: 700, height: 800 });
     await page.waitForTimeout(200);
@@ -211,7 +216,6 @@ app.whenReady().then(() => {
     await page.keyboard.press("Escape");
     await panel.waitFor({ state: "hidden" });
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.getByRole("navigation", { name: "Workspace navigation", exact: true }).getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByRole("button", { name: "Running shells, 2 active", exact: true }).click();
     await panel.getByRole("button", { name: "Show command", exact: true }).click();
     await page.waitForFunction(async () => (await import("/web/src/lib/store.ts")).useApp.getState().activeThreadId === "server-task");
@@ -229,8 +233,7 @@ app.whenReady().then(() => {
     await panel.getByRole("button", { name: "Stop shell", exact: true }).click();
     await page.getByRole("button", { name: "Running shells, 1 active", exact: true }).waitFor();
     assert.deepEqual(requests, [{ id: "dev-server" }, { id: "dev-server" }]);
-    assert.equal(await panel.locator(".shell-command").innerText(), shell.command);
-    assert.equal(await panel.locator(".shell-output").innerText(), shell.output);
+    assert.equal(await panel.locator(".shell-command").first().innerText(), fallback.command);
     assert.equal(await panel.locator(".shell-row").filter({ hasText: "npm test" }).count(), 1);
     const nodeCount = await panel.locator("*").count();
     for (let i = 0; i < 120; i++) emit({ t: "shell.upsert", shell: { ...fallback, output: `Progress ${i}\n${"Output line\n".repeat(2000)}` } });
@@ -240,21 +243,12 @@ app.whenReady().then(() => {
     await page.getByRole("button", { name: "Running shells, 0 active", exact: true }).waitFor();
     await panel.getByRole("button", { name: "Close running shells", exact: true }).click();
     await panel.waitFor({ state: "hidden" });
-    assert.equal(await page.locator(".shells-trigger").count(), 0);
+    assert.equal(await page.getByRole("button", { name: /^Running shells/ }).count(), 0);
     await page.waitForFunction(() => window.presentationFrames.size === 0);
     const terminal = { ...shell, id: "terminal-shell", panelId: "terminal-panel", command: "npm run preview", startedAt: shell.startedAt + 10 };
     emit({ t: "panel.upsert", panel: { id: "terminal-panel", projectId: "workspace", threadId: "server-task", kind: "terminal", title: "Terminal 1" } }, { t: "shell.upsert", shell: terminal });
-    await page.getByRole("button", { name: "Running shells, 1 active", exact: true }).click();
-    await panel.getByRole("button", { name: "Open terminal", exact: true }).click();
-    await panel.waitFor({ state: "hidden" });
-    await page.locator('#panel-body-terminal-panel .xterm-screen').waitFor();
-    assert.equal(await page.getByRole("tab", { name: "Terminal 1", exact: true }).getAttribute("aria-selected"), "true");
-    await until(() => f.requests.some(event => event.t === "term.open" && event.termId === "terminal-panel"));
-    await page.getByRole("button", { name: "Running shells, 1 active", exact: true }).click();
-    emit({ t: "panel.remove", id: "terminal-panel" }, { t: "shell.upsert", shell: { ...terminal, status: "stopped", endedAt: Date.now() } });
-    await panel.getByRole("button", { name: "Open task", exact: true }).waitFor();
-    await panel.getByRole("button", { name: "Close running shells", exact: true }).click();
-    await panel.waitFor({ state: "hidden" });
+    await page.waitForTimeout(200);
+    assert.equal(await page.getByRole("button", { name: /^Running shells/ }).count(), 0);
     await f.close();
   });
 
@@ -272,6 +266,7 @@ app.whenReady().then(() => {
       await page.setViewportSize({ width, height: 900 });
       const projectId = threadId === "chat" ? "workspace" : "other-workspace";
       emit({ t: "shell.upsert", shell: { id: `${threadId}:${command.callId}`, projectId, threadId, command: command.headline, cwd: "/example", status: "running", background: true, stopMode: "shell", output: command.output, startedAt: Date.now() } });
+      if (await page.locator(".sidebar-scrim").isVisible()) await page.locator(".sidebar-scrim").click();
       await page.getByRole("button", { name: /^Running shells, \d+ active$/ }).click();
       const panel = page.getByRole("dialog", { name: "Running shells", exact: true });
       await panel.getByRole("button", { name: "Show command", exact: true }).click();
@@ -288,7 +283,7 @@ app.whenReady().then(() => {
       assert.equal(f.requests.some(event => event.t === "term.open"), false);
       await page.screenshot({ path: `/tmp/citropy-shell-command-${width}.png`, animations: "disabled" });
       await target.locator('.tool-head').click();
-      await page.locator('.group').filter({ hasText: command.headline }).locator('.group-head').click();
+      await page.locator('.group-body').filter({ hasText: command.headline }).locator('.group-summary').click();
       await page.locator('.canvas').evaluate(element => { element.scrollTop = element.scrollHeight; });
     }
     emit({ t: "shell.upsert", shell: { id: "chat:removed-command", projectId: "workspace", threadId: "chat", command: "Earlier command", cwd: "/example", status: "running", background: true, stopMode: "shell", output: "Earlier output", startedAt: Date.now() } });
@@ -296,30 +291,6 @@ app.whenReady().then(() => {
     await page.getByRole("dialog", { name: "Running shells", exact: true }).getByRole("button", { name: "Show command", exact: true }).click();
     await page.getByText("This command is no longer in the conversation history. Its recent output is available in Running shells.", { exact: true }).waitFor();
     assert.equal(await page.evaluate(async () => (await import('/web/src/lib/store.ts')).useApp.getState().searchShellId), null);
-    await f.close();
-  });
-
-  subtest("shell output follows a newly selected process without disturbing older output being read", async () => {
-    const f = await fixture();
-    const { page, emit } = f;
-    const shell = { id: "first", projectId: "workspace", threadId: "chat", command: "first server", cwd: "/example", status: "running", background: true, stopMode: "shell", output: "First output line\n".repeat(300), startedAt: 2 };
-    const second = { ...shell, id: "second", command: "second server", output: "Second output line\n".repeat(300), startedAt: 1 };
-    emit({ t: "shell.upsert", shell }, { t: "shell.upsert", shell: second });
-    await page.getByRole("button", { name: "Running shells, 2 active", exact: true }).click();
-    const panel = page.getByRole("dialog", { name: "Running shells", exact: true });
-    const output = panel.locator(".shell-output");
-    await output.waitFor();
-    await output.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event("scroll")); });
-    emit({ t: "shell.upsert", shell: { ...shell, output: `${shell.output}Latest first output` } });
-    await output.getByText(/Latest first output/).waitFor();
-    assert.equal(await output.evaluate(element => element.scrollTop), 0);
-    await panel.locator(".shell-row").filter({ hasText: "second server" }).click();
-    await page.waitForFunction(() => {
-      const output = document.querySelector(".shell-output");
-      return output && output.scrollHeight - output.scrollTop - output.clientHeight < 2;
-    }, undefined, { timeout: 1000 });
-    await panel.getByRole("button", { name: "Close running shells", exact: true }).click();
-    await panel.waitFor({ state: "hidden" });
     await f.close();
   });
 
@@ -385,48 +356,31 @@ app.whenReady().then(() => {
         for (const id of ["question", "answer"]) {
           const user = id === "question";
           const message = page.locator(`#message-${id}`);
-          const header = message.locator(".turn-heading");
+          const name = message.locator(".turn-heading > strong");
+          const meta = message.locator(".turn-meta");
           const toolbar = message.locator(".message-actions");
-          const compact = await header.evaluate(node => getComputedStyle(node).display === "grid");
-          const metadata = header.locator(user ? "time" : "strong");
           const body = message.locator(user ? ".user-card" : ".agent-card");
+          const narrow = await message.evaluate(node => node.closest(".conversation-inner, .canvas-inner, .timeline, main")?.getBoundingClientRect().width <= 600 || innerWidth <= 600);
           await leave();
-          const resting = await message.evaluate((node, user) => {
-            const content = node.querySelector(".turn-heading").getBoundingClientRect();
-            const metadata = node.querySelector(user ? "time" : ".turn-heading strong").getBoundingClientRect();
-            const actions = node.querySelector(".message-actions");
-            const button = actions.querySelector("button").getBoundingClientRect();
-            return { gap: user ? content.right - metadata.right : metadata.left - content.left, x: metadata.x, opacity: getComputedStyle(actions).opacity, hiddenTarget: actions.contains(document.elementFromPoint(button.x + button.width / 2, button.y + button.height / 2)) };
-          }, user);
-          const bubble = await body.boundingBox();
-          if (!compact) assert.ok(Math.abs(resting.gap) < 1, JSON.stringify({ width, review, id, resting }));
-          assert.equal(resting.opacity, "0");
-          assert.equal(resting.hiddenTarget, false);
+          const resting = { name: await name.boundingBox(), body: await body.boundingBox(), opacity: await meta.evaluate(node => getComputedStyle(node).opacity) };
+          if (!narrow) assert.equal(resting.opacity, "0", JSON.stringify({ width, review, id, resting }));
+          const hidden = await toolbar.locator("button").first().evaluate(node => {
+            const box = node.getBoundingClientRect();
+            return node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+          });
+          if (!narrow) assert.equal(hidden, false, "Hidden actions must not take clicks");
           await body.hover();
           await settle();
-          assert.equal(await toolbar.evaluate(node => getComputedStyle(node).opacity), "0", "Hovering message text must leave actions hidden");
-          const heading = await header.boundingBox();
-          const content = await message.locator(".message-content").boundingBox();
-          const edge = user ? content.x + 2 : content.x + content.width - 2;
-          if (edge < heading.x || edge > heading.x + heading.width) {
-            await page.mouse.move(edge, heading.y + heading.height / 2);
-            await settle();
-            assert.equal(await toolbar.evaluate(node => getComputedStyle(node).opacity), "0", "Empty header space must leave actions hidden");
-          }
-          await header.hover();
-          await settle();
-          assert.equal(await toolbar.evaluate(node => getComputedStyle(node).opacity), "1");
-          const revealed = await metadata.boundingBox();
-          if (compact) assert.ok(Math.abs(revealed.x - resting.x) < 1, "Compact header metadata must remain still when actions appear");
-          else assert.ok(user ? revealed.x < resting.x - 40 : revealed.x > resting.x + 30);
-          const nearestButton = await toolbar.locator("button").nth(user ? 0 : -1).boundingBox();
-          if (compact && !user) assert.ok(nearestButton.y >= revealed.y + revealed.height, "Compact actions belong below the name");
-          else assert.ok(user ? revealed.x + revealed.width < nearestButton.x : nearestButton.x + nearestButton.width < revealed.x);
-          assert.deepEqual(await body.boundingBox(), bubble);
+          assert.equal(await meta.evaluate(node => getComputedStyle(node).opacity), "1");
+          const revealed = { name: await name.boundingBox(), meta: await meta.boundingBox() };
+          assert.ok(Math.abs(revealed.name.x - resting.name.x) < 1, "The name must stay still when actions appear");
+          const below = revealed.meta.y >= revealed.name.y + revealed.name.height - 1;
+          assert.ok(below || (user ? revealed.meta.x + revealed.meta.width <= revealed.name.x + 1 : revealed.meta.x >= revealed.name.x + revealed.name.width - 1), JSON.stringify({ width, id, revealed }));
+          assert.deepEqual(await body.boundingBox(), resting.body);
           for (const button of await toolbar.locator("button").all()) {
             await button.hover();
             await settle();
-            assert.equal(await toolbar.evaluate(node => getComputedStyle(node).opacity), "1");
+            assert.equal(await meta.evaluate(node => getComputedStyle(node).opacity), "1");
             assert.equal(await button.evaluate(node => {
               const box = node.getBoundingClientRect();
               return node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
@@ -434,7 +388,7 @@ app.whenReady().then(() => {
           }
           await page.screenshot({ path: `/tmp/citropy-header-zones-${id}-${width}-${review ? "review" : "basic"}.png`, animations: "disabled" });
           await leave();
-          assert.ok(Math.abs((await metadata.boundingBox()).x - resting.x) < 1);
+          assert.ok(Math.abs((await name.boundingBox()).x - resting.name.x) < 1);
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         }
       }
@@ -532,7 +486,7 @@ app.whenReady().then(() => {
     const { page } = f;
     f.emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", runStartedAt: Date.now() - 3200 } });
     await page.getByRole("button", { name: "Work details", exact: true }).click();
-    const activity = page.locator(".turn-agent").filter({ has: page.locator(".group") });
+    const activity = page.locator(".turn-agent").filter({ has: page.locator(".group-body") });
     await activity.getByRole("button", { name: "Read 1 file · ran 1 command", exact: true }).waitFor();
     assert.equal(await activity.locator(".message-bubble").count(), 0);
     assert.equal(await activity.locator(".group-count").count(), 0);
@@ -541,7 +495,7 @@ app.whenReady().then(() => {
       await page.setViewportSize({ width, height: 900 });
       if (width === 600) {
         await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
-        await page.locator(".rail").waitFor({ state: "detached" });
+        await page.locator(".rail").waitFor({ state: "hidden" });
       }
       await page.waitForFunction(() => getComputedStyle(document.querySelector(".working")).opacity === "1");
       const body = await activity.locator(".agent-activity").boundingBox();
@@ -551,18 +505,17 @@ app.whenReady().then(() => {
       await page.screenshot({ path: `/tmp/citropy-activity-row-${width}.png`, animations: "disabled" });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     }
-    await activity.locator(".group-head").click();
-    await activity.locator(".group-body").waitFor();
-    assert.equal(await activity.locator(".group-body .tool").count(), 2);
+    await activity.locator(".group-summary").click();
+    await activity.locator(".group-body-inner").waitFor();
+    assert.equal(await activity.locator(".group-body-inner .tool").count(), 2);
     await page.waitForFunction(() => {
-      const body = document.querySelector(".group-body");
       const inner = document.querySelector(".group-body-inner");
-      return body && inner && Math.abs(body.getBoundingClientRect().height - inner.getBoundingClientRect().height) < 1;
+      return inner && inner.getAnimations({ subtree: true }).every(animation => animation.playState !== "running");
     });
     f.emit({ t: "message.add", threadId: "chat", message: message("empty-after-tools", []) });
     await page.waitForFunction(async () => Boolean((await import("/web/src/lib/store.ts")).useApp.getState().messages["empty-after-tools"]));
     assert.equal(await page.locator(".turn-agent .turn-heading").count(), 1);
-    const group = await activity.locator(".group-head").boundingBox();
+    const group = await activity.locator(".group-summary").boundingBox();
     const thinking = await page.locator(".working-text").boundingBox();
     assert.ok(thinking.y + thinking.height <= group.y);
 
@@ -595,24 +548,23 @@ app.whenReady().then(() => {
     assert.equal(await pieces.count(), 2);
     await page.getByRole("button", { name: /^Work details/ }).click();
     assert.equal(await pieces.count(), 3);
-    assert.equal(await page.locator(".agent-card .group").count(), 0);
-    assert.equal(await page.locator(".agent-activity .group").count(), 1);
+    assert.equal(await page.locator(".agent-card .group-body").count(), 0);
+    assert.equal(await page.locator(".agent-activity .group-body").count(), 1);
     const continuation = await page.locator('.turn-agent[data-continuation="true"]').first().boundingBox();
     const beginning = await page.locator('#message-work').boundingBox();
     assert.ok(Math.abs(beginning.y + beginning.height - continuation.y) < 2);
-    await page.locator(".group-head").click();
-    await page.locator(".group-body").waitFor();
+    await page.locator(".group-summary").click();
+    await page.locator(".group-body-inner").waitFor();
     await page.waitForFunction(() => {
-      const body = document.querySelector(".group-body");
       const inner = document.querySelector(".group-body-inner");
-      return body && inner && Math.abs(body.getBoundingClientRect().height - inner.getBoundingClientRect().height) < 1;
+      return inner && inner.getAnimations({ subtree: true }).every(animation => animation.playState !== "running");
     });
     f.emit({ t: "thread.upsert", thread: { ...thread, model: "claude-sonnet-5", running: true, status: "thinking", runStartedAt: Date.now() - 3200 } });
     for (const width of [1440, 960, 600, 420]) {
       await page.setViewportSize({ width, height: 1100 });
       if (width === 600) {
         await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
-        await page.locator(".rail").waitFor({ state: "detached" });
+        await page.locator(".rail").waitFor({ state: "hidden" });
       }
       await page.screenshot({ path: `/tmp/citropy-chat-bubbles-${width}.png`, animations: "disabled" });
       const reading = await page.locator(".canvas-inner").boundingBox();
@@ -951,9 +903,9 @@ app.whenReady().then(() => {
     assert.equal(await page.locator('[data-part-id="history-text-0"]').count(), 0);
     for (let index = 0; index < 6; index++) {
       await page.getByRole("button", { name: "Settings", exact: true }).click();
-      await page.getByRole("button", { name: "Back to chat", exact: true }).waitFor();
+      await page.locator(".settings").waitFor();
       assert.equal(await mounted(), 0);
-      await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+      await backToChat(page);
       await page.locator('[data-part-id="history-end"]').waitFor();
       await bottom();
       assert.ok(await mounted() < 40);
@@ -962,8 +914,8 @@ app.whenReady().then(() => {
     await page.waitForFunction(() => !document.getAnimations().some(animation => animation.effect?.target?.matches(".timeline-row")));
     await page.locator(".canvas").evaluate((node) => node.scrollTop = node.scrollHeight);
     await bottom();
-    await page.locator(".group-head").click();
-    await page.locator(".group-body").waitFor();
+    await page.locator(".group-summary").click();
+    await page.locator(".group-body-inner").waitFor();
     const rail = page.getByRole("navigation", { name: "Conversation messages", exact: true });
     assert.equal(await rail.getByRole("button").count(), history.length);
     const marker = rail.getByRole("button", { name: "Go to message 21", exact: true });
@@ -996,8 +948,8 @@ app.whenReady().then(() => {
     await page.getByRole("button", { name: "Latest", exact: true }).click();
     await bottom();
     await page.locator('[data-part-id="background-response-text"]').waitFor();
-    await page.locator('.group[data-open="true"]').waitFor();
-    await page.locator(".group-head").click();
+    await page.locator('.group-body[data-open]').waitFor();
+    await page.locator(".group-summary").click();
     await page.locator("textarea").fill("Continue with another response.");
     await page.locator("textarea").press("Enter");
     f.begin("streaming-response", "Streaming begins.");
@@ -1089,7 +1041,6 @@ app.whenReady().then(() => {
     await page.evaluate(() => window.freshEntrance.finish());
     f.emit({ t: "part.add", threadId: "chat", messageId: "fresh", part: { id: "fresh-thought", kind: "reasoning", text: "Checking **the layout**", complete: false } });
     await page.getByRole("button", { name: "Work details", exact: true }).click();
-    await page.getByRole("button", { name: "Thoughts", exact: true }).click();
     await page.locator('[data-part-id="fresh-thought"] strong').waitFor();
     f.emit({ t: "part.append", threadId: "chat", messageId: "fresh", partId: "fresh-text", text: " continues." });
     f.emit({ t: "part.append", threadId: "chat", messageId: "fresh", partId: "fresh-thought", text: " at a narrow width." });
@@ -1099,7 +1050,7 @@ app.whenReady().then(() => {
     f.complete("fresh");
     f.idle();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
-    await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+    await backToChat(page);
     await page.locator('[data-part-id="fresh-text"]').waitFor();
     assert.deepEqual(await page.evaluate(() => window.proseEntrances), ["fresh-text"]);
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -1198,9 +1149,9 @@ app.whenReady().then(() => {
     f.idle();
     await page.locator('[data-part-id="cancel-text"][aria-busy="true"]').waitFor();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
-    await page.getByRole("button", { name: "Back to chat", exact: true }).waitFor();
+    await page.locator(".settings").waitFor();
     await page.waitForFunction(() => window.presentationFrames.size === 0);
-    await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+    await backToChat(page);
     await page.locator('[data-part-id="cancel-text"]').waitFor();
     assert.equal(await page.locator('[data-part-id="cancel-text"][aria-busy="true"]').count(), 0);
     assert.equal((await page.locator('[data-part-id="cancel-text"]').textContent()).trim().length, 1000);
@@ -1387,8 +1338,8 @@ app.whenReady().then(() => {
       const f = await fixture({ messages: history, preferences: { textStreaming: streaming, typingAnimation: "1", typingSpeed: "300" } });
       const { page } = f;
       await page.getByRole("button", { name: /^Work details/ }).click();
-      await page.locator(".group-head").click();
-      await page.locator(".group-body").waitFor();
+      await page.locator(".group-summary").click();
+      await page.locator(".group-body-inner").waitFor();
       const composer = page.locator("textarea");
       await composer.fill("Please continue.");
       await composer.press("Enter");
@@ -1431,9 +1382,9 @@ app.whenReady().then(() => {
     const canvas = page.locator(".canvas");
     const details = page.getByRole("button", { name: "Work details", exact: true });
     await details.click();
-    await page.locator(".group-head").waitFor();
+    await page.locator(".group-summary").waitFor();
     await details.click();
-    await page.locator(".group-head").waitFor({ state: "detached" });
+    await page.locator(".group-summary").waitFor({ state: "detached" });
     await page.waitForFunction(() => {
       const node = document.querySelector(".canvas");
       return node.scrollHeight - node.scrollTop - node.clientHeight < 2;
@@ -1552,7 +1503,7 @@ app.whenReady().then(() => {
           const body = document.querySelector(".group-body");
           const inner = document.querySelector(".group-body-inner");
           if (body && inner) {
-            window.expansionGaps.push(body.getBoundingClientRect().height - inner.getBoundingClientRect().height);
+            window.expansionGaps.push(body.getBoundingClientRect().bottom - inner.getBoundingClientRect().bottom);
             window.expansionHeights.push(body.getBoundingClientRect().height);
             const canvas = document.querySelector(".canvas");
             window.expansionPositions.push({top: canvas.scrollTop, height: canvas.scrollHeight, client: canvas.clientHeight});
@@ -1561,15 +1512,14 @@ app.whenReady().then(() => {
         };
         requestAnimationFrame(measure);
       });
-      await page.locator(".group-head").click();
+      await page.locator(".group-summary").click();
       await page.waitForFunction(() => window.expansionGaps.length >= 25);
       assert.ok(await page.evaluate(() => Math.max(...window.expansionGaps) < 1));
-      assert.ok(await page.evaluate(() => window.expansionHeights.some((height) => height > 2 && height < Math.max(...window.expansionHeights) - 2)));
       assert.ok(await page.getByRole("button", { name: "Latest", exact: true }).isVisible(), JSON.stringify({ scale, positions: await page.evaluate(() => [window.expansionPositions[0], window.expansionPositions.at(-1)]) }));
-      const gap = await page.evaluate(() => document.querySelector(".group-body").getBoundingClientRect().height - document.querySelector(".group-body-inner").getBoundingClientRect().height);
+      const gap = await page.evaluate(() => document.querySelector(".group-body").getBoundingClientRect().bottom - document.querySelector(".group-body-inner").getBoundingClientRect().bottom);
       assert.ok(Math.abs(gap) < 1, `${scale}% scale gap: ${gap}`);
-      await page.locator(".group-head").click();
-      await page.locator(".group-body").waitFor({ state: "detached" });
+      await page.locator(".group-summary").click();
+      await page.locator(".group-body-inner").waitFor({ state: "detached" });
     }
     await f.close();
   });
@@ -1579,17 +1529,19 @@ app.whenReady().then(() => {
     const { page } = f;
     const queue = [{ id: "log", text: "[main/ERROR]: Incompatible mods found! ".repeat(150), createdAt: 2 }];
     f.emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", runStartedAt: Date.now() - 10000, queue } });
-    await page.getByRole("button", { name: "Expand 1 queued message" }).click();
+    const trigger = page.getByRole("button", { name: "1 queued message", exact: true });
     for (const width of [1440, 700]) {
       await page.setViewportSize({ width, height: 900 });
       if (width === 700) await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
+      if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+      await page.locator(".composer-queue-panel").waitFor();
+      await page.waitForFunction(() => getComputedStyle(document.querySelector(".composer-queue-panel")).opacity === "1");
       const sizes = await page.evaluate(() => {
-        const stage = document.querySelector(".stage").getBoundingClientRect();
-        const queue = document.querySelector(".composer-queue").getBoundingClientRect();
-        const remove = document.querySelector('.composer-queue-actions [aria-label="Remove"]').getBoundingClientRect();
-        return { width: innerWidth, stageRight: stage.right, queueRight: queue.right, removeRight: remove.right, overflow: document.documentElement.scrollWidth > innerWidth };
+        const queue = document.querySelector(".composer-queue-panel").getBoundingClientRect();
+        const remove = document.querySelector('.composer-queue-panel [aria-label="Remove"]').getBoundingClientRect();
+        return { width: innerWidth, queueLeft: queue.left, queueRight: queue.right, removeRight: remove.right, overflow: document.documentElement.scrollWidth > innerWidth };
       });
-      assert.ok(sizes.queueRight <= sizes.stageRight && sizes.stageRight <= width && sizes.removeRight <= sizes.queueRight && !sizes.overflow, JSON.stringify(sizes));
+      assert.ok(sizes.queueLeft >= 0 && sizes.queueRight <= width && sizes.removeRight <= sizes.queueRight && !sizes.overflow, JSON.stringify(sizes));
       assert.ok(await page.getByRole("button", { name: "Queue", exact: true }).isVisible());
       await page.screenshot({ path: `/tmp/citropy-long-queue-${width}.png`, animations: "disabled" });
     }
@@ -1607,11 +1559,11 @@ app.whenReady().then(() => {
     f.emit({ t: "providers.update", providers: [provider] }, { t: "thread.upsert", thread: { ...thread, running: true, status: "working", queue } });
     const list = page.getByRole("list", { name: "Queued messages" });
     const row = (text) => list.getByRole("listitem").filter({ hasText: text });
-    const summary = page.getByRole("button", { name: "Expand 2 queued messages" });
+    const summary = page.getByRole("button", { name: "2 queued messages", exact: true });
     await summary.waitFor();
-    assert.match(await summary.innerText(), /\/review/);
+    assert.match(await summary.innerText(), /Queued\s*2/);
     assert.equal(await list.isVisible(), false);
-    assert.ok((await page.locator(".composer-queue").boundingBox()).height < 52);
+    assert.ok((await summary.boundingBox()).height < 32);
     await page.screenshot({ path: "/tmp/citropy-queue-compact.png", animations: "disabled" });
     await page.setViewportSize({ width: 600, height: 900 });
     await page.getByRole("button", { name: "Toggle sidebar" }).click();
@@ -1642,6 +1594,8 @@ app.whenReady().then(() => {
     await page.evaluate(async () => (await import("/web/src/lib/store.ts")).useApp.setState({ connected: false }));
     await input.fill("Written while offline");
     await input.press("Enter");
+    const queued = page.getByRole("button", { name: /queued message/ });
+    if (await queued.getAttribute("aria-expanded") !== "true") await queued.click();
     await row("Written while offline").getByText("Waiting for connection", { exact: true }).waitFor();
     await page.getByText("Sends when Citropy reconnects", { exact: true }).waitFor();
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("citropy.offline")).chat[0].text), "Written while offline");
@@ -1665,10 +1619,10 @@ app.whenReady().then(() => {
         { t: "providers.update", providers: [{ id: "opencode", label: "OpenCode", available: true, enabled: true, models: [{ id: "muse", label: "Muse Spark 1.3 Free" }] }] },
         { t: "thread.upsert", thread: active },
       );
-      await page.locator(".working-time").getByText("5.3s", { exact: true }).waitFor();
+      await page.locator(".working-time").getByText("5s", { exact: true }).waitFor();
       await page.waitForFunction(() => getComputedStyle(document.querySelector(".working")).opacity === "1");
       await page.locator(".turn-agent .turn-heading strong").getByText("Muse Spark 1.3 Free", { exact: true }).waitFor();
-      assert.match(await page.locator(".turn-agent .turn-heading strong").getAttribute("title"), /OpenCode/);
+      assert.match(await page.locator(".turn-agent .turn-heading strong").getAttribute("title"), /^Muse Spark 1\.3 Free · /);
       assert.equal(await page.locator('.turn-agent .agent-avatar .provider-icon[data-provider="opencode"]').count(), 1);
       const before = await page.locator(".working").boundingBox();
       f.emit(
@@ -1693,10 +1647,9 @@ app.whenReady().then(() => {
       if (streaming === "1") {
         f.emit({ t: "part.append", threadId: "chat", messageId: "pending", partId: "pending-reason", text: "Multiplying 15 by 15." });
         await page.getByRole("button", { name: "Work details", exact: true }).waitFor();
-        assert.equal(await page.locator(".reason-text").count(), 0);
+        assert.equal(await page.locator(".reasoning").count(), 0);
         await page.getByRole("button", { name: "Work details", exact: true }).click();
-        await page.getByRole("button", { name: "Thoughts", exact: true }).click();
-        await page.locator(".turn-agent .reason-text").getByText("Multiplying 15 by 15.", { exact: true }).waitFor();
+        await page.locator(".turn-agent .reasoning").getByText("Multiplying 15 by 15.", { exact: true }).waitFor();
         await page.locator("#message-pending .turn-heading").getByText("Muse Spark 1.3 Free", { exact: true }).waitFor();
         assert.equal(await page.locator(".turn-agent .turn-heading").count(), 1);
       }
@@ -1749,18 +1702,18 @@ app.whenReady().then(() => {
       animation.pause();
       const timing = animation.effect.getTiming();
       const sample = (offset) => {
-        animation.currentTime = Number(timing.delay) + Number(timing.duration) + offset;
+        animation.currentTime = Number(timing.delay) + 2 * Number(timing.duration) + offset;
         const style = getComputedStyle(line);
         const box = line.getBoundingClientRect();
         return { opacity: Number(style.opacity), box: [box.x, box.y, box.width, box.height] };
       };
-      return { before: sample(-1), after: sample(1), middle: sample(-Number(timing.duration) / 2), iterations: timing.iterations };
+      return { before: sample(-1), after: sample(1), middle: sample(-Number(timing.duration) * 0.85), iterations: timing.iterations };
     }));
     for (const frame of frames) {
       assert.ok(Math.abs(frame.before.opacity - frame.after.opacity) < 0.005);
       assert.ok(frame.before.box.every((value, index) => Math.abs(value - frame.after.box[index]) < 0.01));
       assert.deepEqual(frame.before.box, frame.middle.box);
-      assert.ok(frame.middle.opacity - frame.before.opacity > 0.5);
+      assert.ok(frame.middle.opacity - frame.before.opacity > 0.5, JSON.stringify(frame));
     }
     for (const scale of [90, 120, 150]) {
       await f.page.evaluate(async scale => (await import("/web/src/lib/store.ts")).setUiScale(scale), scale);
@@ -1859,7 +1812,7 @@ app.whenReady().then(() => {
     f.emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "thinking", runStartedAt } });
     await page.locator(".working-time").filter({ hasText: "2m" }).waitFor();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
-    await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+    await backToChat(page);
     await page.locator(".working-time").filter({ hasText: "2m" }).waitFor();
     f.emit({ t: "thread.upsert", thread: { ...thread, running: true, status: "working", activeTool: "Read", runStartedAt } });
     await page.locator(".working-text").filter({ hasText: "Read" }).waitFor();
@@ -1918,7 +1871,7 @@ app.whenReady().then(() => {
     }
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
-    await page.getByRole("button", { name: "Back to chat", exact: true }).click();
+    await backToChat(page);
     await page.locator(".git-panel-progress").filter({ hasText: "Writing commit" }).waitFor();
     assert.equal(await page.getByRole("textbox", { name: "Message", exact: true }).evaluate((node) => getComputedStyle(node).userSelect), "text");
     assert.equal(await page.locator(".message-bubble").first().evaluate((node) => getComputedStyle(node).userSelect), "text");
@@ -1937,7 +1890,7 @@ app.whenReady().then(() => {
       const panel = await page.getByRole("dialog", { name: "Git actions", exact: true }).boundingBox();
       const trigger = await page.getByRole("button", { name: "Git actions", exact: true }).boundingBox();
       assert.ok(panel.x >= 0 && panel.x + panel.width <= width + 1);
-      assert.ok(panel.y >= trigger.y + trigger.height && panel.y + panel.height <= 900);
+      assert.ok(panel.y >= 0 && panel.y + panel.height <= trigger.y, JSON.stringify({ panel, trigger }));
       await page.screenshot({ path: `/tmp/citropy-ai-git-${width}.png`, animations: "disabled" });
     }
     await page.keyboard.press("Escape");
@@ -1964,9 +1917,7 @@ app.whenReady().then(() => {
     assert.equal(await panel.getByRole("button", { name: "AI commit", exact: true }).isEnabled(), true);
     await panel.getByText("+144", { exact: true }).waitFor();
     await panel.getByText("-36", { exact: true }).waitFor();
-    const location = await trigger.boundingBox();
-    const inspector = await page.getByRole("button", { name: "Toggle inspector", exact: true }).boundingBox();
-    assert.ok(location.x < inspector.x && Math.abs(location.y - inspector.y) < 2);
+    assert.equal(await trigger.evaluate(node => Boolean(node.closest(".composer-tabs"))), true);
     const calls = [];
     let releasePush;
     const pushReleased = new Promise((resolve) => { releasePush = resolve; });

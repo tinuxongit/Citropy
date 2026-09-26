@@ -24,11 +24,19 @@ export function Reasoning({ ids, live }: Props) {
     const measure = () => {
       if (element.scrollHeight > element.clientHeight + 1) setLong(true);
     };
-    measure();
-    const observer = new ResizeObserver(measure);
-    for (const child of element.children) observer.observe(child);
-    return () => observer.disconnect();
-  }, [hasParts, parts.length, long]);
+    const resize = new ResizeObserver(measure);
+    const watchChildren = () => {
+      for (const child of element.children) resize.observe(child);
+      measure();
+    };
+    const mutations = new MutationObserver(watchChildren);
+    mutations.observe(element, { childList: true });
+    watchChildren();
+    return () => {
+      resize.disconnect();
+      mutations.disconnect();
+    };
+  }, [hasParts, long]);
 
   if (!hasParts) return null;
   const toggle = () => {

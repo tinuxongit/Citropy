@@ -644,7 +644,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
       await page.setViewportSize({ width, height: 900 });
       if (width === 420) {
         await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
-        await page.locator(".rail").waitFor({ state: "detached" });
+        await page.locator(".rail").waitFor({ state: "hidden" });
       }
       await page.locator(".composer-model").click();
       const menu = page.getByRole("menu");
@@ -813,7 +813,7 @@ test("workspace navigation and conversation setup stay consistent", { timeout: 1
       await page.setViewportSize({ width, height: 1000 });
       if (width === 600) {
         await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
-        await page.locator(".rail").waitFor({ state: "detached" });
+        await page.locator(".rail").waitFor({ state: "hidden" });
       }
       const meter = page.getByRole("button", { name: "41% context used", exact: true });
       await meter.hover();
