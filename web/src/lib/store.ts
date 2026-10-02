@@ -62,6 +62,8 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     reveals: {},
     order: {},
     loaded: {},
+    historyPaging: false,
+    historyPages: {},
     historyBytes: {},
     timelineVersions: {},
     disclosures: {},
@@ -78,7 +80,6 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     unseenPanels: {},
     editorTerminals: {},
     browsers: {},
-    computer: { enabled: false, status: "idle", control: false, displays: [], activity: [] },
     toolConnections: {},
     tools: [],
   };

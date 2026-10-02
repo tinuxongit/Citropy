@@ -19,7 +19,7 @@ export interface SkillInfo {
   description: string;
   path: string;
   provider: ProviderId;
-  scope: "project" | "personal" | "plugin" | "builtin";
+  scope: "project" | "personal" | "plugin";
   enabled: boolean;
   providerManaged?: boolean;
 }
@@ -94,8 +94,9 @@ export interface DiagnosticReport {
     pid: number;
     parent: number;
     name: string;
-    cpu: number;
+    cpu: number | null;
     memory: number;
+    startedAt?: string;
   }>;
   conversations: number;
   running: number;

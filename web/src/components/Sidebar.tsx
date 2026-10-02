@@ -133,7 +133,10 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
   const focusedIndex = rows.findIndex((row) => row.key === focusedRow);
   const draggingIndex = rows.findIndex((row) => row.key === threadDrag.draggingId);
   const activeIndex = rows.findIndex((row) => row.key === (activeThreadId && threadKey(environment, activeThreadId)));
-  const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);
+  const getItemKey = useMemo(() => {
+    const keys = rows.map((row) => row.key);
+    return (index: number) => keys[index]!;
+  }, [rowOrder]);
   const list = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: rows.length,
     enabled: virtualized,

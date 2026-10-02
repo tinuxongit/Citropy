@@ -25,7 +25,6 @@ export function openPanel(
     changes: "Changes",
     subagents: "Subagents",
     tools: "Tools",
-    computer: "Computer",
     drawing: "Drawing",
     notes: "Notes",
   };

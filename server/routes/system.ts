@@ -1,7 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { activeWork } from "../activity.ts";
-import { computerState } from "../computer.ts";
 import { dev } from "../config.ts";
 import { desktopConnected, openDesktop } from "../desktop.ts";
 import { relaunchServer } from "../development.ts";
@@ -14,8 +13,8 @@ import type { Routes } from "./types.ts";
 
 async function restartDevelopmentServer(prepare = () => {}): Promise<void> {
   if (!dev || remoteId) throw new Error("Restarting the server is available only in development.");
-  if (activeWork(1) || computerState().status !== "idle")
-    throw new Error("Finish active conversations, updates, Git operations, and computer use before restarting the server.");
+  if (activeWork(1))
+    throw new Error("Finish active conversations, updates, and Git operations before restarting the server.");
   prepare();
   store.flush();
   await relaunchServer(desktopConnected());

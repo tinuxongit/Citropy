@@ -114,6 +114,3 @@ jobs:
       - run: npm ci
       - name: Check the real backend HTTP boundary
         run: node --experimental-strip-types --test --test-reporter=tap tests/audit-http-server.test.mjs
-      - name: Check macOS computer use
-        if: runner.os == 'macOS'
-        run: node --test tests/computer-mac.test.mjs

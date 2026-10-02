@@ -1,6 +1,5 @@
 import type { QuestionPart, QuestionRequest } from "./questions.ts";
 import type { GitHubRequest, GitHubResponse } from "./github.ts";
-import type { ComputerState } from "./computer.ts";
 import type { BrowserAction, BrowserState, PanelKind, PanelTab, ToolConnection, ToolDefinition } from "./workbench.ts";
 
 export type ProviderId = "claude" | "codex" | "opencode" | "cursor" | "pi";
@@ -172,6 +171,12 @@ export interface Message {
   ts: number;
   model?: string;
   attachments?: Attachment[];
+}
+
+export interface HistoryPage {
+  before?: string;
+  next?: string;
+  revision: number;
 }
 
 export interface QueuedMessage {
@@ -396,10 +401,10 @@ export interface AppNotification {
 }
 
 export interface Snapshot {
+  historyPaging?: boolean;
   shells?: ShellProcess[];
   projectDefaults?: ProjectSettings;
   assistance?: import("./assistance.ts").AssistanceSettings;
-  computer?: ComputerState;
   notifications?: AppNotification[];
   notificationPreferences?: NotificationPreferences;
   logging?: { enabled: boolean; file: string };
@@ -420,11 +425,11 @@ export interface Snapshot {
 }
 
 export type ServerEvent = (
+  | { t: "event.batch"; after: number; events: ServerEvent[] }
   | { t: "shell.upsert"; shell: ShellProcess }
   | { t: "shell.remove"; id: string }
   | { t: "project.defaults"; settings: ProjectSettings }
   | { t: "assistance.settings"; settings: import("./assistance.ts").AssistanceSettings }
-  | { t: "computer.state"; computer: ComputerState }
   | { t: "thread.accepted"; requestId: string }
   | { t: "request.error"; requestId: string; error: string }
   | { t: "notification.add"; notification: AppNotification }
@@ -443,12 +448,12 @@ export type ServerEvent = (
   | { t: "project.chosen"; projectId: string | null; error?: string }
   | { t: "providers.update"; providers: ProviderInfo[] }
   | { t: "hello"; snapshot: Snapshot; epoch?: string }
-  | { t: "reconnected"; epoch: string; shells?: ShellProcess[]; browsers?: BrowserState[]; computer?: ComputerState }
+  | { t: "reconnected"; epoch: string; shells?: ShellProcess[]; browsers?: BrowserState[] }
   | { t: "project.upsert"; project: Project }
   | { t: "project.remove"; id: string }
   | { t: "thread.upsert"; thread: ThreadMeta }
   | { t: "thread.remove"; id: string }
-  | { t: "thread.messages"; threadId: string; messages: Message[] }
+  | { t: "thread.messages"; threadId: string; messages: Message[]; page?: HistoryPage; requestId?: string }
   | { t: "message.add"; threadId: string; message: Message }
   | { t: "part.add"; threadId: string; messageId: string; part: Part }
   | { t: "part.append"; threadId: string; messageId: string; partId: string; text: string }
@@ -528,7 +533,8 @@ export type ClientEvent = (
   | { t: "queue.move"; threadId: string; id: string; index: number }
   | { t: "queue.edit"; requestId: string; threadId: string; id: string }
   | { t: "thread.remove"; id: string }
-  | { t: "thread.load"; id: string }
+  | { t: "thread.load"; id: string; page?: { before?: string; revision?: number }; requestId?: string }
+  | { t: "thread.subscribe"; ids: string[] }
   | {
       t: "thread.config";
       id: string;

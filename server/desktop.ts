@@ -75,7 +75,7 @@ export function desktopRequest<T>(
   method: string,
   params: unknown = {},
 ): Promise<T> {
-  if (remoteId) return Promise.reject(new Error("Desktop browser and computer tools are available in Local environments only."));
+  if (remoteId) return Promise.reject(new Error("Desktop browser tools are available in Local environments only."));
   if (!connection || connection.readyState !== connection.OPEN)
     return Promise.reject(new Error("Open Citropy desktop to use desktop tools."));
   return new Promise((resolve, reject) => {
@@ -83,14 +83,14 @@ export function desktopRequest<T>(
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new Error(`Desktop ${method} timed out`));
-    }, method === "computer.start" ? 140_000 : method === "computer.action" ? 85_000 : method === "profiles.import" ? 120_000 : 30000);
+    }, method === "profiles.import" ? 120_000 : 30000);
     pending.set(id, { resolve: (value) => resolve(value as T), reject, timer });
     connection!.send(JSON.stringify({ id, method, params }));
   });
 }
 
 export function openDesktop(): Promise<void> {
-  if (remoteId) return Promise.reject(new Error("Desktop browser and computer tools are available in Local environments only."));
+  if (remoteId) return Promise.reject(new Error("Desktop browser tools are available in Local environments only."));
   if (connection) return desktopRequest("focus");
   if (starting) return starting;
   starting = new Promise<void>((resolve, reject) => {

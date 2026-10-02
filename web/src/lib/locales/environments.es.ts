@@ -18,7 +18,7 @@ export const environmentsEs: Record<string, string> = {
   "Port": "Puerto",
   "Remote Node path": "Ruta remota de Node",
   "Uses your SSH config, keys, and agent. Connect once in a terminal to trust a new host. Citropy sets up Node.js and its backend under your remote account when needed, without sudo.": "Usa tu configuración, claves y agente SSH. Conecta una vez desde un terminal para confiar en un servidor nuevo. Citropy instala Node.js y su backend en tu cuenta remota cuando hace falta, sin sudo.",
-  "Use providers installed and signed in on the remote host. Desktop browser and computer tools are available in Local only.": "Usa proveedores instalados y con sesión iniciada en el servidor remoto. Las herramientas de navegador y escritorio solo están disponibles en Local.",
+  "Use providers installed and signed in on the remote host. Desktop browser tools are available in Local only.": "Usa proveedores instalados y con sesión iniciada en el servidor remoto. Las herramientas de navegador solo están disponibles en Local.",
   "Work on this computer": "Trabajar en este equipo",
   "Switch to Local": "Cambiar a Local",
   "SSH environments": "Entornos SSH",

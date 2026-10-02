@@ -55,33 +55,13 @@ const subscribeResize = (onChange: () => void) => {
   return () => window.removeEventListener("resize", onChange);
 };
 
-const screens = {
-  github: () => import("./components/github/GitHub.tsx"),
-  git: () => import("./components/GitManager.tsx"),
-  settings: () => import("./components/Settings.tsx"),
-  usage: () => import("./components/UsageView.tsx"),
-};
-const GitHub = lazy(() => screens.github().then((module) => ({ default: module.GitHub })));
-const GitManager = lazy(() => screens.git().then((module) => ({ default: module.GitManager })));
-const Settings = lazy(() => screens.settings().then((module) => ({ default: module.Settings })));
-const UsageView = lazy(() => screens.usage().then((module) => ({ default: module.UsageView })));
+const GitHub = lazy(() => import("./components/github/GitHub.tsx").then((module) => ({ default: module.GitHub })));
+const GitManager = lazy(() => import("./components/GitManager.tsx").then((module) => ({ default: module.GitManager })));
+const Settings = lazy(() => import("./components/Settings.tsx").then((module) => ({ default: module.Settings })));
+const UsageView = lazy(() => import("./components/UsageView.tsx").then((module) => ({ default: module.UsageView })));
 
 export function App() {
   const t = useI18n();
-  useEffect(() => {
-    let preload: ReturnType<typeof setTimeout> | undefined;
-    const schedule = () => {
-      preload = setTimeout(() => {
-        for (const load of Object.values(screens)) void load().catch(reportError);
-      }, 2000);
-    };
-    if (document.readyState === "complete") schedule();
-    else window.addEventListener("load", schedule, { once: true });
-    return () => {
-      window.removeEventListener("load", schedule);
-      clearTimeout(preload);
-    };
-  }, []);
   const { activeId: environment } = useEnvironments();
   const requestedView = useApp((state) => state.activeView);
   const view = useDeferredValue(requestedView);

@@ -57,9 +57,7 @@ export function SkillsSettings() {
       !(await confirmAction({
         title: t("Delete {name}?", { name: skill.name }),
         context: skill.path,
-        description: skill.scope === "builtin"
-          ? t("Remove this shared skill from all Citropy providers. Its instructions can be restored in Computer use settings.")
-          : t("Remove this installed skill from its provider. Citropy keeps a recovery copy of its instructions in deleted-skills."),
+        description: t("Remove this installed skill from its provider. Citropy keeps a recovery copy of its instructions in deleted-skills."),
         label: t("Delete skill"),
         danger: true,
       }))
@@ -167,7 +165,7 @@ export function SkillsSettings() {
                 </strong>
                 <span>{skill.description || t("No description provided.")}</span>
                 <small>
-                  {skill.scope === "builtin" ? t("Citropy · All providers") : t(skill.scope)} · {skill.path}
+                  {t(skill.scope)} · {skill.path}
                 </small>
               </button>
               <input

@@ -2,7 +2,6 @@ import type { QuestionRequest } from "../../../shared/questions.ts";
 import { SEARCH_ENGINES, type SearchEngine } from "./web-search.ts";
 import { environmentStorage } from "./environment.ts";
 import { DEFAULT_CUSTOM_COLOR, isHexColor } from "./custom-theme.ts";
-import type { ComputerState } from "../../../shared/computer.ts";
 import "./migrate-preferences.ts";
 import { create } from "zustand";
 import { defaultAssistance, type AssistanceSettings, type WritingModel } from "../../../shared/assistance.ts";
@@ -110,6 +109,8 @@ export interface AppState {
   reveals: Record<string, true>;
   order: Record<string, string[]>;
   loaded: Record<string, boolean>;
+  historyPaging: boolean;
+  historyPages: Record<string, import("../../../shared/protocol.ts").HistoryPage>;
   historyBytes: Record<string, number>;
   timelineVersions: Record<string, number>;
   disclosures: Record<string, Record<string, boolean>>;
@@ -127,7 +128,6 @@ export interface AppState {
   unseenPanels: Record<string, true>;
   editorTerminals: Record<string, { id: string; threadId: string | null; visible: boolean }>;
   browsers: Record<string, BrowserState>;
-  computer: ComputerState;
   toolConnections: Record<string, ToolConnection>;
   tools: ToolDefinition[];
   inspectorOpen: boolean;
@@ -299,6 +299,8 @@ export const useApp = create<AppState>(() => ({
   reveals: {},
   order: {},
   loaded: {},
+  historyPaging: false,
+  historyPages: {},
   historyBytes: {},
   timelineVersions: {},
   disclosures: {},
@@ -316,7 +318,6 @@ export const useApp = create<AppState>(() => ({
   unseenPanels: {},
   editorTerminals: {},
   browsers: {},
-  computer: { enabled: false, status: "idle", control: false, displays: [], activity: [] },
   toolConnections: {},
   tools: [],
   inspectorOpen: readFlag(

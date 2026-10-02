@@ -8,11 +8,11 @@ import { store } from "./store.ts";
 import { workspacePath } from "./workspaces.ts";
 import { inside } from "./files.ts";
 import { git as runGit, isRepo, workingDiff } from "./git.ts";
-import { parseUnifiedDiff } from "./diff.ts";
+import { parseUnifiedDiff, summarizeUnifiedDiff } from "./diff.ts";
 import { uid } from "./ids.ts";
 import { emptyUsage } from "../shared/protocol.ts";
-import type { ChangedFile, Thread, Message } from "../shared/protocol.ts";
-import type { ChangeReview, ReviewScope } from "../shared/review.ts";
+import type { ChangedFile, FilePatch, Thread, Message } from "../shared/protocol.ts";
+import type { ChangeReview, ChangeReviewSummary, ReviewScope } from "../shared/review.ts";
 import { fileRestoreIssue } from "../shared/review.ts";
 
 const run = promisify(execFile);
@@ -172,7 +172,7 @@ export function assertWorkspaceIdle(thread: Thread): void {
   if (thread.running || thread.compacting || overlapping(thread)) throw new Error("Stop the agents using this workspace before restoring files or history.");
 }
 
-export async function reviewChanges(thread: Thread, scope: ReviewScope, messageId?: string): Promise<ChangeReview> {
+async function reviewSource(thread: Thread, scope: ReviewScope, messageId?: string) {
   if (!["lastTurn", "task", "unstaged", "staged"].includes(scope)) throw new Error("Choose a review scope.");
   const cwd = workspacePath(thread.projectId, thread.id);
   return checkpointLock(cwd, async () => {
@@ -190,8 +190,27 @@ export async function reviewChanges(thread: Thread, scope: ReviewScope, messageI
       if (checkpoints.some(entry => entry.overlapping)) note = "Other agents used this workspace during this task. This review includes workspace changes made during that time.";
       if (scope === "task" && checkpoints.length === 50) note = "Review covers the 50 retained checkpoints.";
     }
-    return { scope, patches: parseUnifiedDiff(raw), revision: createHash("sha256").update(raw).digest("hex"), messageId, note };
+    return { scope, raw, revision: createHash("sha256").update(raw).digest("hex"), messageId, note };
   });
+}
+
+export async function reviewChanges(thread: Thread, scope: ReviewScope, messageId?: string): Promise<ChangeReview> {
+  const { raw, ...review } = await reviewSource(thread, scope, messageId);
+  return { ...review, patches: parseUnifiedDiff(raw) };
+}
+
+export async function reviewSummary(thread: Thread, scope: ReviewScope, messageId?: string): Promise<ChangeReviewSummary> {
+  const { raw, ...review } = await reviewSource(thread, scope, messageId);
+  return { ...review, files: summarizeUnifiedDiff(raw) };
+}
+
+export async function reviewFile(thread: Thread, scope: ReviewScope, path: string, revision: string, messageId?: string): Promise<FilePatch> {
+  if (typeof path !== "string" || !path || typeof revision !== "string" || !/^[a-f0-9]{64}$/.test(revision)) throw new Error("Choose a file from a current review.");
+  const { raw, revision: currentRevision } = await reviewSource(thread, scope, messageId);
+  if (revision !== currentRevision) throw new Error("The changes moved since this review opened. Refresh before loading a file.");
+  const patch = parseUnifiedDiff(raw, "", path)[0];
+  if (!patch) throw new Error("This file is no longer in the review.");
+  return patch;
 }
 
 async function treeEntries(cwd: string, tree: string): Promise<Map<string, string>> {

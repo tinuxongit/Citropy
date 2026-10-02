@@ -15,6 +15,7 @@ interface Props {
   patch: FilePatch;
   limit?: number;
   showHeader?: boolean;
+  showHunkHeaders?: boolean;
   partId?: string;
   expanded?: boolean;
   onExpand?: () => void;
@@ -58,13 +59,13 @@ function rows(patch: FilePatch, interactive = false): Row[] {
   return out;
 }
 
-export function DiffView({ patch, limit = 26, showHeader = true, partId, expanded: controlledExpanded, onExpand, onComment, onHunk, staged, busy }: Props) {
+export function DiffView({ patch, limit = 26, showHeader = true, showHunkHeaders = false, partId, expanded: controlledExpanded, onExpand, onComment, onHunk, staged, busy }: Props) {
   const t = useI18n();
   const [disclosed, setDisclosed] = useDisclosure(partId, "diff");
   const expanded = controlledExpanded ?? disclosed;
   const viewport = useRef<HTMLDivElement>(null);
 
-  const all = useMemo(() => rows(patch, Boolean(onHunk)), [patch, Boolean(onHunk)]);
+  const all = useMemo(() => rows(patch, showHunkHeaders || Boolean(onHunk)), [patch, showHunkHeaders, Boolean(onHunk)]);
   const visible = useMemo(() => expanded ? all : all.slice(0, limit), [all, expanded, limit]);
   const lang = langFor(patch.path);
 
@@ -105,7 +106,7 @@ export function DiffView({ patch, limit = 26, showHeader = true, partId, expande
         <div className="diff-lines" style={{ height: lines.getTotalSize() }}>
           {lines.getVirtualItems().map((item) => {
             const row = visible[item.index]!;
-            if (row.hunk !== undefined) return <div className="diff-hunk" key={item.key} data-index={item.index} ref={lines.measureElement} style={{ transform: `translateY(${item.start}px)` }}><span>{row.text || t("Change {number}", { number: row.hunk + 1 })}</span><button type="button" disabled={busy} onClick={() => onHunk?.(row.hunk!, staged ? "unstage" : "stage")}>{t(staged ? "Unstage hunk" : "Stage hunk")}</button>{!staged && <button type="button" disabled={busy} onClick={() => onHunk?.(row.hunk!, "revert")}>{t("Revert hunk")}</button>}</div>;
+            if (row.hunk !== undefined) return <div className="diff-hunk" key={item.key} data-index={item.index} ref={lines.measureElement} style={{ transform: `translateY(${item.start}px)` }}><span>{row.text || t("Change {number}", { number: row.hunk + 1 })}</span>{onHunk && <><button type="button" disabled={busy} onClick={() => onHunk(row.hunk!, staged ? "unstage" : "stage")}>{t(staged ? "Unstage hunk" : "Stage hunk")}</button>{!staged && <button type="button" disabled={busy} onClick={() => onHunk(row.hunk!, "revert")}>{t("Revert hunk")}</button>}</>}</div>;
             return (
               <div className="diff-line" data-interactive={Boolean(onComment) || undefined} data-type={row.type} data-index={item.index} key={item.key} ref={lines.measureElement} style={{ transform: `translateY(${item.start}px)` }}>
                 <span className="diff-no">{row.oldNo ?? ""}</span>

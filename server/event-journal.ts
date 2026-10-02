@@ -4,7 +4,7 @@ import { join, dirname } from "node:path";
 import { createHash } from "node:crypto";
 import { dataRoot } from "./paths.ts";
 import { normalizeTodos } from "../shared/todos.ts";
-import type { Message, Part, ServerEvent, Thread } from "../shared/protocol.ts";
+import type { HistoryPage, Message, Part, ServerEvent, Thread } from "../shared/protocol.ts";
 
 function normalizePart(part: Part): Part {
   return part.kind === "todo" ? { ...part, items: normalizeTodos(part.items) } : part;
@@ -15,6 +15,20 @@ function readPart(row: Record<string, unknown>): Part {
   const delta = row.delta === undefined ? null : JSON.parse(String(row.delta));
   if (delta !== null) part.text = (part.text ?? "") + delta;
   return part;
+}
+
+export function pageMessages(messages: Message[], revision: number): { messages: Message[]; page: HistoryPage } {
+  const selected: Message[] = [];
+  let bytes = 0;
+  for (let index = messages.length - 1; index >= Math.max(0, messages.length - 80); index--) {
+    const message = messages[index]!;
+    const size = Buffer.byteLength(JSON.stringify(message));
+    if (selected.length && bytes + size > 1024 * 1024) break;
+    selected.push(message);
+    bytes += size;
+  }
+  selected.reverse();
+  return { messages: selected, page: { ...(messages.length > selected.length ? { next: selected[0]!.id } : {}), revision } };
 }
 
 export class EventJournal {
@@ -42,6 +56,7 @@ export class EventJournal {
       CREATE TABLE IF NOT EXISTS text_deltas (part TEXT NOT NULL, sequence INTEGER NOT NULL, text TEXT NOT NULL, PRIMARY KEY(part,sequence)) WITHOUT ROWID;
       CREATE TABLE IF NOT EXISTS deleted_threads (id TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS search_revisions (thread TEXT PRIMARY KEY, sequence INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS history_revisions (thread TEXT PRIMARY KEY, revision INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS search_generation (id TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS receipts (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, response TEXT, created INTEGER NOT NULL);`);
     if (Number(database.prepare("PRAGMA user_version").get()?.user_version) < 1) {
@@ -129,11 +144,13 @@ export class EventJournal {
         searchThread = event.threadId;
         this.#clearMessages(event.threadId);
         event.messages.forEach(message => this.#message(event.threadId, message));
+        this.#statement("INSERT INTO history_revisions VALUES (?,?) ON CONFLICT(thread) DO UPDATE SET revision=excluded.revision").run(event.threadId, sequence);
       } else if (event.t === "thread.remove") {
         searchThread = event.id;
         this.#clearMessages(event.id);
         this.#statement("DELETE FROM documents WHERE kind='thread' AND id=?").run(event.id);
         this.#statement("INSERT OR IGNORE INTO deleted_threads VALUES (?)").run(event.id);
+        this.#statement("INSERT INTO history_revisions VALUES (?,?) ON CONFLICT(thread) DO UPDATE SET revision=excluded.revision").run(event.id, sequence);
       }
       if (searchThread) this.#searchChanged(searchThread, sequence);
       if (sequence % 500 === 0) {
@@ -171,15 +188,55 @@ export class EventJournal {
     return this.#statement("SELECT data FROM documents WHERE kind='thread'").all().map(row => JSON.parse(String(row.data)));
   }
 
+  #readMessage(message: Record<string, unknown>, measure = false): { message: Message; bytes: number } {
+    const parts: Message["parts"] = [];
+    let bytes = measure ? Number(message.bytes) : 0;
+    for (const part of this.#statement("SELECT data,(SELECT json_quote(group_concat(text,'')) FROM (SELECT text FROM text_deltas WHERE part=documents.id ORDER BY sequence)) AS delta FROM documents WHERE kind='part' AND parent=? ORDER BY position").iterate(String(message.id))) {
+      if (measure && part.delta !== "null") bytes += Buffer.byteLength(String(part.delta));
+      parts.push(readPart(part));
+    }
+    return { message: { ...JSON.parse(String(message.data)), parts }, bytes };
+  }
+
   messages(threadId: string): Message[] {
     const messages: Message[] = [];
-    for (const message of this.#statement("SELECT id,data FROM documents WHERE kind='message' AND parent=? ORDER BY position").iterate(threadId)) {
-      const parts: Message["parts"] = [];
-      for (const part of this.#statement("SELECT data,(SELECT json_quote(group_concat(text,'')) FROM (SELECT text FROM text_deltas WHERE part=documents.id ORDER BY sequence)) AS delta FROM documents WHERE kind='part' AND parent=? ORDER BY position").iterate(String(message.id)))
-        parts.push(readPart(part));
-      messages.push({ ...JSON.parse(String(message.data)), parts });
-    }
+    for (const message of this.#statement("SELECT id,data FROM documents WHERE kind='message' AND parent=? ORDER BY position").iterate(threadId))
+      messages.push(this.#readMessage(message).message);
     return messages;
+  }
+
+  messagePage(threadId: string, page: { before?: string; revision?: number } = {}): { messages: Message[]; page: HistoryPage } {
+    if (!page || typeof page !== "object" || Array.isArray(page) ||
+      (page.before !== undefined && (typeof page.before !== "string" || !page.before || page.before.length > 200)) ||
+      (page.revision !== undefined && (!Number.isSafeInteger(page.revision) || page.revision < 0)))
+      throw new Error("Invalid conversation history page.");
+    if (!this.#statement("SELECT 1 FROM documents WHERE kind='thread' AND id=?").get(threadId)) throw new Error("This conversation no longer exists.");
+    const revision = Number(this.#statement("SELECT revision FROM history_revisions WHERE thread=?").get(threadId)?.revision ?? 0);
+    const before = page.before && page.revision === revision ? page.before : undefined;
+    let position = Number.MAX_SAFE_INTEGER;
+    if (before) {
+      const cursor = this.#statement("SELECT position FROM documents WHERE kind='message' AND parent=? AND id=?").get(threadId, before);
+      if (!cursor) throw new Error("This conversation history cursor is unavailable.");
+      position = Number(cursor.position);
+    }
+    const messages: Message[] = [];
+    let bytes = 0;
+    let firstPosition = position;
+    for (const row of this.#statement(`SELECT m.id,m.position,m.data,
+        length(CAST(m.data AS BLOB)) + 64 +
+        (SELECT coalesce(sum(length(CAST(p.data AS BLOB)) + 32),0) FROM documents p WHERE p.kind='part' AND p.parent=m.id) AS bytes,
+        (SELECT coalesce(sum(length(CAST(d.text AS BLOB))),0) FROM documents p JOIN text_deltas d ON d.part=p.id WHERE p.kind='part' AND p.parent=m.id) AS deltaBytes
+      FROM documents m WHERE m.kind='message' AND m.parent=? AND m.position<? ORDER BY m.position DESC LIMIT 80`).iterate(threadId, position)) {
+      if (messages.length && bytes + Number(row.bytes) + Number(row.deltaBytes) > 1024 * 1024) break;
+      const entry = this.#readMessage(row, true);
+      if (messages.length && bytes + entry.bytes > 1024 * 1024) break;
+      messages.push(entry.message);
+      bytes += entry.bytes;
+      firstPosition = Number(row.position);
+    }
+    messages.reverse();
+    const next = messages.length && this.#statement("SELECT 1 FROM documents WHERE kind='message' AND parent=? AND position<? LIMIT 1").get(threadId, firstPosition) ? messages[0]!.id : undefined;
+    return { messages, page: { ...(before ? { before } : {}), ...(next ? { next } : {}), revision } };
   }
 
   messageTexts(threadId: string): Array<{ id: string; text: string }> {

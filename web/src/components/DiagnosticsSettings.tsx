@@ -184,17 +184,17 @@ export function DiagnosticsSettings() {
                 </thead>
                 <tbody>
                   {data.processes.map((entry) => (
-                    <tr key={entry.pid}>
+                    <tr key={`${entry.pid}:${entry.startedAt ?? ""}`}>
                       <td>{entry.name}</td>
                       <td>{entry.pid}</td>
-                      <td>{entry.cpu.toFixed(1)}%</td>
+                      <td>{entry.cpu === null ? t("Unavailable") : `${entry.cpu.toFixed(1)}%`}</td>
                       <td>{memory(entry.memory)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="feature-note">{" "}{t("CPU is the operating system's process average. Server uptime:")}{" "}
+            <p className="feature-note">{" "}{t("CPU is measured between updates. One fully used core is 100%. Server uptime:")}{" "}
               {Math.floor(data.uptime / 60)}{" "}{t("minutes. Updates stop when this view closes.")}{" "}</p>
           </section>
         </>

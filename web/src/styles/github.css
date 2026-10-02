@@ -494,32 +494,6 @@
 .github-files p {
   padding: var(--space-10);
 }
-.github-patch {
-  margin: 0;
-  padding: var(--space-12) 0;
-  font-size: var(--text-xs);
-  line-height: 1.8;
-  overflow: auto;
-  background: var(--code-bg);
-}
-.github-patch > span {
-  display: block;
-  width: max-content;
-  min-width: 100%;
-  padding: 0 var(--space-16);
-}
-.github-patch > span[data-kind="add"] {
-  color: var(--add);
-  background: var(--add-bg);
-}
-.github-patch > span[data-kind="del"] {
-  color: var(--del);
-  background: var(--del-bg);
-}
-.github-patch > span[data-kind="hunk"] {
-  color: var(--text-3);
-  background: var(--raised);
-}
 .github-checks > div {
   display: flex;
   align-items: center;
@@ -982,4 +956,3 @@
     display: none;
   }
 }
-

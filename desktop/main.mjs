@@ -15,7 +15,6 @@ import { initializeProfiles, browserProfile, handleProfiles } from "./browser-pr
 import { browserActivity } from "./browser-activity.mjs";
 import { formatTree } from "./browser-snapshot.mjs";
 import { createPointer } from "./browser-pointer.mjs";
-import { computerRequest, connectComputerEvents, stopComputer } from "./computer.mjs";
 import {
   app,
   dialog,
@@ -114,7 +113,7 @@ app.on("before-quit", (event) => {
   quitting = true;
   diagnose("app.quitting");
   folderChoice?.abort();
-  void stopComputer().then(() => environments?.dispose()).then(() => backend?.stop()).catch((error) => diagnose("app.quit-cleanup-failed", { reason: error.message })).finally(() => {
+  void (environments?.dispose() ?? Promise.resolve()).then(() => backend?.stop()).catch((error) => diagnose("app.quit-cleanup-failed", { reason: error.message })).finally(() => {
     updates?.dispose();
     for (const notification of notifications) notification.close();
     for (const tab of tabs.values())
@@ -127,7 +126,6 @@ app.on("before-quit", (event) => {
 const emit = (event) => {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
 };
-connectComputerEvents(emit);
 
 const updateRepository = "tinuxongit/Citropy";
 
@@ -1073,11 +1071,6 @@ async function action(tab, input) {
 }
 
 async function request(method, params) {
-  if (method === "computer.start" && window && !window.isDestroyed()) {
-    const language = await window.webContents.executeJavaScript("localStorage.getItem('citropy.language')").catch(() => "en");
-    params = { ...params, language: language === "es" ? "es" : "en" };
-  }
-  if (method.startsWith("computer.")) return computerRequest(method, params);
   if (method === "notification") {
     if (!Notification.isSupported() || window.isFocused()) return;
     const notification = new Notification({
@@ -1104,7 +1097,16 @@ async function request(method, params) {
     return;
   }
   if (method.startsWith("profiles.")) return handleProfiles(method.slice(9), params, session, tabs);
-  if (method === "diagnostics") return app.getAppMetrics().map((entry) => ({ pid: entry.pid, parent: process.pid, name: entry.name || `Citropy ${entry.type}`, cpu: entry.cpu.percentCPUUsage, memory: entry.memory.workingSetSize * 1024 }));
+  if (method === "diagnostics") return app.getAppMetrics().map((entry) => ({
+    pid: entry.pid,
+    parent: process.pid,
+    name: entry.name || `Citropy ${entry.type}`,
+    cpu: entry.cpu.percentCPUUsage,
+    cpuInterval: true,
+    ...(Number.isFinite(entry.cpu.cumulativeCPUUsage) ? { cpuTime: entry.cpu.cumulativeCPUUsage } : {}),
+    ...(Number.isFinite(entry.creationTime) && entry.creationTime > 0 ? { startedAt: `electron:${entry.creationTime}` } : {}),
+    memory: entry.memory.workingSetSize * 1024,
+  }));
   if (method === "browser.open") return open(params);
   const tab = tabs.get(params.id);
   if (!tab) throw new Error("This browser tab is closed");
@@ -1286,7 +1288,6 @@ app
       save: input => environments.save(input),
       "project-defaults": settings => environments.syncProjectDefaults(settings),
       connect: async id => {
-        if (id !== "local") await stopComputer();
         const state = await environments.connect(id);
         if (id !== "local") for (const tab of tabs.values()) {
           tab.presentation++;

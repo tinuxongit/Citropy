@@ -221,7 +221,7 @@ export class SshEnvironments {
     try {
       const payload = join(directory, "payload");
       await mkdir(payload);
-      for (const name of ["server", "shared", "skills", "package.json"])
+      for (const name of ["server", "shared", "package.json"])
         await cp(join(this.appRoot, name), join(payload, name), { recursive: true });
       await cp(join(this.appRoot, "package-lock.json"), join(payload, "package-lock.json")).catch(async error => {
         if (error.code !== "ENOENT") throw error;

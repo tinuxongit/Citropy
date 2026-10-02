@@ -1,5 +1,4 @@
 import * as browser from "../browser.ts";
-import { computerState, stopComputer } from "../computer.ts";
 import { closePanel, movePanel, openPanel, panelList, renameTerminal } from "../panels.ts";
 import { store } from "../store.ts";
 import * as terminals from "../terminals.ts";
@@ -40,8 +39,6 @@ export const panelRoutes: Routes = {
     }
   },
   "panel.close": async (event) => {
-    if (panelList().some((panel) => panel.id === event.id && panel.kind === "computer" && panel.projectId === computerState().projectId))
-      await stopComputer();
     await terminals.close(event.id);
     await browser.closeBrowser(event.id);
     closePanel(event.id);

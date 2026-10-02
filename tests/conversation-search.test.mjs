@@ -88,6 +88,22 @@ test("broad trigram candidates fall back without dropping later exact matches", 
   assert.equal((await search.search(threads, "abcd"))[0].messageId, "candidate-1001");
 });
 
+test("indexed candidates retain first exact match order, title fallback and committed revisions", async t => {
+  const { journal, search, threads } = fixture(t);
+  threads[1].title = "ABCD title";
+  journal.append({ t: "thread.messages", threadId: "thread-0", messages: Array.from({ length: 350 }, (_, index) => ({
+    id: `ordered-${index}`, ts: index, role: "assistant", parts: [{ id: `ordered-part-${index}`, kind: "text", text: index === 200 || index === 280 ? `Exact abcd match ${index}` : "abc separated bcd", complete: true }],
+  })) });
+  for (const projectId of [undefined, "first", "second"])
+    assert.deepEqual(await search.search(threads, "ABCD", projectId), searchConversations(threads, id => journal.messageTexts(id), "ABCD", projectId));
+  assert.equal((await search.search(threads, "abcd", "first"))[0].messageId, "ordered-200");
+  journal.append({ t: "part.append", threadId: "thread-0", messageId: "ordered-30", partId: "ordered-part-30", text: " now abcd" });
+  assert.deepEqual(await search.search(threads, "abcd"), searchConversations(threads, id => journal.messageTexts(id), "abcd"));
+  assert.equal((await search.search(threads, "abcd", "first"))[0].messageId, "ordered-30");
+  journal.append({ t: "part.patch", threadId: "thread-0", messageId: "ordered-30", partId: "ordered-part-30", patch: { text: "No matching terms", complete: true } });
+  assert.equal((await search.search(threads, "abcd", "first"))[0].messageId, "ordered-200");
+});
+
 test("an unavailable or corrupt derived index falls back to the readable conversation journal", async t => {
   const { journal, search, threads, path } = fixture(t);
   const cache = `${path}.search.sqlite`;

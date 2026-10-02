@@ -14,7 +14,7 @@ import { stopShell } from "./shells.ts";
 import { dev, developmentOrigin } from "./config.ts";
 import { desktopRequest } from "./desktop.ts";
 import { reloadProviderSessions, providerBusy, runtimeFor, disposeRuntime, liveAgents, turnOffAgent, turnOffIdleAgents } from "./runtime.ts";
-import { assertWorkspaceIdle, restoreCheckpoint, redoCheckpoint, forkConversation, reviewChanges } from "./checkpoints.ts";
+import { assertWorkspaceIdle, restoreCheckpoint, redoCheckpoint, forkConversation, reviewChanges, reviewSummary, reviewFile } from "./checkpoints.ts";
 import type { ReviewScope } from "../shared/review.ts";
 import { changeHunk, reviewWithModel } from "./review.ts";
 import { findContextPaths, findWorkspacePaths, inspectContext } from "./context.ts";
@@ -35,15 +35,13 @@ import {
   previewFile,
   serveAsset,
 } from "./assets.ts";
-import { changeSkill, listSkills, readSkill, restoreComputerSkill } from "./skills.ts";
+import { changeSkill, listSkills, readSkill } from "./skills.ts";
 import { serveFavicon } from "./favicons.ts";
 import { serveToolImage } from "./tool-images.ts";
 import { diagnostics } from "./diagnostics.ts";
 import { usageReport } from "./usage.ts";
 import { configureAssistance, generateThreadTitle, startGitAction } from "./assistance.ts";
 import { listCommands } from "./commands.ts";
-import { computerState, computerCapabilities, configureComputer, startComputer, stopComputer, pauseComputer, computerScreenshot, computerAction } from "./computer.ts";
-import type { ComputerAction } from "../shared/computer.ts";
 import type { ProjectSettings, ProviderId, ProviderInfo } from "../shared/protocol.ts";
 
 async function body(req: IncomingMessage, limit = 128 * 1024): Promise<Record<string, any>> {
@@ -126,7 +124,7 @@ export async function handleFeatures(
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", "http://localhost");
   if (
-    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|computer|providers|runtimes|shells|sharing|agents)(\/|$)/.test(
+    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|providers|runtimes|shells|sharing|agents)(\/|$)/.test(
       url.pathname,
     )
   )
@@ -236,7 +234,12 @@ export async function handleFeatures(
     } else if (url.pathname === "/api/threads/review" && req.method === "GET") {
       const thread = store.threads.get(threadId ?? "");
       if (!thread) throw new Error("Conversation not found.");
-      respond(await reviewChanges(thread, (url.searchParams.get("scope") || "lastTurn") as ReviewScope, url.searchParams.get("messageId") || undefined));
+      const scope = (url.searchParams.get("scope") || "lastTurn") as ReviewScope;
+      const messageId = url.searchParams.get("messageId") || undefined;
+      const path = url.searchParams.get("path");
+      if (path !== null) respond(await reviewFile(thread, scope, path, url.searchParams.get("revision") || "", messageId));
+      else if (url.searchParams.get("summary") === "1") respond(await reviewSummary(thread, scope, messageId));
+      else respond(await reviewChanges(thread, scope, messageId));
     } else if (url.pathname === "/api/threads/restore" && req.method === "POST") {
       const thread = store.threads.get(threadId ?? "");
       if (!thread) throw new Error("Conversation not found.");
@@ -317,21 +320,6 @@ export async function handleFeatures(
         reloadProviderSessions(new Set([provider]));
         respond(saved);
       }
-    } else if (url.pathname === "/api/computer" && req.method === "GET") respond({ state: computerState(), capabilities: await computerCapabilities().catch((error) => ({ available: false, platform: process.platform, backend: "unavailable", reason: error.message })) });
-    else if (url.pathname === "/api/computer" && req.method === "PATCH") {
-      const input = await body(req);
-      respond(await configureComputer(input.enabled));
-    } else if (url.pathname === "/api/computer/start" && req.method === "POST") respond(await startComputer(threadId ?? "", true));
-    else if (url.pathname === "/api/computer/stop" && req.method === "POST") respond(await stopComputer());
-    else if (url.pathname === "/api/computer/pause" && req.method === "POST") {
-      const input = await body(req);
-      if (typeof input.paused !== "boolean") throw new Error("Choose whether to pause control.");
-      respond(await pauseComputer(input.paused));
-    } else if (url.pathname === "/api/computer/screenshot" && req.method === "GET") respond(await computerScreenshot(threadId ?? "", { displayId: url.searchParams.get("displayId") || undefined, maxWidth: Number(url.searchParams.get("maxWidth") || 1600), preview: true }));
-    else if (url.pathname === "/api/computer/action" && req.method === "POST") respond(await computerAction(threadId ?? "", await body(req) as ComputerAction, true));
-    else if (url.pathname === "/api/computer/skill" && req.method === "POST") {
-      await restoreComputerSkill();
-      respond({ ok: true });
     } else if (
       url.pathname === "/api/assets" &&
       ["GET", "HEAD"].includes(req.method ?? "")

@@ -1,4 +1,6 @@
 export const chatEs: Record<string, string> = {
+  "Load older messages": "Cargar mensajes anteriores",
+  "Loading older messages…": "Cargando mensajes anteriores…",
   "Account": "Cuenta",
   "Default": "Predeterminada",
   "Transfer to another agent": "Transferir a otro agente",
@@ -317,7 +319,6 @@ export const chatEs: Record<string, string> = {
   "Uploading {name}…": "Subiendo {name}…",
   "Usage appears when the provider reports it.": "El uso aparece cuando el proveedor lo comunica.",
   "Use the project's existing checkout.": "Usar la copia de trabajo existente del proyecto.",
-  "Use the shared desktop screen, pointer, or keyboard.": "Usar la pantalla, el puntero o el teclado compartidos.",
   "Use this skill": "Usa esta habilidad",
   "this workspace": "este espacio de trabajo",
   "Used the computer": "Usó el ordenador",

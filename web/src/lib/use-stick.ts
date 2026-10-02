@@ -17,7 +17,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
   const [nearBottom, setNearBottom] = useState(true);
   const stopFollowing = useCallback(() => {
     stuck.current = false;
-    readingExpanded.current = false;
+    readingExpanded.current = true;
   }, []);
   const following = useCallback(() => stuck.current, []);
 

@@ -51,7 +51,7 @@ export function NewSshConnection({ onClose, connection }: { onClose: () => void;
         <label htmlFor={`${id}-node`}>{t("Remote Node path")}</label><input id={`${id}-node`} value={node} onChange={event => setNode(event.target.value)} disabled={busy} spellCheck={false} />
       </div></details>
       <p className="settings-note">{t("Uses your SSH config, keys, and agent. Connect once in a terminal to trust a new host. Citropy sets up Node.js and its backend under your remote account when needed, without sudo.")}</p>
-      <p className="settings-note">{t("Use providers installed and signed in on the remote host. Desktop browser and computer tools are available in Local only.")}</p>
+      <p className="settings-note">{t("Use providers installed and signed in on the remote host. Desktop browser tools are available in Local only.")}</p>
       {busy && <p className="ssh-progress" role="status"><PixelLoader size={14} />{t(progress?.message || "Connecting…")}</p>}
       {error && <p className="ssh-error" role="alert">{error}</p>}
     </div>

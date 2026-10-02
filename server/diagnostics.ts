@@ -5,36 +5,63 @@ import { store } from "./store.ts";
 import { panelList } from "./panels.ts";
 import { browserStates } from "./browser.ts";
 import { servicePid } from "./terminals.ts";
-import { descendants, processTable } from "./process-table.ts";
+import { processCpuPercent, processTable, type ProcessCpuSample, type ProcessEntry } from "./process-table.ts";
 import { protocolLog } from "./providers/events.ts";
 import type { DiagnosticReport } from "../shared/features.ts";
 
+let previousProcesses = new Map<number, ProcessCpuSample>();
+let pending: Promise<DiagnosticReport> | undefined;
+let cached: { at: number; report: DiagnosticReport } | undefined;
+const serverStartedAt = `server:${process.pid}:${Date.now() - process.uptime() * 1000}`;
+
 export async function diagnostics(): Promise<DiagnosticReport> {
+  if (cached && performance.now() - cached.at < 1000) return cached.report;
+  pending ??= collect().then((report) => {
+    cached = { at: performance.now(), report };
+    return report;
+  }).finally(() => { pending = undefined; });
+  return pending;
+}
+
+async function collect(): Promise<DiagnosticReport> {
   const memory = process.memoryUsage();
-  let processes: DiagnosticReport["processes"] = [];
-  if (process.platform !== "win32") {
-    const all = await processTable();
-    const terminalPid = servicePid();
-    const included = descendants(all, [process.pid, ...(terminalPid ? [terminalPid] : [])]);
-    processes = all
-      .filter((entry) => included.has(entry.pid))
-      .sort((a, b) => b.cpu - a.cpu);
-  }
-  const desktop = await desktopRequest<DiagnosticReport["processes"]>(
-    "diagnostics",
-  ).catch(() => []);
+  const terminalPid = servicePid();
+  const [processes, desktop] = await Promise.all([
+    processTable([process.pid, ...(terminalPid ? [terminalPid] : [])]).catch(() => [] as ProcessEntry[]),
+    desktopRequest<ProcessEntry[]>("diagnostics").then((entries) => {
+      const sampledAt = performance.now();
+      return entries.map((entry) => ({ ...entry, sampledAt }));
+    }).catch(() => [] as ProcessEntry[]),
+  ]);
   const allProcesses = new Map(processes.map((entry) => [entry.pid, entry]));
-  for (const entry of desktop) allProcesses.set(entry.pid, entry);
+  for (const entry of desktop) {
+    const existing = allProcesses.get(entry.pid);
+    allProcesses.set(entry.pid, existing ? { ...existing, name: entry.name } : entry);
+  }
   const cpu = process.cpuUsage();
-  if (!allProcesses.has(process.pid))
+  const ownProcess = allProcesses.get(process.pid);
+  if (!ownProcess || ownProcess.cpuTime === undefined)
     allProcesses.set(process.pid, {
+      ...ownProcess,
       pid: process.pid,
       parent: process.ppid,
-      name: "Citropy server",
-      cpu: (cpu.user + cpu.system) / Math.max(process.uptime(), 1) / 10000,
+      name: ownProcess?.name ?? "Citropy server",
+      cpu: 0,
+      cpuTime: (cpu.user + cpu.system) / 1_000_000,
+      startedAt: serverStartedAt,
+      sampledAt: performance.now(),
       memory: memory.rss,
     });
-  processes = [...allProcesses.values()].sort((a, b) => b.cpu - a.cpu);
+  const at = performance.now();
+  const sampledProcesses = [...allProcesses.values()].map((entry) => ({
+    pid: entry.pid,
+    parent: entry.parent,
+    name: entry.name,
+    memory: entry.memory,
+    startedAt: entry.startedAt,
+    cpu: processCpuPercent(entry, previousProcesses.get(entry.pid), entry.sampledAt ?? at),
+  })).sort((a, b) => (b.cpu ?? -1) - (a.cpu ?? -1));
+  previousProcesses = new Map([...allProcesses.values()].map((entry) => [entry.pid, { startedAt: entry.startedAt, cpuTime: entry.cpuTime, at: entry.sampledAt ?? at }]));
   return {
     ...(dev ? { protocol: protocolLog() } : {}),
     sampledAt: Date.now(),
@@ -51,7 +78,7 @@ export async function diagnostics(): Promise<DiagnosticReport> {
       heapUsed: memory.heapUsed,
       heapTotal: memory.heapTotal,
     },
-    processes,
+    processes: sampledProcesses,
     conversations: store.threads.size,
     running: [...store.threads.values()].filter((thread) => thread.running)
       .length,

@@ -123,6 +123,7 @@ function applyPanelEvent(
       return;
     }
     case "panel.upsert": {
+      if (String(event.panel.kind) === "computer") return;
       const exists = state.panels.some((panel) => panel.id === event.panel.id);
       state.panels = exists
         ? state.panels.map((panel) =>
@@ -267,7 +268,8 @@ function applyThreadEvent(
       resolveResponse(event.requestId);
       return;
     case "thread.messages": {
-      replaceHistory(state, event.threadId, event.messages);
+      replaceHistory(state, event.threadId, event.messages, event.page);
+      if (event.requestId) resolveResponse(event.requestId);
       return;
     }
     case "thread.search":
@@ -343,9 +345,6 @@ function applyGitEvent(
 export function applyEvent(state: AppState, event: ServerEvent, focused = true): void {
   if (unloadedDelta(state, event)) return;
   switch (event.t) {
-    case "computer.state":
-      state.computer = event.computer;
-      return;
     case "shell.upsert":
     case "shell.remove":
       applyShellEvent(state, event);

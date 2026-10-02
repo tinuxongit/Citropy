@@ -46,9 +46,19 @@
 }
 
 .canvas-inner {
+  position: relative;
   width: min(var(--reading), 100% - var(--avatar-room, 0px));
   margin: 0 auto;
   padding: 0 0 var(--space-8);
+}
+
+.conversation-history {
+  position: absolute;
+  z-index: 1;
+  top: var(--space-16);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 .message-nav {

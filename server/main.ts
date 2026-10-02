@@ -3,7 +3,6 @@ import { assertApplicationReady, lockForAppUpdate, unlockAppUpdate } from "./upd
 import { startProviderUpdateChecks } from "./providers/maintenance.ts";
 import { notifyUpdateAvailable } from "./update-notifications.ts";
 import { handleFeatures } from "./features.ts";
-import { computerState, stopComputer } from "./computer.ts";
 import { createServer, type IncomingMessage } from "node:http";
 import { pendingQuestions } from "./questions.ts";
 import { attachWorkspaceFeed } from "./workspace-feed.ts";
@@ -14,7 +13,8 @@ import { fileURLToPath } from "node:url";
 import { parentPort } from "node:worker_threads";
 import { WebSocketServer, type WebSocket } from "ws";
 import { bus } from "./bus.ts";
-import { eventJournal } from "./event-journal.ts";
+import { eventJournal, pageMessages } from "./event-journal.ts";
+import { encodeServerEvent, SocketStream } from "./socket-stream.ts";
 import { randomUUID } from "node:crypto";
 import { dev, developmentOrigin, host, origin, port } from "./config.ts";
 import { usingAppData } from "./paths.ts";
@@ -46,6 +46,15 @@ if (process.versions.electron) delete process.env.ELECTRON_RUN_AS_NODE;
 const here = dirname(fileURLToPath(import.meta.url));
 const distDir = join(here, "..", "dist");
 const connectionEpoch = randomUUID();
+const pagedHistories = new WeakMap<ServerEvent, ServerEvent>();
+
+function pagedHistoryEvent(event: Extract<ServerEvent, { t: "thread.messages" }>): ServerEvent {
+  const cached = pagedHistories.get(event);
+  if (cached) return cached;
+  const result: ServerEvent = { ...event, ...pageMessages(event.messages, event.sequence ?? 0) };
+  pagedHistories.set(event, result);
+  return result;
+}
 
 setLogging(store.logging);
 process.on("uncaughtExceptionMonitor", (error, origin) => writeLog("error", origin, error.stack ?? error.message));
@@ -62,10 +71,10 @@ bus.subscribe((event) => {
 
 function snapshot(): Snapshot {
   return {
+    historyPaging: true,
     shells: shellList(false),
     projectDefaults: store.projectDefaults,
     assistance: store.assistance,
-    computer: computerState(),
     notifications: store.notifications,
     notificationPreferences: store.notificationPreferences,
     logging: { enabled: store.logging, file: logFile },
@@ -100,7 +109,6 @@ const server = createServer(requestHandler(async (req, res) => {
     try {
       if (activeWork())
         throw new Error("Finish active conversations, updates, and Git operations before applying the update.");
-      if (computerState().status !== "idle") throw new Error("End computer use before restarting to apply the update.");
       store.flush();
       lockForAppUpdate();
       res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ready: true }));
@@ -202,6 +210,7 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
   if (new URL(req.url ?? "/socket", origin).searchParams.has("desktop")) { attachDesktop(socket); return; }
   if (new URL(req.url ?? "/socket", origin).searchParams.get("workspace") === "1") { attachWorkspaceFeed(socket); return; }
   const consumer = randomUUID();
+  const query = new URL(req.url ?? "/socket", origin).searchParams;
   const subscriptions = new Map<string, { pending: number; flow: boolean; streamId: string }>();
   const outgoing: string[] = [];
   let outgoingBytes = 0;
@@ -215,6 +224,20 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
       });
     }
   };
+  const write = (message: string) => {
+    if (socket.readyState !== socket.OPEN) return;
+    outgoing.push(message);
+    outgoingBytes += Buffer.byteLength(message);
+    flush();
+    if (outgoingBytes > 8 * 1024 * 1024) {
+      outgoing.length = 0;
+      outgoingBytes = 0;
+      socket.close(1013, "The connection fell behind. Reconnecting.");
+    }
+  };
+  const replay = query.get("epoch") === connectionEpoch ? eventJournal.replay(Number(query.get("after"))) : null;
+  const threadIds = (query.get("threads") ?? "").split(",").filter(id => store.threads.has(id)).slice(0, 6);
+  const stream = query.get("stream") === "1" ? new SocketStream(replay ? Number(query.get("after")) : eventJournal.sequence, threadIds, write, pagedHistoryEvent) : undefined;
   const send = (event: ServerEvent) => {
     if (socket.readyState !== socket.OPEN) return;
     if (event.t === "term.data") {
@@ -226,21 +249,12 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
         if (subscription.pending > 131_072) terminals.flow(event.termId, consumer, true);
       }
     }
-    const message = JSON.stringify(event);
-    outgoing.push(message);
-    outgoingBytes += Buffer.byteLength(message);
-    flush();
-    if (outgoingBytes > 8 * 1024 * 1024) {
-      outgoing.length = 0;
-      outgoingBytes = 0;
-      socket.close(1013, "The connection fell behind. Reconnecting.");
-    }
+    if (stream && event.t !== "hello" && event.t !== "reconnected") stream.push(event);
+    else { stream?.flush(); write(encodeServerEvent(event)); }
   };
-  const query = new URL(req.url ?? "/socket", origin).searchParams;
-  const replay = query.get("epoch") === connectionEpoch ? eventJournal.replay(Number(query.get("after"))) : null;
   if (replay) {
     for (const event of replay) send(event);
-    send({ t: "reconnected", epoch: connectionEpoch, sequence: eventJournal.sequence, shells: shellList(false), browsers: browser.browserStates(), computer: computerState() });
+    send({ t: "reconnected", epoch: connectionEpoch, sequence: eventJournal.sequence, shells: shellList(false), browsers: browser.browserStates() });
   } else send({ t: "hello", snapshot: snapshot(), epoch: connectionEpoch, sequence: eventJournal.sequence });
   for (const project of store.projects.values()) void refreshGit(project.id, true);
 
@@ -253,6 +267,12 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
     } catch {
       return;
     }
+    if (event.t === "thread.subscribe") {
+      if (Array.isArray(event.ids) && event.ids.length <= 6 && event.ids.every(id => typeof id === "string"))
+        stream?.subscribe(event.ids.filter(id => store.threads.has(id)));
+      return;
+    }
+    if (event.t === "thread.load" && typeof event.id === "string") stream?.include(event.id);
     if (event.t === "term.ack") {
       const subscription = subscriptions.get(event.termId);
       if (subscription?.flow && subscription.streamId === event.streamId && Number.isSafeInteger(event.count) && event.count > 0 && event.count <= 1024 * 1024) {
@@ -269,7 +289,7 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
     try {
       assertApplicationReady();
       await duringCommand(async () => {
-        if ("requestId" in event && event.requestId) {
+        if (event.t !== "thread.load" && "requestId" in event && event.requestId) {
           const replies = await eventJournal.request(event.requestId, event, async () => {
             const events: ServerEvent[] = [];
             await handle(event, (reply) => events.push(reply));
@@ -285,7 +305,7 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
       else send({ t: "toast", level: "error", text: (error as Error).message });
     }
   });
-  socket.on("close", () => { outgoing.length = 0; outgoingBytes = 0; cancelThreadSearch(send); unsubscribe(); terminals.release(consumer); });
+  socket.on("close", () => { outgoing.length = 0; outgoingBytes = 0; stream?.close(); cancelThreadSearch(send); unsubscribe(); terminals.release(consumer); });
 });
 
 desktopEvents.on("event", (event) => {
@@ -319,7 +339,7 @@ onShutdown(async () => {
   disposeAll();
   terminals.detach();
   store.flush();
-  const results = await Promise.allSettled([closed, stopComputer(), browser.closeBrowsers(), waitForStoppedProcesses()]);
+  const results = await Promise.allSettled([closed, browser.closeBrowsers(), waitForStoppedProcesses()]);
   for (const result of results)
     if (result.status === "rejected")
       process.stderr.write(`Shutdown step failed: ${(result.reason as Error)?.message ?? String(result.reason)}\n`);

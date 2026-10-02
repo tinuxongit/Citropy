@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { FileDiff, RefreshCw, ScanSearch, X } from "lucide-react";
 import { Modal } from "./Modal.tsx";
 import { DiffView } from "./DiffView.tsx";
@@ -9,15 +9,15 @@ import { sendMessage, refreshGit } from "../lib/actions.ts";
 import { confirmAction, selectThread, useApp } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { Select } from "./Select.tsx";
-import type { ThreadMeta } from "../../../shared/protocol.ts";
-import type { ChangeReview, ReviewScope } from "../../../shared/review.ts";
+import type { FilePatch, ThreadMeta } from "../../../shared/protocol.ts";
+import type { ChangeReviewSummary, ReviewScope } from "../../../shared/review.ts";
 import type { AssistanceSettings, WritingModel } from "../../../shared/assistance.ts";
 import { LineCounts } from "./LineCounts.tsx";
 
 export function TaskReview({ thread, messageId, onClose }: { thread: ThreadMeta; messageId?: string; onClose: () => void }) {
   const t = useI18n();
   const [scope, setScope] = useState<ReviewScope>("lastTurn");
-  const [review, setReview] = useState<ChangeReview>();
+  const [loadedReview, setReview] = useState<{ params: string; revision: number; value: ChangeReviewSummary }>();
   const [revision, setRevision] = useState(0);
   const [limit, setLimit] = useState(30);
   const [open, setOpen] = useState(new Set<string>());
@@ -32,18 +32,20 @@ export function TaskReview({ thread, messageId, onClose }: { thread: ThreadMeta;
   const selection = useApp(state => state.assistance.reviewModel ?? null);
   const connected = useApp(state => state.connected);
   const active = useApp(state => state.threads[thread.id]?.running);
-  const params = new URLSearchParams({ threadId: thread.id, scope, ...(messageId && scope === "lastTurn" ? { messageId } : {}) });
+  const params = new URLSearchParams({ threadId: thread.id, scope, ...(messageId && scope === "lastTurn" ? { messageId } : {}) }).toString();
+  const review = loadedReview?.params === params && loadedReview.revision === revision ? loadedReview.value : undefined;
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError("");
     setReview(undefined);
-    void api<ChangeReview>(`threads/review?${params}`, { signal: controller.signal }).then(value => {
-      setReview(value);
-      setOpen(new Set(value.patches[0] ? [value.patches[0].path] : []));
+    void api<ChangeReviewSummary>(`threads/review?${params}&summary=1`, { signal: controller.signal }).then(value => {
+      if (controller.signal.aborted) return;
+      setReview({ params, revision, value });
+      setOpen(new Set(value.files[0] ? [value.files[0].path] : []));
     }).catch(error => { if (!controller.signal.aborted) setError(error.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [thread.id, scope, messageId, revision]);
+  }, [params, revision]);
   const action = async (run: () => Promise<void>) => {
     setBusy(true); setError("");
     try { await run(); } catch (error) { setError((error as Error).message); } finally { setBusy(false); }
@@ -80,15 +82,32 @@ export function TaskReview({ thread, messageId, onClose }: { thread: ThreadMeta;
       <button className="icon-btn" type="button" aria-label={t("Refresh review")} disabled={busy || loading} onClick={() => setRevision(value => value + 1)}><RefreshCw size={15} /></button>
       <ModelPicker label={t("Review model")} value={selection} fallback={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: thread.model ?? "default" }} allowConversation disabled={busy} onChange={value => void saveModel(value)}
         tune={{ settings: { effort: selection?.effort }, only: ["effort"], onChange: patch => { if (selection) void saveModel({ ...selection, effort: patch.effort }); } }} />
-      <button className="btn" type="button" disabled={busy || loading || !review?.patches.length || !connected} onClick={() => void action(async () => { setResult(await api(`threads/review-model?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ scope, messageId: scope === "lastTurn" ? messageId : undefined }) })); })}><ScanSearch size={15} />{t(busy ? "Working…" : "AI review")}</button>
+      <button className="btn" type="button" disabled={busy || loading || !review?.files.length || !connected} onClick={() => void action(async () => { setResult(await api(`threads/review-model?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ scope, messageId: scope === "lastTurn" ? messageId : undefined }) })); })}><ScanSearch size={15} />{t(busy ? "Working…" : "AI review")}</button>
     </div>
     {error && <p className="feature-error" role="alert">{error}</p>}
     {loading && <p role="status">{t("Loading changes…")}</p>}
     {review?.note && <p className="feature-note">{review.note}</p>}
     {result && <section className="review-result"><strong>{result.title}</strong><p>{result.body}</p>{result.revision !== review?.revision && <small>{t("The files changed after this review. Run it again before relying on the findings.")}</small>}<button type="button" className="btn" onClick={() => setComments(previous => [...previous, `${result.title}\n${result.body}`])}>{t("Add findings to feedback")}</button></section>}
-    <div className="review-files">{review?.patches.slice(0, limit).map(patch => <section key={patch.path} className="review-file"><button className="review-file-heading" type="button" aria-expanded={open.has(patch.path)} onClick={() => setOpen(previous => { const next = new Set(previous); if (next.has(patch.path)) next.delete(patch.path); else next.add(patch.path); return next; })}><FileIcon path={patch.path} /><span className="truncate">{patch.path}</span><LineCounts added={patch.added} removed={patch.removed} /></button>{open.has(patch.path) && <DiffView patch={patch} showHeader={false} expanded staged={scope === "staged"} busy={busy || active} onComment={(line, side) => { setTarget(`${patch.path}:${line} (${side})`); feedbackInput.current?.focus(); }} onHunk={scope === "staged" || scope === "unstaged" ? (index, operation) => hunk(patch.path, index, operation) : undefined} />}</section>)}</div>
-    {review && review.patches.length > limit && <button className="btn" type="button" onClick={() => setLimit(value => value + 30)}>{t("Show more files")}</button>}
-    {!loading && review && !review.patches.length && <p className="pane-empty">{t("No changes in this scope.")}</p>}
+    <div className="review-files">{review?.files.slice(0, limit).map(file => <section key={file.path} className="review-file"><button className="review-file-heading" type="button" aria-expanded={open.has(file.path)} onClick={() => setOpen(previous => { const next = new Set(previous); if (next.has(file.path)) next.delete(file.path); else next.add(file.path); return next; })}><FileIcon path={file.path} /><span className="truncate">{file.path}</span><LineCounts added={file.added} removed={file.removed} /></button>{open.has(file.path) && <ReviewPatch key={`${params}:${review.revision}:${file.path}`} params={params} path={file.path} revision={review.revision} staged={scope === "staged"} busy={busy || active} onComment={(line, side) => { setTarget(`${file.path}:${line} (${side})`); feedbackInput.current?.focus(); }} onHunk={scope === "staged" || scope === "unstaged" ? (index, operation) => hunk(file.path, index, operation) : undefined} />}</section>)}</div>
+    {review && review.files.length > limit && <button className="btn" type="button" onClick={() => setLimit(value => value + 30)}>{t("Show more files")}</button>}
+    {!loading && review && !review.files.length && <p className="pane-empty">{t("No changes in this scope.")}</p>}
     <div className="review-feedback"><label className="feature-field">{target || t("Feedback for the agent")}<textarea ref={feedbackInput} maxLength={16000} value={feedback} rows={3} onChange={event => setFeedback(event.target.value)} placeholder={t("Select a line to attach a comment, or describe a change here.")} /></label><button className="btn" type="button" disabled={!feedback.trim()} onClick={addFeedback}>{t("Add comment")}</button>{comments.map((comment, index) => <div className="review-comment" key={index}><span>{comment}</span><button className="icon-btn" type="button" aria-label={t("Remove comment")} onClick={() => setComments(previous => previous.filter((_, position) => position !== index))}><X size={14} /></button></div>)}</div>
   </Modal>;
+}
+
+function ReviewPatch({ params, path, revision, ...props }: { params: string; path: string; revision: string } & Pick<ComponentProps<typeof DiffView>, "staged" | "busy" | "onComment" | "onHunk">) {
+  const t = useI18n();
+  const [patch, setPatch] = useState<FilePatch>();
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    const file = new URLSearchParams({ path, revision });
+    void api<FilePatch>(`threads/review?${params}&${file}`, { signal: controller.signal }).then(value => {
+      if (!controller.signal.aborted) setPatch(value);
+    }).catch(error => { if (!controller.signal.aborted) setError(error.message); });
+    return () => controller.abort();
+  }, [params, path, revision]);
+  if (error) return <p className="feature-error" role="alert">{error}</p>;
+  if (!patch) return <p role="status">{t("Loading changes…")}</p>;
+  return <DiffView patch={patch} showHeader={false} expanded {...props} />;
 }

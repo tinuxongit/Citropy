@@ -93,16 +93,6 @@ Agents drive the same browser and terminals you see. The browser has phone and t
   <img alt="The browser panel showing a local dashboard next to the conversation" src="docs/assets/browser-light.png">
 </picture>
 
-### Computer use
-
-Share a screen and the agent can click and type in desktop apps. Pause or stop it anytime. Linux and macOS.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/computer-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/computer-light.png">
-  <img alt="The Computer panel sharing a Linux desktop with recent activity" src="docs/assets/computer-light.png">
-</picture>
-
 ### Questions in one place
 
 When an agent needs a decision, it asks above the composer. Pick one, pick several, or write your own.

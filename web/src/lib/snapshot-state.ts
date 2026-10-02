@@ -10,6 +10,7 @@ export function applySnapshot(state: AppState, snapshot: Snapshot, focused = tru
   restoreSnapshotNotifications(state, snapshot);
   restorePanels(state, snapshot);
   state.connected = true;
+  state.historyPaging = snapshot.historyPaging === true;
   state.choosingWorkspace = false;
   state.permissions = snapshot.permissions;
   state.questions = snapshot.questions ?? [];
@@ -29,11 +30,10 @@ function restoreEnvironment(state: AppState, snapshot: Snapshot): void {
   state.shells = Object.fromEntries((snapshot.shells ?? []).map(shell => [shell.id, shell]));
   state.projectDefaults = snapshot.projectDefaults ?? {};
   state.assistance = snapshot.assistance ?? { ...defaultAssistance };
-  state.computer = snapshot.computer ?? { enabled: false, status: "idle", control: false, displays: [], activity: [] };
 }
 
 function restorePanels(state: AppState, snapshot: Snapshot): void {
-  state.panels = snapshot.panels ?? [];
+  state.panels = (snapshot.panels ?? []).filter(panel => String(panel.kind) !== "computer");
   state.browsers = Object.fromEntries(
     (snapshot.browsers ?? []).map((browser) => [browser.id, browser]),
   );
@@ -55,6 +55,7 @@ function restoreThreads(state: AppState, snapshot: Snapshot): void {
   state.reveals = {};
   state.order = {};
   state.loaded = {};
+  state.historyPages = {};
   state.historyBytes = {};
   state.timelineVersions = {};
   state.disclosures = {};

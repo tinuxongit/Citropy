@@ -212,7 +212,16 @@ export async function createThread(provider?: ProviderId, options = false): Prom
 
 export function loadThread(id: string): void {
   if (useApp.getState().loaded[id] || !claimHistoryRequest(id)) return;
-  send({ t: "thread.load", id });
+  send({ t: "thread.load", id, ...(useApp.getState().historyPaging ? { page: {} } : {}) });
+}
+
+export async function loadOlderThread(id: string): Promise<void> {
+  const page = useApp.getState().historyPages[id];
+  if (!page?.next) return;
+  const key = requestId();
+  const response = awaitResponse<void>(key);
+  send({ t: "thread.load", id, page: { before: page.next, revision: page.revision }, requestId: key });
+  await response;
 }
 
 export async function openOnEnvironment(environment: string, projectId: string, threadId?: string): Promise<void> {

@@ -28,6 +28,35 @@ test("stream batches preserve snapshots and unchanged part subscriptions", () =>
   assert.equal(original.historyBytes.chat, bytes);
 });
 
+test("partial patch byte accounting matches a complete replacement without changing retained content", () => {
+  const tool = { id: "tool", kind: "tool", callId: "call", name: "Read", shape: "read", headline: "source.ts", input: { paths: ["a.ts", "b.ts"], options: { nested: [{ keep: true }] } }, status: "running", output: "first" };
+  const originalInput = structuredClone(tool.input);
+  const original = applyEvents(initial(), [history("chat", [message("reply", [tool])])]);
+  let next = original;
+  let expected = tool;
+  for (const value of [
+    { output: "extended output", status: "ok" },
+    { images: ["image one", "image two"], detail: { lines: [1, null, true], nested: { text: "é🙂" } } },
+    { output: undefined, images: [] },
+    { detail: null, status: "ok" },
+    { input: { paths: ["shorter.ts"] } },
+    JSON.parse('{"__proto__":{"retained":true},"escaped\\\"key":"value"}'),
+    {},
+  ]) {
+    expected = { ...expected, ...value };
+    const previous = next;
+    const previousPart = structuredClone(previous.parts.get("tool"));
+    next = applyEvents(next, [patch("tool", value)]);
+    const replacement = applyEvents(initial(), [history("chat", [message("reply", [expected])])]);
+    assert.equal(next.historyBytes.chat, replacement.historyBytes.chat);
+    assert.deepEqual(next.parts.get("tool"), expected);
+    assert.deepEqual(previous.parts.get("tool"), previousPart);
+    if (!Object.hasOwn(value, "input")) assert.strictEqual(next.parts.get("tool").input, previous.parts.get("tool").input);
+    assert.equal(original.parts.get("tool").output, "first");
+    assert.deepEqual(original.parts.get("tool").input, originalInput);
+  }
+});
+
 test("timeline caching follows grouping, visibility, and activity changes", () => {
   const tool = { id: "tool", kind: "tool", name: "Read", callId: "call", shape: "read", headline: "app.ts", status: "running" };
   let state = applyEvents(initial(), [history("chat", [message("reply", [tool, text("live", "", false)])])]);
@@ -103,13 +132,15 @@ test("history count eviction preserves the active conversation and older snapsho
 
 test("byte eviction drops background histories while retaining the active history", () => {
   const huge = "x".repeat(8 * 1024 * 1024);
-  const state = applyEvents(initial(), [history("other", [message("other-reply")])]);
+  const state = applyEvents(initial(), [{ ...history("other", [message("other-reply")]), page: { revision: 1, next: "older" } }]);
   const next = applyEvents(state, [history("chat", [message("reply", [text("huge", huge)])])]);
   assert.equal(next.loaded.chat, true);
   assert.equal(next.loaded.other, undefined);
   assert.equal(next.parts.has("other-reply-text"), false);
+  assert.equal(next.historyPages.other, undefined);
   assert.equal(next.parts.get("huge").text.length, huge.length);
   assert.equal(state.parts.has("other-reply-text"), true);
+  assert.deepEqual(state.historyPages.other, { revision: 1, next: "older" });
 });
 
 test("selection-triggered eviction copies history shared with the previous snapshot", () => {
@@ -157,4 +188,41 @@ test("environment slices retain their own immutable history maps", async () => {
   assert.equal(remote.parts.get("remote-reply-text").text, "Original");
   assert.equal(local.parts.get("reply-text").text, "Original");
   assert.equal(local.parts.has("remote-reply-text"), false);
+});
+
+test("older pages prepend unique messages without overwriting live parts or snapshots", () => {
+  const newest = { ...history("chat", [message("reply")]), page: { revision: 2, next: "older" } };
+  const original = applyEvents(initial(), [newest, append("reply-text", " streamed")]);
+  const previousBytes = original.historyBytes.chat;
+  const page = { ...history("chat", [message("first"), message("second"), message("reply")]), page: { before: "older", revision: 2, next: "oldest" } };
+  const next = applyEvents(original, [page]);
+  assert.deepEqual(next.order.chat, ["first", "second", "reply"]);
+  assert.equal(next.parts.get("reply-text").text, "Original streamed");
+  assert.strictEqual(next.parts.get("reply-text"), original.parts.get("reply-text"));
+  assert.deepEqual(next.historyPages.chat, page.page);
+  const added = applyEvents(initial(), [history("chat", [message("first"), message("second")])]);
+  assert.equal(next.historyBytes.chat, previousBytes + added.historyBytes.chat);
+  assert.deepEqual(original.order.chat, ["reply"]);
+  assert.deepEqual(original.historyPages.chat, newest.page);
+  assert.equal(original.parts.has("first-text"), false);
+});
+
+test("late cursor pages are rejected and revision resets replace obsolete history", () => {
+  const original = applyEvents(initial(), [{ ...history("chat", [message("reply")]), page: { revision: 2, next: "older" } }]);
+  for (const page of [{ before: "older", revision: 1 }, { before: "oldest", revision: 2 }]) {
+    const rejected = applyEvents(original, [{ ...history("chat", [message("late")]), page }]);
+    assert.deepEqual(rejected.order.chat, ["reply"]);
+    assert.equal(rejected.messages.late, undefined);
+    assert.equal(rejected.parts.has("late-text"), false);
+    assert.deepEqual(rejected.historyPages.chat, original.historyPages.chat);
+    assert.equal(rejected.historyBytes.chat, original.historyBytes.chat);
+  }
+  const reset = applyEvents(original, [{ ...history("chat", [message("reset")]), page: { revision: 3, next: "restart" } }]);
+  assert.deepEqual(reset.order.chat, ["reset"]);
+  assert.equal(reset.parts.has("reply-text"), false);
+  assert.equal(original.parts.has("reply-text"), true);
+  const complete = applyEvents(reset, [history("chat", [message("legacy")])]);
+  assert.deepEqual(complete.order.chat, ["legacy"]);
+  assert.equal(complete.historyPages.chat, undefined);
+  assert.deepEqual(reset.historyPages.chat, { revision: 3, next: "restart" });
 });

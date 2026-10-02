@@ -1,4 +1,4 @@
-import type { FilePatch } from "./protocol.ts";
+import type { ChangedFile, FilePatch } from "./protocol.ts";
 
 export interface TurnCheckpoint {
   messageId: string;
@@ -23,4 +23,8 @@ export interface ChangeReview {
   revision: string;
   messageId?: string;
   note?: string;
+}
+
+export interface ChangeReviewSummary extends Omit<ChangeReview, "patches"> {
+  files: ChangedFile[];
 }

@@ -15,7 +15,6 @@ import { store } from "./store.ts";
 import { providerControl } from "./providers/control.ts";
 import type { ProviderId, Thread } from "../shared/protocol.ts";
 import type { SkillInfo } from "../shared/features.ts";
-import { builtinSkillRoot, installComputerSkill } from "./builtin-skills.ts";
 
 const disabledName = "SKILL.md.citropy-disabled";
 const inventories = new Map<
@@ -78,7 +77,6 @@ async function roots(
     },
   ];
   for (const provider of ["claude", "codex", "opencode", "pi"] as const) {
-    if (provider !== "pi") locations.push({ path: builtinSkillRoot(), provider, scope: "builtin" });
     locations.push({
       path: join(home, ".agents/skills"),
       provider,
@@ -225,12 +223,11 @@ export async function mentionedSkills(thread: Thread, text: string): Promise<Ski
 }
 
 async function scanSkills(projectPath?: string): Promise<SkillInfo[]> {
-  await installComputerSkill();
   const managed = await codexSkills(projectPath);
   const skills: SkillInfo[] = managed ?? [];
   const found = new Set<string>();
   for (const root of await roots(projectPath)) {
-    if (managed && root.provider === "codex" && root.scope !== "builtin") continue;
+    if (managed && root.provider === "codex") continue;
     const queue = [{ path: root.path, depth: 0 }];
     const seen = new Set<string>();
     for (let index = 0; index < queue.length && index < 10_000; index++) {
@@ -337,11 +334,6 @@ export async function changeSkill(
   } else throw new Error("Unknown skill action");
   inventories.clear();
   return affected;
-}
-
-export async function restoreComputerSkill(): Promise<void> {
-  await installComputerSkill(true);
-  inventories.clear();
 }
 
 export async function readSkill(

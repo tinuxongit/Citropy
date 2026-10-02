@@ -1,5 +1,5 @@
 import type { AppState } from "./app-state.ts";
-import type { Message, Part, ServerEvent } from "../../../shared/protocol.ts";
+import type { HistoryPage, Message, Part, ServerEvent } from "../../../shared/protocol.ts";
 import { partFingerprint } from "./timeline.ts";
 
 const requestedHistories = new Set<string>();
@@ -11,15 +11,24 @@ export function claimHistoryRequest(threadId: string): boolean {
   return true;
 }
 
+export function releaseHistoryRequest(threadId: string): void {
+  requestedHistories.delete(threadId);
+}
+
 export function replaceHistory(
   state: AppState,
   threadId: string,
   messages: Message[],
+  page?: HistoryPage,
 ): void {
-  requestedHistories.delete(threadId);
-  removeMessages(state, threadId);
+  releaseHistoryRequest(threadId);
+  const prepend = page?.before !== undefined;
+  if (prepend && (!state.loaded[threadId] || state.historyPages[threadId]?.revision !== page.revision || state.historyPages[threadId]?.next !== page.before)) return;
+  if (!prepend) removeMessages(state, threadId);
   const ids: string[] = [];
+  const added: Message[] = [];
   for (const message of messages) {
+    if (prepend && state.messages[message.id]) continue;
     const partIds: string[] = [];
     for (const part of message.parts) {
       state.parts.set(part.id, part);
@@ -35,11 +44,15 @@ export function replaceHistory(
       partIds,
     };
     ids.push(message.id);
+    added.push(message);
   }
-  state.order[threadId] = ids;
+  state.order[threadId] = prepend ? [...ids, ...(state.order[threadId] ?? [])] : ids;
   state.loaded[threadId] = true;
-  state.historyBytes[threadId] = contentBytes(messages);
-  state.timelineVersions[threadId] = 0;
+  state.historyBytes[threadId] = (prepend ? state.historyBytes[threadId] ?? 0 : 0) + contentBytes(added);
+  state.timelineVersions[threadId] = (state.timelineVersions[threadId] ?? 0) + 1;
+  state.historyPages ??= {};
+  if (page) state.historyPages[threadId] = page;
+  else delete state.historyPages[threadId];
 }
 
 function contentBytes(value: unknown): number {
@@ -66,11 +79,12 @@ export function removeMessages(state: AppState, threadId: string): void {
   delete state.loaded[threadId];
   delete state.historyBytes[threadId];
   delete state.timelineVersions[threadId];
+  if (state.historyPages) delete state.historyPages[threadId];
 }
 
-export type HistoryCollection = "messages" | "parts" | "order" | "loaded" | "reveals" | "historyBytes" | "timelineVersions" | "disclosures";
+export type HistoryCollection = "messages" | "parts" | "order" | "loaded" | "reveals" | "historyBytes" | "historyPages" | "timelineVersions" | "disclosures";
 const allHistory: HistoryCollection[] = [
-  "messages", "parts", "order", "loaded", "reveals", "historyBytes", "timelineVersions", "disclosures",
+  "messages", "parts", "order", "loaded", "reveals", "historyBytes", "historyPages", "timelineVersions", "disclosures",
 ];
 export const historyChanges: Partial<Record<ServerEvent["t"], HistoryCollection[]>> = {
   "thread.remove": allHistory,
@@ -185,7 +199,13 @@ export function applyMessageEvent(
       const updated = { ...part, ...event.patch } as Part;
       if (partFingerprint(part) !== partFingerprint(updated))
         state.timelineVersions = { ...state.timelineVersions, [event.threadId]: (state.timelineVersions[event.threadId] ?? 0) + 1 };
-      state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + contentBytes(updated) - contentBytes(part);
+      let bytes = state.historyBytes[event.threadId] ?? 0;
+      for (const [key, value] of Object.entries(event.patch)) {
+        if (Object.hasOwn(part, key)) bytes -= contentBytes(part[key as keyof Part]);
+        else bytes += key.length * 2;
+        bytes += contentBytes(value);
+      }
+      state.historyBytes[event.threadId] = bytes;
       state.parts.set(event.partId, updated);
       return;
     }

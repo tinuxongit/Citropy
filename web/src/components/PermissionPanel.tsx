@@ -24,8 +24,6 @@ function lede(request: PermissionRequest, project: string, t: ReturnType<typeof 
       return t("Read {where}{headline}.", { where, headline: request.headline });
     case "web":
       return t("Fetch this address from the internet.");
-    case "computer":
-      return t("Use the shared desktop screen, pointer, or keyboard.");
     case "task":
       return t("Start a subagent for this task.");
     default:

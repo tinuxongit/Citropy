@@ -67,39 +67,88 @@ async function render(
   });
 }
 
-const HTML_CACHE_LIMIT = 2 * 1024 * 1024;
-const htmlCache = new Map<string, string>();
-let htmlCacheSize = 0;
+const CACHE_LIMIT = 2 * 1024 * 1024;
+const cache = new Map<string, { result: string | string[]; bytes: number }>();
+const inflight = new Map<string, { controller: AbortController; result: Promise<Result>; consumers: number }>();
+let cacheSize = 0;
 
-function rememberHtml(key: string, html: string): void {
-  const size = (key.length + html.length) * 2;
-  if (size > HTML_CACHE_LIMIT || htmlCache.has(key)) return;
-  while (htmlCacheSize + size > HTML_CACHE_LIMIT) {
-    const [oldKey, oldHtml] = htmlCache.entries().next().value!;
-    htmlCache.delete(oldKey);
-    htmlCacheSize -= (oldKey.length + oldHtml.length) * 2;
+function remember(key: string, result: string | string[]): void {
+  if (cache.has(key)) return;
+  const size = key.length * 2 + (typeof result === "string" ? result.length * 2 : result.reduce((total, line) => total + line.length * 2 + 16, 0));
+  if (size > CACHE_LIMIT) return;
+  while (cache.size >= 128 || cacheSize + size > CACHE_LIMIT) {
+    const [oldKey, entry] = cache.entries().next().value!;
+    cache.delete(oldKey);
+    cacheSize -= entry.bytes;
   }
-  htmlCache.set(key, html);
-  htmlCacheSize += size;
+  cache.set(key, { result: typeof result === "string" ? result : [...result], bytes: size });
+  cacheSize += size;
+}
+
+function sharedRender(key: string, request: Omit<HighlightRequest, "id">, signal?: AbortSignal): Promise<Result> {
+  if (signal?.aborted) return Promise.resolve(null);
+  let entry = inflight.get(key);
+  if (!entry) {
+    const controller = new AbortController();
+    const created = { controller, result: render(request, controller.signal), consumers: 0 };
+    created.result = created.result.finally(() => {
+      if (inflight.get(key) === created) inflight.delete(key);
+    });
+    entry = created;
+    inflight.set(key, entry);
+  }
+  const current = entry;
+  current.consumers++;
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (result: Result, error?: unknown) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", cancel);
+      current.consumers--;
+      if (error !== undefined) reject(error);
+      else resolve(result);
+    };
+    const cancel = () => {
+      finish(null);
+      if (!current.consumers) {
+        if (inflight.get(key) === current) inflight.delete(key);
+        current.controller.abort();
+      }
+    };
+    signal?.addEventListener("abort", cancel, { once: true });
+    current.result.then(result => finish(result), error => finish(null, error));
+    if (signal?.aborted) cancel();
+  });
 }
 
 export async function highlight(code: string, lang: string | undefined, theme: "dark" | "light", signal?: AbortSignal): Promise<string> {
-  const key = `${theme}\0${lang ?? ""}\0${code}`;
-  const cached = htmlCache.get(key);
-  if (cached !== undefined) {
-    htmlCache.delete(key);
-    htmlCache.set(key, cached);
-    return cached;
+  const key = `html\0${theme}\0${lang ?? ""}\0${code}`;
+  const cached = cache.get(key);
+  if (cached && typeof cached.result === "string") {
+    cache.delete(key);
+    cache.set(key, cached);
+    return cached.result;
   }
-  const result = await render({ kind: "html", code, lang, theme }, signal);
+  const result = await sharedRender(key, { kind: "html", code, lang, theme }, signal);
   if (typeof result !== "string") return `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
-  rememberHtml(key, result);
+  remember(key, result);
   return result;
 }
 
 export async function highlightTokens(code: string, lang: string | undefined, theme: "dark" | "light", signal?: AbortSignal): Promise<string[] | null> {
-  const result = await render({ kind: "tokens", code, lang, theme }, signal);
-  return Array.isArray(result) ? result : null;
+  if (signal?.aborted) return null;
+  const key = `tokens\0${theme}\0${lang ?? ""}\0${code}`;
+  const cached = cache.get(key);
+  if (cached && Array.isArray(cached.result)) {
+    cache.delete(key);
+    cache.set(key, cached);
+    return [...cached.result];
+  }
+  const result = await sharedRender(key, { kind: "tokens", code, lang, theme }, signal);
+  if (!Array.isArray(result)) return null;
+  remember(key, result);
+  return [...result];
 }
 
 if (import.meta.hot) import.meta.hot.dispose(dispose);

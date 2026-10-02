@@ -92,7 +92,6 @@ export class Store {
   disabledProviders = new Set<ProviderId>();
   providerInstances = new Map<string, ProviderInstance>();
   openCodeVersion: OpenCodeVersionSetting = "auto";
-  computerEnabled = false;
   assistance: AssistanceSettings = { ...defaultAssistance };
   projectDefaults: ProjectSettings = {};
   notifications: AppNotification[] = [];
@@ -177,6 +176,10 @@ export class Store {
     return this.#loaded.get(threadId) ?? eventJournal.messages(threadId);
   }
 
+  readMessagePage(threadId: string, page: { before?: string; revision?: number }) {
+    return eventJournal.messagePage(threadId, page);
+  }
+
   search(query: string, projectId?: string, signal?: AbortSignal) {
     return this.#search.search(this.threads.values(), query, projectId, signal);
   }
@@ -187,7 +190,6 @@ export class Store {
         const settings = JSON.parse(readFileSync(settingsFile, "utf8"));
         if (settings.projectDefaults && typeof settings.projectDefaults === "object" && !Array.isArray(settings.projectDefaults))
           this.projectDefaults = settings.projectDefaults;
-        this.computerEnabled = settings.computerEnabled === true;
         if (settings.openCodeVersion === 1 || settings.openCodeVersion === 2) this.openCodeVersion = settings.openCodeVersion;
         this.logging = settings.logging !== false;
         this.resumeAfterLimits = settings.resumeAfterLimits === true;
@@ -287,11 +289,6 @@ export class Store {
     if (setting !== "auto" && setting !== 1 && setting !== 2) throw new Error("Invalid OpenCode version setting");
     this.#saveSettings({ openCodeVersion: setting });
     this.openCodeVersion = setting;
-  }
-
-  setComputerEnabled(enabled: boolean): void {
-    this.#saveSettings({ computerEnabled: enabled });
-    this.computerEnabled = enabled;
   }
 
   notify(input: Omit<AppNotification, "id" | "createdAt" | "read">): void {
@@ -408,7 +405,6 @@ export class Store {
     saveJson(settingsFile, {
       disabledProviders: [...this.disabledProviders],
       notifications: this.notificationPreferences,
-      computerEnabled: this.computerEnabled,
       logging: this.logging,
       resumeAfterLimits: this.resumeAfterLimits,
       assistance: this.assistance,

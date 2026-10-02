@@ -58,12 +58,15 @@ const LIGHT = {
   brightCyan: "#07808a",
 };
 
+let webgl2Available = false;
+
 function hasWebgl2(): boolean {
+  if (webgl2Available) return true;
   try {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("webgl2");
     context?.getExtension("WEBGL_lose_context")?.loseContext();
-    return Boolean(context);
+    return webgl2Available = Boolean(context);
   } catch {
     return false;
   }

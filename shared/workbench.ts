@@ -1,5 +1,5 @@
 export type PanelKind =
-  "browser" | "terminal" | "files" | "changes" | "subagents" | "tools" | "computer" | "drawing" | "notes";
+  "browser" | "terminal" | "files" | "changes" | "subagents" | "tools" | "drawing" | "notes";
 
 export interface PanelTab {
   id: string;

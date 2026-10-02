@@ -81,13 +81,16 @@ export class ConversationSearchIndex {
         ids.add(Number(row.id));
       }
     }
-    const statement = this.#db.prepare("SELECT id,message,text FROM messages WHERE thread=? ORDER BY position");
+    const statement = this.#db.prepare(candidates
+      ? "SELECT id,message,text FROM messages WHERE thread=? AND id IN (SELECT value FROM json_each(?)) ORDER BY position"
+      : "SELECT id,message,text FROM messages WHERE thread=? ORDER BY position");
     function* messageTexts(thread: string) {
       const ids = candidates?.get(thread);
       if (candidates && !ids) return;
-      for (const row of statement.iterate(thread)) {
+      const rows = ids ? statement.iterate(thread, JSON.stringify([...ids])) : statement.iterate(thread);
+      for (const row of rows) {
         if (cancelled()) return;
-        if (!ids || ids.has(Number(row.id))) yield { id: String(row.message), text: JSON.parse(String(row.text)) as string, normalized: true };
+        yield { id: String(row.message), text: JSON.parse(String(row.text)) as string, normalized: true };
       }
     }
     return searchConversations(threads, messageTexts, query, projectId, cancelled);

@@ -2,6 +2,23 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.5.7
+
+### Improved
+- Long conversations load recent messages first, with older messages available on demand and through search.
+- Live updates follow the conversations retained in the interface, with tool progress and text deltas combined before transmission. Streaming avoids repeatedly encoding retained text and tool output.
+- Large GitHub diffs use the virtualized diff viewer. Task reviews load file patches as they are opened.
+- Reopening highlighted diffs reuses cached tokens within the existing memory budget. Simultaneous requests for the same highlighting share one worker operation.
+- Secondary screens, drawing and notes load when they are needed, reducing initial JavaScript transfer.
+- Background tool updates measure only changed content when checking conversation cache sizes.
+- Indexed conversation searches filter matching messages before reading their text.
+- Sidebar updates reuse virtualized row measurements when the row order stays the same.
+- Terminal panes reuse successful graphics capability detection.
+- Resource diagnostics measure CPU between updates and share overlapping collection requests.
+
+### Removed
+- Computer use, including desktop control tools, screen sharing, settings and native helpers.
+
 ## 0.5.6
 
 ### Fixed

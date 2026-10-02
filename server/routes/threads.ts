@@ -134,8 +134,11 @@ export const threadRoutes: Routes = {
     }
   },
   "thread.load": (event, send) => {
+    if (event.requestId !== undefined && (typeof event.requestId !== "string" || !event.requestId || event.requestId.length > 200)) throw new Error("Invalid request identifier.");
+    if (event.page !== undefined && (!event.page || typeof event.page !== "object" || Array.isArray(event.page))) throw new Error("Invalid conversation history page.");
     const thread = store.threads.get(event.id);
-    if (thread) send({ t: "thread.messages", threadId: thread.id, messages: store.readMessages(thread.id) });
+    if (!thread && event.page !== undefined) throw new Error("This conversation no longer exists.");
+    if (thread) send({ t: "thread.messages", threadId: thread.id, ...(event.page === undefined ? { messages: store.readMessages(thread.id) } : store.readMessagePage(thread.id, event.page)), ...(event.requestId ? { requestId: event.requestId } : {}) });
   },
   "thread.resumeAfterLimit": (event) => {
     const thread = store.threads.get(event.id);

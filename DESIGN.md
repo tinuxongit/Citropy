@@ -39,7 +39,7 @@ Added and removed lines always use `LineCounts` (`web/src/components/LineCounts.
 
 ## Density
 
-Every pixel value scales with the UI size setting (`--ui-scale`). The default is 90% with a mouse, for a denser layout like Claude's, and 100% on touch screens so tap targets stay large. `DEFAULT_UI_SCALE` in `web/src/lib/app-state.ts` holds it.
+Every pixel value scales with the UI size setting (`--ui-scale`). The default is 90% with a mouse, for a denser layout, and 100% on touch screens so tap targets stay large. `DEFAULT_UI_SCALE` in `web/src/lib/app-state.ts` holds it.
 
 ## Spacing
 

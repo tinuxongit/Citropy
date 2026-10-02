@@ -1,9 +1,12 @@
-import type { KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { GitBranch } from "lucide-react";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { useI18n } from "../../lib/i18n.ts";
 import { FileIcon } from "../FileIcon.tsx";
 import { Prose } from "../parts/Prose.tsx";
+import { DiffView } from "../DiffView.tsx";
+import { VirtualList } from "../VirtualList.tsx";
+import { parseUnifiedDiff } from "../../../../shared/diff.ts";
 import { GitHubLink, GitHubState, githubDate } from "./GitHubShared.tsx";
 import type { ItemAction } from "./GitHubItemDialog.tsx";
 import type {
@@ -41,13 +44,6 @@ function moveTabFocus(event: KeyboardEvent<HTMLDivElement>) {
           buttons.length;
   buttons[next]?.click();
   buttons[next]?.focus();
-}
-
-function patchLineKind(line: string) {
-  if (line.startsWith("+")) return "add";
-  if (line.startsWith("-")) return "del";
-  if (line.startsWith("@@")) return "hunk";
-  return "context";
 }
 
 export function GitHubItemDetail({
@@ -223,10 +219,19 @@ function Conversation({ detail }: { detail: GitHubDetail }) {
 
 function FilesChanged({ files }: { files: GitHubFile[] }) {
   const t = useI18n();
+  const [collapsed, setCollapsed] = useState(new Set<string>());
   return (
-    <div className="github-files">
-      {files.map((file) => (
-        <details key={file.filename} open>
+    <VirtualList items={files} itemKey="filename" estimateSize={300} className="github-files">
+      {file => (
+        <details open={!collapsed.has(file.filename)} onToggle={event => {
+          const open = event.currentTarget.open;
+          setCollapsed(previous => {
+            if (previous.has(file.filename) === !open) return previous;
+            const next = new Set(previous);
+            if (open) next.delete(file.filename); else next.add(file.filename);
+            return next;
+          });
+        }}>
           <summary>
             <FileIcon path={file.filename} />
             <span>{file.filename}</span>
@@ -237,23 +242,31 @@ function FilesChanged({ files }: { files: GitHubFile[] }) {
             <p className="github-meta">{" "}{t("Renamed from")}{" "}{file.previous_filename}
             </p>
           )}
-          {file.patch ? (
-            <pre className="github-patch">
-              {file.patch.split("\n").map((line, index) => (
-                <span key={index} data-kind={patchLineKind(line)}>
-                  {line}
-                </span>
-              ))}
-            </pre>
+          {!collapsed.has(file.filename) && (file.patch ? (
+            <GitHubFileDiff file={file} />
           ) : (
             <p className="github-meta">{" "}{t("GitHub does not provide an inline diff for this file.")}{" "}
               <GitHubLink className="github-inline-link" href={file.blob_url}>{" "}{t("View file")}{" "}</GitHubLink>
             </p>
-          )}
+          ))}
         </details>
-      ))}
-    </div>
+      )}
+    </VirtualList>
   );
+}
+
+function GitHubFileDiff({ file }: { file: GitHubFile }) {
+  const patch = useMemo(() => {
+    const parsed = parseUnifiedDiff(file.patch ?? "", file.filename, undefined, Infinity)[0];
+    return {
+      path: file.filename,
+      added: file.additions,
+      removed: file.deletions,
+      hunks: parsed?.hunks ?? [],
+      truncated: parsed?.truncated || (parsed?.added ?? 0) < file.additions || (parsed?.removed ?? 0) < file.deletions,
+    };
+  }, [file]);
+  return <DiffView patch={patch} showHeader={false} showHunkHeaders expanded />;
 }
 
 function Checks({ detail }: { detail: GitHubDetail }) {

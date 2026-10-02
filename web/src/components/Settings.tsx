@@ -6,7 +6,6 @@ import {
   BookOpen,
   FolderCog,
   Globe,
-  MousePointerClick,
   Palette,
   PencilLine,
   RefreshCw,
@@ -23,7 +22,6 @@ import { AppearanceSettings } from "./AppearanceSettings.tsx";
 import { ApplicationSettings } from "./ApplicationSettings.tsx";
 import { AssistanceSettings } from "./AssistanceSettings.tsx";
 import { BrowserProfiles } from "./BrowserProfiles.tsx";
-import { ComputerSettings } from "./ComputerSettings.tsx";
 import { DiagnosticsSettings } from "./DiagnosticsSettings.tsx";
 import { EnvironmentSettings } from "./EnvironmentSettings.tsx";
 import { GeneralSettings } from "./GeneralSettings.tsx";
@@ -45,7 +43,6 @@ const sections: { name: string; group: typeof GROUPS[number]; icon: LucideIcon }
   { name: "AI assistance", group: "Agents", icon: PencilLine },
   { name: "Skills", group: "Agents", icon: BookOpen },
   { name: "Browser", group: "Tools", icon: Globe },
-  { name: "Computer use", group: "Tools", icon: MousePointerClick },
   { name: "Resources", group: "System", icon: Activity },
   { name: "Application", group: "System", icon: AppWindow },
 ];
@@ -124,7 +121,6 @@ export function Settings({
             {section === "Skills" && <SkillsSettings />}
             {section === "AI assistance" && <AssistanceSettings />}
             {section === "Browser" && <BrowserProfiles />}
-            {section === "Computer use" && <ComputerSettings />}
             {section === "Resources" && <DiagnosticsSettings />}
             {section === "General" && <GeneralSettings />}
             {section === "Notifications" && <NotificationSettings />}

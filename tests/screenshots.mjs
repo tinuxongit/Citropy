@@ -287,24 +287,6 @@ const dashboardHtml = `<!doctype html>
   </div>
 </main>`;
 
-const desktopHtml = `<!doctype html>
-<style>
-  :root { color-scheme: dark; }
-  body { margin: 0; background: #1b2631; color: #e6ecf1; font: 15px/1.6 Inter, system-ui, sans-serif; }
-  header { padding: 14px 22px; background: #25313d; font-weight: 600; }
-  main { margin: 40px; padding: 30px; width: 640px; background: #22303c; border-radius: 12px; }
-  h1 { margin: 0 0 12px; font-size: 22px; }
-  p { color: #a8b8c6; }
-  button { margin-top: 10px; padding: 10px 18px; border: 0; border-radius: 8px; background: #63a4e6; color: #10222f; font: inherit; font-weight: 600; }
-</style>
-<header>Station console</header>
-<main>
-  <h1>Deploy rainfall chart</h1>
-  <p>Review the release checklist for the weather station dashboard and publish the new rainfall view.</p>
-  <p>Screen sharing keeps this application visible to the current conversation.</p>
-  <button>Open checklist</button>
-</main>`;
-
 const questions = [
   {
     id: "missing",
@@ -599,47 +581,6 @@ async function main() {
           await page.evaluate((data) => window.__browserCover("browser", data), `data:image/jpeg;base64,${cover}`);
           await page.locator(".browser-cover").waitFor();
           await page.getByText("Phone", { exact: true }).waitFor();
-        },
-      });
-    },
-
-    async computer(theme) {
-      const desktopImage = await image(desktopHtml, 1400, 900);
-      const computerState = {
-        enabled: true,
-        status: "active",
-        control: true,
-        threadId: "rainfall",
-        projectId: "workspace",
-        startedAt: now - 20 * minute,
-        displays: [{ id: "screen", name: "Primary screen", width: 1400, height: 900 }],
-        activity: [
-          { id: "shot", action: "Screenshot", actor: "provider", status: "done", at: now - 3 * minute },
-          { id: "click", action: "Click", actor: "provider", status: "done", at: now - 2 * minute },
-          { id: "type", action: "Type 24 characters", actor: "provider", status: "done", at: now - minute },
-          { id: "verify", action: "Screenshot", actor: "user", status: "done", at: now },
-        ],
-      };
-      await shot("computer", theme, {
-        preferences: { inspector: "1", inspectorWidth: "560" },
-        snapshot: snapshot({
-          panels: [{ id: "computer", kind: "computer", projectId: "workspace", title: "Computer" }],
-          computer: computerState,
-        }),
-        api: (route) => {
-          const path = new URL(route.request().url()).pathname;
-          if (path === "/api/computer/screenshot")
-            return { id: "frame-1", displayId: "screen", width: 1400, height: 900, sourceWidth: 1400, sourceHeight: 900, capturedAt: now, image: desktopImage };
-          if (path === "/api/computer") return { state: computerState, capabilities: { available: true, platform: "linux", backend: "wayland-portal" } };
-        },
-        onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
-        },
-        act: async (page, connection) => {
-          await page.locator(".turn").first().waitFor();
-          connection().send(JSON.stringify({ t: "panel.upsert", panel: { id: "computer", kind: "computer", projectId: "workspace", title: "Computer" } }));
-          await page.locator(".computer-preview img").waitFor();
-          await page.getByText("Recent activity", { exact: true }).waitFor();
         },
       });
     },

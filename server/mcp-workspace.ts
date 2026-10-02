@@ -13,9 +13,6 @@ import { remoteId } from "./remote.ts";
 import { runtimeFor, runtimeIfExists } from "./runtime.ts";
 import { bus } from "./bus.ts";
 import * as browser from "./browser.ts";
-import * as computer from "./computer.ts";
-import { computerInstructions } from "./builtin-skills.ts";
-import type { ComputerAction, ComputerRegion } from "../shared/computer.ts";
 import * as files from "./files.ts";
 import * as terminals from "./terminals.ts";
 import { closePanel, openPanel, panelList } from "./panels.ts";
@@ -51,50 +48,6 @@ function chatTool(name: string): boolean {
 
 const MAX_RUNNING_SUBAGENTS = 4;
 const MAX_SUBAGENT_DEPTH = 3;
-
-// Some MCP clients stringify values inside run_tool's open-ended arguments object.
-// Convert only numeric fields the selected operation actually uses; every other
-// key (text, IDs, frame references, fields for other actions) passes through
-// untouched for downstream validation to accept or reject.
-/** Numeric fields used by each computer action. */
-const actionNumbers: Record<string, string[]> = {
-  move: ["x", "y"],
-  click: ["x", "y", "count"],
-  drag: ["x", "y", "toX", "toY", "durationMs"],
-  scroll: ["x", "y", "deltaX", "deltaY"],
-  press: [],
-  type: [],
-  wait: ["durationMs"],
-};
-const regionNumbers = ["x", "y", "width", "height"];
-
-/** Convert stringified numbers in place, rejecting non-numeric values. */
-function coerceNumbers(input: Record<string, unknown>, keys: string[]): void {
-  for (const key of keys) {
-    if (input[key] === undefined) continue;
-    const value = input[key];
-    const number = typeof value === "string" && /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(value) ? Number(value) : value;
-    if (typeof number !== "number" || !Number.isFinite(number)) throw new Error(`Invalid ${key}: provide a finite number.`);
-    input[key] = number;
-  }
-}
-
-/** Normalize open-ended computer tool arguments for one operation. */
-function computerArguments(args: Record<string, unknown>, screenshot: boolean): Record<string, unknown> {
-  const input = { ...args };
-  if (screenshot) {
-    if (input.maxWidth !== undefined) coerceNumbers(input, ["maxWidth"]);
-    if (input.region !== undefined) {
-      if (!input.region || typeof input.region !== "object" || Array.isArray(input.region)) throw new Error("Provide a screen region object.");
-      const region = { ...(input.region as Record<string, unknown>) };
-      coerceNumbers(region, regionNumbers);
-      input.region = region;
-    }
-  } else {
-    coerceNumbers(input, typeof input.action === "string" ? actionNumbers[input.action] ?? [] : []);
-  }
-  return input;
-}
 
 function assertSubagentSlot(parentId: string): void {
   const running = [...store.threads.values()].filter(
@@ -226,23 +179,6 @@ export async function callWorkspaceTool(
   }
   switch (name) {
     case "ask_user": return text(await askQuestion(threadId, args.questions, { signal }));
-    case "computer_help": return text(await computerInstructions());
-    case "computer_status": return text({ state: computer.computerState(), capabilities: await computer.computerCapabilities().catch((error) => ({ available: false, reason: error.message })) });
-    case "computer_start": return text(await computer.startComputer(threadId));
-    case "computer_screenshot": {
-      const input = computerArguments(args, true);
-      const { image, ...frame } = await computer.computerScreenshot(threadId, {
-        displayId: typeof input.displayId === "string" ? input.displayId : undefined,
-        maxWidth: input.maxWidth as number | undefined,
-        region: input.region as ComputerRegion | undefined,
-      });
-      return [...text(frame), { type: "image", data: image, mimeType: "image/jpeg" }];
-    }
-    case "computer_action": return text(await computer.computerAction(threadId, computerArguments(args, false) as ComputerAction));
-    case "computer_stop": {
-      if (computer.computerState().threadId && computer.computerState().threadId !== threadId) throw new Error("This conversation does not own the computer session.");
-      return text(await computer.stopComputer());
-    }
     case "browser_open": {
       const panel = openPanel(project.id, "browser", threadId);
       try {
@@ -380,7 +316,7 @@ export async function callWorkspaceTool(
     }
     case "open_panel": {
       const kind = required(args, "kind") as PanelKind;
-      if (!["files", "changes", "subagents", "tools", ...(remoteId ? [] : ["computer"])].includes(kind))
+      if (!["files", "changes", "subagents", "tools"].includes(kind))
         throw new Error("Unknown panel kind");
       const panel = panelList().find(
         (entry) => entry.projectId === project.id && entry.kind === kind,

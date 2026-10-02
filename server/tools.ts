@@ -50,22 +50,7 @@ export function describeTool(name: string, rawInput: unknown, root = ""): ToolDe
   const short = path ? basename(path) : "";
   const dir = folder(path, root);
 
-  const computer = name.replace(/^(?:mcp__citropy__|citropy_)/, "");
-  if (computer === "workspace_image") return { shape: "read", headline: `Share ${short || "image"}`, detail: dir };
-  if (computer.startsWith("computer_")) {
-    const headlines: Record<string, string> = {
-      computer_help: "Read computer-use instructions",
-      computer_status: "Check desktop session",
-      computer_start: "Share the desktop",
-      computer_screenshot: "Inspect the desktop",
-      computer_stop: "Stop desktop sharing",
-    };
-    const headline = computer === "computer_action"
-      ? input.action === "type" ? `Type ${str(input.text).length} characters` : input.action === "press" ? `Press ${str(input.key)}` : `${str(input.action) || "Use"} on the desktop`
-      : headlines[computer] ?? "Use the desktop";
-    return { shape: "computer", headline: headline[0]!.toUpperCase() + headline.slice(1) };
-  }
-
+  if (name.replace(/^(?:mcp__citropy__|citropy_)/, "") === "workspace_image") return { shape: "read", headline: `Share ${short || "image"}`, detail: dir };
   switch (name) {
     case "Bash":
     case "BashOutput":

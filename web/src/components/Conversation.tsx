@@ -5,7 +5,8 @@ import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import { MessageBlock } from "./MessageBlock.tsx";
 import { MessageNavigator } from "./MessageNavigator.tsx";
 import { scaled, useApp } from "../lib/store.ts";
-import { loadThread, readThreadNotifications, refreshGit } from "../lib/actions.ts";
+import { loadOlderThread, loadThread, readThreadNotifications, refreshGit } from "../lib/actions.ts";
+import { reportError } from "../lib/api.ts";
 import { useStickToBottom } from "../lib/use-stick.ts";
 import { usePanelMotion } from "../lib/use-panel-motion.ts";
 import { useMessageHeaderMotion } from "../lib/use-message-header-motion.ts";
@@ -37,9 +38,15 @@ export function Conversation() {
   const usageLimited = useApp((state) => Boolean(threadId && state.threads[threadId]?.usageLimit));
   const connected = useApp((state) => state.connected);
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
+  const olderCursor = useApp((state) => threadId ? state.historyPages[threadId]?.next : undefined);
   const followRequest = useApp((state) => state.followRequest);
   const uiScale = useApp((state) => state.uiScale);
   const [selectedMessageId, setSelectedMessageId] = useState<string>();
+  const [loadingOlderThread, setLoadingOlderThread] = useState<string>();
+  const loadingOlder = loadingOlderThread === threadId;
+  const olderRequests = useRef(new Set<string>());
+  const failedOlder = useRef<{ threadId: string; cursor: string }>(undefined);
+  const olderAnchor = useRef<{ threadId: string; cursor: string; key: string; offset: number }>(undefined);
   const {
     viewport,
     content,
@@ -59,9 +66,10 @@ export function Conversation() {
     count: rows.length,
     getScrollElement: () => viewport.current,
     getItemKey,
+    anchorTo: "end",
     estimateSize: () => scaled(180),
     initialOffset: () => viewport.current?.scrollTop ?? rows.length * scaled(180),
-    paddingStart: scaled(30),
+    paddingStart: scaled(olderCursor ? 76 : 30),
     overscan: virtualized ? 4 : 40,
     measureElement: (element, entry) => {
       const cached = rowHeights.current.get(element);
@@ -84,9 +92,48 @@ export function Conversation() {
   }), [timeline]);
   timeline.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) => {
     if (following()) return false;
-    return item.end <= (instance.scrollOffset ?? 0) + instance.scrollAdjustments;
+    const offset = (instance.scrollOffset ?? 0) + instance.scrollAdjustments;
+    return (instance.itemSizeCache.has(item.key) ? item.end : item.start) <= offset;
   };
   const virtualItems = timeline.getVirtualItems();
+  const loadOlder = useCallback(async () => {
+    if (!threadId || !connected || olderRequests.current.has(threadId)) return;
+    const cursor = useApp.getState().historyPages[threadId]?.next;
+    if (!cursor) return;
+    olderRequests.current.add(threadId);
+    failedOlder.current = undefined;
+    setLoadingOlderThread(threadId);
+    stopFollowing();
+    const canvas = viewport.current;
+    const item = timeline.getVirtualItems().find(item => item.end > (canvas?.scrollTop ?? 0));
+    const element = item && timeline.elementsCache.get(item.key);
+    if (canvas && item && element) olderAnchor.current = { threadId, cursor, key: String(item.key), offset: element.getBoundingClientRect().top - canvas.getBoundingClientRect().top };
+    try {
+      await loadOlderThread(threadId);
+    } catch (error) {
+      failedOlder.current = { threadId, cursor };
+      olderAnchor.current = undefined;
+      reportError(error);
+    } finally {
+      olderRequests.current.delete(threadId);
+      setLoadingOlderThread(current => current === threadId ? undefined : current);
+    }
+  }, [threadId, connected, stopFollowing, viewport, timeline]);
+  useLayoutEffect(() => {
+    const anchor = olderAnchor.current;
+    if (!anchor || anchor.threadId !== threadId || anchor.cursor === olderCursor) return;
+    let frame = 0;
+    const restore = (frames: number) => {
+      if (olderAnchor.current !== anchor) return;
+      const canvas = viewport.current;
+      const element = timeline.elementsCache.get(anchor.key);
+      if (canvas && element?.isConnected) canvas.scrollTop += element.getBoundingClientRect().top - canvas.getBoundingClientRect().top - anchor.offset;
+      if (frames) frame = requestAnimationFrame(() => restore(frames - 1));
+      else olderAnchor.current = undefined;
+    };
+    restore(3);
+    return () => cancelAnimationFrame(frame);
+  }, [threadId, olderCursor, rows, timeline, viewport]);
   const transitionActivity = useCallback((id: string, update: () => void) => {
     const canvas = viewport.current!;
     const summary = () => document.getElementById(`activity-count-${id}`)?.closest("button");
@@ -171,17 +218,22 @@ export function Conversation() {
         });
         if (partId) { messageId = id; break; }
       }
-      if (!partId) {
-        if (loaded) useApp.setState(state => {
+    }
+    if (!threadId || !loaded) return;
+    if (!messageId || !ids?.includes(messageId) || searchShellId && !partId) {
+      if (olderCursor) {
+        if (!loadingOlder && !(failedOlder.current?.threadId === threadId && failedOlder.current.cursor === olderCursor)) void loadOlder();
+        return;
+      }
+      if (searchShellId) useApp.setState(state => {
           if (state.searchShellId !== searchShellId) return state;
           return { searchShellId: null, toasts: [...state.toasts, {
             id: `shell-${searchShellId}`, level: "info", text: t("This command is no longer in the conversation history. Its recent output is available in Running shells."),
           }] };
         });
-        return;
-      }
+      else if (searchMessageId) useApp.setState(state => state.searchMessageId === searchMessageId ? { searchMessageId: null } : state);
+      return;
     }
-    if (!threadId || !messageId || !ids?.includes(messageId)) return;
     stopFollowing();
     const activity = rows.find(row => row.row?.kind === "activity" && row.row.messageIds.includes(messageId))?.row;
     const expanding = activity?.kind === "activity" && !activity.open;
@@ -225,7 +277,7 @@ export function Conversation() {
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [searchMessageId, searchShellId, threadId, loaded, ids, rows, timeline, stopFollowing, t]);
+  }, [searchMessageId, searchShellId, threadId, loaded, olderCursor, loadingOlder, loadOlder, ids, rows, timeline, stopFollowing, t]);
 
   const visibleItem = virtualItems.find((item) => item.end > (timeline.scrollOffset ?? 0) + 30);
   const jumpToMessage = useCallback((messageId: string) => {
@@ -237,17 +289,20 @@ export function Conversation() {
       <div
         className="canvas scroll"
         ref={viewport}
-        onWheel={() => setSelectedMessageId(undefined)}
-        onPointerDown={() => setSelectedMessageId(undefined)}
+        onWheel={() => { olderAnchor.current = undefined; setSelectedMessageId(undefined); }}
+        onPointerDown={() => { olderAnchor.current = undefined; setSelectedMessageId(undefined); }}
         onKeyDown={(event) => {
-          if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key))
+          if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) {
+            olderAnchor.current = undefined;
             setSelectedMessageId(undefined);
+          }
         }}
       >
         <div
           className="canvas-inner"
           ref={content}
         >
+          {olderCursor && <button className="btn conversation-history" type="button" disabled={!connected || loadingOlder} aria-busy={loadingOlder} onClick={() => void loadOlder()}>{t(loadingOlder ? "Loading older messages…" : "Load older messages")}</button>}
           <div
             className="timeline-rows"
             style={{

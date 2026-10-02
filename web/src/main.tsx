@@ -18,7 +18,6 @@ import "./styles/git.css";
 import "./styles/github.css";
 import "./styles/features.css";
 import "./styles/virtual-list.css";
-import "./styles/computer.css";
 import "./styles/environments.css";
 import { initializeEnvironment } from "./lib/environment.ts";
 import { applyReleaseDefaults } from "./lib/release-defaults.ts";

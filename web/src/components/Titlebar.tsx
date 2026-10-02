@@ -8,7 +8,6 @@ import { createThread } from "../lib/actions.ts";
 import { goBack, goForward, useNavigationHistory } from "../lib/navigation-history.ts";
 import { AgentsPanel } from "./AgentsPanel.tsx";
 import { NotificationCenter } from "./NotificationCenter.tsx";
-import { ComputerIndicator } from "./ComputerPane.tsx";
 import { WindowControls } from "./WindowControls.tsx";
 import { ModeSwitch } from "./ModeSwitch.tsx";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
@@ -124,7 +123,6 @@ export function Titlebar({
       <div className="topbar-right">
         <AgentsPanel />
         <NotificationCenter key={environment} onOpen={onNotification} />
-        <ComputerIndicator />
         {view === "chat" && (
           <button
             className="icon-btn topbar-new-thread"

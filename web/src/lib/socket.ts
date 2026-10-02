@@ -5,6 +5,7 @@ import { ENVIRONMENT_KEYS, type EnvironmentSlice } from "./live-environments.ts"
 import type { EnvironmentState } from "../../../shared/environments.ts";
 import type { ClientEvent, ServerEvent } from "../../../shared/protocol.ts";
 import { randomId } from "./random-id.ts";
+import { releaseHistoryRequest } from "./history-cache.ts";
 
 type TermListener = (event: Extract<ServerEvent, { t: "term.data" } | { t: "term.exit" }>) => void;
 type PreparedConnection = { socket: WebSocket; events: ServerEvent[] };
@@ -23,6 +24,7 @@ interface Connection {
   outbox: ClientEvent[];
   sequence: number;
   epoch: string;
+  subscribed: string;
 }
 
 const connections = new Map<string, Connection>();
@@ -68,7 +70,13 @@ function flush(connection: Connection): void {
   if (connection.timer) clearTimeout(connection.timer);
   connection.frame = 0;
   connection.timer = null;
-  const batch = connection.queue;
+  const subscribed = new Set(connection.subscribed.split(","));
+  const batch = connection.queue.filter(event => {
+    if (event.t !== "thread.messages" || !event.page || subscribed.has(event.threadId)) return true;
+    releaseHistoryRequest(event.threadId);
+    if (event.requestId) resolveResponse(event.requestId);
+    return false;
+  });
   connection.queue = [];
   if (!batch.length) return;
   if (connection.id === environmentId()) {
@@ -93,6 +101,21 @@ function flush(connection: Connection): void {
       read.push(event.notification.id);
   }
   if (read.length) sendToEnvironment(connection.id, { t: "notifications.read", ids: read });
+  syncHistorySubscriptions(connection);
+}
+
+function historySubscriptions(state: EnvironmentSlice): string[] {
+  return [...new Set([state.activeThreadId, ...Object.keys(state.loaded)].filter((id): id is string => Boolean(id && state.threads[id])))].slice(0, 6).sort();
+}
+
+function syncHistorySubscriptions(connection: Connection): void {
+  const state = connection.id === environmentId() ? useApp.getState() : connection.slice;
+  if (!state.historyPaging || connection.socket?.readyState !== WebSocket.OPEN) return;
+  const ids = historySubscriptions(state);
+  const key = ids.join(",");
+  if (key === connection.subscribed) return;
+  connection.subscribed = key;
+  connection.socket.send(JSON.stringify({ t: "thread.subscribe", ids }));
 }
 
 function enqueue(connection: Connection, event: ServerEvent): void {
@@ -110,7 +133,6 @@ function setConnected(connection: Connection, connected: boolean, event?: Extrac
     connected,
     ...(event?.shells ? { shells: Object.fromEntries(event.shells.map(shell => [shell.id, shell])) } : {}),
     ...(event?.browsers ? { browsers: Object.fromEntries(event.browsers.map(browser => [browser.id, browser])) } : {}),
-    ...(event?.computer ? { computer: event.computer } : {}),
   };
   if (connection.id === environmentId()) {
     useApp.setState(update);
@@ -125,6 +147,16 @@ function setConnected(connection: Connection, connected: boolean, event?: Extrac
 
 function receive(connection: Connection, current: WebSocket, event: ServerEvent): void {
   if (connection.socket !== current) return;
+  if (event.t === "event.batch") {
+    if (!Number.isSafeInteger(event.after) || !Number.isSafeInteger(event.sequence) || event.after !== connection.sequence || event.sequence! <= event.after || !Array.isArray(event.events) || event.events.some(item => !item || item.t === "event.batch" || item.t === "hello" || item.t === "reconnected")) {
+      connection.epoch = "";
+      current.close();
+      return;
+    }
+    connection.sequence = event.sequence!;
+    for (const item of event.events) enqueue(connection, item);
+    return;
+  }
   if (event.t === "hello") { connection.epoch = event.epoch ?? ""; connection.sequence = event.sequence ?? 0; }
   else if (event.t === "reconnected") {
     flush(connection);
@@ -148,6 +180,9 @@ function open(connection: Connection, prepared?: PreparedConnection): void {
   if (connection.reconnectTimer) clearTimeout(connection.reconnectTimer);
   connection.reconnectTimer = null;
   const url = new URL(`${connection.endpoint}/socket`, location.origin);
+  url.searchParams.set("stream", "1");
+  connection.subscribed = prepared ? new URL(prepared.socket.url, location.origin).searchParams.get("threads") ?? "" : historySubscriptions(connection.id === environmentId() ? useApp.getState() : connection.slice).join(",");
+  if (connection.subscribed) url.searchParams.set("threads", connection.subscribed);
   if (connection.epoch) { url.searchParams.set("epoch", connection.epoch); url.searchParams.set("after", String(connection.sequence)); }
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   const current = prepared?.socket ?? new WebSocket(url);
@@ -156,6 +191,7 @@ function open(connection: Connection, prepared?: PreparedConnection): void {
     if (connection.socket !== current) return;
     connection.backoff = 400;
     while (connection.outbox.length) current.send(JSON.stringify(connection.outbox.shift()));
+    if (!prepared) syncHistorySubscriptions(connection);
   };
   current.onopen = opened;
   current.onmessage = message => receive(connection, current, JSON.parse(message.data as string) as ServerEvent);
@@ -179,7 +215,7 @@ function open(connection: Connection, prepared?: PreparedConnection): void {
 function create(id: string, endpoint: string, prepared?: PreparedConnection, slice?: EnvironmentSlice): Connection {
   const connection: Connection = {
     id, endpoint, socket: null, slice: slice ?? environmentDefaults([], "", id), queue: [], frame: 0,
-    timer: null, rememberTimer: null, reconnectTimer: null, backoff: 400, outbox: [], sequence: 0, epoch: "",
+    timer: null, rememberTimer: null, reconnectTimer: null, backoff: 400, outbox: [], sequence: 0, epoch: "", subscribed: "",
   };
   connections.set(id, connection);
   publishBackgrounds();
@@ -279,6 +315,7 @@ export function sendToEnvironment(environment: string, event: ClientEvent): bool
     if (thread && thread.projectId === event.projectId) event = { ...event, threadId: thread.id };
   }
   if (connection.socket?.readyState === WebSocket.OPEN) {
+    if (event.t === "thread.load") connection.subscribed = [...new Set([...connection.subscribed.split(",").filter(Boolean), event.id])].join(",");
     if ("requestId" in event && event.requestId) trackRequest(event.requestId, environment);
     connection.socket.send(JSON.stringify(event));
     return true;
@@ -304,6 +341,8 @@ export function send(event: ClientEvent): void {
 
 export async function prepareConnection(endpoint: string, signal: AbortSignal, threadId?: string): Promise<PreparedConnection> {
   const url = new URL(`${endpoint}/socket`, location.origin);
+  url.searchParams.set("stream", "1");
+  if (threadId) url.searchParams.set("threads", threadId);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   const pending = new WebSocket(url);
   const events: ServerEvent[] = [];
@@ -327,7 +366,7 @@ export async function prepareConnection(endpoint: string, signal: AbortSignal, t
         const event = JSON.parse(message.data as string) as ServerEvent;
         events.push(event);
         if (event.t === "hello" && threadId && event.snapshot.threads.some(thread => thread.id === threadId))
-          pending.send(JSON.stringify({ t: "thread.load", id: threadId }));
+          pending.send(JSON.stringify({ t: "thread.load", id: threadId, ...(event.snapshot.historyPaging ? { page: {} } : {}) }));
         else if (event.t === "hello" || (event.t === "thread.messages" && event.threadId === threadId)) {
           cleanup();
           resolve({ socket: pending, events });
@@ -362,5 +401,12 @@ export function waitUntilConnected(signal: AbortSignal): Promise<void> {
 }
 
 if (import.meta.hot) import.meta.hot.dispose(() => { for (const connection of [...connections.values()]) close(connection); });
+
+useApp.subscribe((state, previous) => {
+  if (state.loaded !== previous.loaded || state.activeThreadId !== previous.activeThreadId || state.historyPaging !== previous.historyPaging) {
+    const connection = connections.get(environmentId());
+    if (connection) syncHistorySubscriptions(connection);
+  }
+});
 
 export function requestId(): string { return `req_${randomId()}`; }

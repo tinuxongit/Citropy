@@ -9,11 +9,11 @@ export const ENVIRONMENT_KEYS = [
   "notifications", "notificationPreferences", "searchResult", "searchMessageId",
   "searchShellId", "connected", "development", "usingAppData", "logging", "resumeAfterLimits", "githubAccount", "offline",
   "choosingWorkspace", "home", "projects", "providers", "threads", "threadOrder",
-  "messages", "parts", "reveals", "order", "loaded", "historyBytes",
+  "messages", "parts", "reveals", "order", "loaded", "historyPaging", "historyPages", "historyBytes",
   "timelineVersions", "disclosures", "git", "permissions", "questions",
   "questionDrafts", "activeProjectId", "activeThreadId", "followRequest",
   "readingThreadId", "panels", "activePanels", "unseenPanels", "editorTerminals", "browsers",
-  "computer", "toolConnections", "tools",
+  "toolConnections", "tools",
 ] as const satisfies readonly (keyof AppState)[];
 
 export type EnvironmentSlice = Pick<AppState, (typeof ENVIRONMENT_KEYS)[number]>;

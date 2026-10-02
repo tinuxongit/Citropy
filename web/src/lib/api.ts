@@ -8,7 +8,7 @@ export async function api<T>(
   options: RequestInit = {},
   environment = environmentId(),
 ): Promise<T> {
-  const requestSignal = options.signal ?? AbortSignal.timeout(path.startsWith("computer/start") ? 135_000 : path.startsWith("browser/import") ? 125_000 : 90_000);
+  const requestSignal = options.signal ?? AbortSignal.timeout(path.startsWith("browser/import") ? 125_000 : 90_000);
   const signal = environment === environmentId() ? AbortSignal.any([environmentSignal(), requestSignal]) : requestSignal;
   const response = await fetch(environmentUrl(environment, `/api/${path}`), {
     ...options,

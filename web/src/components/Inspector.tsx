@@ -3,7 +3,7 @@ import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { isRemote } from "../lib/environment.ts";
 import { useI18n } from "../lib/i18n.ts";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Globe2,
   TerminalSquare,
@@ -13,7 +13,6 @@ import {
   Plug,
   Plus,
   X,
-  Monitor,
   MoreHorizontal,
   Minimize2,
   Maximize2,
@@ -27,9 +26,6 @@ import { TerminalPane } from "./TerminalPane.tsx";
 import { BrowserPane } from "./BrowserPane.tsx";
 import { SubagentsPane } from "./SubagentsPane.tsx";
 import { ToolsPane } from "./ToolsPane.tsx";
-import { ComputerPane } from "./ComputerPane.tsx";
-import { DrawingPane } from "./drawing/DrawingPane.tsx";
-import { NotesPane } from "./notes/NotesPane.tsx";
 import { Menu } from "./Menu.tsx";
 import { usePanelTabActions } from "./use-panel-tab-actions.tsx";
 import { scaled, selectPanel, useApp } from "../lib/store.ts";
@@ -37,8 +33,10 @@ import { openWorkbenchPanel } from "../lib/actions.ts";
 import { send } from "../lib/socket.ts";
 import type { PanelKind } from "../../../shared/workbench.ts";
 
+const DrawingPane = lazy(() => import("./drawing/DrawingPane.tsx").then(module => ({ default: module.DrawingPane })));
+const NotesPane = lazy(() => import("./notes/NotesPane.tsx").then(module => ({ default: module.NotesPane })));
+
 const options = [
-  { kind: "computer", label: "Computer", hint: "Work with native desktop apps", icon: Monitor },
   {
     kind: "browser",
     label: "Browser",
@@ -313,7 +311,7 @@ export function Inspector({ visible }: { visible: boolean }) {
           className="workbench-panel-menu"
           width={292}
           align="end"
-          items={options.filter(option => !isRemote() || !["browser", "computer"].includes(option.kind)).map((option) => ({
+          items={options.filter(option => !isRemote() || option.kind !== "browser").map((option) => ({
             id: option.kind,
             label: t(option.label),
             hint: t(option.hint),
@@ -352,16 +350,14 @@ export function Inspector({ visible }: { visible: boolean }) {
               aria-labelledby={`panel-tab-${panel.id}`}
               data-show={selected}
             >
-              {panel.kind === "computer" ? (
-                <ComputerPane active={active} />
-              ) : panel.kind === "browser" ? (
+              {panel.kind === "browser" ? (
                 <BrowserPane panel={panel} active={active} />
               ) : panel.kind === "terminal" ? (
                 <TerminalPane panel={panel} active={active} />
               ) : panel.kind === "drawing" ? (
-                <DrawingPane projectId={panel.projectId} />
+                <Suspense fallback={<div className="pane-empty" role="status">{t("Loading…")}</div>}><DrawingPane projectId={panel.projectId} /></Suspense>
               ) : panel.kind === "notes" ? (
-                <NotesPane projectId={panel.projectId} />
+                <Suspense fallback={<div className="pane-empty" role="status">{t("Loading…")}</div>}><NotesPane projectId={panel.projectId} /></Suspense>
               ) : panel.projectId !== projectId ? null : panel.kind ===
                 "files" ? (
                 <FileTree panelId={panel.id} active={active} />

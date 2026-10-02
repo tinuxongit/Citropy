@@ -114,3 +114,96 @@ test("idle terminals release GPU contexts and preserve buffer, selection and res
   assert.ok(await page.locator(".xterm-rows").textContent());
   assert.deepEqual(errors, []);
 });
+
+test("terminal panes reuse successful WebGL detection while preserving per-pane fallback and input", { timeout: 60_000 }, async t => {
+  const root = fileURLToPath(new URL("../..", import.meta.url));
+  const server = await createServer({ configFile: false, root, cacheDir: `${root}/node_modules/.vite-terminal-renderer-tests`, plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
+  await server.listen();
+  const browser = await chromium.launch({ args: ["--enable-unsafe-swiftshader"] });
+  t.after(async () => { await browser.close(); await server.close(); });
+  const html = await server.transformIndexHtml("/terminal-capability.html", `<!doctype html><html><head><style>body{margin:0}#fixture{height:650px}</style></head><body><div id="fixture"></div><script type="module">
+    import React from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { Terminal } from '@xterm/xterm';
+    import '/web/src/styles/tokens.css';
+    import '/web/src/styles/base.css';
+    import '/web/src/styles/workbench.css';
+    import { useApp } from '/web/src/lib/store.ts';
+    import { connect } from '/web/src/lib/socket.ts';
+    import { TerminalPane } from '/web/src/components/TerminalPane.tsx';
+    window.terminals = [];
+    const open = Terminal.prototype.open;
+    Terminal.prototype.open = function (...args) { window.terminals.push(this); return open.apply(this, args); };
+    useApp.setState({ connected: true, scheme: 'dark', uiScale: 100 });
+    connect();
+    const panels = Array.from({ length: 3 }, (_, index) => ({ id: 'terminal-' + index, projectId: 'project', kind: 'terminal', title: 'Terminal ' + index }));
+    function Fixture() {
+      const [active, setActive] = React.useState(0);
+      window.setActive = setActive;
+      return panels.map((panel, index) => React.createElement('div', { key: panel.id, style: { height: '100%', display: active === index ? 'block' : 'none' } }, React.createElement(TerminalPane, { active: active === index, panel })));
+    }
+    const root = createRoot(document.querySelector('#fixture'));
+    window.unmountTerminal = () => root.unmount();
+    root.render(React.createElement(Fixture));
+  </script></body></html>`);
+  for (const width of [1280, 380]) {
+    const page = await browser.newPage({ viewport: { width, height: 750 } });
+    const errors = [];
+    const input = [];
+    const opens = [];
+    const resizes = [];
+    const output = "\x1b[32mcolored █▓▒░ ┌─┐ text\x1b[0m\r\n";
+    page.on("pageerror", error => errors.push(error.message));
+    await page.addInitScript(() => {
+      window.probes = 0;
+      window.contexts = new Set();
+      const canvases = new WeakSet();
+      const getContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (...args) {
+        const first = !canvases.has(this);
+        canvases.add(this);
+        if (first && args[0] === "webgl2" && args.length === 1 && ++window.probes === 1) return null;
+        const context = getContext.apply(this, args);
+        if (args[0] === "webgl2" && context) window.contexts.add(context);
+        return context;
+      };
+    });
+    await page.routeWebSocket("**/socket*", socket => socket.onMessage(raw => {
+      const event = JSON.parse(raw);
+      if (event.t === "term.data") input.push(event);
+      if (event.t === "term.resize") resizes.push(event);
+      if (event.t !== "term.open") return;
+      opens.push(event);
+      const resumed = event.sessionId === event.termId && event.offset === output.length;
+      socket.send(JSON.stringify({ t: "term.data", termId: event.termId, data: resumed ? "" : output, reset: !resumed, offset: output.length, sessionId: event.termId }));
+    }));
+    await page.route("**/terminal-capability.html", route => route.fulfill({ contentType: "text/html", body: html }));
+    await page.goto(new URL("/terminal-capability.html", server.resolvedUrls.local[0]).href);
+    await page.waitForFunction(() => window.probes === 1 && window.terminals[0].buffer.active.getLine(0).translateToString().includes("colored"));
+    assert.equal(await page.locator(".term canvas").count(), 0);
+    for (const index of [1, 2]) {
+      await page.evaluate(index => window.setActive(index), index);
+      await page.waitForFunction(index => window.terminals.length === index + 1 && document.querySelectorAll(".term canvas").length === index * 2, index);
+    }
+    assert.equal(await page.evaluate(() => window.probes), 2);
+    assert.deepEqual(await page.evaluate(() => window.terminals.map(terminal => ({ text: terminal.buffer.active.getLine(0).translateToString(true), color: terminal.buffer.active.getLine(0).getCell(0).getFgColor(), fontSize: terminal.options.fontSize, fontFamily: terminal.options.fontFamily, green: terminal.options.theme.green, scrollback: terminal.options.scrollback }))), Array.from({ length: 3 }, () => ({ text: "colored █▓▒░ ┌─┐ text", color: 2, fontSize: 13, fontFamily: "monospace", green: "#3ecf8e", scrollback: 8000 })));
+    await page.evaluate(() => { window.terminals[2].focus(); });
+    await page.keyboard.type("pwd");
+    await page.keyboard.press("Enter");
+    assert.equal(input.filter(event => event.termId === "terminal-2").map(event => event.data).join(""), "pwd\r");
+    const before = await page.evaluate(() => ({ cols: window.terminals[2].cols, rows: window.terminals[2].rows }));
+    await page.setViewportSize({ width: width - 40, height: 700 });
+    await page.waitForFunction(cols => window.terminals[2].cols < cols, before.cols);
+    assert.ok(resizes.some(event => event.termId === "terminal-2" && event.cols < before.cols));
+    await page.evaluate(() => window.setActive(1));
+    await page.waitForFunction(() => window.terminals[1].element.offsetParent !== null && window.terminals[2].element.offsetParent === null && window.terminals[1].element.querySelectorAll("canvas").length === 2);
+    await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth);
+    assert.equal(opens.at(-1).offset, output.length);
+    assert.equal(await page.evaluate(() => window.probes), 2);
+    await page.screenshot({ path: `/tmp/citropy-terminal-capability-${width}.png` });
+    await page.evaluate(() => window.unmountTerminal());
+    assert.equal(await page.evaluate(() => [...window.contexts].every(context => context.isContextLost())), true);
+    assert.deepEqual(errors, []);
+    await page.close();
+  }
+});

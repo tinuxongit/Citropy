@@ -18,7 +18,7 @@ class Bus {
 
   emit(event: ServerEvent): void {
     event = structuredClone(event);
-    if (this.#durable && !["term.data", "term.exit", "browser.state", "computer.state", "shell.upsert", "shell.remove"].includes(event.t)) event = { ...event, sequence: eventJournal.append(event) };
+    if (this.#durable && !["term.data", "term.exit", "browser.state", "shell.upsert", "shell.remove"].includes(event.t)) event = { ...event, sequence: eventJournal.append(event) };
     this.#queue.push(event);
     if (this.#emitting) return;
     this.#emitting = true;

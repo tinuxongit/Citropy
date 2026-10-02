@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assertWorkspaceIdle, reviewChanges } from "./checkpoints.ts";
+import { assertWorkspaceIdle, reviewChanges, reviewSummary } from "./checkpoints.ts";
 import { workspacePath } from "./workspaces.ts";
 import { inside } from "./files.ts";
 import { serialized, workingDiff } from "./git.ts";
@@ -22,7 +22,7 @@ export async function changeHunk(thread: Thread, input: { scope: ReviewScope; pa
   if (typeof input.path !== "string" || !inside(cwd, input.path) || input.path.split(/[\\/]/).includes(".git")) throw new Error("Invalid diff path.");
   await serialized(cwd, async () => {
     assertWorkspaceIdle(thread);
-    const current = await reviewChanges(thread, input.scope);
+    const current = await reviewSummary(thread, input.scope);
     if (current.revision !== input.revision) throw new Error("The changes moved since this review opened. Refresh before applying a hunk.");
     const raw = await workingDiff(cwd, input.scope === "staged", input.path);
     const chunks = raw.split(/(?=^@@ )/m);
@@ -35,7 +35,7 @@ export async function changeHunk(thread: Thread, input: { scope: ReviewScope; pa
       const args = ["apply", ...(input.operation === "revert" ? [] : ["--cached"]), ...(input.operation === "stage" ? [] : ["--reverse"]), "--whitespace=nowarn"];
       await run("git", [...args, "--check", path], { cwd, timeout: 15_000 });
       assertWorkspaceIdle(thread);
-      if ((await reviewChanges(thread, input.scope)).revision !== input.revision) throw new Error("The changes moved. Refresh before applying a hunk.");
+      if ((await reviewSummary(thread, input.scope)).revision !== input.revision) throw new Error("The changes moved. Refresh before applying a hunk.");
       await run("git", [...args, path], { cwd, timeout: 15_000 });
     } finally { await rm(temporary, { recursive: true, force: true }); }
   });
