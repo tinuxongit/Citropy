@@ -152,7 +152,12 @@ test("hidden inspector resources", { timeout: 120_000 }, async t => {
     await page.getByRole('button', { name: 'a-hello.ts', exact: true }).waitFor();
     await find.fill('');
     await page.getByRole('button', { name: 'a.ts', exact: true }).waitFor();
+    const refreshed = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.pathname === '/api/editor/search' && url.searchParams.get('threadId') === 'a' && url.searchParams.get('query') === 'hello';
+    });
     await find.fill('hello');
+    await refreshed;
     await page.getByRole('button', { name: 'a-hello.ts', exact: true }).waitFor();
     assert.equal(requests.length, loaded + 1);
     await page.evaluate(() => window.setActive(false));
