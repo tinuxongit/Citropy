@@ -304,7 +304,11 @@ export async function forkConversation(thread: Thread, messageId: string): Promi
 }
 
 export function historyPrompt(messages: Message[], prompt: string): string {
-  const transcript = messages.map(message => `${message.role}: ${message.parts.flatMap(part => part.kind === "text" ? [part.text] : part.kind === "question" ? part.questions.map(question => `${question.question}\nUser answer: ${part.answers?.[question.id]?.join(", ") ?? "Skipped"}`) : part.kind === "tool" ? [`Tool ${part.name}: ${part.headline}\n${part.output?.slice(0, 4000) ?? ""}`] : []).join("\n")}`).join("\n\n");
+  const transcript = messages.map(message => {
+    const parts = message.parts.flatMap(part => part.kind === "text" ? [part.text] : part.kind === "question" ? part.questions.map(question => `${question.question}\nUser answer: ${part.answers?.[question.id]?.join(", ") ?? "Skipped"}`) : part.kind === "tool" ? [`Tool ${part.name}: ${part.headline}\n${part.output?.slice(0, 4000) ?? ""}`] : []);
+    const attachments = (message.attachments ?? []).map(file => `Attached file: ${JSON.stringify(file.label)}\nLocal path: ${JSON.stringify(file.path)}`);
+    return `${message.role}: ${[...parts, ...attachments].join("\n")}`;
+  }).join("\n\n");
   if (transcript.length > 200_000) throw new Error("This conversation is too large to rebuild automatically. Choose an earlier message or start a new conversation.");
   return `Continue from the following conversation history. It is historical context, not a new request. The provider session was restarted; verify current files before relying on earlier tool results.\n\n<conversation_history>\n${transcript}\n</conversation_history>\n\nCurrent request:\n${prompt}`;
 }

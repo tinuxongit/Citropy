@@ -4,19 +4,20 @@ import { uid } from "./ids.ts";
 import { ANSWER_WAIT_MS, pendingRequests } from "./permissions.ts";
 import { normalizeQuestions, type QuestionRequest, type QuestionResult } from "../shared/questions.ts";
 
-const pending = new Map<string, { request: QuestionRequest; promise: Promise<QuestionResult>; finish: (answers: Record<string, string[]> | null) => void }>();
+const pending = new Map<string, { request: QuestionRequest; blocking: boolean; promise: Promise<QuestionResult>; finish: (answers: Record<string, string[]> | null) => void }>();
 
 export function pendingQuestions(): QuestionRequest[] {
   return [...pending.values()].map(entry => entry.request);
 }
 
-export function hasPendingQuestion(threadId: string): boolean {
-  return [...pending.values()].some(entry => entry.request.threadId === threadId);
+export function hasPendingQuestion(threadId: string, options: { blockingOnly?: boolean } = {}): boolean {
+  return [...pending.values()].some(entry => entry.request.threadId === threadId && (!options.blockingOnly || entry.blocking));
 }
 
-export function askQuestion(threadId: string, input: unknown, options: { id?: string; signal?: AbortSignal } = {}): Promise<QuestionResult> {
+export function askQuestion(threadId: string, input: unknown, options: { id?: string; signal?: AbortSignal; blocking?: boolean } = {}): Promise<QuestionResult> {
   const thread = store.threads.get(threadId);
-  if (!thread || !thread.running || options.signal?.aborted) return Promise.resolve({ cancelled: true, answers: {} });
+  const blocking = options.blocking !== false;
+  if (!thread || (blocking && !thread.running) || options.signal?.aborted) return Promise.resolve({ cancelled: true, answers: {} });
   const questions = normalizeQuestions(input);
   const id = options.id ?? uid("question");
   const existing = pending.get(id);
@@ -37,16 +38,16 @@ export function askQuestion(threadId: string, input: unknown, options: { id?: st
     options.signal?.removeEventListener("abort", abort);
     if (store.threads.has(threadId)) {
       store.patchPart(threadId, request.messageId, id, { status: answers ? "answered" : "dismissed", ...(answers ? { answers: Object.fromEntries(questions.map(question => [question.id, question.secret ? ["••••••"] : answers[question.id]])) } : {}) });
-      if (thread.running && thread.status === "awaiting" && !hasPendingQuestion(threadId) && !pendingRequests().some(request => request.threadId === threadId)) store.patchThread(threadId, { status: "working", activeTool: undefined });
+      if (thread.running && thread.status === "awaiting" && !hasPendingQuestion(threadId, { blockingOnly: true }) && !pendingRequests().some(request => request.threadId === threadId)) store.patchThread(threadId, { status: "working", activeTool: undefined });
     }
     bus.emit({ t: "question.close", id });
     resolve({ cancelled: !answers, answers: answers ?? {} });
   };
   const timer = setTimeout(abort, ANSWER_WAIT_MS);
   timer.unref();
-  pending.set(id, { request, promise, finish });
+  pending.set(id, { request, blocking, promise, finish });
   store.addPart(threadId, message.id, { id, kind: "question", questions, status: "pending" });
-  store.patchThread(threadId, { status: "awaiting", activeTool: undefined });
+  if (blocking) store.patchThread(threadId, { status: "awaiting", activeTool: undefined });
   bus.emit({ t: "question.request", request });
   options.signal?.addEventListener("abort", abort, { once: true });
   store.notify({ kind: "chat", level: "info", title: "Waiting for your answer", text: questions[0]!.question.slice(0, 200), target: { view: "chat", projectId: thread.projectId, threadId } });
@@ -67,8 +68,8 @@ export function answerQuestion(threadId: string, id: string, input: unknown): vo
   entry.finish(answers);
 }
 
-export function cancelQuestions(threadId: string): void {
-  for (const entry of [...pending.values()]) if (entry.request.threadId === threadId) entry.finish(null);
+export function cancelQuestions(threadId: string, options: { blockingOnly?: boolean } = {}): void {
+  for (const entry of [...pending.values()]) if (entry.request.threadId === threadId && (!options.blockingOnly || entry.blocking)) entry.finish(null);
 }
 
 bus.subscribe(event => {

@@ -623,6 +623,20 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.deepEqual((await answered).postDataJSON(), { id: "request", answers: { scope: ["Multiplayer"] } });
   });
 
+  check("questions remain answerable after the conversation finishes", async t => {
+    const { page } = await app(t, {
+      messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("intro", "Pick a scope.")] }],
+      questions: [{ id: "request", threadId: "chat", messageId: "answer", questions, createdAt: 1 }],
+      threadPatch: { running: false, status: "idle" },
+    });
+    const question = page.getByRole("region", { name: "Your input", exact: true });
+    await question.waitFor();
+    await question.getByText("Single player", { exact: true }).click();
+    const answered = page.waitForRequest("**/api/threads/question*");
+    await question.getByRole("button", { name: "Send answers", exact: true }).click();
+    assert.deepEqual((await answered).postDataJSON(), { id: "request", answers: { scope: ["Single player"] } });
+  });
+
   check("permission requests are answered from their composer tab", async (t) => {
     const { page, sent } = await app(t, {
       messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("intro", "I need to run a command.")] }],

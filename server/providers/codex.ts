@@ -1,5 +1,5 @@
 import { commandVersion, invocation, resolveCommand, spawnCommand } from "./binary.ts";
-import { spawnSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { stopProcess } from "./process.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { discoverModels } from "./models.ts";
@@ -12,14 +12,23 @@ import { normalizeTodos } from "../../shared/todos.ts";
 
 const CHAT_DISABLED_FEATURES = ["shell_tool", "unified_exec", "computer_use", "browser_use", "apps"];
 
-function chatOverrides(options: StartOptions): string[] {
+async function chatOverrides(options: StartOptions, signal: AbortSignal): Promise<string[]> {
   const call = invocation(resolveCommand(options.binary ?? "codex"), ["mcp", "list", "--json"]);
-  const listed = spawnSync(call.file, call.args, { encoding: "utf8", timeout: 15_000, windowsHide: true, windowsVerbatimArguments: call.verbatim, env: { ...process.env, ...options.environment } });
-  if (listed.status !== 0) throw new Error(`Could not list Codex MCP servers: ${listed.error?.message ?? listed.stderr.trim()}`);
-  const servers = JSON.parse(listed.stdout) as Array<{ name: string }>;
+  const stdout = await new Promise<string>((resolve, reject) => {
+    execFile(call.file, call.args, { encoding: "utf8", timeout: 15_000, windowsHide: true, windowsVerbatimArguments: call.verbatim, env: { ...process.env, ...options.environment }, signal }, (error, stdout, stderr) => {
+      if (error) reject(new Error(`Could not list Codex MCP servers: ${stderr.trim() || error.message}`));
+      else resolve(stdout);
+    });
+  });
+  const servers = JSON.parse(stdout) as Array<{ name: string; transport: { type: "stdio"; command: string } | { type: "streamable_http"; url: string } }>;
   return [
     ...CHAT_DISABLED_FEATURES.flatMap(feature => ["-c", `features.${feature}=false`]),
-    ...servers.filter(server => server.name !== "citropy").flatMap(server => ["-c", `mcp_servers.${server.name}.enabled=false`]),
+    ...servers.filter(server => server.name !== "citropy").flatMap(server => [
+      "-c", `mcp_servers.${server.name}.enabled=false`,
+      "-c", server.transport.type === "stdio"
+        ? `mcp_servers.${server.name}.command=${JSON.stringify(server.transport.command)}`
+        : `mcp_servers.${server.name}.url=${JSON.stringify(server.transport.url)}`,
+    ]),
   ];
 }
 
@@ -35,6 +44,8 @@ interface Item {
   id: string;
   type: string;
   text?: string;
+  delivery?: "async" | null;
+  questions?: Array<{ title: string; options: string[] | null }> | null;
   summary?: string[];
   command?: string;
   cwd?: string;
@@ -79,10 +90,11 @@ function elicitationContent(schema: unknown): Record<string, unknown> | undefine
 
 class CodexSession implements AgentSession {
   #options: StartOptions;
-  #child: ChildProcessWithoutNullStreams;
+  #child: ChildProcessWithoutNullStreams | undefined;
+  #startupAbort = new AbortController();
 
   get pid(): number | undefined {
-    return this.#child.pid;
+    return this.#child?.pid;
   }
   #ready: Promise<void>;
   #requests = new Map<number, { resolve: (result: Wire) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
@@ -108,9 +120,20 @@ class CodexSession implements AgentSession {
 
   constructor(options: StartOptions) {
     this.#options = options;
+    this.#ready = this.#initialize();
+    void this.#ready.catch((error: Error & { timedOut?: boolean }) => {
+      if (!error.timedOut) this.#fail(error.message);
+      else if (!this.#failed && !this.#disposed)
+        this.#options.emit({ type: "notice", level: "error", text: error.message });
+    });
+  }
+
+  async #initialize(): Promise<void> {
+    const options = this.#options;
     const args = ["app-server"];
     if (options.mcp) args.push("-c", `mcp_servers.citropy.url=${JSON.stringify(options.mcp.url)}`, "-c", 'mcp_servers.citropy.bearer_token_env_var="CITROPY_MCP_TOKEN"', "-c", "mcp_servers.citropy.tool_timeout_sec=1860");
-    if (options.chat) args.push(...chatOverrides(options));
+    if (options.chat) args.push(...await chatOverrides(options, this.#startupAbort.signal));
+    if (this.#disposed) return;
     this.#child = spawnCommand(options.binary ?? "codex", args, {
       detached: process.platform !== "win32",
       cwd: options.cwd,
@@ -124,15 +147,6 @@ class CodexSession implements AgentSession {
     this.#child.stdin.on("error", (error) => this.#fail(error.message));
     this.#child.on("error", (error) => this.#fail(error.message));
     this.#child.on("close", (code) => this.#fail(this.#stderr.trim() || `Codex app-server exited with code ${code}`));
-    this.#ready = this.#initialize();
-    void this.#ready.catch((error: Error & { timedOut?: boolean }) => {
-      if (!error.timedOut) this.#fail(error.message);
-      else if (!this.#failed && !this.#disposed)
-        this.#options.emit({ type: "notice", level: "error", text: error.message });
-    });
-  }
-
-  async #initialize(): Promise<void> {
     await this.#request("initialize", {
       clientInfo: { name: "citropy", version: "0.1.0" },
       capabilities: { experimentalApi: true },
@@ -164,7 +178,7 @@ class CodexSession implements AgentSession {
   }
 
   #write(message: unknown): void {
-    if (!this.#disposed && !this.#failed) this.#child.stdin.write(`${JSON.stringify(message)}\n`);
+    if (!this.#disposed && !this.#failed) this.#child?.stdin.write(`${JSON.stringify(message)}\n`);
   }
 
   #request(method: string, params: unknown, fatalTimeout = true, timeoutMs = fatalTimeout ? 30_000 : 10_000): Promise<Wire> {
@@ -275,6 +289,7 @@ class CodexSession implements AgentSession {
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
+    this.#startupAbort.abort();
     clearTimeout(this.#backgroundTimer);
     this.#queue = [];
     cancelThread(this.#options.threadId, false);
@@ -284,8 +299,10 @@ class CodexSession implements AgentSession {
       pending.reject(new Error("Codex session closed"));
     }
     this.#requests.clear();
-    this.#child.stdin.end();
-    stopProcess(this.#child, true);
+    if (this.#child) {
+      this.#child.stdin.end();
+      stopProcess(this.#child, true);
+    }
   }
 
   #fail(message: string): void {
@@ -309,7 +326,7 @@ class CodexSession implements AgentSession {
     if ([...this.#items.values()].some(item => item.type === "commandExecution")) void this.#refreshBackground();
     this.#items.clear();
     cancelThread(this.#options.threadId, false);
-    cancelQuestions(this.#options.threadId);
+    cancelQuestions(this.#options.threadId, { blockingOnly: !error });
     if (compacting && !error) this.#options.emit({ type: "compacted" });
     else this.#options.emit({ type: "turn.end", ...(error ? { error } : {}) });
     void this.#pump();
@@ -472,6 +489,14 @@ class CodexSession implements AgentSession {
         const kind = item.type === "reasoning" ? "reasoning" : "text";
         this.#text(item.id, kind, kind === "reasoning" ? (item.summary ?? []).join("\n") : item.text ?? "", true);
         emit({ type: "block.end", blockId: `${item.id}:${kind}` });
+        if (item.type === "agentMessage" && item.delivery === "async" && item.questions?.length) {
+          emit({ type: "question", id: `question_${item.id}`, questions: item.questions.map((question, index) => ({
+            id: `question_${index + 1}`,
+            question: question.title,
+            options: (question.options ?? []).map(label => ({ label })),
+            multiple: false,
+          })) });
+        }
       }
       return;
     }
@@ -563,7 +588,7 @@ class CodexSession implements AgentSession {
     if (method === "item/tool/requestUserInput") {
       try {
         const input = params.questions;
-        const result = await askQuestion(this.#options.threadId, Array.isArray(input) ? input.map(question => ({ ...question, options: question.options ?? [], secret: question.isSecret === true })) : input);
+        const result = await askQuestion(this.#options.threadId, Array.isArray(input) ? input.map(question => ({ ...question, options: question.options ?? [], secret: question.isSecret === true })) : input, { blocking: params.isBlocking !== false });
         if (!this.#disposed) this.#write({ id, result: { answers: Object.fromEntries(Object.entries(result.answers).map(([key, answers]) => [key, { answers }])) } });
       } catch (error) {
         if (!this.#disposed) this.#write({ id, error: { code: -32602, message: (error as Error).message } });

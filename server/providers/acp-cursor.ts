@@ -23,6 +23,7 @@ interface CursorTodo {
 type CursorAskQuestionResponse = {
   outcome:
     | { outcome: "answered"; answers: Array<{ questionId: string; selectedOptionIds: string[] }> }
+    | { outcome: "skipped"; reason: string }
     | { outcome: "cancelled" };
 };
 
@@ -70,14 +71,16 @@ export async function askCursorQuestion(threadId: string, params: CursorAskQuest
   const questions = asked.map((question) => ({
     id: question.id,
     question: question.prompt,
-    options: question.options.length
-      ? question.options.slice(0, 12).map((option) => ({ label: option.label }))
-      : [{ label: "OK" }],
+    options: question.options.slice(0, 12).map((option) => ({ label: option.label })),
     multiple: question.allowMultiple === true,
   }));
   if (!questions.length) return { outcome: { outcome: "answered", answers: [] } };
   const result = await askQuestion(threadId, questions, { signal });
   if (result.cancelled) return { outcome: { outcome: "cancelled" } };
+  if (asked.some(question => (result.answers[question.id] ?? []).some(answer => !question.options.some(option => option.label.trim() === answer)))) {
+    const answers = asked.map(question => ({ questionId: question.id, question: question.prompt, answers: result.answers[question.id] ?? [] }));
+    return { outcome: { outcome: "skipped", reason: `The user supplied custom answers. Use these answers to continue:\n${JSON.stringify(answers)}` } };
+  }
   return {
     outcome: {
       outcome: "answered",

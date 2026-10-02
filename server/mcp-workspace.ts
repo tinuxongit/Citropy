@@ -10,7 +10,7 @@ import { resolveProjectSettings } from "../shared/project-settings.ts";
 import { providers } from "./providers/index.ts";
 import { providerInfo } from "./provider-registry.ts";
 import { remoteId } from "./remote.ts";
-import { runtimeFor } from "./runtime.ts";
+import { runtimeFor, runtimeIfExists } from "./runtime.ts";
 import { bus } from "./bus.ts";
 import * as browser from "./browser.ts";
 import * as computer from "./computer.ts";
@@ -98,7 +98,7 @@ function computerArguments(args: Record<string, unknown>, screenshot: boolean): 
 
 function assertSubagentSlot(parentId: string): void {
   const running = [...store.threads.values()].filter(
-    (child) => child.parentThreadId === parentId && child.running,
+    (child) => child.parentThreadId === parentId && (child.running || runtimeIfExists(child.id)?.turnActive),
   ).length;
   if (running >= MAX_RUNNING_SUBAGENTS)
     throw new Error(
@@ -487,6 +487,7 @@ export async function callWorkspaceTool(
         throw new Error(
           "Wait for this subagent to finish before sending a follow-up",
         );
+      assertSubagentSlot(threadId);
       await runtimeFor(child.id).send(required(args, "text"));
       return text(summary(child));
     }

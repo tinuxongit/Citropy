@@ -166,30 +166,24 @@ export const threadRoutes: Routes = {
       changedProvider || changedInstance ||
       Object.entries(settings).some(([key, value]) => thread[key as keyof Settings] !== value) ||
       permissionMode !== thread.permissionMode;
-    if (thread.running || runtimeIfExists(event.id)?.turnActive) {
+    const existing = runtimeIfExists(event.id);
+    if (thread.running || existing?.busy) {
       store.patchThread(event.id, { pendingConfig: restart ? { ...settings, permissionMode } : undefined, title: event.title ?? thread.title });
       if (event.requestId) send({ t: "thread.accepted", requestId: event.requestId });
       return;
     }
-    let live = false;
-    if (restart) {
-      const existing = changedProvider || changedInstance ? undefined : runtimeIfExists(event.id);
-      if (existing)
-        live = await existing.configure({
-          model: settings.model,
-          effort: settings.effort,
-          contextMax: settings.contextWindow,
-          fastMode: settings.fastMode,
-          permissionMode,
-        });
-      if (!live) disposeRuntime(event.id, true);
+    if (restart && existing && !changedProvider && !changedInstance) {
+      store.patchThread(event.id, { pendingConfig: { ...settings, permissionMode }, title: event.title ?? thread.title });
+      await existing.configure();
+      if (event.requestId) send({ t: "thread.accepted", requestId: event.requestId });
+      return;
     }
+    if (restart) disposeRuntime(event.id, true);
     store.patchThread(event.id, {
       provider: event.provider ?? thread.provider,
       providerInstanceId: instanceId,
       ...settings,
-      // A live reconfigure already reported the real window through its session event.
-      ...(!live && (changedModel || settings.contextWindow !== thread.contextWindow)
+      ...((changedModel || settings.contextWindow !== thread.contextWindow)
         ? { usage: { ...thread.usage, contextMax: 0 } }
         : {}),
       permissionMode,

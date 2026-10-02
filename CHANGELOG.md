@@ -2,6 +2,22 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.5.6
+
+### Fixed
+- Stopping an accepted plan while it switches modes prevents it from starting implementation afterward.
+- Subagents that are still starting count toward the four-agent limit.
+- Branched and restored conversations retain attachment references when rebuilding history for the agent.
+- Custom answers to Cursor's questions reach the agent, including any selected choices.
+- Starting a Codex chat keeps other conversations responsive while it discovers MCP servers.
+- Loading a large conversation history no longer briefly disconnects all chats when other updates arrive.
+- Codex's asynchronous questions show an answer panel and remain available after the response finishes.
+- Stopped conversations reject late approval requests, including tools previously set to always allow.
+- Invalid permission replies cannot approve a tool, and conversations stay marked as waiting until all approvals are answered.
+- Settings changed while an earlier update is applying take effect in the next response.
+- Sending a message during a live settings change waits for the update and survives a failed provider reconfiguration.
+- Updated packaging dependencies with security fixes.
+
 ## 0.5.5
 
 ### Added

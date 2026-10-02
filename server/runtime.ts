@@ -3,8 +3,8 @@ import { assertApplicationReady } from "./update-lock.ts";
 import { generateThreadTitle, workspaceGitBusy } from "./assistance.ts";
 import { stopTextGeneration, textGenerationBusy } from "./text-generation.ts";
 import { uid } from "./ids.ts";
-import { cancelQuestions, hasPendingQuestion } from "./questions.ts";
-import { cancelThread } from "./permissions.ts";
+import { askQuestion, cancelQuestions, hasPendingQuestion } from "./questions.ts";
+import { cancelThread, pendingRequests } from "./permissions.ts";
 import { store } from "./store.ts";
 import { removeAttachment, validateAttachments } from "./assets.ts";
 import { workspacePath } from "./workspaces.ts";
@@ -20,7 +20,7 @@ import { modelSettings, nextTurnSettings, selectedModel } from "../shared/model-
 import { emptyUsage } from "../shared/protocol.ts";
 import { mergeUsage } from "../shared/usage-metrics.ts";
 import { connectTools, disconnectTools } from "./mcp-access.ts";
-import type { AgentEvent, SessionConfig } from "./providers/types.ts";
+import type { AgentEvent } from "./providers/types.ts";
 import type { AgentSession } from "./providers/types.ts";
 import { startShell, shellOutput, endShell, endThreadShells, shellList } from "./shells.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
@@ -56,6 +56,7 @@ export class ThreadRuntime {
   #session: AgentSession | null = null;
   #sessionGeneration = 0;
   #preparing = false;
+  #configuring: Promise<void> | null = null;
   #steering = false;
   #turnsEnded = 0;
   #checkpointCompletion: Promise<void> | null = null;
@@ -103,20 +104,25 @@ export class ThreadRuntime {
     return this.#preparing || this.#thread.running || Boolean(this.#thread.compacting);
   }
 
-  async configure(config: SessionConfig): Promise<boolean> {
-    const session = this.#session;
-    if (!session?.configure) return false;
-    if (this.busy) return false;
-    try {
-      await session.configure(config);
-      return true;
-    } catch (error) {
-      if ((error as Error).message.includes("Wait for")) throw error;
-      return false;
-    }
+  configure(): Promise<void> {
+    if (this.busy) return Promise.resolve();
+    this.#preparing = true;
+    const generation = this.#stopGeneration;
+    const pending = this.#applyPendingConfig(generation).finally(() => {
+      this.#configuring = null;
+      this.#preparing = false;
+      this.#pump();
+    });
+    this.#configuring = pending;
+    return pending;
   }
 
   async send(text: string, files: Attachment[] = [], limitResume = false): Promise<void> {
+    if (this.#configuring) {
+      const generation = this.#stopGeneration;
+      await this.#configuring.catch(() => {});
+      this.#checkSession(generation);
+    }
     if (typeof text === "string" && text.trim() === "/compact" && Array.isArray(files) && !files.length) return this.compact();
     if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");
     if (this.#preparing || this.#steering || this.#thread.running || this.#enqueuing || (this.#resume && this.#thread.queue?.length)) return this.#enqueue(text, files);
@@ -336,29 +342,30 @@ export class ThreadRuntime {
   }
 
   async #applyPendingConfig(generation: number): Promise<void> {
-    const pending = this.#thread.pendingConfig;
-    if (!pending) return;
-    const settings = nextTurnSettings(this.#thread);
-    const session = this.#session;
-    let live = false;
-    if (session?.configure) {
-      try {
-        await session.configure({ model: settings.model, effort: settings.effort, contextMax: settings.contextWindow, fastMode: settings.fastMode, permissionMode: settings.permissionMode });
-        live = true;
-      } catch (error) {
-        console.error("Live settings change failed, restarting the session:", this.id, error);
+    while (this.#thread.pendingConfig) {
+      const pending = this.#thread.pendingConfig;
+      const settings = nextTurnSettings(this.#thread);
+      const session = this.#session;
+      let live = false;
+      if (session?.configure) {
+        try {
+          await session.configure({ model: settings.model, effort: settings.effort, contextMax: settings.contextWindow, fastMode: settings.fastMode, permissionMode: settings.permissionMode });
+          live = true;
+        } catch (error) {
+          console.error("Live settings change failed, restarting the session:", this.id, error);
+        }
       }
+      this.#checkSession(generation);
+      if (!live) {
+        this.#closeSession();
+        disconnectTools(this.id);
+      }
+      store.patchThread(this.id, {
+        ...settings,
+        ...(!live && (settings.model !== this.#thread.model || settings.contextWindow !== this.#thread.contextWindow) ? { usage: { ...this.#thread.usage, contextMax: 0 } } : {}),
+        pendingConfig: this.#thread.pendingConfig === pending ? undefined : this.#thread.pendingConfig,
+      });
     }
-    this.#checkSession(generation);
-    if (!live) {
-      this.#closeSession();
-      disconnectTools(this.id);
-    }
-    store.patchThread(this.id, {
-      ...settings,
-      ...(!live && (settings.model !== this.#thread.model || settings.contextWindow !== this.#thread.contextWindow) ? { usage: { ...this.#thread.usage, contextMax: 0 } } : {}),
-      pendingConfig: this.#thread.pendingConfig === pending ? undefined : this.#thread.pendingConfig,
-    });
   }
 
   async #deliver(prepared: Prepared, queued?: { item: QueuedMessage; index: number }): Promise<void> {
@@ -639,6 +646,11 @@ export class ThreadRuntime {
       case "status":
         this.#onStatus(event);
         return;
+      case "question":
+        void this.#onQuestion(event).catch(error => {
+          if (!this.#disposed) this.#transcript.notice("error", `Could not process the question: ${(error as Error).message}`);
+        });
+        return;
       case "block.start":
         this.#transcript.startBlock(event);
         return;
@@ -712,13 +724,26 @@ export class ThreadRuntime {
 
   #onStatus(event: Extract<AgentEvent, { type: "status" }>): void {
     if (this.#thread.status === "stopped") return;
-    const awaitingAnswer = hasPendingQuestion(this.#thread.id);
+    const awaitingAnswer = hasPendingQuestion(this.#thread.id, { blockingOnly: true }) || pendingRequests().some(request => request.threadId === this.id);
     const running = event.status === "thinking" || event.status === "working" || event.status === "awaiting";
     store.patchThread(this.#thread.id, {
       status: awaitingAnswer ? "awaiting" : event.status,
       activeTool: awaitingAnswer ? undefined : event.tool,
       ...(running ? { running: true } : {}),
     });
+  }
+
+  async #onQuestion(event: Extract<AgentEvent, { type: "question" }>): Promise<void> {
+    if (this.#thread.status === "stopped" || this.#thread.messages.some(message => message.parts.some(part => part.id === event.id))) return;
+    const generation = this.#stopGeneration;
+    const sessionGeneration = this.#sessionGeneration;
+    const result = await askQuestion(this.id, event.questions, { id: event.id, blocking: false });
+    if (result.cancelled || this.#disposed || generation !== this.#stopGeneration || sessionGeneration !== this.#sessionGeneration) return;
+    const text = event.questions.map(question => `Question: ${question.question}\nAnswer: ${result.answers[question.id]!.join(", ")}`).join("\n\n");
+    this.#check(text, []);
+    const item: QueuedMessage = { id: uid("que"), text, createdAt: Date.now() };
+    store.patchThread(this.id, { queue: [...(this.#thread.queue ?? []), item] });
+    if (!this.#preparing && !this.#steering && !this.#thread.compacting && !this.#stopping) await this.sendNow(item.id);
   }
 
   #onToolStart(event: Extract<AgentEvent, { type: "tool.start" }>): void {
@@ -745,8 +770,9 @@ export class ThreadRuntime {
 
   #onTurnEnd(event: Extract<AgentEvent, { type: "turn.end" }>): void {
     if (!this.#thread.running && !this.#stopping) return;
+    const generation = this.#stopGeneration;
     this.#turnsEnded += 1;
-    cancelQuestions(this.#thread.id);
+    cancelQuestions(this.#thread.id, { blockingOnly: !event.error && this.#thread.status !== "stopped" });
     this.#stopping?.ended();
     clearTimeout(this.#compactionTimer);
     const stopped = this.#thread.status === "stopped";
@@ -772,14 +798,15 @@ export class ThreadRuntime {
       else this.#notifyChat("success", "Response finished", this.#thread.title);
     }
     const settle = () => {
-      if (build)
+      const continuing = !this.#disposed && generation === this.#stopGeneration;
+      if (build && continuing)
         store.patchThread(this.#thread.id, {
           permissionMode: "manual" as const,
           queue: [{ id: uid("que"), text: "Build the plan.", createdAt: Date.now() }, ...(this.#thread.queue ?? [])],
         });
       if (this.#thread.provider === "cursor" && !this.#providerTitled && this.#autoTitle !== undefined && this.#thread.title === this.#autoTitle)
         void generateThreadTitle(this.id, true);
-      this.#resume = completed && !event.error;
+      this.#resume = continuing && completed && !event.error;
       this.#checkpointCompletion = finishCheckpoint(this.#thread, messageId).catch((error) => console.error("Checkpoint failed:", this.id, error)).finally(() => {
         this.#checkpointCompletion = null;
         this.#pump();
@@ -797,7 +824,7 @@ export class ThreadRuntime {
           catch { live = false; }
         }
         try {
-          if (!live) {
+          if (!live || this.#disposed || generation !== this.#stopGeneration) {
             if (this.#session === session) {
               this.#sessionGeneration += 1;
               this.#session = null;

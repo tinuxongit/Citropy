@@ -10,6 +10,10 @@ import { find } from "../server/files.ts";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { parse, join } from "node:path";
 import { homedir, tmpdir } from "node:os";
+import childProcess from "node:child_process";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
+import { syncBuiltinESMExports } from "node:module";
 
 function chatThread(t) {
   const project = [...store.projects.values()].find((entry) => entry.chat);
@@ -54,6 +58,97 @@ test("chat only opens the agent's browser, and chat cannot be closed", async () 
 test("chat covers the whole computer instead of one folder", () => {
   const project = [...store.projects.values()].find((entry) => entry.chat);
   assert.equal(project.path, parse(homedir()).root);
+});
+
+test("Codex chat discovers MCP servers asynchronously and disables local and plugin servers with valid transports", async (t) => {
+  const servers = [
+    { name: "Roblox_Studio", transport: { type: "stdio", command: "/usr/bin/python" } },
+    { name: "plugin", transport: { type: "stdio", command: '/plugins/server with "quotes"' } },
+    { name: "remote", transport: { type: "streamable_http", url: "https://example.com/mcp" } },
+    { name: "citropy", transport: { type: "streamable_http", url: "http://127.0.0.1:4177/mcp/chat" } },
+  ];
+  const child = new EventEmitter();
+  child.stdin = new PassThrough();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.kill = signal => {
+    child.signalCode = signal;
+    queueMicrotask(() => child.emit("exit", null, signal));
+    return true;
+  };
+  let finishDiscovery;
+  t.mock.method(childProcess, "spawnSync", () => assert.fail("Chat startup must not block the server"));
+  t.mock.method(childProcess, "execFile", (file, args, options, callback) => {
+    assert.deepEqual(args, ["mcp", "list", "--json"]);
+    finishDiscovery = callback;
+    return new EventEmitter();
+  });
+  const spawned = t.mock.method(childProcess, "spawn", () => child);
+  syncBuiltinESMExports();
+  let session;
+  t.after(() => {
+    session?.dispose();
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+  });
+  const { codexProvider } = await import("../server/providers/codex.ts");
+  session = codexProvider.start({ threadId: "chat", cwd: process.cwd(), binary: process.execPath, permissionMode: "manual", chat: true, emit: () => {} });
+  assert.equal(spawned.mock.callCount(), 0);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(spawned.mock.callCount(), 0);
+  finishDiscovery(null, JSON.stringify(servers), "");
+  await new Promise(resolve => setImmediate(resolve));
+  const args = spawned.mock.calls[0].arguments[1];
+  assert.equal(args[0], "app-server");
+  const overrides = args.filter((arg, index) => args[index - 1] === "-c");
+  assert.deepEqual(overrides, [
+    "features.shell_tool=false",
+    "features.unified_exec=false",
+    "features.computer_use=false",
+    "features.browser_use=false",
+    "features.apps=false",
+    "mcp_servers.Roblox_Studio.enabled=false",
+    'mcp_servers.Roblox_Studio.command="/usr/bin/python"',
+    "mcp_servers.plugin.enabled=false",
+    'mcp_servers.plugin.command="/plugins/server with \\"quotes\\""',
+    "mcp_servers.remote.enabled=false",
+    'mcp_servers.remote.url="https://example.com/mcp"',
+  ]);
+});
+
+test("Codex chat does not launch an unrestricted session after failed or cancelled discovery", async t => {
+  for (const outcome of ["error", "invalid JSON", "disposed"]) {
+    await t.test(outcome, async t => {
+      let finishDiscovery;
+      let signal;
+      t.mock.method(childProcess, "spawn", () => assert.fail("Discovery did not succeed"));
+      t.mock.method(childProcess, "spawnSync", () => assert.fail("Chat startup must not block the server"));
+      t.mock.method(childProcess, "execFile", (_file, _args, options, callback) => {
+        signal = options.signal;
+        finishDiscovery = callback;
+        return new EventEmitter();
+      });
+      syncBuiltinESMExports();
+      const events = [];
+      let session;
+      t.after(() => {
+        session?.dispose();
+        t.mock.restoreAll();
+        syncBuiltinESMExports();
+      });
+      const { codexProvider } = await import("../server/providers/codex.ts");
+      session = codexProvider.start({ threadId: "chat", cwd: process.cwd(), binary: process.execPath, permissionMode: "manual", chat: true, emit: event => events.push(event) });
+      if (outcome === "disposed") {
+        session.dispose();
+        assert.equal(signal.aborted, true);
+        finishDiscovery(null, "[]", "");
+      } else if (outcome === "error") finishDiscovery(new Error("Discovery failed"), "", "MCP configuration error");
+      else finishDiscovery(null, "not JSON", "");
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(events.some(event => event.type === "exit"), outcome !== "disposed");
+      if (outcome !== "disposed") assert.ok(events.some(event => event.type === "notice" && event.level === "error"));
+    });
+  }
 });
 
 test("find walks nested folders and returns the largest matching files first", async (t) => {

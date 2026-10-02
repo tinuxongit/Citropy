@@ -26,6 +26,7 @@ export function pendingRequests(): PermissionRequest[] {
 export function answer(id: string, decision: Decision): void {
   const entry = pending.get(id);
   if (!entry) return;
+  if (decision !== "allow" && decision !== "allow_always" && decision !== "deny") throw new Error("Choose a valid permission decision.");
   pending.delete(id);
   clearTimeout(entry.timer);
   if (decision === "allow_always") {
@@ -63,8 +64,9 @@ function chatDecision(tool: string, shape: ToolShape): Decision | undefined {
 }
 
 export function ask(threadId: string, tool: string, input: unknown): Promise<Decision> {
-  if (alwaysAllowed.get(threadId)?.has(tool)) return Promise.resolve("allow");
   const thread = store.threads.get(threadId);
+  if (!thread || thread.status === "stopped") return Promise.resolve("deny");
+  if (alwaysAllowed.get(threadId)?.has(tool)) return Promise.resolve("allow");
   const project = thread ? store.projects.get(thread.projectId) : undefined;
   const root = project?.path ?? "";
   const described = describeTool(tool, input, root);

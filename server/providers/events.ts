@@ -1,5 +1,6 @@
 import { dev } from "../config.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
+import { normalizeQuestions } from "../../shared/questions.ts";
 import type { ProviderId } from "../../shared/protocol.ts";
 import type { AgentEvent } from "./types.ts";
 
@@ -33,6 +34,7 @@ function validateAgentEvent(raw: unknown): AgentEvent {
     case "session": id("externalId"); text("model", true); text("effort", true); if (event.fastMode !== undefined) bool("fastMode"); if (event.contextMax !== undefined && (typeof event.contextMax !== "number" || !Number.isFinite(event.contextMax) || event.contextMax <= 0)) throw new Error("Invalid context window."); break;
     case "title": text("title"); if (!String(event.title).trim() || String(event.title).length > 200) throw new Error("Invalid title."); break;
     case "status": if (!statuses.has(String(event.status))) throw new Error("Unknown provider status."); text("tool", true); break;
+    case "question": id("id"); return { type: "question", id: event.id as string, questions: normalizeQuestions(event.questions) };
     case "subagent": id("id"); if (!statuses.has(String(event.status))) throw new Error("Unknown subagent status."); for (const key of ["title", "prompt", "model", "result"]) text(key, true); break;
     case "block.start": id("blockId"); if (event.block !== "text" && event.block !== "reasoning") throw new Error("Unknown block type."); break;
     case "block.delta": id("blockId"); text("text"); break;

@@ -7,9 +7,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { test } from "node:test";
+import { Readable } from "node:stream";
 import { dataRoot } from "../server/paths.ts";
 import { store } from "../server/store.ts";
-import { beginCheckpoint, finishCheckpoint, restoreCheckpoint, redoCheckpoint, checkpointLock } from "../server/checkpoints.ts";
+import { beginCheckpoint, finishCheckpoint, restoreCheckpoint, redoCheckpoint, checkpointLock, forkConversation } from "../server/checkpoints.ts";
+import { uploadAttachment } from "../server/assets.ts";
+import { providers } from "../server/providers/index.ts";
+import { runtimeFor } from "../server/runtime.ts";
 import { removeThread } from "../server/routes/threads.ts";
 import { closeProject } from "../server/routes/projects.ts";
 
@@ -27,6 +31,35 @@ async function fixture(t) {
   store.addMessage(thread.id, message);
   return { cwd, project, thread, message };
 }
+
+test("branched and restored conversations send historical attachment references to the new agent", async t => {
+  for (const operation of ["branch", "restore"]) {
+    await t.test(operation, async t => {
+      const { thread, message } = await fixture(t);
+      const request = Readable.from([Buffer.from("Historical attachment")]);
+      request.headers = {};
+      const attachment = await uploadAttachment(request, thread.id, "design.png");
+      store.replaceMessages(thread.id, [{ ...message, attachments: [attachment] }]);
+      let continued;
+      if (operation === "branch") continued = await forkConversation(thread, message.id);
+      else {
+        store.addMessage(thread.id, { id: "next", role: "user", ts: 2, parts: [{ id: "next-text", kind: "text", text: "Next request" }] });
+        await restoreCheckpoint(thread, "next", "conversation");
+        continued = thread;
+      }
+      const saved = continued.messages[0].attachments[0];
+      if (operation === "branch") assert.notEqual(saved.path, attachment.path);
+      else assert.equal(saved.path, attachment.path);
+      assert.equal(await readFile(saved.path, "utf8"), "Historical attachment");
+      const sent = [];
+      t.mock.method(providers.claude, "start", () => ({ send: prompt => sent.push(prompt), dispose() {} }));
+      await runtimeFor(continued.id).send("Continue using the attached design");
+      assert.equal(sent.length, 1);
+      assert.ok(sent[0].includes(JSON.stringify(saved.label)));
+      assert.ok(sent[0].includes(JSON.stringify(saved.path)));
+    });
+  }
+});
 
 test("reused checkpoint index handles deleted and newly ignored files without changing the user index", async t => {
   const { cwd, thread, message } = await fixture(t);

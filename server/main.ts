@@ -203,7 +203,20 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
   if (new URL(req.url ?? "/socket", origin).searchParams.get("workspace") === "1") { attachWorkspaceFeed(socket); return; }
   const consumer = randomUUID();
   const subscriptions = new Map<string, { pending: number; flow: boolean; streamId: string }>();
+  const outgoing: string[] = [];
+  let outgoingBytes = 0;
+  const flush = () => {
+    while (socket.readyState === socket.OPEN && outgoing.length && socket.bufferedAmount <= 1024 * 1024) {
+      const message = outgoing.shift()!;
+      outgoingBytes -= Buffer.byteLength(message);
+      socket.send(message, (error) => {
+        if (error) socket.terminate();
+        else flush();
+      });
+    }
+  };
   const send = (event: ServerEvent) => {
+    if (socket.readyState !== socket.OPEN) return;
     if (event.t === "term.data") {
       const subscription = subscriptions.get(event.termId);
       if (!subscription) return;
@@ -213,8 +226,15 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
         if (subscription.pending > 131_072) terminals.flow(event.termId, consumer, true);
       }
     }
-    if (socket.bufferedAmount > 1024 * 1024) { socket.close(1013, "The connection fell behind. Reconnecting."); return; }
-    if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
+    const message = JSON.stringify(event);
+    outgoing.push(message);
+    outgoingBytes += Buffer.byteLength(message);
+    flush();
+    if (outgoingBytes > 8 * 1024 * 1024) {
+      outgoing.length = 0;
+      outgoingBytes = 0;
+      socket.close(1013, "The connection fell behind. Reconnecting.");
+    }
   };
   const query = new URL(req.url ?? "/socket", origin).searchParams;
   const replay = query.get("epoch") === connectionEpoch ? eventJournal.replay(Number(query.get("after"))) : null;
@@ -265,7 +285,7 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
       else send({ t: "toast", level: "error", text: (error as Error).message });
     }
   });
-  socket.on("close", () => { cancelThreadSearch(send); unsubscribe(); terminals.release(consumer); });
+  socket.on("close", () => { outgoing.length = 0; outgoingBytes = 0; cancelThreadSearch(send); unsubscribe(); terminals.release(consumer); });
 });
 
 desktopEvents.on("event", (event) => {

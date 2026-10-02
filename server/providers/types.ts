@@ -8,6 +8,7 @@ import type {
   TodoItem,
   Usage,
 } from "../../shared/protocol.ts";
+import type { UserQuestion } from "../../shared/questions.ts";
 
 export type AgentEvent =
   | { type: "compacted"; contextTokens?: number }
@@ -16,6 +17,7 @@ export type AgentEvent =
   /** The provider named the conversation itself (Cursor sends `session_info_update`). */
   | { type: "title"; title: string }
   | { type: "status"; status: ThreadStatus; tool?: string }
+  | { type: "question"; id: string; questions: UserQuestion[] }
   | { type: "block.start"; blockId: string; block: "text" | "reasoning" }
   | { type: "block.delta"; blockId: string; text: string }
   | { type: "block.end"; blockId: string }
