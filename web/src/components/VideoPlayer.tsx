@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Maximize, Minimize, Pause, Play, Volume2, VolumeX } from "lucide-react";
-import { useI18n } from "../lib/i18n.ts";
 
 const clock = (seconds: number) => {
   const total = Number.isFinite(seconds) ? Math.floor(seconds) : 0;
@@ -11,7 +10,6 @@ const clock = (seconds: number) => {
 };
 
 export function VideoPlayer({ src, name, style, onSize }: { src: string; name: string; style?: CSSProperties; onSize?: (width: number, height: number) => void }) {
-  const t = useI18n();
   const player = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const idle = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -101,7 +99,7 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
     if (document.fullscreenElement) void document.exitFullscreen();
     else void player.current!.requestFullscreen();
   };
-  if (error) return <p className="video-player-error" role="alert">{t("Unable to play this video.")}</p>;
+  if (error) return <p className="video-player-error" role="alert">Unable to play this video.</p>;
   return (
     <div
       ref={player}
@@ -154,7 +152,7 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
         onError={() => setError(true)}
       />
       {!playing && (
-        <button className="video-player-start" type="button" aria-label={t("Play")} onClick={toggle}>
+        <button className="video-player-start" type="button" aria-label="Play" onClick={toggle}>
           <Play size={24} fill="currentColor" />
         </button>
       )}
@@ -164,7 +162,7 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
           <input
             className="range video-player-seek"
             type="range"
-            aria-label={t("Seek")}
+            aria-label="Seek"
             min={0}
             max={duration || 0}
             step="any"
@@ -186,7 +184,7 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
           />
         </div>
         <div className="video-player-bar">
-          <button className="icon-btn" type="button" aria-label={t(playing ? "Pause" : "Play")} title={t(playing ? "Pause" : "Play")} onClick={toggle}>
+          <button className="icon-btn" type="button" aria-label={playing ? "Pause" : "Play"} title={playing ? "Pause" : "Play"} onClick={toggle}>
             {playing ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" />}
           </button>
           <div className="video-player-volume">
@@ -194,7 +192,7 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
               <input
                 className="range"
                 type="range"
-                aria-label={t("Volume")}
+                aria-label="Volume"
                 min={0}
                 max={1}
                 step="any"
@@ -203,13 +201,13 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
                 onChange={(event) => changeVolume(Number(event.target.value))}
               />
             </div>
-            <button className="icon-btn" type="button" aria-label={t(muted ? "Unmute" : "Mute")} title={t(muted ? "Unmute" : "Mute")} onClick={toggleMuted}>
+            <button className="icon-btn" type="button" aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"} onClick={toggleMuted}>
               {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
             </button>
           </div>
           <span className="video-player-time">{clock(time)} <span>/ {clock(duration)}</span></span>
           <span className="video-player-spacer" />
-          <button className="icon-btn" type="button" aria-label={t(fullscreen ? "Exit full screen" : "Full screen")} title={t(fullscreen ? "Exit full screen" : "Full screen")} onClick={toggleFullscreen}>
+          <button className="icon-btn" type="button" aria-label={fullscreen ? "Exit full screen" : "Full screen"} title={fullscreen ? "Exit full screen" : "Full screen"} onClick={toggleFullscreen}>
             {fullscreen ? <Minimize size={17} /> : <Maximize size={17} />}
           </button>
         </div>

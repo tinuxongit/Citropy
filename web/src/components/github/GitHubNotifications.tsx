@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Bell, Check, RefreshCw } from "lucide-react";
-import { useI18n } from "../../lib/i18n.ts";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
 import {
@@ -11,7 +10,6 @@ import {
 } from "./GitHubShared.tsx";
 
 export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => void }) {
-  const t = useI18n();
   const [page, setPage] = useState(1);
   const [all, setAll] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -28,10 +26,10 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
               setAll(event.target.checked);
               setPage(1);
             }}
-          />{" "}{t("Include read notifications")}{" "}</label>
+          />{" "}Include read notifications{" "}</label>
         <button
           className="icon-btn"
-          aria-label={t("Refresh notifications")}
+          aria-label="Refresh notifications"
           disabled={list.loading}
           onClick={list.refresh}
         >
@@ -63,13 +61,13 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
             </div>
             <GitHubLink
               href={`https://github.com/notifications?query=repo%3A${encodeURIComponent(notification.repository.full_name)}`}
-            >{" "}{t("Open")}{" "}</GitHubLink>
+            >{" "}Open{" "}</GitHubLink>
             {notification.unread && (
               <button
                 className="icon-btn"
                 disabled={Boolean(busy)}
-                title={t("Mark as read")}
-                aria-label={t("Mark {title} as read", { title: notification.subject.title })}
+                title="Mark as read"
+                aria-label={`Mark ${notification.subject.title} as read`}
                 onClick={async () => {
                   setBusy(notification.id);
                   setError("");

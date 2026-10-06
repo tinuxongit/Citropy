@@ -246,7 +246,7 @@ function versionNumber(value?: string): string | undefined {
   );
 }
 
-function updateAvailable(provider: ProviderId, installed?: string, latest?: string): boolean | undefined {
+function updateAvailable(installed?: string, latest?: string): boolean | undefined {
   const current = versionNumber(installed);
   const target = versionNumber(latest);
   return current && target ? gt(target, current) : undefined;
@@ -340,7 +340,7 @@ export async function providerMaintenance(
         plan.binaryPath ? latestVersion(provider.id, plan, fresh) : undefined,
       ]);
       const target = versionNumber(latest);
-      const newer = updateAvailable(provider.id, version, latest);
+      const newer = updateAvailable(version, latest);
       if (newer && target) notifyUpdateAvailable(provider.label, target, "Providers");
       return {
         provider: provider.id,
@@ -549,7 +549,7 @@ async function performProviderUpdate(
     versions.delete(provider);
     if (!plan.install && before.version === after.version) {
       const latest = await latestVersion(provider, plan, true);
-      if (updateAvailable(provider, after.version, latest))
+      if (updateAvailable(after.version, latest))
         throw new Error(`The updater finished, but ${providers[provider].label} still reports ${after.version}; ${latest} is available for this installation. Check the update details and CLI path.`);
     }
     state.message =

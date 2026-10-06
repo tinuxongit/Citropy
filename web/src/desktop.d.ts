@@ -34,6 +34,7 @@ declare global {
       windowState(): Promise<DesktopWindowState>;
       titlebarHeight(height: number): void;
       captureWindow(): Promise<string>;
+      openFolder?(path: string): Promise<void>;
       windowCommand(
         command: "minimize" | "maximize" | "close" | "reload" | "restart",
       ): Promise<void>;

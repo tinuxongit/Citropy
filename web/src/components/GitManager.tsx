@@ -1,5 +1,5 @@
 import { AnimatePresence } from "motion/react";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import {
   ArrowRight,
   CircleAlert,
@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { chooseWorkspace } from "../lib/actions.ts";
 import { useApp, viewportWidth } from "../lib/store.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { SectionSidebar } from "./SectionSidebar.tsx";
 import { GitDialog, type GitDialogAction } from "./GitDialog.tsx";
 import { EmptyState } from "./git/GitEmptyState.tsx";
@@ -22,19 +21,15 @@ import { BranchesSection } from "./git/BranchesSection.tsx";
 import { StashesSection } from "./git/StashesSection.tsx";
 import { RemotesSection } from "./git/RemotesSection.tsx";
 import { PixelLoader } from "./PixelLoader.tsx";
+import { ActionError } from "./ActionError.tsx";
 
 export function GitManager({
   sidebarOpen,
   onCloseSidebar,
-  onBack,
-  navigation,
 }: {
   sidebarOpen: boolean;
   onCloseSidebar: () => void;
-  onBack: () => void;
-  navigation?: ReactNode;
 }) {
-  const t = useI18n();
   const projectId = useApp((state) => state.activeProjectId);
   const thread = useApp((state) => state.threads[state.activeThreadId ?? ""]);
   const sourceProject = useApp((state) =>
@@ -66,7 +61,6 @@ export function GitManager({
     projectId,
     connected,
     section,
-    t,
     onCommitted: () => {
       setMessage("");
       setDescription("");
@@ -134,27 +128,27 @@ export function GitManager({
   const createBranch = () =>
     showDialog({
       operation: "createBranch",
-      title: t("Create a branch"),
-      description: t("Your new branch will start from {branch}. Citropy will switch to it after creation.", { branch }),
-      label: t("Create and switch"),
+      title: "Create a branch",
+      description: `Your new branch will start from ${branch}. Citropy will switch to it after creation.`,
+      label: "Create and switch",
       fields: "branch",
     });
   const saveStash = () =>
     showDialog({
       operation: "stash",
-      title: t("Save changes for later"),
+      title: "Save changes for later",
       description:
-        t("Save staged, unstaged, and new files in a stash, then return to a clean working tree."),
-      label: t("Save stash"),
+        "Save staged, unstaged, and new files in a stash, then return to a clean working tree.",
+      label: "Save stash",
       fields: "stash",
     });
   const addRemote = () =>
     showDialog({
       operation: "addRemote",
-      title: t("Connect a remote"),
+      title: "Connect a remote",
       description:
-        t("Link this workspace to an existing remote repository. You choose when to publish your commits."),
-      label: t("Add remote"),
+        "Link this workspace to an existing remote repository. You choose when to publish your commits.",
+      label: "Add remote",
       fields: "remote",
     });
   const reviewChanges = (
@@ -163,14 +157,14 @@ export function GitManager({
       data-variant="primary"
       onClick={() => changeSection("Changes")}
     >
-      {t("Review changes")}
+      Review changes
       <ArrowRight size={15} />
     </button>
   );
 
   return (
-    <section className="section-view" aria-label={t("Git manager")}>
-      <SectionSidebar activeItem={section} open={sidebarOpen} title={t("Source control")} onBack={onBack} navigation={navigation}>
+    <section className="section-view" aria-label="Git manager">
+      <SectionSidebar activeItem={section} open={sidebarOpen} title="Source control">
           {tabs.map(({ name, icon: Icon }) => (
             <button
               className="section-link"
@@ -180,7 +174,7 @@ export function GitManager({
               onClick={() => changeSection(name)}
             >
               <Icon size={17} />
-              <span>{t(name)}</span>
+              <span>{name}</span>
               {data?.repository && counts[name] !== undefined && (
                 <span className="section-count">{counts[name]}</span>
               )}
@@ -205,71 +199,71 @@ export function GitManager({
           <div className="git-alert" role="status">
             <CircleAlert size={17} />
             <p>
-              {t("Connection lost. Your repository will be available when Citropy reconnects.")}
+              Connection lost. Your repository will be available when Citropy reconnects.
             </p>
           </div>
         )}
         {feedback?.error && !dialog && (
-          <div className="git-alert" role="alert">
+          <ActionError as="div" className="git-alert" message={feedback.text} onDismiss={() => setFeedback(null)}>
             <CircleAlert size={17} />
             <div>
               <strong>{feedback.text}</strong>
               {feedback.detail && (
                 <details>
-                  <summary>{t("Show Git details")}</summary>
+                  <summary>Show Git details</summary>
                   <pre>{feedback.detail}</pre>
                 </details>
               )}
             </div>
             <button
               className="icon-btn"
-              aria-label={t("Dismiss error")}
+              aria-label="Dismiss error"
               onClick={() => setFeedback(null)}
             >
               <X size={15} />
             </button>
-          </div>
+          </ActionError>
         )}
 
         <div className="git-content">
           {!projectId ? (
             <EmptyState
-              title={t("Choose a workspace")}
+              title="Choose a workspace"
               action={
                 <button
                   className="btn"
                   data-variant="primary"
                   onClick={chooseWorkspace}
                 >
-                  {t("Open workspace")}
+                  Open workspace
                 </button>
               }
             >
               <p>
-                {t("Open a project folder to review changes and manage its Git repository.")}
+                Open a project folder to review changes and manage its Git repository.
               </p>
             </EmptyState>
           ) : !data ? (
             busy ? (
               <div className="git-preview-placeholder" role="status">
                 <PixelLoader size={24} />
-                <p>{t("Reading repository…")}</p>
+                <p>Reading repository…</p>
               </div>
             ) : (
-              <EmptyState title={t("Repository unavailable")}>
-                <p>{t("Refresh to try loading this workspace again.")}</p>
+              <EmptyState title="Repository unavailable">
+                <p>Refresh to try loading this workspace again.</p>
                 <button
                   className="btn"
                   disabled={disabled}
                   onClick={() => void act("overview")}
                 >
-                  {t("Try again")}
+                  Try again
                 </button>
               </EmptyState>
             )
           ) : !data.repository ? (
             <EmptyState
-              title={t("Start tracking this project")}
+              title="Start tracking this project"
               action={
                 <button
                   className="btn"
@@ -278,12 +272,12 @@ export function GitManager({
                   onClick={() => void act("init")}
                 >
                   <Plus size={16} />
-                  {t("Initialize repository")}
+                  Initialize repository
                 </button>
               }
             >
               <p>
-                {t("Git keeps a history of your files so you can review changes, save commits, and work on branches.")}
+                Git keeps a history of your files so you can review changes, save commits, and work on branches.
               </p>
               <p>{project?.name}</p>
             </EmptyState>
@@ -308,7 +302,6 @@ export function GitManager({
                   branch={branch}
                   canCommit={Boolean(canCommit)}
                   match={match}
-                  t={t}
                   setFilter={setFilter}
                   setSelection={setSelection}
                   setMessage={setMessage}
@@ -329,7 +322,6 @@ export function GitManager({
                   branch={branch}
                   selectedCommit={selectedCommit}
                   reviewChanges={reviewChanges}
-                  t={t}
                   setSelection={setSelection}
                   act={act}
                 />
@@ -344,7 +336,6 @@ export function GitManager({
                   localBranches={localBranches}
                   remoteBranches={remoteBranches}
                   reviewChanges={reviewChanges}
-                  t={t}
                   setFilter={setFilter}
                   changeSection={changeSection}
                   createBranch={createBranch}
@@ -365,7 +356,6 @@ export function GitManager({
                   conflicts={conflicts}
                   selectedStash={selectedStash}
                   reviewChanges={reviewChanges}
-                  t={t}
                   setSelection={setSelection}
                   showDialog={showDialog}
                   act={act}
@@ -379,7 +369,6 @@ export function GitManager({
                   disabled={disabled}
                   branch={branch}
                   upstream={upstream}
-                  t={t}
                   showDialog={showDialog}
                   act={act}
                   addRemote={addRemote}

@@ -2,7 +2,6 @@ import { LinkActions } from "./components/LinkActions.tsx";
 import { RemoteConnectionBanner } from "./components/EnvironmentSettings.tsx";
 import { environmentStorage, selectEnvironment, useEnvironments } from "./lib/environment.ts";
 import { AnimatePresence } from "motion/react";
-import { useI18n } from "./lib/i18n.ts";
 import { NewConversation } from "./components/NewConversation.tsx";
 import {
   Fragment,
@@ -19,9 +18,9 @@ import { useDrawerGestures } from "./lib/use-drawer-gesture.ts";
 import { Titlebar } from "./components/Titlebar.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { NavigationStrip } from "./components/NavigationStrip.tsx";
-import { SidebarFooter } from "./components/SidebarFooter.tsx";
 import { Conversation } from "./components/Conversation.tsx";
 import { Composer } from "./components/Composer.tsx";
+import { ThreadDetailsPanel } from "./components/thread-details/ThreadDetails.tsx";
 import { Inspector } from "./components/Inspector.tsx";
 import { DevTriggers } from "./components/DevTriggers.tsx";
 import { WhatsNew } from "./components/WhatsNew.tsx";
@@ -59,7 +58,6 @@ const Settings = lazy(() => import("./components/Settings.tsx").then((module) =>
 const UsageView = lazy(() => import("./components/UsageView.tsx").then((module) => ({ default: module.UsageView })));
 
 export function App() {
-  const t = useI18n();
   const { activeId: environment } = useEnvironments();
   const requestedView = useApp((state) => state.activeView);
   const view = useDeferredValue(requestedView);
@@ -71,7 +69,6 @@ export function App() {
   const newThreadProvider = useApp((state) => state.newThreadProvider);
   const sidebarOpen = useApp((state) => state.sidebarOpen);
   const narrow = useSyncExternalStore(subscribeResize, () => viewportWidth() <= 720);
-  const navigationStyle = useApp((state) => narrow ? "strip" : state.navigationStyle);
   const stageBackground = useApp((state) => state.stageBackground);
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const panelWidths = useApp((state) => state.panelWidths);
@@ -79,7 +76,6 @@ export function App() {
   const uiTransparency = useApp((state) => state.uiTransparency);
   const opaquePopups = useApp((state) => state.opaquePopups);
   const backgroundEverywhere = useApp((state) => state.backgroundEverywhere);
-  const contentWidth = useApp((state) => state.contentWidth);
   const activeThreadId = useApp((state) => state.activeThreadId);
   const activeProjectId = useApp((state) => state.activeProjectId);
   const githubStatus = useGitHub("status", {
@@ -164,15 +160,6 @@ export function App() {
     setSettingsSection("General");
     openView("settings");
   };
-  const footer = navigationStyle === "bar" ? (
-    <SidebarFooter
-      activeView={view}
-      onGit={() => openView("git")}
-      onGitHub={() => openView("github")}
-      onSettings={openSettings}
-      onUsage={() => openView("usage")}
-    />
-  ) : undefined;
 
   useEffect(() => {
     if (githubStatus.data)
@@ -277,7 +264,6 @@ export function App() {
     <div
       className="shell"
       data-sidebar={navigationOpen}
-      data-navigation={navigationStyle}
       data-inspector={inspectorOpen && panelsShown}
       data-composer={view === "chat" && hasProject && hasActiveThread}
       data-section={view !== "chat" && !backgroundEverywhere || undefined}
@@ -290,24 +276,23 @@ export function App() {
           ]),
         ),
         "--ui-alpha": 1 - uiTransparency / 100,
-        "--reading": `${contentWidth}px`,
         "--popup-floor": opaquePopups ? 1 : 0.95,
       } as CSSProperties}
     >
       <StageBackdrop />
-      {navigationStyle === "strip" && <NavigationStrip
+      <NavigationStrip
         activeView={view}
         onChat={() => (view === "chat" ? toggleSidebar() : openView("chat"))}
         onGit={() => (view === "git" ? toggleNavigation() : openView("git"))}
         onGitHub={() => (view === "github" ? toggleNavigation() : openView("github"))}
         onSettings={() => (view === "settings" ? toggleNavigation() : openSettings())}
         onUsage={() => (view === "usage" ? toggleNavigation() : openView("usage"))}
-      />}
-      <Titlebar
         onNotification={openNotification}
+      />
+      <Titlebar
         view={view}
         sidebarOpen={navigationOpen}
-        sidebarToggle={narrow || navigationStyle !== "strip"}
+        sidebarToggle={narrow}
         onToggleSidebar={toggleNavigation}
       />
       <RemoteConnectionBanner />
@@ -319,40 +304,34 @@ export function App() {
             data-open={navigationOpen}
             tabIndex={navigationOpen ? undefined : -1}
             aria-hidden={!navigationOpen || undefined}
-            aria-label={t("Close navigation")}
+            aria-label="Close navigation"
             onClick={toggleNavigation}
           />
         )}
         {view === "chat" && <SlidingPanel open={sidebarOpen} side="left" keepMounted pauseHidden>
           <Sidebar
-            footer={footer}
             onConversation={() => openView("chat")}
           />
         </SlidingPanel>}
         <main className="stage">
           <Suspense
             fallback={
-              <div className="pane-empty" role="status">{t("Loading…")}</div>
+              <div className="pane-empty" role="status">Loading…</div>
             }
           >
             {view === "usage" ? (
               <UsageView
-                navigation={footer}
                 key={environment}
                 sidebarOpen={sectionSidebarOpen}
-                onBack={() => openView("chat")}
               />
             ) : view === "git" ? (
               <GitManager
-                navigation={footer}
                 key={`${environment}:${activeProjectId}:${activeThreadId}`}
                 sidebarOpen={sectionSidebarOpen}
                 onCloseSidebar={() => setSectionSidebarOpen(false)}
-                onBack={() => openView("chat")}
               />
             ) : view === "github" ? (
               <GitHub
-                navigation={footer}
                 status={githubStatus}
                 onGit={() => openView("git")}
                 key={`${environment}:${activeProjectId}`}
@@ -362,15 +341,14 @@ export function App() {
               />
             ) : view === "settings" ? (
               <Settings
-                navigation={footer}
                 initialSection={settingsSection}
                 sidebarOpen={sectionSidebarOpen}
                 onCloseSidebar={() => setSectionSidebarOpen(false)}
-                onBack={() => openView("chat")}
               />
             ) : hasProject && activeThreadId ? (
               <Fragment key={`${environment}:${activeThreadId}`}>
                 <Conversation />
+                <ThreadDetailsPanel />
                 <Composer
                   onUsage={() => openView("usage")}
                   onShell={openNotification}

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Menu } from "../Menu.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
-import { LOCALE, type useI18n } from "../../lib/i18n.ts";
+import { LOCALE } from "../../lib/locale.ts";
 import { formatDate } from "../../lib/format.ts";
 import type { Section } from "./labels.ts";
 import type { GitDialogAction } from "../GitDialog.tsx";
@@ -26,7 +26,6 @@ export function BranchesSection({
   localBranches,
   remoteBranches,
   reviewChanges,
-  t,
   setFilter,
   changeSection,
   createBranch,
@@ -55,7 +54,6 @@ export function BranchesSection({
     date: string;
   }>;
   reviewChanges: ReactNode;
-  t: ReturnType<typeof useI18n>;
   setFilter: (value: string) => void;
   changeSection: (next: Section) => void;
   createBranch: () => void;
@@ -73,7 +71,7 @@ export function BranchesSection({
       <header className="git-section-heading">
         <div>
           <p>
-            {t("Keep separate lines of work and bring changes together.")}
+            Keep separate lines of work and bring changes together.
           </p>
         </div>
         {data.hasCommits && (
@@ -84,7 +82,7 @@ export function BranchesSection({
             onClick={createBranch}
           >
             <Plus size={15} />
-            {t("New branch")}
+            New branch
           </button>
         )}
       </header>
@@ -92,39 +90,39 @@ export function BranchesSection({
         <div className="git-current-summary">
           <GitBranch size={22} />
           <div>
-            <small>{t("Current branch")}</small>
+            <small>Current branch</small>
             <strong>{branch}</strong>
           </div>
-          <span className="git-tag">{t("Awaiting first commit")}</span>
+          <span className="git-tag">Awaiting first commit</span>
         </div>
       )}
       {!data.hasCommits ? (
         <EmptyState
-          title={t("Create a commit before branching")}
+          title="Create a commit before branching"
           action={reviewChanges}
         >
-          <p>{" "}{t("Your repository is initialized, but")}{" "}
-            <strong>{branch}</strong>{" "}{t("has no commits yet. Save your first commit to create this branch and start new ones from it.")}{" "}</p>
+          <p>{" "}Your repository is initialized, but{" "}
+            <strong>{branch}</strong>{" "}has no commits yet. Save your first commit to create this branch and start new ones from it.{" "}</p>
         </EmptyState>
       ) : (
         <>
           <label className="git-filter git-branch-filter">
             <Search size={15} />
             <input
-              aria-label={t("Filter branches")}
-              placeholder={t("Find a branch…")}
+              aria-label="Filter branches"
+              placeholder="Find a branch…"
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
             />
           </label>
           <div className="git-table-heading">
             <h3>
-              {t("Local branches")}
+              Local branches
               <span className="git-count">
                 {localBranches.length}
               </span>
             </h3>
-            <span>{t("On this computer")}</span>
+            <span>On this computer</span>
           </div>
           <div className="git-branch-list">
             {localBranches
@@ -144,15 +142,15 @@ export function BranchesSection({
                       {entry.current && (
                         <span className="git-tag">
                           <Check size={11} />
-                          {t("Current")}
+                          Current
                         </span>
                       )}
                     </div>
                     <p className="truncate">{entry.subject}</p>
                     <small>
                       {entry.upstream
-                        ? t("Tracking ") + entry.upstream
-                        : t("Local only")}
+                        ? "Tracking " + entry.upstream
+                        : "Local only"}
                     </small>
                   </div>
                   <time
@@ -170,7 +168,7 @@ export function BranchesSection({
                           void act("switchBranch", entry.name)
                         }
                       >
-                        {t("Switch")}
+                        Switch
                         <ArrowRight size={13} />
                       </button>
                       <Menu
@@ -180,7 +178,7 @@ export function BranchesSection({
                           <button
                             id={id}
                             className="icon-btn"
-                            aria-label={t("Actions for {name}", { name: entry.name })}
+                            aria-label={`Actions for ${entry.name}`}
                             aria-expanded={open}
                             aria-haspopup="menu"
                             disabled={
@@ -194,30 +192,30 @@ export function BranchesSection({
                         items={[
                           {
                             id: "merge",
-                            label: t("Merge into {branch}", { branch }),
+                            label: `Merge into ${branch}`,
                             icon: <GitMerge size={14} />,
                             onSelect: () =>
                               showDialog({
                                 operation: "merge",
                                 value: entry.name,
-                                title: t("Merge into {branch}?", { branch }),
-                                description: t("Bring commits from {source} into your current branch, {branch}.", { source: entry.name, branch }),
-                                label: t("Merge branch"),
+                                title: `Merge into ${branch}?`,
+                                description: `Bring commits from ${entry.name} into your current branch, ${branch}.`,
+                                label: "Merge branch",
                               }),
                           },
                           {
                             id: "delete",
-                            label: t("Delete branch"),
+                            label: "Delete branch",
                             icon: <Trash2 size={14} />,
                             danger: true,
                             onSelect: () =>
                               showDialog({
                                 operation: "deleteBranch",
                                 value: entry.name,
-                                title: t("Delete {name}?", { name: entry.name }),
+                                title: `Delete ${entry.name}?`,
                                 description:
                                   "Delete this local branch. Git will keep it if it contains unmerged work.",
-                                label: t("Delete branch"),
+                                label: "Delete branch",
                                 danger: true,
                               }),
                           },
@@ -231,12 +229,12 @@ export function BranchesSection({
           {filter &&
             !localBranches.some((entry) => match(entry.name)) && (
               <p className="git-list-hint">
-                {t("No local branches match your search.")}
+                No local branches match your search.
               </p>
             )}
           <div className="git-table-heading">
             <h3>
-              {t("Remote branches")}
+              Remote branches
               <span className="git-count">
                 {remoteBranches.length}
               </span>
@@ -245,7 +243,7 @@ export function BranchesSection({
               className="git-text-button"
               onClick={() => changeSection("Remotes")}
             >
-                {t("Manage remotes")}
+                Manage remotes
               <ArrowRight size={13} />
             </button>
           </div>
@@ -268,11 +266,11 @@ export function BranchesSection({
             <div className="git-inline-empty">
               <Globe2 size={22} />
               <div>
-                <strong>{t("No remote branches yet")}</strong>
+                <strong>No remote branches yet</strong>
                 <p>
                   {data.remotes.length
-                    ? t("Fetch your remotes to update the branch list.")
-                    : t("Connect a remote repository to see shared branches here.")}
+                    ? "Fetch your remotes to update the branch list."
+                    : "Connect a remote repository to see shared branches here."}
                 </p>
               </div>
               {data.remotes.length > 0 && (
@@ -281,7 +279,7 @@ export function BranchesSection({
                   disabled={disabled}
                   onClick={() => void act("fetch")}
                 >
-                  {t("Fetch remotes")}
+                  Fetch remotes
                 </button>
               )}
             </div>
@@ -290,7 +288,7 @@ export function BranchesSection({
             remoteBranches.length > 0 &&
             !remoteBranches.some((entry) => match(entry.name)) && (
               <p className="git-list-hint">
-                {t("No remote branches match your search.")}
+                No remote branches match your search.
               </p>
             )}
         </>

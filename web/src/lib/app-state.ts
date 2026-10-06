@@ -64,7 +64,6 @@ const half = Math.ceil(COLOR_THEMES.length / 2);
 export const THEMES: readonly Theme[] = [...COLOR_THEMES.slice(0, half), "neutral", "custom", ...COLOR_THEMES.slice(half)];
 export const SCHEMES = ["dark", "light"] as const;
 export type Scheme = typeof SCHEMES[number];
-export type NavigationStyle = "strip" | "bar";
 const STAGE_BACKGROUNDS = ["default", "ascii", "image"] as const;
 export type StageBackground = typeof STAGE_BACKGROUNDS[number];
 export type PanelId = "sidebar" | "inspector" | "git" | "github";
@@ -132,9 +131,8 @@ export interface AppState {
   toolConnections: Record<string, ToolConnection>;
   tools: ToolDefinition[];
   inspectorOpen: boolean;
-  gitPanelOpen: boolean;
   sidebarOpen: boolean;
-  navigationStyle: NavigationStyle;
+  threadDetailsOpen: boolean;
   searchEngine: SearchEngine;
   stageBackground: StageBackground;
   backgroundDim: number;
@@ -147,7 +145,6 @@ export interface AppState {
   uiTransparency: number;
   opaquePopups: boolean;
   backgroundEverywhere: boolean;
-  contentWidth: number;
   sidebarGroups: Record<string, boolean>;
   threadQuery: string;
   threadSearchFocusPending: boolean;
@@ -196,11 +193,7 @@ const initialScale =
 const storedSpeed = Number(readPref("citropy.typingSpeed", "100"));
 const storedVolume = Number(readPref("citropy.uiSoundVolume", "60"));
 const storedDim = Number(readPref("citropy.backgroundDim", "68"));
-const DEFAULT_CONTENT_WIDTH = 780;
-export const MIN_CONTENT_WIDTH = 600;
-export const MAX_CONTENT_WIDTH = 1400;
 const storedFocusSpread = Number(readPref("citropy.backgroundFocusSpread", "140"));
-const storedContentWidth = Number(readPref("citropy.contentWidth", String(DEFAULT_CONTENT_WIDTH)));
 const storedCustomColor = readPref<string>("citropy.customColor", "");
 const storedTheme = readPref<string>("citropy.theme", "neutral");
 
@@ -249,7 +242,6 @@ export const useApp = create<AppState>(() => ({
   assistance: { ...defaultAssistance },
   projectDefaults: {},
   activeView: "chat",
-  gitPanelOpen: readFlag("citropy.gitPanel", false),
   notificationPreferences: { toasts: true, desktop: true, sound: false, subagents: false },
   confirmation: null,
   searchResult: null,
@@ -302,12 +294,12 @@ export const useApp = create<AppState>(() => ({
     typeof window !== "undefined" &&
       window.innerWidth / (initialScale / 100) > 1150,
   ),
+  threadDetailsOpen: readFlag("citropy.threadDetails", false),
   sidebarOpen: readFlag(
     "citropy.sidebar",
     typeof window !== "undefined" &&
       window.innerWidth / (initialScale / 100) > 720,
   ),
-  navigationStyle: readPref<NavigationStyle>("citropy.navigationStyle", "bar") === "strip" ? "strip" : "bar",
   searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
   stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "ascii"), "ascii"),
   backgroundDim: Number.isFinite(storedDim) ? Math.max(0, Math.min(90, storedDim)) : 68,
@@ -320,7 +312,6 @@ export const useApp = create<AppState>(() => ({
   uiTransparency: readLevel("citropy.uiTransparency", 0, 60, { on: 20, off: 0 }, 20),
   opaquePopups: readFlag("citropy.opaquePopups", false),
   backgroundEverywhere: readFlag("citropy.backgroundEverywhere", false),
-  contentWidth: Number.isFinite(storedContentWidth) ? Math.max(MIN_CONTENT_WIDTH, Math.min(MAX_CONTENT_WIDTH, storedContentWidth)) : DEFAULT_CONTENT_WIDTH,
   sidebarGroups: readSidebarGroups(),
   threadQuery: "",
   threadSearchFocusPending: false,

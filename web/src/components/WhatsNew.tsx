@@ -3,7 +3,6 @@ import { AnimatePresence } from "motion/react";
 import { Sparkles } from "lucide-react";
 import type { AppUpdateState, ReleaseNotes } from "../../../shared/app-update.ts";
 import { reportError } from "../lib/api.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { useApp } from "../lib/store.ts";
 import { Modal } from "./Modal.tsx";
 
@@ -34,7 +33,6 @@ function useNotesAfterUpdate() {
 }
 
 export function WhatsNew() {
-  const t = useI18n();
   const notes = useApp((state) => state.whatsNew);
   useNotesAfterUpdate();
   const close = () => useApp.setState({ whatsNew: null });
@@ -42,11 +40,11 @@ export function WhatsNew() {
     <AnimatePresence>{notes && (
       <Modal
         className="whats-new-dialog"
-        title={t("What's new in Citropy {version}", { version: notes.version })}
+        title={`What's new in Citropy ${notes.version}`}
         icon={<Sparkles size={20} />}
         initialFocus="[data-primary]"
         onClose={close}
-        footer={<button className="btn" data-variant="primary" data-primary type="button" onClick={close}>{t("Got it")}</button>}
+        footer={<button className="btn" data-variant="primary" data-primary type="button" onClick={close}>Got it</button>}
       >
         {notes.sections.map((section) => (
           <section key={section.title} className="whats-new-section">

@@ -1,4 +1,3 @@
-import { useI18n } from "../../lib/i18n.ts";
 import { useEffect, useRef, useState } from "react";
 import { useApp, scaled } from "../../lib/store.ts";
 import { useReducedMotion } from "../../lib/use-reduced-motion.ts";
@@ -67,7 +66,6 @@ export function CodeEditor({
   wrap: boolean;
   onReady: (editor: monaco.editor.IStandaloneCodeEditor | null) => void;
 }) {
-  const t = useI18n();
   const container = useRef<HTMLDivElement>(null);
   const instance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const current = useRef(document);
@@ -186,9 +184,9 @@ export function CodeEditor({
           type="button"
           className="editor-problems"
           onClick={() => instance.current?.trigger("toolbar", "editor.action.marker.nextInFiles", null)}
-          title={t("Go to next problem")}
+          title="Go to next problem"
         >
-          {t(problems === 1 ? "{count} problem" : "{count} problems", { count: problems })}
+          {problems === 1 ? `${problems} problem` : `${problems} problems`}
         </button>
       )}
       {menu && instance.current && (

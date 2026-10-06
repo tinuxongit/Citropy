@@ -3,7 +3,6 @@ import { ResizeHandle } from "../ResizeHandle.tsx";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Play, RefreshCw, Terminal } from "lucide-react";
 import { useGitHub } from "../../lib/use-github.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import { Select } from "../Select.tsx";
 import { github } from "../../lib/actions.ts";
 import {
@@ -26,7 +25,6 @@ export function GitHubActions({
 }: {
   repository: GitHubRepository;
 }) {
-  const t = useI18n();
   const repo = repository.full_name;
   const [inputs, setInputs] = useState([{ name: "", value: "" }]);
   const [page, setPage] = useState(1);
@@ -69,22 +67,22 @@ export function GitHubActions({
   return (
     <div className="github-workspace">
       <div className="github-toolbar">
-        <h2>{t("Workflow runs")}</h2>
+        <h2>Workflow runs</h2>
         <Select
-          aria-label={t("Workflow branch")}
+          aria-label="Workflow branch"
           value={branch}
           onChange={(value) => {
             setBranch(value);
             setPage(1);
           }}
           options={[
-            { value: "", label: t("All branches") },
+            { value: "", label: "All branches" },
             ...(branches.data ?? []).map((name) => ({ value: name, label: name })),
           ]}
         />
         <button
           className="icon-btn"
-          aria-label={t("Refresh workflows")}
+          aria-label="Refresh workflows"
           onClick={refresh}
           disabled={list.loading}
         >
@@ -97,7 +95,7 @@ export function GitHubActions({
           onClick={() => setAction("dispatch")}
         >
           <Play size={14} />
-        {t("Run workflow")}
+        Run workflow
         </button>
       </div>
       {message && (
@@ -112,7 +110,7 @@ export function GitHubActions({
             error={list.error}
             loading={list.loading && !list.data}
             empty={
-              list.data?.items.length === 0 ? t("No workflow runs") : undefined
+              list.data?.items.length === 0 ? "No workflow runs" : undefined
             }
           />
           {list.data?.items.map((run) => (
@@ -148,8 +146,8 @@ export function GitHubActions({
           {!selected ? (
             <div className="github-empty">
               <Play size={30} />
-              <h2>{t("Select a workflow run")}</h2>
-              <p>{" "}{t("Inspect jobs, steps, and logs. Active runs refresh automatically.")}{" "}</p>
+              <h2>Select a workflow run</h2>
+              <p>{" "}Inspect jobs, steps, and logs. Active runs refresh automatically.{" "}</p>
             </div>
           ) : (
             <>
@@ -158,7 +156,7 @@ export function GitHubActions({
                 onClick={() => setSelected(null)}
               >
                 <ArrowLeft size={15} />
-                  {t("Back to runs")}
+                  Back to runs
               </button>
               <GitHubFeedback
                 error={detail.error}
@@ -172,11 +170,11 @@ export function GitHubActions({
                         detail.data.run.conclusion ?? detail.data.run.status
                       }
                     />
-                    <GitHubLink href={detail.data.run.html_url}>{" "}{t("Open on GitHub")}{" "}</GitHubLink>
+                    <GitHubLink href={detail.data.run.html_url}>{" "}Open on GitHub{" "}</GitHubLink>
                     <h2>{detail.data.run.display_title}</h2>
                     <p>
                       {detail.data.run.name} · {detail.data.run.head_branch} ·{" "}
-                      {detail.data.run.head_sha.slice(0, 7)}{" "}{t("· Attempt")}{" "}
+                      {detail.data.run.head_sha.slice(0, 7)}{" "}· Attempt{" "}
                       {detail.data.run.run_attempt}
                     </p>
                   </header>
@@ -186,7 +184,7 @@ export function GitHubActions({
                         className="btn"
                         onClick={() => setAction(active ? "cancel" : "rerun")}
                       >
-                          {active ? t("Cancel run…") : t("Re-run jobs…")}
+                          {active ? "Cancel run…" : "Re-run jobs…"}
                       </button>
                     )}
                   </div>
@@ -212,7 +210,7 @@ export function GitHubActions({
                           onClick={() => setJobId(job.id)}
                         >
                           <Terminal size={14} />
-                          {t("View logs")}
+                          View logs
                         </button>
                       </details>
                     ))}
@@ -225,8 +223,8 @@ export function GitHubActions({
       </div>
       <AnimatePresence>{jobId && (
         <GitHubDialog
-          title={t("Job logs")}
-          description={t("{repository} · job {job}", { repository: repo, job: jobId })}
+          title="Job logs"
+          description={`${repo} · job ${jobId}`}
           onClose={() => setJobId(null)}
         >
           <GitHubFeedback error={logs.error} loading={logs.loading} />
@@ -236,7 +234,7 @@ export function GitHubActions({
             onClick={logs.refresh}
             disabled={logs.loading}
           >
-            {t("Refresh logs")}
+            Refresh logs
           </button>
           <pre className="github-logs scroll">{logs.data}</pre>
         </GitHubDialog>
@@ -245,18 +243,18 @@ export function GitHubActions({
         <GitHubDialog
           title={
             action === "dispatch"
-              ? t("Run a workflow")
+              ? "Run a workflow"
               : action === "rerun"
-                ? t("Re-run workflow jobs")
-                : t("Cancel this run")
+                ? "Re-run workflow jobs"
+                : "Cancel this run"
           }
-          description={t("{target}. This action will be sent to GitHub.", { target: `${repo}${selected && action !== "dispatch" ? ` · ${detail.data?.run.name} #${detail.data?.run.run_number}` : ""}` })}
+          description={`${`${repo}${selected && action !== "dispatch" ? ` · ${detail.data?.run.name} #${detail.data?.run.run_number}` : ""}`}. This action will be sent to GitHub.`}
           submitLabel={
             action === "dispatch"
-              ? t("Run workflow")
+              ? "Run workflow"
               : action === "rerun"
-                ? t("Re-run jobs")
-                : t("Cancel run")
+                ? "Re-run jobs"
+                : "Cancel run"
           }
           danger={action === "cancel"}
           onClose={() => setAction(null)}
@@ -268,9 +266,9 @@ export function GitHubActions({
                 new Set(provided.map((input) => input.name.trim())).size !==
                 provided.length
               )
-                throw new Error(t("Each input needs a unique name."));
+                throw new Error("Each input needs a unique name.");
               if (!formText(data, "workflow"))
-                throw new Error(t("Select a workflow"));
+                throw new Error("Select a workflow");
               mutation = {
                 action: "dispatch",
                 id: Number(formText(data, "workflow")),
@@ -296,26 +294,26 @@ export function GitHubActions({
                 error={workflows.error}
                 loading={workflows.loading}
               />
-              <label className="git-field">{" "}{t("Workflow")}{" "}<Select
+              <label className="git-field">{" "}Workflow{" "}<Select
                   name="workflow"
-                  placeholder={t("Select a workflow")}
+                  placeholder="Select a workflow"
                   options={(workflows.data ?? [])
                     .filter((workflow) => workflow.state === "active")
                     .map((workflow) => ({ value: String(workflow.id), label: workflow.name }))}
                 />
               </label>
-              <label className="git-field">{" "}{t("Branch or tag")}{" "}<input
+              <label className="git-field">{" "}Branch or tag{" "}<input
                   name="ref"
                   defaultValue={repository.default_branch}
                   required
                 />
               </label>
               <div className="github-workflow-inputs">
-                <h3>{t("Workflow inputs")}</h3>
-                <p className="github-meta">{" "}{t("Optional values defined by this workflow.")}{" "}</p>
+                <h3>Workflow inputs</h3>
+                <p className="github-meta">{" "}Optional values defined by this workflow.{" "}</p>
                 {inputs.map((input, index) => (
                   <div className="github-form-columns" key={index}>
-                    <label className="git-field">{" "}{t("Input name")}{" "}<input
+                    <label className="git-field">{" "}Input name{" "}<input
                         value={input.name}
                         onChange={(event) =>
                           setInputs((rows) =>
@@ -326,10 +324,10 @@ export function GitHubActions({
                             ),
                           )
                         }
-                        placeholder={t("environment")}
+                        placeholder="environment"
                       />
                     </label>
-                    <label className="git-field">{" "}{t("Value")}{" "}<input
+                    <label className="git-field">{" "}Value{" "}<input
                         value={input.value}
                         onChange={(event) =>
                           setInputs((rows) =>
@@ -340,7 +338,7 @@ export function GitHubActions({
                             ),
                           )
                         }
-                        placeholder={t("staging")}
+                        placeholder="staging"
                       />
                     </label>
                   </div>
@@ -353,7 +351,7 @@ export function GitHubActions({
                     setInputs((rows) => [...rows, { name: "", value: "" }])
                   }
                 >
-                  {t("Add input")}
+                  Add input
                 </button>
               </div>
             </>
@@ -365,7 +363,7 @@ export function GitHubActions({
                 name="failed"
                 defaultChecked={detail.data?.run.conclusion === "failure"}
               />
-                {t("Only re-run failed jobs")}
+                Only re-run failed jobs
             </label>
           )}
         </GitHubDialog>

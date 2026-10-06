@@ -31,14 +31,14 @@
   min-width: var(--tab-min-width);
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  background: var(--canvas-deep);
+  background: var(--panel);
   color: var(--text-3);
   font-size: var(--text-sm);
   transition: background var(--dur-instant), color var(--dur-instant);
 }
 
 .thread-tab:hover {
-  background: var(--highlight);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -99,7 +99,7 @@
 }
 
 .thread-tabs-new:hover:not(:disabled) {
-  background: var(--highlight);
+  background: var(--hover);
   color: var(--text);
 }
 

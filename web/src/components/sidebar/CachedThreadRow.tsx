@@ -1,7 +1,7 @@
 import { openOnEnvironment } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import type { CachedThread } from "../../lib/environment.ts";
-import { LOCALE, useI18n } from "../../lib/i18n.ts";
+import { LOCALE } from "../../lib/locale.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
 
@@ -12,7 +12,6 @@ export function CachedThreadRow({ thread, categoryEnd, environment, showDisconne
   environment: string;
   onConversation: () => void;
 }) {
-  const t = useI18n();
   const open = () => {
     onConversation();
     void openOnEnvironment(environment, thread.projectId, thread.id).catch(reportError);
@@ -29,13 +28,9 @@ export function CachedThreadRow({ thread, categoryEnd, environment, showDisconne
           aria-description={new Date(thread.updatedAt).toLocaleString(LOCALE)}
           onClick={open}
         >
-          <span className="thread-row-body">
-            <span className="thread-row-heading">
-              <ProviderIcon provider={thread.provider} />
-              <span className="thread-row-title">{thread.title}</span>
-              {showDisconnected && <span className="thread-status" role="img" aria-label={t("Disconnected")} title={t("Disconnected")}><DisconnectedIcon size={14} /></span>}
-            </span>
-          </span>
+          <ProviderIcon provider={thread.provider} />
+          <span className="thread-row-title">{thread.title}</span>
+          {showDisconnected && <span className="thread-status" role="img" aria-label="Disconnected" title="Disconnected"><DisconnectedIcon size={14} /></span>}
         </button>
       </div>
     </div>

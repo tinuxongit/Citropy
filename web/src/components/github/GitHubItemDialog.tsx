@@ -1,5 +1,4 @@
 import { useGitHub } from "../../lib/use-github.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import { Select } from "../Select.tsx";
 import { github } from "../../lib/actions.ts";
 import {
@@ -115,21 +114,20 @@ export function GitHubItemDialog({
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
-  const t = useI18n();
   const repo = repository.full_name;
   const branches = useGitHub(
     "branches",
     action === "new" && pull ? { repo } : null,
   );
   const titles: Record<ItemAction, string> = {
-    new: pull ? t("New pull request") : t("New issue"),
-    edit: t("Edit details"),
-    comment: t("Add a comment"),
-    state: item?.state === "open" ? t("Close on GitHub") : t("Reopen on GitHub"),
-    review: t("Submit a review"),
-    merge: t("Merge pull request"),
-    ready: t("Mark ready for review"),
-    reviewers: t("Request a review"),
+    new: pull ? "New pull request" : "New issue",
+    edit: "Edit details",
+    comment: "Add a comment",
+    state: item?.state === "open" ? "Close on GitHub" : "Reopen on GitHub",
+    review: "Submit a review",
+    merge: "Merge pull request",
+    ready: "Mark ready for review",
+    reviewers: "Request a review",
   };
   const submit = async (data: FormData) => {
     const mutation = itemMutation(action, data, pull, selected ?? 0, item);
@@ -139,12 +137,12 @@ export function GitHubItemDialog({
   return (
     <GitHubDialog
       title={titles[action]}
-      description={`${repo}${selected && action !== "new" ? ` · #${selected}` : ""}. ${action === "merge" ? t("Merge the reviewed commit into the base branch. GitHub branch protections still apply.") : action === "new" && pull ? t("Both branches must already be pushed to GitHub.") : t("Changes will be saved to GitHub under your signed-in account.")}`}
+      description={`${repo}${selected && action !== "new" ? ` · #${selected}` : ""}. ${action === "merge" ? "Merge the reviewed commit into the base branch. GitHub branch protections still apply." : action === "new" && pull ? "Both branches must already be pushed to GitHub." : "Changes will be saved to GitHub under your signed-in account."}`}
       submitLabel={
         action === "new"
           ? pull
-            ? t("Create pull request")
-            : t("Create issue")
+            ? "Create pull request"
+            : "Create issue"
           : titles[action]
       }
       danger={action === "state" && item?.state === "open"}
@@ -152,7 +150,7 @@ export function GitHubItemDialog({
       onSubmit={submit}
     >
       {(action === "new" || action === "edit") && (
-        <label className="git-field">{" "}{t("Title")}{" "}<input
+        <label className="git-field">{" "}Title{" "}<input
             name="title"
             defaultValue={action === "edit" ? item?.title : ""}
             required
@@ -164,7 +162,7 @@ export function GitHubItemDialog({
         <>
           <GitHubFeedback error={branches.error} />
           <div className="github-form-columns">
-            <label className="git-field">{" "}{t("Head branch")}{" "}<input
+            <label className="git-field">{" "}Head branch{" "}<input
                 name="head"
                 list="github-branches"
                 defaultValue={
@@ -172,11 +170,11 @@ export function GitHubItemDialog({
                     ? branch
                     : ""
                 }
-                placeholder={t("feature/my-change or owner:branch")}
+                placeholder="feature/my-change or owner:branch"
                 required
               />
             </label>
-            <label className="git-field">{" "}{t("Base branch")}{" "}<input
+            <label className="git-field">{" "}Base branch{" "}<input
                 name="base"
                 list="github-branches"
                 defaultValue={repository.default_branch}
@@ -190,17 +188,17 @@ export function GitHubItemDialog({
             ))}
           </datalist>
           <label className="github-checkbox">
-            <input type="checkbox" name="draft" defaultChecked />{" "}{t("Create as a draft")}{" "}</label>
+            <input type="checkbox" name="draft" defaultChecked />{" "}Create as a draft{" "}</label>
         </>
       )}
       {action === "review" && (
-        <label className="git-field">{" "}{t("Review decision")}{" "}<Select
+        <label className="git-field">{" "}Review decision{" "}<Select
             name="event"
             defaultValue="COMMENT"
             options={[
-              { value: "COMMENT", label: t("Comment") },
-              { value: "APPROVE", label: t("Approve") },
-              { value: "REQUEST_CHANGES", label: t("Request changes") },
+              { value: "COMMENT", label: "Comment" },
+              { value: "APPROVE", label: "Approve" },
+              { value: "REQUEST_CHANGES", label: "Request changes" },
             ]}
           />
         </label>
@@ -208,51 +206,51 @@ export function GitHubItemDialog({
       {["new", "edit", "comment", "review"].includes(action) && (
         <label className="git-field">
           {action === "comment" || action === "review"
-            ? t("Comment")
-            : t("Description")}
+            ? "Comment"
+            : "Description"}
           <textarea
             name="body"
             rows={6}
             defaultValue={action === "edit" ? (item?.body ?? "") : ""}
             required={action === "comment"}
-            placeholder={t("Markdown supported")}
+            placeholder="Markdown supported"
           />
         </label>
       )}
       {(action === "edit" || (action === "new" && !pull)) && (
         <div className="github-form-columns">
-          <label className="git-field">{" "}{t("Labels")}{" "}<input
+          <label className="git-field">{" "}Labels{" "}<input
               name="labels"
               defaultValue={
                 action === "edit"
                   ? item?.labels.map((label) => label.name).join(", ")
                   : ""
               }
-              placeholder={t("bug, documentation")}
+              placeholder="bug, documentation"
             />
           </label>
-          <label className="git-field">{" "}{t("Assignees")}{" "}<input
+          <label className="git-field">{" "}Assignees{" "}<input
               name="assignees"
               defaultValue={
                 action === "edit"
                   ? item?.assignees.map((user) => user.login).join(", ")
                   : ""
               }
-              placeholder={t("usernames, separated by commas")}
+              placeholder="usernames, separated by commas"
             />
           </label>
         </div>
       )}
       {action === "reviewers" && (
-        <label className="git-field">{" "}{t("Reviewers")}{" "}<input
+        <label className="git-field">{" "}Reviewers{" "}<input
             name="reviewers"
             required
-            placeholder={t("usernames, separated by commas")}
+            placeholder="usernames, separated by commas"
           />
         </label>
       )}
       {action === "merge" && (
-        <label className="git-field">{" "}{t("Merge method")}{" "}<Select
+        <label className="git-field">{" "}Merge method{" "}<Select
             name="method"
             defaultValue={
               repository.allow_squash_merge
@@ -262,12 +260,12 @@ export function GitHubItemDialog({
                   : "rebase"
             }
             options={[
-              ...repository.allow_squash_merge ? [{ value: "squash", label: t("Squash and merge") }] : [],
-              ...repository.allow_merge_commit ? [{ value: "merge", label: t("Create a merge commit") }] : [],
-              ...repository.allow_rebase_merge ? [{ value: "rebase", label: t("Rebase and merge") }] : [],
+              ...repository.allow_squash_merge ? [{ value: "squash", label: "Squash and merge" }] : [],
+              ...repository.allow_merge_commit ? [{ value: "merge", label: "Create a merge commit" }] : [],
+              ...repository.allow_rebase_merge ? [{ value: "rebase", label: "Rebase and merge" }] : [],
             ]}
           />
-          <small>{" "}{t("Commit")}{" "}{item?.head?.sha.slice(0, 12)}{" "}{t("into")}{" "}{item?.base?.ref}
+          <small>{" "}Commit{" "}{item?.head?.sha.slice(0, 12)}{" "}into{" "}{item?.base?.ref}
           </small>
         </label>
       )}

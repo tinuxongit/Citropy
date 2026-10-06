@@ -1,7 +1,6 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { GitBranch } from "lucide-react";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
-import { useI18n } from "../../lib/i18n.ts";
 import { FileIcon } from "../FileIcon.tsx";
 import { Prose } from "../parts/Prose.tsx";
 import { DiffView } from "../DiffView.tsx";
@@ -63,7 +62,6 @@ export function GitHubItemDetail({
   onTab: (tab: string) => void;
   onAction: (action: ItemAction) => void;
 }) {
-  const t = useI18n();
   const { item } = detail;
   const canManage = Boolean(repository.permissions?.push);
   const canEdit = canManage || item.user?.login === currentUser;
@@ -72,10 +70,10 @@ export function GitHubItemDetail({
       <header className="github-item-heading">
         <GitHubState state={githubItemState(item)} pull={pull} />
         <span className="github-meta">#{item.number}</span>
-        <GitHubLink href={item.html_url}>{t("Open on GitHub")}</GitHubLink>
+        <GitHubLink href={item.html_url}>Open on GitHub</GitHubLink>
         <h2>{item.title}</h2>
         <p>
-          {item.user?.login ?? t("Deleted user")} {t("opened this")} {" "}
+          {item.user?.login ?? "Deleted user"} opened this {" "}
           {githubDate(item.created_at)}
         </p>
       </header>
@@ -83,20 +81,20 @@ export function GitHubItemDetail({
         <div className="github-branch-line">
           <GitBranch size={15} />
           <code>{item.head.label}</code>
-          <span>{t("into")}</span>
+          <span>into</span>
           <code>{item.base?.ref}</code>
         </div>
       )}
       <div className="github-detail-actions">
         <button className="btn" onClick={() => onAction("comment")}>
-          {t("Comment")}
+          Comment
         </button>
         <button
           className="btn"
           onClick={() => onAction("edit")}
           disabled={repository.archived || !canEdit}
         >
-          {t("Edit")}
+          Edit
         </button>
         {pull && item.state === "open" && (
           <>
@@ -105,16 +103,16 @@ export function GitHubItemDetail({
               onClick={() => onAction("review")}
               disabled={item.user?.login === currentUser}
             >
-              {t("Review")}
+              Review
             </button>
             {canEdit && (
               <button className="btn" onClick={() => onAction("reviewers")}>
-                {t("Request review")}
+                Request review
               </button>
             )}
             {canEdit && item.draft && (
               <button className="btn" onClick={() => onAction("ready")}>
-                {t("Ready for review")}
+                Ready for review
               </button>
             )}
             {canManage && !item.draft && (
@@ -124,7 +122,7 @@ export function GitHubItemDetail({
                 disabled={item.mergeable === false}
                 onClick={() => onAction("merge")}
               >
-                {t("Merge…")}
+                Merge…
               </button>
             )}
           </>
@@ -135,19 +133,19 @@ export function GitHubItemDetail({
             data-variant="ghost"
             onClick={() => onAction("state")}
           >
-            {item.state === "open" ? t("Close") : t("Reopen")}
+            {item.state === "open" ? "Close" : "Reopen"}
           </button>
         )}
       </div>
       {pull && item.mergeable === false && (
         <p className="github-notice">
-          {t("This pull request has conflicts. Resolve them before merging.")}
+          This pull request has conflicts. Resolve them before merging.
         </p>
       )}
       <div
         className="github-tabs sliding-selection"
         role="tablist"
-        aria-label={pull ? t("Pull request details") : t("Issue details")}
+        aria-label={pull ? "Pull request details" : "Issue details"}
         onKeyDown={moveTabFocus}
       >
         <SelectionHighlight value={tab} />
@@ -178,27 +176,26 @@ export function GitHubItemDetail({
 }
 
 function Conversation({ detail }: { detail: GitHubDetail }) {
-  const t = useI18n();
   const { item } = detail;
   return (
     <div className="github-discussion">
-      <Prose text={item.body || t("No description provided.")} live={false} />
+      <Prose text={item.body || "No description provided."} live={false} />
       {(item.labels.length > 0 || item.assignees.length > 0) && (
         <div className="github-item-metadata">
-          <span>{" "}{t("Labels:")}{" "}
-            {item.labels.map((label) => label.name).join(", ") || t("None")}
+          <span>{" "}Labels:{" "}
+            {item.labels.map((label) => label.name).join(", ") || "None"}
           </span>
-          <span>{" "}{t("Assignees:")}{" "}
-            {item.assignees.map((user) => user.login).join(", ") || t("None")}
+          <span>{" "}Assignees:{" "}
+            {item.assignees.map((user) => user.login).join(", ") || "None"}
           </span>
         </div>
       )}
       {detail.reviews.map((review) => (
         <article className="github-comment" key={`review-${review.id}`}>
           <header>
-            <strong>{review.user?.login ?? t("Deleted user")}</strong>
+            <strong>{review.user?.login ?? "Deleted user"}</strong>
             <GitHubState state={review.state ?? "commented"} />
-            <GitHubLink className="github-meta" href={review.html_url}>{" "}{t("Review")}{" "}</GitHubLink>
+            <GitHubLink className="github-meta" href={review.html_url}>{" "}Review{" "}</GitHubLink>
           </header>
           <Prose text={review.body} live={false} />
         </article>
@@ -206,9 +203,9 @@ function Conversation({ detail }: { detail: GitHubDetail }) {
       {detail.comments.map((comment) => (
         <article className="github-comment" key={comment.id}>
           <header>
-            <strong>{comment.user?.login ?? t("Deleted user")}</strong>
+            <strong>{comment.user?.login ?? "Deleted user"}</strong>
             <span>{githubDate(comment.created_at!)}</span>
-            <GitHubLink className="github-meta" href={comment.html_url}>{" "}{t("Comment")}{" "}</GitHubLink>
+            <GitHubLink className="github-meta" href={comment.html_url}>{" "}Comment{" "}</GitHubLink>
           </header>
           <Prose text={comment.body} live={false} />
         </article>
@@ -218,7 +215,6 @@ function Conversation({ detail }: { detail: GitHubDetail }) {
 }
 
 function FilesChanged({ files }: { files: GitHubFile[] }) {
-  const t = useI18n();
   const [collapsed, setCollapsed] = useState(new Set<string>());
   return (
     <VirtualList items={files} itemKey="filename" estimateSize={300} className="github-files">
@@ -239,14 +235,14 @@ function FilesChanged({ files }: { files: GitHubFile[] }) {
             <span className="del">−{file.deletions}</span>
           </summary>
           {file.previous_filename && (
-            <p className="github-meta">{" "}{t("Renamed from")}{" "}{file.previous_filename}
+            <p className="github-meta">{" "}Renamed from{" "}{file.previous_filename}
             </p>
           )}
           {!collapsed.has(file.filename) && (file.patch ? (
             <GitHubFileDiff file={file} />
           ) : (
-            <p className="github-meta">{" "}{t("GitHub does not provide an inline diff for this file.")}{" "}
-              <GitHubLink className="github-inline-link" href={file.blob_url}>{" "}{t("View file")}{" "}</GitHubLink>
+            <p className="github-meta">{" "}GitHub does not provide an inline diff for this file.{" "}
+              <GitHubLink className="github-inline-link" href={file.blob_url}>{" "}View file{" "}</GitHubLink>
             </p>
           ))}
         </details>
@@ -270,25 +266,24 @@ function GitHubFileDiff({ file }: { file: GitHubFile }) {
 }
 
 function Checks({ detail }: { detail: GitHubDetail }) {
-  const t = useI18n();
   return (
     <div className="github-checks">
       {detail.checks.map((check) => (
         <div key={check.id}>
           <GitHubState state={check.conclusion ?? check.status} />
           <strong>{check.name}</strong>
-          <GitHubLink href={check.details_url}>{" "}{t("Details")}{" "}</GitHubLink>
+          <GitHubLink href={check.details_url}>{" "}Details{" "}</GitHubLink>
         </div>
       ))}
       {detail.statuses.map((check) => (
         <div key={check.id}>
           <GitHubState state={check.state} />
           <strong>{check.context}</strong>
-          <GitHubLink href={check.target_url}>{" "}{t("Details")}{" "}</GitHubLink>
+          <GitHubLink href={check.target_url}>{" "}Details{" "}</GitHubLink>
         </div>
       ))}
       {!detail.checks.length && !detail.statuses.length && (
-        <p className="github-meta">{" "}{t("No checks reported for this commit.")}{" "}</p>
+        <p className="github-meta">{" "}No checks reported for this commit.{" "}</p>
       )}
     </div>
   );

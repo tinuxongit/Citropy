@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
-import { useI18n } from "../lib/i18n.ts";
 import { reportError } from "../lib/api.ts";
 
 const LOUPE_PIXELS = 11;
@@ -14,7 +13,6 @@ export function ScreenColorPicker({ capture, onPick, onCancel }: {
   onPick: (color: string) => void;
   onCancel: () => void;
 }) {
-  const t = useI18n();
   const overlay = useRef<HTMLDivElement>(null);
   const loupe = useRef<HTMLDivElement>(null);
   const zoom = useRef<HTMLCanvasElement>(null);
@@ -81,7 +79,7 @@ export function ScreenColorPicker({ capture, onPick, onCancel }: {
       className="screen-color-picker"
       tabIndex={-1}
       role="dialog"
-      aria-label={t("Pick a color from the app")}
+      aria-label="Pick a color from the app"
       style={{ backgroundImage: `url(${capture})` }}
       onPointerMove={(event) => setHex(sample(event))}
       onPointerDown={(event) => {

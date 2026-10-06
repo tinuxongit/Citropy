@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { useI18n } from "../lib/i18n.ts";
 import {
   setShowGitHubIdentity,
   setUiSoundVolume,
@@ -10,7 +9,6 @@ import { configureUiSounds, playUiSound, previewUiSound } from "../lib/ui-sound.
 import { Range } from "./Range.tsx";
 
 export function GeneralSettings() {
-  const t = useI18n();
   const showGitHubIdentity = useApp((state) => state.showGitHubIdentity);
   const uiSounds = useApp((state) => state.uiSounds);
   const uiAlertSounds = useApp((state) => state.uiAlertSounds);
@@ -19,12 +17,12 @@ export function GeneralSettings() {
 
   return (
     <>
-      <h2 className="settings-group-heading">{" "}{t("Chat identity")}{" "}</h2>
+      <h2 className="settings-group-heading">{" "}Chat identity{" "}</h2>
       <div className="settings-group">
         <label className="setting-row">
           <span>
-            <strong>{t("Use GitHub profile in chat")}</strong>
-            <small>{" "}{t("Show your connected GitHub username and photo on your messages. Turn off to show 'You' and a generic avatar.")}{" "}</small>
+            <strong>Use GitHub profile in chat</strong>
+            <small>{" "}Show your connected GitHub username on your messages in the message navigator. Turn off to show 'You'.{" "}</small>
           </span>
           <input
             className="setting-switch"
@@ -35,12 +33,12 @@ export function GeneralSettings() {
           />
         </label>
       </div>
-      <h2 className="settings-group-heading settings-group-spaced">{t("Sounds")}</h2>
+      <h2 className="settings-group-heading settings-group-spaced">Sounds</h2>
       <div className="settings-group">
         <label className="setting-row">
           <span>
-            <strong>{t("Interface sounds")}</strong>
-            <small>{" "}{t("A quiet click when you press a button, a switch, or a tab.")}{" "}</small>
+            <strong>Interface sounds</strong>
+            <small>{" "}A quiet click when you press a button, a switch, or a tab.{" "}</small>
           </span>
           <span className="sound-row-controls">
             <button
@@ -48,7 +46,7 @@ export function GeneralSettings() {
               type="button"
               data-ui-sound="off"
               onClick={() => void previewUiSound("click")}
-            >{t("Preview")}</button>
+            >Preview</button>
             <input
               className="setting-switch"
               type="checkbox"
@@ -60,7 +58,7 @@ export function GeneralSettings() {
         </label>
         <div className="sound-volume">
           <div className="sound-volume-heading">
-            <label htmlFor="sound-volume">{t("Volume")}</label>
+            <label htmlFor="sound-volume">Volume</label>
             <output htmlFor="sound-volume">{uiSoundVolume}%</output>
           </div>
           <Range
@@ -69,7 +67,7 @@ export function GeneralSettings() {
             max={100}
             step="5"
             value={uiSoundVolume}
-            aria-valuetext={t("{value} percent", { value: uiSoundVolume })}
+            aria-valuetext={`${uiSoundVolume} percent`}
             onChange={(event) => {
               const volume = Number(event.target.value);
               setUiSoundVolume(volume);
@@ -82,7 +80,7 @@ export function GeneralSettings() {
           />
         </div>
       </div>
-      <p className="settings-note">{" "}{t("Volume also applies to the Citropy chime chosen in Notifications.")}{" "}</p>
+      <p className="settings-note">{" "}Volume also applies to the Citropy chime chosen in Notifications.{" "}</p>
     </>
   );
 }

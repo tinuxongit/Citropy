@@ -2,7 +2,6 @@ import { Marked, type Tokens } from "marked";
 import { escapeHtml } from "./escape-html.ts";
 import { highlight } from "./highlight.ts";
 import { serverUrl } from "./environment.ts";
-import { translate } from "./i18n.ts";
 
 interface CodeToken extends Tokens.Code {
   rendered?: string;
@@ -40,7 +39,7 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
         const code = token as CodeToken;
         const label = (code.lang ?? "").split(/\s+/)[0] ?? "";
         const body = code.rendered ?? `<pre class="raw"><code>${escapeHtml(code.text)}</code></pre>`;
-        const copy = escapeHtml(translate("Copy code"));
+        const copy = escapeHtml("Copy code");
         return `<figure class="code-block" data-lang="${escapeHtml(label)}"><figcaption><span>${escapeHtml(label || "text")}</span><button type="button" class="code-copy" aria-label="${copy}" title="${copy}"><svg class="code-copy-idle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><svg class="code-copy-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button></figcaption>${body}</figure>`;
       },
       html(token) {
@@ -59,8 +58,8 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
           src = serverUrl(`/api/assets?${new URLSearchParams({ projectId: assets.projectId, threadId: assets.threadId, path: src.replace(/^file:\/\//, "") })}`);
         }
         const tag = linkedImage ? "span" : "button";
-        const preview = escapeHtml(translate("Preview"));
-        const unavailable = escapeHtml(translate("Image unavailable"));
+        const preview = escapeHtml("Preview");
+        const unavailable = escapeHtml("Image unavailable");
         const attributes = linkedImage ? "" : ` type="button" aria-label="${preview}${alt ? ` ${alt}` : ""}"`;
         return `<${tag} class="markdown-image"${attributes}><img src="${escapeHtml(src)}" alt="${alt}"${title} loading="lazy" decoding="async" /><span class="markdown-image-error" hidden>${unavailable}</span></${tag}>`;
       },

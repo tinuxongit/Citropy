@@ -29,9 +29,9 @@ import {
   webContents,
 } from "electron";
 import { WebSocket } from "ws";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { basename, join, resolve, sep } from "node:path";
-import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, accessSync, constants, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, accessSync, constants, existsSync, statSync } from "node:fs";
 import { migrateDesktopData } from "./migrate-data.mjs";
 import { logFailure } from "../shared/expected-errors.mjs";
 
@@ -1206,6 +1206,7 @@ app
       title: appName,
       icon: fileURLToPath(new URL(`./assets/${development ? "citropy-dev" : "citropy"}.png`, import.meta.url)),
       frame: false,
+      roundedCorners: false,
       ...(process.platform === "darwin"
         ? { titleBarStyle: "hidden", trafficLightPosition: { x: 15, y: 14 } }
         : {}),
@@ -1436,6 +1437,11 @@ app
     ipcMain.handle("window:capture", async (event) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
       return (await window.webContents.capturePage()).toDataURL();
+    });
+    ipcMain.handle("window:open-folder", async (event, path) => {
+      if (!trusted(event)) throw new Error("Unavailable outside Citropy");
+      if (typeof path !== "string" || !statSync(path).isDirectory()) throw new Error(`Not a folder: ${path}`);
+      await shell.openExternal(pathToFileURL(path).href);
     });
     ipcMain.handle("window:command", (event, command) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");

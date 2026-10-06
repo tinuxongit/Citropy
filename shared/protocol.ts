@@ -224,6 +224,13 @@ export interface Project {
   branch?: string;
   lastOpened: number;
   settings?: ProjectSettings;
+  scripts?: ProjectScript[];
+}
+
+export interface ProjectScript {
+  id: string;
+  name: string;
+  command: string;
 }
 
 export interface ProjectSettings {
@@ -502,7 +509,7 @@ export type ClientEvent = (
   | { t: "server.useAppData"; enabled: boolean }
   | { t: "thread.finish"; id: string; finished: boolean }
   | { t: "github.request"; requestId: string; request: GitHubRequest }
-  | { t: "git.manage"; requestId: string; projectId: string; operation: GitOperation; value?: string; offset?: number; remote?: string }
+  | { t: "git.manage"; requestId: string; projectId: string; threadId?: string; operation: GitOperation; value?: string; offset?: number; remote?: string }
   | { t: "thread.search"; query: string }
   | { t: "project.choose"; path?: string }
   | { t: "providers.refresh"; force?: boolean }
@@ -511,6 +518,8 @@ export type ClientEvent = (
   | { t: "project.open"; path: string }
   | { t: "project.rename"; id: string; name: string }
   | { t: "project.close"; id: string }
+  | { t: "project.scripts"; id: string; scripts: ProjectScript[] }
+  | { t: "project.runScript"; projectId: string; threadId?: string; scriptId: string }
   | {
       t: "thread.create";
       projectId: string;

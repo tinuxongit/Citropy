@@ -59,7 +59,10 @@
   color: var(--text-3);
   font-size: var(--text-xs);
 }
-.github-sidebar-account:hover,
+.github-sidebar-account:hover {
+  background: var(--hover);
+  color: var(--text);
+}
 .github-sidebar-account[aria-current="page"] {
   background: var(--highlight);
   color: var(--text);
@@ -294,7 +297,7 @@
   text-align: left;
 }
 .github-item:hover {
-  background: var(--highlight);
+  background: var(--hover);
 }
 .github-item[aria-pressed="true"] {
   background: transparent;

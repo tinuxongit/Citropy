@@ -126,3 +126,9 @@ export function startGitAction(threadId: string, action: GitActionState["action"
   })();
   return initial;
 }
+
+export function dismissGitActionError(threadId: string): void {
+  const thread = store.threads.get(threadId);
+  if (!thread) throw new Error("Conversation not found.");
+  if (thread.gitAction?.status === "error") store.patchThread(threadId, { gitAction: undefined });
+}

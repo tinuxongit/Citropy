@@ -1,6 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   Check,
@@ -22,8 +21,7 @@ const notesMotion = {
 const size = (bytes?: number) =>
   bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : "";
 
-export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "strip" | "settings" }) {
-  const t = useI18n();
+export function AppUpdateControl({ variant }: { variant: "strip" | "settings" }) {
   const reducedMotion = useReducedMotion();
   const [state, setState] = useState<AppUpdateState>({
     status: "unsupported",
@@ -88,7 +86,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
       : ready
         ? "Restart & apply"
         : downloading
-          ? t("Downloading {percent}%", { percent: Math.floor(state.percent || 0) })
+          ? `Downloading ${Math.floor(state.percent || 0)}%`
           : state.status === "checking"
             ? "Checking for updates…"
             : state.status === "available"
@@ -102,7 +100,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
       : state.status === "current"
         ? "Citropy is up to date"
         : state.status === "available"
-          ? t("Citropy {version} is available", { version: state.version ?? "" })
+          ? `Citropy ${state.version ?? ""} is available`
           : ready
             ? "Your update is ready"
             : label;
@@ -163,8 +161,8 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
   };
   const releaseArrows = (
     <>
-      <button ref={olderArrow} type="button" className="icon-btn" aria-label={t("Older release")} title={t("Older release")} disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeft size={15} /></button>
-      <button ref={newerArrow} type="button" className="icon-btn" aria-label={t("Newer release")} title={t("Newer release")} disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRight size={15} /></button>
+      <button ref={olderArrow} type="button" className="icon-btn" aria-label="Older release" title="Older release" disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeft size={15} /></button>
+      <button ref={newerArrow} type="button" className="icon-btn" aria-label="Newer release" title="Newer release" disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRight size={15} /></button>
     </>
   );
   const Icon =
@@ -178,7 +176,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
   const face = (
     <>
       {state.status !== "error" && busy && !downloading ? <PixelLoader size={17} /> : <Icon size={17} />}
-      {variant === "settings" ? t(label) : downloading && <small>{Math.floor(state.percent || 0)}%</small>}
+      {variant === "settings" ? label : downloading && <small>{Math.floor(state.percent || 0)}%</small>}
     </>
   );
   return (
@@ -202,7 +200,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
         type="button"
         className={variant === "settings" ? "btn app-update-button" : "rail-action app-update-button"}
         data-state={state.status}
-        aria-label={t(label)}
+        aria-label={label}
         aria-describedby={open ? id : undefined}
         aria-disabled={busy || state.status === "unsupported"}
         onClick={() => void run()}
@@ -212,21 +210,21 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
         ) : face}
       </button>
       <AnimatePresence>{open && (
-        <motion.div ref={popover} initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="dialog" aria-label={t(title)}>
+        <motion.div ref={popover} initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="dialog" aria-label={title}>
           <div className="app-update-heading">
             {state.status === "current" ? <Check size={16} /> : <Icon size={16} />}
-            <strong>{t(title)}</strong>
+            <strong>{title}</strong>
             {notes && variant !== "settings" && <span className="app-update-arrows">{releaseArrows}</span>}
           </div>
           {state.currentVersion && (
             <small>
               {state.version && state.status !== "current"
                 ? `${state.currentVersion} → ${state.version}`
-                : t("Version {version}", { version: state.currentVersion })}
+                : `Version ${state.currentVersion}`}
             </small>
           )}
           {state.message ? (
-            <p>{t(state.message)}</p>
+            <p>{state.message}</p>
           ) : downloading ? (
             <>
               <div className="app-update-progress-label">
@@ -239,7 +237,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
               <div
                 className="app-update-progress"
                 role="progressbar"
-                aria-label={t("Update download")}
+                aria-label="Update download"
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.floor(state.percent || 0)}
@@ -249,18 +247,18 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
               <p>
                 {state.bytesPerSecond
                   ? `${size(state.bytesPerSecond)}/s · `
-                  : ""}{t("You can keep working while it downloads.")}</p>
+                  : ""}You can keep working while it downloads.</p>
             </>
           ) : ready ? (
-            <p>{t("Download verified. Click again to restart Citropy and apply it.")}</p>
+            <p>Download verified. Click again to restart Citropy and apply it.</p>
           ) : state.status === "available" ? (
-            <p>{t("Click to download. Citropy will wait for another click before restarting.")}</p>
+            <p>Click to download. Citropy will wait for another click before restarting.</p>
           ) : state.status === "current" ? (
-            <p>{t("No newer release is available.")}</p>
+            <p>No newer release is available.</p>
           ) : state.status === "installing" ? (
-            <p>{t("Saving your work and restarting Citropy.")}</p>
+            <p>Saving your work and restarting Citropy.</p>
           ) : (
-            <p>{t("Check the latest Citropy release.")}</p>
+            <p>Check the latest Citropy release.</p>
           )}
           {notes ? (
             <div className="app-update-notes">
@@ -268,13 +266,13 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
                 <span className="app-update-notes-title">
                   <AnimatePresence initial={false} mode="popLayout" custom={{ step: direction, reducedMotion }}>
                     <motion.strong key={notes.version} custom={{ step: direction, reducedMotion }} variants={notesMotion} initial="enter" animate="shown" exit="leave" transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}>
-                      {t("What's in {version}", { version: notes.version })}
+                      What's in {notes.version}
                     </motion.strong>
                   </AnimatePresence>
                 </span>
                 {variant === "settings" && releaseArrows}
               </div>
-              {historyError && <p className="app-update-notes-error">{t("Could not load older releases.")}</p>}
+              {historyError && <p className="app-update-notes-error">Could not load older releases.</p>}
               <div className="app-update-notes-body">
                 <AnimatePresence initial={false} mode="popLayout" custom={{ step: direction, reducedMotion }}>
                   <motion.div key={notes.version} custom={{ step: direction, reducedMotion }} variants={notesMotion} initial="enter" animate="shown" exit="leave" transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}>
@@ -289,7 +287,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
               </div>
             </div>
           ) : state.notesError && (
-            <p className="app-update-notes-error">{t("Could not load what this release includes.")}</p>
+            <p className="app-update-notes-error">Could not load what this release includes.</p>
           )}
         </motion.div>
       )}</AnimatePresence>

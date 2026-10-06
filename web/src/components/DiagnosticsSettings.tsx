@@ -4,7 +4,6 @@ import { api, reportError } from "../lib/api.ts";
 import { send } from "../lib/socket.ts";
 import type { DiagnosticReport } from "../../../shared/features.ts";
 import { useApp } from "../lib/store.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { copyText } from "../lib/copy-text.ts";
 
 const memory = (bytes: number) =>
@@ -13,7 +12,6 @@ const memory = (bytes: number) =>
     : `${Math.round(bytes / 1024 ** 2)} MB`;
 
 export function DiagnosticsSettings() {
-  const t = useI18n();
   const development = useApp(state => state.development);
   const providers = useApp(state => state.providers);
   const connected = useApp(state => state.connected);
@@ -57,8 +55,8 @@ export function DiagnosticsSettings() {
       <div className="settings-group">
         <label className="setting-row">
           <span>
-            <strong>{t("Save logs")}</strong>
-            <small>{t("Write errors and app events to a file on this computer so problems are easier to trace. Conversation content is not saved.")}</small>
+            <strong>Save logs</strong>
+            <small>Write errors and app events to a file on this computer so problems are easier to trace. Conversation content is not saved.</small>
           </span>
           <input
             className="setting-switch"
@@ -72,7 +70,7 @@ export function DiagnosticsSettings() {
         {logging.enabled && logging.file && (
           <div className="setting-row">
             <span>
-              <strong>{t("Log file")}</strong>
+              <strong>Log file</strong>
               <small><code>{logging.file}</code></small>
             </span>
             <button
@@ -80,7 +78,7 @@ export function DiagnosticsSettings() {
               className="btn"
               onClick={() => void copyText(logging.file).catch(reportError)}
             >
-              <Copy size={14} />{t("Copy path")}
+              <Copy size={14} />Copy path
             </button>
           </div>
         )}
@@ -92,14 +90,14 @@ export function DiagnosticsSettings() {
             checked={live}
             onChange={(event) => setLive(event.target.checked)}
           />
-          {t("Live updates every 3 seconds")}
+          Live updates every 3 seconds
         </label>
         <button
           className="btn"
           onClick={() => setRevision((value) => value + 1)}
         >
           <RefreshCw size={15} />
-          {t("Refresh")}
+          Refresh
         </button>
       </div>
       {error && (
@@ -109,45 +107,45 @@ export function DiagnosticsSettings() {
       )}
       {data ? (
         <>
-          <details className="feature-section"><summary>{t("Provider capabilities")}</summary><div className="feature-table-wrap scroll"><table className="feature-table"><thead><tr><th>{t("Provider")}</th><th>{t("Transport")}</th><th>{t("Steering")}</th><th>{t("Compaction")}</th><th>{t("Stop individual shell")}</th></tr></thead><tbody>{providers.map(provider => <tr key={provider.id}><td>{provider.label}</td><td>{provider.capabilities?.transport ?? t("Unknown")}</td>{["steer", "compact", "stopShell"].map(key => <td key={key}>{provider.capabilities ? t(provider.capabilities[key as "steer" | "compact" | "stopShell"] ? "Supported" : "Unavailable") : t("Unknown")}</td>)}</tr>)}</tbody></table></div></details>
+          <details className="feature-section"><summary>Provider capabilities</summary><div className="feature-table-wrap scroll"><table className="feature-table"><thead><tr><th>Provider</th><th>Transport</th><th>Steering</th><th>Compaction</th><th>Stop individual shell</th></tr></thead><tbody>{providers.map(provider => <tr key={provider.id}><td>{provider.label}</td><td>{provider.capabilities?.transport ?? "Unknown"}</td>{["steer", "compact", "stopShell"].map(key => <td key={key}>{provider.capabilities ? (provider.capabilities[key as "steer" | "compact" | "stopShell"] ? "Supported" : "Unavailable") : "Unknown"}</td>)}</tr>)}</tbody></table></div></details>
           {development && <details className="feature-section">
-            <summary>{t("Provider events")} · {data.protocol?.length ?? 0}</summary>
-            <p className="feature-note">{t("Recent event types and validation errors. Message content and credentials are not recorded here.")}</p>
-            <div className="feature-table-wrap scroll"><table className="feature-table"><thead><tr><th>{t("Provider")}</th><th>{t("Event")}</th><th>{t("Status")}</th></tr></thead><tbody>{data.protocol?.slice().reverse().map((entry, index) => <tr key={`${entry.at}-${index}`}><td>{entry.provider}</td><td>{entry.type}</td><td>{entry.issue || t("Accepted")}</td></tr>)}</tbody></table></div>
+            <summary>Provider events · {data.protocol?.length ?? 0}</summary>
+            <p className="feature-note">Recent event types and validation errors. Message content and credentials are not recorded here.</p>
+            <div className="feature-table-wrap scroll"><table className="feature-table"><thead><tr><th>Provider</th><th>Event</th><th>Status</th></tr></thead><tbody>{data.protocol?.slice().reverse().map((entry, index) => <tr key={`${entry.at}-${index}`}><td>{entry.provider}</td><td>{entry.type}</td><td>{entry.issue || "Accepted"}</td></tr>)}</tbody></table></div>
           </details>}
           <div className="metric-grid">
             <div>
               <MemoryStick size={20} />
-              <span>{t("Server memory")}</span>
+              <span>Server memory</span>
               <strong>{memory(data.server.rss)}</strong>
-              <small>{memory(data.server.heapUsed)}{" "}{t("JavaScript heap")}</small>
+              <small>{memory(data.server.heapUsed)}{" "}JavaScript heap</small>
             </div>
             <div>
               <Cpu size={20} />
-              <span>{t("System memory")}</span>
+              <span>System memory</span>
               <strong>
                 {memory(data.system.memoryTotal - data.system.memoryFree)}
               </strong>
-              <small>{" "}{t("of")}{" "}{memory(data.system.memoryTotal)} · {data.system.cores}{" "}{t("CPU cores")}{" "}</small>
+              <small>{" "}of{" "}{memory(data.system.memoryTotal)} · {data.system.cores}{" "}CPU cores{" "}</small>
             </div>
             <div>
               <Activity size={20} />
-              <span>{t("Active work")}</span>
-              <strong>{data.running}{" "}{t("conversations")}</strong>
+              <span>Active work</span>
+              <strong>{data.running}{" "}conversations</strong>
               <small>
-                {data.terminals}{" "}{t("terminals ·")}{" "}{data.browsers}{" "}{t("browser tabs")}{" "}</small>
+                {data.terminals}{" "}terminals ·{" "}{data.browsers}{" "}browser tabs{" "}</small>
             </div>
           </div>
           <section className="resource-chart">
             <div className="feature-section-heading">
-              <h2>{t("Server memory")}</h2>
-              {history.length > 1 && <span>{" "}{t("Last")}{" "}
-                {Math.round((history.at(-1)!.time - history[0]!.time) / 1000)}{" "}{" "}{t("seconds")}{" "}</span>}
+              <h2>Server memory</h2>
+              {history.length > 1 && <span>{" "}Last{" "}
+                {Math.round((history.at(-1)!.time - history[0]!.time) / 1000)}{" "}{" "}seconds{" "}</span>}
             </div>
             <svg
               viewBox="0 0 600 90"
               role="img"
-              aria-label={t("Recent server memory usage")}
+              aria-label="Recent server memory usage"
               preserveAspectRatio="none"
             >
               {history.length === 1 && (
@@ -169,17 +167,17 @@ export function DiagnosticsSettings() {
           </section>
           <section>
             <div className="feature-section-heading">
-              <h2>{t("Citropy processes")}</h2>
-              <span>{data.processes.length}{" "}{t("processes")}</span>
+              <h2>Citropy processes</h2>
+              <span>{data.processes.length}{" "}processes</span>
             </div>
             <div className="feature-table-wrap scroll">
               <table className="feature-table">
                 <thead>
                   <tr>
-                    <th>{t("Process")}</th>
+                    <th>Process</th>
                     <th>PID</th>
                     <th>CPU</th>
-                    <th>{t("Memory")}</th>
+                    <th>Memory</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,19 +185,19 @@ export function DiagnosticsSettings() {
                     <tr key={`${entry.pid}:${entry.startedAt ?? ""}`}>
                       <td>{entry.name}</td>
                       <td>{entry.pid}</td>
-                      <td>{entry.cpu === null ? t("Unavailable") : `${entry.cpu.toFixed(1)}%`}</td>
+                      <td>{entry.cpu === null ? "Unavailable" : `${entry.cpu.toFixed(1)}%`}</td>
                       <td>{memory(entry.memory)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="feature-note">{" "}{t("CPU is measured between updates. One fully used core is 100%. Server uptime:")}{" "}
-              {Math.floor(data.uptime / 60)}{" "}{t("minutes. Updates stop when this view closes.")}{" "}</p>
+            <p className="feature-note">{" "}CPU is measured between updates. One fully used core is 100%. Server uptime:{" "}
+              {Math.floor(data.uptime / 60)}{" "}minutes. Updates stop when this view closes.{" "}</p>
           </section>
         </>
       ) : (
-        !error && <div className="pane-empty">{t("Reading resource usage…")}</div>
+        !error && <div className="pane-empty">Reading resource usage…</div>
       )}
     </div>
   );

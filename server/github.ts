@@ -1,7 +1,7 @@
 import { all, api, command } from "./github-cli.ts";
 import { pageNumber, positive, repositoryName, text } from "./github-input.ts";
 import { mutate } from "./github-mutations.ts";
-import { cloneRepository, connectRepository, githubStatus, openSignIn, publishRepository } from "./github-workspace.ts";
+import { branchPull, cloneRepository, connectRepository, githubStatus, openSignIn, publishRepository } from "./github-workspace.ts";
 import type {
   GitHubRequest,
   GitHubResponse,
@@ -23,6 +23,8 @@ export async function handleGitHub(
   switch (request.operation) {
     case "status":
       return githubStatus(request.projectId);
+    case "branchPull":
+      return branchPull(request.projectId, request.threadId);
     case "authenticate":
       return openSignIn();
     case "repository":

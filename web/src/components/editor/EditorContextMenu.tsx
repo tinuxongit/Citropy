@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { reportError } from "../../lib/api.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import { MOD } from "../../lib/modifier-key.ts";
 import { monaco } from "./monaco.ts";
 
@@ -12,7 +11,7 @@ interface Item {
   run: () => unknown;
 }
 
-function clipboardItems(editor: monaco.editor.IStandaloneCodeEditor, t: (text: string) => string): Item[] {
+function clipboardItems(editor: monaco.editor.IStandaloneCodeEditor): Item[] {
   const model = editor.getModel()!;
   const selection = editor.getSelection()!;
   const empty = selection.isEmpty();
@@ -21,7 +20,7 @@ function clipboardItems(editor: monaco.editor.IStandaloneCodeEditor, t: (text: s
   return [
     {
       id: "cut",
-      label: t("Cut"),
+      label: "Cut",
       shortcut: `${MOD}X`,
       disabled: empty || readOnly,
       run: async () => {
@@ -31,14 +30,14 @@ function clipboardItems(editor: monaco.editor.IStandaloneCodeEditor, t: (text: s
     },
     {
       id: "copy",
-      label: t("Copy"),
+      label: "Copy",
       shortcut: `${MOD}C`,
       disabled: empty,
       run: () => navigator.clipboard.writeText(model.getValueInRange(selection)),
     },
     {
       id: "paste",
-      label: t("Paste"),
+      label: "Paste",
       shortcut: `${MOD}V`,
       disabled: readOnly,
       run: async () => { replaceSelection(await navigator.clipboard.readText()); },
@@ -52,15 +51,14 @@ export function EditorContextMenu({ editor, x, y, onClose }: {
   y: number;
   onClose: () => void;
 }) {
-  const t = useI18n();
   const menu = useRef<HTMLDivElement>(null);
   const format = editor.getAction("editor.action.formatDocument");
   const groups: Item[][] = [
-    clipboardItems(editor, t),
+    clipboardItems(editor),
     [
-      { id: "select", label: t("Select all"), shortcut: `${MOD}A`, run: () => editor.trigger("context-menu", "editor.action.selectAll", null) },
-      { id: "find", label: t("Find and replace"), shortcut: `${MOD}F`, run: () => editor.trigger("context-menu", "editor.action.startFindReplaceAction", null) },
-      ...(format?.isSupported() ? [{ id: "format", label: t("Format document"), run: () => format.run() }] : []),
+      { id: "select", label: "Select all", shortcut: `${MOD}A`, run: () => editor.trigger("context-menu", "editor.action.selectAll", null) },
+      { id: "find", label: "Find and replace", shortcut: `${MOD}F`, run: () => editor.trigger("context-menu", "editor.action.startFindReplaceAction", null) },
+      ...(format?.isSupported() ? [{ id: "format", label: "Format document", run: () => format.run() }] : []),
     ],
   ];
 
@@ -106,7 +104,7 @@ export function EditorContextMenu({ editor, x, y, onClose }: {
   };
 
   return (
-    <div ref={menu} className="menu editor-context-menu" popover="manual" role="menu" aria-label={t("Editor actions")} onKeyDown={navigate}>
+    <div ref={menu} className="menu editor-context-menu" popover="manual" role="menu" aria-label="Editor actions" onKeyDown={navigate}>
       {groups.map((items, index) => (
         <div className="editor-context-group" role="group" key={index}>
           {items.map((item) => (

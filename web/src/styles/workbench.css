@@ -22,7 +22,7 @@
   background: var(--canvas);
 }
 :root[data-scheme="dark"] .workbench-panel-menu .menu-item:is(:hover, :focus-visible) {
-  background: var(--highlight);
+  background: var(--hover);
 }
 .workbench-open {
   display: grid;
@@ -37,7 +37,10 @@
   font-size: var(--text-sm);
   transition: background var(--dur-instant);
 }
-.workbench-open:hover,
+.workbench-open:hover {
+  background: var(--hover);
+  color: var(--text);
+}
 .workbench-open[aria-expanded="true"] {
   background: var(--highlight);
   color: var(--text);
@@ -91,7 +94,7 @@
   pointer-events: none;
 }
 .workbench-tab:hover:not([data-active="true"]) {
-  background: var(--highlight);
+  background: var(--hover);
 }
 .workbench-tab > [role="tab"] {
   display: flex;
@@ -121,7 +124,7 @@
   opacity: 1;
 }
 .workbench-close:hover {
-  background: var(--highlight);
+  background: var(--hover);
 }
 .workbench-tabs > .menu-wrap {
   flex: none;
@@ -135,7 +138,10 @@
   color: var(--text-3);
   border-radius: var(--r-sm);
 }
-.workbench-overflow:hover,
+.workbench-overflow:hover {
+  color: var(--text);
+  background: var(--hover);
+}
 .workbench-overflow[aria-expanded="true"] {
   color: var(--text);
   background: var(--highlight);
@@ -234,7 +240,7 @@
 }
 .browser-address :is(a, button):hover {
   color: var(--text);
-  background: var(--highlight);
+  background: var(--hover);
 }
 .browser-screen {
   display: grid;
@@ -298,7 +304,9 @@
   font-size: var(--text-xs);
   white-space: nowrap;
 }
-.browser-viewport-trigger:hover:not(:disabled),
+.browser-viewport-trigger:hover:not(:disabled) {
+  background: var(--hover);
+}
 .browser-viewport-trigger[aria-expanded="true"] {
   background: var(--highlight);
 }
@@ -547,7 +555,11 @@
   width: 14px;
   height: 14px;
 }
-.thread-child:hover,
+.thread-child:hover {
+  --child-surface: var(--raised);
+  background: var(--hover);
+  color: var(--text);
+}
 .thread-child[data-active="true"] {
   --child-surface: var(--raised);
   background: var(--highlight);
@@ -710,7 +722,7 @@
   transition: background var(--dur-instant) var(--ease-out);
 }
 .panel-starter-card:hover {
-  background: var(--highlight);
+  background: var(--hover);
 }
 .panel-starter-label {
   color: var(--text);

@@ -4,7 +4,6 @@ import { patchBlocks, patchHtml } from "../../lib/patch-html.ts";
 import { useApp } from "../../lib/store.ts";
 import { useTextReveal } from "../../lib/use-text-reveal.ts";
 import { ImageViewer, type ViewerImage } from "../ImageViewer.tsx";
-import { useI18n } from "../../lib/i18n.ts";
 import { copyText } from "../../lib/copy-text.ts";
 
 interface Props {
@@ -16,7 +15,6 @@ interface Props {
 }
 
 export function Prose({ partId, text, live, className, images = true }: Props) {
-  const t = useI18n();
   const streaming = useApp((state) => state.textStreaming);
   const waiting = live && !streaming;
   const { html, blocks, ready } = useMarkdown(waiting ? "" : text, live && streaming, images);
@@ -43,10 +41,10 @@ export function Prose({ partId, text, live, className, images = true }: Props) {
           const code = copy.closest("figure")?.querySelector("pre code")?.textContent ?? "";
           void copyText(code).then(() => {
             copy.dataset.copied = "";
-            copy.setAttribute("aria-label", t("Copied"));
+            copy.setAttribute("aria-label", "Copied");
             setTimeout(() => {
               delete copy.dataset.copied;
-              copy.setAttribute("aria-label", t("Copy code"));
+              copy.setAttribute("aria-label", "Copy code");
             }, 1500);
           });
           return;
@@ -57,7 +55,7 @@ export function Prose({ partId, text, live, className, images = true }: Props) {
         event.preventDefault();
         event.stopPropagation();
         const elements = [...root.current.querySelectorAll<HTMLImageElement>(".markdown-image img")];
-        setPreview({ images: elements.map(image => ({ src: image.src, name: image.alt || image.title || t("Preview") })), index: elements.indexOf(selected) });
+        setPreview({ images: elements.map(image => ({ src: image.src, name: image.alt || image.title || "Preview" })), index: elements.indexOf(selected) });
       }}
       onLoadCapture={event => {
         if (event.target instanceof HTMLImageElement && event.target.classList.contains("link-favicon")) event.target.parentElement?.setAttribute("data-loaded", "");

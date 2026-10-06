@@ -12,7 +12,6 @@ import type { ProviderCommand, SkillInfo } from "../../../shared/features.ts";
 import { api } from "../lib/api.ts";
 import { providerLabels } from "../lib/format.ts";
 import { scaled, useApp } from "../lib/store.ts";
-import { useI18n } from "../lib/i18n.ts";
 
 export function ComposerInput({
   value,
@@ -31,7 +30,6 @@ export function ComposerInput({
   thread: ThreadMeta;
   commands: Array<{ id: string; label: string; hint: string; icon: ReactNode }>;
 }) {
-  const t = useI18n();
   const box = useRef<HTMLTextAreaElement>(null);
   const highlights = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -155,7 +153,7 @@ export function ComposerInput({
   highlighted.push(value.slice(end));
   const options =
     mode === "skills"
-      ? [...paths.map(entry => ({ id: `context:${entry.path}`, label: `${contextReference(entry.path)}${(mention?.[1] ?? "").match(/#L\d+(?:-L?\d+)?$/)?.[0] ?? ""}`, hint: entry.dir ? t("Folder listing") : t("File context · add #L10-L20 for specific lines"), icon: entry.dir ? <Folder size={16} /> : <FileText size={16} /> })), ...enabled
+      ? [...paths.map(entry => ({ id: `context:${entry.path}`, label: `${contextReference(entry.path)}${(mention?.[1] ?? "").match(/#L\d+(?:-L?\d+)?$/)?.[0] ?? ""}`, hint: entry.dir ? "Folder listing" : "File context · add #L10-L20 for specific lines", icon: entry.dir ? <Folder size={16} /> : <FileText size={16} /> })), ...enabled
           .filter((skill) =>
             skill.name
               .toLowerCase()
@@ -164,7 +162,7 @@ export function ComposerInput({
           .map((skill) => ({
             id: skill.id,
             label: `@${skill.name}`,
-            hint: `${t(skill.scope)} · ${skill.description || t("Use this skill")}`,
+            hint: `${skill.scope} · ${skill.description || "Use this skill"}`,
             icon: <BookOpen size={16} />,
           }))]
       : [
@@ -183,7 +181,7 @@ export function ComposerInput({
             .map((command) => ({
               id: `provider:${command.name}`,
               label: `/${command.name}`,
-              hint: `${providerLabels[thread.provider]} · ${t(command.description)}${command.argumentHint ? ` · ${command.argumentHint}` : ""}`,
+              hint: `${providerLabels[thread.provider]} · ${command.description}${command.argumentHint ? ` · ${command.argumentHint}` : ""}`,
               icon: <TerminalSquare size={16} />,
             })),
         ].filter((command) =>
@@ -219,18 +217,18 @@ export function ComposerInput({
       {visible && (
         <div className="composer-suggestions" ref={list}>
           <div className="composer-suggestions-heading">
-            {mode === "skills" ? t("Files and skills") : t("Commands")}
+            {mode === "skills" ? "Files and skills" : "Commands"}
             <span>
               {mode === "skills"
                 ? providerLabels[thread.provider]
-                : t("Citropy & provider")}
+                : "Citropy & provider"}
             </span>
           </div>
           <div
             className="composer-suggestion-list scroll"
             id="composer-suggestions"
             role="listbox"
-            aria-label={mode === "skills" ? t("Files and skills") : t("Commands")}
+            aria-label={mode === "skills" ? "Files and skills" : "Commands"}
           >
             {options.map((option, i) => (
               <button
@@ -249,9 +247,9 @@ export function ComposerInput({
                 </span>
               </button>
             ))}
-            {loading && <p role="status">{t(mode === "skills" ? "Loading skills…" : "Loading commands…")}</p>}
+            {loading && <p role="status">{mode === "skills" ? "Loading skills…" : "Loading commands…"}</p>}
             {!options.length && !loading && !error && (
-              <p>{t(mode === "skills" ? "No matching skills." : "No matching commands.")}</p>
+              <p>{mode === "skills" ? "No matching skills." : "No matching commands."}</p>
             )}
             {error && <p role="status">{error}</p>}
           </div>
@@ -266,7 +264,7 @@ export function ComposerInput({
           className="composer-input scroll"
           value={value}
           rows={1}
-          aria-label={t("Message")}
+          aria-label="Message"
           aria-autocomplete="list"
           aria-controls={visible ? "composer-suggestions" : undefined}
           aria-activedescendant={
@@ -275,10 +273,10 @@ export function ComposerInput({
           disabled={disabled}
           placeholder={
             !connected
-              ? t("Citropy is reconnecting. Your message will wait…")
+              ? "Citropy is reconnecting. Your message will wait…"
               : thread.running
-                ? t("Queue a follow-up…")
-                : t("Ask a question or describe a change…")
+                ? "Queue a follow-up…"
+                : "Ask a question or describe a change…"
           }
           spellCheck={false}
           onScroll={(event) => {

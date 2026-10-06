@@ -1,12 +1,27 @@
 import * as browser from "../browser.ts";
 import { chooseFolder } from "../folder-picker.ts";
 import { forgetGit, refreshGit } from "../git-monitor.ts";
-import { closePanel, panelList } from "../panels.ts";
+import { closePanel, openPanel, panelList, renameTerminal } from "../panels.ts";
 import { remoteId, workspaceDirectory } from "../remote.ts";
 import { removeThread } from "./threads.ts";
 import { store } from "../store.ts";
 import * as terminals from "../terminals.ts";
+import { workspacePath } from "../workspaces.ts";
+import { PROJECT_SCRIPT_LIMITS as SCRIPT_LIMITS } from "../../shared/project-scripts.ts";
+import type { ProjectScript } from "../../shared/protocol.ts";
 import type { Routes } from "./types.ts";
+
+function validScripts(scripts: unknown): ProjectScript[] {
+  if (!Array.isArray(scripts) || scripts.length > SCRIPT_LIMITS.count) throw new Error(`Keep between 0 and ${SCRIPT_LIMITS.count} project scripts.`);
+  return scripts.map((script: Partial<ProjectScript>) => {
+    const name = typeof script?.name === "string" ? script.name.trim() : "";
+    const command = typeof script?.command === "string" ? script.command.trim() : "";
+    if (typeof script?.id !== "string" || !script.id) throw new Error("Project script is missing its id.");
+    if (!name || name.length > SCRIPT_LIMITS.name) throw new Error(`Script name must be between 1 and ${SCRIPT_LIMITS.name} characters.`);
+    if (!command || command.length > SCRIPT_LIMITS.command) throw new Error(`Script command must be between 1 and ${SCRIPT_LIMITS.command} characters.`);
+    return { id: script.id, name, command };
+  });
+}
 
 export async function closeProject(id: string): Promise<void> {
   for (const panel of panelList()) {
@@ -46,4 +61,20 @@ export const projectRoutes: Routes = {
     store.updateProject(event.id, { name });
   },
   "project.close": (event) => closeProject(event.id),
+  "project.scripts": (event) => {
+    store.updateProject(event.id, { scripts: validScripts(event.scripts) });
+  },
+  "project.runScript": async (event) => {
+    const script = store.projects.get(event.projectId)?.scripts?.find((entry) => entry.id === event.scriptId);
+    if (!script) throw new Error("Project script not found.");
+    const cwd = workspacePath(event.projectId, event.threadId);
+    const panel = openPanel(event.projectId, "terminal", event.threadId);
+    renameTerminal(panel.id, script.name);
+    try {
+      await terminals.open(panel.id, cwd, 100, 28, script.command);
+    } catch (error) {
+      closePanel(panel.id);
+      throw error;
+    }
+  },
 };

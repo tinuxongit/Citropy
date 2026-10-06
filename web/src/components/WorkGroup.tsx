@@ -7,7 +7,6 @@ import { shapeIcon } from "./icons.ts";
 import { FileIcon } from "./FileIcon.tsx";
 import { useApp } from "../lib/store.ts";
 import { useDisclosure } from "../lib/use-disclosure.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { groupStats, summarize } from "../lib/group.ts";
 import { VirtualList } from "./VirtualList.tsx";
 
@@ -55,7 +54,6 @@ function GroupTree({ ids, tools, live, auto }: { ids: string[]; tools: ToolPart[
 }
 
 export const WorkGroup = memo(function WorkGroup({ ids, live }: { ids: string[]; live: boolean }) {
-  const t = useI18n();
   const tools = useApp(useShallow(state => ids.map(id => state.parts.get(id)).filter((part): part is ToolPart => part?.kind === "tool")));
   const showFailedTools = useApp(state => state.showFailedTools);
   const stats = groupStats(tools);
@@ -68,9 +66,9 @@ export const WorkGroup = memo(function WorkGroup({ ids, live }: { ids: string[];
     <div className="group-body" data-open={open || undefined}>
       <button className="group-summary" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
         <ChevronRight size={13} className="group-chevron" aria-hidden="true" />
-        <span className="truncate">{summarize(tools, t)}</span>
+        <span className="truncate">{summarize(tools)}</span>
         {tools.length > 0 && <ToolStack tools={tools} />}
-        {showFailedTools && stats.failed > 0 && <span className="group-failed">{t(stats.failed === 1 ? "{count} failed tool" : "{count} failed tools", { count: stats.failed })}</span>}
+        {showFailedTools && stats.failed > 0 && <span className="group-failed">{stats.failed === 1 ? `${stats.failed} failed tool` : `${stats.failed} failed tools`}</span>}
       </button>
       {open && <GroupTree ids={ids} tools={tools} live={live} auto={chosen === undefined} />}
     </div>

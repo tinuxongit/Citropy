@@ -10,7 +10,6 @@ import {
   Search,
 } from "lucide-react";
 import { useGitHub } from "../../lib/use-github.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import { Select } from "../Select.tsx";
 import {
   GitHubFeedback,
@@ -34,7 +33,6 @@ export function GitHubItems({
   branch?: string;
   currentUser: string;
 }) {
-  const t = useI18n();
   const repo = repository.full_name;
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -67,33 +65,33 @@ export function GitHubItems({
         >
           <Search size={16} />
           <input
-            aria-label={pull ? t("Search pull requests") : t("Search issues")}
-            placeholder={pull ? t("Search pull requests…") : t("Search issues…")}
+            aria-label={pull ? "Search pull requests" : "Search issues"}
+            placeholder={pull ? "Search pull requests…" : "Search issues…"}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
             <button className="btn" type="submit">
-            {t("Search")}
+            Search
           </button>
         </form>
         <Select
-          aria-label={t("State")}
+          aria-label="State"
           value={state}
           onChange={(value) => {
             setState(value as typeof state);
             setPage(1);
           }}
           options={[
-            { value: "open", label: t("Open") },
-            { value: "closed", label: t("Closed") },
-            { value: "all", label: t("All states") },
+            { value: "open", label: "Open" },
+            { value: "closed", label: "Closed" },
+            { value: "all", label: "All states" },
           ]}
         />
         <button
           className="icon-btn"
           onClick={refresh}
-          title={t("Refresh")}
-          aria-label={t("Refresh items")}
+          title="Refresh"
+          aria-label="Refresh items"
           disabled={list.loading}
         >
           <RefreshCw size={16} />
@@ -105,7 +103,7 @@ export function GitHubItems({
           disabled={repository.archived}
         >
           <Plus size={15} />
-          {pull ? t("New pull request") : t("New issue")}
+          {pull ? "New pull request" : "New issue"}
         </button>
       </div>
       {feedback && (
@@ -118,14 +116,14 @@ export function GitHubItems({
         <div className="github-list scroll sliding-selection">
           <SelectionHighlight value={selected === null ? undefined : String(selected)} selector='.github-item[aria-pressed="true"]' />
           <div className="github-list-caption">
-            {list.data?.total ?? ""} {pull ? t("pull requests") : t("issues")}
+            {list.data?.total ?? ""} {pull ? "pull requests" : "issues"}
           </div>
           <GitHubFeedback
             error={list.error}
             loading={list.loading && !list.data}
             empty={
               list.data?.items.length === 0
-                ? t("No {state} {items}", { state: state === "all" ? "" : t(state === "open" ? "open" : "closed"), items: pull ? t("pull requests") : t("issues") })
+                ? `No ${state === "all" ? "" : (state === "open" ? "open" : "closed")} ${pull ? "pull requests" : "issues"}`
                 : undefined
             }
           />
@@ -142,7 +140,7 @@ export function GitHubItems({
               <GitHubState state={githubItemState(entry)} pull={pull} />
               <strong>{entry.title}</strong>
               <span className="github-meta">
-                #{entry.number} · {entry.user?.login ?? t("Deleted user")} ·{" "}
+                #{entry.number} · {entry.user?.login ?? "Deleted user"} ·{" "}
                 {githubDate(entry.updated_at)}
               </span>
               <div className="github-labels">
@@ -165,9 +163,9 @@ export function GitHubItems({
           {!selected ? (
             <div className="github-empty">
               <MessageSquare size={30} />
-          <h2>{t("Select {item}", { item: pull ? t("a pull request") : t("an issue") })}</h2>
+          <h2>Select {pull ? "a pull request" : "an issue"}</h2>
               <p>
-                {t("Read the conversation, review changes, and follow its progress here.")}
+                Read the conversation, review changes, and follow its progress here.
               </p>
             </div>
           ) : (
@@ -177,7 +175,7 @@ export function GitHubItems({
                 onClick={() => setSelected(null)}
               >
                 <ArrowLeft size={15} />
-                {t("Back to {items}", { items: pull ? t("pull requests") : t("issues") })}
+                Back to {pull ? "pull requests" : "issues"}
               </button>
               <GitHubFeedback
                 error={detail.error}

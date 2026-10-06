@@ -9,17 +9,14 @@ import { loadOlderThread, loadThread, readThreadNotifications, refreshGit } from
 import { reportError } from "../lib/api.ts";
 import { useStickToBottom } from "../lib/use-stick.ts";
 import { usePanelMotion } from "../lib/use-panel-motion.ts";
-import { useMessageHeaderMotion } from "../lib/use-message-header-motion.ts";
 import {
   timelineRows,
   createTimelineSelector,
 } from "../lib/timeline.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { LatestButton } from "./LatestButton.tsx";
 import { onPanelSettled, panelMoving } from "../lib/panel-motion.ts";
 
 export function Conversation() {
-  const t = useI18n();
   const searchMessageId = useApp((state) => state.searchMessageId);
   const searchShellId = useApp((state) => state.searchShellId);
   const threadId = useApp((state) => state.activeThreadId);
@@ -56,7 +53,6 @@ export function Conversation() {
     stopFollowing,
     following,
   } = useStickToBottom<HTMLDivElement, HTMLDivElement>();
-  useMessageHeaderMotion(viewport, threadId);
   usePanelMotion(content, threadId);
   const virtualized = rows.length > 40;
   const pinnedActivity = useRef<{ id: string }>(undefined);
@@ -228,7 +224,7 @@ export function Conversation() {
       if (searchShellId) useApp.setState(state => {
           if (state.searchShellId !== searchShellId) return state;
           return { searchShellId: null, toasts: [...state.toasts, {
-            id: `shell-${searchShellId}`, level: "info", text: t("This command is no longer in the conversation history. Its recent output is available in Running shells."),
+            id: `shell-${searchShellId}`, level: "info", text: "This command is no longer in the conversation history. Its recent output is available in Running shells.",
           }] };
         });
       else if (searchMessageId) useApp.setState(state => state.searchMessageId === searchMessageId ? { searchMessageId: null } : state);
@@ -277,7 +273,7 @@ export function Conversation() {
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [searchMessageId, searchShellId, threadId, loaded, olderCursor, loadingOlder, loadOlder, ids, rows, timeline, stopFollowing, t]);
+  }, [searchMessageId, searchShellId, threadId, loaded, olderCursor, loadingOlder, loadOlder, ids, rows, timeline, stopFollowing]);
 
   const visibleItem = virtualItems.find((item) => item.end > (timeline.scrollOffset ?? 0) + 30);
   const jumpToMessage = useCallback((messageId: string) => {
@@ -302,7 +298,7 @@ export function Conversation() {
           className="canvas-inner"
           ref={content}
         >
-          {olderCursor && <button className="btn conversation-history" type="button" disabled={!connected || loadingOlder} aria-busy={loadingOlder} onClick={() => void loadOlder()}>{t(loadingOlder ? "Loading older messages…" : "Load older messages")}</button>}
+          {olderCursor && <button className="btn conversation-history" type="button" disabled={!connected || loadingOlder} aria-busy={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}
           <div
             className="timeline-rows"
             style={{

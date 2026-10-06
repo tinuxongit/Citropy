@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
 import type { PermissionRequest } from "../../../shared/protocol.ts";
 import { answerPermission } from "../lib/actions.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { useApp } from "../lib/store.ts";
 import { Ban, Check, CheckCheck, ChevronDown, shapeIcon } from "./icons.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
@@ -11,23 +10,23 @@ function lines(value: unknown): string[] {
   return typeof value === "string" ? value.split("\n") : [];
 }
 
-function lede(request: PermissionRequest, project: string, t: ReturnType<typeof useI18n>): string {
+function lede(request: PermissionRequest, project: string): string {
   const where = request.detail ? `${request.detail}/` : "";
   switch (request.shape) {
     case "command":
-      return t("Run this command in {project}.", { project });
+      return `Run this command in ${project}.`;
     case "write":
-      return t("Create {where}{headline} in {project}.", { where, headline: request.headline, project });
+      return `Create ${where}${request.headline} in ${project}.`;
     case "edit":
-      return t("Change {where}{headline}.", { where, headline: request.headline });
+      return `Change ${where}${request.headline}.`;
     case "read":
-      return t("Read {where}{headline}.", { where, headline: request.headline });
+      return `Read ${where}${request.headline}.`;
     case "web":
-      return t("Fetch this address from the internet.");
+      return "Fetch this address from the internet.";
     case "task":
-      return t("Start a subagent for this task.");
+      return "Start a subagent for this task.";
     default:
-      return t("Run the {tool} tool.", { tool: request.tool });
+      return `Run the ${request.tool} tool.`;
   }
 }
 
@@ -77,23 +76,22 @@ function Body({ request }: { request: PermissionRequest }) {
 }
 
 export function PermissionRow({ request }: { request: PermissionRequest }) {
-  const t = useI18n();
   const [expanded, setExpanded] = useState(false);
   const waiting = useApp((state) => state.permissions.length - 1);
   const thread = useApp((state) => state.threads[request.threadId]);
   const project = useApp((state) => {
     const entry = state.projects.find((candidate) => candidate.id === thread?.projectId);
-    return entry?.name ?? t("this workspace");
+    return entry?.name ?? "this workspace";
   });
   const connected = useApp((state) => state.connected);
   const Icon = shapeIcon[request.shape];
-  const summary = lede(request, project, t);
+  const summary = lede(request, project);
   const id = useId();
   const answer = (decision: "allow" | "allow_always" | "deny") =>
     answerPermission(request.id, decision);
 
   return (
-    <ComposerWideTab className="permission-panel" aria-label={t("Review this action")}>
+    <ComposerWideTab className="permission-panel" aria-label="Review this action">
       <div className="permission-card">
         <div className="permission-row">
           <button
@@ -104,9 +102,9 @@ export function PermissionRow({ request }: { request: PermissionRequest }) {
             onClick={() => setExpanded((value) => !value)}
           >
             <Icon size={15} aria-hidden="true" />
-            <strong>{t("Review this action")}</strong>
+            <strong>Review this action</strong>
             {waiting > 0 && (
-              <span className="permission-count">{waiting} {t("waiting")}</span>
+              <span className="permission-count">{waiting} waiting</span>
             )}
             <span className="permission-text truncate" title={summary}>{summary}</span>
             <ChevronDown size={14} className="permission-chevron" aria-hidden="true" />
@@ -119,17 +117,17 @@ export function PermissionRow({ request }: { request: PermissionRequest }) {
               onClick={() => answer("deny")}
             >
               <Ban size={14} />
-              {t("Deny")}
+              Deny
             </button>
             <button
               className="btn"
               type="button"
-              title={t("Allow this tool for this session")}
+              title="Allow this tool for this session"
               disabled={!connected}
               onClick={() => answer("allow_always")}
             >
               <CheckCheck size={14} />
-              {t("Always allow")}
+              Always allow
             </button>
             <button
               className="btn"
@@ -139,7 +137,7 @@ export function PermissionRow({ request }: { request: PermissionRequest }) {
               onClick={() => answer("allow")}
             >
               <Check size={14} />
-              {t("Allow once")}
+              Allow once
             </button>
           </div>
         </div>
@@ -152,7 +150,7 @@ export function PermissionRow({ request }: { request: PermissionRequest }) {
           <Body request={request} />
           {!connected && (
             <p className="dialog-error" role="alert">
-              {t("Reconnect to Citropy to respond.")}
+              Reconnect to Citropy to respond.
             </p>
           )}
         </div>

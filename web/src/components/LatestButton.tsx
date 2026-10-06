@@ -1,12 +1,10 @@
 import { useEffect, useState, type RefObject } from "react";
 import { ChevronDown } from "lucide-react";
-import { useI18n } from "../lib/i18n.ts";
 
 const SHOW_AFTER = 240;
 const HIDE_WITHIN = 80;
 
 export function LatestButton({ viewport, onJump }: { viewport: RefObject<HTMLElement | null>; onJump: () => void }) {
-  const t = useI18n();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -30,7 +28,7 @@ export function LatestButton({ viewport, onJump }: { viewport: RefObject<HTMLEle
     <div className="conversation-jump">
       <button type="button" className="jump" data-visible={visible || undefined} tabIndex={visible ? undefined : -1} aria-hidden={!visible || undefined} onClick={onJump}>
         <ChevronDown size={14} aria-hidden="true" />
-        {t("Latest")}
+        Latest
       </button>
     </div>
   );

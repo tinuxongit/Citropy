@@ -8,21 +8,19 @@ import { LineCounts } from "./LineCounts.tsx";
 import { groupGitFiles } from "../lib/git-files.ts";
 import { commitAll, discardFile, fetchDiff, refreshGit } from "../lib/actions.ts";
 import { scaled, useApp } from "../lib/store.ts";
-import { useI18n } from "../lib/i18n.ts";
 import type { FilePatch, GitFile } from "../../../shared/protocol.ts";
 
-function statusLabel(file: GitFile, t: ReturnType<typeof useI18n>): string {
-  if (file.untracked) return t("new");
+function statusLabel(file: GitFile): string {
+  if (file.untracked) return "new";
   const code = file.index !== " " ? file.index : file.work;
-  if (code === "M") return t("modified");
-  if (code === "A") return t("added");
-  if (code === "D") return t("deleted");
-  if (code === "R") return t("renamed");
-  return t("changed");
+  if (code === "M") return "modified";
+  if (code === "A") return "added";
+  if (code === "D") return "deleted";
+  if (code === "R") return "renamed";
+  return "changed";
 }
 
 function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { file: GitFile; projectId: string; active: boolean; open: boolean; onToggle: () => void; expanded: boolean; onExpand: () => void }) {
-  const t = useI18n();
   const [patch, setPatch] = useState<FilePatch | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -51,7 +49,7 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
   return (
     <div className="change" data-open={open}>
       <div className="change-heading">
-        <button className="change-head" type="button" title={`${file.path} · ${statusLabel(file, t)}`} aria-expanded={open} onClick={onToggle}>
+        <button className="change-head" type="button" title={`${file.path} · ${statusLabel(file)}`} aria-expanded={open} onClick={onToggle}>
           <ChevronRight size={12} className="change-chevron" />
           <span className="change-file">
             <FileIcon path={file.path} />
@@ -59,15 +57,15 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
             {dir && <span className="change-dir truncate">{dir}</span>}
           </span>
           <LineCounts added={file.added} removed={file.removed} />
-          <span className="change-badge" data-kind={statusLabel(file, t)}>
-            {statusLabel(file, t)}
+          <span className="change-badge" data-kind={statusLabel(file)}>
+            {statusLabel(file)}
           </span>
         </button>
         <button
           className="change-action"
           type="button"
-          aria-label={t("Discard changes")}
-          title={t("Discard changes")}
+          aria-label="Discard changes"
+          title="Discard changes"
           onClick={() => discardFile(projectId, file.path)}
         >
           <RotateCcw size={12} />
@@ -79,7 +77,7 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
           {patch ? (
             <DiffView patch={patch} showHeader={false} limit={40} expanded={expanded} onExpand={onExpand} />
           ) : (
-            <div className="change-loading">{loading ? t("Reading diff…") : error || t("No textual diff")}</div>
+            <div className="change-loading">{loading ? "Reading diff…" : error || "No textual diff"}</div>
           )}
         </div>
       </Collapsible>
@@ -88,7 +86,6 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
 }
 
 export function Changes({ active = true }: { active?: boolean }) {
-  const t = useI18n();
   const projectId = useApp((state) => state.activeProjectId);
   const git = useApp((state) => (projectId ? state.git[projectId] : undefined));
   const [message, setMessage] = useState("");
@@ -114,19 +111,19 @@ export function Changes({ active = true }: { active?: boolean }) {
     if (active && projectId) refreshGit(projectId);
   }, [active, projectId]);
 
-  if (!projectId) return <div className="pane-empty">{t("Open a workspace first.")}</div>;
-  if (!git) return <div className="pane-empty">{t("Not a git repository.")}</div>;
+  if (!projectId) return <div className="pane-empty">Open a workspace first.</div>;
+  if (!git) return <div className="pane-empty">Not a git repository.</div>;
 
   return (
     <div className="changes">
       <div className="changes-list scroll" ref={viewport}>
-        {git.files.length === 0 && <div className="pane-empty">{t("Working tree is clean.")}</div>}
+        {git.files.length === 0 && <div className="pane-empty">Working tree is clean.</div>}
         <div className="changes-rows" style={{ height: list.getTotalSize() }}>
           {list.getVirtualItems().map((item) => {
             const { file, group } = rows[item.index]!;
             return (
               <div className="changes-row" key={item.key} data-index={item.index} ref={list.measureElement} style={{ transform: `translateY(${item.start}px)` }}>
-                {group ? <h3 className="change-category" data-kind={group.kind}>{t(group.label)}<span>{group.files.length}</span></h3> : file && <Row file={file} projectId={projectId} active={active} open={openFiles.has(file.path)} expanded={expandedFiles.has(file.path)} onExpand={() => setExpandedFiles((previous) => new Set(previous).add(file.path))} onToggle={() => setOpenFiles((previous) => {
+                {group ? <h3 className="change-category" data-kind={group.kind}>{group.label}<span>{group.files.length}</span></h3> : file && <Row file={file} projectId={projectId} active={active} open={openFiles.has(file.path)} expanded={expandedFiles.has(file.path)} onExpand={() => setExpandedFiles((previous) => new Set(previous).add(file.path))} onToggle={() => setOpenFiles((previous) => {
                   const next = new Set(previous);
                   if (next.has(file.path)) next.delete(file.path);
                   else next.add(file.path);
@@ -151,18 +148,18 @@ export function Changes({ active = true }: { active?: boolean }) {
         >
           <input
             className="commit-input"
-            aria-label={t("Commit title")}
+            aria-label="Commit title"
             value={message}
-            placeholder={t("Commit {count} file{suffix} on {branch}", { count: git.files.length, suffix: git.files.length === 1 ? "" : "s", branch: git.branch })}
+            placeholder={`Commit ${git.files.length} file${git.files.length === 1 ? "" : "s"} on ${git.branch}`}
             onChange={(event) => setMessage(event.target.value)}
           />
           <button className="btn" type="submit" data-variant="primary" disabled={!message.trim()}>
             <GitCommitVertical size={13} />
-            {t("Commit")}
+            Commit
           </button>
           <details className="commit-description">
-            <summary>{t("Description")} <span>{t("Optional")}</span></summary>
-            <textarea aria-label={t("Commit description")} rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("Explain why this change was made.")} />
+            <summary>Description <span>Optional</span></summary>
+            <textarea aria-label="Commit description" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Explain why this change was made." />
           </details>
         </form>
       )}

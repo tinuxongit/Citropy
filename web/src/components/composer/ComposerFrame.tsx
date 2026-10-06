@@ -35,18 +35,15 @@ function frameMasks(width: number, height: number, shell: Box, tabs: Tab[]) {
   return {
     fill: svgMask(width, height, shapes("#000", 0)),
     ring: ringMask(rim),
-    outline: ringMask(1),
   };
 }
 
 export function ComposerFrame() {
   const glassRef = useRef<HTMLSpanElement>(null);
   const ringRef = useRef<HTMLSpanElement>(null);
-  const outlineRef = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     const glass = glassRef.current!;
     const ring = ringRef.current!;
-    const outline = outlineRef.current!;
     const shell = ring.parentElement!;
     const tabList = shell.querySelector<HTMLElement>(":scope > .composer-tabs")!;
     let geometry = "";
@@ -76,10 +73,9 @@ export function ComposerFrame() {
       if (nextGeometry === geometry) return;
       geometry = nextGeometry;
       const masks = frameMasks(shellBox.width, rise + shellBox.height, shellBox, visible);
-      for (const layer of [glass, ring, outline]) layer.style.top = `${-rise}px`;
+      for (const layer of [glass, ring]) layer.style.top = `${-rise}px`;
       glass.style.maskImage = masks.fill;
       ring.style.maskImage = masks.ring;
-      outline.style.maskImage = masks.outline;
     };
     draw();
     const resize = new ResizeObserver(draw);
@@ -96,7 +92,6 @@ export function ComposerFrame() {
   }, []);
   return <>
     <span ref={glassRef} className="composer-glass" aria-hidden="true" />
-    <span ref={outlineRef} className="composer-outline" aria-hidden="true" />
     <span ref={ringRef} className="composer-focus-ring" aria-hidden="true" />
   </>;
 }

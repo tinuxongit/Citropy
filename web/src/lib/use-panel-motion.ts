@@ -15,15 +15,9 @@ export function usePanelMotion(target: RefObject<HTMLElement | null>, threadId: 
       const bounds = element.getBoundingClientRect();
       const area = stage.getBoundingClientRect();
       const left = bounds.left - shift;
-      let visibleLeft = left;
-      let visibleRight = bounds.right - shift;
-      for (const avatar of element.querySelectorAll(".message-avatar")) {
-        const box = avatar.getBoundingClientRect();
-        visibleLeft = Math.min(visibleLeft, box.left - shift);
-        visibleRight = Math.max(visibleRight, box.right - shift);
-      }
-      const inset = Math.max(0, Math.min(12, visibleLeft - area.left, area.right - visibleRight));
-      const from = Math.max(area.left + inset - visibleLeft, Math.min(area.right - inset - visibleRight, previous - left + shift));
+      const right = bounds.right - shift;
+      const inset = Math.max(0, Math.min(12, left - area.left, area.right - right));
+      const from = Math.max(area.left + inset - left, Math.min(area.right - inset - right, previous - left + shift));
       previous = left;
       animation?.cancel();
       animation = undefined;

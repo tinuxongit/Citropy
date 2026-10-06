@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Activity,
   AppWindow,
@@ -11,11 +11,11 @@ import {
   RefreshCw,
   Server,
   SlidersHorizontal,
+  Smartphone,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
 import { isRemote, useEnvironments } from "../lib/environment.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { send } from "../lib/socket.ts";
 import { useApp, viewportWidth } from "../lib/store.ts";
 import { AppearanceSettings } from "./AppearanceSettings.tsx";
@@ -25,6 +25,7 @@ import { BrowserProfiles } from "./BrowserProfiles.tsx";
 import { DiagnosticsSettings } from "./DiagnosticsSettings.tsx";
 import { EnvironmentSettings } from "./EnvironmentSettings.tsx";
 import { GeneralSettings } from "./GeneralSettings.tsx";
+import { canShareLocally, LocalSharing } from "./LocalSharing.tsx";
 import { NotificationSettings } from "./NotificationSettings.tsx";
 import { ProjectSettings } from "./ProjectSettings.tsx";
 import { ProviderSettings } from "./ProviderSettings.tsx";
@@ -33,7 +34,7 @@ import { SkillsSettings } from "./SkillsSettings.tsx";
 
 const GROUPS = ["Preferences", "Workspaces", "Agents", "Tools", "System"] as const;
 
-const sections: { name: string; group: typeof GROUPS[number]; icon: LucideIcon }[] = [
+const sections: { name: string; group: typeof GROUPS[number]; icon: LucideIcon; available?: () => boolean }[] = [
   { name: "General", group: "Preferences", icon: SlidersHorizontal },
   { name: "Appearance", group: "Preferences", icon: Palette },
   { name: "Notifications", group: "Preferences", icon: Bell },
@@ -43,6 +44,7 @@ const sections: { name: string; group: typeof GROUPS[number]; icon: LucideIcon }
   { name: "AI assistance", group: "Agents", icon: PencilLine },
   { name: "Skills", group: "Agents", icon: BookOpen },
   { name: "Browser", group: "Tools", icon: Globe },
+  { name: "Local sharing", group: "Tools", icon: Smartphone, available: canShareLocally },
   { name: "Resources", group: "System", icon: Activity },
   { name: "Application", group: "System", icon: AppWindow },
 ];
@@ -50,30 +52,25 @@ const sections: { name: string; group: typeof GROUPS[number]; icon: LucideIcon }
 export function Settings({
   sidebarOpen,
   onCloseSidebar,
-  onBack,
-  navigation,
   initialSection = "General",
 }: {
   sidebarOpen: boolean;
   onCloseSidebar: () => void;
-  onBack: () => void;
-  navigation?: ReactNode;
   initialSection?: string;
 }) {
-  const t = useI18n();
   const { activeId: environment } = useEnvironments();
   const [section, setSection] = useState(initialSection);
   useEffect(() => setSection(initialSection), [initialSection]);
   const connected = useApp((state) => state.connected);
 
   return (
-    <section className="section-view" aria-label={t("Settings")}>
-      <SectionSidebar activeItem={section} open={sidebarOpen} title={t("Settings")} onBack={onBack} navigation={navigation}>
+    <section className="section-view" aria-label="Settings">
+      <SectionSidebar activeItem={section} open={sidebarOpen} title="Settings">
           {GROUPS.map((group) => {
-            const entries = sections.filter((entry) => entry.group === group && (!isRemote() || entry.group !== "Tools"));
+            const entries = sections.filter((entry) => entry.group === group && (!isRemote() || entry.group !== "Tools") && (entry.available?.() ?? true));
             if (!entries.length) return null;
             return <Fragment key={group}>
-              <h2 className="section-nav-label">{t(group)}</h2>
+              <h2 className="section-nav-label">{group}</h2>
               {entries.map(({ name, icon: Icon }) => (
                 <button
                   className="section-link"
@@ -87,7 +84,7 @@ export function Settings({
                   }}
                 >
                   <Icon size={17} />
-                  <span>{t(name)}</span>
+                  <span>{name}</span>
                 </button>
               ))}
             </Fragment>;
@@ -102,7 +99,7 @@ export function Settings({
                   className="settings-title"
                   data-settings-section={section.toLowerCase()}
                 >
-                  {t(section)}
+                  {section}
                 </h1>
               </div>
               {section === "Providers" && (
@@ -112,7 +109,7 @@ export function Settings({
                   onClick={() => send({ t: "providers.refresh", force: true })}
                 >
                   <RefreshCw size={14} />
-                  {t("Refresh models")}
+                  Refresh models
                 </button>
               )}
             </header>
@@ -121,6 +118,7 @@ export function Settings({
             {section === "Skills" && <SkillsSettings />}
             {section === "AI assistance" && <AssistanceSettings />}
             {section === "Browser" && <BrowserProfiles />}
+            {section === "Local sharing" && <LocalSharing />}
             {section === "Resources" && <DiagnosticsSettings />}
             {section === "General" && <GeneralSettings />}
             {section === "Notifications" && <NotificationSettings />}

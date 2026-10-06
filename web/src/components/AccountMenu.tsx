@@ -1,6 +1,5 @@
 import { useId, type ReactNode } from "react";
 import { UserRound } from "lucide-react";
-import { useI18n } from "../lib/i18n.ts";
 import { useApp } from "../lib/store.ts";
 
 export function AccountMenu({ open, onOpenChange, children }: {
@@ -8,7 +7,6 @@ export function AccountMenu({ open, onOpenChange, children }: {
   onOpenChange: (open: boolean) => void;
   children: ReactNode;
 }) {
-  const t = useI18n();
   const id = useId();
   const account = useApp((state) => state.githubAccount);
 
@@ -18,8 +16,8 @@ export function AccountMenu({ open, onOpenChange, children }: {
       <button
         type="button"
         className="strip-action account-menu-button"
-        aria-label={account?.login ?? t("Account")}
-        title={open ? undefined : account?.login ?? t("Account")}
+        aria-label={account?.login ?? "Account"}
+        title={open ? undefined : account?.login ?? "Account"}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => onOpenChange(!open)}

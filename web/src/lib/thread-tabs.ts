@@ -1,13 +1,11 @@
 import { environmentStorage } from "./environment.ts";
 
-export const TABS_KEY = "citropy.tabs";
+const TABS_KEY = "citropy.tabs";
 
 export interface Tabs {
   openThreadIds: string[];
   previewThreadId: string | null;
 }
-
-type TabState = Tabs & { activeThreadId: string | null };
 
 export function readTabs(id?: string): Tabs {
   const stored = JSON.parse(environmentStorage.getItem(TABS_KEY, id) ?? "null");
@@ -19,22 +17,15 @@ export function saveTabs({ openThreadIds, previewThreadId }: Tabs): void {
   environmentStorage.setItem(TABS_KEY, JSON.stringify({ openThreadIds, previewThreadId }));
 }
 
-function afterActive(state: TabState, id: string): string[] {
-  const openThreadIds = [...state.openThreadIds];
-  const active = state.activeThreadId === null ? -1 : openThreadIds.indexOf(state.activeThreadId);
-  openThreadIds.splice(active + 1, 0, id);
-  return openThreadIds;
-}
-
-export function withPreviewTab(state: TabState, id: string): Tabs {
+export function withPreviewTab(state: Tabs, id: string): Tabs {
   if (state.openThreadIds.includes(id)) return state;
   const preview = state.previewThreadId === null ? -1 : state.openThreadIds.indexOf(state.previewThreadId);
-  const openThreadIds = preview < 0 ? afterActive(state, id) : state.openThreadIds.with(preview, id);
+  const openThreadIds = preview < 0 ? [...state.openThreadIds, id] : state.openThreadIds.with(preview, id);
   return { openThreadIds, previewThreadId: id };
 }
 
-export function withKeptTab(state: TabState, id: string): Tabs {
-  if (!state.openThreadIds.includes(id)) return { ...state, openThreadIds: afterActive(state, id) };
+export function withKeptTab(state: Tabs, id: string): Tabs {
+  if (!state.openThreadIds.includes(id)) return { ...state, openThreadIds: [...state.openThreadIds, id] };
   return state.previewThreadId === id ? { ...state, previewThreadId: null } : state;
 }
 

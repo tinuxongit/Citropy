@@ -5,7 +5,6 @@ import { FileIcon } from "./FileIcon.tsx";
 import { fetchDiff, manageGit } from "../lib/actions.ts";
 import { DiffView } from "./DiffView.tsx";
 import type { FilePatch } from "../../../shared/protocol.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { scaled } from "../lib/store.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import { LineCounts } from "./LineCounts.tsx";
@@ -24,7 +23,6 @@ export function GitReview({
   selection: GitSelection;
   revision: number;
 }) {
-  const t = useI18n();
   const [patches, setPatches] = useState<FilePatch[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -90,28 +88,28 @@ export function GitReview({
       {loading ? (
         <div className="git-preview-placeholder" role="status">
           <PixelLoader size={22} />
-          <span>{t("Loading changes…")}</span>
+          <span>Loading changes…</span>
         </div>
       ) : error ? (
         <div className="git-preview-placeholder" role="alert">
           <FileCode2 size={28} />
-          <h3>{t("Couldn't load this preview")}</h3>
+          <h3>Couldn't load this preview</h3>
           <p>{error}</p>
           <button className="btn" onClick={() => setRetry((value) => value + 1)}>
-            <RotateCcw size={14} /> {t("Try again")}
+            <RotateCcw size={14} /> Try again
           </button>
         </div>
       ) : selection.kind === "file" ? (
         <div className="git-single-patch">
-          {patches[0]?.hunks.length ? <DiffView key={patches[0].path} patch={patches[0]} showHeader={false} expanded /> : <p className="git-no-lines">{t("No text changes in this file.")}</p>}
+          {patches[0]?.hunks.length ? <DiffView key={patches[0].path} patch={patches[0]} showHeader={false} expanded /> : <p className="git-no-lines">No text changes in this file.</p>}
         </div>
       ) : (
         <div className="git-patches">
           {!patches.length && !body && (
             <div className="git-preview-placeholder">
               <FileCode2 size={28} />
-              <h3>{t("No text changes to display")}</h3>
-              <p>{t("The file is empty, binary, or only its metadata changed.")}</p>
+              <h3>No text changes to display</h3>
+              <p>The file is empty, binary, or only its metadata changed.</p>
             </div>
           )}
           <div className="git-patch-list" style={{ height: list.getTotalSize() }}>
@@ -135,7 +133,7 @@ export function GitReview({
                       </button>
                       {open && (patch.hunks.length ? (
                         <DiffView key={patch.path} patch={patch} showHeader={false} limit={160} expanded={expanded.has(patch.path)} onExpand={() => setExpanded((previous) => new Set(previous).add(patch.path))} />
-                      ) : <p className="git-no-lines">{t("No text changes in this file.")}</p>)}
+                      ) : <p className="git-no-lines">No text changes in this file.</p>)}
                     </div>
                   )}
                 </div>

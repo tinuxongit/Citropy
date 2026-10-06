@@ -2,7 +2,6 @@ import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { ChevronRight, FileDiff } from "lucide-react";
 import { useApp } from "../../lib/store.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import type { ChangesPart } from "../../../../shared/protocol.ts";
 import { FileIcon } from "../FileIcon.tsx";
 import { LineCounts } from "../LineCounts.tsx";
@@ -11,7 +10,6 @@ import { TaskReview } from "../TaskReview.tsx";
 const SHOWN_FILES = 3;
 
 export function TurnChanges({ part }: { part: ChangesPart }) {
-  const t = useI18n();
   const threadId = useApp((state) => state.activeThreadId);
   const thread = useApp((state) => threadId ? state.threads[threadId] : undefined);
   const [expanded, setExpanded] = useState(false);
@@ -24,13 +22,13 @@ export function TurnChanges({ part }: { part: ChangesPart }) {
   const hidden = part.files.length - files.length;
 
   return (
-    <section className="turn-changes" aria-label={t("Changed files")}>
+    <section className="turn-changes" aria-label="Changed files">
       <div className="turn-changes-head">
         <button type="button" className="turn-changes-title" onClick={() => setReviewing(true)}>
           <FileDiff size={14} aria-hidden="true" />
-          <span>{t(part.files.length === 1 ? "Edited 1 file" : "Edited {count} files", { count: part.files.length })}</span>
+          <span>{part.files.length === 1 ? "Edited 1 file" : `Edited ${part.files.length} files`}</span>
         </button>
-        <button type="button" className="turn-changes-total" aria-label={t("Review changes")} onClick={() => setReviewing(true)}>
+        <button type="button" className="turn-changes-total" aria-label="Review changes" onClick={() => setReviewing(true)}>
           <LineCounts added={added} removed={removed} />
           <ChevronRight size={14} aria-hidden="true" />
         </button>
@@ -45,7 +43,7 @@ export function TurnChanges({ part }: { part: ChangesPart }) {
       ))}
       {part.files.length > SHOWN_FILES && (
         <button type="button" className="turn-changes-file turn-changes-more" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
-          <span>{expanded ? t("Show less") : t("Show {count} more", { count: hidden })}</span>
+          <span>{expanded ? "Show less" : `Show ${hidden} more`}</span>
           <ChevronRight size={14} aria-hidden="true" />
         </button>
       )}

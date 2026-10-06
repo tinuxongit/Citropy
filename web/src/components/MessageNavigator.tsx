@@ -2,7 +2,6 @@ import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } 
 import { useApp } from "../lib/store.ts";
 import { clock, modelLabel } from "../lib/format.ts";
 import type { TimelineRow } from "../lib/timeline.ts";
-import { useI18n } from "../lib/i18n.ts";
 
 export const MessageNavigator = memo(function MessageNavigator({
   rows,
@@ -13,7 +12,6 @@ export const MessageNavigator = memo(function MessageNavigator({
   activeMessageId?: string;
   onSelect: (messageId: string) => void;
 }) {
-  const t = useI18n();
   const messages = useMemo(() => rows.filter((row): row is TimelineRow & { messageId: string } => row.first && row.messageId !== undefined), [rows]);
   const [preview, setPreview] = useState<string>();
   const [focused, setFocused] = useState<string>();
@@ -41,7 +39,7 @@ export const MessageNavigator = memo(function MessageNavigator({
   return (
     <nav
       className="message-nav"
-      aria-label={t("Conversation messages")}
+      aria-label="Conversation messages"
       onMouseLeave={() => setPreview(undefined)}
     >
       <div
@@ -82,7 +80,7 @@ export const MessageNavigator = memo(function MessageNavigator({
             className="message-nav-stop"
             data-message-index={index}
             data-message-group={group}
-            aria-label={`${t("Go to message")} ${index + 1}`}
+            aria-label={`Go to message ${index + 1}`}
             aria-current={index === activeIndex ? "location" : undefined}
             aria-describedby={
               messageId === preview ? "message-nav-preview" : undefined
@@ -123,12 +121,11 @@ function MessagePreview({
   messageId: string;
   index: number;
 }) {
-  const t = useI18n();
   const message = useApp((state) => state.messages[messageId]);
   const author = useApp((state) => {
     const message = state.messages[messageId];
     if (message?.role === "user")
-      return state.showGitHubIdentity ? state.githubAccount?.login ?? t("You") : t("You");
+      return state.showGitHubIdentity ? state.githubAccount?.login ?? "You" : "You";
     const thread = state.threads[state.activeThreadId ?? ""];
     const provider = state.providers.find(
       (entry) => entry.id === thread?.provider,
@@ -147,13 +144,13 @@ function MessagePreview({
           state.threads[threadId]?.running &&
           state.order[threadId]?.at(-1) === messageId && shell.role !== "user"
         )
-          return t("Response in progress…");
+          return "Response in progress…";
         return part.text.slice(0, 240);
       }
     }
     return (
       shell.attachments?.map((file) => file.label).join(", ").slice(0, 240) ||
-      t("Tool activity")
+      "Tool activity"
     );
   });
   if (!message) return null;

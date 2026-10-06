@@ -1,6 +1,5 @@
 import { uid } from "./ids.ts";
 import { bus } from "./bus.ts";
-import { store } from "./store.ts";
 import type { PanelKind, PanelTab } from "../shared/workbench.ts";
 import { movePanelTab } from "../shared/workbench.ts";
 

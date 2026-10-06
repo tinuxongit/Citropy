@@ -81,7 +81,7 @@
 }
 
 .change-head:hover {
-  background: var(--highlight);
+  background: var(--hover);
 }
 
 .change-chevron {
@@ -269,7 +269,7 @@
 }
 
 .tree-row:hover {
-  background: var(--highlight);
+  background: var(--hover);
   color: var(--text);
 }
 

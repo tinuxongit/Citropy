@@ -7,7 +7,7 @@
 .question-form {
   display: flex;
   flex-direction: column;
-  width: min(var(--reading), 100% - var(--avatar-room, 0px));
+  width: min(var(--reading), 100%);
   max-height: calc(var(--viewport-height) * 0.48);
   margin: 0 auto;
   background: var(--surface);
@@ -76,7 +76,9 @@
   transition: background var(--dur-instant) var(--ease-out);
 }
 
-.question-option:hover,
+.question-option:hover {
+  background: var(--hover);
+}
 .question-option[data-selected] {
   background: var(--highlight);
 }

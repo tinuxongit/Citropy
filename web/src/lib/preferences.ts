@@ -1,5 +1,5 @@
 import { environmentStorage } from "./environment.ts";
-import { MAX_CONTENT_WIDTH, MIN_CONTENT_WIDTH, useApp, type NavigationStyle, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
+import { useApp, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import { applyCustomColor } from "./custom-theme.ts";
 import type { SearchEngine } from "./web-search.ts";
@@ -46,6 +46,12 @@ export function toggleInspector(): void {
   environmentStorage.setItem("citropy.inspector", next ? "1" : "0");
 }
 
+export function toggleThreadDetails(): void {
+  const next = !useApp.getState().threadDetailsOpen;
+  useApp.setState({ threadDetailsOpen: next });
+  environmentStorage.setItem("citropy.threadDetails", next ? "1" : "0");
+}
+
 export function toggleSidebar(): void {
   const next = !useApp.getState().sidebarOpen;
   useApp.setState({ sidebarOpen: next });
@@ -55,11 +61,6 @@ export function toggleSidebar(): void {
 export function setSearchEngine(engine: SearchEngine): void {
   useApp.setState({ searchEngine: engine });
   environmentStorage.setItem("citropy.searchEngine", engine);
-}
-
-export function setNavigationStyle(style: NavigationStyle): void {
-  useApp.setState({ navigationStyle: style });
-  environmentStorage.setItem("citropy.navigationStyle", style);
 }
 
 export function setBackgroundDim(value: number): void {
@@ -136,12 +137,6 @@ export function setTextStreaming(value: boolean): void {
 export function setOpaquePopups(value: boolean): void {
   useApp.setState({ opaquePopups: value });
   environmentStorage.setItem("citropy.opaquePopups", value ? "1" : "0");
-}
-
-export function setContentWidth(value: number): void {
-  const contentWidth = Math.max(MIN_CONTENT_WIDTH, Math.min(MAX_CONTENT_WIDTH, Math.round(value)));
-  useApp.setState({ contentWidth });
-  environmentStorage.setItem("citropy.contentWidth", String(contentWidth));
 }
 
 export function setBackgroundEverywhere(value: boolean): void {

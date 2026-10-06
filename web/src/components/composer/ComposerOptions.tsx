@@ -1,4 +1,4 @@
-import { useEffect, useState, type PointerEvent, type Ref } from "react";
+import { useEffect, useState, type PointerEvent, type ReactNode, type Ref } from "react";
 import { LockKeyhole, UnlockKeyhole } from "lucide-react";
 import {
   Brain,
@@ -11,7 +11,7 @@ import {
 import { Menu } from "../Menu.tsx";
 import { configureThread } from "../../lib/actions.ts";
 import { effortLabel as formatEffort, tokens } from "../../lib/format.ts";
-import { LOCALE, useI18n } from "../../lib/i18n.ts";
+import { LOCALE } from "../../lib/locale.ts";
 import { effectiveEffort } from "../../../../shared/model-options.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { AnimatePresence, motion, useSpring, type MotionStyle } from "motion/react";
@@ -57,45 +57,6 @@ const MODES: Array<{
 const contextLabel = (size: number) =>
   tokens(size).replace(/\.00M$/, "M");
 
-export function hasModelOptions(model: ModelOption | undefined) {
-  return Boolean(
-    model?.efforts?.length || model?.contextWindows?.length || model?.fastMode,
-  );
-}
-
-export function ModelDetail({
-  thread,
-  model,
-}: {
-  thread: ThreadMeta;
-  model: ModelOption | undefined;
-}) {
-  const t = useI18n();
-  const effort = effectiveEffort(model, thread.effort);
-  const contextWindow = thread.contextWindow ?? model?.contextMax;
-  if (!hasModelOptions(model)) return null;
-  return (
-    <span className="composer-detail">
-      {effort && <span>{formatEffort(effort)}</span>}
-      {(thread.fastMode || contextWindow) && (
-        <span className="hover-reveal">
-          <span>
-            {contextWindow && (
-              <span
-                className="composer-context"
-                title={t("Context window: {count} tokens", { count: contextWindow.toLocaleString(LOCALE) })}
-              >
-                {contextLabel(contextWindow)}
-              </span>
-            )}
-            {thread.fastMode && <Zap size={12} className="option-fast" aria-label={t("fast mode on")} />}
-          </span>
-        </span>
-      )}
-    </span>
-  );
-}
-
 export type TuningTab = "effort" | "context" | "speed";
 
 export type TuningSettings = Partial<Pick<ThreadMeta, "effort" | "contextWindow" | "fastMode">>;
@@ -111,15 +72,14 @@ export function ModelTuning({
   onChange: (patch: TuningSettings) => void;
   only?: TuningTab[];
 }) {
-  const t = useI18n();
   const efforts = model?.efforts ?? [];
   const effort = effectiveEffort(model, settings.effort);
   const level = effort ? efforts.indexOf(effort) : 0;
   const contextWindow = settings.contextWindow ?? model?.contextMax;
   const tabs: Array<{ id: TuningTab; label: string; icon: typeof Brain }> = [
-    ...(efforts.length ? [{ id: "effort" as const, label: t("Effort"), icon: Brain }] : []),
-    ...(model?.contextWindows?.length ? [{ id: "context" as const, label: t("Context"), icon: Layers }] : []),
-    ...(model?.fastMode ? [{ id: "speed" as const, label: t("Speed"), icon: Zap }] : []),
+    ...(efforts.length ? [{ id: "effort" as const, label: "Effort", icon: Brain }] : []),
+    ...(model?.contextWindows?.length ? [{ id: "context" as const, label: "Context", icon: Layers }] : []),
+    ...(model?.fastMode ? [{ id: "speed" as const, label: "Speed", icon: Zap }] : []),
   ].filter((entry) => !only || only.includes(entry.id));
   const [chosen, setChosen] = useState<TuningTab>();
   const tab = tabs.find((entry) => entry.id === chosen)?.id ?? tabs[0]?.id;
@@ -127,7 +87,7 @@ export function ModelTuning({
   return (
     <div className="model-tuning">
       {tabs.length > 1 && (
-        <div className="tuning-tabs sliding-selection" role="tablist" aria-orientation="vertical" aria-label={t("Model options")}>
+        <div className="tuning-tabs sliding-selection" role="tablist" aria-orientation="vertical" aria-label="Model options">
           <SelectionHighlight value={tab} />
           {tabs.map((entry) => (
             <button
@@ -149,7 +109,7 @@ export function ModelTuning({
         <EffortSlider efforts={efforts} level={level} onChange={(index) => onChange({ effort: efforts[index] })} />
       )}
       {tab === "context" && (
-        <div className="tuning-chips sliding-selection" role="group" aria-label={t("Context window")}>
+        <div className="tuning-chips sliding-selection" role="group" aria-label="Context window">
           <SelectionHighlight value={String(contextWindow)} />
           {model!.contextWindows!.map((size) => (
             <button
@@ -158,7 +118,7 @@ export function ModelTuning({
               aria-pressed={contextWindow === size}
               onClick={() => onChange({ contextWindow: size })}
             >
-              {contextLabel(size)} {t("tokens")}
+              {contextLabel(size)} tokens
             </button>
           ))}
         </div>
@@ -166,8 +126,8 @@ export function ModelTuning({
       {tab === "speed" && (
         <label className="tuning-speed">
           <span>
-            <strong>{t("Fast mode")}</strong>
-            <small>{settings.fastMode ? (model?.fastModeHint ?? t("Faster responses, increased usage")) : t("Standard speed and usage")}</small>
+            <strong>Fast mode</strong>
+            <small>{settings.fastMode ? (model?.fastModeHint ?? "Faster responses, increased usage") : "Standard speed and usage"}</small>
           </span>
           <input
             type="checkbox"
@@ -194,7 +154,6 @@ function EffortSlider({
   level: number;
   onChange: (index: number) => void;
 }) {
-  const t = useI18n();
   const [grip, setGrip] = useState<EffortGrip>();
   useEffect(() => setGrip((current) => (current?.phase === "released" && current.position === level ? undefined : current)), [level]);
   const position = grip?.position ?? level;
@@ -251,7 +210,7 @@ function EffortSlider({
           max={last}
           step={1}
           value={index}
-          aria-label={t("Reasoning effort")}
+          aria-label="Reasoning effort"
           aria-valuetext={efforts[index] && formatEffort(efforts[index])}
           disabled={last < 1}
           onChange={(event) => settle(Number(event.target.value))}
@@ -305,19 +264,17 @@ export function PermissionMenu({
   disabled: boolean;
   buttonRef: Ref<HTMLButtonElement>;
 }) {
-  const t = useI18n();
   const mode =
     MODES.find((entry) => entry.id === thread.permissionMode) ?? MODES[0];
   const ModeIcon = mode?.icon ?? ShieldCheck;
   return (
     <Menu
-      header={t("Permissions")}
       width={290}
       items={MODES.map((entry) => ({
         id: entry.id,
-        label: t(entry.label),
+        label: entry.label,
         icon: <entry.icon size={17} />,
-        hint: t(entry.hint),
+        hint: entry.hint,
         selected: entry.id === thread.permissionMode,
         onSelect: () =>
           configureThread(thread.id, { permissionMode: entry.id }),
@@ -333,14 +290,97 @@ export function PermissionMenu({
           onClick={toggle}
           ref={buttonRef}
           data-tone={thread.permissionMode}
-          aria-label={`${t("Permissions")}: ${mode ? t(mode.label) : ""}`}
+          aria-label={`Permissions: ${mode ? mode.label : ""}`}
         >
           <ModeIcon size={14} />
-          <span className="hover-reveal">
-            <span>
-              {mode && t(mode.label)}
-            </span>
-          </span>
+          {mode && <span className="composer-label">{mode.label}</span>}
+        </button>
+      )}
+    />
+  );
+}
+
+export function EffortMenu({
+  thread,
+  model,
+  disabled,
+  buttonRef,
+}: {
+  thread: ThreadMeta;
+  model: ModelOption | undefined;
+  disabled: boolean;
+  buttonRef: Ref<HTMLButtonElement>;
+}) {
+  const effort = effectiveEffort(model, thread.effort);
+  if (!effort && !model?.fastMode) return null;
+  const label = effort ? formatEffort(effort) : thread.fastMode ? "Fast" : "Standard";
+  return (
+    <TuningMenu thread={thread} model={model} tabs={["effort", "speed"]} disabled={disabled} buttonRef={buttonRef} className="composer-effort" label={`Effort and speed: ${label}`}>
+      {effort ? <Brain size={14} /> : <Zap size={14} />}
+      <span className="composer-label">{label}</span>
+      {effort && thread.fastMode && <Zap size={12} aria-label="Fast mode on" />}
+    </TuningMenu>
+  );
+}
+
+export function ContextMenu({
+  thread,
+  model,
+  disabled,
+}: {
+  thread: ThreadMeta;
+  model: ModelOption | undefined;
+  disabled: boolean;
+}) {
+  const contextWindow = thread.contextWindow ?? model?.contextMax;
+  if (!contextWindow || !model?.contextWindows?.length) return null;
+  return (
+    <TuningMenu thread={thread} model={model} tabs={["context"]} disabled={disabled} className="composer-context" label={`Context window: ${contextWindow.toLocaleString(LOCALE)} tokens`}>
+      <Layers size={14} />
+      <span className="composer-label">{contextLabel(contextWindow)}</span>
+    </TuningMenu>
+  );
+}
+
+function TuningMenu({
+  thread,
+  model,
+  tabs,
+  disabled,
+  buttonRef,
+  className,
+  label,
+  children,
+}: {
+  thread: ThreadMeta;
+  model: ModelOption | undefined;
+  tabs: TuningTab[];
+  disabled: boolean;
+  buttonRef?: Ref<HTMLButtonElement>;
+  className: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <Menu
+      width={260}
+      className="tuning-menu"
+      items={[]}
+      controls={<ModelTuning settings={thread} model={model} onChange={(patch) => configureThread(thread.id, patch)} only={tabs} />}
+      trigger={({ toggle, id, open }) => (
+        <button
+          id={id}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className={`composer-select ${className}`}
+          type="button"
+          disabled={disabled}
+          onClick={toggle}
+          ref={buttonRef}
+          aria-label={label}
+          title={label}
+        >
+          {children}
         </button>
       )}
     />

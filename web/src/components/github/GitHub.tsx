@@ -1,5 +1,5 @@
 import { AnimatePresence } from "motion/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
   BookOpen,
@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { SectionSidebar } from "../SectionSidebar.tsx";
 import { useApp, selectProject, viewportWidth } from "../../lib/store.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
 import { GitHubItems } from "./GitHubItems.tsx";
@@ -48,17 +47,14 @@ export function GitHub({
   onCloseSidebar,
   onBack,
   onGit,
-  navigation,
   status,
 }: {
   sidebarOpen: boolean;
   onCloseSidebar: () => void;
   onBack: () => void;
   onGit: () => void;
-  navigation?: ReactNode;
   status: ReturnType<typeof useGitHub<"status">>;
 }) {
-  const t = useI18n();
   const connected = useApp((state) => state.connected);
   const projectId = useApp((state) => state.activeProjectId);
   const project = useApp((state) =>
@@ -94,8 +90,8 @@ export function GitHub({
     section === "Account" ||
     sections.find((entry) => entry.name === section)?.global;
   return (
-    <section className="section-view github-view" aria-label={t("GitHub")}>
-      <SectionSidebar activeItem={section} open={sidebarOpen} title="GitHub" onBack={onBack} navigation={navigation}>
+    <section className="section-view github-view" aria-label="GitHub">
+      <SectionSidebar activeItem={section} open={sidebarOpen} title="GitHub">
           {sections.map(({ name, icon: Icon, global }) => (
             <button
               className="section-link"
@@ -113,7 +109,7 @@ export function GitHub({
           ))}
           {repo && (
             <div className="github-sidebar-repo">
-              <span>{t("Selected repository")}</span>
+              <span>Selected repository</span>
               <strong>{repo}</strong>
             </div>
           )}
@@ -122,8 +118,8 @@ export function GitHub({
             className="github-sidebar-account"
             aria-label={
               status.data?.account
-                ? t("Account settings for {name}", { name: status.data.account.login })
-                : t("Connect GitHub account")
+                ? `Account settings for ${status.data.account.login}`
+                : "Connect GitHub account"
             }
             aria-current={section === "Account" ? "page" : undefined}
             onClick={() => {
@@ -136,7 +132,7 @@ export function GitHub({
             ) : (
               <UserRound size={21} />
             )}
-            <span>{status.data?.account?.login ?? t("Connect GitHub")}</span>
+            <span>{status.data?.account?.login ?? "Connect GitHub"}</span>
             {status.data?.account && <Check size={14} />}
           </button>
       </SectionSidebar>
@@ -152,9 +148,9 @@ export function GitHub({
                 className="btn"
                 onClick={() => setSection("Repositories")}
               >
-                <BookOpen size={15} />{" "}{t("Browse")}{" "}</button>
+                <BookOpen size={15} />{" "}Browse{" "}</button>
               <button className="btn" onClick={() => setClone(repo)}>
-                <Download size={15} />{" "}{t("Clone")}{" "}</button>
+                <Download size={15} />{" "}Clone{" "}</button>
               <GitHubLink href={repository.data.html_url}>GitHub</GitHubLink>
             </div>
           )}
@@ -162,7 +158,7 @@ export function GitHub({
         {!connected && (
           <div className="github-connection" role="status">
             <PixelLoader size={16} />
-            <span>{t("Reconnecting to Citropy… Your loaded pages will stay here.")}</span>
+            <span>Reconnecting to Citropy… Your loaded pages will stay here.</span>
           </div>
         )}
         <GitHubFeedback
@@ -234,13 +230,13 @@ export function GitHub({
                         {repository.data.forks_count}
                       </span>
                       <span>
-                        {repository.data.private ? t("Private") : t("Public")}
+                        {repository.data.private ? "Private" : "Public"}
                       </span>
-                      {repository.data.archived && <span>{t("Archived")}</span>}
+                      {repository.data.archived && <span>Archived</span>}
                       {projectId && !workspaceHasRepo && (
-                          <button onClick={() => setConnecting(true)}>{" "}{t("Connect workspace")}{" "}</button>
+                          <button onClick={() => setConnecting(true)}>{" "}Connect workspace{" "}</button>
                         )}
-                      <button onClick={() => setFork(true)}>{" "}{t("Fork repository")}{" "}</button>
+                      <button onClick={() => setFork(true)}>{" "}Fork repository{" "}</button>
                     </div>
                     {section === "Pull requests" || section === "Issues" ? (
                       <GitHubItems
@@ -264,9 +260,9 @@ export function GitHub({
       </div>
       <AnimatePresence>{clone && (
         <GitHubDialog
-          title={t("Clone repository")}
-          description={t("Clone {repository} into a new folder named {folder}. Choose its parent folder in the system file explorer.", { repository: clone, folder: clone.split("/")[1]! })}
-          submitLabel={t("Choose folder and clone")}
+          title="Clone repository"
+          description={`Clone ${clone} into a new folder named ${clone.split("/")[1]!}. Choose its parent folder in the system file explorer.`}
+          submitLabel="Choose folder and clone"
           onClose={() => setClone(null)}
           onSubmit={async () => {
             const result = await github("clone", { repo: clone });
@@ -276,14 +272,14 @@ export function GitHub({
             }
           }}
         >
-          <p className="github-meta">{" "}{t("The repository will open as a workspace when the clone finishes. Existing folders will be preserved.")}{" "}</p>
+          <p className="github-meta">{" "}The repository will open as a workspace when the clone finishes. Existing folders will be preserved.{" "}</p>
         </GitHubDialog>
       )}</AnimatePresence>
       <AnimatePresence>{connecting && projectId && (
         <GitHubDialog
-          title={t("Connect workspace")}
-          description={t("Connect {workspace} to {repository}. This adds a Git remote without pulling or pushing any files.", { workspace: project?.name ?? "", repository: repo })}
-          submitLabel={t("Connect repository")}
+          title="Connect workspace"
+          description={`Connect ${project?.name ?? ""} to ${repo}. This adds a Git remote without pulling or pushing any files.`}
+          submitLabel="Connect repository"
           onClose={() => setConnecting(false)}
           onSubmit={async (data) => {
             setMessage(
@@ -298,15 +294,15 @@ export function GitHub({
             status.refresh();
           }}
         >
-          <label className="git-field">{" "}{t("Remote name")}{" "}<input name="remote" defaultValue="origin" required />
+          <label className="git-field">{" "}Remote name{" "}<input name="remote" defaultValue="origin" required />
           </label>
         </GitHubDialog>
       )}</AnimatePresence>
       <AnimatePresence>{fork && (
         <GitHubDialog
-          title={t("Fork repository")}
-          description={t("Create a copy of {repository} in your GitHub account.", { repository: repo })}
-          submitLabel={t("Create fork")}
+          title="Fork repository"
+          description={`Create a copy of ${repo} in your GitHub account.`}
+          submitLabel="Create fork"
           onClose={() => setFork(false)}
           onSubmit={async () => {
             const result = await github("mutate", {

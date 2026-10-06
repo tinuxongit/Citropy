@@ -2,7 +2,6 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } f
 import type { UsageReport } from "../../../shared/features.ts";
 import { api } from "../lib/api.ts";
 import { clock } from "../lib/format.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { ProviderLimits } from "./UsageLimits.tsx";
 
 const CACHE_MS = 60_000;
@@ -25,7 +24,6 @@ function loadUsage(): Promise<UsageReport> {
 }
 
 function UsageCard({ id, anchor, side }: { id: string; anchor: HTMLElement; side: "right" | "top" }) {
-  const t = useI18n();
   const card = useRef<HTMLDivElement>(null);
   const [report, setReport] = useState(cached?.report);
   const [error, setError] = useState("");
@@ -52,14 +50,14 @@ function UsageCard({ id, anchor, side }: { id: string; anchor: HTMLElement; side
   return (
     <div ref={card} id={id} className="usage-peek" popover="manual" role="tooltip">
       <header className="usage-peek-header">
-        <strong>{t("Usage limits")}</strong>
-        {updated > 0 && <span>{t("Updated {time}", { time: clock(updated) })}</span>}
+        <strong>Usage limits</strong>
+        {updated > 0 && <span>Updated {clock(updated)}</span>}
       </header>
       {error ? <p className="usage-peek-note">{error}</p>
-        : !report ? <p className="usage-peek-note">{t("Reading provider usage…")}</p>
-        : !providers.length ? <p className="usage-peek-note">{t("No provider limits reported")}</p>
+        : !report ? <p className="usage-peek-note">Reading provider usage…</p>
+        : !providers.length ? <p className="usage-peek-note">No provider limits reported</p>
         : providers.map((entry) => <ProviderLimits key={entry.provider} entry={entry} />)}
-      <footer className="usage-peek-footer">{t("Click for token totals and history")}</footer>
+      <footer className="usage-peek-footer">Click for token totals and history</footer>
     </div>
   );
 }

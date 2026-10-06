@@ -1,10 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { environmentStorage } from "../../lib/environment.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import { useApp } from "../../lib/store.ts";
 
 export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) {
-  const t = useI18n();
   const handle = useRef<HTMLDivElement>(null);
   const scale = useApp((state) => state.uiScale) / 100;
   const [metrics, setMetrics] = useState({
@@ -48,7 +46,7 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
       current.target.style.setProperty(current.property, current.previous);
     else current.target.style.removeProperty(current.property);
     handle.current?.setAttribute("aria-valuenow", String(current.size));
-    handle.current?.setAttribute("aria-valuetext", t("{count} pixels", { count: current.size }));
+    handle.current?.setAttribute("aria-valuetext", `${current.size} pixels`);
     drag.current = null;
     delete document.documentElement.dataset.resizing;
   };
@@ -106,13 +104,13 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
       className="editor-resize"
       data-pane={pane}
       role="separator"
-      aria-label={t(pane === "explorer" ? "File explorer size" : "Terminal height")}
+      aria-label={pane === "explorer" ? "File explorer size" : "Terminal height"}
       aria-orientation={horizontal ? "horizontal" : "vertical"}
       aria-valuemin={metrics.minimum}
       aria-valuemax={metrics.maximum}
       aria-valuenow={metrics.size}
-      aria-valuetext={t("{count} pixels", { count: metrics.size })}
-      title={t("Drag to resize. Double-click or press Enter to reset.")}
+      aria-valuetext={`${metrics.size} pixels`}
+      title="Drag to resize. Double-click or press Enter to reset."
       tabIndex={0}
       onDoubleClick={() => save()}
       onPointerDown={(event) => {
@@ -151,7 +149,7 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
             );
             current.target.style.setProperty(current.property, `${Math.round(size * scale)}px`);
             handle.current?.setAttribute("aria-valuenow", String(size));
-            handle.current?.setAttribute("aria-valuetext", t("{count} pixels", { count: size }));
+            handle.current?.setAttribute("aria-valuetext", `${size} pixels`);
           }
         });
       }}

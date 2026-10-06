@@ -423,7 +423,7 @@ export class Store {
     return project;
   }
 
-  updateProject(id: string, patch: Pick<Partial<Project>, "name" | "settings">): Project {
+  updateProject(id: string, patch: Pick<Partial<Project>, "name" | "settings" | "scripts">): Project {
     const project = this.projects.get(id);
     if (!project) throw new Error("Workspace not found");
     Object.assign(project, patch);

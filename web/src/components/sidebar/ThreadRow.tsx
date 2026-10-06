@@ -6,7 +6,7 @@ import { reportError } from "../../lib/api.ts";
 import { threadActivity } from "../../lib/format.ts";
 import { environmentId, useEnvironments } from "../../lib/environment.ts";
 import { environmentSlice } from "../../lib/live-environments.ts";
-import { LOCALE, useI18n } from "../../lib/i18n.ts";
+import { LOCALE } from "../../lib/locale.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
 import { useTouchInput } from "../../lib/use-touch-input.ts";
 import { ConversationMenu } from "../ConversationMenu.tsx";
@@ -39,7 +39,6 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
   onFinished: () => void;
   onConversation: () => void;
 }) {
-  const t = useI18n();
   const selected = useApp((state) => state.activeThreadId === thread.id);
   const activeChildId = useApp((state) => tree.childrenByParent.has(thread.id) ? state.activeThreadId : null);
   const slice = environmentSlice(environment);
@@ -50,7 +49,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
   const { status, label } = threadActivity(thread);
   const busy = thread.running || thread.status === "awaiting";
   const childRunning = (tree.childrenByParent.get(thread.id) ?? []).some((child) => child.running);
-  const finishLabel = `${thread.finished ? t("Reopen") : t("Finish")} ${thread.title}`;
+  const finishLabel = `${thread.finished ? "Reopen" : "Finish"} ${thread.title}`;
   const touch = useTouchInput();
   const finish = () => {
     finishThread(thread.id, !thread.finished, environment);
@@ -58,8 +57,8 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
   };
   const remove = () => void removeThread(thread.id, environment).catch(reportError);
   const rowActions: MenuItem[] = touch ? [
-    { id: "finish", label: thread.finished ? t("Reopen") : t("Finish"), icon: thread.finished ? <RotateCcw size={15} /> : <Check size={15} />, disabled: !connected || busy || childRunning, onSelect: finish },
-    { id: "delete", label: t("Delete"), icon: <Trash2 size={15} />, danger: true, onSelect: remove },
+    { id: "finish", label: thread.finished ? "Reopen" : "Finish", icon: thread.finished ? <RotateCcw size={15} /> : <Check size={15} />, disabled: !connected || busy || childRunning, onSelect: finish },
+    { id: "delete", label: "Delete", icon: <Trash2 size={15} />, danger: true, onSelect: remove },
   ] : [];
 
   const openMenu = (card: HTMLElement) => {
@@ -130,17 +129,13 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
           onBlur={preview.hide}
           onClick={open}
         >
-          <span className="thread-row-body">
-            <span className="thread-row-heading">
-              <ProviderIcon provider={thread.provider} />
-              <span className="thread-row-title">{thread.title}</span>
-              {status !== "idle" && status !== "stopped" && (
-                <span className="thread-status" data-status={status} role="img" aria-label={t(label)}>
-                  <ThreadPulse status={status} />
-                </span>
-              )}
+          <ProviderIcon provider={thread.provider} />
+          <span className="thread-row-title">{thread.title}</span>
+          {status !== "idle" && status !== "stopped" && (
+            <span className="thread-status" data-status={status} role="img" aria-label={label}>
+              <ThreadPulse status={status} />
             </span>
-          </span>
+          )}
         </button>
         <div className="thread-row-actions" onPointerEnter={preview.hide}>
           <ConversationMenu thread={thread} environment={environment} onMove={(direction) => onMove({ thread, environment }, direction)} rowActions={rowActions} />
@@ -149,14 +144,14 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
             href={thread.pullRequest}
             target="_blank"
             rel="noreferrer noopener"
-            aria-label={`${t("Pull request")} #${pullRequestNumber(thread.pullRequest)}`}
-            title={`${t("Pull request")} #${pullRequestNumber(thread.pullRequest)}`}
+            aria-label={`Pull request #${pullRequestNumber(thread.pullRequest)}`}
+            title={`Pull request #${pullRequestNumber(thread.pullRequest)}`}
           ><GitPullRequest size={13} /></a>}
           {!touch && <>
             <button
               className="thread-row-finish"
               type="button"
-              title={busy ? t("Stop this conversation before finishing") : finishLabel}
+              title={busy ? "Stop this conversation before finishing" : finishLabel}
               aria-label={finishLabel}
               disabled={!connected || busy || childRunning}
               onClick={finish}
@@ -166,8 +161,8 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
             <button
               className="thread-row-kill"
               type="button"
-              aria-label={`${t("Delete")} ${thread.title}`}
-              title={`${t("Delete")} ${thread.title}`}
+              aria-label={`Delete ${thread.title}`}
+              title={`Delete ${thread.title}`}
               onClick={remove}
             >
               <Trash2 size={13} />

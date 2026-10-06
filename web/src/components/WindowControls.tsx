@@ -1,46 +1,58 @@
-import { useI18n } from "../lib/i18n.ts";
 import { useEffect, useState } from "react";
-import { Copy, Minus, Square, X } from "lucide-react";
 import type { DesktopWindowState } from "../desktop.d.ts";
 
+const GLYPH_SIZE = 10;
+
+const glyphs = {
+  minimize: <path d="M0 5.5H10" />,
+  maximize: <rect x="0.5" y="0.5" width="9" height="9" />,
+  restore: <><rect x="0.5" y="2.5" width="7" height="7" /><path d="M2.5 2.5V0.5H9.5V7.5H7.5" /></>,
+  close: <path d="M0.5 0.5L9.5 9.5M9.5 0.5L0.5 9.5" shapeRendering="geometricPrecision" />,
+};
+
+function Glyph({ name }: { name: keyof typeof glyphs }) {
+  return <svg className="window-glyph" width={GLYPH_SIZE} height={GLYPH_SIZE} viewBox="0 0 10 10" aria-hidden="true">{glyphs[name]}</svg>;
+}
+
 export function WindowControls() {
-  const t = useI18n();
   const [state, setState] = useState<DesktopWindowState>();
   useEffect(() => {
-    void window.citropyDesktop?.windowState?.().then((state) => {
+    const apply = (state: DesktopWindowState) => {
       setState(state);
       document.documentElement.dataset.platform = state.platform;
-    });
-    return window.citropyDesktop?.onWindowState?.(setState);
+      document.documentElement.toggleAttribute("data-window-filled", state.maximized || state.fullscreen);
+    };
+    void window.citropyDesktop?.windowState?.().then(apply);
+    return window.citropyDesktop?.onWindowState?.(apply);
   }, []);
   if (!window.citropyDesktop?.windowCommand || state?.platform === "darwin")
     return null;
   return (
-    <div className="window-controls" role="group" aria-label={t("Window controls")}>
+    <div className="window-controls" role="group" aria-label="Window controls">
       <button
         type="button"
-        aria-label={t("Minimize window")}
-        title={t("Minimize")}
+        aria-label="Minimize window"
+        title="Minimize"
         onClick={() => void window.citropyDesktop?.windowCommand("minimize")}
       >
-        <Minus size={15} />
+        <Glyph name="minimize" />
       </button>
       <button
         type="button"
-        aria-label={t(state?.maximized ? "Restore window" : "Maximize window")}
-        title={t(state?.maximized ? "Restore" : "Maximize")}
+        aria-label={state?.maximized ? "Restore window" : "Maximize window"}
+        title={state?.maximized ? "Restore" : "Maximize"}
         onClick={() => void window.citropyDesktop?.windowCommand("maximize")}
       >
-        {state?.maximized ? <Copy size={12} /> : <Square size={12} />}
+        <Glyph name={state?.maximized ? "restore" : "maximize"} />
       </button>
       <button
         type="button"
         className="window-close"
-        aria-label={t("Close window")}
-        title={t("Close window")}
+        aria-label="Close window"
+        title="Close window"
         onClick={() => void window.citropyDesktop?.windowCommand("close")}
       >
-        <X size={16} />
+        <Glyph name="close" />
       </button>
     </div>
   );

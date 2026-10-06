@@ -3,7 +3,7 @@ import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { environmentSlice } from "../lib/live-environments.ts";
 import { modelLabel, providerLabels, shortPath, threadActivity } from "../lib/format.ts";
-import { LOCALE, useI18n } from "../lib/i18n.ts";
+import { LOCALE } from "../lib/locale.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 
 export function ThreadPreview({ id, thread, environment, anchor, onClose, onPointerEnter, onPointerLeave }: {
@@ -15,7 +15,6 @@ export function ThreadPreview({ id, thread, environment, anchor, onClose, onPoin
   onPointerEnter: () => void;
   onPointerLeave: () => void;
 }) {
-  const t = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const uiScale = useApp(state => state.uiScale);
   const slice = environmentSlice(environment);
@@ -70,12 +69,12 @@ export function ThreadPreview({ id, thread, environment, anchor, onClose, onPoin
     <strong className="thread-preview-title">{thread.title}</strong>
     <div className="thread-preview-model"><ProviderIcon provider={thread.provider} /><span>{modelLabel(provider?.models ?? [], thread.model)}<small>{provider?.label ?? providerLabels[thread.provider]}</small></span></div>
     <dl>
-      <dt>{t("Status")}</dt><dd data-status={status}>{t(statusLabel)}</dd>
-      <dt>{t("Last activity")}</dt><dd><time dateTime={new Date(thread.updatedAt).toISOString()}>{new Date(thread.updatedAt).toLocaleString(LOCALE, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></dd>
-      {path && <><dt>{t("Folder")}</dt><dd>{shortPath(path, home)}</dd></>}
-      {thread.workspaceBranch && <><dt>{t("Branch")}</dt><dd>{thread.workspaceBranch}</dd></>}
-      {thread.pullRequest && <><dt>{t("Pull request")}</dt><dd>#{thread.pullRequest.split("/").at(-1)}</dd></>}
-      {Boolean(thread.changedFiles) && <><dt>{t("Changes")}</dt><dd>{thread.changedFiles} {thread.changedFiles === 1 ? t("file") : t("files")}</dd></>}
+      <dt>Status</dt><dd data-status={status}>{statusLabel}</dd>
+      <dt>Last activity</dt><dd><time dateTime={new Date(thread.updatedAt).toISOString()}>{new Date(thread.updatedAt).toLocaleString(LOCALE, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></dd>
+      {path && <><dt>Folder</dt><dd>{shortPath(path, home)}</dd></>}
+      {thread.workspaceBranch && <><dt>Branch</dt><dd>{thread.workspaceBranch}</dd></>}
+      {thread.pullRequest && <><dt>Pull request</dt><dd>#{thread.pullRequest.split("/").at(-1)}</dd></>}
+      {Boolean(thread.changedFiles) && <><dt>Changes</dt><dd>{thread.changedFiles} {thread.changedFiles === 1 ? "file" : "files"}</dd></>}
     </dl>
   </div>;
 }

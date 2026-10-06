@@ -1,4 +1,3 @@
-import { useI18n } from "../../lib/i18n.ts";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ChevronRight, Folder, FolderOpen } from "../icons.ts";
 import { VirtualList } from "../VirtualList.tsx";
@@ -20,7 +19,6 @@ export function FileExplorer({
   selected?: string;
   onOpen: (path: string) => void;
 }) {
-  const t = useI18n();
   const connected = useApp((state) => state.connected);
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const viewport = useRef<HTMLDivElement>(null);
@@ -164,10 +162,10 @@ export function FileExplorer({
           setQuery(event.target.value);
           if (viewport.current) viewport.current.scrollTop = 0;
         }}
-        placeholder={t("Find a file…")}
-        aria-label={t("Find a file")}
+        placeholder="Find a file…"
+        aria-label="Find a file"
       />
-      <div className="tree scroll" ref={viewport} aria-label={t("Workspace files")}>
+      <div className="tree scroll" ref={viewport} aria-label="Workspace files">
         <VirtualList key={query ? "search" : "tree"} items={rows} itemKey="path" estimateSize={32}>
           {({ entry, depth }) => (
             <>
@@ -218,7 +216,7 @@ export function FileExplorer({
         </VirtualList>
         {query && !searching && !matches.some((entry) => !entry.dir) && (
           <div className="pane-empty" role="status">
-            {t("No matching files.")}
+            No matching files.
           </div>
         )}
         {error && entries.length > 0 && (
@@ -228,7 +226,7 @@ export function FileExplorer({
         )}
         {!query && entries.length === 0 && (
           <div className="pane-empty" role={error ? "alert" : "status"}>
-            {error || t(loading ? "Loading files…" : "Nothing to show.")}
+            {error || (loading ? "Loading files…" : "Nothing to show.")}
           </div>
         )}
       </div>

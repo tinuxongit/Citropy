@@ -1,4 +1,3 @@
-import { useI18n } from "../lib/i18n.ts";
 import {
   useEffect,
   useId,
@@ -84,7 +83,6 @@ export function Menu({
   triggerId,
   onClose,
 }: Props) {
-  const t = useI18n();
   const reducedMotion = useReducedMotion();
   const touch = useTouchInput();
   const focusTarget = touch ? ".menu-item" : ".menu-search, .menu-item";
@@ -310,8 +308,8 @@ export function Menu({
                 <Search size={15} aria-hidden="true" />
                 <input
                   className="menu-search"
-                  aria-label={t(searchPlaceholder)}
-                  placeholder={t(searchPlaceholder)}
+                  aria-label={searchPlaceholder}
+                  placeholder={searchPlaceholder}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
@@ -379,7 +377,7 @@ export function Menu({
                 ))}
               {!visibleItems.length && (
                 <div className="menu-empty">
-                  {terms.length ? t("No matches") : emptyMessage ?? t("No options available")}
+                  {terms.length ? "No matches" : emptyMessage ?? "No options available"}
                 </div>
               )}
             </div>}

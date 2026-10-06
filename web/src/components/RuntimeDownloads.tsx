@@ -3,11 +3,9 @@ import { Check, Download } from "lucide-react";
 import type { NodeRuntimeStatus } from "../../../shared/runtime-downloads.ts";
 import { api } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 
 export function RuntimeDownloads({ onInstalled }: { onInstalled: () => void }) {
-  const t = useI18n();
   const connected = useApp(state => state.connected);
   const [runtime, setRuntime] = useState<NodeRuntimeStatus>();
   const [error, setError] = useState("");
@@ -55,27 +53,27 @@ export function RuntimeDownloads({ onInstalled }: { onInstalled: () => void }) {
   const busy = starting || runtime?.status === "installing";
 
   return <>
-    <h2 className="settings-group-heading settings-group-spaced">{t("Runtime downloads")}</h2>
-    <div className="settings-group" aria-label={t("Runtime downloads")}>
+    <h2 className="settings-group-heading settings-group-spaced">Runtime downloads</h2>
+    <div className="settings-group" aria-label="Runtime downloads">
       <div className="setting-row">
         <span>
           <strong>Node.js</strong>
           <small>{runtime?.ready
-            ? t("Node {version} · npm {npm}", { version: runtime.version ?? "", npm: runtime.npmVersion ?? "" })
-            : t("Node.js and npm for provider installation and development.")}</small>
+            ? `Node ${runtime.version ?? ""} · npm ${runtime.npmVersion ?? ""}`
+            : "Node.js and npm for provider installation and development."}</small>
         </span>
-        {runtime?.ready && runtime.shellReady !== false && runtime.status !== "error" && !busy ? <span className="provider-up-to-date"><Check size={14} />{t("Installed")}</span>
+        {runtime?.ready && runtime.shellReady !== false && runtime.status !== "error" && !busy ? <span className="provider-up-to-date"><Check size={14} />Installed</span>
           : <button className="btn" type="button" disabled={!connected || !runtime?.supported || busy}
             onClick={() => void install()}>{busy ? <PixelLoader size={14} /> : <Download size={14} />}
-            {t(busy ? "Installing…" : runtime?.ready ? "Set up terminals" : "Install Node.js")}</button>}
+            {busy ? "Installing…" : runtime?.ready ? "Set up terminals" : "Install Node.js"}</button>}
       </div>
     </div>
     {runtime && !runtime.supported && !runtime.ready &&
-      <p className="settings-note">{t("Automatic installation supports Linux, macOS, and Windows on x64 or ARM64.")}</p>}
+      <p className="settings-note">Automatic installation supports Linux, macOS, and Windows on x64 or ARM64.</p>}
     {(error || runtime?.message) && <p className="provider-update-result"
       data-status={error ? "error" : runtime?.status} role={error || runtime?.status === "error" ? "alert" : "status"}>
       {error || runtime?.message}
-      {error && <button className="btn" onClick={() => setRefresh(value => value + 1)}>{t("Retry")}</button>}
+      {error && <button className="btn" onClick={() => setRefresh(value => value + 1)}>Retry</button>}
     </p>}
   </>;
 }

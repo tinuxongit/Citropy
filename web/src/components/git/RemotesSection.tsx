@@ -8,7 +8,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { EmptyState } from "./GitEmptyState.tsx";
-import { type useI18n } from "../../lib/i18n.ts";
 import type { GitDialogAction } from "../GitDialog.tsx";
 import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
 
@@ -17,7 +16,6 @@ export function RemotesSection({
   disabled,
   branch,
   upstream,
-  t,
   showDialog,
   act,
   addRemote,
@@ -26,7 +24,6 @@ export function RemotesSection({
   disabled: boolean;
   branch: string;
   upstream: string | null | undefined;
-  t: ReturnType<typeof useI18n>;
   showDialog: (action: GitDialogAction) => void;
   act: (
     operation: GitOperation,
@@ -40,7 +37,7 @@ export function RemotesSection({
     <div className="git-page scroll">
       <header className="git-section-heading">
         <div>
-          <p>{t("Connect repositories and keep your work in sync.")}</p>
+          <p>Connect repositories and keep your work in sync.</p>
         </div>
         {data.remotes.length > 0 && (
           <button
@@ -49,13 +46,13 @@ export function RemotesSection({
             onClick={addRemote}
           >
             <Plus size={15} />
-            {t("Add remote")}
+            Add remote
           </button>
         )}
       </header>
       {!data.remotes.length ? (
         <EmptyState
-          title={t("Your work is local")}
+          title="Your work is local"
           action={
             <button
               className="btn"
@@ -64,11 +61,11 @@ export function RemotesSection({
               onClick={addRemote}
             >
               <Plus size={15} />
-              {t("Connect a remote")}
+              Connect a remote
             </button>
           }
         >
-          <p>{" "}{t("Add a remote repository to back up your commits and collaborate. Nothing is published until you choose to push.")}{" "}</p>
+          <p>{" "}Add a remote repository to back up your commits and collaborate. Nothing is published until you choose to push.{" "}</p>
         </EmptyState>
       ) : (
         <>
@@ -79,12 +76,12 @@ export function RemotesSection({
                 <h3>{branch}</h3>
                 <p>
                   {!data.hasCommits
-                    ? t("Create a first commit before publishing.")
+                    ? "Create a first commit before publishing."
                     : upstream
-                      ? t("Tracking ") + upstream
+                      ? "Tracking " + upstream
                       : branch === "detached"
-                        ? t("Switch to a branch before publishing.")
-                        : t("Publish this branch to set up an upstream.")}
+                        ? "Switch to a branch before publishing."
+                        : "Publish this branch to set up an upstream."}
                 </p>
               </div>
             </div>
@@ -92,10 +89,10 @@ export function RemotesSection({
               <div className="git-sync-counts">
                 <span>
                   <ArrowUp size={15} />
-                  <strong>{data.status?.ahead ?? 0}</strong>{t("to push")}{" "}</span>
+                  <strong>{data.status?.ahead ?? 0}</strong>to push{" "}</span>
                 <span>
                   <ArrowDown size={15} />
-                  <strong>{data.status?.behind ?? 0}</strong>{t("to pull")}{" "}</span>
+                  <strong>{data.status?.behind ?? 0}</strong>to pull{" "}</span>
               </div>
             )}
             <div className="git-inline-actions">
@@ -105,18 +102,18 @@ export function RemotesSection({
                 onClick={() => void act("fetch")}
               >
                 <RefreshCw size={14} />
-                {t("Fetch")}
+                Fetch
               </button>
               {upstream && (
                 <>
                   <button
                     className="btn"
                     disabled={disabled || data.mergeInProgress}
-                    title={t("Pull with fast-forward only")}
+                    title="Pull with fast-forward only"
                     onClick={() => void act("pull")}
                   >
                     <ArrowDown size={14} />
-                    {t("Pull")}
+                    Pull
                   </button>
                   <button
                     className="btn"
@@ -126,13 +123,13 @@ export function RemotesSection({
                       showDialog({
                         operation: "push",
                         title: "Push commits?",
-                        description: t("Send commits from {branch} to {upstream}.", { branch, upstream: upstream ?? "" }),
+                        description: `Send commits from ${branch} to ${upstream ?? ""}.`,
                         label: "Push commits",
                       })
                     }
                   >
                     <ArrowUp size={14} />
-                    {t("Push")}
+                    Push
                   </button>
                 </>
               )}
@@ -140,7 +137,7 @@ export function RemotesSection({
           </div>
           <div className="git-table-heading">
             <h3>
-            {t("Connected repositories")}
+            Connected repositories
               <span className="git-count">
                 {data.remotes.length}
               </span>
@@ -167,26 +164,26 @@ export function RemotesSection({
                         showDialog({
                           operation: "publish",
                           value: remote.name,
-                          title: t("Publish {branch}?", { branch }),
-                          description: t("Push this branch to {remote} and use it as the upstream for future pulls and pushes.", { remote: remote.name }),
+                          title: `Publish ${branch}?`,
+                          description: `Push this branch to ${remote.name} and use it as the upstream for future pulls and pushes.`,
                           label: "Publish branch",
                         })
                       }
                     >
                       <ArrowUp size={14} />
-                      {t("Publish branch")}
+                      Publish branch
                     </button>
                   )}
                 <button
                   className="icon-btn git-danger"
-                  title={t("Remove ") + remote.name}
+                  title={"Remove " + remote.name}
                   disabled={disabled}
                   onClick={() =>
                     showDialog({
                       operation: "removeRemote",
                       value: remote.name,
-                      title: t("Disconnect {remote}?", { remote: remote.name }),
-                      description: t("Remove this local remote configuration. The repository at {url} will not be deleted.", { url: remote.url }),
+                      title: `Disconnect ${remote.name}?`,
+                      description: `Remove this local remote configuration. The repository at ${remote.url} will not be deleted.`,
                       label: "Disconnect remote",
                       danger: true,
                     })
@@ -197,7 +194,7 @@ export function RemotesSection({
               </div>
             </div>
           ))}
-          <p className="git-page-note">{" "}{t("Fetch checks for remote updates. Pull brings them into your branch using fast-forward only.")}{" "}</p>
+          <p className="git-page-note">{" "}Fetch checks for remote updates. Pull brings them into your branch using fast-forward only.{" "}</p>
         </>
       )}
     </div>

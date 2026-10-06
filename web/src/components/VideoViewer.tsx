@@ -2,10 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Download, Minus, Plus } from "lucide-react";
 import { Modal } from "./Modal.tsx";
 import { VideoPlayer } from "./VideoPlayer.tsx";
-import { useI18n } from "../lib/i18n.ts";
 
 export function VideoViewer({ src, download, name, onClose }: { src: string; download: string; name: string; onClose: () => void }) {
-  const t = useI18n();
   const viewport = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
@@ -38,11 +36,11 @@ export function VideoViewer({ src, download, name, onClose }: { src: string; dow
     className="image-viewer video-viewer"
     onClose={onClose}
     initialFocus=".video-player"
-    actions={<a className="icon-btn" aria-label={t("Download video")} title={t("Download video")} href={download} download={name}><Download size={18} /></a>}
-    footer={ready && <div className="image-zoom" role="group" aria-label={t("Video zoom")}>
-      <button className="icon-btn" type="button" aria-label={t("Zoom out")} disabled={scale <= minimum} onClick={() => setZoom(Math.max(minimum, scale / 1.25))}><Minus size={18} /></button>
-      <button className="image-zoom-reset" type="button" title={t("Fit video")} aria-label={t("Fit video")} onClick={() => setZoom(null)}>{Math.round(scale * 100)}%</button>
-      <button className="icon-btn" type="button" aria-label={t("Zoom in")} disabled={scale >= maximum} onClick={() => setZoom(Math.min(maximum, scale * 1.25))}><Plus size={18} /></button>
+    actions={<a className="icon-btn" aria-label="Download video" title="Download video" href={download} download={name}><Download size={18} /></a>}
+    footer={ready && <div className="image-zoom" role="group" aria-label="Video zoom">
+      <button className="icon-btn" type="button" aria-label="Zoom out" disabled={scale <= minimum} onClick={() => setZoom(Math.max(minimum, scale / 1.25))}><Minus size={18} /></button>
+      <button className="image-zoom-reset" type="button" title="Fit video" aria-label="Fit video" onClick={() => setZoom(null)}>{Math.round(scale * 100)}%</button>
+      <button className="icon-btn" type="button" aria-label="Zoom in" disabled={scale >= maximum} onClick={() => setZoom(Math.min(maximum, scale * 1.25))}><Plus size={18} /></button>
     </div>}
   >
     <div className="image-viewport scroll" ref={viewport}>

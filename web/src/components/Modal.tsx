@@ -1,4 +1,3 @@
-import { useI18n } from "../lib/i18n.ts";
 import {
   useId,
   useLayoutEffect,
@@ -39,7 +38,6 @@ export function Modal({
   onClose: () => void;
   onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
 }) {
-  const t = useI18n();
   const present = useIsPresent();
   const reducedMotion = useReducedMotion();
   const ref = useRef<HTMLDialogElement>(null);
@@ -94,7 +92,7 @@ export function Modal({
           <button
             className="icon-btn"
             type="button"
-            aria-label={t("Close dialog")}
+            aria-label="Close dialog"
             disabled={busy}
             onClick={onClose}
           >

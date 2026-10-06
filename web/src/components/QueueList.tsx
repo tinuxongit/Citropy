@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useI18n } from "../lib/i18n.ts";
 import { ChevronUp, Clock3, Paperclip } from "lucide-react";
 import { Pencil, X } from "./icons.ts";
 import { editQueued } from "../lib/actions.ts";
@@ -30,7 +29,6 @@ export function QueueList({
   provider?: ProviderInfo;
   onEdit: (item: QueuedMessage) => void;
 }) {
-  const t = useI18n();
   const connected = useApp((state) => state.connected);
   const held = useApp((state) => state.offline[thread.id] ?? NONE);
   const queued = thread.queue ?? NONE;
@@ -53,12 +51,12 @@ export function QueueList({
   useAnchoredPanel(panel, trigger, { open: expanded, width: 460 });
   useDismiss(panel, trigger, close, { open: expanded, outside: true });
   const state = !connected
-      ? t("Sends when Citropy reconnects")
+      ? "Sends when Citropy reconnects"
     : queued.length && thread.running
-      ? t("Sends when {provider} finishes", { provider: provider?.label ?? t("the provider") })
+      ? `Sends when ${provider?.label ?? "the provider"} finishes`
       : queued.length
-        ? t("Paused until the next reply finishes")
-        : t("Not sent yet");
+        ? "Paused until the next reply finishes"
+        : "Not sent yet";
   const steer = Boolean(
     thread.running && !thread.compacting && provider?.capabilities?.steer,
   );
@@ -93,12 +91,12 @@ export function QueueList({
         aria-haspopup="dialog"
         aria-expanded={expanded}
         aria-controls={id}
-        aria-label={`${count} ${t(count === 1 ? "queued message" : "queued messages")}`}
+        aria-label={`${count} ${count === 1 ? "queued message" : "queued messages"}`}
         title={state}
         onClick={() => setExpanded((value) => !value)}
       >
         <Clock3 size={13} />
-        {t("Queued")}
+        Queued
         <span>{count}</span>
       </ComposerTab>}</AnimatePresence>
       <AnimatePresence>{expanded && <motion.section
@@ -106,14 +104,14 @@ export function QueueList({
         id={id}
         popover="manual"
         role="dialog"
-        aria-label={t("Queued messages")}
+        aria-label="Queued messages"
         className="tab-panel composer-queue-panel"
         initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }}
         animate={{ opacity: 1, transform: "none" }}
         exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }}
         transition={{ duration: reducedMotion ? 0 : 0.16 }}
       >
-        <ol className="composer-queue-list scroll" aria-label={t("Queued messages")}>
+        <ol className="composer-queue-list scroll" aria-label="Queued messages">
           {queued.map((item, index) => (
             <li className="composer-queue-item" key={item.id}>
               <span className="composer-queue-position" aria-hidden="true">{index + 1}</span>
@@ -125,7 +123,7 @@ export function QueueList({
                     type="button"
                     className="btn composer-queue-send"
                     disabled={!connected}
-                    title={thread.running ? (provider?.steerHint ?? t("Send now")) : t("Send this message now.")}
+                    title={thread.running ? (provider?.steerHint ?? "Send now") : "Send this message now."}
                     onClick={() =>
                       queueEvent({
                         t: "queue.send",
@@ -134,15 +132,15 @@ export function QueueList({
                       })
                     }
                   >
-                    {thread.running ? t("Send now") : t("Send")}
+                    {thread.running ? "Send now" : "Send"}
                   </button>
                 )}
                 {index > 0 && (
                   <button
                     type="button"
                     className="icon-btn composer-queue-move"
-                    aria-label={t("Move up")}
-                    title={t("Move up")}
+                    aria-label="Move up"
+                    title="Move up"
                     disabled={!connected}
                     onClick={() =>
                       queueEvent({
@@ -159,8 +157,8 @@ export function QueueList({
                 <button
                   type="button"
                   className="icon-btn composer-queue-edit"
-                  aria-label={t("Edit")}
-                  title={t("Edit")}
+                  aria-label="Edit"
+                  title="Edit"
                   disabled={!connected}
                   onClick={() => void edit(item)}
                 >
@@ -169,8 +167,8 @@ export function QueueList({
                 <button
                   type="button"
                   className="icon-btn composer-queue-remove"
-                  aria-label={t("Remove")}
-                  title={t("Remove")}
+                  aria-label="Remove"
+                  title="Remove"
                   disabled={!connected}
                   onClick={() =>
                     queueEvent({
@@ -191,7 +189,7 @@ export function QueueList({
               <div className="composer-queue-content">
                 <QueuedText item={item} />
                 <span className="composer-queue-note">
-                  {connected ? t("Not sent") : t("Waiting for connection")}
+                  {connected ? "Not sent" : "Waiting for connection"}
                 </span>
               </div>
               <div className="composer-queue-actions">
@@ -199,17 +197,17 @@ export function QueueList({
                   <button
                     type="button"
                     className="btn composer-queue-send"
-                    title={t("Try sending it again.")}
+                    title="Try sending it again."
                     onClick={() => void flushHeld()}
                   >
-                    {t("Send")}
+                    Send
                   </button>
                 )}
                 <button
                   type="button"
                   className="icon-btn composer-queue-edit"
-                  aria-label={t("Edit")}
-                  title={t("Edit")}
+                  aria-label="Edit"
+                  title="Edit"
                   onClick={() => editHeld(item.id)}
                 >
                   <Pencil size={14} />
@@ -217,8 +215,8 @@ export function QueueList({
                 <button
                   type="button"
                   className="icon-btn composer-queue-remove"
-                  aria-label={t("Remove")}
-                  title={t("Remove")}
+                  aria-label="Remove"
+                  title="Remove"
                   onClick={() => removeHeld(item.id)}
                 >
                   <X size={15} />

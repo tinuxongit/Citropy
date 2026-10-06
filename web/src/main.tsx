@@ -15,6 +15,7 @@ import "./styles/composer.css";
 import "./styles/inspector.css";
 import "./styles/workbench.css";
 import "./styles/overlays.css";
+import "./styles/thread-details.css";
 import "./styles/git.css";
 import "./styles/github.css";
 import "./styles/features.css";

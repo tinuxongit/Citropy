@@ -14,7 +14,6 @@ import { GitReview, type GitSelection } from "../GitReview.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import { FileGroup } from "./FileGroup.tsx";
 import { fileLabel } from "./files.ts";
-import type { useI18n } from "../../lib/i18n.ts";
 import type { GitDialogAction } from "../GitDialog.tsx";
 import type {
   GitFile,
@@ -42,7 +41,6 @@ export function ChangesSection({
   branch,
   canCommit,
   match,
-  t,
   setFilter,
   setSelection,
   setMessage,
@@ -67,7 +65,6 @@ export function ChangesSection({
   branch: string;
   canCommit: boolean;
   match: (text: string) => boolean;
-  t: ReturnType<typeof useI18n>;
   setFilter: (value: string) => void;
   setSelection: (value: GitSelection | null) => void;
   setMessage: (value: string) => void;
@@ -88,13 +85,13 @@ export function ChangesSection({
           <div>
             <strong>
               {conflicts.length
-                ? t(conflicts.length === 1 ? "{count} file needs conflict resolution" : "{count} files need conflict resolution", { count: conflicts.length })
-                : t("Ready to finish the merge")}
+                ? (conflicts.length === 1 ? `${conflicts.length} file needs conflict resolution` : `${conflicts.length} files need conflict resolution`)
+                : "Ready to finish the merge"}
             </strong>
             <p>
               {conflicts.length
-                ? t("Resolve conflict markers in your files, then stage the resolved changes.")
-                : t("Create a commit to complete this merge.")}
+                ? "Resolve conflict markers in your files, then stage the resolved changes."
+                : "Create a commit to complete this merge."}
             </p>
           </div>
           {data.mergeInProgress && (
@@ -112,7 +109,7 @@ export function ChangesSection({
                 })
               }
             >
-              {t("Abort merge")}
+              Abort merge
             </button>
           )}
         </div>
@@ -121,7 +118,7 @@ export function ChangesSection({
         <div className="git-first-commit">
           <GitCommitHorizontal size={18} />
           <span>
-            <strong>{t("Make your first commit.")}</strong> {t("Review your files, stage the ones to track, then write a commit message.")}
+            <strong>Make your first commit.</strong> Review your files, stage the ones to track, then write a commit message.
           </span>
         </div>
       )}
@@ -133,15 +130,15 @@ export function ChangesSection({
           <label className="git-filter">
             <Search size={15} />
             <input
-              aria-label={t("Filter changed files")}
-              placeholder={t("Filter files…")}
+              aria-label="Filter changed files"
+              placeholder="Filter files…"
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
             />
             {filter && (
               <button
                 className="icon-btn"
-                aria-label={t("Clear file filter")}
+                aria-label="Clear file filter"
                 onClick={() => setFilter("")}
               >
                 <X size={13} />
@@ -150,11 +147,11 @@ export function ChangesSection({
           </label>
           <div className="git-file-groups scroll sliding-selection">
             <SelectionHighlight value={selection?.kind === "file" ? `${selection.staged}:${selection.path}` : undefined} selector='.git-file-row[data-selected="true"]' />
-            <FileGroup title="Unstaged changes" list={unstaged} inIndex={false} disabled={disabled} selection={selection} t={t} match={match} act={act} setSelection={setSelection} />
-            <FileGroup title="Staged for commit" list={staged} inIndex={true} disabled={disabled} selection={selection} t={t} match={match} act={act} setSelection={setSelection} />
+            <FileGroup title="Unstaged changes" list={unstaged} inIndex={false} disabled={disabled} selection={selection} match={match} act={act} setSelection={setSelection} />
+            <FileGroup title="Staged for commit" list={staged} inIndex={true} disabled={disabled} selection={selection} match={match} act={act} setSelection={setSelection} />
             {filter && !files.some((file) => match(file.path)) && (
               <p className="git-list-hint">
-                {t("No files match '{filter}'.", { filter })}
+                No files match '{filter}'.
               </p>
             )}
           </div>
@@ -167,7 +164,7 @@ export function ChangesSection({
             }}
           >
             <label htmlFor="git-commit-message">
-              {t("Commit title")}
+              Commit title
             </label>
             <input
               id="git-commit-message"
@@ -176,12 +173,12 @@ export function ChangesSection({
               onChange={(event) => setMessage(event.target.value)}
               placeholder={
                 data.hasCommits
-                  ? t("Summarize the change")
-                  : t("Initial commit")
+                  ? "Summarize the change"
+                  : "Initial commit"
               }
             />
             <label htmlFor="git-commit-description">
-              {t("Description")} <span className="git-optional">{t("Optional")}</span>
+              Description <span className="git-optional">Optional</span>
             </label>
             <textarea
               id="git-commit-description"
@@ -189,12 +186,12 @@ export function ChangesSection({
               value={description}
               disabled={busy === "commit"}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder={t("Explain why this change was made and any useful details.")}
+              placeholder="Explain why this change was made and any useful details."
             />
             <div className="git-commit-target">
               <GitBranch size={13} />
               <span className="truncate">{branch}</span>
-              <span>{staged.length} {t("staged")}</span>
+              <span>{staged.length} staged</span>
             </div>
             <button
               className="btn"
@@ -207,24 +204,24 @@ export function ChangesSection({
                 <GitCommitHorizontal size={17} />
               )}
               {data.mergeInProgress
-                ? t("Complete merge")
+                ? "Complete merge"
                 : data.hasCommits
-                  ? t("Commit staged changes")
-                  : t("Create first commit")}
+                  ? "Commit staged changes"
+                  : "Create first commit"}
             </button>
           </form>
         </div>
         <ResizeHandle panel="git" inline />
         <section
           className="git-review-pane"
-          aria-label={t("File preview")}
+          aria-label="File preview"
         >
           {selection?.kind === "file" && selectedFile ? (
             <>
               <header className="git-review-header">
                 <button
                   className="icon-btn git-mobile-back"
-                  aria-label={t("Back to changed files")}
+                  aria-label="Back to changed files"
                   onClick={() => setSelection(null)}
                 >
                   <ArrowLeft size={17} />
@@ -233,15 +230,15 @@ export function ChangesSection({
                   <h2>{selection.path}</h2>
                   <p>
                     {selection.staged
-                      ? t("Staged for commit")
-                      : `${fileLabel(selectedFile, false, t)} · ${t("Unstaged changes")}`}
+                      ? "Staged for commit"
+                      : `${fileLabel(selectedFile, false)} · Unstaged changes`}
                   </p>
                 </div>
                 <div className="git-inline-actions">
                   {!selection.staged && (
                     <button
                       className="icon-btn git-danger"
-                      title={t("Discard changes in ") + selection.path}
+                      title={"Discard changes in " + selection.path}
                       disabled={disabled}
                       onClick={() =>
                         showDialog({
@@ -251,8 +248,8 @@ export function ChangesSection({
                             ? "Delete this new file?"
                             : "Discard unstaged changes?",
                           description: selectedFile.untracked
-                            ? t("{path} will be permanently deleted.", { path: selection.path })
-                            : t("Unstaged edits to {path} will be lost. Staged changes will be kept.", { path: selection.path }),
+                            ? `${selection.path} will be permanently deleted.`
+                            : `Unstaged edits to ${selection.path} will be lost. Staged changes will be kept.`,
                           label: selectedFile.untracked
                             ? "Delete file"
                             : "Discard changes",
@@ -278,7 +275,7 @@ export function ChangesSection({
                     ) : (
                       <Plus size={14} />
                     )}
-                    {selection.staged ? t("Unstage") : t("Stage file")}
+                    {selection.staged ? "Unstage" : "Stage file"}
                   </button>
                 </div>
               </header>
@@ -293,18 +290,18 @@ export function ChangesSection({
             <EmptyState
               title={
                 files.length
-                  ? t("Select a file to review")
+                  ? "Select a file to review"
                   : data.hasCommits
-                    ? t("Working tree is clean")
-                    : t("Add files to get started")
+                    ? "Working tree is clean"
+                    : "Add files to get started"
               }
             >
               <p>
                 {files.length
-                  ? t("Choose a file on the left to see exactly what will change.")
+                  ? "Choose a file on the left to see exactly what will change."
                   : data.hasCommits
-                    ? t("Your files match the latest commit. New edits will appear here.")
-                    : t("Create or copy files into this workspace. They'll appear here, ready for your first commit.")}
+                    ? "Your files match the latest commit. New edits will appear here."
+                    : "Create or copy files into this workspace. They'll appear here, ready for your first commit."}
               </p>
             </EmptyState>
           )}

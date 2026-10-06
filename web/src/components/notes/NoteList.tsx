@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Plus, Search } from "lucide-react";
-import { useI18n } from "../../lib/i18n.ts";
 import { ago } from "../../lib/format.ts";
 import { Menu } from "../Menu.tsx";
 import { noteTemplates, type NoteTemplate } from "./templates.ts";
@@ -18,8 +17,7 @@ function tasks(body: string): { done: number; total: number } {
 }
 
 export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (id: string) => void; onCreate: (template: NoteTemplate) => void }) {
-  const t = useI18n();
-  const templates = useMemo(() => noteTemplates(t), [t]);
+  const templates = useMemo(() => noteTemplates(), []);
   const [query, setQuery] = useState("");
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -33,8 +31,8 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
       <div className="notes-pane">
         <div className="panel-starter scroll">
           <div className="panel-starter-heading">
-            <h3>{t("Start a note")}</h3>
-            <p>{t("Pick a starting point. Notes stay saved on this computer, one list per project.")}</p>
+            <h3>Start a note</h3>
+            <p>Pick a starting point. Notes stay saved on this computer, one list per project.</p>
           </div>
           <div className="panel-starter-grid">
             {templates.map((template) => (
@@ -55,10 +53,10 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
       <div className="note-list-heading">
         <label className="note-search">
           <Search size={14} />
-          <input aria-label={t("Find a note")} placeholder={t("Find a note…")} value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input aria-label="Find a note" placeholder="Find a note…" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
         <Menu
-          header={t("Start from")}
+          header="Start from"
           width={300}
           align="end"
           items={templates.map((template) => ({
@@ -71,7 +69,7 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
           trigger={({ id, open, toggle }) => (
             <button id={id} type="button" className="btn" data-variant="primary" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
               <Plus size={15} />
-              {t("New note")}
+              New note
               <ChevronDown size={14} />
             </button>
           )}
@@ -84,18 +82,18 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
           return (
             <li key={note.id}>
               <button type="button" className="note-row" onClick={() => onOpen(note.id)}>
-              <span className="note-row-title truncate">{note.title.trim() || t("Untitled note")}</span>
+              <span className="note-row-title truncate">{note.title.trim() || "Untitled note"}</span>
               {preview && <span className="note-row-snippet truncate">{preview}</span>}
               <span className="note-row-meta">
                 {ago(note.updatedAt)}
-                {progress.total > 0 && <span>{t("{done} of {total} done", { done: progress.done, total: progress.total })}</span>}
+                {progress.total > 0 && <span>{progress.done} of {progress.total} done</span>}
               </span>
               </button>
             </li>
           );
         })}
       </ul>
-      {!shown.length && <p className="panel-quiet-empty note-list-empty">{t("No notes match that search.")}</p>}
+      {!shown.length && <p className="panel-quiet-empty note-list-empty">No notes match that search.</p>}
     </div>
   );
 }

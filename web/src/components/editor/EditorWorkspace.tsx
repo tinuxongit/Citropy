@@ -1,4 +1,3 @@
-import { useI18n } from "../../lib/i18n.ts";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   FilePlus2,
@@ -40,7 +39,6 @@ export default function EditorWorkspace({
   panelId: string;
   active: boolean;
 }) {
-  const t = useI18n();
   const projectId = useApp((state) => state.activeProjectId);
   const threadProjectId = useApp((state) => state.threads[state.activeThreadId ?? ""]?.projectId);
   const activeThreadId = useApp((state) => state.activeThreadId);
@@ -56,7 +54,7 @@ export default function EditorWorkspace({
     threadId ? (workspacePath ?? project?.path) : project?.path,
   ]);
   if (!projectId)
-    return <div className="pane-empty">{t("Open a workspace first.")}</div>;
+    return <div className="pane-empty">Open a workspace first.</div>;
   return (
     <Workspace
       key={scope}
@@ -82,7 +80,6 @@ function Workspace({
   projectId: string;
   threadId?: string;
 }) {
-  const t = useI18n();
   const all = useDocuments((state) => state.documents);
   const documents = all.filter((document) => document.scope === scope);
   const connected = useApp((state) => state.connected);
@@ -176,17 +173,17 @@ function Workspace({
   return (
     <section
       className="editor-workspace"
-      aria-label={t("Code workspace")}
+      aria-label="Code workspace"
     >
       <div className="editor-layout" data-explorer={showExplorer}>
         <aside className="editor-explorer" hidden={!showExplorer}>
           <div className="editor-explorer-heading">
-            <span>{t("Files")}</span>
+            <span>Files</span>
             <button
               className="icon-btn"
               type="button"
-              aria-label={t("New file")}
-              title={t("New file")}
+              aria-label="New file"
+              title="New file"
               disabled={!connected}
               onClick={() => setCreating((value) => !value)}
             >
@@ -195,7 +192,7 @@ function Workspace({
             <button
               className="icon-btn"
               type="button"
-              aria-label={t("Refresh files")}
+              aria-label="Refresh files"
               disabled={!connected}
               onClick={() => setRefresh((value) => value + 1)}
             >
@@ -229,8 +226,8 @@ function Workspace({
                 autoFocus
                 value={newPath}
                 onChange={(event) => setNewPath(event.target.value)}
-                placeholder={t("File path, e.g. src/example.ts")}
-                aria-label={t("New file path")}
+                placeholder="File path, e.g. src/example.ts"
+                aria-label="New file path"
                 disabled={creatingFile}
               />
               <button
@@ -238,9 +235,9 @@ function Workspace({
                 className="btn"
                 disabled={!newPath.trim() || !connected || creatingFile}
               >
-                {t("Create file")}
+                Create file
               </button>
-              <p>{t("The parent folder must already exist.")}</p>
+              <p>The parent folder must already exist.</p>
             </form>
           )}
           <FileExplorer
@@ -256,7 +253,7 @@ function Workspace({
         <div className="editor-main">
           <div className="editor-tabbar">
           {documents.length > 0 && (
-            <div className="editor-tabs sliding-selection" ref={tabStrip} aria-label={t("Open files")}>
+            <div className="editor-tabs sliding-selection" ref={tabStrip} aria-label="Open files">
               <SelectionHighlight value={current?.id} selector='.editor-tab[data-active="true"]' />
               {documents.map((document) => (
                 <div
@@ -282,14 +279,14 @@ function Workspace({
                     {document.kind === "text" && document.dirty && (
                       <span
                         className="editor-dirty"
-                        aria-label={t("Unsaved changes")}
+                        aria-label="Unsaved changes"
                       />
                     )}
                   </button>
                   <button
                     type="button"
                     className="icon-btn"
-                    aria-label={t("Close {name}", { name: document.path })}
+                    aria-label={`Close ${document.path}`}
                     disabled={document.kind === "text" && document.saving}
                     onClick={() => void discard(document)}
                   >
@@ -303,8 +300,8 @@ function Workspace({
               <button
                 className="icon-btn"
                 type="button"
-                title={t("Word wrap")}
-                aria-label={t("Word wrap")}
+                title="Word wrap"
+                aria-label="Word wrap"
                 aria-pressed={wrap}
                 disabled={!textDocument}
                 onClick={() => setWrap((value) => !value)}
@@ -314,8 +311,8 @@ function Workspace({
               <button
                 className="icon-btn"
                 type="button"
-                title={t(terminalVisible ? "Hide terminal" : "Open terminal")}
-                aria-label={t(terminalVisible ? "Hide terminal" : "Open terminal")}
+                title={terminalVisible ? "Hide terminal" : "Open terminal"}
+                aria-label={terminalVisible ? "Hide terminal" : "Open terminal"}
                 aria-pressed={terminalVisible}
                 disabled={!connected && !terminalVisible}
                 onClick={() => {
@@ -332,8 +329,8 @@ function Workspace({
               <button
                 className="icon-btn"
                 type="button"
-                title={t("Toggle file explorer")}
-                aria-label={t("Toggle file explorer")}
+                title="Toggle file explorer"
+                aria-label="Toggle file explorer"
                 aria-pressed={showExplorer}
                 disabled={!current}
                 onClick={() => setExplorer((value) => !value)}
@@ -355,8 +352,8 @@ function Workspace({
                     <button
                       className="icon-btn"
                       type="button"
-                      aria-label={t("Reload file")}
-                      title={t("Reload file from disk")}
+                      aria-label="Reload file"
+                      title="Reload file from disk"
                       disabled={!connected || textDocument.saving}
                       onClick={() => void discard(textDocument, true)}
                     >
@@ -369,13 +366,13 @@ function Workspace({
                       onClick={() => void saveDocument(textDocument)}
                     >
                       <Save size={13} />
-                      {t(textDocument.saving ? "Saving…" : "Save")}
+                      {textDocument.saving ? "Saving…" : "Save"}
                     </button>}
                   </>
                 ) : (
                   <a
                     className="icon-btn"
-                    aria-label={t("Download file")}
+                    aria-label="Download file"
                     href={serverUrl(`/api/assets?${current.query}&download=1`)}
                     download
                   >
@@ -391,14 +388,12 @@ function Workspace({
             )}
             {loading && (
               <div className="editor-notice" role="status">
-                {t("Opening {path}…", { path: loading })}
+                Opening {loading}…
               </div>
             )}
             {!connected && (
               <div className="editor-notice" role="status">
-                {t(
-                  "Offline. Your open drafts are kept in this session. Reconnect to save.",
-                )}
+                Offline. Your open drafts are kept in this session. Reconnect to save.
               </div>
             )}
             {current?.kind === "preview" ? (
@@ -411,12 +406,12 @@ function Workspace({
                 onClose={() => void discard(current)}
               />
             ) : current ? (
-              (active || started) && <Suspense fallback={<div className="pane-empty" role="status">{t("Loading editor…")}</div>}>
+              (active || started) && <Suspense fallback={<div className="pane-empty" role="status">Loading editor…</div>}>
                 <CodeEditor document={current} wrap={wrap} onReady={ready} />
               </Suspense>
             ) : (
               <div className="editor-empty">
-                <p>{t("Open a file to start editing alongside your agent.")}</p>
+                <p>Open a file to start editing alongside your agent.</p>
               </div>
             )}
           </div>

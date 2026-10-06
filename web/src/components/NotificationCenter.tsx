@@ -1,11 +1,9 @@
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
-import { LOCALE, useI18n } from "../lib/i18n.ts";
+import { LOCALE } from "../lib/locale.ts";
 import { useEffect, useRef, useState } from "react";
 import {
-  Bell,
-  BellDot,
   BellRing,
   CheckCheck,
   Check,
@@ -18,6 +16,7 @@ import {
   Download,
 } from "lucide-react";
 import { useApp } from "../lib/store.ts";
+import { Inbox } from "./icons.ts";
 import { send } from "../lib/socket.ts";
 import { ago } from "../lib/format.ts";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
@@ -27,7 +26,6 @@ export function NotificationCenter({
 }: {
   onOpen: (target: NotificationTarget) => void;
 }) {
-  const t = useI18n();
   const reducedMotion = useReducedMotion();
   const notifications = useApp((state) => state.notifications);
   const connected = useApp((state) => state.connected);
@@ -74,34 +72,39 @@ export function NotificationCenter({
       <button
         ref={trigger}
         type="button"
-        className="icon-btn notification-trigger"
-        title={t("Notifications")}
+        className="strip-action notification-trigger"
+        title="Notifications"
         aria-label={
-          unread ? t("Notifications, {count} unread", { count: unread }) : t("Notifications")
+          unread ? `Notifications, ${unread} unread` : "Notifications"
         }
         aria-expanded={open}
         aria-haspopup="dialog"
         data-unread={unread > 0 || undefined}
         onClick={() => setOpen(!open)}
       >
-        {unread > 0 ? <BellDot size={17} /> : <Bell size={17} />}
+        <span className="strip-action-face">
+          <span className="unseen-anchor">
+            <Inbox size={18} />
+            {unread > 0 && <span className="unseen-dot" />}
+          </span>
+        </span>
       </button>
       <AnimatePresence>{open && (
-        <motion.section initial={{ opacity: 0, y: reducedMotion ? 0 : -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : -5, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}
+        <motion.section initial={{ opacity: 0, x: reducedMotion ? 0 : -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: reducedMotion ? 0 : -4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}
           className="notification-center"
           role="dialog"
-          aria-label={t("Notifications")}
+          aria-label="Notifications"
         >
           <header>
             <div>
-              <h2>{t("Notifications")}</h2>
-              <span>{unread ? t("{count} unread", { count: unread }) : t("You're up to date")}</span>
+              <h2>Notifications</h2>
+              <span>{unread ? `${unread} unread` : "You're up to date"}</span>
             </div>
             <button
               className="icon-btn"
               type="button"
-              aria-label={t("Mark all read")}
-              title={t("Mark all read")}
+              aria-label="Mark all read"
+              title="Mark all read"
               disabled={!unread || !connected}
               onClick={() => send({ t: "notifications.read" })}
             >
@@ -110,8 +113,8 @@ export function NotificationCenter({
             <button
               className="icon-btn"
               type="button"
-              aria-label={t("Close notifications")}
-              title={t("Close notifications")}
+              aria-label="Close notifications"
+              title="Close notifications"
               onClick={() => {
                 setOpen(false);
                 trigger.current?.focus();
@@ -123,19 +126,19 @@ export function NotificationCenter({
           <div
             className="notification-filters sliding-selection"
             role="group"
-            aria-label={t("Filter notifications")}
+            aria-label="Filter notifications"
           >
             <SelectionHighlight value={filter} />
             <button
               type="button"
               aria-pressed={filter === "all"}
               onClick={() => setFilter("all")}
-            >{t("All activity")}</button>
+            >All activity</button>
             <button
               type="button"
               aria-pressed={filter === "unread"}
               onClick={() => setFilter("unread")}
-            >{t("Unread")}{unread > 0 && <span>{unread}</span>}
+            >Unread{unread > 0 && <span>{unread}</span>}
             </button>
           </div>
           <div className="notification-list scroll">
@@ -169,8 +172,8 @@ export function NotificationCenter({
                       setOpen(false);
                     }}
                   >
-                    <strong>{t(entry.title)}</strong>
-                    <span>{entry.kind === "update" ? t("{release} is available. Open settings to update when you're ready.", { release: entry.text }) : entry.text}</span>
+                    <strong>{entry.title}</strong>
+                    <span>{entry.kind === "update" ? `${entry.text} is available. Open settings to update when you're ready.` : entry.text}</span>
                     <time
                       dateTime={new Date(entry.createdAt).toISOString()}
                       title={new Date(entry.createdAt).toLocaleString(LOCALE)}
@@ -182,8 +185,8 @@ export function NotificationCenter({
                     <button
                       type="button"
                       className="icon-btn notification-read"
-                      aria-label={t("Mark read")}
-                      title={t("Mark read")}
+                      aria-label="Mark read"
+                      title="Mark read"
                       disabled={!connected}
                       onClick={() =>
                         send({ t: "notifications.read", ids: [entry.id] })
@@ -199,14 +202,14 @@ export function NotificationCenter({
               <div className="notification-empty">
                 <BellRing size={27} />
                 <strong>
-                  {filter === "unread" ? t("All caught up") : t("Nothing here yet")}
+                  {filter === "unread" ? "All caught up" : "Nothing here yet"}
                 </strong>
-                <p>{t("Chat replies, updates, and completed Git or GitHub actions will appear here.")}</p>
+                <p>Chat replies, updates, and completed Git or GitHub actions will appear here.</p>
               </div>
             )}
           </div>
           <footer>
-            <span>{t("Last 100 notifications")}</span>
+            <span>Last 100 notifications</span>
             <button
               type="button"
               disabled={
@@ -214,7 +217,7 @@ export function NotificationCenter({
               }
               onClick={() => send({ t: "notifications.clear" })}
             >
-              <Trash2 size={13} />{t("Clear read")}</button>
+              <Trash2 size={13} />Clear read</button>
           </footer>
         </motion.section>
       )}</AnimatePresence>

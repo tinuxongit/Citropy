@@ -9,7 +9,6 @@ import { Check } from "./icons.ts";
 import { Collapsible } from "./Collapsible.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ThreadPulse } from "./ThreadPulse.tsx";
-import { useI18n } from "../lib/i18n.ts";
 import { VirtualList } from "./VirtualList.tsx";
 
 interface Props {
@@ -23,7 +22,6 @@ interface Props {
 }
 
 export function ThreadChildren(props: Props) {
-  const t = useI18n();
   const {
     parent,
     environment,
@@ -46,14 +44,14 @@ export function ThreadChildren(props: Props) {
   if (!listed.length) return null;
   return (
     <Collapsible open={shown} className="thread-children">
-      <div className="thread-children-list" aria-label={t("Subagents for {title}", { title: parent.title })}>
+      <div className="thread-children-list" aria-label={`Subagents for ${parent.title}`}>
         <VirtualList items={listed} itemKey="id" estimateSize={35} activeKey={listed.find(child => selectedPath.has(child.id))?.id}>
           {child => <>
             <button
               type="button"
               className="thread-child"
               data-active={child.id === activeThreadId}
-              title={`${child.title} · ${t(child.status)}`}
+              title={`${child.title} · ${child.status}`}
               onClick={() => {
                 onConversation();
                 if (environment !== environmentId()) void openOnEnvironment(environment, child.projectId, child.id).catch(reportError);

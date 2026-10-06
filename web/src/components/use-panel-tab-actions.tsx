@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type HTMLAttributes, type RefObject } from
 import { ArrowLeft, ArrowRight, Pencil, X } from "lucide-react";
 import type { PanelTab } from "../../../shared/workbench.ts";
 import { moveWorkbenchPanel } from "../lib/actions.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
 import { Menu } from "./Menu.tsx";
@@ -13,7 +12,6 @@ type TabAnchor = { id: string; anchor: HTMLElement };
 type TabDrop = { id: string; edge: "before" | "after" };
 
 export function usePanelTabActions(panels: PanelTab[], strip: RefObject<HTMLDivElement | null>, enabled: boolean) {
-  const t = useI18n();
   const connected = useApp((state) => state.connected);
   const [menu, setMenu] = useState<TabAnchor>();
   const [rename, setRename] = useState<TabAnchor & { name: string }>();
@@ -140,22 +138,22 @@ export function usePanelTabActions(panels: PanelTab[], strip: RefObject<HTMLDivE
       onClose={() => setMenu(undefined)}
       items={[
         ...(menuPanel.kind === "terminal" ? [{
-          id: "rename", label: t("Rename terminal"), hint: "F2", icon: <Pencil size={15} />, disabled: !connected,
+          id: "rename", label: "Rename terminal", hint: "F2", icon: <Pencil size={15} />, disabled: !connected,
           onSelect: () => { setMenu(undefined); beginRename(menuPanel, menu.anchor); },
         }] : []),
         {
-          id: "left", label: t("Move tab left"), hint: "Alt+←", icon: <ArrowLeft size={15} />, disabled: !connected || menuIndex === 0,
+          id: "left", label: "Move tab left", hint: "Alt+←", icon: <ArrowLeft size={15} />, disabled: !connected || menuIndex === 0,
           onSelect: () => { move(menuPanel.id, -1); menu.anchor.focus({ preventScroll: true }); },
         },
         {
-          id: "right", label: t("Move tab right"), hint: "Alt+→", icon: <ArrowRight size={15} />, disabled: !connected || menuIndex === panels.length - 1,
+          id: "right", label: "Move tab right", hint: "Alt+→", icon: <ArrowRight size={15} />, disabled: !connected || menuIndex === panels.length - 1,
           onSelect: () => { move(menuPanel.id, 1); menu.anchor.focus({ preventScroll: true }); },
         },
-        { id: "close", label: t("Close {name}", { name: menuPanel.title }), icon: <X size={15} />, disabled: !connected, onSelect: () => send({ t: "panel.close", id: menuPanel.id }) },
+        { id: "close", label: `Close ${menuPanel.title}`, icon: <X size={15} />, disabled: !connected, onSelect: () => send({ t: "panel.close", id: menuPanel.id }) },
       ]}
     />}
     {rename && panels.some((panel) => panel.id === rename.id) && <Modal
-      title={t("Rename terminal")}
+      title="Rename terminal"
       initialFocus="input"
       returnFocus={rename.anchor}
       onClose={() => setRename(undefined)}
@@ -165,12 +163,12 @@ export function usePanelTabActions(panels: PanelTab[], strip: RefObject<HTMLDivE
         setRename(undefined);
       }}
       footer={<>
-        <button type="button" className="btn" data-cancel onClick={() => setRename(undefined)}>{t("Cancel")}</button>
-        <button type="submit" className="btn" data-variant="primary" disabled={!canRename}>{t("Save")}</button>
+        <button type="button" className="btn" data-cancel onClick={() => setRename(undefined)}>Cancel</button>
+        <button type="submit" className="btn" data-variant="primary" disabled={!canRename}>Save</button>
       </>}
     >
       <label className="feature-field">
-        <span>{t("Name")}</span>
+        <span>Name</span>
         <input value={rename.name} maxLength={100} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setRename({ ...rename, name: event.target.value })} />
       </label>
     </Modal>}

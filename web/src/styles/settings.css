@@ -195,7 +195,6 @@
   transform: translateX(16px);
 }
 .setting-switch:disabled { opacity: 0.45; }
-.content-width-setting { border-top: 1px solid var(--line); }
 .content-width-setting > .setting-row { padding-left: 0; padding-right: 0; }
 .content-width-setting output { color: var(--text-3); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
 .content-width-setting .content-width-range { display: block; width: min(360px, 100%); margin: 0 auto var(--space-16); }
@@ -355,7 +354,7 @@
   background: var(--panel);
 }
 .theme-option:hover {
-  background: var(--highlight);
+  background: var(--hover);
 }
 .theme-option[aria-pressed="true"] {
   background: var(--highlight);

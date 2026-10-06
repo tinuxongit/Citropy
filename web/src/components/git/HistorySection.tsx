@@ -8,7 +8,7 @@ import {
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview, type GitSelection } from "../GitReview.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
-import { LOCALE, type useI18n } from "../../lib/i18n.ts";
+import { LOCALE } from "../../lib/locale.ts";
 import { formatDate } from "../../lib/format.ts";
 import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
 import type { ReactNode } from "react";
@@ -24,7 +24,6 @@ export function HistorySection({
   branch,
   selectedCommit,
   reviewChanges,
-  t,
   setSelection,
   act,
 }: {
@@ -39,7 +38,6 @@ export function HistorySection({
     | { hash: string; author: string; date: string; subject: string; refs: string }
     | undefined;
   reviewChanges: ReactNode;
-  t: ReturnType<typeof useI18n>;
   setSelection: (value: GitSelection | null) => void;
   act: (
     operation: GitOperation,
@@ -52,11 +50,11 @@ export function HistorySection({
     <>
     {!data.hasCommits ? (
       <EmptyState
-        title={t("Your history starts with a commit")}
+        title="Your history starts with a commit"
         action={reviewChanges}
       >
         <p>
-          {t("Commits are saved checkpoints of your work. Review your changes to create the first one.")}
+          Commits are saved checkpoints of your work. Review your changes to create the first one.
         </p>
       </EmptyState>
     ) : (
@@ -66,7 +64,7 @@ export function HistorySection({
       >
         <div className="git-history-list">
           <header className="git-list-heading">
-            <h2>{t("Commit history")}</h2>
+            <h2>Commit history</h2>
             <p>
               <GitBranch size={13} />
               {branch}
@@ -99,20 +97,20 @@ export function HistorySection({
                   <code>{commit.hash.slice(0, 7)}</code>
                 </span>
                 {commit.refs.includes("HEAD") && (
-                  <span className="git-tag">{t("Latest")}</span>
+                  <span className="git-tag">Latest</span>
                 )}
               </button>
             ))}
             {!data.commits.length && (
               <p className="git-list-hint">
-                {t("No more commits on this page.")}
+                No more commits on this page.
               </p>
             )}
           </div>
           <footer className="git-pagination">
             <button
               className="icon-btn"
-              aria-label={t("Previous commits page")}
+              aria-label="Previous commits page"
               disabled={disabled || offset === 0}
               onClick={() =>
                 void act(
@@ -130,11 +128,11 @@ export function HistorySection({
                   1 +
                   " - " +
                   (offset + data.commits.length)
-                : t("End of history")}
+                : "End of history"}
             </span>
             <button
               className="icon-btn"
-              aria-label={t("Next commits page")}
+              aria-label="Next commits page"
               disabled={disabled || data.commits.length < 50}
               onClick={() =>
                 void act("history", undefined, offset + 50)
@@ -147,14 +145,14 @@ export function HistorySection({
         <ResizeHandle panel="git" inline />
         <section
           className="git-review-pane"
-          aria-label={t("Commit preview")}
+          aria-label="Commit preview"
         >
           {selection?.kind === "commit" && selectedCommit ? (
             <>
               <header className="git-review-header">
                 <button
                   className="icon-btn git-mobile-back"
-                  aria-label={t("Back to history")}
+                  aria-label="Back to history"
                   onClick={() => setSelection(null)}
                 >
                   <ArrowLeft size={17} />
@@ -182,10 +180,10 @@ export function HistorySection({
             </>
           ) : (
             <EmptyState
-              title={t("Review a saved change")}
+              title="Review a saved change"
             >
               <p>
-                {t("Select a commit to see its message and file changes.")}
+                Select a commit to see its message and file changes.
               </p>
             </EmptyState>
           )}

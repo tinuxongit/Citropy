@@ -1,4 +1,3 @@
-import { useI18n } from "../lib/i18n.ts";
 import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { ChevronDown, ChevronUp, History } from "lucide-react";
@@ -14,7 +13,6 @@ import { ThreadPulse } from "./ThreadPulse.tsx";
 import { modelLabel } from "../lib/format.ts";
 
 export function SubagentsPane() {
-  const t = useI18n();
   const parentId = useApp((state) => {
     const activeId = state.activeThreadId;
     return activeId ? state.threads[activeId]?.parentThreadId ?? activeId : activeId;
@@ -54,12 +52,12 @@ export function SubagentsPane() {
       <div className="subagent-item-footer">
         <span>
           {child.running
-            ? t("Working")
+            ? "Working"
             : child.status === "error"
-              ? t("Failed")
+              ? "Failed"
               : child.status === "stopped"
-                ? t("Stopped")
-                : t("Completed")}
+                ? "Stopped"
+                : "Completed"}
         </span>
         <div>
           {child.running && !child.nativeAgentId && (
@@ -67,7 +65,7 @@ export function SubagentsPane() {
               type="button"
               className="icon-btn"
               disabled={!connected}
-              aria-label={t("Stop {name}", { name: child.title })}
+              aria-label={`Stop ${child.title}`}
               onClick={() => send({ t: "thread.stop", threadId: child.id })}
             >
               <Square size={13} />
@@ -80,7 +78,7 @@ export function SubagentsPane() {
               selectThread(child.id);
               loadThread(child.id);
             }}
-          >{t("View work")}<ArrowUpRight size={13} />
+          >View work<ArrowUpRight size={13} />
           </button>
         </div>
       </div>
@@ -91,18 +89,18 @@ export function SubagentsPane() {
       <div className="panel-section-heading">
         <Network size={19} className="panel-icon-subagents" />
         <div>
-          <h3>{t("Delegated work")}</h3>
+          <h3>Delegated work</h3>
           <p>
             {children.length
-              ? t(children.length === 1 ? "{running} running · {count} subagent" : "{running} running · {count} subagents", { running: children.filter((child) => child.running).length, count: children.length })
-              : t("Subagents for this conversation")}
+              ? (children.length === 1 ? `${children.filter((child) => child.running).length} running · ${children.length} subagent` : `${children.filter((child) => child.running).length} running · ${children.length} subagents`)
+              : "Subagents for this conversation"}
           </p>
         </div>
       </div>
       {children.length === 0 ? (
         <div className="panel-quiet-empty">
-          <p>{t("No subagents yet.")}</p>
-          <span>{t("Ask your provider to delegate a task. Its subagents will appear here and beneath the chat in your sidebar.")}</span>
+          <p>No subagents yet.</p>
+          <span>Ask your provider to delegate a task. Its subagents will appear here and beneath the chat in your sidebar.</span>
         </div>
       ) : (
         <VirtualList items={current} itemKey="id" estimateSize={116}>{renderChild}</VirtualList>
@@ -116,7 +114,7 @@ export function SubagentsPane() {
             onClick={() => setHistoryOpen(!historyOpen)}
           >
             <History size={15} />
-            <span>{t("Earlier subagents")}</span>
+            <span>Earlier subagents</span>
             <span>{earlier.length}</span>
             {historyOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>

@@ -6,7 +6,7 @@ import { remoteId } from "./remote.ts";
 import { workspaceTools, approvalTool, discoveryTools } from "./mcp-catalog.ts";
 import { callWorkspaceTool, text } from "./mcp-workspace.ts";
 
-export { workspaceTools, callWorkspaceTool };
+export { workspaceTools };
 
 function reply(res: ServerResponse, payload: unknown, status = 200): void {
   res.writeHead(status, { "content-type": "application/json" });

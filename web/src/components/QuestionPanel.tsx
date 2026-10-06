@@ -3,15 +3,14 @@ import { useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, MessageCircleQuestion } from "lucide-react";
 import type { QuestionRequest } from "../../../shared/questions.ts";
 import { useApp, type AppState } from "../lib/store.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { api } from "../lib/api.ts";
 import { ComposerWideTab } from "./composer/ComposerWideTab.tsx";
 import "../styles/questions.css";
+import { ActionError } from "./ActionError.tsx";
 
 const emptyDraft: AppState["questionDrafts"][string] = { index: 0, choices: {}, text: {} };
 
 export function QuestionForm({ request }: { request: QuestionRequest }) {
-  const t = useI18n();
   const connected = useApp(state => state.connected);
   const draft = useApp(state => state.questionDrafts[request.id] ?? emptyDraft);
   const [submitting, setSubmitting] = useState(false);
@@ -57,17 +56,17 @@ export function QuestionForm({ request }: { request: QuestionRequest }) {
     }
   };
 
-  return <ComposerWideTab className="question-panel" aria-label={t("Your input")}>
+  return <ComposerWideTab className="question-panel" aria-label="Your input">
     <form className="question-form" onSubmit={event => { event.preventDefault(); if (!ready) return; if (last) void submit(); else navigate(draft.index + 1); }}>
       <header className="question-heading">
         <MessageCircleQuestion size={16} aria-hidden="true" />
-        <span>{t("Your input")}</span>
-        {request.questions.length > 1 && <span className="question-progress">{t("{current} of {total}", { current: draft.index + 1, total: request.questions.length })}</span>}
+        <span>Your input</span>
+        {request.questions.length > 1 && <span className="question-progress">{draft.index + 1} of {request.questions.length}</span>}
       </header>
       <div className="question-body">
         <fieldset disabled={submitting || !connected}>
           <legend ref={heading} tabIndex={-1}>{question.question}</legend>
-          {question.multiple && <p className="question-hint">{t("Select all that apply.")}</p>}
+          {question.multiple && <p className="question-hint">Select all that apply.</p>}
           <div className="question-options">
             {question.options.map(option => <label key={option.label} className="question-option" data-selected={choices.includes(option.label) || undefined}>
               <input type={question.multiple ? "checkbox" : "radio"} name={`${request.id}:${question.id}`} value={option.label} checked={choices.includes(option.label)} onChange={() => choose(option.label)} />
@@ -75,18 +74,18 @@ export function QuestionForm({ request }: { request: QuestionRequest }) {
             </label>)}
           </div>
           <label className="question-custom">
-            <span>{question.options.length ? t("Or write your own answer") : t("Your answer")}</span>
-            {question.secret ? <input type="password" autoComplete="off" value={text} maxLength={8000} onChange={event => write(event.target.value)} /> : <textarea rows={2} value={text} maxLength={8000} placeholder={t("Type your answer…")} onChange={event => write(event.target.value)} />}
+            <span>{question.options.length ? "Or write your own answer" : "Your answer"}</span>
+            {question.secret ? <input type="password" autoComplete="off" value={text} maxLength={8000} onChange={event => write(event.target.value)} /> : <textarea rows={2} value={text} maxLength={8000} placeholder="Type your answer…" onChange={event => write(event.target.value)} />}
           </label>
         </fieldset>
-        {error && <p className="question-error" role="alert">{error}</p>}
-        {!connected && <p className="question-hint" role="status">{t("Reconnecting. Your answers are saved here.")}</p>}
+        <ActionError className="question-error" message={error} onDismiss={() => setError("")} />
+        {!connected && <p className="question-hint" role="status">Reconnecting. Your answers are saved here.</p>}
       </div>
       <footer className="question-footer">
-        <button type="button" className="btn" data-variant="ghost" disabled={submitting || !connected} onClick={() => void submit(true)}>{t("Skip")}</button>
+        <button type="button" className="btn" data-variant="ghost" disabled={submitting || !connected} onClick={() => void submit(true)}>Skip</button>
         <div>
-          {draft.index > 0 && <button type="button" className="btn" data-variant="ghost" disabled={submitting} onClick={() => navigate(draft.index - 1)}><ChevronLeft size={14} />{t("Back")}</button>}
-          <button type="submit" className="btn" data-variant="primary" disabled={!ready || submitting || !connected}>{submitting ? t("Sending…") : last ? t("Send answers") : t("Next")}<ArrowRight size={14} /></button>
+          {draft.index > 0 && <button type="button" className="btn" data-variant="ghost" disabled={submitting} onClick={() => navigate(draft.index - 1)}><ChevronLeft size={14} />Back</button>}
+          <button type="submit" className="btn" data-variant="primary" disabled={!ready || submitting || !connected}>{submitting ? "Sending…" : last ? "Send answers" : "Next"}<ArrowRight size={14} /></button>
         </div>
       </footer>
     </form>

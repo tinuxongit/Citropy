@@ -16,15 +16,14 @@ import { confirmAction, useApp } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
 import type { ProviderInfo } from "../../../shared/protocol.ts";
 import type { ProviderMaintenance } from "../../../shared/provider-settings.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { Select } from "./Select.tsx";
 import { selectEnvironment, useEnvironments } from "../lib/environment.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import { Modal } from "./Modal.tsx";
 import type { ProviderInstance } from "../../../shared/protocol.ts";
+import { ActionError } from "./ActionError.tsx";
 
 function InstanceEditor({ provider, instance, onClose, onSaved }: { provider: ProviderInfo; instance?: ProviderInstance; onClose: () => void; onSaved: (instance: ProviderInstance) => void }) {
-  const t = useI18n();
   const [name, setName] = useState(instance?.name ?? "");
   const [binary, setBinary] = useState(instance?.binary ?? "");
   const [environment, setEnvironment] = useState(JSON.stringify(instance?.environment ?? {}, null, 2));
@@ -35,25 +34,24 @@ function InstanceEditor({ provider, instance, onClose, onSaved }: { provider: Pr
     setError("");
     try {
       const variables = JSON.parse(environment);
-      if (!variables || typeof variables !== "object" || Array.isArray(variables)) throw new Error(t("Enter environment variables as a JSON object."));
+      if (!variables || typeof variables !== "object" || Array.isArray(variables)) throw new Error("Enter environment variables as a JSON object.");
       const saved = await api<ProviderInstance>("providers/instances", { method: "POST", body: JSON.stringify({ id: instance?.id, provider: provider.id, name, binary: binary || undefined, environment: variables }) });
       onSaved(saved);
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   };
-  return <Modal title={instance ? t("Edit account") : t("Add account")} description={t("Run {provider} with a separate CLI configuration.", { provider: provider.label })} busy={busy} onClose={onClose} onSubmit={() => void save()} initialFocus="#provider-instance-name" footer={<>
-    <button className="btn" type="button" data-cancel onClick={onClose} disabled={busy}>{t("Cancel")}</button>
-    <button className="btn" data-variant="primary" disabled={busy || !name.trim()}>{busy && <PixelLoader size={14} />}{t("Save account")}</button>
+  return <Modal title={instance ? "Edit account" : "Add account"} description={`Run ${provider.label} with a separate CLI configuration.`} busy={busy} onClose={onClose} onSubmit={() => void save()} initialFocus="#provider-instance-name" footer={<>
+    <button className="btn" type="button" data-cancel onClick={onClose} disabled={busy}>Cancel</button>
+    <button className="btn" data-variant="primary" disabled={busy || !name.trim()}>{busy && <PixelLoader size={14} />}Save account</button>
   </>}>
-    <label className="feature-field">{t("Name")}<input id="provider-instance-name" value={name} maxLength={80} onChange={event => setName(event.target.value)} /></label>
-    <label className="feature-field">{t("CLI path (optional)")}<input value={binary} onChange={event => setBinary(event.target.value)} placeholder={provider.binary} /></label>
-    <label className="feature-field">{t("Environment variables (JSON)")}<textarea value={environment} rows={5} spellCheck={false} onChange={event => setEnvironment(event.target.value)} /></label>
-    {error && <p className="dialog-error" role="alert">{error}</p>}
+    <label className="feature-field">Name<input id="provider-instance-name" value={name} maxLength={80} onChange={event => setName(event.target.value)} /></label>
+    <label className="feature-field">CLI path (optional)<input value={binary} onChange={event => setBinary(event.target.value)} placeholder={provider.binary} /></label>
+    <label className="feature-field">Environment variables (JSON)<textarea value={environment} rows={5} spellCheck={false} onChange={event => setEnvironment(event.target.value)} /></label>
+    <ActionError className="dialog-error" message={error} onDismiss={() => setError("")} />
   </Modal>;
 }
 
 export function ProviderSettings() {
-  const t = useI18n();
   const environments = useEnvironments();
   const [switching, setSwitching] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -158,10 +156,10 @@ export function ProviderSettings() {
       <div className="settings-group provider-environment">
         <label className="setting-row">
           <span>
-            <strong>{t("Environment")}</strong>
-            <small>{t("Switch the active environment to manage its providers.")}</small>
+            <strong>Environment</strong>
+            <small>Switch the active environment to manage its providers.</small>
           </span>
-          <Select aria-label={t("Provider environment")} value={environments.activeId}
+          <Select aria-label="Provider environment" value={environments.activeId}
             disabled={switching || !window.citropyDesktop?.connectEnvironment}
             onChange={async id => {
               if (id === environments.activeId) return;
@@ -173,15 +171,15 @@ export function ProviderSettings() {
               finally { setSwitching(false); }
             }}
             options={[
-              { value: "local", label: t("Local") },
+              { value: "local", label: "Local" },
               ...environments.connections.map(connection => ({ value: connection.id, label: connection.name })),
             ]} />
         </label>
-        {switching && <p className="provider-maintenance-note" role="status">{t("Connecting…")}</p>}
+        {switching && <p className="provider-maintenance-note" role="status">Connecting…</p>}
         <label className="setting-row">
           <span>
-            <strong>{t("Resume after usage limits")}</strong>
-            <small>{t("When a chat stops because a usage limit is reached, continue it automatically once the limit resets. You can also turn this on for a single chat.")}</small>
+            <strong>Resume after usage limits</strong>
+            <small>When a chat stops because a usage limit is reached, continue it automatically once the limit resets. You can also turn this on for a single chat.</small>
           </span>
           <input
             className="setting-switch"
@@ -194,16 +192,16 @@ export function ProviderSettings() {
         </label>
       </div>
       <div className="provider-maintenance-heading">
-      <h2 className="settings-group-heading">{t("Installed providers")}</h2>
+      <h2 className="settings-group-heading">Installed providers</h2>
         <button className="btn" disabled={!connected || switching || updating || checking || !eligible}
-          title={t("Update installed providers in this environment. Providers with active conversations are skipped.")}
-          onClick={() => void updateAll()}><ArrowUpToLine size={14} />{t("Update all")}</button>
+          title="Update installed providers in this environment. Providers with active conversations are skipped."
+          onClick={() => void updateAll()}><ArrowUpToLine size={14} />Update all</button>
         <button
           className="btn"
           disabled={!connected || switching || updating || checking}
           onClick={() => setRefresh((value) => value + 1)}
         >
-          {checking ? <PixelLoader size={14} /> : <RefreshCw size={14} />}{" "}{t("Check for updates")}{" "}</button>
+          {checking ? <PixelLoader size={14} /> : <RefreshCw size={14} />}{" "}Check for updates{" "}</button>
       </div>
       <div className="provider-settings-group">
         {providers.map((provider) => {
@@ -234,30 +232,30 @@ export function ProviderSettings() {
                       {state?.version ??
                         provider.version ??
                         (provider.enabled
-                          ? t("No version detected")
-                          : t("Not checked while disabled"))}
+                          ? "No version detected"
+                          : "Not checked while disabled")}
                     </small>
                   </div>
                 </div>
                 <div className="provider-setting-status">
                   <span data-available={provider.enabled && (provider.available || provider.instances?.some(entry => entry.available))}>
                     {!provider.enabled
-                      ? t("Disabled")
+                      ? "Disabled"
                       : provider.available
-                        ? t("Enabled")
-                        : provider.instances?.some(entry => entry.available) ? t("Account available") : t("Not installed")}
+                        ? "Enabled"
+                        : provider.instances?.some(entry => entry.available) ? "Account available" : "Not installed"}
                   </span>
                   <small>
                     {provider.enabled
-                      ? t(provider.models.length === 1 ? "{count} model" : "{count} models", { count: provider.models.length })
-                      : t("Not in new threads")}
+                      ? (provider.models.length === 1 ? `${provider.models.length} model` : `${provider.models.length} models`)
+                      : "Not in new threads"}
                   </small>
                 </div>
                 <input
                   className="setting-switch"
                   type="checkbox"
                   role="switch"
-                  aria-label={t("Enable {provider}", { provider: provider.label })}
+                  aria-label={`Enable ${provider.label}`}
                   checked={provider.enabled}
                   disabled={!connected || switching || isUpdating}
                   onChange={async (event) => {
@@ -266,8 +264,8 @@ export function ProviderSettings() {
                       !enabled &&
                       active &&
                       !(await confirmAction({
-                        title: t("Disable {provider}?", { provider: provider.label }),
-                        description: t("This stops {count} active {conversations}. Saved conversations will remain available.", { count: active, conversations: active === 1 ? t("conversation") : t("conversations") }),
+                        title: `Disable ${provider.label}?`,
+                        description: `This stops ${active} active ${active === 1 ? "conversation" : "conversations"}. Saved conversations will remain available.`,
                         label: "Disable provider",
                         danger: true,
                       }))
@@ -290,19 +288,19 @@ export function ProviderSettings() {
                 {provider.openCodeVersion && (
                   <div className="provider-update-row">
                     <div className="provider-installation">
-                      <span>{t("OpenCode version")}</span>
+                      <span>OpenCode version</span>
                       <small>
                         {provider.openCodeVersion.active
-                          ? t("Using OpenCode {version}", { version: provider.openCodeVersion.active })
-                          : t("Version not detected")}
+                          ? `Using OpenCode ${provider.openCodeVersion.active}`
+                          : "Version not detected"}
                       </small>
                     </div>
                     <Select
-                      aria-label={t("OpenCode version")}
+                      aria-label="OpenCode version"
                       value={String(provider.openCodeVersion.setting)}
                       disabled={!connected || switching || isUpdating}
                       options={[
-                        { value: "auto", label: t("Detect automatically") },
+                        { value: "auto", label: "Detect automatically" },
                         { value: "1", label: "OpenCode 1" },
                         { value: "2", label: "OpenCode 2" },
                       ]}
@@ -310,8 +308,8 @@ export function ProviderSettings() {
                         if (
                           active &&
                           !(await confirmAction({
-                            title: t("Switch OpenCode version?"),
-                            description: t("This stops {count} active {conversations}. Saved conversations will remain available.", { count: active, conversations: active === 1 ? t("conversation") : t("conversations") }),
+                            title: "Switch OpenCode version?",
+                            description: `This stops ${active} active ${active === 1 ? "conversation" : "conversations"}. Saved conversations will remain available.`,
                             label: "Switch version",
                             danger: true,
                           }))
@@ -324,23 +322,23 @@ export function ProviderSettings() {
                 )}
                 <div className="provider-update-row">
                   <div className="provider-installation">
-                    <span>{t(state?.method ?? "CLI installation")}</span>
+                    <span>{state?.method ?? "CLI installation"}</span>
                     <small title={state?.binaryPath}>
                       {state?.binaryPath ?? provider.binary}
                     </small>
                   </div>
                   <button type="button" className="btn"
                     disabled={!connected || switching} onClick={() => setEditor(provider)}>
-                    <FileText size={14} />{t("Global instructions")}
+                    <FileText size={14} />Global instructions
                   </button>
                   {!installing && state?.updateStatus === "current" && !isUpdating ? (
                     <span className="provider-up-to-date" role="status">
-                      <Check size={14} />{" "}{t("Up to date")}{" "}</span>
+                      <Check size={14} />{" "}Up to date{" "}</span>
                   ) : (
                     <button
                       type="button"
                       className="btn"
-                      aria-label={t(installing ? "Install {provider}" : "Update {provider}", { provider: provider.label })}
+                      aria-label={installing ? `Install ${provider.label}` : `Update ${provider.label}`}
                       disabled={
                         !connected || switching ||
                         !state?.available ||
@@ -349,9 +347,9 @@ export function ProviderSettings() {
                       }
                       title={
                         active
-                          ? t("Finish or stop active conversations before updating.")
+                          ? "Finish or stop active conversations before updating."
                           : (state?.reason ??
-                            t(installing ? "Install this provider in the selected environment." : "Check for updates and install with the existing installer."))
+                            (installing ? "Install this provider in the selected environment." : "Check for updates and install with the existing installer."))
                       }
                       onClick={() => void update(provider)}
                     >
@@ -361,17 +359,17 @@ export function ProviderSettings() {
                         <ArrowUpToLine size={14} />
                       )}
                       {isUpdating
-                        ? t(installing ? "Installing…" : "Updating…")
+                        ? (installing ? "Installing…" : "Updating…")
                         : installing
-                          ? t("Install")
+                          ? "Install"
                         : state?.updateStatus === "available"
-                          ? t("Update to {version}", { version: state.latestVersion ?? "" })
-                          : t("Check & update")}
+                          ? `Update to ${state.latestVersion ?? ""}`
+                          : "Check & update"}
                     </button>
                   )}
                 </div>
                 {active > 0 && (
-                  <p className="provider-maintenance-note">{" "}{t("Updates are available after this provider finishes its active conversations.")}{" "}</p>
+                  <p className="provider-maintenance-note">{" "}Updates are available after this provider finishes its active conversations.{" "}</p>
                 )}
                 {state?.reason && (
                   <p className="provider-maintenance-note">{state.reason}</p>
@@ -388,7 +386,7 @@ export function ProviderSettings() {
                 )}
                 {state?.output && (
                   <details className="provider-update-output">
-                    <summary>{t("Update details")}</summary>
+                    <summary>Update details</summary>
                     <code>{state.command}</code>
                     <pre className="scroll">{state.output}</pre>
                   </details>
@@ -396,12 +394,12 @@ export function ProviderSettings() {
               </div>
 
               <div className="provider-instances">
-                <div className="provider-instances-heading"><strong>{t("Accounts")}</strong><button type="button" className="btn" disabled={!connected || switching} onClick={() => setInstanceEditor({ provider })}><Plus size={14} />{t("Add account")}</button></div>
+                <div className="provider-instances-heading"><strong>Accounts</strong><button type="button" className="btn" disabled={!connected || switching} onClick={() => setInstanceEditor({ provider })}><Plus size={14} />Add account</button></div>
                 {provider.instances?.map(entry => <div className="provider-instance-row" key={entry.id}>
-                  <span><strong>{entry.name}</strong><small>{entry.available ? t(entry.models.length === 1 ? "{count} model" : "{count} models", { count: entry.models.length }) : t("CLI unavailable")}</small></span>
-                  <button type="button" className="btn" disabled={!connected || switching || !instances.some(value => value.id === entry.id)} onClick={() => setInstanceEditor({ provider, instance: instances.find(value => value.id === entry.id) })}>{t("Edit")}</button>
-                  <button type="button" className="btn" aria-label={t("Remove {name}", { name: entry.name })} disabled={!connected || switching} onClick={() => void (async () => {
-                    if (!await confirmAction({ title: t("Remove {name}?", { name: entry.name }), description: t("Conversations and writing settings using this account must be removed first."), label: t("Remove"), danger: true })) return;
+                  <span><strong>{entry.name}</strong><small>{entry.available ? (entry.models.length === 1 ? `${entry.models.length} model` : `${entry.models.length} models`) : "CLI unavailable"}</small></span>
+                  <button type="button" className="btn" disabled={!connected || switching || !instances.some(value => value.id === entry.id)} onClick={() => setInstanceEditor({ provider, instance: instances.find(value => value.id === entry.id) })}>Edit</button>
+                  <button type="button" className="btn" aria-label={`Remove ${entry.name}`} disabled={!connected || switching} onClick={() => void (async () => {
+                    if (!await confirmAction({ title: `Remove ${entry.name}?`, description: "Conversations and writing settings using this account must be removed first.", label: "Remove", danger: true })) return;
                     try { await api("providers/instances", { method: "DELETE", body: JSON.stringify({ id: entry.id }) }); setInstances(previous => previous.filter(value => value.id !== entry.id)); }
                     catch (cause) { reportError(cause); }
                   })()}><Trash2 size={14} /></button>
@@ -419,12 +417,12 @@ export function ProviderSettings() {
           <button
             className="btn"
             onClick={() => setRefresh((value) => value + 1)}
-          >{" "}{t("Retry")}{" "}</button>
+          >{" "}Retry{" "}</button>
         </p>
       )}
-      <p className="settings-note">{" "}{t("Updates use the provider's existing installer. Disabling a provider stops its active work and removes it from new thread choices. Saved conversations stay available.")}{" "}</p>
+      <p className="settings-note">{" "}Updates use the provider's existing installer. Disabling a provider stops its active work and removes it from new thread choices. Saved conversations stay available.{" "}</p>
       <p className="settings-connection" role="status">
-        {connected ? t("Connected to Citropy") : t("Disconnected from Citropy")}
+        {connected ? "Connected to Citropy" : "Disconnected from Citropy"}
       </p>
       <AnimatePresence>{editor && (
         <ProviderInstructions

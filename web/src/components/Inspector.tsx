@@ -2,7 +2,6 @@ import { flushSync } from "react-dom";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { isRemote } from "../lib/environment.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Globe2,
@@ -93,7 +92,6 @@ const options = [
 }>;
 
 export function Inspector({ visible }: { visible: boolean }) {
-  const t = useI18n();
   const projectId = useApp((state) => state.activeProjectId);
   const threadId = useApp((state) => state.activeThreadId);
   const panels = useApp((state) => state.panels);
@@ -171,7 +169,7 @@ export function Inspector({ visible }: { visible: boolean }) {
       className="inspector workbench"
       data-visible={visible}
       data-expanded={expanded}
-      aria-label={t("Workspace panels")}
+      aria-label="Workspace panels"
       onKeyDown={(event) => {
         if (event.key === "Escape" && expanded && event.target === event.currentTarget)
           toggleExpanded();
@@ -183,7 +181,7 @@ export function Inspector({ visible }: { visible: boolean }) {
           className="workbench-tabs sliding-selection"
           ref={tabStrip}
           role="tablist"
-          aria-label={t("Open workspace panels")}
+          aria-label="Open workspace panels"
           onKeyDown={(event) => {
             if (!(event.target instanceof HTMLElement) || !event.target.closest('[role="tab"]')) return;
             if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
@@ -214,7 +212,7 @@ export function Inspector({ visible }: { visible: boolean }) {
             const Icon = options.find(
               (option) => option.kind === panel.kind,
             )!.icon;
-            const title = panel.kind === "browser" || panel.kind === "terminal" ? panel.title : t(panel.title);
+            const title = panel.kind === "browser" || panel.kind === "terminal" ? panel.title : panel.title;
             return (
               <div
                 className="workbench-tab"
@@ -237,7 +235,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                 >
                   <span className="unseen-anchor">
                     <Icon size={14} className={`panel-icon-${panel.kind}`} />
-                    {unseenPanels[panel.id] && <span className="unseen-dot" aria-label={t("New activity")} />}
+                    {unseenPanels[panel.id] && <span className="unseen-dot" aria-label="New activity" />}
                   </span>
                   <span className="truncate">{title}</span>
                 </button>
@@ -245,8 +243,8 @@ export function Inspector({ visible }: { visible: boolean }) {
                   type="button"
                   className="workbench-close"
                   disabled={!connected}
-                  aria-label={t("Close {name}", { name: title })}
-                  title={t("Close {name}", { name: title })}
+                  aria-label={`Close ${title}`}
+                  title={`Close ${title}`}
                   onClick={() => send({ t: "panel.close", id: panel.id })}
                 >
                   <X size={12} />
@@ -255,12 +253,12 @@ export function Inspector({ visible }: { visible: boolean }) {
             );
           })}
           {hiddenTabs.length > 0 && <Menu
-            header={t("Open workspace panels")}
+            header="Open workspace panels"
             align="end"
             width={300}
             items={hiddenTabs.map(panel => {
               const Icon = options.find(option => option.kind === panel.kind)!.icon;
-              const title = panel.kind === "browser" || panel.kind === "terminal" ? panel.title : t(panel.title);
+              const title = panel.kind === "browser" || panel.kind === "terminal" ? panel.title : panel.title;
               return {
                 id: panel.id,
                 label: title,
@@ -270,7 +268,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                   selectPanel(panel.id);
                 },
                 action: connected ? {
-                  label: t("Close {name}", { name: title }),
+                  label: `Close ${title}`,
                   icon: <X size={13} />,
                   onSelect: () => send({ t: "panel.close", id: panel.id }),
                 } : undefined,
@@ -281,15 +279,15 @@ export function Inspector({ visible }: { visible: boolean }) {
                 id={id}
                 type="button"
                 className="workbench-overflow"
-                aria-label={t("More panels")}
-                title={t("More panels")}
+                aria-label="More panels"
+                title="More panels"
                 aria-haspopup="menu"
                 aria-expanded={open}
                 onClick={toggle}
               >
                 <span className="unseen-anchor">
                   <MoreHorizontal size={16} />
-                  {hiddenTabs.some(panel => unseenPanels[panel.id]) && <span className="unseen-dot" aria-label={t("New activity")} />}
+                  {hiddenTabs.some(panel => unseenPanels[panel.id]) && <span className="unseen-dot" aria-label="New activity" />}
                 </span>
               </button>
             )}
@@ -298,8 +296,8 @@ export function Inspector({ visible }: { visible: boolean }) {
         <button
           type="button"
           className="icon-btn"
-          aria-label={t(expanded ? "Restore workspace" : "Expand workspace")}
-          title={t(expanded ? "Restore workspace" : "Expand workspace")}
+          aria-label={expanded ? "Restore workspace" : "Expand workspace"}
+          title={expanded ? "Restore workspace" : "Expand workspace"}
           aria-pressed={expanded}
           disabled={!projectId}
           onClick={toggleExpanded}
@@ -307,14 +305,14 @@ export function Inspector({ visible }: { visible: boolean }) {
           {expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
         </button>
         <Menu
-          header={t("Open a panel")}
+          header="Open a panel"
           className="workbench-panel-menu"
           width={292}
           align="end"
           items={options.filter(option => !isRemote() || option.kind !== "browser").map((option) => ({
             id: option.kind,
-            label: t(option.label),
-            hint: t(option.hint),
+            label: option.label,
+            hint: option.hint,
             icon: (
               <option.icon size={17} className={`panel-icon-${option.kind}`} />
             ),
@@ -327,8 +325,8 @@ export function Inspector({ visible }: { visible: boolean }) {
               type="button"
               onClick={toggle}
               disabled={!connected}
-              aria-label={t("Open panel")}
-              title={t("Open panel")}
+              aria-label="Open panel"
+              title="Open panel"
               aria-haspopup="menu"
               aria-expanded={open}
             >
@@ -355,9 +353,9 @@ export function Inspector({ visible }: { visible: boolean }) {
               ) : panel.kind === "terminal" ? (
                 <TerminalPane panel={panel} active={active} />
               ) : panel.kind === "drawing" ? (
-                <Suspense fallback={<div className="pane-empty" role="status">{t("Loading…")}</div>}><DrawingPane projectId={panel.projectId} /></Suspense>
+                <Suspense fallback={<div className="pane-empty" role="status">Loading…</div>}><DrawingPane projectId={panel.projectId} /></Suspense>
               ) : panel.kind === "notes" ? (
-                <Suspense fallback={<div className="pane-empty" role="status">{t("Loading…")}</div>}><NotesPane projectId={panel.projectId} /></Suspense>
+                <Suspense fallback={<div className="pane-empty" role="status">Loading…</div>}><NotesPane projectId={panel.projectId} /></Suspense>
               ) : panel.projectId !== projectId ? null : panel.kind ===
                 "files" ? (
                 <FileTree panelId={panel.id} active={active} />
@@ -373,14 +371,14 @@ export function Inspector({ visible }: { visible: boolean }) {
         })}
         {tabs.length === 0 && (
           <div className="workbench-empty">
-            <p>{t("Open files, a terminal, or a browser alongside the conversation.")}</p>
+            <p>Open files, a terminal, or a browser alongside the conversation.</p>
             <button
               type="button"
               className="btn"
               disabled={!connected}
               onClick={() => openWorkbenchPanel("files")}
             >
-              <Files size={15} />{t("Open files")}
+              <Files size={15} />Open files
             </button>
           </div>
         )}

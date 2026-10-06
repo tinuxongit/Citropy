@@ -1,5 +1,4 @@
 import { serverUrl } from "../lib/environment.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { useEffect, useState } from "react";
 import { X, Download, Code, Eye } from "lucide-react";
 import { FileIcon } from "./FileIcon.tsx";
@@ -25,7 +24,6 @@ export function FilePreview({
   attachmentId?: string;
   hideHeader?: boolean;
 }) {
-  const t = useI18n();
   const active = useApp((state) => state.threads[state.activeThreadId ?? ""]);
   const connected = useApp((state) => state.connected);
   const threadId =
@@ -61,7 +59,7 @@ export function FilePreview({
           <span className="truncate">{file?.name ?? path}</span>
           <a
             className="icon-btn"
-            aria-label={t("Download file")}
+            aria-label="Download file"
             href={`${url}&download=1`}
             download
           >
@@ -71,7 +69,7 @@ export function FilePreview({
             className="icon-btn"
             type="button"
             onClick={onClose}
-            aria-label={t("Close preview")}
+            aria-label="Close preview"
           >
             <X size={15} />
           </button>
@@ -81,7 +79,7 @@ export function FilePreview({
         <div className="preview-toolbar">
           <span>
             {file.mime === "application/octet-stream" && file.text !== undefined
-              ? t("Source file")
+              ? "Source file"
               : file.mime}{" "}
             ·{" "}
             {file.size > 1024 * 1024
@@ -95,7 +93,7 @@ export function FilePreview({
               onClick={() => setSource((value) => !value)}
             >
               {source ? <Eye size={14} /> : <Code size={14} />}
-              {source ? t("Preview") : t("Source")}
+              {source ? "Preview" : "Source"}
             </button>
           )}
         </div>
@@ -106,7 +104,7 @@ export function FilePreview({
         </div>
       ) : !file ? (
         <div className="pane-empty" role="status">
-          {connected ? t("Loading preview…") : t("Reconnect to load this file.")}
+          {connected ? "Loading preview…" : "Reconnect to load this file."}
         </div>
       ) : (
         <>
@@ -141,13 +139,13 @@ export function FilePreview({
           ) : (
             <div className="pane-empty">
               <FileIcon path={file.name} mime={file.mime} size={30} />
-              <p>{t("This file can be downloaded to open in another application.")}</p>
-              <a className="btn" href={`${url}&download=1`} download>{t("Download {name}", { name: file.name })}
+              <p>This file can be downloaded to open in another application.</p>
+              <a className="btn" href={`${url}&download=1`} download>Download {file.name}
               </a>
             </div>
           )}
           {file.truncated && (
-            <p className="feature-note">{t("Showing the first 512 KB. Download the file to read it in full.")}</p>
+            <p className="feature-note">Showing the first 512 KB. Download the file to read it in full.</p>
           )}
         </>
       )}

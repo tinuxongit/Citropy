@@ -8,7 +8,9 @@ import { api, command } from "./github-cli.ts";
 import { git, isRepo, tryGit } from "./git.ts";
 import { logFailure } from "../shared/expected-errors.mjs";
 import { repositoryFromRemote, repositoryName, text } from "./github-input.ts";
+import { workspacePath } from "./workspaces.ts";
 import type {
+  GitHubBranchPull,
   GitHubRequest,
   GitHubRepository,
   GitHubStatus,
@@ -51,6 +53,30 @@ export async function githubStatus(projectId?: string): Promise<GitHubStatus> {
     result.branch = (await git(project.path, ["branch", "--show-current"])).trim();
   }
   return result;
+}
+
+const FAILED_CHECKS = ["FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"];
+
+type CheckRollup = Array<{ status?: string; conclusion?: string; state?: string }>;
+
+function summarizeChecks(rollup: CheckRollup): GitHubBranchPull["checks"] {
+  if (!rollup.length) return "none";
+  if (rollup.some((check) => FAILED_CHECKS.includes(check.conclusion ?? check.state ?? ""))) return "failing";
+  if (rollup.some((check) => check.status ? check.status !== "COMPLETED" : check.state !== "SUCCESS")) return "pending";
+  return "passing";
+}
+
+export async function branchPull(projectId: string, threadId?: string): Promise<{ pull: GitHubBranchPull | null }> {
+  const cwd = workspacePath(projectId, threadId);
+  let output: string;
+  try {
+    output = await command("gh", ["pr", "view", "--json", "number,title,url,state,statusCheckRollup"], undefined, cwd);
+  } catch (error) {
+    if ((error as Error).message.startsWith("no pull requests found")) return { pull: null };
+    throw error;
+  }
+  const pull = JSON.parse(output) as Omit<GitHubBranchPull, "checks"> & { statusCheckRollup: CheckRollup };
+  return { pull: { number: pull.number, title: pull.title, url: pull.url, state: pull.state, checks: summarizeChecks(pull.statusCheckRollup) } };
 }
 
 export async function openSignIn(): Promise<{ message: string }> {

@@ -351,7 +351,7 @@
   color: var(--text-3);
 }
 .git-manager .git-stage-all:hover:not(:disabled) {
-  background: var(--highlight);
+  background: var(--hover);
 }
 .git-list-hint {
   color: var(--text-3);
@@ -370,7 +370,7 @@
 }
 
 .git-file-row:hover {
-  background: var(--highlight);
+  background: var(--hover);
 }
 .git-file-row[data-selected="true"] {
   background: transparent;
@@ -728,7 +728,7 @@
   margin-top: var(--space-4);
 }
 .git-history-row:hover {
-  background: var(--highlight);
+  background: var(--hover);
 }
 .git-history-row[aria-pressed="true"] {
   background: transparent;

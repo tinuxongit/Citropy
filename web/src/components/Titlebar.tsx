@@ -1,17 +1,13 @@
-import { ArrowLeft, ArrowRight, Server } from "lucide-react";
+import { Server } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { environmentName, isRemote, useEnvironments } from "../lib/environment.ts";
-import { useI18n } from "../lib/i18n.ts";
+import { environmentName, isRemote } from "../lib/environment.ts";
 import { GitBranch, PanelLeft, PanelRight, SquarePen } from "./icons.ts";
 import { toggleInspector, useApp } from "../lib/store.ts";
 import { createThread } from "../lib/actions.ts";
-import { goBack, goForward, useNavigationHistory } from "../lib/navigation-history.ts";
-import { AgentsPanel } from "./AgentsPanel.tsx";
-import { NotificationCenter } from "./NotificationCenter.tsx";
 import { WindowControls } from "./WindowControls.tsx";
 import { ThreadTabs } from "./ThreadTabs.tsx";
 import { ThreadSearch } from "./sidebar/ThreadSearch.tsx";
-import type { NotificationTarget } from "../../../shared/protocol.ts";
+import { ThreadDetailsButton } from "./thread-details/ThreadDetails.tsx";
 
 /** Render workspace navigation using branch metadata scoped to the selected checkout. */
 export function Titlebar({
@@ -19,16 +15,12 @@ export function Titlebar({
   sidebarOpen,
   sidebarToggle,
   onToggleSidebar,
-  onNotification,
 }: {
   view: "chat" | "git" | "github" | "settings" | "usage";
   sidebarOpen: boolean;
   sidebarToggle: boolean;
   onToggleSidebar: () => void;
-  onNotification: (target: NotificationTarget) => void;
 }) {
-  const t = useI18n();
-  const { activeId: environment } = useEnvironments();
   const projects = useApp((state) => state.projects);
   const activeProjectId = useApp((state) => state.activeProjectId);
   const activeThreadId = useApp((state) => state.activeThreadId);
@@ -38,7 +30,6 @@ export function Titlebar({
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const panelActivity = useApp((state) => state.panels.some((panel) => panel.projectId === state.activeProjectId && state.unseenPanels[panel.id]));
   const canCreateThread = useApp((state) => state.connected && !state.creatingThread && Boolean(state.activeProjectId));
-  const history = useNavigationHistory();
 
   const project = projects.find((entry) => entry.id === activeProjectId);
   // The project-level Git cache can still describe a previously selected worktree.
@@ -47,7 +38,7 @@ export function Titlebar({
   const branch = thread
     ? thread.workspaceBranch ?? (onProjectCheckout ? project?.branch : undefined)
     : project?.branch;
-  const workspaceContext = isRemote() || Boolean(branch && view === "chat");
+  const workspaceContext = isRemote();
   const header = useRef<HTMLElement>(null);
   useEffect(() => {
     const element = header.current;
@@ -74,42 +65,28 @@ export function Titlebar({
             type="button"
             onClick={onToggleSidebar}
             aria-expanded={sidebarOpen}
-            aria-label={t("Toggle sidebar")}
-            title={t("Toggle sidebar")}
+            aria-label="Toggle sidebar"
+            title="Toggle sidebar"
           >
             <PanelLeft size={15} />
           </button>}
           {view === "chat" && sidebarOpen && <ThreadSearch />}
         </div>
       </div>
-      <div className="topbar-navigation">
-        <button className="icon-btn topbar-history" type="button" onClick={goBack} disabled={!history.canGoBack} aria-label={t("Back")} title={t("Back")}>
-          <ArrowLeft size={15} />
-        </button>
-        <button className="icon-btn topbar-history" type="button" onClick={goForward} disabled={!history.canGoForward} aria-label={t("Forward")} title={t("Forward")}>
-          <ArrowRight size={15} />
-        </button>
-      </div>
       <nav
         className="topbar-center breadcrumb"
         data-view={view}
-        aria-label={t("Current workspace and view")}
+        aria-label="Current workspace and view"
       >
         {view === "chat" && <ThreadTabs />}
         {workspaceContext && <div className="workspace-breadcrumb">
           {isRemote() && <span className="environment-breadcrumb" title={environmentName()}><Server size={13} /><span className="truncate">{environmentName()}</span></span>}
-          {branch && view === "chat" && (
-            <span className="branch" title={branch}>
-              <GitBranch size={12} />
-              <span className="truncate">{branch}</span>
-            </span>
-          )}
         </div>}
         {(thread || view !== "chat") && (
           <>
             {workspaceContext && <span className="breadcrumb-separator" aria-hidden="true">/</span>}
             <span className="thread-title truncate">
-              {view === "git" ? t("Source control") : view === "github" ? "GitHub" : view === "usage" ? t("Usage") : view === "settings" ? t("Settings") : thread?.title}
+              {view === "git" ? "Source control" : view === "github" ? "GitHub" : view === "usage" ? "Usage" : view === "settings" ? "Settings" : thread?.title}
             </span>
           </>
         )}
@@ -120,16 +97,15 @@ export function Titlebar({
       </nav>
 
       <div className="topbar-right">
-        <AgentsPanel />
-        <NotificationCenter key={environment} onOpen={onNotification} />
+        {view === "chat" && <ThreadDetailsButton />}
         {view === "chat" && (
           <button
             className="icon-btn topbar-new-thread"
             type="button"
             onClick={() => void createThread()}
             disabled={!canCreateThread}
-            aria-label={t("New thread")}
-            title={t("New thread")}
+            aria-label="New thread"
+            title="New thread"
           >
             <SquarePen size={17} />
           </button>
@@ -141,12 +117,12 @@ export function Titlebar({
             onClick={toggleInspector}
             data-active={inspectorOpen}
             aria-expanded={inspectorOpen}
-            aria-label={t("Toggle inspector")}
-            title={t("Toggle inspector")}
+            aria-label="Toggle inspector"
+            title="Toggle inspector"
           >
             <span className="unseen-anchor">
-              <PanelRight size={15} />
-              {panelActivity && <span className="unseen-dot" aria-label={t("New panel activity")} />}
+              <PanelRight size={16} />
+              {panelActivity && <span className="unseen-dot" aria-label="New panel activity" />}
             </span>
           </button>
         )}

@@ -1,5 +1,4 @@
 import { Bug, FileText, Lightbulb, ListChecks, NotebookPen, SearchCheck, Target, Users } from "lucide-react";
-import type { Translator } from "../../lib/i18n.ts";
 
 export interface NoteTemplate {
   id: string;
@@ -13,56 +12,56 @@ export interface NoteTemplate {
 const sections = (...headings: Array<[heading: string, start: string]>) =>
   headings.map(([heading, start]) => `## ${heading}\n${start}`).join("\n\n");
 
-export function noteTemplates(t: Translator): NoteTemplate[] {
+export function noteTemplates(): NoteTemplate[] {
   return [
-    { id: "blank", label: t("Blank note"), hint: t("Start from an empty page"), icon: NotebookPen, title: "", body: "" },
+    { id: "blank", label: "Blank note", hint: "Start from an empty page", icon: NotebookPen, title: "", body: "" },
     {
       id: "brief",
-      label: t("Task brief"),
-      hint: t("Tell the agent what to build and when it's done"),
+      label: "Task brief",
+      hint: "Tell the agent what to build and when it's done",
       icon: Target,
-      title: t("Task brief"),
-      body: sections([t("Goal"), ""], [t("Context"), ""], [t("Constraints"), "- "], [t("Done when"), "- [ ] "]),
+      title: "Task brief",
+      body: sections(["Goal", ""], ["Context", ""], ["Constraints", "- "], ["Done when", "- [ ] "]),
     },
     {
       id: "bug",
-      label: t("Bug report"),
-      hint: t("What broke, what you expected, how to repeat it"),
+      label: "Bug report",
+      hint: "What broke, what you expected, how to repeat it",
       icon: Bug,
-      title: t("Bug report"),
-      body: sections([t("What happened"), ""], [t("What I expected"), ""], [t("Steps to reproduce"), "1. "], [t("Where"), "- "]),
+      title: "Bug report",
+      body: sections(["What happened", ""], ["What I expected", ""], ["Steps to reproduce", "1. "], ["Where", "- "]),
     },
     {
       id: "idea",
-      label: t("Feature idea"),
-      hint: t("The problem, the idea, the open questions"),
+      label: "Feature idea",
+      hint: "The problem, the idea, the open questions",
       icon: Lightbulb,
-      title: t("Feature idea"),
-      body: sections([t("Problem"), ""], [t("Idea"), ""], [t("Open questions"), "- "]),
+      title: "Feature idea",
+      body: sections(["Problem", ""], ["Idea", ""], ["Open questions", "- "]),
     },
     {
       id: "todo",
-      label: t("To-do list"),
-      hint: t("A checklist you can tick off"),
+      label: "To-do list",
+      hint: "A checklist you can tick off",
       icon: ListChecks,
-      title: t("To do"),
+      title: "To do",
       body: "- [ ] ",
     },
     {
       id: "review",
-      label: t("Review notes"),
-      hint: t("Things to check and change in a diff"),
+      label: "Review notes",
+      hint: "Things to check and change in a diff",
       icon: SearchCheck,
-      title: t("Review notes"),
-      body: sections([t("Check"), "- [ ] "], [t("Concerns"), "- "], [t("Suggestions"), "- "]),
+      title: "Review notes",
+      body: sections(["Check", "- [ ] "], ["Concerns", "- "], ["Suggestions", "- "]),
     },
     {
       id: "meeting",
-      label: t("Meeting notes"),
-      hint: t("Who was there, what was decided, who does what"),
+      label: "Meeting notes",
+      hint: "Who was there, what was decided, who does what",
       icon: Users,
-      title: t("Meeting notes"),
-      body: sections([t("Attendees"), "- "], [t("Notes"), ""], [t("Decisions"), "- "], [t("Action items"), "- [ ] "]),
+      title: "Meeting notes",
+      body: sections(["Attendees", "- "], ["Notes", ""], ["Decisions", "- "], ["Action items", "- [ ] "]),
     },
   ];
 }

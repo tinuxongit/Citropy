@@ -1,4 +1,3 @@
-import { useI18n } from "../lib/i18n.ts";
 import { useCallback, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { escapeHtml } from "../lib/escape-html.ts";
@@ -60,7 +59,6 @@ function rows(patch: FilePatch, interactive = false): Row[] {
 }
 
 export function DiffView({ patch, limit = 26, showHeader = true, showHunkHeaders = false, partId, expanded: controlledExpanded, onExpand, onComment, onHunk, staged, busy }: Props) {
-  const t = useI18n();
   const [disclosed, setDisclosed] = useDisclosure(partId, "diff");
   const expanded = controlledExpanded ?? disclosed;
   const viewport = useRef<HTMLDivElement>(null);
@@ -102,28 +100,28 @@ export function DiffView({ patch, limit = 26, showHeader = true, showHunkHeaders
           <LineCounts added={patch.added} removed={patch.removed} />
         </div>
       )}
-      <div className="diff-body scroll" ref={viewport} tabIndex={0} role="region" aria-label={t("Diff for {path}", { path: patch.path })}>
+      <div className="diff-body scroll" ref={viewport} tabIndex={0} role="region" aria-label={`Diff for ${patch.path}`}>
         <div className="diff-lines" style={{ height: lines.getTotalSize() }}>
           {lines.getVirtualItems().map((item) => {
             const row = visible[item.index]!;
-            if (row.hunk !== undefined) return <div className="diff-hunk" key={item.key} data-index={item.index} ref={lines.measureElement} style={{ transform: `translateY(${item.start}px)` }}><span>{row.text || t("Change {number}", { number: row.hunk + 1 })}</span>{onHunk && <><button type="button" disabled={busy} onClick={() => onHunk(row.hunk!, staged ? "unstage" : "stage")}>{t(staged ? "Unstage hunk" : "Stage hunk")}</button>{!staged && <button type="button" disabled={busy} onClick={() => onHunk(row.hunk!, "revert")}>{t("Revert hunk")}</button>}</>}</div>;
+            if (row.hunk !== undefined) return <div className="diff-hunk" key={item.key} data-index={item.index} ref={lines.measureElement} style={{ transform: `translateY(${item.start}px)` }}><span>{row.text || `Change ${row.hunk + 1}`}</span>{onHunk && <><button type="button" disabled={busy} onClick={() => onHunk(row.hunk!, staged ? "unstage" : "stage")}>{staged ? "Unstage hunk" : "Stage hunk"}</button>{!staged && <button type="button" disabled={busy} onClick={() => onHunk(row.hunk!, "revert")}>Revert hunk</button>}</>}</div>;
             return (
               <div className="diff-line" data-interactive={Boolean(onComment) || undefined} data-type={row.type} data-index={item.index} key={item.key} ref={lines.measureElement} style={{ transform: `translateY(${item.start}px)` }}>
                 <span className="diff-no">{row.oldNo ?? ""}</span>
                 <span className="diff-no">{row.newNo ?? ""}</span>
                 <span className="diff-sign">{row.type === "add" ? "+" : row.type === "del" ? "-" : " "}</span>
                 <span className="diff-code" dangerouslySetInnerHTML={{ __html: render(row) }} />
-                {onComment && (row.newNo ?? row.oldNo) !== undefined && <button className="diff-comment" type="button" aria-label={t("Comment on line {number}", { number: row.newNo ?? row.oldNo! })} onClick={() => onComment(row.type === "del" ? row.oldNo! : row.newNo!, row.type === "del" ? "old" : "new")}><MessageSquarePlus size={13} /></button>}
+                {onComment && (row.newNo ?? row.oldNo) !== undefined && <button className="diff-comment" type="button" aria-label={`Comment on line ${row.newNo ?? row.oldNo!}`} onClick={() => onComment(row.type === "del" ? row.oldNo! : row.newNo!, row.type === "del" ? "old" : "new")}><MessageSquarePlus size={13} /></button>}
               </div>
             );
           })}
         </div>
       </div>
       {hidden > 0 && (
-        <button className="diff-more" type="button" onClick={() => onExpand ? onExpand() : setDisclosed(true)}>{t(hidden === 1 ? "Show {count} more line" : "Show {count} more lines", { count: hidden })}
+        <button className="diff-more" type="button" onClick={() => onExpand ? onExpand() : setDisclosed(true)}>{hidden === 1 ? `Show ${hidden} more line` : `Show ${hidden} more lines`}
         </button>
       )}
-      {patch.truncated && <div className="diff-more" data-static="true">{t("Diff truncated")}</div>}
+      {patch.truncated && <div className="diff-more" data-static="true">Diff truncated</div>}
     </div>
   );
 }

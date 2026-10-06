@@ -4,7 +4,6 @@ import { VirtualList } from "../VirtualList.tsx";
 import { fileLabel } from "./files.ts";
 import { groupGitFiles } from "../../lib/git-files.ts";
 import type { GitSelection } from "../GitReview.tsx";
-import type { useI18n } from "../../lib/i18n.ts";
 import type { GitFile, GitOperation } from "../../../../shared/protocol.ts";
 
 export function FileGroup({
@@ -13,7 +12,6 @@ export function FileGroup({
   inIndex,
   disabled,
   selection,
-  t,
   match,
   act,
   setSelection,
@@ -23,7 +21,6 @@ export function FileGroup({
   inIndex: boolean;
   disabled: boolean;
   selection: GitSelection | null;
-  t: ReturnType<typeof useI18n>;
   match: (text: string) => boolean;
   act: (operation: GitOperation, value?: string, page?: number, remote?: string) => Promise<boolean>;
   setSelection: (value: GitSelection | null) => void;
@@ -32,7 +29,7 @@ export function FileGroup({
     <section className="git-file-group">
       <header>
         <h3>
-          {t(title)}
+          {title}
           <span className="git-count">{list.length}</span>
         </h3>
         <button
@@ -41,22 +38,22 @@ export function FileGroup({
           onClick={() => void act(inIndex ? "unstageAll" : "stageAll")}
         >
           {inIndex ? <Minus size={14} /> : <Plus size={14} />}
-          {inIndex ? t("Unstage all") : t("Stage all")}
+          {inIndex ? "Unstage all" : "Stage all"}
         </button>
       </header>
       {!list.length && (
         <p className="git-list-hint">
           {inIndex
-            ? t("Stage files to include them in your commit.")
-            : t("No unstaged changes.")}
+            ? "Stage files to include them in your commit."
+            : "No unstaged changes."}
         </p>
       )}
       {groupGitFiles(list.filter((file) => match(file.path)), inIndex).map((group) => (
         <div className="git-change-category" key={group.kind}>
-          <h4 className="change-category" data-kind={group.kind}>{t(group.label)}<span>{group.files.length}</span></h4>
+          <h4 className="change-category" data-kind={group.kind}>{group.label}<span>{group.files.length}</span></h4>
           <VirtualList items={group.files} itemKey="path" estimateSize={52}>
           {(file) => {
-            const label = fileLabel(file, inIndex, t);
+            const label = fileLabel(file, inIndex);
             const active =
               selection?.kind === "file" &&
               selection.path === file.path &&
@@ -92,7 +89,7 @@ export function FileGroup({
                 </button>
                 <button
                   className="icon-btn git-stage-button"
-                  title={(inIndex ? t("Unstage ") : t("Stage ")) + file.path}
+                  title={(inIndex ? "Unstage " : "Stage ") + file.path}
                   disabled={disabled}
                   onClick={() =>
                     void act(inIndex ? "unstage" : "stage", file.path)

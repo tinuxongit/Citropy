@@ -9,7 +9,6 @@ import { store } from "./store.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
 import { providers } from "./providers/index.ts";
 import { providerInfo } from "./provider-registry.ts";
-import { remoteId } from "./remote.ts";
 import { runtimeFor, runtimeIfExists } from "./runtime.ts";
 import { bus } from "./bus.ts";
 import * as browser from "./browser.ts";

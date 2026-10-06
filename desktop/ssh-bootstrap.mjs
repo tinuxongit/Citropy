@@ -45,12 +45,12 @@ try {
           reused = true;
         } else {
           if (!response.ok) throw new Error(await response.text());
-          for (let attempt = 0; attempt < 150 && alive(previous.pid); attempt++)
+          for (let attempt = 0; attempt < 150 && processExists(previous.pid); attempt++)
             await new Promise(resolve => setTimeout(resolve, 100));
-          if (alive(previous.pid)) throw new Error("The remote server is still shutting down. Reconnect shortly.");
+          if (processExists(previous.pid)) throw new Error("The remote server is still shutting down. Reconnect shortly.");
         }
       }
-    } else if (alive(previous.pid)) {
+    } else if (processExists(previous.pid)) {
       throw new Error("The saved remote server is not responding. Check its server.log on the SSH host before reconnecting.");
     }
   }

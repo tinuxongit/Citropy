@@ -25,7 +25,7 @@ import { environmentSlice } from "../lib/live-environments.ts";
 import { useApp, confirmAction, viewportWidth } from "../lib/store.ts";
 import { environmentId } from "../lib/environment.ts";
 import { openInNewTab } from "../lib/actions.ts";
-import { useI18n } from "../lib/i18n.ts";
+import { ActionError } from "./ActionError.tsx";
 
 export async function organizeConversation(id: string, patch: object, environment?: string) {
   await api(`threads/organize?threadId=${id}`, {
@@ -45,12 +45,11 @@ export function ConversationMenu({
   onMove?: (direction: number) => void;
   rowActions?: MenuItem[];
 }) {
-  const t = useI18n();
   const projects = useApp(state => state.projects);
   const tabbable = useApp(state => (environment ?? environmentId()) === environmentId() && !state.openThreadIds.includes(thread.id));
   const project = (environment ? environmentSlice(environment)?.projects : projects)?.find(project => project.id === thread.projectId);
   const worktree = async (action: "copy" | "remove") => {
-    if (!await confirmAction({ title: t(action === "copy" ? "Continue in a new worktree?" : "Remove this worktree?"), description: t(action === "copy" ? "Copy the current changes to a new branch and continue this task there. Changes remain in the original folder. The copied changes start unstaged." : "Only a clean worktree unused by other tasks can be removed. The branch and conversation history stay available."), label: t(action === "copy" ? "Copy and continue" : "Remove worktree"), danger: action === "remove" })) return;
+    if (!await confirmAction({ title: action === "copy" ? "Continue in a new worktree?" : "Remove this worktree?", description: action === "copy" ? "Copy the current changes to a new branch and continue this task there. Changes remain in the original folder. The copied changes start unstaged." : "Only a clean worktree unused by other tasks can be removed. The branch and conversation history stay available.", label: action === "copy" ? "Copy and continue" : "Remove worktree", danger: action === "remove" })) return;
     setBusy(true);
     try { await api(`threads/worktree?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ action }) }, environment); }
     catch (error) { reportError(error); }
@@ -100,25 +99,25 @@ export function ConversationMenu({
         sheet={viewportWidth() <= 600}
         triggerId={menuId}
         items={[
-          ...(tabbable ? [{ id: "open-tab", label: t("Open in new tab"), icon: <SquarePlus size={15} />, onSelect: () => openInNewTab(thread.id) }] : []),
-          ...(project?.isGit ? [{ id: "worktree", label: t("Continue in new worktree…"), icon: <GitFork size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
-          ...(thread.archived && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: t("Remove worktree…"), icon: <Trash2 size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
-          ...(thread.canRedo ? [{ id: "redo", label: t("Redo restored turn"), icon: <RefreshCw size={15} />, disabled: thread.running, onSelect: () => { void api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ redo: true }) }, environment).catch(reportError); } }] : []),
+          ...(tabbable ? [{ id: "open-tab", label: "Open in new tab", icon: <SquarePlus size={15} />, onSelect: () => openInNewTab(thread.id) }] : []),
+          ...(project?.isGit ? [{ id: "worktree", label: "Continue in new worktree…", icon: <GitFork size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
+          ...(thread.archived && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: "Remove worktree…", icon: <Trash2 size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
+          ...(thread.canRedo ? [{ id: "redo", label: "Redo restored turn", icon: <RefreshCw size={15} />, disabled: thread.running, onSelect: () => { void api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ redo: true }) }, environment).catch(reportError); } }] : []),
           {
             id: "pin",
-            label: thread.pinned ? t("Unpin conversation") : t("Pin conversation"),
+            label: thread.pinned ? "Unpin conversation" : "Pin conversation",
             icon: thread.pinned ? <PinOff size={15} /> : <Pin size={15} />,
             onSelect: () => update({ pinned: !thread.pinned }),
           },
           {
             id: "rename",
-            label: t("Rename…"),
+            label: "Rename…",
             icon: <Pencil size={15} />,
             onSelect: () => edit("title"),
           },
           ...(!thread.parentThreadId ? [{
             id: "generate-title",
-            label: generatingTitle ? t("Naming conversation…") : t("Generate title"),
+            label: generatingTitle ? "Naming conversation…" : "Generate title",
             icon: <RefreshCw size={15} />,
             disabled: generatingTitle,
             onSelect: () => void regenerateTitle(),
@@ -126,13 +125,13 @@ export function ConversationMenu({
           ...(onMove ? [
             {
               id: "up",
-              label: t("Move up"),
+              label: "Move up",
               icon: <ArrowUp size={15} />,
               onSelect: () => onMove(-1),
             },
             {
               id: "down",
-              label: t("Move down"),
+              label: "Move down",
               icon: <ArrowDown size={15} />,
               onSelect: () => onMove(1),
             },
@@ -140,8 +139,8 @@ export function ConversationMenu({
           {
             id: "pr",
             label: thread.pullRequest
-              ? t("Edit pull request link…")
-              : t("Link pull request…"),
+              ? "Edit pull request link…"
+              : "Link pull request…",
             icon: <GitPullRequest size={15} />,
             onSelect: () => edit("pullRequest"),
           },
@@ -150,8 +149,8 @@ export function ConversationMenu({
                 {
                   id: "snooze",
                   label: thread.snoozedUntil
-                    ? t("Wake conversation")
-                    : t("Snooze…"),
+                    ? "Wake conversation"
+                    : "Snooze…",
                   icon: <Clock size={15} />,
                   onSelect: () =>
                     thread.snoozedUntil
@@ -161,8 +160,8 @@ export function ConversationMenu({
                 {
                   id: "archive",
                   label: thread.archived
-                    ? t("Restore conversation")
-                    : t("Archive conversation"),
+                    ? "Restore conversation"
+                    : "Archive conversation",
                   icon: thread.archived ? (
                     <ArchiveRestore size={15} />
                   ) : (
@@ -179,7 +178,7 @@ export function ConversationMenu({
             id={id}
             className="thread-more"
             type="button"
-            aria-label={`${t("Organize")} ${thread.title}`}
+            aria-label={`Organize ${thread.title}`}
             aria-haspopup="menu"
             aria-expanded={open || Boolean(snoozeAnchor)}
             onClick={toggle}
@@ -190,7 +189,7 @@ export function ConversationMenu({
       />
       <AnimatePresence>{editing && (
         <Modal
-          title={editing === "title" ? t("Rename conversation") : t("Link a pull request")}
+          title={editing === "title" ? "Rename conversation" : "Link a pull request"}
           onClose={() => setEditing(undefined)}
           onSubmit={save}
           busy={busy}
@@ -204,20 +203,20 @@ export function ConversationMenu({
                 disabled={busy}
                 onClick={() => setEditing(undefined)}
               >
-                {t("Cancel")}
+                Cancel
               </button>
               <button
                 className="btn"
                 data-variant="primary"
                 disabled={busy || (editing !== "pullRequest" && !value.trim())}
               >
-                {t("Save")}
+                Save
               </button>
             </>
           }
         >
           <label className="feature-field">
-            {editing === "title" ? t("Name") : t("GitHub pull request URL")}
+            {editing === "title" ? "Name" : "GitHub pull request URL"}
             <input
               type="text"
               value={value}
@@ -230,11 +229,7 @@ export function ConversationMenu({
               }
             />
           </label>
-          {error && (
-            <p className="feature-error" role="alert">
-              {error}
-            </p>
-          )}
+          <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
         </Modal>
       )}</AnimatePresence>
       {snoozeAnchor && <SnoozeMenu thread={thread} environment={environment} anchor={snoozeAnchor} onClose={() => setSnoozeAnchor(undefined)} />}

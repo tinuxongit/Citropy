@@ -3,14 +3,13 @@ import { AnimatePresence } from "motion/react";
 import { GitBranch, RotateCcw, FileDiff, MessagesSquare, Layers } from "lucide-react";
 import { api, reportError } from "../lib/api.ts";
 import { selectThread, useApp } from "../lib/store.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { Modal } from "./Modal.tsx";
 import { TaskReview } from "./TaskReview.tsx";
 import { fileRestoreIssue } from "../../../shared/review.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
+import { ActionError } from "./ActionError.tsx";
 
 export function MessageActions({ threadId, messageId, user }: { threadId: string; messageId: string; user: boolean }) {
-  const t = useI18n();
   const [dialog, setDialog] = useState<"restore" | "review">();
   const checkpoints = useApp(state => state.threads[threadId]?.checkpoints);
   const running = useApp(state => Boolean(state.threads[threadId]?.running));
@@ -25,17 +24,17 @@ export function MessageActions({ threadId, messageId, user }: { threadId: string
   const checkpoint = checkpoints?.find(entry => entry.messageId === messageId);
   const fileIssue = fileRestoreIssue(checkpoints, messageId);
   const unavailable = fileIssue === "missing"
-    ? t("No file checkpoint was saved for this message.")
+    ? "No file checkpoint was saved for this message."
     : fileIssue === "incomplete"
-      ? t("No completed file checkpoint is available for this task yet.")
+      ? "No completed file checkpoint is available for this task yet."
       : fileIssue === "shared"
-        ? t("Another task worked in this folder. Only conversation history can be restored.")
+        ? "Another task worked in this folder. Only conversation history can be restored."
         : undefined;
   const restoreDisabled = busy || running || compacting || !connected || (mode !== "conversation" && Boolean(fileIssue));
   const choices = [
-    { value: "conversation", label: t("Conversation only"), description: t("Rewind the chat and start a new provider session."), icon: MessagesSquare },
-    { value: "files", label: t("Files only"), description: t("Restore file changes since this message. Keep the chat."), icon: FileDiff },
-    { value: "both", label: t("Files and conversation"), description: t("Restore file changes and rewind the chat together."), icon: Layers },
+    { value: "conversation", label: "Conversation only", description: "Rewind the chat and start a new provider session.", icon: MessagesSquare },
+    { value: "files", label: "Files only", description: "Restore file changes since this message. Keep the chat.", icon: FileDiff },
+    { value: "both", label: "Files and conversation", description: "Restore file changes and rewind the chat together.", icon: Layers },
   ] as const;
   const restore = async () => {
     if (restoreDisabled) return;
@@ -53,25 +52,25 @@ export function MessageActions({ threadId, messageId, user }: { threadId: string
   };
   if (nativeAgent) return null;
   return <><span className="message-actions">
-    <button className="icon-btn" type="button" aria-label={t("Branch from this message")} title={t("Branch from this message")} disabled={busy} onClick={() => void fork()}><GitBranch size={13} /></button>
-    {user && <button className="icon-btn" type="button" aria-label={t("Restore before this message")} title={t("Restore before this message")} disabled={busy || running} onClick={() => { setMode("conversation"); setDialog("restore"); setError(""); }}><RotateCcw size={13} /></button>}
-    {checkpoint?.before && <button className="icon-btn" type="button" aria-label={t("Review this turn")} title={t("Review this turn")} onClick={() => setDialog("review")}><FileDiff size={13} /></button>}
+    <button className="icon-btn" type="button" aria-label="Branch from this message" title="Branch from this message" disabled={busy} onClick={() => void fork()}><GitBranch size={13} /></button>
+    {user && <button className="icon-btn" type="button" aria-label="Restore before this message" title="Restore before this message" disabled={busy || running} onClick={() => { setMode("conversation"); setDialog("restore"); setError(""); }}><RotateCcw size={13} /></button>}
+    {checkpoint?.before && <button className="icon-btn" type="button" aria-label="Review this turn" title="Review this turn" onClick={() => setDialog("review")}><FileDiff size={13} /></button>}
   </span>
     <AnimatePresence>
       {reviewThread && <TaskReview thread={reviewThread} messageId={messageId} onClose={() => setDialog(undefined)} />}
       {dialog === "restore" && <Modal
-        title={t("Restore before this message")}
+        title="Restore before this message"
         className="restore-dialog"
         busy={busy}
         onClose={() => setDialog(undefined)}
         onSubmit={() => void restore()}
-        description={t("Return to the point before this message.")}
+        description="Return to the point before this message."
         footer={<>
-          <button className="btn" type="button" data-cancel disabled={busy} onClick={() => setDialog(undefined)}>{t("Cancel")}</button>
-          <button className="btn" data-variant="primary" disabled={restoreDisabled}>{t(busy ? "Restoring…" : "Restore")}</button>
+          <button className="btn" type="button" data-cancel disabled={busy} onClick={() => setDialog(undefined)}>Cancel</button>
+          <button className="btn" data-variant="primary" disabled={restoreDisabled}>{busy ? "Restoring…" : "Restore"}</button>
         </>}
       >
-        <fieldset className="restore-options" aria-label={t("What to restore")} disabled={busy}>
+        <fieldset className="restore-options" aria-label="What to restore" disabled={busy}>
           {choices.map(({ value, label, description, icon: Icon }) => {
             const disabled = value !== "conversation" && Boolean(fileIssue);
             return <label className="restore-choice" key={value}>
@@ -94,8 +93,8 @@ export function MessageActions({ threadId, messageId, user }: { threadId: string
           })}
         </fieldset>
         {unavailable && <p className="restore-unavailable" id={`${id}-unavailable`} role="status">{unavailable}</p>}
-        <p className="restore-note">{t("Running commands and external services are not undone. Redo is available until your next message.")}</p>
-        {error && <p className="feature-error" role="alert">{error}</p>}
+        <p className="restore-note">Running commands and external services are not undone. Redo is available until your next message.</p>
+        <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
       </Modal>}
     </AnimatePresence>
   </>;

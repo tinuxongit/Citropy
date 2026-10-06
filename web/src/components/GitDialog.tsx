@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ArrowRight, GitBranch } from "lucide-react";
 import { Modal } from "./Modal.tsx";
 import type { GitOperation } from "../../../shared/protocol.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 
 export interface GitDialogAction {
@@ -34,7 +33,6 @@ export function GitDialog({
   onClose: () => void;
   onSubmit: (value: string, remote?: string) => Promise<void>;
 }) {
-  const t = useI18n();
   const [value, setValue] = useState(action.value ?? "");
   const [remote, setRemote] = useState("origin");
 
@@ -45,8 +43,8 @@ export function GitDialog({
 
   return (
     <Modal
-      title={t(action.title)}
-      description={t(action.description)}
+      title={action.title}
+      description={action.description}
       icon={<GitBranch size={21} />}
       busy={busy}
       danger={action.danger}
@@ -66,7 +64,7 @@ export function GitDialog({
             onClick={onClose}
             data-cancel
           >
-            {t("Cancel")}
+            Cancel
           </button>
           <button
             className="btn"
@@ -78,18 +76,18 @@ export function GitDialog({
             ) : (
               !action.danger && <ArrowRight size={15} />
             )}
-            {busy ? t("Working…") : t(action.label)}
+            {busy ? "Working…" : action.label}
           </button>
         </>
       }
     >
       {action.fields === "remote" && (
         <label className="git-field">
-          {t("Remote name")}
+          Remote name
           <input
             value={remote}
             onChange={(event) => setRemote(event.target.value)}
-            placeholder={t("origin")}
+            placeholder="origin"
             required
             disabled={busy}
           />
@@ -98,19 +96,19 @@ export function GitDialog({
       {action.fields && (
         <label className="git-field">
           {action.fields === "branch"
-            ? t("Branch name")
+            ? "Branch name"
             : action.fields === "stash"
-              ? t("Description (optional)")
-              : t("Repository URL")}
+              ? "Description (optional)"
+              : "Repository URL"}
           <input
             value={value}
             onChange={(event) => setValue(event.target.value)}
             placeholder={
               action.fields === "branch"
-                ? t("feature/my-change")
+                ? "feature/my-change"
                 : action.fields === "stash"
-                  ? t("Work in progress")
-                  : t("git@github.com:owner/repository.git")
+                  ? "Work in progress"
+                  : "git@github.com:owner/repository.git"
             }
             required={action.fields !== "stash"}
             disabled={busy}
@@ -119,13 +117,13 @@ export function GitDialog({
           />
         </label>
       )}
-      {!connected && <p role="alert">{t("Reconnect to Citropy before continuing.")}</p>}
+      {!connected && <p role="alert">Reconnect to Citropy before continuing.</p>}
       {error && (
         <div className="git-dialog-error" role="alert">
           <strong>{error}</strong>
           {errorDetail && (
             <details>
-              <summary>{t("Show Git details")}</summary>
+              <summary>Show Git details</summary>
               <pre>{errorDetail}</pre>
             </details>
           )}

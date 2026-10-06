@@ -13,6 +13,7 @@ import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { flushHeld, holdMessage } from "./offline.ts";
 import { claimHistoryRequest } from "./history-cache.ts";
+import { isUnusedThread } from "./thread-started.ts";
 import { api, reportError } from "./api.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
@@ -20,6 +21,7 @@ import type {
   FilePatch,
   GitResult,
   PermissionMode,
+  ProjectScript,
   ProjectSettings,
   ProviderId,
   ThreadMeta,
@@ -237,8 +239,11 @@ export function openInNewTab(id: string): void {
 }
 
 export function closeTab(id: string): void {
-  const { activeThreadId, openThreadIds, threads } = useApp.getState();
+  const state = useApp.getState();
+  const { activeThreadId, openThreadIds, threads } = state;
+  const unused = state.connected && isUnusedThread(state, id);
   updateTabs((state) => withoutTab(state, id));
+  if (unused) send({ t: "thread.remove", id });
   if (id !== activeThreadId) return;
   const next = neighborTab(openThreadIds.filter((open) => threads[open]), id);
   if (next) showThread(next);
@@ -279,14 +284,21 @@ export function readThreadNotifications(threadId: string, since = 0): void {
         (!since || entry.createdAt < since),
     )
     .map((entry) => entry.id);
-  if (!ids.length) return;
+  readNotifications(ids);
+}
+
+export function readNotifications(ids: string[]): void {
   const pending = new Set(ids);
+  const { notifications } = useApp.getState();
+  const unread = notifications.filter((entry) => !entry.read && pending.has(entry.id)).map((entry) => entry.id);
+  if (!unread.length) return;
+  const read = new Set(unread);
   useApp.setState({
-    notifications: state.notifications.map((entry) =>
-      pending.has(entry.id) ? { ...entry, read: true } : entry,
+    notifications: notifications.map((entry) =>
+      read.has(entry.id) ? { ...entry, read: true } : entry,
     ),
   });
-  send({ t: "notifications.read", ids });
+  send({ t: "notifications.read", ids: unread });
 }
 
 export async function sendMessage(
@@ -471,6 +483,7 @@ export function manageGit(
   value?: string,
   offset?: number,
   remote?: string,
+  threadId?: string,
 ) {
   const id = requestId();
   const promise = awaitResponse<GitResult>(id);
@@ -478,12 +491,22 @@ export function manageGit(
     t: "git.manage",
     requestId: id,
     projectId,
+    threadId,
     operation,
     value,
     offset,
     remote,
   });
   return promise;
+}
+
+export function saveProjectScripts(projectId: string, scripts: ProjectScript[]): void {
+  send({ t: "project.scripts", id: projectId, scripts });
+}
+
+export function runProjectScript(projectId: string, threadId: string, scriptId: string): void {
+  useApp.setState({ inspectorOpen: true });
+  send({ t: "project.runScript", projectId, threadId, scriptId });
 }
 
 export async function github<K extends keyof GitHubRequests>(

@@ -161,6 +161,14 @@ export interface GitHubStatus {
   hasCommits?: boolean;
 }
 
+export interface GitHubBranchPull {
+  number: number;
+  title: string;
+  url: string;
+  state: "OPEN" | "CLOSED" | "MERGED";
+  checks: "passing" | "failing" | "pending" | "none";
+}
+
 export interface GitHubDetail {
   item: GitHubItem;
   comments: GitHubComment[];
@@ -246,6 +254,7 @@ export interface GitHubRequests {
   };
   authenticate: Record<string, never>;
   status: { projectId?: string };
+  branchPull: { projectId: string; threadId?: string };
   repositories: { page?: number; query?: string; scope: "mine" | "all" };
   repository: { repo: string };
   items: {
@@ -273,6 +282,7 @@ export interface GitHubResponses {
   publishRepository: GitHubRepository;
   authenticate: { message: string };
   status: GitHubStatus;
+  branchPull: { pull: GitHubBranchPull | null };
   repositories: GitHubPage<GitHubRepository>;
   repository: GitHubRepository;
   items: GitHubPage<GitHubItem>;

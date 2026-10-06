@@ -49,12 +49,6 @@ export function cancelThread(threadId: string, forgetAllowed = true): void {
   if (forgetAllowed) alwaysAllowed.delete(threadId);
 }
 
-export function cancelTool(threadId: string, tool: string): void {
-  for (const [id, entry] of pending) {
-    if (entry.request.threadId === threadId && entry.request.tool === tool) answer(id, "deny");
-  }
-}
-
 export function ask(threadId: string, tool: string, input: unknown): Promise<Decision> {
   const thread = store.threads.get(threadId);
   if (!thread || thread.status === "stopped") return Promise.resolve("deny");

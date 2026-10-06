@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import { Circle, Eraser, Highlighter, MousePointer2, MoveUpRight, PaintBucket, Pen, Redo2, Slash, Square, Type, Undo2 } from "lucide-react";
-import { useI18n } from "../../lib/i18n.ts";
 import { ColorPicker } from "../ColorPicker.tsx";
 import { Menu } from "../Menu.tsx";
 import { Range } from "../Range.tsx";
@@ -61,19 +60,18 @@ export function DrawingTools({
   onUndo: () => void;
   onRedo: () => void;
 }) {
-  const t = useI18n();
   return (
     <div className="drawing-rail">
-      <div className="drawing-tools sliding-selection" role="group" aria-label={t("Tools")}>
+      <div className="drawing-tools sliding-selection" role="group" aria-label="Tools">
         <SelectionHighlight value={tool} />
         {TOOLS.map((entry) => (
           <button
             key={entry.tool}
             type="button"
             aria-pressed={tool === entry.tool}
-            aria-label={t(entry.label)}
+            aria-label={entry.label}
             aria-keyshortcuts={entry.key}
-            title={`${t(entry.label)} (${entry.key})\n${t(entry.hint)}`}
+            title={`${entry.label} (${entry.key})\n${entry.hint}`}
             onClick={() => onTool(entry.tool)}
           >
             <entry.icon size={16} />
@@ -84,17 +82,17 @@ export function DrawingTools({
         type="button"
         className="icon-btn drawing-fill"
         aria-pressed={filled}
-        aria-label={t("Fill shapes")}
-        title={t("Fill shapes")}
+        aria-label="Fill shapes"
+        title="Fill shapes"
         onClick={onToggleFill}
       >
         <PaintBucket size={16} />
       </button>
       <div className="drawing-history">
-        <button type="button" className="icon-btn" disabled={!canUndo} aria-label={t("Undo")} title={`${t("Undo")} (Ctrl+Z)`} onClick={onUndo}>
+        <button type="button" className="icon-btn" disabled={!canUndo} aria-label="Undo" title={`Undo (Ctrl+Z)`} onClick={onUndo}>
           <Undo2 size={16} />
         </button>
-        <button type="button" className="icon-btn" disabled={!canRedo} aria-label={t("Redo")} title={`${t("Redo")} (Ctrl+Shift+Z)`} onClick={onRedo}>
+        <button type="button" className="icon-btn" disabled={!canRedo} aria-label="Redo" title={`Redo (Ctrl+Shift+Z)`} onClick={onRedo}>
           <Redo2 size={16} />
         </button>
       </div>
@@ -117,20 +115,19 @@ export function DrawingStyle({
   onColor: (color: string) => void;
   onSize: (size: number) => void;
 }) {
-  const t = useI18n();
   const custom = !SWATCHES.some((swatch) => swatch.color === color);
   const preview = Math.min(MAX_PREVIEW, Math.max(3, brushWidth(tool, size)));
   return (
     <>
-      <div className="drawing-swatches" role="group" aria-label={t("Color")}>
+      <div className="drawing-swatches" role="group" aria-label="Color">
         {SWATCHES.map((swatch) => (
           <button
             key={swatch.color}
             type="button"
             className="drawing-swatch"
             aria-pressed={color === swatch.color}
-            aria-label={t(swatch.label)}
-            title={t(swatch.label)}
+            aria-label={swatch.label}
+            title={swatch.label}
             style={{ "--swatch": swatch.color === INK ? ink : swatch.color } as CSSProperties}
             onClick={() => onColor(swatch.color)}
           />
@@ -147,19 +144,19 @@ export function DrawingStyle({
               aria-pressed={custom}
               aria-haspopup="menu"
               aria-expanded={open}
-              aria-label={t("Custom color")}
-              title={t("Custom color")}
+              aria-label="Custom color"
+              title="Custom color"
               style={{ "--swatch": custom ? color : undefined } as CSSProperties}
               onClick={toggle}
             />
           )}
         />
       </div>
-      <label className="drawing-size" title={t("Size")}>
+      <label className="drawing-size" title="Size">
         <span className="drawing-size-preview" aria-hidden="true">
           <span style={{ width: preview, height: preview, background: tool === "eraser" ? "var(--text-3)" : color === INK ? ink : color }} />
         </span>
-        <Range aria-label={t("Size")} min={1} max={MAX_SIZE} value={size} onChange={(event) => onSize(Number(event.target.value))} />
+        <Range aria-label="Size" min={1} max={MAX_SIZE} value={size} onChange={(event) => onSize(Number(event.target.value))} />
       </label>
     </>
   );

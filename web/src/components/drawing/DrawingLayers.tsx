@@ -1,6 +1,5 @@
 import { useState, type MouseEvent } from "react";
 import { Eye, EyeOff, Image } from "lucide-react";
-import { useI18n } from "../../lib/i18n.ts";
 import { TOOL_ICONS, TOOL_LABELS } from "./DrawingToolbar.tsx";
 import { INK, type Mark } from "./marks.ts";
 
@@ -12,15 +11,14 @@ export function DrawingLayers({ marks, selection, ink, onSelect, onToggleHidden,
   onToggleHidden: (mark: Mark) => void;
   onMove: (from: number, to: number) => void;
 }) {
-  const t = useI18n();
   const [dragging, setDragging] = useState<number | null>(null);
   const [target, setTarget] = useState<number | null>(null);
   const look = (mark: Mark) => {
-    if (mark.kind === "image") return { Icon: Image, label: t("Image"), swatch: undefined };
+    if (mark.kind === "image") return { Icon: Image, label: "Image", swatch: undefined };
     const tool = mark.kind === "text" ? "text" : mark.tool;
     return {
       Icon: TOOL_ICONS[tool],
-      label: mark.kind === "text" ? mark.text : t(TOOL_LABELS[tool]),
+      label: mark.kind === "text" ? mark.text : TOOL_LABELS[tool],
       swatch: tool === "eraser" ? undefined : mark.color === INK ? ink : mark.color,
     };
   };
@@ -30,8 +28,8 @@ export function DrawingLayers({ marks, selection, ink, onSelect, onToggleHidden,
     return dragging < index ? "above" : "below";
   };
   return (
-    <div className="drawing-layers scroll" aria-label={t("Layers")}>
-      {!marks.length && <p className="drawing-layers-empty">{t("Nothing drawn yet")}</p>}
+    <div className="drawing-layers scroll" aria-label="Layers">
+      {!marks.length && <p className="drawing-layers-empty">Nothing drawn yet</p>}
       {stackTopFirst.map(({ mark, index }) => {
         const { Icon, label, swatch } = look(mark);
         return (
@@ -73,8 +71,8 @@ export function DrawingLayers({ marks, selection, ink, onSelect, onToggleHidden,
             <button
               type="button"
               className="icon-btn drawing-layer-visibility"
-              aria-label={mark.hidden ? t("Show") : t("Hide")}
-              title={mark.hidden ? t("Show") : t("Hide")}
+              aria-label={mark.hidden ? "Show" : "Hide"}
+              title={mark.hidden ? "Show" : "Hide"}
               onClick={() => onToggleHidden(mark)}
             >
               {mark.hidden ? <EyeOff size={14} /> : <Eye size={14} />}

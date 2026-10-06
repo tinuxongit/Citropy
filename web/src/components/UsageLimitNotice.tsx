@@ -6,7 +6,6 @@ import { reportError } from "../lib/api.ts";
 import { isFakeUsageLimit, patchFakeUsageLimit } from "../lib/dev-triggers.ts";
 import { environmentId } from "../lib/environment.ts";
 import { clock, formatDate } from "../lib/format.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
 import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
@@ -24,7 +23,6 @@ function upcoming(resetsAt: number | undefined): string | undefined {
 }
 
 export function UsageLimitLine({ threadId }: { threadId: string }) {
-  const t = useI18n();
   const limit = useApp((state) => state.threads[threadId]?.usageLimit);
   const error = useApp((state) => state.threads[threadId]?.error);
   if (!limit) return null;
@@ -32,7 +30,7 @@ export function UsageLimitLine({ threadId }: { threadId: string }) {
   return (
     <p className="thread-limit" role="status" title={error}>
       <Hourglass size={15} aria-hidden="true" />
-      <span>{time ? t("Usage limit reached. Resets at {time}.", { time }) : t("Usage limit reached.")}</span>
+      <span>{time ? `Usage limit reached. Resets at ${time}.` : "Usage limit reached."}</span>
     </p>
   );
 }
@@ -54,7 +52,6 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
   thread: ThreadMeta;
   limit: NonNullable<ThreadMeta["usageLimit"]>;
 }) {
-  const t = useI18n();
   const connected = useApp((state) => state.connected);
   const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
@@ -70,10 +67,10 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
   const time = upcoming(limit.resetsAt);
   const snoozed = Boolean(limit.resetsAt && thread.snoozedUntil === limit.resetsAt);
   const status = time
-    ? t("Your allowance resets at {time}.", { time })
+    ? `Your allowance resets at ${time}.`
     : limit.resetsAt
-      ? t("The reset time has passed. Citropy is checking whether usage is back.")
-      : t("The provider did not say when usage resets. Citropy checks every 15 minutes.");
+      ? "The reset time has passed. Citropy is checking whether usage is back."
+      : "The provider did not say when usage resets. Citropy checks every 15 minutes.";
   return (
     <>
       <ComposerTab
@@ -82,19 +79,19 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={id}
-        aria-label={t("Usage limit reached")}
+        aria-label="Usage limit reached"
         title={thread.error}
         onClick={() => setOpen((value) => !value)}
       >
         {limit.resume ? <Check size={13} aria-hidden="true" /> : <Hourglass size={13} aria-hidden="true" />}
-        {time ?? t("Usage limit")}
+        {time ?? "Usage limit"}
       </ComposerTab>
       <AnimatePresence>{open && <motion.section
         ref={panel}
         id={id}
         popover="manual"
         role="dialog"
-        aria-label={t("Usage limit reached")}
+        aria-label="Usage limit reached"
         className="tab-panel usage-limit-panel"
         initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }}
         animate={{ opacity: 1, transform: "none" }}
@@ -103,15 +100,15 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
       >
         <header>
           <Hourglass size={15} aria-hidden="true" />
-          <h2>{t("Usage limit reached")}</h2>
+          <h2>Usage limit reached</h2>
         </header>
         <p>{status}</p>
         {thread.error && <p className="usage-limit-message">{thread.error}</p>}
         <div className="usage-limit-actions">
           <label className="usage-limit-action">
             <span>
-              <strong>{t("Resume at reset")}</strong>
-              <small>{t("Continue this chat when usage is back.")}</small>
+              <strong>Resume at reset</strong>
+              <small>Continue this chat when usage is back.</small>
             </span>
             <input
               className="setting-switch"
@@ -127,8 +124,8 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
           {time && (
             <label className="usage-limit-action">
               <span>
-                <strong>{t("Snooze until reset")}</strong>
-                <small>{t("Move this chat to Snoozed in the sidebar until then.")}</small>
+                <strong>Snooze until reset</strong>
+                <small>Move this chat to Snoozed in the sidebar until then.</small>
               </span>
               <input
                 className="setting-switch"

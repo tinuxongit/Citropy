@@ -2,8 +2,6 @@ import type { RefObject } from "react";
 import { BarChart3, BookOpen, Minimize2 } from "lucide-react";
 import { Brain, ListChecks, ShieldCheck, Zap } from "../icons.ts";
 import { configureThread } from "../../lib/actions.ts";
-import { useI18n } from "../../lib/i18n.ts";
-import { hasModelOptions } from "./ComposerOptions.tsx";
 import type {
   ModelOption,
   ProviderInfo,
@@ -18,6 +16,7 @@ export function useComposerCommands({
   onUsage,
   onSkills,
   modelButton,
+  effortButton,
   permissionButton,
 }: {
   thread: ThreadMeta | undefined;
@@ -27,9 +26,9 @@ export function useComposerCommands({
   onUsage?: () => void;
   onSkills?: () => void;
   modelButton: RefObject<HTMLButtonElement | null>;
+  effortButton: RefObject<HTMLButtonElement | null>;
   permissionButton: RefObject<HTMLButtonElement | null>;
 }) {
-  const t = useI18n();
   const threadId = thread?.id;
   return [
     ...(provider?.capabilities?.compact
@@ -37,7 +36,7 @@ export function useComposerCommands({
           {
             id: "compact",
             label: "/compact",
-            hint: t("Compact context and keep the visible history"),
+            hint: "Compact context and keep the visible history",
             icon: <Minimize2 size={16} />,
             idleOnly: true,
             run: onCompact,
@@ -47,7 +46,7 @@ export function useComposerCommands({
     {
       id: "usage",
       label: "/usage",
-      hint: t("See usage and remaining allowance"),
+      hint: "See usage and remaining allowance",
       icon: <BarChart3 size={16} />,
       idleOnly: false,
       run: () => onUsage?.(),
@@ -55,7 +54,7 @@ export function useComposerCommands({
     {
       id: "skills",
       label: "/skills",
-      hint: t("Manage installed skills"),
+      hint: "Manage installed skills",
       icon: <BookOpen size={16} />,
       idleOnly: false,
       run: () => onSkills?.(),
@@ -63,7 +62,7 @@ export function useComposerCommands({
     {
       id: "model",
       label: "/model",
-      hint: t("Choose a model"),
+      hint: "Choose a model",
       icon: <Brain size={16} />,
       idleOnly: false,
       run: () => modelButton.current?.click(),
@@ -71,22 +70,22 @@ export function useComposerCommands({
     {
       id: "plan",
       label: "/plan",
-      hint: t("Switch to Plan only permissions"),
+      hint: "Switch to Plan only permissions",
       icon: <ListChecks size={16} />,
       idleOnly: false,
       run: () => {
         if (threadId) configureThread(threadId, { permissionMode: "plan" });
       },
     },
-    ...(hasModelOptions(model)
+    ...(model?.efforts?.length || model?.fastMode
       ? [
           {
             id: "effort",
             label: "/effort",
-            hint: t("Choose reasoning effort and context size"),
+            hint: "Choose reasoning effort and speed",
             icon: <Brain size={16} />,
             idleOnly: false,
-            run: () => modelButton.current?.click(),
+            run: () => effortButton.current?.click(),
           },
         ]
       : []),
@@ -95,7 +94,7 @@ export function useComposerCommands({
           {
             id: "fast",
             label: "/fast",
-            hint: thread?.fastMode ? t("Turn fast mode off") : t("Turn fast mode on"),
+            hint: thread?.fastMode ? "Turn fast mode off" : "Turn fast mode on",
             icon: <Zap size={16} />,
             idleOnly: false,
             run: () => {
@@ -108,7 +107,7 @@ export function useComposerCommands({
     {
       id: "permissions",
       label: "/permissions",
-      hint: t("Choose tool permissions"),
+      hint: "Choose tool permissions",
       icon: <ShieldCheck size={16} />,
       idleOnly: false,
       run: () => permissionButton.current?.click(),

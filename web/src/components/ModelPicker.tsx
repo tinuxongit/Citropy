@@ -5,14 +5,13 @@ import type { WritingModel } from "../../../shared/assistance.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../../shared/protocol.ts";
 import { effectiveEffort, selectedModel } from "../../../shared/model-options.ts";
 import { toggleFavoriteModel, useApp, viewportWidth } from "../lib/store.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { effortLabel, modelLabel, modelSource } from "../lib/format.ts";
 import { send } from "../lib/socket.ts";
 import { Menu } from "./Menu.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ModelTuning, type TuningSettings, type TuningTab } from "./composer/ComposerOptions.tsx";
 
-export function ModelPicker({ value, fallback, label, onChange, onTransfer, transferDisabled = false, disabled = false, allowConversation = false, automaticLabel, lockedProvider, instanceId, defaultOnly = false, className = "model-picker-trigger", buttonRef, detail, tuning: customTuning, tune, menuClearOf }: {
+export function ModelPicker({ value, fallback, label, onChange, onTransfer, transferDisabled = false, disabled = false, allowConversation = false, automaticLabel, lockedProvider, instanceId, defaultOnly = false, className = "model-picker-trigger", buttonRef, tuning: customTuning, tune, menuClearOf }: {
   value: WritingModel | null;
   fallback?: WritingModel;
   label: string;
@@ -27,12 +26,10 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   defaultOnly?: boolean;
   className?: string;
   buttonRef?: Ref<HTMLButtonElement>;
-  detail?: ReactNode;
   tuning?: (target: WritingModel | undefined) => ReactNode;
   tune?: { settings: TuningSettings; onChange: (patch: TuningSettings) => void; only?: TuningTab[] };
   menuClearOf?: string;
 }) {
-  const t = useI18n();
   const providers = useApp((state) => state.providers);
   const connected = useApp((state) => state.connected);
   const favorites = useApp((state) => state.favoriteModels);
@@ -54,7 +51,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const model = selectedModel(choiceModels, choice?.model);
   const tunedEffort = tune && value ? effectiveEffort(model, tune.settings.effort) : undefined;
   const tuning = customTuning ?? (tune && (() => <ModelTuning key={`${choice?.provider}:${model?.id}`} settings={tune.settings} model={value ? model : undefined} onChange={tune.onChange} only={tune.only} />));
-  const automatic = automaticLabel ?? (allowConversation ? t("Use the conversation model") : undefined);
+  const automatic = automaticLabel ?? (allowConversation ? "Use the conversation model" : undefined);
   const narrow = viewportWidth() <= 600;
   const rails = Boolean(tuning) && !narrow;
   const name = !choice && automatic ? automatic : modelLabel(choiceModels, choice?.model);
@@ -78,7 +75,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     keepOpen: Boolean(tuning),
     onSelect: () => tuning ? setTarget({ provider: source.id, providerInstanceId: account.id, model: entry.id }) : onTransfer?.({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
     action: {
-      label: t("Favorite {model}", { model: entry.label }),
+      label: `Favorite ${entry.label}`,
       icon: <Star size={14} />,
       pressed: favorites.some(favorite => favorite.provider === source.id && favorite.providerInstanceId === account.id && favorite.model === entry.id),
       onSelect: () => toggleFavoriteModel({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
@@ -87,7 +84,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const targetProvider = target && providers.find(entry => entry.id === target.provider);
   const targetModels = target?.providerInstanceId ? targetProvider?.instances?.find(instance => instance.id === target.providerInstanceId)?.models : targetProvider?.models;
   const targetName = target && selectedModel(targetModels ?? [], target.model)?.label;
-  const transferLabel = transferring && target ? t("Transfer to {model}", { model: targetName ?? target.model }) : t("Transfer to another agent");
+  const transferLabel = transferring && target ? `Transfer to ${targetName ?? target.model}` : "Transfer to another agent";
   const transferButton = onTransfer && <button
     className="model-picker-transfer"
     type="button"
@@ -114,14 +111,14 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     footer={tuning && <div className="model-picker-footer" inert={transferring && !target}>{tuning(transferring ? target : undefined)}</div>}
     clearOf={menuClearOf}
     sheet={narrow}
-    emptyMessage={favoritesView ? t("Star models to find them here.") : undefined}
+    emptyMessage={favoritesView ? "Star models to find them here." : undefined}
     controls={<>
-      {onTransfer && transferring && <p className="model-picker-note" role="status">{t("Choose a model for a new agent in this chat. Reading the conversation again uses extra usage.")}</p>}
+      {onTransfer && transferring && <p className="model-picker-note" role="status">Choose a model for a new agent in this chat. Reading the conversation again uses extra usage.</p>}
       <div className="model-picker-toolbar sliding-selection" data-rail={rails || undefined}>
         <SelectionHighlight value={favoritesView ? "favorites" : catalog?.id} />
-        {locked && catalog ? <button className="model-picker-locked" type="button" aria-label={`${catalog.label} · ${t("Provider locked")}`} title={`${catalog.label} · ${t("Provider locked")}`} aria-pressed={!favoritesView} onClick={() => setBrowsing(catalog.id)}>
+        {locked && catalog ? <button className="model-picker-locked" type="button" aria-label={`${catalog.label} · Provider locked`} title={`${catalog.label} · Provider locked`} aria-pressed={!favoritesView} onClick={() => setBrowsing(catalog.id)}>
           <ProviderIcon provider={catalog.id} /><LockKeyhole size={11} />
-        </button> : <div className="model-picker-providers sliding-selection" role="group" aria-label={`${label} · ${t("Provider")}`}>
+        </button> : <div className="model-picker-providers sliding-selection" role="group" aria-label={`${label} · Provider`}>
           <SelectionHighlight value={favoritesView ? undefined : catalog?.id} />
           {available.map((entry) => <button key={entry.id} type="button" aria-label={entry.label} title={entry.label} aria-pressed={!favoritesView && catalog?.id === entry.id} onClick={() => setBrowsing(entry.id)}>
             <ProviderIcon provider={entry.id} />
@@ -129,11 +126,11 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
         </div>}
         <div className="model-picker-actions">
           {!rails && transferButton}
-          <button className="model-picker-favorites" type="button" aria-label={t("Favorite models")} title={t("Favorite models")} aria-pressed={favoritesView} onClick={() => setBrowsing(favoritesView ? choice?.provider : "favorites")}><Star size={17} fill={favoritesView ? "currentColor" : "none"} /></button>
+          <button className="model-picker-favorites" type="button" aria-label="Favorite models" title="Favorite models" aria-pressed={favoritesView} onClick={() => setBrowsing(favoritesView ? choice?.provider : "favorites")}><Star size={17} fill={favoritesView ? "currentColor" : "none"} /></button>
         </div>
       </div>
       {rails && transferButton && <div className="model-picker-side-end">{transferButton}</div>}
-      {catalog?.modelsError && <p className="model-picker-note" role="status">{t("Models · refresh unavailable")}</p>}
+      {catalog?.modelsError && <p className="model-picker-note" role="status">Models · refresh unavailable</p>}
     </>}
     items={[
       ...(automatic && !favoritesView && !transferring ? [{ id: "conversation", label: automatic, selected: !value, onSelect: () => onChange(null) }] : []),
@@ -146,7 +143,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
         keepOpen: Boolean(tuning),
         onSelect: () => onChange({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
         action: {
-          label: t("Favorite {model}", { model: entry.label }),
+          label: `Favorite ${entry.label}`,
           icon: <Star size={14} />,
           pressed: favorites.some(favorite => favorite.provider === source.id && favorite.model === entry.id && favorite.providerInstanceId === account.id),
           onSelect: () => toggleFavoriteModel({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
@@ -166,7 +163,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     >
       {choice && <ProviderIcon provider={choice.provider} />}
       <span className="truncate">{name}</span>
-      {detail ?? (tunedEffort && <span className="model-picker-effort">{effortLabel(tunedEffort)}</span>)}
+      {tunedEffort && <span className="model-picker-effort">{effortLabel(tunedEffort)}</span>}
       <ChevronDown size={12} />
     </button>}
   />;

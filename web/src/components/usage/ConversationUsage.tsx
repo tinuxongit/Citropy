@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { ago, cost, providerLabels, tokens } from "../../lib/format.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { promptTokens } from "../../../../shared/usage-metrics.ts";
 import type { UsageReport } from "../../../../shared/features.ts";
@@ -20,7 +19,6 @@ const COLUMNS: Array<{ key: SortKey; label: string; value: (entry: Conversation)
 ];
 
 export function ConversationUsage({ conversations }: { conversations: Conversation[] }) {
-  const t = useI18n();
   const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({ key: "updatedAt", descending: true });
   const column = COLUMNS.find((entry) => entry.key === sort.key)!;
   const sorted = [...conversations].sort((a, b) => {
@@ -41,7 +39,7 @@ export function ConversationUsage({ conversations }: { conversations: Conversati
                   type="button"
                   onClick={() => setSort((current) => ({ key, descending: current.key === key ? !current.descending : key !== "title" }))}
                 >
-                  {t(label)}
+                  {label}
                   {sort.key === key && <SortIcon size={12} />}
                 </button>
               </th>
@@ -56,7 +54,7 @@ export function ConversationUsage({ conversations }: { conversations: Conversati
                   <ProviderIcon provider={entry.provider} />
                   <span>
                     <strong className="truncate">{entry.title}</strong>
-                    <small>{providerLabels[entry.provider]} · {entry.model || t("Model not reported")}</small>
+                    <small>{providerLabels[entry.provider]} · {entry.model || "Model not reported"}</small>
                   </span>
                 </span>
               </td>
@@ -69,7 +67,7 @@ export function ConversationUsage({ conversations }: { conversations: Conversati
             </tr>
           ))}
           {sorted.length === 0 && (
-            <tr><td colSpan={COLUMNS.length} className="usage-table-empty">{t("No conversations for these providers")}</td></tr>
+            <tr><td colSpan={COLUMNS.length} className="usage-table-empty">No conversations for these providers</td></tr>
           )}
         </tbody>
       </table>

@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useI18n } from "../lib/i18n.ts";
 
 const WHEEL_STEP = 50;
 
@@ -13,7 +12,6 @@ function maxScroll(strip: HTMLElement): number {
 }
 
 export function OptionStrip({ label, selected, children }: { label: string; selected: string; children: ReactNode }) {
-  const t = useI18n();
   const frame = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
@@ -81,10 +79,10 @@ export function OptionStrip({ label, selected, children }: { label: string; sele
         <div ref={strip} className="option-strip" role="group" aria-label={label}>{children}</div>
         {scrolls && (
           <>
-            <button className="option-strip-arrow" data-side="start" type="button" aria-label={t("Previous")} disabled={ends.start} onClick={() => step(-1)}>
+            <button className="option-strip-arrow" data-side="start" type="button" aria-label="Previous" disabled={ends.start} onClick={() => step(-1)}>
               <ChevronLeft size={18} />
             </button>
-            <button className="option-strip-arrow" data-side="end" type="button" aria-label={t("Next")} disabled={ends.end} onClick={() => step(1)}>
+            <button className="option-strip-arrow" data-side="end" type="button" aria-label="Next" disabled={ends.end} onClick={() => step(1)}>
               <ChevronRight size={18} />
             </button>
           </>

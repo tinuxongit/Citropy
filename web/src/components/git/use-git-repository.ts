@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { manageGit } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { groupGitFiles } from "../../lib/git-files.ts";
-import type { useI18n } from "../../lib/i18n.ts";
 import { doneLabels, type Section } from "./labels.ts";
 import { isConflict, readableError } from "./files.ts";
 import type { GitSelection } from "../GitReview.tsx";
@@ -70,14 +69,12 @@ export function useGitRepository({
   projectId,
   connected,
   section,
-  t,
   onCommitted,
   onConflicts,
 }: {
   projectId: string | null;
   connected: boolean;
   section: Section;
-  t: ReturnType<typeof useI18n>;
   onCommitted: () => void;
   onConflicts: () => void;
 }) {
@@ -116,7 +113,7 @@ export function useGitRepository({
         if (epoch === generation.current)
           setFeedback({
             error: true,
-            text: readableError(error.message, t),
+            text: readableError(error.message),
             detail: error.message,
           });
       })
@@ -157,23 +154,21 @@ export function useGitRepository({
           if (epoch !== generation.current) return false;
           setFeedback({
             error: true,
-            text: t("{message} Refresh to load the latest repository state.", {
-              message: t(doneLabels[operation] ?? "Action completed."),
-            }),
+            text: `${doneLabels[operation] ?? "Action completed."} Refresh to load the latest repository state.`,
             detail: (error as Error).message,
           });
           return true;
         }
         setFeedback({
           error: false,
-          text: t(doneLabels[operation] ?? "Repository updated."),
+          text: doneLabels[operation] ?? "Repository updated.",
         });
       }
       return true;
     } catch (error) {
       if (epoch === generation.current) {
         const detail = (error as Error).message;
-        setFeedback({ error: true, text: readableError(detail, t), detail });
+        setFeedback({ error: true, text: readableError(detail), detail });
         try {
           const updated = await manageGit(projectId, "overview");
           if (epoch === generation.current && isOverview(updated)) {

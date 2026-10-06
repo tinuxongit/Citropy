@@ -50,7 +50,7 @@ interface Prepared {
   skills: Array<{ name: string; path: string }>;
 }
 
-export class ThreadRuntime {
+class ThreadRuntime {
   #thread: Thread;
   #disposed = false;
   #session: AgentSession | null = null;

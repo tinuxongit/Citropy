@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import { useI18n } from "../../lib/i18n.ts";
 import { Select } from "../Select.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
@@ -38,7 +37,6 @@ export function GitHubRepositories({
   hasCommits: boolean;
   onGit: () => void;
 }) {
-  const t = useI18n();
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -55,11 +53,11 @@ export function GitHubRepositories({
             <strong>{workspaceName}</strong>
             <p>
               {hasCommits
-                ? t("Publish this workspace, or choose a repository and connect it.")
-                : t("Create your first commit in Source control before publishing this workspace.")}
+                ? "Publish this workspace, or choose a repository and connect it."
+                : "Create your first commit in Source control before publishing this workspace."}
             </p>
           </div>
-          <button className="btn" onClick={onGit}>{" "}{t("Source control")}{" "}</button>
+          <button className="btn" onClick={onGit}>{" "}Source control{" "}</button>
           <button
             className="btn"
             disabled={!hasCommits}
@@ -67,12 +65,12 @@ export function GitHubRepositories({
               setPublishing(true);
               setCreating(true);
             }}
-          >{" "}{t("Publish workspace")}{" "}</button>
+          >{" "}Publish workspace{" "}</button>
         </div>
       )}
       {workspace.length > 0 && (
         <div className="github-workspace-repos">
-          <span>{workspaceName}{" "}{t("workspace")}</span>
+          <span>{workspaceName}{" "}workspace</span>
           {workspace.map((repo) => (
             <button className="btn" key={repo} onClick={() => onSelect(repo)}>
               <FolderGit2 size={15} />
@@ -92,30 +90,30 @@ export function GitHubRepositories({
         >
           <Search size={16} />
           <input
-            aria-label={t("Search repositories")}
+            aria-label="Search repositories"
             placeholder={
-              scope === "mine" ? t("Find a repository…") : t("Search all of GitHub…")
+              scope === "mine" ? "Find a repository…" : "Search all of GitHub…"
             }
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <button className="btn">{t("Search")}</button>
+          <button className="btn">Search</button>
         </form>
         <Select
-          aria-label={t("Repository scope")}
+          aria-label="Repository scope"
           value={scope}
           onChange={(value) => {
             setScope(value as typeof scope);
             setPage(1);
           }}
           options={[
-            { value: "mine", label: t("Your repositories") },
-            { value: "all", label: t("All GitHub") },
+            { value: "mine", label: "Your repositories" },
+            { value: "all", label: "All GitHub" },
           ]}
         />
         <button
           className="icon-btn"
-          aria-label={t("Refresh repositories")}
+          aria-label="Refresh repositories"
           disabled={list.loading}
           onClick={list.refresh}
         >
@@ -129,7 +127,7 @@ export function GitHubRepositories({
             setCreating(true);
           }}
         >
-          <Plus size={15} />{" "}{t("New repository")}{" "}</button>
+          <Plus size={15} />{" "}New repository{" "}</button>
       </div>
       <GitHubFeedback
         error={list.error}
@@ -144,7 +142,7 @@ export function GitHubRepositories({
             <img
               className="github-repository-icon"
               src={repo.owner.avatar_url}
-              alt={t("{name} avatar", { name: repo.owner.login })}
+              alt={`${repo.owner.login} avatar`}
               loading="lazy"
               width={36}
               height={36}
@@ -158,18 +156,18 @@ export function GitHubRepositories({
               <div className="github-meta">
                 {repo.private ? (
                   <span>
-                    <LockKeyhole size={12} />{" "}{t("Private")}{" "}</span>
+                    <LockKeyhole size={12} />{" "}Private{" "}</span>
                 ) : (
-                  <span>{t("Public")}</span>
+                  <span>Public</span>
                 )}
                 {repo.language && <span>{repo.language}</span>}
-                {repo.fork && <span>{t("Fork")}</span>}
-                {repo.archived && <span>{t("Archived")}</span>}
-                <span>{t("Updated {date}", { date: githubDate(repo.updated_at) })}</span>
+                {repo.fork && <span>Fork</span>}
+                {repo.archived && <span>Archived</span>}
+                <span>Updated {githubDate(repo.updated_at)}</span>
               </div>
             </button>
             <button className="btn" onClick={() => onClone(repo.full_name)}>
-              <Download size={14} />{" "}{t("Clone")}{" "}</button>
+              <Download size={14} />{" "}Clone{" "}</button>
           </article>
         ))}
       </div>
@@ -182,13 +180,13 @@ export function GitHubRepositories({
       )}
       <AnimatePresence>{creating && (
         <GitHubDialog
-          title={publishing ? t("Publish workspace") : t("Create repository")}
+          title={publishing ? "Publish workspace" : "Create repository"}
           description={
             publishing
-              ? t("Create a GitHub repository for {workspace} and push the current branch. Only committed files are published.", { workspace: workspaceName ?? "" })
-              : t("Create a repository in your GitHub account with an initial README. You can clone it after creation.")
+              ? `Create a GitHub repository for ${workspaceName ?? ""} and push the current branch. Only committed files are published.`
+              : "Create a repository in your GitHub account with an initial README. You can clone it after creation."
           }
-          submitLabel={publishing ? t("Create and publish") : t("Create repository")}
+          submitLabel={publishing ? "Create and publish" : "Create repository"}
           onClose={() => setCreating(false)}
           onSubmit={async (data) => {
             const input = {
@@ -203,21 +201,21 @@ export function GitHubRepositories({
             onSelect(result.full_name);
           }}
         >
-          <label className="git-field">{" "}{t("Repository name")}{" "}<input
+          <label className="git-field">{" "}Repository name{" "}<input
               name="name"
-              placeholder={t("my-project")}
+              placeholder="my-project"
               required
               pattern="[A-Za-z0-9_.\-]+"
             />
           </label>
-          <label className="git-field">{" "}{t("Description")}{" "}<textarea name="description" rows={3} />
+          <label className="git-field">{" "}Description{" "}<textarea name="description" rows={3} />
           </label>
-          <label className="git-field">{" "}{t("Visibility")}{" "}<Select
+          <label className="git-field">{" "}Visibility{" "}<Select
               name="visibility"
               defaultValue="private"
               options={[
-                { value: "private", label: t("Private") },
-                { value: "public", label: t("Public") },
+                { value: "private", label: "Private" },
+                { value: "public", label: "Public" },
               ]}
             />
           </label>

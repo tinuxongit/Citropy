@@ -1,7 +1,5 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { cost, formatDate, providerLabels, tokens } from "../../lib/format.ts";
-import { useI18n } from "../../lib/i18n.ts";
-import type { Translator } from "../../lib/i18n.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { bucketTotal, measureOf, niceScale, type UsageBucket, type UsageMeasure, type UsagePeriod } from "./usage-series.ts";
 import type { ProviderId } from "../../../../shared/protocol.ts";
@@ -14,9 +12,9 @@ function axisLabel(period: UsagePeriod, start: Date): string {
   return formatDate(start.getTime(), period === "monthly" ? { month: "short" } : { month: "short", day: "numeric" });
 }
 
-function bucketTitle(period: UsagePeriod, start: Date, t: Translator): string {
+function bucketTitle(period: UsagePeriod, start: Date): string {
   if (period === "monthly") return formatDate(start.getTime(), { month: "long", year: "numeric" });
-  if (period === "weekly") return t("Week of {date}", { date: formatDate(start.getTime(), { month: "short", day: "numeric" }) });
+  if (period === "weekly") return `Week of ${formatDate(start.getTime(), { month: "short", day: "numeric" })}`;
   return formatDate(start.getTime(), { weekday: "short", month: "short", day: "numeric" });
 }
 
@@ -27,7 +25,6 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
   period: UsagePeriod;
   caption: string;
 }) {
-  const t = useI18n();
   const [view, setView] = useState<"chart" | "table">("chart");
   const [active, setActive] = useState<number>();
   const columns = useRef<HTMLDivElement>(null);
@@ -53,10 +50,10 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
     <figure className="usage-chart">
       <figcaption>
         <h3>{caption}</h3>
-        <div className="usage-segmented sliding-selection" role="group" aria-label={t("Chart view")}>
+        <div className="usage-segmented sliding-selection" role="group" aria-label="Chart view">
           <SelectionHighlight value={view} />
-          <button type="button" aria-pressed={view === "chart"} onClick={() => setView("chart")}>{t("Chart")}</button>
-          <button type="button" aria-pressed={view === "table"} onClick={() => setView("table")}>{t("Table")}</button>
+          <button type="button" aria-pressed={view === "chart"} onClick={() => setView("chart")}>Chart</button>
+          <button type="button" aria-pressed={view === "table"} onClick={() => setView("table")}>Table</button>
         </div>
       </figcaption>
       {view === "table" ? (
@@ -64,15 +61,15 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
           <table className="feature-table usage-series-table">
             <thead>
               <tr>
-                <th>{t("Period")}</th>
+                <th>Period</th>
                 {providers.map((provider) => <th key={provider}>{providerLabels[provider]}</th>)}
-                <th>{t("Total")}</th>
+                <th>Total</th>
               </tr>
             </thead>
             <tbody>
               {buckets.map((bucket, index) => ({ bucket, total: totals[index]! })).reverse().map(({ bucket, total }) => (
                 <tr key={bucket.start.getTime()}>
-                  <td>{bucketTitle(period, bucket.start, t)}</td>
+                  <td>{bucketTitle(period, bucket.start)}</td>
                   {providers.map((provider) => {
                     const value = bucket.byProvider[provider];
                     return <td key={provider}>{value ? formatMeasure(measure, measureOf(measure, provider, value)) : "0"}</td>;
@@ -92,7 +89,7 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
               </div>
             ))}
           </div>
-          {top === 0 && <p className="usage-chart-empty">{t("No usage in this period")}</p>}
+          {top === 0 && <p className="usage-chart-empty">No usage in this period</p>}
           <div
             className="usage-columns"
             ref={columns}
@@ -109,7 +106,7 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
                 className="usage-column"
                 tabIndex={index === focusable ? 0 : -1}
                 data-active={active === index || undefined}
-                aria-label={`${bucketTitle(period, bucket.start, t)}: ${formatMeasure(measure, totals[index]!)}`}
+                aria-label={`${bucketTitle(period, bucket.start)}: ${formatMeasure(measure, totals[index]!)}`}
                 onPointerEnter={() => setActive(index)}
                 onFocus={() => setActive(index)}
               >
@@ -135,7 +132,7 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
               data-side={active >= buckets.length / 2 ? "left" : undefined}
               style={{ "--at": (active + 0.5) / buckets.length } as CSSProperties}
             >
-              <span className="usage-tooltip-title">{bucketTitle(period, buckets[active].start, t)}</span>
+              <span className="usage-tooltip-title">{bucketTitle(period, buckets[active].start)}</span>
               {values(buckets[active]).reverse().map(({ provider, value }) => (
                 <span key={provider} className="usage-tooltip-row">
                   <i data-series={provider} />
@@ -145,7 +142,7 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
               ))}
               <span className="usage-tooltip-row usage-tooltip-total">
                 <strong>{formatMeasure(measure, totals[active]!)}</strong>
-                <span>{t("Total")}</span>
+                <span>Total</span>
               </span>
             </div>
           )}

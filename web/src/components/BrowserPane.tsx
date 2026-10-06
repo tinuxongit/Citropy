@@ -15,7 +15,6 @@ import { addressOrSearch } from "../lib/web-search.ts";
 import { useApp } from "../lib/store.ts";
 import { BrowserViewport } from "./BrowserViewport.tsx";
 import type { BrowserAction, PanelTab } from "../../../shared/workbench.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { copyText } from "../lib/copy-text.ts";
 
 function covers(overlay: Element, bounds: DOMRect): boolean {
@@ -38,7 +37,6 @@ export function BrowserPane({
   panel: PanelTab;
   active: boolean;
 }) {
-  const t = useI18n();
   const state = useApp((store) => store.browsers[panel.id]);
   const connected = useApp((store) => store.connected);
   const uiScale = useApp((store) => store.uiScale);
@@ -173,8 +171,8 @@ export function BrowserPane({
             className="icon-btn"
             type="button"
             disabled={!native || !connected || !(state?.canGoBack || state?.mobile)}
-            title={t("Back")}
-            aria-label={t("Browser back")}
+            title="Back"
+            aria-label="Browser back"
             onClick={() => act({ action: "back" })}
           >
             <ArrowLeft size={14} />
@@ -183,8 +181,8 @@ export function BrowserPane({
             className="icon-btn"
             type="button"
             disabled={!native || !connected || !state?.canGoForward}
-            title={t("Forward")}
-            aria-label={t("Browser forward")}
+            title="Forward"
+            aria-label="Browser forward"
             onClick={() => act({ action: "forward" })}
           >
             <ArrowRight size={14} />
@@ -194,8 +192,8 @@ export function BrowserPane({
               className="icon-btn"
               type="button"
               disabled={!native || !connected}
-              title={t("Stop loading")}
-              aria-label={t("Stop loading")}
+              title="Stop loading"
+              aria-label="Stop loading"
               onClick={() => act({ action: "stop" })}
             >
               <X size={14} />
@@ -205,8 +203,8 @@ export function BrowserPane({
               className="icon-btn"
               type="button"
               disabled={!native || !connected || !state}
-              title={t("Reload")}
-              aria-label={t("Reload browser")}
+              title="Reload"
+              aria-label="Reload browser"
               onClick={() => act({ action: "reload" })}
             >
               <RotateCw size={13} />
@@ -225,15 +223,15 @@ export function BrowserPane({
             value={address}
             disabled={!native || !connected || !state}
             onChange={(event) => setAddress(event.target.value)}
-            aria-label={t("Browser address")}
-            placeholder={t("Search or enter a web address")}
+            aria-label="Browser address"
+            placeholder="Search or enter a web address"
             spellCheck={false}
           />
           {state && state.url !== "about:blank" && (
             <button
               type="button"
-              aria-label={t(copied ? "Copied" : "Copy link")}
-              title={t(copied ? "Copied" : "Copy link")}
+              aria-label={copied ? "Copied" : "Copy link"}
+              title={copied ? "Copied" : "Copy link"}
               onClick={() =>
                 void copyText(state.url).then(() => {
                   setCopied(true);
@@ -249,8 +247,8 @@ export function BrowserPane({
               href={state.url}
               target="_blank"
               rel="noreferrer"
-              aria-label={t("Open in your browser")}
-              title={t("Open in your browser")}
+              aria-label="Open in your browser"
+              title="Open in your browser"
             >
               <ArrowUpRight size={14} />
             </a>
@@ -261,7 +259,7 @@ export function BrowserPane({
         <BrowserViewport state={state} disabled={!connected} onResize={act} />
       )}
       {!connected && (
-        <div className="browser-notice">{t("Reconnecting to Citropy…")}</div>
+        <div className="browser-notice">Reconnecting to Citropy…</div>
       )}
       {state?.error && (
         <div className="browser-notice" role="alert">
@@ -278,13 +276,13 @@ export function BrowserPane({
             setDialogText("");
           }}
         >
-          <strong>{t("This page says")}</strong>
+          <strong>This page says</strong>
           <p>{state.dialog.message}</p>
           {state.dialog.type === "prompt" && (
             <input
               value={dialogText}
               onChange={(event) => setDialogText(event.target.value)}
-              aria-label={t("Browser dialog response")}
+              aria-label="Browser dialog response"
               autoFocus
             />
           )}
@@ -293,28 +291,28 @@ export function BrowserPane({
               type="button"
               className="btn"
               onClick={() => act({ action: "dialog", accept: false })}
-            >{" "}{t("Dismiss")}{" "}</button>
-            <button type="submit" className="btn primary">{" "}{t("OK")}{" "}</button>
+            >{" "}Dismiss{" "}</button>
+            <button type="submit" className="btn primary">{" "}OK{" "}</button>
           </div>
         </form>
       )}
-      <div className="browser-screen" ref={screen} aria-label={t("Browser page")}>
+      <div className="browser-screen" ref={screen} aria-label="Browser page">
         {!native ? (
           <div className="browser-start">
-            <h3>{t("Continue in Citropy desktop")}</h3>
-            <p>{" "}{t("The desktop app runs the browser directly, with normal scrolling, typing, and tabs shared with your provider.")}{" "}</p>
+            <h3>Continue in Citropy desktop</h3>
+            <p>{" "}The desktop app runs the browser directly, with normal scrolling, typing, and tabs shared with your provider.{" "}</p>
             <button
               type="button"
               className="btn primary"
               disabled={!connected}
               onClick={() => send({ t: "desktop.open" })}
-            >{" "}{t("Open Citropy desktop")}{" "}<ArrowUpRight size={14} />
+            >{" "}Open Citropy desktop{" "}<ArrowUpRight size={14} />
             </button>
           </div>
         ) : !state ? (
           <div className="browser-start">
-            <h3>{t("Opening browser…")}</h3>
-            <p>{t("Preparing a browser for this workspace.")}</p>
+            <h3>Opening browser…</h3>
+            <p>Preparing a browser for this workspace.</p>
           </div>
         ) : (
           <div
@@ -331,7 +329,7 @@ export function BrowserPane({
             )}
             {state.url === "about:blank" && (
               <div className="browser-start">
-                <p>{t("Enter an address above, or ask your provider to open a page.")}</p>
+                <p>Enter an address above, or ask your provider to open a page.</p>
               </div>
             )}
           </div>
@@ -340,11 +338,11 @@ export function BrowserPane({
       <div className="browser-footer">
         <span>
           {native
-            ? t("{profile} · Shared with providers", { profile: state?.profileName ?? t("Workspace") })
-            : t("Desktop browser")}
+            ? `${state?.profileName ?? "Workspace"} · Shared with providers`
+            : "Desktop browser"}
         </span>
         {native && state && (
-          <span>{t("Fit")}{" "}{Math.round((state.scale ?? 1) * 100)}%</span>
+          <span>Fit{" "}{Math.round((state.scale ?? 1) * 100)}%</span>
         )}
       </div>
     </div>

@@ -26,23 +26,23 @@ import { confirmAction, selectThread, useApp } from "../lib/store.ts";
 import { playUiSound } from "../lib/ui-sound.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { usePanelMotion } from "../lib/use-panel-motion.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { Select } from "./Select.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { RunningShells } from "./RunningShells.tsx";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import {
-  ModelDetail,
+  ContextMenu,
+  EffortMenu,
   ModelTuning,
   PermissionMenu,
   type TuningSettings,
 } from "./composer/ComposerOptions.tsx";
 import { useComposerDraft } from "./composer/use-composer-draft.ts";
+import { threadStarted } from "../lib/thread-started.ts";
 import { onComposerAttachments, takeComposerAttachments } from "../lib/composer-inbox.ts";
 import { useAttachmentUpload } from "./composer/use-attachment-upload.ts";
 import { useComposerCommands } from "./composer/use-composer-commands.tsx";
-import { GitActions } from "./GitActions.tsx";
 import { ComposerFrame } from "./composer/ComposerFrame.tsx";
 import { PlanTab } from "./composer/PlanTab.tsx";
 
@@ -55,7 +55,6 @@ export function Composer({
   onSkills?: () => void;
   onShell: (target: NotificationTarget) => void;
 }) {
-  const t = useI18n();
   const [scope] = useState(environmentId);
   const [scopeSignal] = useState(environmentSignal);
   const threadId = useApp((state) => state.activeThreadId);
@@ -65,15 +64,6 @@ export function Composer({
   const connected = useApp((state) => state.connected);
   const providers = useApp((state) => state.providers);
   const hasMessages = useApp((state) => Boolean(threadId && state.order[threadId]?.length));
-  const gitThread = useApp((state) => {
-    let selected = thread;
-    const visited = new Set<string>();
-    while (selected?.parentThreadId && !visited.has(selected.id)) {
-      visited.add(selected.id);
-      selected = state.threads[selected.parentThreadId];
-    }
-    return selected?.parentThreadId ? undefined : selected;
-  });
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
   const { value, setValue, attachments, setAttachments, clearDraft } = useComposerDraft(threadId, scope);
   const { uploading, upload } = useAttachmentUpload({
@@ -97,6 +87,7 @@ export function Composer({
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const modelButton = useRef<HTMLButtonElement>(null);
+  const effortButton = useRef<HTMLButtonElement>(null);
   const permissionButton = useRef<HTMLButtonElement>(null);
   // Stable so the memoized ContextUsage only re-renders when the draft or thread changes.
   const compact = useCallback(() => {
@@ -119,10 +110,10 @@ export function Composer({
     const account = target?.instances?.find(entry => entry.id === choice.providerInstanceId);
     const name = modelFor(choice)?.label ?? choice.model;
     if (!await confirmAction({
-      title: t("Transfer to {model}?", { model: name }),
-      description: t("A new agent reads the conversation and continues here. This uses extra usage on the selected provider and may cost more. Your chat history, workspace and draft stay in place."),
+      title: `Transfer to ${name}?`,
+      description: "A new agent reads the conversation and continues here. This uses extra usage on the selected provider and may cost more. Your chat history, workspace and draft stay in place.",
       context: account ? `${target?.label} · ${account.name}` : target?.label,
-      label: t("Transfer and continue"),
+      label: "Transfer and continue",
     }) || scopeSignal.aborted || !useApp.getState().connected) return;
     setTransferring(true);
     try {
@@ -158,10 +149,11 @@ export function Composer({
     onUsage,
     onSkills,
     modelButton,
+    effortButton,
     permissionButton,
   });
 
-  const started = hasMessages || (!loaded && Boolean(thread && (thread.usage.turns || thread.externalId || thread.branchedFrom || thread.transfers?.length)));
+  const started = thread ? threadStarted(thread, hasMessages, loaded) : hasMessages;
   const starting = !started && !running && !thread?.parentThreadId;
   const composerRef = useRef<HTMLDivElement>(null);
   const columnRef = useRef<HTMLDivElement>(null);
@@ -185,13 +177,12 @@ export function Composer({
     <UsageLimitTab threadId={thread.id} />
     <PlanTab threadId={thread.id} />
     <QueueList thread={thread} provider={provider} onEdit={restore} />
-    {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
     <RunningShells onOpen={onShell} />
-  </>, [thread, provider, restore, gitThread, onShell]);
+  </>, [thread, provider, restore, onShell]);
   const settingsBar = useMemo(() => thread && <>
     <ModelPicker
       value={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: configuredThread?.model ?? model?.id ?? "default" }}
-      label={t("Model")}
+      label="Model"
       buttonRef={modelButton}
       className="composer-select composer-model"
       disabled={!connected || sending || transferring}
@@ -200,16 +191,17 @@ export function Composer({
       onTransfer={thread.parentThreadId ? undefined : (choice) => void transfer(choice)}
       transferDisabled={Boolean(!hasMessages || running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
       onChange={(choice) => { if (choice) configureThread(thread.id, { ...choice, providerInstanceId: choice.providerInstanceId ?? null, effort: null }); }}
-      detail={<ModelDetail thread={configuredThread!} model={model} />}
       menuClearOf=".composer-shell"
-      tuning={(target) => target
-        ? <ModelTuning key={transferKey(target)} settings={settingsFor(target)} model={modelFor(target)} onChange={(patch) => setTransferSettings({ key: transferKey(target), settings: { ...settingsFor(target), ...patch } })} />
-        : <ModelTuning settings={configuredThread!} model={model} onChange={(patch) => configureThread(thread.id, patch)} />}
+      tuning={(target) => target && <ModelTuning key={transferKey(target)} settings={settingsFor(target)} model={modelFor(target)} onChange={(patch) => setTransferSettings({ key: transferKey(target), settings: { ...settingsFor(target), ...patch } })} />}
     />
 
-    {provider?.instances?.length ? <Select className="composer-select composer-account" aria-label={t("Account")} title={t("Account")} value={thread.providerInstanceId ?? ""} disabled={!connected || sending || transferring || running || hasMessages || Boolean(thread.externalId || thread.parentThreadId || thread.queue?.length)} onChange={value => void configureThread(thread.id, { providerInstanceId: value || null })}
+    <ContextMenu thread={configuredThread!} model={model} disabled={!connected || sending || transferring} />
+
+    <EffortMenu thread={configuredThread!} model={model} disabled={!connected || sending || transferring} buttonRef={effortButton} />
+
+    {provider?.instances?.length ? <Select className="composer-select composer-account" aria-label="Account" title="Account" value={thread.providerInstanceId ?? ""} disabled={!connected || sending || transferring || running || hasMessages || Boolean(thread.externalId || thread.parentThreadId || thread.queue?.length)} onChange={value => void configureThread(thread.id, { providerInstanceId: value || null })}
       options={[
-        ...provider.available ? [{ value: "", label: t("Default") }] : [],
+        ...provider.available ? [{ value: "", label: "Default" }] : [],
         ...provider.instances.map(entry => ({ value: entry.id, label: entry.name, disabled: !entry.available })),
       ]} /> : null}
 
@@ -218,7 +210,7 @@ export function Composer({
       disabled={!connected || sending || transferring}
       buttonRef={permissionButton}
     />
-  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal, t]);
+  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal]);
 
   const submit = async () => {
     const text = value.trim();
@@ -247,7 +239,7 @@ export function Composer({
     return (
       <div className="composer">
         <div className="subagent-managed">
-          {t("This subagent is managed by its parent conversation.")}
+          This subagent is managed by its parent conversation.
           <button
             type="button"
             className="btn"
@@ -255,7 +247,7 @@ export function Composer({
               selectThread(thread.parentThreadId!);
               loadThread(thread.parentThreadId!);
             }}
-          >{" "}{t("Back to parent chat")}{" "}</button>
+          >{" "}Back to parent chat{" "}</button>
         </div>
       </div>
     );
@@ -264,7 +256,7 @@ export function Composer({
     <div className="composer" ref={composerRef} data-start={starting || undefined}>
       {thread.parentThreadId && (
         <div className="subagent-managed">
-          {t("Subagent conversation")}
+          Subagent conversation
           <button
             type="button"
             onClick={() => {
@@ -272,13 +264,13 @@ export function Composer({
               loadThread(thread.parentThreadId!);
             }}
           >
-            {t("Back to parent chat")}
+            Back to parent chat
           </button>
         </div>
       )}
       {provider && !provider.enabled && (
         <div className="models-warning" role="status">
-          {t("{provider} is disabled. Enable it in Settings > Providers to continue this conversation.", { provider: provider.label })}
+          {`${provider.label} is disabled. Enable it in Settings > Providers to continue this conversation.`}
         </div>
       )}
       {(instance?.modelsError ?? provider?.modelsError) && (
@@ -312,8 +304,8 @@ export function Composer({
             <div className="composer-finished" role="status">
               <CheckCircle2 size={14} aria-hidden="true" />
               <div className="composer-finished-copy">
-                <strong>{t("Conversation finished")}</strong>
-                <span>{t("Send a message to reopen it.")}</span>
+                <strong>Conversation finished</strong>
+                <span>Send a message to reopen it.</span>
               </div>
               <button
                 className="btn"
@@ -322,7 +314,7 @@ export function Composer({
                 disabled={!connected}
                 onClick={() => finishThread(thread.id, false)}
               >
-                {t("Reopen")}
+                Reopen
               </button>
             </div>
           )}
@@ -332,7 +324,7 @@ export function Composer({
           type="file"
           multiple
           hidden
-          aria-label={t("Attach files")}
+          aria-label="Attach files"
           onChange={(event) => {
             void upload(Array.from(event.target.files ?? []));
             event.target.value = "";
@@ -356,7 +348,7 @@ export function Composer({
         {uploading && (
           <div className="upload-progress" role="status">
             <PixelLoader size={15} />
-            {t("Uploading {name}…", { name: uploading })}
+            Uploading {uploading}…
           </div>
         )}
         <div className="composer-row">
@@ -374,8 +366,8 @@ export function Composer({
             <button
               className="icon-btn"
               type="button"
-              title={t("Attach images or files")}
-              aria-label={t("Attach images or files")}
+              title="Attach images or files"
+              aria-label="Attach images or files"
               disabled={!connected || Boolean(uploading)}
               onClick={() => fileInput.current?.click()}
             >
@@ -393,14 +385,14 @@ export function Composer({
                   disabled={(!value.trim() && !attachments.length) || !canSend}
                 >
                   <ArrowUp size={13} />
-                  {t("Queue")}
+                  Queue
                 </button>
                 <button
                   className="btn composer-stop"
                   type="button"
                   data-variant="danger"
-                  aria-label={t("Stop")}
-                  title={t("Stop")}
+                  aria-label="Stop"
+                  title="Stop"
                   onClick={stopThread}
                 >
                   <Square size={11} fill="currentColor" aria-hidden="true" />
@@ -412,8 +404,8 @@ export function Composer({
                 type="button"
                 data-variant="primary"
                 data-ui-sound="off"
-                aria-label={t("Send")}
-                title={t("Send")}
+                aria-label="Send"
+                title="Send"
                 onClick={submit}
                 disabled={(!value.trim() && !attachments.length) || !canSend}
               >

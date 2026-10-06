@@ -9,7 +9,6 @@ import { ImageViewer } from "./ImageViewer.tsx";
 import { VideoViewer } from "./VideoViewer.tsx";
 import { assetQuery } from "../lib/api.ts";
 import type { Attachment } from "../../../shared/protocol.ts";
-import { useI18n } from "../lib/i18n.ts";
 
 export function Attachments({
   files,
@@ -22,7 +21,6 @@ export function Attachments({
   threadId: string;
   onRemove?: (id: string) => void;
 }) {
-  const t = useI18n();
   const [preview, setPreview] = useState<Attachment>();
   const [missing, setMissing] = useState<ReadonlySet<string>>(() => new Set());
   const images = files.filter(file => file.mime?.startsWith("image/"));
@@ -36,11 +34,11 @@ export function Attachments({
               type="button"
               className="attachment-open"
               onClick={() => setPreview(file)}
-              aria-label={`${t("Preview")} ${file.label}`}
-              title={`${t("Preview")} ${file.label}`}
+              aria-label={`Preview ${file.label}`}
+              title={`Preview ${file.label}`}
             >
               {media(file) ? (
-                missing.has(file.id ?? file.path) ? <span className="image-unavailable" role="img" aria-label={t("Image unavailable")}><ImageOff size={20} aria-hidden="true" /><span>{t("Image unavailable")}</span></span> : file.mime?.startsWith("video/") ? <span className="video-thumbnail">
+                missing.has(file.id ?? file.path) ? <span className="image-unavailable" role="img" aria-label="Image unavailable"><ImageOff size={20} aria-hidden="true" /><span>Image unavailable</span></span> : file.mime?.startsWith("video/") ? <span className="video-thumbnail">
                   <video
                     src={`${serverUrl(`/api/assets?${assetQuery(projectId, file.path, threadId, file.id)}`)}#t=0.1`}
                     preload="metadata"
@@ -67,7 +65,7 @@ export function Attachments({
                     ? file.size > 1024 * 1024
                       ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
                       : `${Math.max(1, Math.ceil(file.size / 1024))} KB`
-                    : t("File")}
+                    : "File"}
                 </small>
               </span>}
             </button>
@@ -75,7 +73,7 @@ export function Attachments({
               <button
                 type="button"
                 className="icon-btn attachment-remove"
-                aria-label={`${t("Remove")} ${file.label}`}
+                aria-label={`Remove ${file.label}`}
                 onClick={() => onRemove(file.id!)}
               >
                 <X size={14} />
@@ -110,7 +108,7 @@ export function Attachments({
                 download={preview.label}
               >
                 <Download size={15} />
-                {t("Download")}
+                Download
               </a>
               <button
                 className="btn"
@@ -118,7 +116,7 @@ export function Attachments({
                 data-cancel
                 onClick={() => setPreview(undefined)}
               >
-                {t("Close")}
+                Close
               </button>
             </>
           }

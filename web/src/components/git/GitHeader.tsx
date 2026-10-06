@@ -1,6 +1,5 @@
 import { GitBranch, RefreshCw } from "lucide-react";
 import { shortPath } from "../../lib/format.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import { workingLabels, type Section } from "./labels.ts";
 import { PixelLoader } from "../PixelLoader.tsx";
 import type {
@@ -31,20 +30,19 @@ export function GitHeader({
   refreshDisabled: boolean;
   onRefresh: () => void;
 }) {
-  const t = useI18n();
   return (
     <header className="git-header">
       <div className="git-heading">
         <div>
-          <h1>{t(section)}</h1>
+          <h1>{section}</h1>
           <p role="status" title={path}>
             {busy
-              ? `${t(workingLabels[busy] ?? "Working")}…`
+              ? `${workingLabels[busy] ?? "Working"}…`
               : notice
                 ? notice
                 : path
               ? shortPath(path, home)
-              : t("No workspace selected")}
+              : "No workspace selected"}
           </p>
         </div>
       </div>
@@ -53,22 +51,22 @@ export function GitHeader({
           <div className="git-current-branch">
             <GitBranch size={16} />
             <strong>
-              {branch === "detached" ? t("Detached HEAD") : branch}
+              {branch === "detached" ? "Detached HEAD" : branch}
             </strong>
             <span>
               {!data.hasCommits
-                ? t("No commits yet")
+                ? "No commits yet"
                 : upstream
                   ? data.status?.ahead || data.status?.behind
-                    ? t("{ahead} ahead · {behind} behind", { ahead: data.status?.ahead ?? 0, behind: data.status?.behind ?? 0 })
-                    : t("Up to date")
-                  : t("Local branch")}
+                    ? `${data.status?.ahead ?? 0} ahead · ${data.status?.behind ?? 0} behind`
+                    : "Up to date"
+                  : "Local branch"}
             </span>
           </div>
         )}
         <button
           className="icon-btn"
-          title={t("Refresh repository")}
+          title="Refresh repository"
           disabled={refreshDisabled}
           onClick={onRefresh}
         >

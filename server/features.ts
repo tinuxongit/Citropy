@@ -40,9 +40,9 @@ import { serveFavicon } from "./favicons.ts";
 import { serveToolImage } from "./tool-images.ts";
 import { diagnostics } from "./diagnostics.ts";
 import { usageReport } from "./usage.ts";
-import { configureAssistance, generateThreadTitle, startGitAction } from "./assistance.ts";
+import { configureAssistance, dismissGitActionError, generateThreadTitle, startGitAction } from "./assistance.ts";
 import { listCommands } from "./commands.ts";
-import { isProviderId, type ProjectSettings, type ProviderId, type ProviderInfo } from "../shared/protocol.ts";
+import { isProviderId, type ProjectSettings, type ProviderInfo } from "../shared/protocol.ts";
 
 async function body(req: IncomingMessage, limit = 128 * 1024): Promise<Record<string, any>> {
   let size = 0;
@@ -259,6 +259,9 @@ export async function handleFeatures(
     else if (url.pathname === "/api/threads/git-action" && req.method === "POST") {
       const input = await body(req);
       respond(startGitAction(threadId ?? "", input.action, input.scope));
+    } else if (url.pathname === "/api/threads/git-action" && req.method === "DELETE") {
+      dismissGitActionError(threadId ?? "");
+      respond({ ok: true });
     } else if (url.pathname === "/api/threads/title" && req.method === "POST") {
       await generateThreadTitle(threadId ?? "");
       respond({ ok: true });

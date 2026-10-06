@@ -1,12 +1,14 @@
-import { useI18n } from "../lib/i18n.ts";
 import { BarChart3, GitBranch, Github, MessagesSquare, Settings } from "lucide-react";
 
 import { AccountMenu } from "./AccountMenu.tsx";
+import { AgentsPanel } from "./AgentsPanel.tsx";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
-import { LocalSharing } from "./LocalSharing.tsx";
+import { NotificationCenter } from "./NotificationCenter.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
 import { useState } from "react";
+import { useEnvironments } from "../lib/environment.ts";
+import type { NotificationTarget } from "../../../shared/protocol.ts";
 
 export function NavigationStrip({
   onChat,
@@ -14,6 +16,7 @@ export function NavigationStrip({
   onGitHub,
   onSettings,
   onUsage,
+  onNotification,
   activeView,
 }: {
   onChat: () => void;
@@ -21,10 +24,11 @@ export function NavigationStrip({
   onGitHub: () => void;
   onSettings: () => void;
   onUsage: () => void;
+  onNotification: (target: NotificationTarget) => void;
   activeView: string;
 }) {
-  const t = useI18n();
   const usagePeek = useUsagePeek("right");
+  const { activeId: environment } = useEnvironments();
   const [accountOpen, setAccountOpen] = useState(false);
   const conversations = { name: "Conversations", icon: MessagesSquare, run: onChat, view: "chat" };
   const code = [
@@ -41,8 +45,8 @@ export function NavigationStrip({
       aria-current={activeView === view ? "page" : undefined}
       key={view}
       onClick={() => { usagePeek.hide(); run(); }}
-      aria-label={t(name)}
-      title={view === "usage" ? undefined : t(name)}
+      aria-label={name}
+      title={view === "usage" ? undefined : name}
       aria-describedby={view === "usage" ? usagePeek.describedBy : undefined}
       {...(view === "usage" ? usagePeek.bind : {})}
     >
@@ -50,16 +54,19 @@ export function NavigationStrip({
     </button>
   );
   return (
-    <nav className="navigation-strip sliding-selection" aria-label={t("Workspace navigation")}>
+    <nav className="navigation-strip sliding-selection" aria-label="Workspace navigation">
       <div className="navigation-strip-brand" aria-hidden="true" />
       <SelectionHighlight value={activeView} layout={String(accountOpen)} selector='.strip-action[aria-current="page"] > .strip-action-face' />
       {button(conversations)}
       {code.map(button)}
+      <div className="navigation-strip-group" key={environment}>
+        <AgentsPanel />
+        <NotificationCenter onOpen={onNotification} />
+      </div>
       <div className="navigation-strip-end">
         <AppUpdateControl variant="strip" />
         <AccountMenu open={accountOpen} onOpenChange={setAccountOpen}>
           {button(usage)}
-          <LocalSharing />
           {button(settings)}
         </AccountMenu>
       </div>

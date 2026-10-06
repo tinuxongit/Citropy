@@ -6,13 +6,12 @@ import { saveProjectDefaults } from "../lib/actions.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import type { Project, ProjectSettings as Preferences } from "../../../shared/protocol.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { Select } from "./Select.tsx";
 import { Menu } from "./Menu.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
+import { ActionError } from "./ActionError.tsx";
 
 export function ProjectSettings() {
-  const t = useI18n();
   const projects = useApp((state) => state.projects);
   const activeProjectId = useApp((state) => state.activeProjectId);
   const [selected, setSelected] = useState(activeProjectId ?? projects[0]?.id);
@@ -24,8 +23,8 @@ export function ProjectSettings() {
         <div className="project-scope-heading">
           <Folder size={19} />
           <div>
-            <h2 id="folder-configuration-heading">{t("Folder configuration")}</h2>
-            <p className="feature-note">{t("Override global defaults for a folder.")}</p>
+            <h2 id="folder-configuration-heading">Folder configuration</h2>
+            <p className="feature-note">Override global defaults for a folder.</p>
           </div>
         </div>
         {project ? <>
@@ -40,7 +39,7 @@ export function ProjectSettings() {
             }))}
             trigger={({ id, toggle, open }) => <button
               id={id} type="button" className="project-folder-picker"
-              aria-label={`${t("Configure folder")}: ${project.name}`}
+              aria-label={`Configure folder: ${project.name}`}
               aria-haspopup="menu" aria-expanded={open} onClick={toggle}
             >
               <Folder size={18} />
@@ -49,14 +48,13 @@ export function ProjectSettings() {
             </button>}
           />
           <ProjectForm key={project.id} project={project} />
-        </> : <p className="feature-note">{t("Open a folder to add overrides. Global defaults apply to every folder you open.")}</p>}
+        </> : <p className="feature-note">Open a folder to add overrides. Global defaults apply to every folder you open.</p>}
       </section>
     </div>
   );
 }
 
 function GlobalDefaultsForm() {
-  const t = useI18n();
   const defaults = useApp((state) => state.projectDefaults);
   const [draft, setDraft] = useState<Preferences>();
   const settings = draft ?? defaults;
@@ -79,8 +77,8 @@ function GlobalDefaultsForm() {
     <div className="project-scope-heading">
       <Globe2 size={19} />
       <div>
-        <h2 id="global-project-defaults-heading">{t("Global defaults")}</h2>
-        <p className="feature-note">{t("Shared by Local and SSH folders, unless a folder overrides them.")}</p>
+        <h2 id="global-project-defaults-heading">Global defaults</h2>
+        <p className="feature-note">Shared by Local and SSH folders, unless a folder overrides them.</p>
       </div>
     </div>
     <DefaultsFields settings={settings} update={(patch) => {
@@ -88,11 +86,11 @@ function GlobalDefaultsForm() {
       setDraft((previous) => ({ ...(previous ?? defaults), ...patch }));
       setSaved(false);
     }} />
-    {error && <p className="feature-error" role="alert">{error}</p>}
+    <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
     <div className="feature-save">
-      <span role="status">{saved ? t("Global defaults saved") : ""}</span>
+      <span role="status">{saved ? "Global defaults saved" : ""}</span>
       <button className="btn" data-variant="primary" onClick={save}>
-        <Save size={15} />{t("Save global defaults")}
+        <Save size={15} />Save global defaults
       </button>
     </div>
   </section>;
@@ -103,7 +101,6 @@ function DefaultsFields({ settings, globalDefaults, update }: {
   globalDefaults?: Preferences;
   update: (patch: Partial<Preferences>) => void;
 }) {
-  const t = useI18n();
   const providers = useApp((state) => state.providers);
   const folder = globalDefaults !== undefined;
   const inheritedModel = folder && settings.provider === undefined;
@@ -112,63 +109,63 @@ function DefaultsFields({ settings, globalDefaults, update }: {
   const provider = providers.find((entry) => entry.id === effective.provider);
   const model = selectedModel(provider?.models ?? [], effective.model);
   const permissions = [
-    { value: "manual", label: t("Ask before changes") },
-    { value: "acceptEdits", label: t("Auto edits") },
-    { value: "plan", label: t("Plan only") },
-    { value: "bypass", label: t("Full access") },
+    { value: "manual", label: "Ask before changes" },
+    { value: "acceptEdits", label: "Auto edits" },
+    { value: "plan", label: "Plan only" },
+    { value: "bypass", label: "Full access" },
   ];
   return <fieldset className="project-defaults-fields">
-    <p className="feature-note">{t("Model, effort, permissions, and workspace apply to new conversations.")}</p>
+    <p className="feature-note">Model, effort, permissions, and workspace apply to new conversations.</p>
     {folder && <label className="project-inherit-model">
       <input type="checkbox" checked={inheritedModel} onChange={(event) => update(event.target.checked
         ? { provider: undefined, model: undefined, effort: undefined }
         : { provider: global.provider ?? null, model: global.model, effort: global.effort })} />
-      {t("Use global model and effort")}
+      Use global model and effort
     </label>}
     <div className="feature-form-grid">
       <div className="feature-field">
-        <span>{t("Model")}</span>
+        <span>Model</span>
         <ModelPicker
-          label={t("Default model")}
+          label="Default model"
           defaultOnly
           value={effective.provider ? { provider: effective.provider, model: effective.model ?? "" } : null}
-          automaticLabel={t("Use the last selected model")}
+          automaticLabel="Use the last selected model"
           disabled={inheritedModel}
           onChange={(choice) => update({ provider: choice?.provider ?? null, model: choice?.model, effort: undefined })}
           tune={{ settings: { effort: effective.effort }, only: ["effort"], onChange: (patch) => update({ model: model?.id, effort: patch.effort }) }}
         />
       </div>
       <label className="feature-field">
-        {t("Permissions")}
+        Permissions
         <Select value={folder ? settings.permissionMode ?? "" : effective.permissionMode}
           onChange={(value) => update({ permissionMode: value as Preferences["permissionMode"] || undefined })}
           options={[
-            ...folder ? [{ value: "", label: t("Use global: {value}", { value: permissions.find((entry) => entry.value === global.permissionMode)!.label }) }] : [],
+            ...folder ? [{ value: "", label: `Use global: ${permissions.find((entry) => entry.value === global.permissionMode)!.label}` }] : [],
             ...permissions.map((entry) => ({ value: entry.value, label: entry.label })),
           ]} />
       </label>
       <label className="feature-field">
-        {t("Workspace")}
+        Workspace
         <Select value={folder ? settings.workspace ?? "" : effective.workspace}
           onChange={(value) => update({ workspace: value as Preferences["workspace"] || undefined })}
           options={[
-            ...folder ? [{ value: "", label: t("Use global: {value}", { value: global.workspace === "new" ? t("New worktree") : t("Current folder") }) }] : [],
-            { value: "current", label: t("Current folder") },
-            { value: "new", label: t("New worktree") },
+            ...folder ? [{ value: "", label: `Use global: ${global.workspace === "new" ? "New worktree" : "Current folder"}` }] : [],
+            { value: "current", label: "Current folder" },
+            { value: "new", label: "New worktree" },
           ]} />
       </label>
     </div>
     {([
-      { key: "autoPull", label: t("Pull before starting"), description: t("Fast-forward a clean checkout when it has no local commits.") },
-      ...folder ? [{ key: "browserAccess", label: t("Provider browser access"), description: t("Allow conversations to use the shared browser tools.") }] as const : [],
+      { key: "autoPull", label: "Pull before starting", description: "Fast-forward a clean checkout when it has no local commits." },
+      ...folder ? [{ key: "browserAccess", label: "Provider browser access", description: "Allow conversations to use the shared browser tools." }] as const : [],
     ] as const).map(({ key, label, description }) => <label className="feature-setting-row" key={key}>
       <span><strong>{label}</strong><small>{description}</small></span>
       {folder ? <Select className="project-policy-select" value={settings[key] === undefined ? "inherit" : String(settings[key])}
         onChange={(value) => update({ [key]: value === "inherit" ? undefined : value === "true" })}
         options={[
-          { value: "inherit", label: t("Use global: {value}", { value: global[key] ? t("Enabled") : t("Disabled") }) },
-          { value: "true", label: t("Enabled") },
-          { value: "false", label: t("Disabled") },
+          { value: "inherit", label: `Use global: ${global[key] ? "Enabled" : "Disabled"}` },
+          { value: "true", label: "Enabled" },
+          { value: "false", label: "Disabled" },
         ]} /> : <input className="setting-switch" type="checkbox" role="switch" checked={Boolean(effective[key])}
         onChange={(event) => update({ [key]: event.target.checked })} />}
     </label>)}
@@ -176,7 +173,6 @@ function DefaultsFields({ settings, globalDefaults, update }: {
 }
 
 function ProjectForm({ project }: { project: Project }) {
-  const t = useI18n();
   const globalDefaults = useApp((state) => state.projectDefaults);
   const [name, setName] = useState(project.name);
   const [settings, setSettings] = useState<Preferences>(project.settings ?? {});
@@ -204,27 +200,23 @@ function ProjectForm({ project }: { project: Project }) {
     }
   };
   return <div className="feature-stack">
-    <section className="settings-group project-scope" aria-label={t("Folder defaults")}>
+    <section className="settings-group project-scope" aria-label="Folder defaults">
       <label className="feature-field project-name-field">
-        {t("Project name")}
+        Project name
         <input value={name} onChange={(event) => { revision.current++; setName(event.target.value); setSaved(false); }} />
       </label>
       <DefaultsFields settings={settings} globalDefaults={globalDefaults} update={update} />
     </section>
-      {error && (
-        <p className="feature-error" role="alert">
-          {error}
-        </p>
-      )}
+      <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
       <div className="feature-save">
-        <span role="status">{saved ? t("Folder settings saved") : ""}</span>
+        <span role="status">{saved ? "Folder settings saved" : ""}</span>
         <button
           className="btn"
           data-variant="primary"
           onClick={save}
         >
           <Save size={15} />
-          {t("Save folder settings")}
+          Save folder settings
         </button>
       </div>
   </div>;

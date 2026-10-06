@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { defaultRangeExtractor, useVirtualizer, type Range } from "@tanstack/react-virtual";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { createThread, openOnEnvironment, reorderThreads } from "../lib/actions.ts";
 import { reportError } from "../lib/api.ts";
 import { environmentId, useEnvironments, useWorkspaceCatalog } from "../lib/environment.ts";
 import { environmentSlice, useBackgroundEnvironments } from "../lib/live-environments.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { scaled, selectProject, useApp } from "../lib/store.ts";
 import { Collapsible } from "./Collapsible.tsx";
 import { ResizeHandle } from "./ResizeHandle.tsx";
@@ -28,13 +27,12 @@ const VIRTUALIZE_AFTER = 40;
 const EMPTY_TREE: ThreadTree = { childrenByParent: new Map(), selectedPath: new Set(), activePaths: new Set() };
 
 function estimateRowHeight(row: { item?: SidebarThread; empty: boolean } | undefined): number {
-  if (row?.item) return 34;
-  if (row?.empty) return 30;
-  return 40;
+  if (row?.item) return 30;
+  if (row?.empty) return 36;
+  return 38;
 }
 
-export function Sidebar({ onConversation, footer }: { onConversation: () => void; footer?: ReactNode }) {
-  const t = useI18n();
+export function Sidebar({ onConversation }: { onConversation: () => void }) {
   const threadMap = useApp((state) => state.threads);
   const order = useApp((state) => state.threadOrder);
   const activeProjectId = useApp((state) => state.activeProjectId);
@@ -172,7 +170,7 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
 
   const renderEmpty = (group: ThreadGroup) => (
     <button className="global-project-empty" type="button" disabled={!canCreateIn(group)} onClick={() => startThread(group)}>
-      {t("Start a conversation")}
+      Start a conversation
     </button>
   );
 
@@ -232,15 +230,15 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
   };
 
   const emptyMessage = !query
-    ? t("Your conversations will appear here.")
+    ? "Your conversations will appear here."
     : !connected && !Object.values(background).some((slice) => slice.connected)
-      ? t("Reconnect to search conversations.")
+      ? "Reconnect to search conversations."
       : !matches
-        ? t("Searching…")
-        : t("No matching conversations.");
+        ? "Searching…"
+        : "No matching conversations.";
 
   return (
-    <aside className="rail" aria-label={t("Conversations")}>
+    <aside className="rail" aria-label="Conversations">
       <div className="thread-toolbar"><ThreadSearch /></div>
       <div className="rail-scroll">
         <div className="rail-list scroll" ref={viewport}
@@ -276,7 +274,6 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
         onPointerEnter={preview.controls.clearTimer}
         onPointerLeave={preview.controls.leave}
       />}
-      {footer}
       <ResizeHandle panel="sidebar" />
     </aside>
   );

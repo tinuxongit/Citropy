@@ -1,8 +1,6 @@
 import type { Part, ToolPart, ToolShape } from "../../../shared/protocol.ts";
 import { isQuestionTool } from "../../../shared/questions.ts";
 import { normalizeTodos } from "../../../shared/todos.ts";
-import { translate } from "./i18n.ts";
-import type { Translator } from "./i18n.ts";
 
 export type Row = { kind: "part"; id: string } | { kind: "group"; ids: string[] };
 
@@ -51,12 +49,12 @@ const NOUN: Record<ToolShape, [string, string, string]> = {
   generic: ["Used", "tool", "tools"],
 };
 
-function phrase(shape: ToolShape, count: number, t: Translator): string {
+function phrase(shape: ToolShape, count: number): string {
   const [verb, one, many] = NOUN[shape];
-  return `${t(verb)} ${count} ${t(count === 1 ? one : many)}`;
+  return `${verb} ${count} ${count === 1 ? one : many}`;
 }
 
-export function summarize(tools: ToolPart[], t: Translator = translate): string {
+export function summarize(tools: ToolPart[]): string {
   const counts = new Map<ToolShape, Set<string>>();
   const plain = new Map<ToolShape, number>();
 
@@ -74,12 +72,12 @@ export function summarize(tools: ToolPart[], t: Translator = translate): string 
   const order: ToolShape[] = ["edit", "write", "read", "command", "search", "web", "computer", "task", "generic", "todo"];
   for (const shape of order) {
     const unique = counts.get(shape);
-    if (unique) parts.push(phrase(shape, unique.size, t));
+    if (unique) parts.push(phrase(shape, unique.size));
     const count = plain.get(shape);
-    if (count) parts.push(phrase(shape, count, t));
+    if (count) parts.push(phrase(shape, count));
   }
 
-  if (parts.length === 0) return t("Worked");
+  if (parts.length === 0) return "Worked";
   const sentence = parts.map((text, index) =>
     index === 0 ? text : `${text.charAt(0).toLowerCase()}${text.slice(1)}`,
   );
@@ -120,14 +118,14 @@ const VERBS: Record<string, [string, string]> = {
   citropy_terminal_write: ["Writing to terminal", "Wrote to terminal"],
 };
 
-export function toolLabel(name: string, status: ToolPart["status"], t: Translator = translate): string {
+export function toolLabel(name: string, status: ToolPart["status"]): string {
   const pair = VERBS[name];
   if (!pair) {
     const short = (name.startsWith("mcp__") ? name.split("__").slice(2).join(" ") || name : name).replaceAll("_", " ");
-    return status === "running" ? `${t("Running")} ${short}` : short;
+    return status === "running" ? `Running ${short}` : short;
   }
-  if (status === "denied") return `${t("Blocked")} ${t(pair[1]).toLowerCase()}`;
+  if (status === "denied") return `Blocked ${pair[1].toLowerCase()}`;
   return status === "running"
-    ? t(pair[0])
-    : t(pair[1]);
+    ? pair[0]
+    : pair[1];
 }

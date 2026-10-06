@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { CircleHelp, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Confirmation } from "../lib/app-state.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { answerConfirmation, useApp } from "../lib/store.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 
@@ -27,7 +26,6 @@ function place(card: HTMLElement, anchor: Confirmation["anchor"]): "top" | "bott
 }
 
 function ConfirmationCard({ confirmation }: { confirmation: Confirmation }) {
-  const t = useI18n();
   const id = useId();
   const connected = useApp((state) => state.connected);
   const reducedMotion = useReducedMotion();
@@ -80,18 +78,18 @@ function ConfirmationCard({ confirmation }: { confirmation: Confirmation }) {
           {confirmation.danger ? <Trash2 size={17} /> : <CircleHelp size={17} />}
         </span>
         <div>
-          <h2 id={`${id}-title`}>{t(confirmation.title)}</h2>
-          <p id={`${id}-description`}>{t(confirmation.description)}</p>
+          <h2 id={`${id}-title`}>{confirmation.title}</h2>
+          <p id={`${id}-description`}>{confirmation.description}</p>
         </div>
       </header>
       {(confirmation.context || !connected) && (
         <div className="dialog-content">
           {confirmation.context && <div className="confirmation-context">{confirmation.context}</div>}
-          {!connected && <p className="dialog-error" role="alert">{t("Reconnect to Citropy to continue.")}</p>}
+          {!connected && <p className="dialog-error" role="alert">Reconnect to Citropy to continue.</p>}
         </div>
       )}
       <footer className="dialog-footer">
-        <button type="button" className="btn" data-cancel onClick={() => answerConfirmation(false)}>{t("Cancel")}</button>
+        <button type="button" className="btn" data-cancel onClick={() => answerConfirmation(false)}>Cancel</button>
         <button
           type="button"
           className="btn"
@@ -99,7 +97,7 @@ function ConfirmationCard({ confirmation }: { confirmation: Confirmation }) {
           disabled={!connected}
           onClick={() => answerConfirmation(true)}
         >
-          {t(confirmation.label)}
+          {confirmation.label}
         </button>
       </footer>
     </motion.div>,

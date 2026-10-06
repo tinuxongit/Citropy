@@ -4,7 +4,6 @@ import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react
 import { ChevronDown, ListTree, Minimize2 } from "lucide-react";
 import { cost, decimal, tokenRate, tokens } from "../lib/format.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { estimateTokensFromChars, newInputTokens, reportedContext, uncachedInput } from "../../../shared/usage-metrics.ts";
 import { ContextInspector } from "./ContextInspector.tsx";
@@ -22,7 +21,6 @@ function exactTokens(value: number): string {
 }
 
 export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }: { onCompact?: () => void; draft?: string }) {
-  const t = useI18n();
   const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [inspecting, setInspecting] = useState(false);
@@ -65,8 +63,8 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
   const contextPercent = percentage(fill);
   const cachePercent = percentage(cacheRate);
   const label = known
-    ? t("{percent}% context used", { percent: contextPercent })
-    : t("Context usage");
+    ? `${contextPercent}% context used`
+    : "Context usage";
 
   useLayoutEffect(() => {
     const panel = details.current;
@@ -169,36 +167,33 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
           popover="manual"
           className="context-details"
           role="group"
-          aria-label={t("Context usage")}
+          aria-label="Context usage"
           id={id}
         >
           <section className="context-section context-window" aria-labelledby={`${id}-context`}>
             <div className="context-heading">
-              <strong id={`${id}-context`}>{t("Context")}</strong>
+              <strong id={`${id}-context`}>Context</strong>
               <span className="context-percentage">
                 {known
-                  ? t("{percent}% used", { percent: contextPercent })
-                  : t(shown ? "Window size unavailable" : "Not reported yet")}
+                  ? `${contextPercent}% used`
+                  : (shown ? "Window size unavailable" : "Not reported yet")}
               </span>
             </div>
             <p
               className="context-summary"
               title={known
-                ? t("{used} of {total} tokens", { used: exactTokens(contextTokens), total: exactTokens(contextMax) })
+                ? `${exactTokens(contextTokens)} of ${exactTokens(contextMax)} tokens`
                 : shown
-                  ? t("{used} tokens used", { used: exactTokens(contextTokens) })
+                  ? `${exactTokens(contextTokens)} tokens used`
                   : undefined}
             >
               {known
-                ? t("{used} of {total} tokens", {
-                    used: tokens(contextTokens),
-                    total: tokens(contextMax),
-                  })
+                ? `${tokens(contextTokens)} of ${tokens(contextMax)} tokens`
                 : shown
-                  ? t("{used} tokens used", { used: tokens(contextTokens) })
+                  ? `${tokens(contextTokens)} tokens used`
                   : contextMax > 0
-                    ? t("Window size: {total} tokens", { total: tokens(contextMax) })
-                    : t("Usage appears when the provider reports it.")}
+                    ? `Window size: ${tokens(contextMax)} tokens`
+                    : "Usage appears when the provider reports it."}
             </p>
             {known && (
               <div
@@ -208,28 +203,28 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={fill * 100}
-                aria-valuetext={t("{used} of {total} tokens", { used: exactTokens(contextTokens), total: exactTokens(contextMax) })}
+                aria-valuetext={`${exactTokens(contextTokens)} of ${exactTokens(contextMax)} tokens`}
                 data-hot={fill > 0.8}
               >
                 <span style={{ width: `${fill * 100}%` }} />
               </div>
             )}
-            {estimatedNote && <p className="context-estimate">{t("Estimated from conversation")}</p>}
+            {estimatedNote && <p className="context-estimate">Estimated from conversation</p>}
           </section>
           {hasCache && (
             <section className="context-section context-cache" aria-labelledby={`${id}-cache`}>
               <div className="context-heading">
-                <strong id={`${id}-cache`}>{t("Cache hits")}</strong>
-                <span className="context-percentage">{t("{percent}% reused", { percent: cachePercent })}</span>
+                <strong id={`${id}-cache`}>Cache hits</strong>
+                <span className="context-percentage">{cachePercent}% reused</span>
               </div>
               <div
                 className="context-cache-bar"
                 role="meter"
-                aria-label={t("Cache hit rate")}
+                aria-label="Cache hit rate"
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={cacheRate * 100}
-                aria-valuetext={t("{percent}% reused", { percent: cachePercent })}
+                aria-valuetext={`${cachePercent}% reused`}
               >
                 {totals.cacheRead > 0 && <span data-part="hit" style={{ flex: totals.cacheRead }} />}
                 {totals.input > 0 && <span data-part="fresh" style={{ flex: totals.input }} />}
@@ -237,48 +232,48 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
               </div>
               <p
                 className="context-cache-note"
-                title={t("{hit} reused · {fresh} new", { hit: exactTokens(totals.cacheRead), fresh: exactTokens(totals.newInput) })}
+                title={`${exactTokens(totals.cacheRead)} reused · ${exactTokens(totals.newInput)} new`}
               >
-                {t("{hit} reused · {fresh} new", { hit: tokens(totals.cacheRead), fresh: tokens(totals.newInput) })}
+                {tokens(totals.cacheRead)} reused · {tokens(totals.newInput)} new
               </p>
             </section>
           )}
           {speed > 0 && (
             <section className="context-section context-speed" aria-labelledby={`${id}-speed`}>
               <div className="context-heading">
-                <strong id={`${id}-speed`}>{t("Tokens per second")}</strong>
-                <span className="context-stat-value">{t("{rate} tok/s", { rate: tokenRate(speed) })}</span>
+                <strong id={`${id}-speed`}>Tokens per second</strong>
+                <span className="context-stat-value">{tokenRate(speed)} tok/s</span>
               </div>
             </section>
           )}
           {usage && hasTotals && (
             <details className="context-totals">
               <summary>
-                <span>{t("Total processed")}</span>
+                <span>Total processed</span>
                 <strong title={exactTokens(totalProcessed)}>{tokens(totalProcessed)}</strong>
                 <ChevronDown size={13} aria-hidden="true" />
               </summary>
-              <p>{t("Across all requests, including reused context.")}</p>
+              <p>Across all requests, including reused context.</p>
               <dl>
                 <div>
-                  <dt>{t("Uncached input")}</dt>
+                  <dt>Uncached input</dt>
                   <dd>{exactTokens(totals.input)}</dd>
                 </div>
                 <div>
-                  <dt>{t("Output")}</dt>
+                  <dt>Output</dt>
                   <dd>{exactTokens(totals.output)}</dd>
                 </div>
                 <div>
-                  <dt>{t("Cache read")}</dt>
+                  <dt>Cache read</dt>
                   <dd>{exactTokens(totals.cacheRead)}</dd>
                 </div>
                 <div>
-                  <dt>{t("Cache write")}</dt>
+                  <dt>Cache write</dt>
                   <dd>{exactTokens(totals.cacheWrite)}</dd>
                 </div>
                 {totals.costUsd > 0 && (
                   <div>
-                    <dt>{t("Estimated cost")}</dt>
+                    <dt>Estimated cost</dt>
                     <dd>{cost(totals.costUsd)}</dd>
                   </div>
                 )}
@@ -287,18 +282,18 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
           )}
           {thread?.compacting ? (
             <div className="context-compacting" role="status">
-              <Minimize2 size={15} aria-hidden="true" />{t("Compacting context")}…
+              <Minimize2 size={15} aria-hidden="true" />Compacting context…
             </div>
           ) : null}
-          {!connected && <div className="context-connection" role="status">{t("Reconnecting…")}</div>}
+          {!connected && <div className="context-connection" role="status">Reconnecting…</div>}
           <div className="context-actions">
             {!thread?.compacting && thread?.externalId && canCompact && onCompact && (
               <button className="btn" type="button" disabled={thread.running || !connected} onClick={onCompact}>
-                <Minimize2 size={15} aria-hidden="true" />{t("Compact context")}
+                <Minimize2 size={15} aria-hidden="true" />Compact context
               </button>
             )}
             <button type="button" className="btn" data-variant="ghost" onClick={() => setInspecting(true)}>
-              <ListTree size={15} aria-hidden="true" />{t("Inspect context sources")}
+              <ListTree size={15} aria-hidden="true" />Inspect context sources
             </button>
           </div>
         </motion.div>

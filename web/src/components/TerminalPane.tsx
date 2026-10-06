@@ -1,5 +1,4 @@
 import { reportError } from "../lib/api.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { useEffect, useRef, useState } from "react";
 import type { Terminal } from "@xterm/xterm";
 import type { FitAddon } from "@xterm/addon-fit";
@@ -79,7 +78,6 @@ export function TerminalPane({
   active: boolean;
   panel: PanelTab;
 }) {
-  const t = useI18n();
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<Terminal | null>(null);
   const fit = useRef<FitAddon | null>(null);
@@ -158,7 +156,7 @@ export function TerminalPane({
         event.stopPropagation();
         try {
           if (!document.execCommand("copy")) {
-            if (!navigator.clipboard) throw new Error(t("Could not copy terminal selection. Try your browser's Copy command."));
+            if (!navigator.clipboard) throw new Error("Could not copy terminal selection. Try your browser's Copy command.");
             void navigator.clipboard.writeText(instance.getSelection()).catch(reportError);
           }
         } catch (error) { reportError(error); }
@@ -283,10 +281,10 @@ export function TerminalPane({
           if (!previous || previous.sessionId !== event.sessionId || previous.offset !== event.offset! - ending.length) return;
           cursor.current = { sessionId: event.sessionId, offset: event.offset! };
         } else cursor.current = undefined;
-        term.current?.writeln(`\r\n${t("[process exited with code {code}]", { code: event.code ?? "?" })}`);
+        term.current?.writeln(`\r\n${`[process exited with code ${event.code ?? "?"}]`}`);
       }
     });
-  }, [active, connected, panel.id, t]);
+  }, [active, connected, panel.id]);
 
   useEffect(() => {
     if (!active || !term.current) return;
@@ -341,7 +339,7 @@ export function TerminalPane({
   return (
     <div className="terminal-pane">
       {!connected && (
-        <div className="browser-notice">{t("Reconnecting to your terminal…")}</div>
+        <div className="browser-notice">Reconnecting to your terminal…</div>
       )}
       <div className="term" ref={host} />
     </div>

@@ -46,11 +46,13 @@
   --r-xl: 16px;
   --r-full: 999px;
 
-  --rail: 252px;
+  --rail: 264px;
   --inspector: clamp(340px, calc(var(--viewport-width) * 0.29), 500px);
-  --topbar: 40px;
+  --topbar: 45px;
   --reading: 780px;
   --chat-gutter: 28px;
+  --icon-stroke: 1.6;
+  --icon-dot-stroke: 2.4;
 }
 
 :root:not([data-scheme="light"]) {
@@ -61,7 +63,7 @@
   --raised-solid: #1a1918;
   --raised-2-solid: #262524;
   --overlay-solid: #0f0f0e;
-  --surface-solid: #1a1918;
+  --surface-solid: var(--panel-solid);
   --surface-shadow: none;
 
   --line: rgba(255, 250, 240, 0.07);
@@ -122,7 +124,6 @@
   --raised-solid: #2c231e;
   --raised-2-solid: #382c25;
   --overlay-solid: #231c18;
-  --surface-solid: #2c231e;
 
   --line: rgba(255, 196, 150, 0.07);
   --line-strong: rgba(255, 196, 150, 0.12);
@@ -151,7 +152,6 @@
   --raised-solid: #292533;
   --raised-2-solid: #342f41;
   --overlay-solid: #201d28;
-  --surface-solid: #292533;
 
   --line: rgba(205, 185, 255, 0.07);
   --line-strong: rgba(205, 185, 255, 0.12);
@@ -180,7 +180,6 @@
   --raised-solid: #242830;
   --raised-2-solid: #2e333d;
   --overlay-solid: #1c1f26;
-  --surface-solid: #242830;
 
   --line: rgba(170, 200, 255, 0.07);
   --line-strong: rgba(170, 200, 255, 0.12);
@@ -209,7 +208,6 @@
   --raised-solid: #242a25;
   --raised-2-solid: #2e362f;
   --overlay-solid: #1c211d;
-  --surface-solid: #242a25;
 
   --line: rgba(180, 255, 200, 0.07);
   --line-strong: rgba(180, 255, 200, 0.12);
@@ -238,7 +236,6 @@
   --raised-solid: #232a2a;
   --raised-2-solid: #2c3636;
   --overlay-solid: #1b2121;
-  --surface-solid: #232a2a;
 
   --line: rgba(170, 255, 245, 0.07);
   --line-strong: rgba(170, 255, 245, 0.12);
@@ -267,7 +264,6 @@
   --raised-solid: #2d2328;
   --raised-2-solid: #392d33;
   --overlay-solid: #241c20;
-  --surface-solid: #2d2328;
 
   --line: rgba(255, 190, 220, 0.07);
   --line-strong: rgba(255, 190, 220, 0.12);
@@ -296,7 +292,6 @@
   --raised-solid: #2d2323;
   --raised-2-solid: #392c2c;
   --overlay-solid: #241c1c;
-  --surface-solid: #2d2323;
 
   --line: rgba(255, 180, 180, 0.07);
   --line-strong: rgba(255, 180, 180, 0.12);
@@ -325,7 +320,6 @@
   --raised-solid: #2c2920;
   --raised-2-solid: #38342a;
   --overlay-solid: #232019;
-  --surface-solid: #2c2920;
 
   --line: rgba(255, 235, 170, 0.07);
   --line-strong: rgba(255, 235, 170, 0.12);
@@ -658,4 +652,6 @@
   --raised: var(--raised-solid);
   --raised-2: var(--raised-2-solid);
   --highlight: var(--raised-2);
+  --hover-strength: 45%;
+  --hover: color-mix(in oklab, var(--highlight) var(--hover-strength), transparent);
 }

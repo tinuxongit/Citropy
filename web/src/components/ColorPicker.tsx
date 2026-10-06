@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
 import { Pipette } from "lucide-react";
 import { reportError } from "../lib/api.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { isHexColor } from "../lib/custom-theme.ts";
 import { ScreenColorPicker } from "./ScreenColorPicker.tsx";
 import "../styles/color-picker.css";
@@ -13,7 +12,6 @@ export function ColorPicker({ color, onCommit, className = "", id }: {
   className?: string;
   id?: string;
 }) {
-  const t = useI18n();
   const [draft, setDraft] = useState(color);
   const [text, setText] = useState(color);
   const [capture, setCapture] = useState<string>();
@@ -44,7 +42,7 @@ export function ColorPicker({ color, onCommit, className = "", id }: {
           <input
             value={text}
             spellCheck={false}
-            aria-label={t("Hex color")}
+            aria-label="Hex color"
             onChange={(event) => {
               setText(event.target.value);
               const next = `#${event.target.value.replace(/^#/, "").toLowerCase()}`;
@@ -60,8 +58,8 @@ export function ColorPicker({ color, onCommit, className = "", id }: {
           <button
             type="button"
             className="icon-btn"
-            aria-label={t("Pick a color from the app")}
-            title={t("Pick a color from the app")}
+            aria-label="Pick a color from the app"
+            title="Pick a color from the app"
             onClick={() => desktop.captureWindow().then(setCapture, reportError)}
           >
             <Pipette size={16} />

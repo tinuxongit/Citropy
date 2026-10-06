@@ -1,4 +1,4 @@
-import { LOCALE, translate } from "./i18n.ts";
+import { LOCALE } from "./locale.ts";
 import type {
   ModelOption,
   ProviderId,
@@ -17,7 +17,7 @@ export const providerLabels: Record<ProviderId, string> = {
 export function modelLabel(models: ModelOption[], modelId?: string): string {
   return (
     selectedModel(models, modelId)?.label ??
-    (modelId && modelId !== "default" ? modelId : translate("Model unavailable"))
+    (modelId && modelId !== "default" ? modelId : "Model unavailable")
   );
 }
 
@@ -63,7 +63,7 @@ export function modelSource(
   provider: ProviderInfo | undefined,
   model?: ModelOption,
 ): string {
-  if (!provider) return translate("Provider unavailable");
+  if (!provider) return "Provider unavailable";
   if (provider.id !== "opencode") return provider.label;
   const source = model?.hint ?? model?.id.split("/")[0];
   if (!source) return provider.label;
@@ -84,9 +84,9 @@ export function threadActivity(thread: Pick<ThreadMeta, "running" | "status" | "
 }
 
 export function effortLabel(effort: string): string {
-  return translate(effort === "xhigh"
+  return effort === "xhigh"
     ? "Extra high"
-    : effort.charAt(0).toUpperCase() + effort.slice(1));
+    : effort.charAt(0).toUpperCase() + effort.slice(1);
 }
 
 export function tokens(value: number): string {
@@ -138,28 +138,28 @@ export function duration(ms: number): string {
 
 export function ago(ts: number, now = Date.now()): string {
   const delta = Math.max(now - ts, 0);
-  if (delta < 45_000) return translate("just now");
+  if (delta < 45_000) return "just now";
   const minutes = Math.round(delta / 60_000);
-  if (minutes < 60) return translate("{count}m ago", { count: minutes });
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.round(delta / 3_600_000);
-  if (hours < 24) return translate("{count}h ago", { count: hours });
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.round(delta / 86_400_000);
-  if (days < 7) return translate("{count}d ago", { count: days });
+  if (days < 7) return `${days}d ago`;
   return formatDate(ts, { month: "short", day: "numeric" });
 }
 
 export function until(ts: number, now = Date.now()): string {
   const delta = ts - now;
-  if (delta < 60_000) return translate("under a minute");
+  if (delta < 60_000) return "under a minute";
   const minutes = Math.round(delta / 60_000);
-  if (minutes < 60) return translate("{count}m", { count: minutes });
+  if (minutes < 60) return `${minutes}m`;
   if (minutes < 24 * 60) return minutes % 60
-    ? translate("{hours}h {minutes}m", { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
-    : translate("{count}h", { count: minutes / 60 });
+    ? `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+    : `${minutes / 60}h`;
   const hours = Math.round(delta / 3_600_000);
   if (hours < 7 * 24) return hours % 24
-    ? translate("{days}d {hours}h", { days: Math.floor(hours / 24), hours: hours % 24 })
-    : translate("{count}d", { count: hours / 24 });
+    ? `${Math.floor(hours / 24)}d ${hours % 24}h`
+    : `${hours / 24}d`;
   return formatDate(ts, { month: "short", day: "numeric" });
 }
 

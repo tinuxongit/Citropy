@@ -3,11 +3,9 @@ import { ExternalLink, Globe2 } from "lucide-react";
 import { Menu } from "./Menu.tsx";
 import { openWorkbenchPanel } from "../lib/actions.ts";
 import { isRemote } from "../lib/environment.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { useApp } from "../lib/store.ts";
 
 export function LinkActions() {
-  const t = useI18n();
   const projectId = useApp(state => state.activeProjectId);
   const threadId = useApp(state => state.activeThreadId);
   const connected = useApp(state => state.connected);
@@ -31,7 +29,7 @@ export function LinkActions() {
 
   useEffect(() => setLink(undefined), [projectId, threadId]);
   if (!link) return null;
-  const browserHint = !window.citropyDesktop ? t("Available in the desktop app") : isRemote() ? t("Available in a local workspace") : !projectId ? t("Open a workspace first.") : !connected ? t("Reconnect to continue.") : undefined;
+  const browserHint = !window.citropyDesktop ? "Available in the desktop app" : isRemote() ? "Available in a local workspace" : !projectId ? "Open a workspace first." : !connected ? "Reconnect to continue." : undefined;
 
   return <Menu
     key={link.id}
@@ -42,11 +40,11 @@ export function LinkActions() {
     controls={<div className="link-destination">{link.url.href}</div>}
     onClose={() => setLink(current => current?.id === link.id ? undefined : current)}
     items={[
-      { id: "in-app", label: t("Open in Citropy"), hint: browserHint, disabled: Boolean(browserHint), icon: <Globe2 size={17} />, onSelect: () => {
+      { id: "in-app", label: "Open in Citropy", hint: browserHint, disabled: Boolean(browserHint), icon: <Globe2 size={17} />, onSelect: () => {
         useApp.setState({ activeView: "chat", readingThreadId: null });
         openWorkbenchPanel("browser", link.url.href);
       } },
-      { id: "external", label: t("Open in external browser"), icon: <ExternalLink size={17} />, onSelect: () => window.open(link.url.href, "_blank", "noopener,noreferrer") },
+      { id: "external", label: "Open in external browser", icon: <ExternalLink size={17} />, onSelect: () => window.open(link.url.href, "_blank", "noopener,noreferrer") },
     ]}
   />;
 }

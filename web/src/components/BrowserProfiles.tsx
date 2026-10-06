@@ -16,10 +16,10 @@ import type {
   BrowserProfile,
   ImportBrowser,
 } from "../../../shared/features.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { Select } from "./Select.tsx";
 import { setSearchEngine } from "../lib/preferences.ts";
 import { SEARCH_ENGINES, type SearchEngine } from "../lib/web-search.ts";
+import { ActionError } from "./ActionError.tsx";
 
 interface Profiles {
   selected: string;
@@ -27,7 +27,6 @@ interface Profiles {
 }
 
 export function BrowserProfiles() {
-  const t = useI18n();
   const projects = useApp((state) => state.projects);
   const projectDefaults = useApp((state) => state.projectDefaults);
   const searchEngine = useApp((state) => state.searchEngine);
@@ -79,11 +78,11 @@ export function BrowserProfiles() {
         setProfileId(result.selected);
       } else if (result.imported !== undefined) {
         setMessage(
-          t("Imported {imported} cookies. {skipped} expired, partitioned, or protected cookies were skipped.", { imported: result.imported, skipped: result.skipped || 0 }),
+          `Imported ${result.imported} cookies. ${result.skipped || 0} expired, partitioned, or protected cookies were skipped.`,
         );
         setData(await api<Profiles>(`browser/profiles${query}`));
       } else {
-        setMessage(t("Browser data cleared."));
+        setMessage("Browser data cleared.");
         setData(await api<Profiles>(`browser/profiles${query}`));
       }
       setName("");
@@ -96,12 +95,12 @@ export function BrowserProfiles() {
   const clear = async (kind: string) => {
     if (
       await confirmAction({
-        title: t("Clear {kind} from this profile?", { kind: t(kind) }),
+        title: `Clear ${kind} from this profile?`,
         description:
           kind === "cookies"
-            ? t("Websites in this browser profile will sign out.")
-            : t("Cached pages and resources will be downloaded again."),
-        label: t("Clear {kind}", { kind: t(kind) }),
+            ? "Websites in this browser profile will sign out."
+            : "Cached pages and resources will be downloaded again.",
+        label: `Clear ${kind}`,
         danger: true,
       })
     )
@@ -123,8 +122,8 @@ export function BrowserProfiles() {
       <div className="settings-group">
         <label className="setting-row">
           <span>
-            <strong>{t("Search engine")}</strong>
-            <small>{t("Used when you type words instead of a web address in the browser bar.")}</small>
+            <strong>Search engine</strong>
+            <small>Used when you type words instead of a web address in the browser bar.</small>
           </span>
           <Select
             value={searchEngine}
@@ -142,8 +141,8 @@ export function BrowserProfiles() {
         </label>
         <label className="setting-row">
           <span>
-            <strong>{t("Provider browser access")}</strong>
-            <small>{t("Allow conversations to use the shared browser tools. Folders can override this in Projects.")}</small>
+            <strong>Provider browser access</strong>
+            <small>Allow conversations to use the shared browser tools. Folders can override this in Projects.</small>
           </span>
           <input
             className="setting-switch"
@@ -156,7 +155,7 @@ export function BrowserProfiles() {
         </label>
       </div>
       <label className="feature-field">
-        {t("Workspace")}
+        Workspace
         <Select
           disabled={busy}
           value={projectId}
@@ -166,27 +165,27 @@ export function BrowserProfiles() {
       </label>
       <section className="settings-group">
         <div className="feature-section-heading">
-          <h2>{t("Browser profiles")}</h2>
+          <h2>Browser profiles</h2>
           <button
             className="icon-btn"
             type="button"
             disabled={busy}
-            aria-label={t("Refresh browser profiles")}
+            aria-label="Refresh browser profiles"
             onClick={() => setRevision((value) => value + 1)}
           >
             <RefreshCw size={16} />
           </button>
         </div>
         <p className="feature-note">
-          {t("Keep logins separate. The selected profile is used for new browser tabs; open tabs keep their current profile.")}
+          Keep logins separate. The selected profile is used for new browser tabs; open tabs keep their current profile.
         </p>
         {data?.profiles.map((profile) => (
           <div className="profile-row" key={profile.id}>
             <Globe size={21} />
             <span>
-              <strong>{profile.id === "workspace" ? t("Workspace") : profile.name}</strong>
+              <strong>{profile.id === "workspace" ? "Workspace" : profile.name}</strong>
               <small>
-                {profile.cookies}{" "}{t("cookies ·")}{" "}{profile.activeTabs}{" "}{t("open tabs")}{" "}</small>
+                {profile.cookies}{" "}cookies ·{" "}{profile.activeTabs}{" "}open tabs{" "}</small>
             </span>
             <button
               className="btn"
@@ -196,10 +195,10 @@ export function BrowserProfiles() {
               {data.selected === profile.id ? (
                 <>
                   <Check size={14} />
-                  {t("Selected")}
+                  Selected
                 </>
               ) : (
-                t("Use profile")
+                "Use profile"
               )}
             </button>
             {profile.id !== "workspace" && (
@@ -208,17 +207,17 @@ export function BrowserProfiles() {
                 disabled={busy || profile.activeTabs > 0}
                 title={
                   profile.activeTabs
-                    ? t("Close this profile's tabs first")
-                    : t("Delete profile")
+                    ? "Close this profile's tabs first"
+                    : "Delete profile"
                 }
-                aria-label={t("Delete {name}", { name: profile.name })}
+                aria-label={`Delete ${profile.name}`}
                 onClick={async () => {
                   if (
                     await confirmAction({
-                      title: t("Delete {name}?", { name: profile.name }),
+                      title: `Delete ${profile.name}?`,
                       description:
                         "Remove this profile and its saved browser data.",
-                      label: t("Delete profile"),
+                      label: "Delete profile",
                       danger: true,
                     })
                   )
@@ -238,23 +237,23 @@ export function BrowserProfiles() {
           }}
         >
           <input
-            aria-label={t("New browser profile name")}
+            aria-label="New browser profile name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder={t("Profile name")}
+            placeholder="Profile name"
             maxLength={60}
           />
           <button className="btn" disabled={busy || !name.trim() || !data}>
             <Plus size={15} />
-            {t("Add profile")}
+            Add profile
           </button>
         </form>
       </section>
       <section className="settings-group">
-        <h2 className="settings-group-heading">{t("Import signed-in sessions")}</h2>
-        <p className="feature-note">{" "}{t("Copy cookies from a browser on this computer. Close that browser first. Your system may ask to unlock its keyring. Some sites may require you to sign in again.")}{" "}</p>
+        <h2 className="settings-group-heading">Import signed-in sessions</h2>
+        <p className="feature-note">{" "}Copy cookies from a browser on this computer. Close that browser first. Your system may ask to unlock its keyring. Some sites may require you to sign in again.{" "}</p>
         <div className="feature-form-grid">
-          <label className="feature-field">{" "}{t("Import from")}{" "}<Select
+          <label className="feature-field">{" "}Import from{" "}<Select
               disabled={busy}
               value={sourceId}
               onChange={setSourceId}
@@ -262,20 +261,20 @@ export function BrowserProfiles() {
                 {
                   value: "",
                   label: sources.length
-                    ? t("Select a browser")
-                    : t("No supported browser profiles found"),
+                    ? "Select a browser"
+                    : "No supported browser profiles found",
                 },
                 ...sources.map((source) => ({ value: source.id, label: source.name })),
               ]}
             />
           </label>
-          <label className="feature-field">{" "}{t("Citropy profile")}{" "}<Select
+          <label className="feature-field">{" "}Citropy profile{" "}<Select
               disabled={busy}
               value={profileId}
               onChange={setProfileId}
               options={(data?.profiles ?? []).map((profile) => ({
                 value: profile.id,
-                label: profile.id === "workspace" ? t("Workspace") : profile.name,
+                label: profile.id === "workspace" ? "Workspace" : profile.name,
               }))}
             />
           </label>
@@ -287,12 +286,12 @@ export function BrowserProfiles() {
           onClick={() => action("import", { profileId, sourceId })}
         >
           <Download size={15} />
-          {busy ? t("Working…") : t("Import cookies")}
+          {busy ? "Working…" : "Import cookies"}
         </button>
       </section>
       <section className="settings-group">
-        <h2 className="settings-group-heading">{t("Profile data")}</h2>
-        <p className="feature-note">{" "}{t("Applies to")}{" "}
+        <h2 className="settings-group-heading">Profile data</h2>
+        <p className="feature-note">{" "}Applies to{" "}
           {data?.profiles.find((profile) => profile.id === profileId)?.name ??
             "the selected profile"}
           .
@@ -303,12 +302,12 @@ export function BrowserProfiles() {
             disabled={busy || !data}
             onClick={() => clear("cookies")}
           >
-            <Cookie size={15} />{" "}{t("Clear cookies")}{" "}</button>
+            <Cookie size={15} />{" "}Clear cookies{" "}</button>
           <button
             className="btn"
             disabled={busy || !data}
             onClick={() => clear("cache")}
-          >{" "}{t("Clear cache")}{" "}</button>
+          >{" "}Clear cache{" "}</button>
         </div>
       </section>
       {message && (
@@ -316,13 +315,9 @@ export function BrowserProfiles() {
           {message}
         </p>
       )}
-      {error && (
-        <p className="feature-error" role="alert">
-          {error}
-        </p>
-      )}
+      <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
       {!projectId && (
-        <p className="feature-note">{" "}{t("Open a workspace to manage browser profiles.")}{" "}</p>
+        <p className="feature-note">{" "}Open a workspace to manage browser profiles.{" "}</p>
       )}
     </div>
   );

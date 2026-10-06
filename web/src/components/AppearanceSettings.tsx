@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Cherry, Circle, Citrus, Droplet, Flame, Flower2, ImagePlus, Leaf, Moon, Palette, Pipette, Sparkles, Sun, Waves } from "lucide-react";
 import { reportError } from "../lib/api.ts";
 import { saveBackgroundFile, useBackgroundFile, type BackgroundFileKind } from "../lib/background-files.ts";
-import { useI18n } from "../lib/i18n.ts";
-import { Select } from "./Select.tsx";
-import { setAsciiLook, setBackgroundBlur, setBackgroundEverywhere, setContentWidth, setBackgroundDim, setBackgroundFocus, setBackgroundFocusSpread, setNavigationStyle, setOpaquePopups, setStageBackground, setUiTransparency } from "../lib/preferences.ts";
+import { setAsciiLook, setBackgroundBlur, setBackgroundEverywhere, setBackgroundDim, setBackgroundFocus, setBackgroundFocusSpread, setOpaquePopups, setStageBackground, setUiTransparency } from "../lib/preferences.ts";
 import {
   setShowFailedTools,
   setTextStreaming,
@@ -16,7 +14,7 @@ import {
   setUiScale,
   useApp,
 } from "../lib/store.ts";
-import { DEFAULT_UI_SCALE, MAX_CONTENT_WIDTH, MIN_CONTENT_WIDTH, SCHEMES, THEMES, type NavigationStyle, type Scheme, type StageBackground, type Theme } from "../lib/app-state.ts";
+import { DEFAULT_UI_SCALE, SCHEMES, THEMES, type Scheme, type StageBackground, type Theme } from "../lib/app-state.ts";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { OptionStrip } from "./OptionStrip.tsx";
 import { Range } from "./Range.tsx";
@@ -49,7 +47,6 @@ const BACKGROUNDS: { id: StageBackground; label: string }[] = [
 const ASCII_TEXTURE = ".·:-=+*#=-:·. ·:=+*#*+=:· .·:-=+*#".repeat(8);
 
 function CustomImageOption({ selected }: { selected: boolean }) {
-  const t = useI18n();
   const input = useRef<HTMLInputElement>(null);
   const kind: BackgroundFileKind = "image";
   const file = useBackgroundFile(kind);
@@ -66,7 +63,7 @@ function CustomImageOption({ selected }: { selected: boolean }) {
         className="theme-option"
         type="button"
         aria-pressed={selected}
-        title={t("Shows an image or GIF as the background.")}
+        title="Shows an image or GIF as the background."
         onClick={() => file ? setStageBackground(kind) : input.current?.click()}
       >
         <span
@@ -76,14 +73,14 @@ function CustomImageOption({ selected }: { selected: boolean }) {
           style={url ? { backgroundImage: `url("${url}")` } : undefined}
           aria-hidden="true"
         >
-          {!url && <><ImagePlus size={18} />{t("Upload an image or GIF")}</>}
+          {!url && <><ImagePlus size={18} />Upload an image or GIF</>}
         </span>
         <span className="theme-option-label">
-          <span>{t("Custom image")}</span>
+          <span>Custom image</span>
           {selected && <Check size={16} />}
         </span>
       </button>
-      {file && <button className="custom-background-replace" type="button" onClick={() => input.current?.click()}>{t("Replace file…")}</button>}
+      {file && <button className="custom-background-replace" type="button" onClick={() => input.current?.click()}>Replace file…</button>}
       <input
         ref={input}
         type="file"
@@ -106,12 +103,10 @@ function CustomColorPicker() {
 }
 
 export function AppearanceSettings() {
-  const t = useI18n();
   const uiScale = useApp((state) => state.uiScale);
   const theme = useApp((state) => state.theme);
   const scheme = useApp((state) => state.scheme);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const navigationStyle = useApp((state) => state.navigationStyle);
   const stageBackground = useApp((state) => state.stageBackground);
   const backgroundDim = useApp((state) => state.backgroundDim);
   const backgroundBlur = useApp((state) => state.backgroundBlur);
@@ -123,7 +118,6 @@ export function AppearanceSettings() {
   const uiTransparency = useApp((state) => state.uiTransparency);
   const opaquePopups = useApp((state) => state.opaquePopups);
   const backgroundEverywhere = useApp((state) => state.backgroundEverywhere);
-  const contentWidth = useApp((state) => state.contentWidth);
   const textStreaming = useApp((state) => state.textStreaming);
   const typingAnimation = useApp((state) => state.typingAnimation);
   const typingSpeed = useApp((state) => state.typingSpeed);
@@ -131,12 +125,12 @@ export function AppearanceSettings() {
 
   return (
     <>
-      <h2 className="settings-group-heading">{t("Interface size")}</h2>
+      <h2 className="settings-group-heading">Interface size</h2>
       <div className="settings-group size-setting">
         <div className="size-setting-heading">
           <div>
-            <label htmlFor="ui-scale">{t("UI size")}</label>
-            <p>{t("Scale text, icons, and controls together.")}</p>
+            <label htmlFor="ui-scale">UI size</label>
+            <p>Scale text, icons, and controls together.</p>
           </div>
           <output htmlFor="ui-scale">{uiScale}%</output>
         </div>
@@ -146,63 +140,33 @@ export function AppearanceSettings() {
           max={150}
           step="5"
           value={uiScale}
-          aria-valuetext={t("{value} percent", { value: uiScale })}
+          aria-valuetext={`${uiScale} percent`}
           onChange={(event) => setUiScale(Number(event.target.value))}
         />
         <div className="size-setting-labels">
-          <span>{t("Compact")}</span>
+          <span>Compact</span>
           <button
             type="button"
             onClick={() => setUiScale(DEFAULT_UI_SCALE)}
             disabled={uiScale === DEFAULT_UI_SCALE}
-          >{" "}{t("Reset to default")}{" "}</button>
-          <span>{t("Larger")}</span>
+          >{" "}Reset to default{" "}</button>
+          <span>Larger</span>
         </div>
       </div>
-      <h2 className="settings-group-heading">{t("Layout")}</h2>
-      <div className="settings-group">
-        <label className="setting-row">
-          <span>
-            <strong>{t("Navigation layout")}</strong>
-            <small>{t("Side strip keeps source control, GitHub, usage and settings on the left edge. Bottom bar puts them under the conversation list.")}</small>
-          </span>
-          <Select value={navigationStyle} onChange={(value) => setNavigationStyle(value as NavigationStyle)}
-            options={[{ value: "strip", label: t("Side strip") }, { value: "bar", label: t("Bottom bar") }]} />
-        </label>
-        <div className="content-width-setting">
-          <div className="setting-row">
-            <span>
-              <label htmlFor="content-width"><strong>{t("Content width")}</strong></label>
-              <small>{t("How wide conversations, the chat box and settings pages can get.")}</small>
-            </span>
-            <output htmlFor="content-width">{contentWidth}px</output>
-          </div>
-          <Range
-            id="content-width"
-            className="content-width-range"
-            min={MIN_CONTENT_WIDTH}
-            max={MAX_CONTENT_WIDTH}
-            step={20}
-            value={contentWidth}
-            aria-valuetext={`${contentWidth}px`}
-            onChange={(event) => setContentWidth(Number(event.target.value))}
-          />
-        </div>
-      </div>
-      <h2 className="settings-group-heading settings-group-heading-centered">{t("Theme")}</h2>
-      <div className="scheme-switch sliding-selection" role="group" aria-label={t("Mode")}>
+      <h2 className="settings-group-heading settings-group-heading-centered">Theme</h2>
+      <div className="scheme-switch sliding-selection" role="group" aria-label="Mode">
         <SelectionHighlight value={scheme} />
         {SCHEMES.map((value) => {
           const { label, icon: Icon } = SCHEME_DETAILS[value];
           return (
             <button key={value} type="button" aria-pressed={scheme === value} onClick={() => setScheme(value)}>
               <Icon size={15} />
-              {t(label)}
+              {label}
             </button>
           );
         })}
       </div>
-      <OptionStrip label={t("Color theme")} selected={theme}>
+      <OptionStrip label="Color theme" selected={theme}>
         {THEMES.map((value) => {
           const { label, icon: Icon } = THEME_DETAILS[value];
           const card = (
@@ -235,7 +199,7 @@ export function AppearanceSettings() {
               </span>
               <span className="theme-option-label">
                 <Icon size={16} />
-                <span>{t(label)}</span>
+                <span>{label}</span>
                 {theme === value && <Check size={16} />}
               </span>
             </button>
@@ -248,7 +212,7 @@ export function AppearanceSettings() {
               <button
                 className="custom-color-toggle"
                 type="button"
-                aria-label={t("Edit custom color")}
+                aria-label="Edit custom color"
                 aria-expanded={pickerShown}
                 aria-controls="custom-color-picker"
                 onClick={() => {
@@ -265,8 +229,8 @@ export function AppearanceSettings() {
       <Collapsible open={colorPickerOpen && theme === "custom"} className="custom-color-reveal">
         <CustomColorPicker />
       </Collapsible>
-      <h2 className="settings-group-heading settings-group-heading-centered">{t("Background")}</h2>
-      <OptionStrip label={t("Conversation background")} selected={stageBackground}>
+      <h2 className="settings-group-heading settings-group-heading-centered">Background</h2>
+      <OptionStrip label="Conversation background" selected={stageBackground}>
         {BACKGROUNDS.map(({ id, label }) => (
           <button
             className="theme-option"
@@ -280,7 +244,7 @@ export function AppearanceSettings() {
               {id === "ascii" && ASCII_TEXTURE}
             </span>
             <span className="theme-option-label">
-              <span>{t(label)}</span>
+              <span>{label}</span>
               {stageBackground === id && <Check size={16} />}
             </span>
           </button>
@@ -303,15 +267,15 @@ export function AppearanceSettings() {
           ].map(({ label, hint, value, max, unit, change }) => (
             <div className="setting-row" key={label}>
               <span>
-                <strong>{t(label)}</strong>
-                <small>{t(hint)}</small>
+                <strong>{label}</strong>
+                <small>{hint}</small>
               </span>
               <span className="setting-range">
                 <Range
                   min={0}
                   max={max}
                   value={value}
-                  aria-label={t(label)}
+                  aria-label={label}
                   aria-valuetext={`${value}${unit}`}
                   onChange={(event) => change(Number(event.target.value))}
                 />
@@ -325,15 +289,15 @@ export function AppearanceSettings() {
         <div className="settings-group settings-group-spaced">
           <div className="setting-row">
             <span>
-              <strong>{t("Interface transparency")}</strong>
-              <small>{t("Let the background show through the sidebar, chat box, panels and settings.")}</small>
+              <strong>Interface transparency</strong>
+              <small>Let the background show through the sidebar, chat box, panels and settings.</small>
             </span>
             <span className="setting-range">
               <Range
                 min={0}
                 max={60}
                 value={uiTransparency}
-                aria-label={t("Interface transparency")}
+                aria-label="Interface transparency"
                 aria-valuetext={`${uiTransparency}%`}
                 onChange={(event) => setUiTransparency(Number(event.target.value))}
               />
@@ -342,36 +306,36 @@ export function AppearanceSettings() {
           </div>
           <label className="setting-row">
             <span>
-              <strong>{t("Background on every page")}</strong>
-              <small>{t("Show the background in Settings, Source control, GitHub and Usage too, not only in conversations.")}</small>
+              <strong>Background on every page</strong>
+              <small>Show the background in Settings, Source control, GitHub and Usage too, not only in conversations.</small>
             </span>
             <input className="setting-switch" type="checkbox" role="switch"
               checked={backgroundEverywhere} onChange={event => setBackgroundEverywhere(event.target.checked)} />
           </label>
           <label className="setting-row">
             <span>
-              <strong>{t("Opaque pop-ups")}</strong>
-              <small>{t("Make menus, pop-ups, and question and permission cards fully solid instead of slightly see-through.")}</small>
+              <strong>Opaque pop-ups</strong>
+              <small>Make menus, pop-ups, and question and permission cards fully solid instead of slightly see-through.</small>
             </span>
             <input className="setting-switch" type="checkbox" role="switch"
               checked={opaquePopups} onChange={event => setOpaquePopups(event.target.checked)} />
           </label>
         </div>
       )}
-      <h2 className="settings-group-heading settings-group-spaced">{t("Conversation display")}</h2>
+      <h2 className="settings-group-heading settings-group-spaced">Conversation display</h2>
       <div className="settings-group">
         <label className="setting-row">
           <span>
-            <strong>{t("Show failed-tools badge")}</strong>
-            <small>{t("Show the failure count in work summaries. Tool results remain available when hidden.")}</small>
+            <strong>Show failed-tools badge</strong>
+            <small>Show the failure count in work summaries. Tool results remain available when hidden.</small>
           </span>
           <input className="setting-switch" type="checkbox" role="switch"
             checked={showFailedTools} onChange={event => setShowFailedTools(event.target.checked)} />
         </label>
         <label className="setting-row">
           <span>
-            <strong>{t("Text streaming")}</strong>
-            <small>{" "}{t("Show text as it arrives. Turn off to wait for each text block to finish.")}{" "}</small>
+            <strong>Text streaming</strong>
+            <small>{" "}Show text as it arrives. Turn off to wait for each text block to finish.{" "}</small>
           </span>
           <input
             className="setting-switch"
@@ -383,8 +347,8 @@ export function AppearanceSettings() {
         </label>
         <label className="setting-row" data-disabled={textStreaming}>
           <span>
-            <strong>{t("Typing animation")}</strong>
-            <small>{" "}{t("Reveal finished text gradually. Available when text streaming is off.")}{" "}</small>
+            <strong>Typing animation</strong>
+            <small>{" "}Reveal finished text gradually. Available when text streaming is off.{" "}</small>
           </span>
           <input
             className="setting-switch"
@@ -397,9 +361,9 @@ export function AppearanceSettings() {
         </label>
         <div className="typing-speed-setting" data-disabled={textStreaming || !typingAnimation}>
           <div>
-            <label htmlFor="typing-speed">{t("Typing speed")}</label>
+            <label htmlFor="typing-speed">Typing speed</label>
             <output htmlFor="typing-speed">
-              {typingSpeed}{" "}{t("characters / second")}{" "}</output>
+              {typingSpeed}{" "}characters / second{" "}</output>
           </div>
           <Range
             id="typing-speed"
@@ -411,8 +375,8 @@ export function AppearanceSettings() {
             onChange={(event) => setTypingSpeed(Number(event.target.value))}
           />
           <div className="typing-speed-labels">
-            <span>{t("Slower")}</span>
-            <span>{t("Faster")}</span>
+            <span>Slower</span>
+            <span>Faster</span>
           </div>
         </div>
       </div>

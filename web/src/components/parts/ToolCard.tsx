@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useI18n } from "../../lib/i18n.ts";
 import { useDisclosure } from "../../lib/use-disclosure.ts";
 import { Collapsible } from "../Collapsible.tsx";
 import { AlertTriangle, Ban, ChevronRight, ExternalLink, shapeIcon } from "../icons.ts";
@@ -14,10 +13,9 @@ import { FileIcon } from "../FileIcon.tsx";
 import { LineCounts } from "../LineCounts.tsx";
 
 export function ToolCard({ part }: { part: ToolPart }) {
-  const t = useI18n();
   const [open, setOpen] = useDisclosure(part.id, "tool");
   const Icon = shapeIcon[part.shape];
-  const label = toolLabel(part.name, part.status, t);
+  const label = toolLabel(part.name, part.status);
   const elapsed = part.endedAt ? part.endedAt - part.startedAt : null;
   const output = part.output ?? "";
   const hasImages = Boolean(part.images?.length || part.imageFiles?.length);
@@ -65,11 +63,11 @@ export function ToolCard({ part }: { part: ToolPart }) {
           {!part.patch && !output && !hasImages && part.status === "running" && (
             <div className="tool-waiting">
               <PixelLoader size={12} />
-              {t("Running")}
+              Running
             </div>
           )}
           {!part.patch && !output && !hasImages && part.status !== "running" && (
-            <div className="tool-empty">{t("No output")}</div>
+            <div className="tool-empty">No output</div>
           )}
         </div>
       </Collapsible>
@@ -79,15 +77,13 @@ export function ToolCard({ part }: { part: ToolPart }) {
 }
 
 function StatusMark({ status }: { status: ToolPart["status"] }) {
-  const t = useI18n();
-  if (status === "running") return <PixelLoader size={12} className="tool-spin" role="img" aria-label={t("running")} />;
+  if (status === "running") return <PixelLoader size={12} className="tool-spin" role="img" aria-label="running" />;
   if (status === "ok") return null;
-  if (status === "denied") return <Ban size={12} className="tool-bad" aria-label={t("denied")} />;
-  return <AlertTriangle size={12} className="tool-bad" aria-label={t("failed")} />;
+  if (status === "denied") return <Ban size={12} className="tool-bad" aria-label="denied" />;
+  return <AlertTriangle size={12} className="tool-bad" aria-label="failed" />;
 }
 
 function Output({ text, shape, partId }: { text: string; shape: ToolPart["shape"]; partId: string }) {
-  const t = useI18n();
   const [expanded, setExpanded] = useDisclosure(partId, "output");
   const lines = useMemo(() => text.split("\n"), [text]);
   const cap = shape === "command" ? 18 : 14;
@@ -100,7 +96,7 @@ function Output({ text, shape, partId }: { text: string; shape: ToolPart["shape"
       <pre className="tool-output" dangerouslySetInnerHTML={{ __html: html }} />
       {hidden > 0 && (
         <button className="diff-more" type="button" onClick={() => setExpanded(true)}>
-          {t("Show {count} more {unit}", { count: hidden, unit: hidden === 1 ? t("line") : t("lines") })}
+          Show {hidden} more {hidden === 1 ? "line" : "lines"}
         </button>
       )}
     </>

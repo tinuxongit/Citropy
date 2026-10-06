@@ -5,7 +5,6 @@ import {
   AlignJustify, AppWindow, ChevronDown, Download, Grid3x3, Grip, Layers, Moon, MoreHorizontal, Smartphone, Square, SquareDashed,
   Sun, Trash2, Wallpaper,
 } from "lucide-react";
-import { useI18n } from "../../lib/i18n.ts";
 import { reportError } from "../../lib/api.ts";
 import { Menu, type MenuItem } from "../Menu.tsx";
 import { AttachToChatButton } from "../AttachToChatButton.tsx";
@@ -50,7 +49,6 @@ const isTyping = (target: EventTarget) => target instanceof HTMLInputElement || 
 const isFreehand = (tool: Tool): tool is FreehandTool => tool === "pen" || tool === "highlighter" || tool === "eraser";
 
 export function DrawingPane({ projectId }: { projectId: string }) {
-  const t = useI18n();
   const drawing = useDrawing(projectId);
   const { paper, marks, setPaper } = drawing;
   const [tool, setTool] = useState<Tool>("pen");
@@ -395,25 +393,25 @@ export function DrawingPane({ projectId }: { projectId: string }) {
 
   const paperItems: MenuItem[] = [
     ...PATTERNS.map((entry) => ({
-      id: `pattern:${entry.value}`, label: t(entry.label), icon: <entry.icon size={16} />, section: t("Background"),
+      id: `pattern:${entry.value}`, label: entry.label, icon: <entry.icon size={16} />, section: "Background",
       selected: paper.pattern === entry.value,
       onSelect: () => setPaper({ ...paper, pattern: entry.value }),
     })),
     ...TONES.map((entry) => ({
-      id: `tone:${entry.value}`, label: t(entry.label), icon: <entry.icon size={16} />, section: t("Paper color"),
+      id: `tone:${entry.value}`, label: entry.label, icon: <entry.icon size={16} />, section: "Paper color",
       selected: paper.tone === entry.value,
       onSelect: () => setPaper({ ...paper, tone: entry.value }),
     })),
     ...FRAMES.map((entry) => ({
-      id: `frame:${entry.value ?? "none"}`, label: t(entry.label), icon: <entry.icon size={16} />, section: t("Frame"),
+      id: `frame:${entry.value ?? "none"}`, label: entry.label, icon: <entry.icon size={16} />, section: "Frame",
       selected: paper.frame?.kind === entry.value,
       onSelect: () => setPaper(paperWith(paper, entry.value, bounds!.width, bounds!.height)),
     })),
   ];
 
   const moreItems: MenuItem[] = [
-    { id: "save", label: t("Save as image"), icon: <Download size={16} />, disabled: !bounds, onSelect: () => void saveImage() },
-    { id: "clear", label: t("Clear drawing"), icon: <Trash2 size={16} />, danger: true, disabled: !marks.length, onSelect: drawing.clear },
+    { id: "save", label: "Save as image", icon: <Download size={16} />, disabled: !bounds, onSelect: () => void saveImage() },
+    { id: "clear", label: "Clear drawing", icon: <Trash2 size={16} />, danger: true, disabled: !marks.length, onSelect: drawing.clear },
   ];
 
   const brush = brushWidth(tool, size);
@@ -444,7 +442,7 @@ export function DrawingPane({ projectId }: { projectId: string }) {
             ref={inkLayer}
             className="drawing-layer drawing-ink"
             role="img"
-            aria-label={t("Drawing canvas")}
+            aria-label="Drawing canvas"
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -462,7 +460,7 @@ export function DrawingPane({ projectId }: { projectId: string }) {
             <textarea
               ref={textInput}
               className="drawing-text-input"
-              aria-label={t("Text")}
+              aria-label="Text"
               autoFocus
               rows={1}
               style={{
@@ -504,7 +502,7 @@ export function DrawingPane({ projectId }: { projectId: string }) {
           trigger={({ id, open, toggle }) => (
             <button id={id} type="button" className="btn" data-variant="ghost" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
               <Wallpaper size={15} />
-              {t("Paper")}
+              Paper
               <ChevronDown size={14} />
             </button>
           )}
@@ -517,13 +515,13 @@ export function DrawingPane({ projectId }: { projectId: string }) {
           onClick={() => setLayersOpen(!layersOpen)}
         >
           <Layers size={15} />
-          {t("Layers")}
+          Layers
         </button>
         <Menu
           width={220}
           items={moreItems}
           trigger={({ id, open, toggle }) => (
-            <button id={id} type="button" className="icon-btn" aria-label={t("More drawing options")} title={t("More drawing options")} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
+            <button id={id} type="button" className="icon-btn" aria-label="More drawing options" title="More drawing options" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
               <MoreHorizontal size={16} />
             </button>
           )}

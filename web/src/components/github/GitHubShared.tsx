@@ -12,7 +12,6 @@ import {
   X,
 } from "lucide-react";
 import { useApp } from "../../lib/store.ts";
-import { useI18n } from "../../lib/i18n.ts";
 import { formatDate } from "../../lib/format.ts";
 import { PixelLoader } from "../PixelLoader.tsx";
 
@@ -48,7 +47,6 @@ export function GitHubFeedback({
   loading?: boolean;
   empty?: string;
 }) {
-  const t = useI18n();
   if (error)
     return (
       <div className="github-feedback" data-error role="alert">
@@ -60,7 +58,7 @@ export function GitHubFeedback({
     return (
       <div className="github-feedback" role="status">
         <PixelLoader size={18} />
-        <span>{t("Loading from GitHub…")}</span>
+        <span>Loading from GitHub…</span>
       </div>
     );
   if (empty)
@@ -68,7 +66,7 @@ export function GitHubFeedback({
       <div className="github-empty">
         <Circle size={28} strokeWidth={1.3} />
         <h2>{empty}</h2>
-        <p>{t("Try another filter or refresh for updates.")}</p>
+        <p>Try another filter or refresh for updates.</p>
       </div>
     );
   return null;
@@ -81,7 +79,6 @@ export function GitHubState({
   state: string | null;
   pull?: boolean;
 }) {
-  const t = useI18n();
   const value = (state ?? "pending").toLowerCase();
   const tone = ["merged"].includes(value)
     ? "merged"
@@ -109,7 +106,7 @@ export function GitHubState({
   return (
     <span className="github-state" data-tone={tone}>
       <Icon size={15} />
-      {t(value.replaceAll("_", " "))}
+      {value.replaceAll("_", " ")}
     </span>
   );
 }
@@ -123,7 +120,6 @@ export function GitHubPagination({
   more: boolean;
   onChange: (page: number) => void;
 }) {
-  const t = useI18n();
   if (page === 1 && !more) return null;
   return (
     <div className="github-pagination">
@@ -133,15 +129,15 @@ export function GitHubPagination({
         onClick={() => onChange(page - 1)}
       >
         <ArrowLeft size={14} />
-        {t("Previous")}
+        Previous
       </button>
-      <span>{t("Page {page}", { page })}</span>
+      <span>Page {page}</span>
       <button
         className="btn"
         disabled={!more}
         onClick={() => onChange(page + 1)}
       >
-        {t("Next")}
+        Next
         <ArrowRight size={14} />
       </button>
     </div>
@@ -165,7 +161,6 @@ export function GitHubDialog({
   onClose: () => void;
   danger?: boolean;
 }) {
-  const t = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const connected = useApp((state) => state.connected);
@@ -205,7 +200,7 @@ export function GitHubDialog({
             data-cancel
             onClick={onClose}
           >
-            {onSubmit ? t("Cancel") : t("Close")}
+            {onSubmit ? "Cancel" : "Close"}
           </button>
           {onSubmit && (
             <button
@@ -214,7 +209,7 @@ export function GitHubDialog({
               disabled={busy || !connected}
             >
               {busy && <PixelLoader size={14} />}
-              {busy ? t("Working…") : submitLabel && t(submitLabel)}
+              {busy ? "Working…" : submitLabel && submitLabel}
             </button>
           )}
         </>
@@ -224,7 +219,7 @@ export function GitHubDialog({
       <GitHubFeedback error={error} />
       {!connected && (
         <p role="status">
-          {t("Reconnecting to Citropy… You can continue when the connection returns.")}
+          Reconnecting to Citropy… You can continue when the connection returns.
         </p>
       )}
     </Modal>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useI18n } from "../lib/i18n.ts";
 import { Select } from "./Select.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import type { TuningSettings } from "./composer/ComposerOptions.tsx";
@@ -13,9 +12,9 @@ import { resolveProjectSettings } from "../../../shared/project-settings.ts";
 import type { WorkspaceOptions } from "../../../shared/features.ts";
 import type { ThreadMeta, WorkspaceChoice } from "../../../shared/protocol.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
+import { ActionError } from "./ActionError.tsx";
 
 export function NewConversation() {
-  const t = useI18n();
   const initialProvider = useApp((state) => state.newThreadProvider);
   const [providerId, setProviderId] = useState(initialProvider);
   const providers = useApp((state) => state.providers);
@@ -91,8 +90,8 @@ export function NewConversation() {
   };
   return (
     <Modal
-      title={t("New conversation")}
-      description={t("Choose where to work in {project}.", { project: project.name })}
+      title="New conversation"
+      description={`Choose where to work in ${project.name}.`}
       icon={<GitFork size={22} />}
       busy={busy}
       onClose={close}
@@ -107,7 +106,7 @@ export function NewConversation() {
             onClick={close}
             disabled={busy}
           >
-            {t("Cancel")}
+            Cancel
           </button>
           <button
             className="btn"
@@ -122,15 +121,15 @@ export function NewConversation() {
               (kind === "new" && !options.hasCommits)
             }
           >
-            {busy && <PixelLoader size={15} />}{t("Create conversation")}
+            {busy && <PixelLoader size={15} />}Create conversation
           </button>
         </>
       }
     >
       <div className="feature-field new-conversation-field">
-        <span>{t("Model")}</span>
+        <span>Model</span>
         <ModelPicker
-          label={t("Model")}
+          label="Model"
           className="model-picker-trigger new-conversation-model"
           value={{ provider: provider.id, providerInstanceId: providerInstanceId || undefined, model: currentModel?.id ?? "" }}
           disabled={busy}
@@ -147,25 +146,25 @@ export function NewConversation() {
       <div
         className="workspace-choices"
         role="radiogroup"
-        aria-label={t("Conversation workspace")}
+        aria-label="Conversation workspace"
       >
         {[
           {
             id: "current",
-            label: t("Current folder"),
-            detail: t("Use the project's existing checkout."),
+            label: "Current folder",
+            detail: "Use the project's existing checkout.",
             icon: Folder,
           },
           {
             id: "new",
-            label: t("New worktree"),
-            detail: t("A separate branch and folder for this conversation."),
+            label: "New worktree",
+            detail: "A separate branch and folder for this conversation.",
             icon: GitFork,
           },
           {
             id: "existing",
-            label: t("Existing worktree"),
-            detail: t("Continue in a worktree you already have."),
+            label: "Existing worktree",
+            detail: "Continue in a worktree you already have.",
             icon: GitBranch,
           },
         ].map(({ id, label, detail, icon: Icon }) => (
@@ -191,25 +190,25 @@ export function NewConversation() {
         <>
           {options && !options.hasCommits ? (
             <p className="feature-note">
-              {t("Create your first commit in Source control before creating a worktree.")}
+              Create your first commit in Source control before creating a worktree.
             </p>
           ) : (
             <div className="feature-form-grid">
               <label className="feature-field">
-                {t("Branch name")}
+                Branch name
                 <input
                   value={branch}
                   onChange={(event) => setBranch(event.target.value)}
-                  placeholder={t("Automatically generated")}
+                  placeholder="Automatically generated"
                 />
               </label>
               <label className="feature-field">
-                {t("Start from")}
+                Start from
                 <Select
                   value={base}
                   onChange={setBase}
                   options={[
-                    { value: "HEAD", label: t("Current commit") },
+                    { value: "HEAD", label: "Current commit" },
                     ...(options?.branches ?? []).map((name) => ({ value: name, label: name })),
                   ]}
                 />
@@ -220,12 +219,12 @@ export function NewConversation() {
       )}
       {kind === "existing" && (
         <label className="feature-field">
-          {t("Worktree")}
+          Worktree
           <Select
             value={path}
             onChange={setPath}
             options={[
-              { value: "", label: t("Select a worktree") },
+              { value: "", label: "Select a worktree" },
               ...(options?.worktrees ?? [])
                 .filter((entry) => !entry.locked)
                 .map((entry) => ({ value: entry.path, label: `${entry.branch} · ${entry.path}` })),
@@ -233,11 +232,7 @@ export function NewConversation() {
           />
         </label>
       )}
-      {error && (
-        <p className="feature-error" role="alert">
-          {error}
-        </p>
-      )}
+      <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
     </Modal>
   );
 }

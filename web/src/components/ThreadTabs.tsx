@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Pin, Plus } from "lucide-react";
-import { useI18n } from "../lib/i18n.ts";
 import { useApp } from "../lib/store.ts";
 import { closeTab, createThread, keepTab, showThread } from "../lib/actions.ts";
 import { X } from "./icons.ts";
@@ -10,7 +9,6 @@ import { ProviderIcon } from "./ProviderIcon.tsx";
 const MIDDLE_BUTTON = 1;
 
 export function ThreadTabs() {
-  const t = useI18n();
   const threads = useApp((state) => state.threads);
   const openThreadIds = useApp((state) => state.openThreadIds);
   const activeThreadId = useApp((state) => state.activeThreadId);
@@ -20,7 +18,7 @@ export function ThreadTabs() {
   const open = openThreadIds.flatMap((id) => threads[id] ?? []);
 
   return (
-    <div className="thread-tabs" role="group" aria-label={t("Conversation tabs")}>
+    <div className="thread-tabs" role="group" aria-label="Conversation tabs">
       {open.map((thread) => (
         <div
           key={thread.id}
@@ -44,12 +42,12 @@ export function ThreadTabs() {
             <ProviderIcon provider={thread.provider} />
             <span className="truncate">{thread.title}</span>
           </button>
-          <button type="button" className="thread-tab-close" aria-label={t("Close {title}", { title: thread.title })} onClick={() => closeTab(thread.id)}>
+          <button type="button" className="thread-tab-close" aria-label={`Close ${thread.title}`} onClick={() => closeTab(thread.id)}>
             <X size={13} />
           </button>
         </div>
       ))}
-      <button type="button" className="thread-tabs-new" disabled={!canCreate} aria-label={t("New thread")} title={t("New thread")} onClick={() => void createThread()}>
+      <button type="button" className="thread-tabs-new" disabled={!canCreate} aria-label="New thread" title="New thread" onClick={() => void createThread()}>
         <Plus size={15} />
       </button>
       {menu && <Menu
@@ -57,8 +55,8 @@ export function ThreadTabs() {
         anchor={menu.anchor}
         onClose={() => setMenu(undefined)}
         items={[
-          ...(menu.id === previewThreadId ? [{ id: "keep", label: t("Keep tab open"), icon: <Pin size={15} />, onSelect: () => keepTab(menu.id) }] : []),
-          { id: "close", label: t("Close tab"), icon: <X size={15} />, onSelect: () => closeTab(menu.id) },
+          ...(menu.id === previewThreadId ? [{ id: "keep", label: "Keep tab open", icon: <Pin size={15} />, onSelect: () => keepTab(menu.id) }] : []),
+          { id: "close", label: "Close tab", icon: <X size={15} />, onSelect: () => closeTab(menu.id) },
         ]}
       />}
     </div>

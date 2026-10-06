@@ -16,6 +16,7 @@ export {
   setCustomColor,
   setScheme,
   toggleInspector,
+  toggleThreadDetails,
   toggleSidebar,
   setSidebarGroupOpen,
   setUiScale,

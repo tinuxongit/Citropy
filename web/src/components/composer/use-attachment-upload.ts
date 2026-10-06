@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { serverUrl } from "../../lib/environment.ts";
 import { reportError } from "../../lib/api.ts";
-import { translate, useI18n } from "../../lib/i18n.ts";
 import type { Attachment } from "../../../../shared/protocol.ts";
 
 const MAX_ATTACHMENTS = 8;
@@ -13,7 +12,7 @@ export async function uploadAttachment(threadId: string, file: File, signal?: Ab
     { method: "POST", body: file, signal },
   );
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error || translate("Upload failed."));
+  if (!response.ok) throw new Error(result.error || "Upload failed.");
   return result;
 }
 
@@ -28,7 +27,6 @@ export function useAttachmentUpload({
   attachmentCount: number;
   onUploaded: (attachment: Attachment) => void;
 }) {
-  const t = useI18n();
   const [uploading, setUploading] = useState("");
   const uploadAbort = useRef(new AbortController());
   useEffect(() => {
@@ -38,13 +36,13 @@ export function useAttachmentUpload({
   const upload = async (files: File[]) => {
     if (!threadId || uploading) return;
     if (attachmentCount + files.length > MAX_ATTACHMENTS) {
-      reportError(new Error(t("Attach up to 8 files per message.")));
+      reportError(new Error("Attach up to 8 files per message."));
       return;
     }
     try {
       for (const file of files) {
         if (file.size > MAX_FILE_BYTES)
-          throw new Error(t("{name} exceeds the 50 MB file limit.", { name: file.name }));
+          throw new Error(`${file.name} exceeds the 50 MB file limit.`);
         setUploading(file.name);
         const result = await uploadAttachment(threadId, file, AbortSignal.any([uploadAbort.current.signal, scopeSignal]));
         scopeSignal.throwIfAborted();

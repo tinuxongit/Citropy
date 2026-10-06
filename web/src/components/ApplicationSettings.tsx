@@ -3,13 +3,12 @@ import { ExternalLink, Monitor, RefreshCw, RotateCcw } from "lucide-react";
 import type { AppUpdateState } from "../../../shared/app-update.ts";
 import type { DesktopWindowState } from "../desktop.d.ts";
 import { isRemote } from "../lib/environment.ts";
-import { useI18n } from "../lib/i18n.ts";
 import { send } from "../lib/socket.ts";
 import { confirmAction, useApp } from "../lib/store.ts";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
+import { ActionError } from "./ActionError.tsx";
 
 export function ApplicationSettings({ active }: { active: boolean }) {
-  const t = useI18n();
   const connected = useApp((state) => state.connected);
   const running = useApp((state) =>
     Object.values(state.threads).some((thread) => thread.running),
@@ -30,11 +29,11 @@ export function ApplicationSettings({ active }: { active: boolean }) {
   const development = useApp((state) => state.development);
   const restartServer = async () => {
     if (!(await confirmAction({
-      title: t("Restart the Citropy server?"),
+      title: "Restart the Citropy server?",
       description: desktop
-        ? t("The server and the desktop window restart and pick up code changes. Browser tabs close. Conversations are saved and terminals keep running.")
-        : t("The server restarts and picks up code changes. This page reconnects when it is back. Conversations are saved and terminals keep running."),
-      label: t("Restart server"),
+        ? "The server and the desktop window restart and pick up code changes. Browser tabs close. Conversations are saved and terminals keep running."
+        : "The server restarts and picks up code changes. This page reconnects when it is back. Conversations are saved and terminals keep running.",
+      label: "Restart server",
     })))
       return;
     setApplicationError("");
@@ -47,10 +46,10 @@ export function ApplicationSettings({ active }: { active: boolean }) {
     if (
       action === "restart" &&
       !(await confirmAction({
-        title: t("Restart Citropy desktop?"),
+        title: "Restart Citropy desktop?",
         description:
-          t("Browser pages will reload. Your conversations and terminals keep running on the local server."),
-        label: t("Restart desktop"),
+          "Browser pages will reload. Your conversations and terminals keep running on the local server.",
+        label: "Restart desktop",
       }))
     )
       return;
@@ -73,42 +72,42 @@ export function ApplicationSettings({ active }: { active: boolean }) {
           <Monitor size={24} />
         </span>
         <div>
-          <h2>{t(development ? "Citropy development" : "Citropy desktop")}</h2>
+          <h2>{development ? "Citropy development" : "Citropy desktop"}</h2>
           <p>
             {desktop
               ? development
-                ? t("Version {version} · Electron {electron}", { version: desktop.version, electron: desktop.electron })
-                : t("Version {version}", { version: desktop.version })
-              : t("Open the desktop app to use the embedded browser and window controls.")}
+                ? `Version ${desktop.version} · Electron ${desktop.electron}`
+                : `Version ${desktop.version}`
+              : "Open the desktop app to use the embedded browser and window controls."}
           </p>
         </div>
       </div>
-      <h2 className="settings-group-heading">{t("Updates and restart")}</h2>
+      <h2 className="settings-group-heading">Updates and restart</h2>
       <div className="settings-group">
         <div className="setting-row">
           <span>
-            <strong>{t("Citropy updates")}</strong>
-            <small>{t("You'll be notified when an update is available. Download and apply it when you choose.")}</small>
+            <strong>Citropy updates</strong>
+            <small>You'll be notified when an update is available. Download and apply it when you choose.</small>
           </span>
           <AppUpdateControl variant="settings" />
         </div>
         {development && !isRemote() && (
           <div className="setting-row">
             <span>
-              <strong>{t("Live interface updates")}</strong>
-              <small>{t("Interface changes appear as you save. Development data is stored separately.")}</small>
+              <strong>Live interface updates</strong>
+              <small>Interface changes appear as you save. Development data is stored separately.</small>
             </span>
-            <span>{t("Live updates on")}</span>
+            <span>Live updates on</span>
           </div>
         )}
         {development && !isRemote() && (
           <div className="setting-row">
             <span>
-              <strong>{t("Restart server")}</strong>
+              <strong>Restart server</strong>
               <small>
                 {running
-                  ? t("Available when active conversations have finished.")
-                  : t("Development only. Stops the server and starts a fresh one with your latest code.")}
+                  ? "Available when active conversations have finished."
+                  : "Development only. Stops the server and starts a fresh one with your latest code."}
               </small>
             </span>
             <button
@@ -118,7 +117,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
               onClick={() => void restartServer()}
             >
               <RotateCcw size={14} />
-              {t("Restart server")}
+              Restart server
             </button>
           </div>
         )}
@@ -126,8 +125,8 @@ export function ApplicationSettings({ active }: { active: boolean }) {
           <>
             <div className="setting-row">
               <span>
-                <strong>{t("Reload interface")}</strong>
-                <small>{" "}{t("Refresh the window while conversations and terminals keep running.")}{" "}</small>
+                <strong>Reload interface</strong>
+                <small>{" "}Refresh the window while conversations and terminals keep running.{" "}</small>
               </span>
               <button
                 type="button"
@@ -135,17 +134,17 @@ export function ApplicationSettings({ active }: { active: boolean }) {
                 disabled={updating}
                 onClick={() => void applicationAction("reload")}
               >
-                <RefreshCw size={14} />{" "}{t("Reload")}{" "}</button>
+                <RefreshCw size={14} />{" "}Reload{" "}</button>
             </div>
             <div className="setting-row">
               <span>
-                <strong>{t("Restart desktop")}</strong>
+                <strong>Restart desktop</strong>
                 <small>
                   {applyingUpdate
-                    ? t("Use Restart & apply to install the downloaded update.")
+                    ? "Use Restart & apply to install the downloaded update."
                     : running
-                      ? t("Available when active conversations have finished.")
-                      : t("Restart the app and reopen your browser tabs.")}
+                      ? "Available when active conversations have finished."
+                      : "Restart the app and reopen your browser tabs."}
                 </small>
               </span>
               <button
@@ -154,14 +153,14 @@ export function ApplicationSettings({ active }: { active: boolean }) {
                 disabled={!connected || updating || running || applyingUpdate}
                 onClick={() => void applicationAction("restart")}
               >
-                <RotateCcw size={14} />{" "}{t("Restart")}{" "}</button>
+                <RotateCcw size={14} />{" "}Restart{" "}</button>
             </div>
           </>
         ) : (
           <div className="setting-row">
             <span>
-              <strong>{t("Desktop app")}</strong>
-              <small>{" "}{t("Use native browsing, notifications, and window controls.")}{" "}</small>
+              <strong>Desktop app</strong>
+              <small>{" "}Use native browsing, notifications, and window controls.{" "}</small>
             </span>
             <button
               type="button"
@@ -169,16 +168,12 @@ export function ApplicationSettings({ active }: { active: boolean }) {
               disabled={!connected}
               onClick={() => send({ t: "desktop.open" })}
             >
-              <ExternalLink size={14} />{" "}{t("Open desktop")}{" "}</button>
+              <ExternalLink size={14} />{" "}Open desktop{" "}</button>
           </div>
         )}
       </div>
-      {applicationError && (
-        <p className="dialog-error" role="alert">
-          {applicationError}
-        </p>
-      )}
-      {development && !isRemote() && <p className="settings-note">{t("Interface edits update live. Restart the desktop after changing its native code. Server changes require restarting the local server after active work has finished.")}</p>}
+      <ActionError className="dialog-error" message={applicationError} onDismiss={() => setApplicationError("")} />
+      {development && !isRemote() && <p className="settings-note">Interface edits update live. Restart the desktop after changing its native code. Server changes require restarting the local server after active work has finished.</p>}
     </>
   );
 }

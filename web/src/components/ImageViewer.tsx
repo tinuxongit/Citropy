@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Minus, Plus } from "lucide-react";
 import { Modal } from "./Modal.tsx";
-import { useI18n } from "../lib/i18n.ts";
 
 export type ViewerImage = { src: string; name: string };
 
@@ -11,7 +10,6 @@ export function ImageViewer({ images, index, onIndexChange, onClose }: {
   onIndexChange: (index: number) => void;
   onClose: () => void;
 }) {
-  const t = useI18n();
   const current = images[index];
   const src = current?.src ?? "";
   const name = current?.name ?? "";
@@ -79,18 +77,18 @@ export function ImageViewer({ images, index, onIndexChange, onClose }: {
     onClose={onClose}
     initialFocus=".dialog-heading button"
     actions={<>
-      {images.length > 1 && <span className="image-position" role="status" aria-label={t("Image {current} of {total}", { current: index + 1, total: images.length })}>{index + 1} / {images.length}</span>}
-      {!error && download && <a className="icon-btn" aria-label={t("Download image")} title={t("Download image")} href={download} download={name}><Download size={18} /></a>}
+      {images.length > 1 && <span className="image-position" role="status" aria-label={`Image ${index + 1} of ${images.length}`}>{index + 1} / {images.length}</span>}
+      {!error && download && <a className="icon-btn" aria-label="Download image" title="Download image" href={download} download={name}><Download size={18} /></a>}
     </>}
-    footer={ready && <div className="image-zoom" role="group" aria-label={t("Image zoom")}>
-      <button className="icon-btn" type="button" aria-label={t("Zoom out")} disabled={scale <= minimum} onClick={() => setZoom(Math.max(minimum, scale / 1.25))}><Minus size={18} /></button>
-      <button className="image-zoom-reset" type="button" title={t("Fit image")} aria-label={t("Fit image")} onClick={() => setZoom(null)}>{Math.round(scale * 100)}%</button>
-      <button className="icon-btn" type="button" aria-label={t("Zoom in")} disabled={scale >= 4} onClick={() => setZoom(Math.min(4, scale * 1.25))}><Plus size={18} /></button>
+    footer={ready && <div className="image-zoom" role="group" aria-label="Image zoom">
+      <button className="icon-btn" type="button" aria-label="Zoom out" disabled={scale <= minimum} onClick={() => setZoom(Math.max(minimum, scale / 1.25))}><Minus size={18} /></button>
+      <button className="image-zoom-reset" type="button" title="Fit image" aria-label="Fit image" onClick={() => setZoom(null)}>{Math.round(scale * 100)}%</button>
+      <button className="icon-btn" type="button" aria-label="Zoom in" disabled={scale >= 4} onClick={() => setZoom(Math.min(4, scale * 1.25))}><Plus size={18} /></button>
     </div>}
   >
-    {images.length > 1 && <button className="icon-btn image-navigation" type="button" aria-label={t("Previous image")} title={t("Previous image")} aria-disabled={index === 0} onClick={() => { if (index > 0) onIndexChange(index - 1); }}><ChevronLeft size={24} /></button>}
+    {images.length > 1 && <button className="icon-btn image-navigation" type="button" aria-label="Previous image" title="Previous image" aria-disabled={index === 0} onClick={() => { if (index > 0) onIndexChange(index - 1); }}><ChevronLeft size={24} /></button>}
     <div className="image-viewport scroll" ref={viewport}>
-      {error ? <p className="image-viewer-error" role="alert">{t("Unable to load this image.")}</p> : <div className="image-surface">
+      {error ? <p className="image-viewer-error" role="alert">Unable to load this image.</p> : <div className="image-surface">
         <img
           key={src}
           src={src}
@@ -103,6 +101,6 @@ export function ImageViewer({ images, index, onIndexChange, onClose }: {
         />
       </div>}
     </div>
-    {images.length > 1 && <button className="icon-btn image-navigation" type="button" aria-label={t("Next image")} title={t("Next image")} aria-disabled={index === images.length - 1} onClick={() => { if (index < images.length - 1) onIndexChange(index + 1); }}><ChevronRight size={24} /></button>}
+    {images.length > 1 && <button className="icon-btn image-navigation" type="button" aria-label="Next image" title="Next image" aria-disabled={index === images.length - 1} onClick={() => { if (index < images.length - 1) onIndexChange(index + 1); }}><ChevronRight size={24} /></button>}
   </Modal>;
 }
