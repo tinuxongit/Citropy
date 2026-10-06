@@ -1,4 +1,5 @@
 import { configureNodeShell, nodeShellConfigured } from "./node-shell.ts";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -32,7 +33,7 @@ export async function nodeRuntimeStatus(): Promise<NodeRuntimeStatus> {
   const [version, npmVersion] = await Promise.all([commandVersion("node"), commandVersion("npm")]);
   const destination = join(homedir(), ".citropy", "runtimes", packageName);
   const managed = await verify(destination).then(() => true, () => false);
-  const shellReady = !managed || await nodeShellConfigured(process.platform === "win32" ? destination : join(destination, "bin")).catch(() => false);
+  const shellReady = !managed || await nodeShellConfigured(process.platform === "win32" ? destination : join(destination, "bin"));
   state = { ...state, shellReady, version, npmVersion, ready: compatible(version) && Boolean(npmVersion) };
   return { ...state };
 }
@@ -89,7 +90,7 @@ export function installNodeRuntime(): NodeRuntimeStatus {
     } catch (error) {
       state = { ...state, status: "error", message: (error as Error).message };
     } finally {
-      if (stage) await rm(stage, { recursive: true, force: true }).catch(() => {});
+      if (stage) await rm(stage, { recursive: true, force: true }).catch(logFailure("Removing the Node.js download folder", stage));
     }
   })();
   return { ...state };

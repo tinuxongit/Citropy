@@ -553,7 +553,6 @@
   background: var(--highlight);
   color: var(--text);
 }
-.thread-child[data-active="true"] { background: transparent; }
 .subagent-icon {
   position: relative;
   display: grid;

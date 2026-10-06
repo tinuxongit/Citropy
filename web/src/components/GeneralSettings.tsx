@@ -1,10 +1,6 @@
 import { useRef } from "react";
-import { ExperimentalTag } from "./ExperimentalTag.tsx";
-import { reportError } from "../lib/api.ts";
 import { useI18n } from "../lib/i18n.ts";
-import { Select } from "./Select.tsx";
 import {
-  setLanguage,
   setShowGitHubIdentity,
   setUiSoundVolume,
   setUiSounds,
@@ -15,7 +11,6 @@ import { Range } from "./Range.tsx";
 
 export function GeneralSettings() {
   const t = useI18n();
-  const language = useApp((state) => state.language);
   const showGitHubIdentity = useApp((state) => state.showGitHubIdentity);
   const uiSounds = useApp((state) => state.uiSounds);
   const uiAlertSounds = useApp((state) => state.uiAlertSounds);
@@ -24,17 +19,7 @@ export function GeneralSettings() {
 
   return (
     <>
-      <div className="settings-group">
-        <label className="setting-row">
-          <span>
-            <strong>{t("Language")} <ExperimentalTag /></strong>
-            <small>{t("Choose the language used in Citropy.")}</small>
-          </span>
-          <Select value={language} onChange={(value) => void setLanguage(value as "en" | "es").catch(reportError)}
-            options={[{ value: "en", label: "English" }, { value: "es", label: "Español" }]} />
-        </label>
-      </div>
-      <h2 className="settings-group-heading settings-group-spaced">{" "}{t("Chat identity")}{" "}</h2>
+      <h2 className="settings-group-heading">{" "}{t("Chat identity")}{" "}</h2>
       <div className="settings-group">
         <label className="setting-row">
           <span>

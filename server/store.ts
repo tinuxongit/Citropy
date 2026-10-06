@@ -3,17 +3,16 @@ import { setLogging } from "./logs.ts";
 import { dev } from "./config.ts";
 import { mkdirSync, readFileSync, readdirSync, rmSync, existsSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, basename, parse, resolve } from "node:path";
+import { join, basename, resolve } from "node:path";
 import { bus } from "./bus.ts";
 import { eventJournal } from "./event-journal.ts";
 import { removeToolImages } from "./tool-images.ts";
 import { uid } from "./ids.ts";
 import { saveJson } from "./save-json.ts";
-import { UsageHistory } from "./usage-history.ts";
 import { ConversationSearch } from "./conversation-search.ts";
 import { onShutdown } from "./lifecycle.ts";
 import { subagentFinishedNotification } from "./subagent-notifications.ts";
-import { emptyUsage } from "../shared/protocol.ts";
+import { emptyUsage, isProviderId } from "../shared/protocol.ts";
 import { defaultAssistance, gitActionBusy, type AssistanceSettings } from "../shared/assistance.ts";
 import type {
   ProviderId,
@@ -37,8 +36,8 @@ if (!dev && !process.env.CITROPY_DATA_DIR && !existsSync(root)) {
     if (!existsSync(legacy)) continue;
     try {
       renameSync(legacy, root);
-    } catch {
-      // the older build can still hold its folder open on Windows
+    } catch (error) {
+      throw new Error(`Could not move ${legacy} to ${root}. Close any older Citropy build that is still running, then start Citropy again.`, { cause: error });
     }
     break;
   }
@@ -47,7 +46,6 @@ const threadsDir = join(root, "threads");
 const settingsFile = join(root, "settings.json");
 const projectsFile = join(root, "projects.json");
 const notificationsFile = join(root, "notifications.json");
-const usageHistoryFile = join(root, "usage-history.json");
 
 mkdirSync(threadsDir, { recursive: true });
 
@@ -58,6 +56,7 @@ function sameValue(current: unknown, next: unknown): boolean {
 }
 
 const LOADED_CONVERSATIONS = 8;
+const REMOVED_AGENT_ERROR = "The agent that ran this conversation is no longer part of Citropy. Transfer it to another agent to continue.";
 
 interface Summary {
   changedFiles: number;
@@ -103,7 +102,6 @@ export class Store {
   };
   logging = true;
   resumeAfterLimits = false;
-  usageHistory = new UsageHistory(usageHistoryFile);
   #savedProjects = "";
   #loaded = new Map<string, Message[]>();
   #search = new ConversationSearch(join(root, "events.sqlite"));
@@ -124,6 +122,7 @@ export class Store {
       thread.compacting = false;
       thread.activeTool = undefined;
       if (interrupted) { thread.status = "stopped"; thread.error = "Citropy restarted before this turn finished. Your conversation was recovered."; }
+      if (!isProviderId(thread.provider)) { thread.status = "error"; thread.error = REMOVED_AGENT_ERROR; }
       if (!unsettled.has(thread.id)) {
         summaries.set(thread, { changedFiles: changedFiles.get(thread.id) ?? 0, lastMessageAt: lastMessageAt.get(thread.id) });
         if (JSON.stringify(thread) !== original) eventJournal.append({ t: "thread.upsert", thread: { ...thread } });
@@ -143,9 +142,7 @@ export class Store {
       }
       return [thread.id, thread];
     }));
-    this.usageHistory.load(() => [...this.threads.values()]
-      .filter((thread) => !thread.nativeAgentId)
-      .flatMap((thread) => [...(thread.transfers ?? []), { provider: thread.provider, model: thread.model, usage: thread.usage, at: thread.updatedAt }]));
+    for (const project of [...this.projects.values()]) if ((project as Project & { chat?: boolean }).chat) this.closeProject(project.id);
   }
 
   #track(record: Omit<Thread, "messages">): Thread {
@@ -180,8 +177,8 @@ export class Store {
     return eventJournal.messagePage(threadId, page);
   }
 
-  search(query: string, projectId?: string, signal?: AbortSignal) {
-    return this.#search.search(this.threads.values(), query, projectId, signal);
+  search(query: string, signal?: AbortSignal) {
+    return this.#search.search(this.threads.values(), query, signal);
   }
 
   #load(): void {
@@ -196,7 +193,7 @@ export class Store {
         if (typeof settings.assistance?.automaticTitles === "boolean") this.assistance.automaticTitles = settings.assistance.automaticTitles;
         for (const key of ["titleModel", "commitModel", "reviewModel"] as const) {
           const model = settings.assistance?.[key];
-          if (model && ["claude", "codex", "opencode", "cursor", "pi"].includes(model.provider) && typeof model.model === "string" && model.model.trim())
+          if (model && isProviderId(model.provider) && typeof model.model === "string" && model.model.trim())
             this.assistance[key] = { provider: model.provider, model: model.model, ...(typeof model.providerInstanceId === "string" ? { providerInstanceId: model.providerInstanceId } : {}), ...(typeof model.effort === "string" ? { effort: model.effort } : {}) };
         }
         for (const key of ["toasts", "desktop", "sound", "subagents"] as const) {
@@ -205,12 +202,12 @@ export class Store {
         }
         if (Array.isArray(settings.disabledProviders)) {
           for (const id of settings.disabledProviders) {
-            if (["claude", "codex", "opencode", "cursor", "pi"].includes(id)) this.disabledProviders.add(id);
+            if (isProviderId(id)) this.disabledProviders.add(id);
           }
         }
         if (Array.isArray(settings.providerInstances)) {
           for (const instance of settings.providerInstances) {
-            if (typeof instance?.id === "string" && typeof instance?.name === "string" && ["claude", "codex", "opencode", "cursor", "pi"].includes(instance.provider) && (instance.binary === undefined || typeof instance.binary === "string") && instance.environment && typeof instance.environment === "object" && !Array.isArray(instance.environment) && Object.entries(instance.environment).every(([key, value]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && typeof value === "string"))
+            if (typeof instance?.id === "string" && typeof instance?.name === "string" && isProviderId(instance.provider) && (instance.binary === undefined || typeof instance.binary === "string") && instance.environment && typeof instance.environment === "object" && !Array.isArray(instance.environment) && Object.entries(instance.environment).every(([key, value]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && typeof value === "string"))
               this.providerInstances.set(instance.id, instance);
           }
         }
@@ -244,16 +241,6 @@ export class Store {
       const raw = JSON.parse(readFileSync(projectsFile, "utf8")) as Project[];
       for (const project of raw) this.projects.set(project.id, project);
     }
-    const computer = parse(homedir()).root;
-    const chat = [...this.projects.values()].find((project) => project.chat);
-    if (chat?.path !== computer) {
-      if (chat) chat.path = computer;
-      else {
-        const created: Project = { id: uid("prj"), path: computer, name: "Chat", isGit: false, lastOpened: 0, chat: true };
-        this.projects.set(created.id, created);
-      }
-      saveJson(projectsFile, [...this.projects.values()]);
-    }
     for (const name of readdirSync(threadsDir)) {
       if (!name.endsWith(".json") || eventJournal.hasThread(name.slice(0, -5))) continue;
       try {
@@ -273,11 +260,10 @@ export class Store {
       saveJson(projectsFile, projects);
       this.#savedProjects = serialized;
     }
-    this.usageHistory.flush();
   }
 
   setProviderEnabled(id: ProviderId, enabled: boolean): void {
-    if (!["claude", "codex", "opencode", "cursor", "pi"].includes(id) || typeof enabled !== "boolean") throw new Error("Invalid provider setting");
+    if (!isProviderId(id) || typeof enabled !== "boolean") throw new Error("Invalid provider setting");
     const disabled = new Set(this.disabledProviders);
     if (enabled) disabled.delete(id);
     else disabled.add(id);
@@ -367,7 +353,7 @@ export class Store {
 
   saveProviderInstance(input: Omit<ProviderInstance, "id"> & { id?: string }): ProviderInstance {
     if (
-      !["claude", "codex", "opencode", "cursor", "pi"].includes(input.provider) ||
+      !isProviderId(input.provider) ||
       typeof input.name !== "string" || !input.name.trim() || input.name.length > 80 ||
       (input.binary !== undefined && (typeof input.binary !== "string" || !input.binary.trim() || input.binary.length > 1024)) ||
       !input.environment || typeof input.environment !== "object" || Array.isArray(input.environment) ||
@@ -417,7 +403,7 @@ export class Store {
 
   openProject(path: string): Project {
     const abs = resolve(path.replace(/^~(?=$|[/\\])/, homedir()));
-    const existing = [...this.projects.values()].find((p) => p.path === abs && !p.chat);
+    const existing = [...this.projects.values()].find((p) => p.path === abs);
     if (existing) {
       existing.lastOpened = Date.now();
       bus.emit({ t: "project.upsert", project: existing });
@@ -460,7 +446,6 @@ export class Store {
     const now = Date.now();
     const thread = this.#track({
       ...input,
-      ...(this.projects.get(input.projectId)?.chat ? { permissionMode: "manual" as const } : {}),
       ...(input.parentThreadId ? { parentMessageId: this.threads.get(input.parentThreadId)?.messages.findLast((message) => message.role === "user")?.id } : {}),
       ...(input.parentThreadId ? {} : { position: this.#topPosition(input.projectId) }),
       id: uid("thr"),
@@ -579,8 +564,6 @@ export class Store {
   }
 
   setUsage(id: string, usage: Usage): void {
-    const thread = this.threads.get(id);
-    if (thread && !thread.nativeAgentId) this.usageHistory.record(thread.provider, thread.model, thread.usage, usage);
     this.patchThread(id, { usage });
   }
 

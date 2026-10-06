@@ -42,7 +42,8 @@ async function render(
       };
       worker.onerror = dispose;
       worker.onmessageerror = dispose;
-    } catch {
+    } catch (error) {
+      console.error("Starting the code highlighter failed:", error);
       return null;
     }
   }
@@ -58,12 +59,16 @@ async function render(
       if (!pending.size && worker) idle = setTimeout(dispose, 60_000);
     };
     const cancel = () => {
-      try { worker?.postMessage({ cancel: id }); } catch {}
+      worker?.postMessage({ cancel: id });
       finish(null);
     };
     pending.set(id, finish);
     signal?.addEventListener("abort", cancel, { once: true });
-    try { worker!.postMessage({ ...request, id }); } catch { dispose(); }
+    try { worker!.postMessage({ ...request, id }); }
+    catch (error) {
+      console.error("Sending code to the highlighter failed:", error);
+      dispose();
+    }
   });
 }
 

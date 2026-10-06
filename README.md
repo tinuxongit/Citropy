@@ -1,7 +1,7 @@
 <div align="center">
   <img src="public/citropy.svg" width="84" alt="">
   <h1>Citropy</h1>
-  <p><b>Claude Code, Codex, OpenCode, Cursor, and Pi in one desktop app.</b></p>
+  <p><b>Claude Code, Codex, and OpenCode in one desktop app.</b></p>
   <p>
     <a href="https://github.com/tinuxongit/Citropy/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/tinuxongit/Citropy?label=release"></a>
     <a href="https://github.com/tinuxongit/Citropy/actions/workflows/checks.yml"><img alt="Checks" src="https://github.com/tinuxongit/Citropy/actions/workflows/checks.yml/badge.svg?branch=main"></a>
@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/ins
 irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps1 | iex
 ```
 
-You need Git and at least one signed-in agent CLI: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), [OpenCode](https://opencode.ai), [Cursor CLI](https://cursor.com/cli), or [Pi](https://github.com/earendil-works/pi). No Node.js or admin password needed. Citropy updates itself from Settings.
+You need Git and at least one signed-in agent CLI: [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), or [OpenCode](https://opencode.ai). No Node.js or admin password needed. Citropy updates itself from Settings.
 
 <details>
 <summary>Where it installs</summary>

@@ -115,7 +115,7 @@ function AsciiNoise({ metrics }: { metrics: RefObject<StageMetrics> }) {
   </>;
 }
 
-const CONTRAST_GROUPS = [".topbar-left .brand", ".topbar-navigation", ".topbar-center", ".topbar-right", ".window-controls"];
+const CONTRAST_GROUPS = [".topbar-navigation", ".topbar-center", ".topbar-right", ".window-controls"];
 
 function useTopbarContrast(map: LightMap | undefined, layer: RefObject<HTMLElement | null>, dim: number, focus: number, metrics: RefObject<StageMetrics>) {
   const theme = useApp((state) => state.theme);

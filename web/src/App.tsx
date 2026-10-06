@@ -33,11 +33,9 @@ import { RemoteFolderDialog } from "./components/RemoteFolderDialog.tsx";
 import type { NotificationTarget } from "../../shared/protocol.ts";
 import { Welcome } from "./components/Welcome.tsx";
 import {
-  modeProjects,
   useApp,
   viewportWidth,
   selectThread,
-  showProjectMode,
   toggleInspector,
   toggleSidebar,
 } from "./lib/store.ts";
@@ -71,7 +69,6 @@ export function App() {
     viewportWidth() > 720,
   );
   const newThreadProvider = useApp((state) => state.newThreadProvider);
-  const language = useApp((state) => state.language);
   const sidebarOpen = useApp((state) => state.sidebarOpen);
   const narrow = useSyncExternalStore(subscribeResize, () => viewportWidth() <= 720);
   const navigationStyle = useApp((state) => narrow ? "strip" : state.navigationStyle);
@@ -97,9 +94,8 @@ export function App() {
         !thread.parentThreadId && !thread.archived && !thread.snoozedUntil;
     });
   });
-  const hasProject = useApp((state) => modeProjects(state).length > 0);
-  const chatMode = useApp((state) => state.appMode === "chat");
-  const panelsShown = view === "chat" && !chatMode;
+  const hasProject = useApp((state) => state.projects.length > 0);
+  const panelsShown = view === "chat";
   const navigationOpen = view === "chat" ? sidebarOpen : sectionSidebarOpen;
   const shellBody = useRef<HTMLDivElement>(null);
   useDrawerGestures(shellBody, {
@@ -130,10 +126,6 @@ export function App() {
     else useApp.setState({ sidebarOpen: false });
   }, [panelsShown, sidebarOpen, inspectorOpen]);
   useUiSounds();
-
-  useEffect(() => {
-    document.documentElement.lang = language;
-  }, [language]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -189,7 +181,6 @@ export function App() {
 
   const openNotification = (target: NotificationTarget) => {
     if (target.view === "settings") setSettingsSection(target.section ?? "General");
-    if (target.projectId) showProjectMode(target.projectId);
     const state = useApp.getState();
     if (
       target.projectId &&
@@ -218,7 +209,6 @@ export function App() {
   useEffect(
     () =>
       window.citropyDesktop?.onBrowserSelect((panel) => {
-        showProjectMode(panel.projectId);
         setView("chat");
         useApp.setState((state) => ({
           activeProjectId: panel.projectId,
@@ -264,10 +254,15 @@ export function App() {
         event.preventDefault();
         if (view === "chat") toggleSidebar();
         else setSectionSidebarOpen((open) => !open);
-      } else if (key === "j" && useApp.getState().appMode === "code") {
+      } else if (key === "j") {
         event.preventDefault();
         setView("chat");
         toggleInspector();
+      } else if (key === "k" && !event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        setView("chat");
+        if (!useApp.getState().sidebarOpen) toggleSidebar();
+        useApp.setState({ threadSearchFocusPending: true });
       } else if (key === "n" && !event.shiftKey) {
         event.preventDefault();
         setView("chat");
@@ -390,7 +385,7 @@ export function App() {
             )}
           </Suspense>
         </main>
-        {hasProject && !chatMode && <SlidingPanel open={inspectorOpen && panelsShown} side="right" keepMounted>
+        {hasProject && <SlidingPanel open={inspectorOpen && panelsShown} side="right" keepMounted>
           <Inspector key={environment} visible={inspectorOpen && panelsShown} />
         </SlidingPanel>}
       </div>

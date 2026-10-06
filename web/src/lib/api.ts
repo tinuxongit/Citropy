@@ -21,7 +21,7 @@ export async function api<T>(
         ? "This feature is unavailable on the remote server. Disconnect and reconnect this environment in Settings > Environments to load the latest backend after running tasks finish."
         : "This feature is unavailable. Restart the Citropy server and try again.",
     );
-  const data = await response.json().catch(() => ({}));
+  const data = await response.json();
   signal.throwIfAborted();
   if (!response.ok)
     throw new Error(data.error || `Request failed (${response.status}).`);

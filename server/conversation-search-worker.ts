@@ -17,13 +17,13 @@ catch (error) {
   console.warn("Conversation search index unavailable; using direct search.", error);
 }
 
-parentPort!.on("message", (message: { id: number; threads: SearchThread[]; query: string; projectId?: string; cancelled: Int32Array }) => {
+parentPort!.on("message", (message: { id: number; threads: SearchThread[]; query: string; cancelled: Int32Array }) => {
   if (Atomics.load(message.cancelled, 0) !== 0) return;
   try {
     const cancelled = () => Atomics.load(message.cancelled, 0) !== 0;
     let results;
     if (index) {
-      try { results = index.search(message.threads, message.query, message.projectId, cancelled); }
+      try { results = index.search(message.threads, message.query, cancelled); }
       catch (error) {
         if (!indexUnavailable(error)) throw error;
         index.close();
@@ -31,7 +31,7 @@ parentPort!.on("message", (message: { id: number; threads: SearchThread[]; query
         console.warn("Conversation search index unavailable; using direct search.", error);
       }
     }
-    results ??= searchConversations(message.threads, id => journal.messageTexts(id), message.query, message.projectId, cancelled);
+    results ??= searchConversations(message.threads, id => journal.messageTexts(id), message.query, cancelled);
     parentPort!.postMessage({ id: message.id, results });
   } catch (error) {
     parentPort!.postMessage({ id: message.id, error: (error as Error).message });

@@ -1,4 +1,5 @@
 import { spawnCommand } from "./providers/binary.ts";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,7 +11,6 @@ import { stopProcess } from "./providers/process.ts";
 import { assertApplicationReady } from "./update-lock.ts";
 import { store } from "./store.ts";
 import type { WritingModel } from "../shared/assistance.ts";
-import type { ProviderLaunch } from "./providers/types.ts";
 
 const jobs = new Map<AbortController, string>();
 const schema = {
@@ -52,41 +52,9 @@ function run(binary: string, args: string[], cwd: string, prompt: string, signal
       else if (code !== 0) reject(new Error(stripVTControlCharacters(errors).trim().slice(-2000) || `${binary} text generation failed (${code}).`));
       else resolve(output);
     });
-    child.stdin.on("error", () => {});
+    child.stdin.on("error", logFailure("Writing the prompt to", binary));
     if (signal.aborted) abort();
     else child.stdin.end(prompt);
-  });
-}
-
-function generateCursorText(cwd: string, model: string, effort: string | undefined, prompt: string, signal: AbortSignal, launch: ProviderLaunch): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let output = "";
-    let session: ReturnType<typeof providers.cursor.start> | undefined;
-    let settled = false;
-    const textBlocks = new Set<string>();
-    const finish = (error?: Error) => {
-      if (settled) return;
-      settled = true;
-      signal.removeEventListener("abort", abort);
-      session?.dispose();
-      if (error) reject(error);
-      else resolve(output);
-    };
-    const abort = () => finish(signal.reason instanceof Error ? signal.reason : new Error("Text generation was cancelled."));
-    signal.addEventListener("abort", abort, { once: true });
-    if (signal.aborted) return abort();
-    try {
-      session = providers.cursor.start({ ...launch, cwd, model, effort, threadId: "writing", permissionMode: "plan", emit: event => {
-        if (event.type === "block.start" && event.block === "text") textBlocks.add(event.blockId);
-        if (event.type === "block.delta" && textBlocks.has(event.blockId)) {
-          output += event.text;
-          if (output.length > 1024 * 1024) finish(new Error("The writing model returned too much output."));
-        }
-        if (event.type === "turn.end") finish(event.error ? new Error(event.error) : undefined);
-        if (event.type === "exit") finish(new Error("Cursor exited before returning text."));
-      } });
-      Promise.resolve().then(() => session?.send(prompt)).catch(error => finish(error instanceof Error ? error : new Error(String(error))));
-    } catch (error) { finish(error as Error); }
   });
 }
 
@@ -128,14 +96,6 @@ export async function generateText(selection: WritingModel, instruction: string,
         "--config", "project_doc_max_bytes=0",
         "--output-schema", schemaPath, "--output-last-message", output, "--color", "never", "-"], cwd, prompt, controller.signal, launch.environment);
       result = JSON.parse(await readFile(output, "utf8"));
-    } else if (selection.provider === "pi") {
-      const raw = await run(launch.binary ?? provider.binary, ["--print", "--mode", "text", "--model", selection.model,
-        ...(selection.effort ? ["--thinking", selection.effort] : []),
-        "--no-tools", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--no-session", "--no-approve"], cwd, prompt, controller.signal, launch.environment);
-      result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
-    } else if (selection.provider === "cursor") {
-      const raw = await generateCursorText(cwd, selection.model, selection.effort, prompt, controller.signal, launch);
-      result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
     } else {
       const raw = await generateOpenCodeText(cwd, selection.model, selection.effort, prompt, controller.signal, launch);
       result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));

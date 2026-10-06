@@ -22,7 +22,7 @@ export function NewSshConnection({ onClose, connection }: { onClose: () => void;
   const [error, setError] = useState("");
   const state = useEnvironments();
   const progress = state.connections.find(entry => entry.id === savedId);
-  useEffect(() => { let disposed = false; void window.citropyDesktop?.sshHosts().then(value => { if (!disposed) setHosts(value); }).catch(() => {}); return () => { disposed = true; }; }, []);
+  useEffect(() => { let disposed = false; void window.citropyDesktop?.sshHosts().then(value => { if (!disposed) setHosts(value); }, (error: Error) => { if (!disposed) setError(error.message); }); return () => { disposed = true; }; }, []);
   const connect = async () => {
     const desktop = window.citropyDesktop;
     if (!desktop) return;

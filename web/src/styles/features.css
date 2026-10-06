@@ -572,21 +572,15 @@
   --series-codex: #3987e5;
   --series-claude: #d95926;
   --series-opencode: #199e70;
-  --series-cursor: #c98500;
-  --series-pi: #d55181;
 }
 :root[data-scheme="light"] .usage-view {
   --series-codex: #2a78d6;
   --series-claude: #eb6834;
   --series-opencode: #1baf7a;
-  --series-cursor: #eda100;
-  --series-pi: #e87ba4;
 }
 .usage-view [data-series="codex"] { --series: var(--series-codex); }
 .usage-view [data-series="claude"] { --series: var(--series-claude); }
 .usage-view [data-series="opencode"] { --series: var(--series-opencode); }
-.usage-view [data-series="cursor"] { --series: var(--series-cursor); }
-.usage-view [data-series="pi"] { --series: var(--series-pi); }
 .usage-sections[data-busy] {
   opacity: 0.6;
   transition: opacity var(--dur-fast) var(--ease-out);
@@ -1342,15 +1336,6 @@
 }
 @media (hover: none) {
   .thread-more { width: 32px; height: 30px; }
-}
-.thread-pr {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  margin: -5px var(--space-12) var(--space-12);
-  padding: var(--space-4) 0;
-  font-size: var(--text-xs);
-  color: var(--text-3);
 }
 .composer-shell[data-dragging="true"] {
   outline: none;

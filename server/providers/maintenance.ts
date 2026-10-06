@@ -9,22 +9,23 @@ import { providers } from "./index.ts";
 import { openCodeBinary, openCodePackage } from "./opencode.ts";
 import { clearCommandCache, commandIdentity, invocation, resolveCommand } from "./binary.ts";
 import { bus } from "../bus.ts";
+import { hasCode, ifMissing } from "../../shared/expected-errors.mjs";
 import { notifyUpdateAvailable } from "../update-notifications.ts";
 import type { ProviderId } from "../../shared/protocol.ts";
 import type { ProviderMaintenance } from "../../shared/provider-settings.ts";
 
 const run = promisify(execFile);
+const WHERE_NOT_FOUND = 1;
 const states = new Map<ProviderId, ProviderMaintenance>();
 const plans = new Map<
   ProviderId,
   { time: number; value: Promise<UpdatePlan> }
 >();
-const packages: Partial<Record<ProviderId, string>> = {
+const packages: Record<Exclude<ProviderId, "opencode">, string> = {
   claude: "@anthropic-ai/claude-code",
   codex: "@openai/codex",
-  pi: "@earendil-works/pi-coding-agent",
 };
-function packageFor(provider: ProviderId): string | undefined {
+function packageFor(provider: ProviderId): string {
   return provider === "opencode" ? openCodePackage() : packages[provider];
 }
 
@@ -53,7 +54,9 @@ async function executablePath(binary: string): Promise<string | undefined> {
       const { stdout } = await run("where.exe", [binary], { timeout: 8000, windowsHide: true });
       const first = stdout.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
       if (first) return first;
-    } catch {}
+    } catch (error) {
+      if ((error as { code?: unknown }).code !== WHERE_NOT_FOUND) throw error;
+    }
   } else {
     for (const folder of (process.env.PATH || "")
       .split(delimiter)
@@ -62,7 +65,9 @@ async function executablePath(binary: string): Promise<string | undefined> {
       try {
         await access(path, constants.X_OK);
         return path;
-      } catch {}
+      } catch (error) {
+        if (!hasCode(error, "ENOENT", "EACCES")) throw error;
+      }
     }
   }
   return resolveCommand(binary).path;
@@ -85,7 +90,7 @@ async function nativeUpdaterHelp(binaryPath: string, args: string[]): Promise<st
   const identity = commandIdentity(binaryPath);
   const cached = updaterHelp.get(key);
   if (identity && cached?.identity === identity) return cached.help;
-  const help = await probe(binaryPath, [...args, "--help"]).catch(() => "");
+  const help = await probe(binaryPath, [...args, "--help"]);
   if (identity && help) updaterHelp.set(key, { identity, help });
   return help;
 }
@@ -94,29 +99,16 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
   const binaryPath = await executablePath(provider === "opencode" ? openCodeBinary() : providers[provider].binary);
   if (!binaryPath) {
     const packageName = packageFor(provider);
-    if (packageName) {
-      const npm = await executablePath("npm");
-      if (!npm) return { install: true, reason: "Install Node.js and npm on this machine, then check again." };
-      const prefix = process.platform === "win32"
-        ? join(process.env.APPDATA || join(homedir(), "AppData", "Roaming"), "npm")
-        : join(homedir(), ".local");
-      return {
-        install: true,
-        method: "npm",
-        executable: npm,
-        args: ["install", "--global", "--prefix", prefix, `--allow-scripts=${packageName}`, `${packageName}@latest`],
-      };
-    }
-    const windows = process.platform === "win32";
-    const shell = await executablePath(windows ? "powershell.exe" : "bash");
-    if (!shell)
-      return { install: true, reason: `Install ${windows ? "PowerShell" : "bash"} on this machine, then check again.` };
+    const npm = await executablePath("npm");
+    if (!npm) return { install: true, reason: "Install Node.js and npm on this machine, then check again." };
+    const prefix = process.platform === "win32"
+      ? join(process.env.APPDATA || join(homedir(), "AppData", "Roaming"), "npm")
+      : join(homedir(), ".local");
     return {
       install: true,
-      method: "Official installer",
-      executable: shell,
-      args: windows ? ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"] : [],
-      installer: windows ? "https://cursor.com/install?win32=true" : "https://cursor.com/install",
+      method: "npm",
+      executable: npm,
+      args: ["install", "--global", "--prefix", prefix, `--allow-scripts=${packageName}`, `${packageName}@latest`],
     };
   }
   const target = await realpath(binaryPath);
@@ -151,11 +143,9 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
     const name = ({
       claude: "claude-code",
       codex: "codex",
-      cursor: "cursor",
       opencode: "opencode",
-    } as Partial<Record<ProviderId, string>>)[provider];
+    } satisfies Record<ProviderId, string>)[provider];
     if (
-      name &&
       brew[3] === name &&
       command &&
       (await probe(command, ["--prefix"])) === brew[1]
@@ -176,7 +166,7 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
         "Update this installation through its Homebrew installation, then refresh models.",
     };
   }
-  if (packageName && /\/pnpm\/global\//.test(target)) {
+  if (/\/pnpm\/global\//.test(target)) {
     const command = await executablePath("pnpm");
     if (command) {
       const root = await probe(command, ["root", "--global"]);
@@ -205,9 +195,7 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
       ? /\/claude\/versions\/[^/]+$/.test(normalized)
       : provider === "opencode"
         ? target === join(homedir(), ".opencode", "bin", "opencode")
-        : provider === "cursor"
-          ? /\/cursor-agent\/versions\/[^/]+\/(?:cursor-agent|agent)(?:\.ps1|\.cmd)?$/.test(normalized)
-          : false;
+        : false;
   if (native) {
     const args = provider === "opencode" ? ["upgrade"] : ["update"];
     const help = await nativeUpdaterHelp(binaryPath, args);
@@ -258,18 +246,7 @@ function versionNumber(value?: string): string | undefined {
   );
 }
 
-function cursorVersionNewer(
-  installed: string | undefined,
-  latest: string | undefined,
-): boolean | undefined {
-  const current = installed?.match(/(\d{4})\.(\d{2})\.(\d{2})/);
-  const target = latest?.match(/(\d{4})\.(\d{2})\.(\d{2})/);
-  if (!current || !target) return undefined;
-  return Number(`${target[1]}${target[2]}${target[3]}`) > Number(`${current[1]}${current[2]}${current[3]}`);
-}
-
 function updateAvailable(provider: ProviderId, installed?: string, latest?: string): boolean | undefined {
-  if (provider === "cursor") return cursorVersionNewer(installed, latest);
   const current = versionNumber(installed);
   const target = versionNumber(latest);
   return current && target ? gt(target, current) : undefined;
@@ -295,17 +272,6 @@ async function latestVersion(
       );
       return info.casks?.[0]?.version ?? info.formulae?.[0]?.versions?.stable;
     }
-    if (provider === "cursor") {
-      const response = await fetch("https://cursor.com/install", {
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!response.ok) throw new Error("Version check failed");
-      const script = await response.text();
-      const match =
-        /FINAL_DIR="[^"]*\/versions\/([^"/]+)"/.exec(script) ??
-        /downloads\.cursor\.com\/lab\/([^/]+)\//.exec(script);
-      return match?.[1];
-    }
     if (provider === "codex" && plan.method === "Standalone installer") {
       const response = await fetch("https://releases.openai.com/codex/channels/latest", {
         signal: AbortSignal.timeout(8000),
@@ -323,12 +289,11 @@ async function latestVersion(
         ),
         "utf8",
       )
-        .then(JSON.parse)
-        .catch(() => ({}));
+        .catch(ifMissing("{}"))
+        .then(JSON.parse);
       if (settings.autoUpdatesChannel === "stable") channel = "stable";
     }
     const packageName = packageFor(provider);
-    if (!packageName) return undefined;
     const response = await fetch(
       `https://registry.npmjs.org/${encodeURIComponent(packageName)}/${channel}`,
       { signal: AbortSignal.timeout(8000) },
@@ -336,7 +301,10 @@ async function latestVersion(
     if (!response.ok) throw new Error("Version check failed");
     const data = (await response.json()) as { version?: string };
     return versionNumber(data.version);
-  })().catch(() => undefined);
+  })().catch((error) => {
+    console.error("Checking the latest version failed:", provider, error);
+    return undefined;
+  });
   versions.set(provider, { time: Date.now(), value });
   return value;
 }
@@ -373,8 +341,7 @@ export async function providerMaintenance(
       ]);
       const target = versionNumber(latest);
       const newer = updateAvailable(provider.id, version, latest);
-      const advertised = provider.id === "cursor" ? latest : target;
-      if (newer && advertised) notifyUpdateAvailable(provider.label, advertised, "Providers");
+      if (newer && target) notifyUpdateAvailable(provider.label, target, "Providers");
       return {
         provider: provider.id,
         status: "idle" as const,
@@ -431,12 +398,9 @@ async function runUpdate(
       const response = await fetch(plan.installer, { signal: AbortSignal.timeout(30000) });
       if (!response.ok) throw new Error("Could not download the official provider installer.");
       const script = await response.text();
-      const validScript = process.platform === "win32"
-        ? Boolean(script.trim()) && !/^\s*</.test(script)
-        : script.startsWith(plan.install ? "#!" : "#!/bin/sh");
-      if (script.length > 512 * 1024 || !validScript) throw new Error("The provider installer response was invalid.");
+      if (script.length > 512 * 1024 || !script.startsWith("#!/bin/sh")) throw new Error("The provider installer response was invalid.");
       directory = await mkdtemp(join(tmpdir(), "citropy-provider-install-"));
-      const path = join(directory, process.platform === "win32" ? "install.ps1" : "install.sh");
+      const path = join(directory, "install.sh");
       await writeFile(path, script, { mode: 0o600, flag: "wx" });
       args = [...plan.args!, path];
     }
@@ -450,7 +414,7 @@ async function runUpdate(
         cwd: homedir(),
         stdio: ["ignore", "pipe", "pipe"],
         detached: process.platform !== "win32",
-        env: { ...process.env, CI: "1", NO_COLOR: "1", TERM: "dumb", ...(plan.installer && !plan.install ? { CODEX_NON_INTERACTIVE: "1", CODEX_INSTALL_DIR: dirname(plan.binaryPath!) } : {}) },
+        env: { ...process.env, CI: "1", NO_COLOR: "1", TERM: "dumb", ...(plan.installer ? { CODEX_NON_INTERACTIVE: "1", CODEX_INSTALL_DIR: dirname(plan.binaryPath!) } : {}) },
       });
       const append = (chunk: Buffer) => {
         state.output = stripVTControlCharacters(
@@ -464,7 +428,9 @@ async function runUpdate(
           if (process.platform !== "win32" && child.pid)
             process.kill(-child.pid, "SIGKILL");
           else child.kill("SIGKILL");
-        } catch {}
+        } catch (error) {
+          if (!hasCode(error, "ESRCH")) throw error;
+        }
       };
       let timedOut = false;
       const timer = setTimeout(() => {

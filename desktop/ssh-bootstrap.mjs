@@ -5,6 +5,8 @@ import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { pruneRemoteBuilds } from "./remote-builds.mjs";
+import { ifMissing, logFailure } from "../shared/expected-errors.mjs";
+import { processExists } from "../shared/process-exists.mjs";
 
 const [id, build] = process.argv.slice(2);
 if (!/^[a-f0-9-]{36}$/.test(id || "") || !/^[a-f0-9]{64}$/.test(build || "")) throw new Error("Invalid remote environment.");
@@ -15,16 +17,12 @@ const root = join(homedir(), ".citropy", "ssh", id);
 const statePath = join(root, "server.json");
 const lock = join(root, "launch.lock");
 await mkdir(root, { recursive: true, mode: 0o700 });
-const alive = pid => {
-  if (!Number.isInteger(pid) || pid < 1) return false;
-  try { process.kill(pid, 0); return true; } catch { return false; }
-};
 try {
   await mkdir(lock);
 } catch (error) {
   if (error.code !== "EEXIST") throw error;
-  const owner = await readFile(join(lock, "pid"), "utf8").catch(() => "");
-  if ((!owner && Date.now() - (await stat(lock)).mtimeMs < 120000) || alive(Number(owner))) throw new Error("Another connection is starting this environment. Try again shortly.");
+  const owner = await readFile(join(lock, "pid"), "utf8").catch(ifMissing(""));
+  if ((!owner && Date.now() - (await stat(lock)).mtimeMs < 120000) || (Number(owner) > 0 && processExists(Number(owner)))) throw new Error("Another connection is starting this environment. Try again shortly.");
   await rm(lock, { recursive: true });
   await mkdir(lock);
 }
@@ -94,7 +92,7 @@ try {
       const state = { port, token, pid: child.pid, build };
       await writeFile(`${statePath}.tmp`, JSON.stringify(state), { mode: 0o600 });
       await rename(`${statePath}.tmp`, statePath);
-      await pruneRemoteBuilds(join(root, "builds"), build, previous?.build).catch(() => {});
+      await pruneRemoteBuilds(join(root, "builds"), build, previous?.build).catch(logFailure("Removing old remote builds"));
       process.stdout.write(`CITROPY_READY ${JSON.stringify(state)}\n`);
     } catch (error) {
       child.kill("SIGTERM");

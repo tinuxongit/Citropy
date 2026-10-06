@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, lstat, writeFile, readFile, rename, rm, cp } from "node:fs/promises";
 import { join, dirname, basename } from "node:path";
 import { dataRoot } from "./paths.ts";
+import { ifMissing, logFailure } from "../shared/expected-errors.mjs";
 import { store } from "./store.ts";
 import { workspacePath } from "./workspaces.ts";
 import { inside } from "./files.ts";
@@ -25,7 +26,8 @@ function directory(cwd: string): string { return join(root, createHash("sha256")
 export function checkpointBusy(cwd: string): boolean { return jobs.has(cwd); }
 
 export async function checkpointLock<T>(cwd: string, action: () => Promise<T>): Promise<T> {
-  const next = (jobs.get(cwd) ?? Promise.resolve()).catch(() => {}).then(action);
+  const previous = jobs.get(cwd) ?? Promise.resolve();
+  const next = previous.then(action, action);
   jobs.set(cwd, next);
   try { return await next; } finally { if (jobs.get(cwd) === next) jobs.delete(cwd); }
 }
@@ -38,17 +40,14 @@ export async function cleanupCheckpoints(cwd: string, threadIds: string[]): Prom
     }
     const dir = directory(cwd);
     const repository = join(dir, "repository");
-    if (!(await lstat(join(repository, "HEAD")).catch(error => {
-      if (error.code === "ENOENT") return null;
-      throw error;
-    }))) return;
+    if (!(await lstat(join(repository, "HEAD")).catch(ifMissing(null)))) return;
     const options = { cwd: dir, timeout: 60_000, maxBuffer: 32 * 1024 * 1024 };
     const output = (await run("git", [`--git-dir=${repository}`, "for-each-ref", "--format=%(refname)", "refs/turns/", "refs/redo/"], options)).stdout;
     const deleted = new Set(threadIds);
     const refs = output.split("\n").filter(ref => deleted.has(/^refs\/(?:turns|redo)\/([^/]+)\//.exec(ref)?.[1] ?? ""));
     if (!refs.length) return;
     const update = run("git", [`--git-dir=${repository}`, "update-ref", "--stdin"], options);
-    update.child.stdin!.on("error", () => {});
+    update.child.stdin!.on("error", logFailure("Writing checkpoint refs to git", cwd));
     update.child.stdin!.end(refs.map(ref => `delete ${ref}\n`).join(""));
     await update;
   });
@@ -61,8 +60,8 @@ function git(cwd: string, args: string[], privateRepo = true, input?: string): P
 async function capture(cwd: string): Promise<string> {
   const dir = directory(cwd);
   await mkdir(dir, { recursive: true, mode: 0o700 });
-  try { await lstat(join(dir, "repository", "HEAD")); }
-  catch { await run("git", ["init", "--bare", join(dir, "repository")], { timeout: 15_000 }); }
+  if (!(await lstat(join(dir, "repository", "HEAD")).catch(ifMissing(null))))
+    await run("git", ["init", "--bare", join(dir, "repository")], { timeout: 15_000 });
   const paths = [...new Set((await git(cwd, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], false)).split("\0").filter(Boolean))];
   if (paths.length > 20_000) throw new Error("Checkpoint skipped: this workspace has more than 20,000 files.");
   let bytes = 0;
@@ -71,7 +70,7 @@ async function capture(cwd: string): Promise<string> {
     const entries = await Promise.all(paths.slice(offset, offset + 32).map(async path => {
       const absolute = inside(cwd, path);
       if (!absolute) throw new Error("A checkpoint path is outside the workspace.");
-      const info = await lstat(absolute).catch(error => { if (error.code === "ENOENT") return null; throw error; });
+      const info = await lstat(absolute).catch(ifMissing(null));
       return { path, info };
     }));
     for (const { path, info } of entries) {
@@ -105,13 +104,12 @@ async function changedFiles(cwd: string, before: string, after: string): Promise
 }
 
 async function changedImages(cwd: string, before: string, after: string): Promise<Array<{ path: string; label: string }>> {
-  const output = await git(cwd, ["diff", "--name-status", "--diff-filter=AM", "--no-renames", before, after]).catch(() => "");
+  const output = await git(cwd, ["diff", "--name-status", "--diff-filter=AM", "--no-renames", before, after]);
   const paths = [...new Set(output.split("\n").map(line => line.split("\t").at(-1) ?? "").filter(path => path && imageExtensions.test(path)))];
   return paths.slice(0, 6).map(path => ({ path, label: basename(path) }));
 }
 
 export async function beginCheckpoint(thread: Thread, messageId: string): Promise<void> {
-  if (store.projects.get(thread.projectId)?.chat) return;
   const cwd = workspacePath(thread.projectId, thread.id);
   if (!(await isRepo(cwd))) return;
   await checkpointLock(cwd, async () => {
@@ -126,16 +124,17 @@ export async function beginCheckpoint(thread: Thread, messageId: string): Promis
       await git(cwd, ["update-ref", `refs/turns/${thread.id}/${messageId}/before`, checkpoint.before]);
     } catch (error) { checkpoint.error = (error as Error).message; }
     const previous = thread.checkpoints ?? [];
+    const pruneFailed = logFailure("Pruning old checkpoints", thread.id);
     for (const expired of previous.slice(0, Math.max(0, previous.length - 49))) {
-      await git(cwd, ["update-ref", "-d", `refs/turns/${thread.id}/${expired.messageId}/before`]).catch(() => {});
-      await git(cwd, ["update-ref", "-d", `refs/turns/${thread.id}/${expired.messageId}/after`]).catch(() => {});
+      await git(cwd, ["update-ref", "-d", `refs/turns/${thread.id}/${expired.messageId}/before`]).catch(pruneFailed);
+      await git(cwd, ["update-ref", "-d", `refs/turns/${thread.id}/${expired.messageId}/after`]).catch(pruneFailed);
     }
     if (store.threads.get(thread.id) === thread) store.patchThread(thread.id, { checkpoints: [...previous.slice(-49), checkpoint], canRedo: false });
     await rm(join(root, `${thread.id}-redo.json`), { force: true });
-    for (const end of ["before", "after"]) await git(cwd, ["update-ref", "-d", `refs/redo/${thread.id}/${end}`]).catch(() => {});
+    for (const end of ["before", "after"]) await git(cwd, ["update-ref", "-d", `refs/redo/${thread.id}/${end}`]).catch(pruneFailed);
     if (previous.length >= 50 && Date.now() - (cleanedAt.get(cwd) ?? 0) > 3600_000) {
       cleanedAt.set(cwd, Date.now());
-      await git(cwd, ["gc", "--prune=now"]).catch(() => {});
+      await git(cwd, ["gc", "--prune=now"]).catch(pruneFailed);
     }
   });
 }
@@ -227,7 +226,7 @@ async function restoreFiles(cwd: string, before: string, expected: string, prepa
   for (const path of paths) {
     let parent = dirname(join(cwd, path));
     while (parent !== cwd && inside(cwd, parent)) {
-      if ((await lstat(parent).catch(() => null))?.isSymbolicLink()) throw new Error("Cannot restore through a symbolic-link directory.");
+      if ((await lstat(parent).catch(ifMissing(null)))?.isSymbolicLink()) throw new Error("Cannot restore through a symbolic-link directory.");
       parent = dirname(parent);
     }
   }
@@ -240,7 +239,7 @@ async function restoreFiles(cwd: string, before: string, expected: string, prepa
     await git(cwd, ["read-tree", current]);
     await git(cwd, ["restore", `--source=${before}`, "--staged", "--worktree", `--pathspec-from-file=${list}`, "--pathspec-file-nul"]);
   } catch (error) {
-    await git(cwd, ["restore", `--source=${current}`, "--staged", "--worktree", `--pathspec-from-file=${list}`, "--pathspec-file-nul"]).catch(() => {});
+    await git(cwd, ["restore", `--source=${current}`, "--staged", "--worktree", `--pathspec-from-file=${list}`, "--pathspec-file-nul"]).catch(logFailure("Undoing a partial checkpoint restore", cwd));
     throw error;
   } finally { await rm(list, { force: true }); }
   return current;
@@ -316,7 +315,7 @@ export async function forkConversation(thread: Thread, messageId: string): Promi
         await writeFile(join(dir, "metadata.json"), JSON.stringify(attachment), { mode: 0o600 });
       }
     }
-    await cp(join(dataRoot, "tool-images", thread.id), join(dataRoot, "tool-images", fork.id), { recursive: true }).catch(() => {});
+    await cp(join(dataRoot, "tool-images", thread.id), join(dataRoot, "tool-images", fork.id), { recursive: true }).catch(ifMissing(undefined));
     store.replaceMessages(fork.id, messages);
     return fork;
   } catch (error) { store.removeThread(fork.id); throw error; }

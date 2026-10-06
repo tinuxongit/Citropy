@@ -22,12 +22,10 @@ function fixture(t, count = 2) {
   return { journal, search, threads, path };
 }
 
-test("worker search preserves substring, markdown, Unicode, snippets, sorting and project scope", async t => {
+test("worker search preserves substring, markdown, Unicode, snippets and sorting", async t => {
   const { journal, search, threads } = fixture(t);
-  for (const query of ["linked label", "CAFÉ", " code. Next", "title only", "fé", "absent", "  "]) {
-    for (const project of [undefined, "first", "second"])
-      assert.deepEqual(await search.search(threads, query, project), searchConversations(threads, id => journal.messageTexts(id), query, project));
-  }
+  for (const query of ["linked label", "CAFÉ", " code. Next", "title only", "fé", "absent", "  "])
+    assert.deepEqual(await search.search(threads, query), searchConversations(threads, id => journal.messageTexts(id), query));
 });
 
 test("worker searches include committed streaming text and observe replace and delete", async t => {
@@ -45,7 +43,7 @@ test("worker searches include committed streaming text and observe replace and d
 test("obsolete searches cancel and closing a worker rejects pending requests", async t => {
   const { search, threads } = fixture(t, 200);
   const controller = new AbortController();
-  const obsolete = search.search(threads, "absent", undefined, controller.signal);
+  const obsolete = search.search(threads, "absent", controller.signal);
   const cancelled = assert.rejects(obsolete, { name: "AbortError" });
   controller.abort();
   await cancelled;

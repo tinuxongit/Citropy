@@ -18,7 +18,6 @@ test("missing providers install in the selected backend and refresh only after v
   process.env.PATH = bin;
   syncBuiltinESMExports();
   const cli = `#!${process.execPath}\nprocess.stdout.write("1.2.3");\n`;
-  fs.symlinkSync("/bin/bash", join(bin, "bash"));
   fs.writeFileSync(join(bin, "npm"), `#!${process.execPath}
 const fs = require("node:fs");
 const path = require("node:path");
@@ -32,8 +31,6 @@ fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(path.join(dir, name), ${JSON.stringify(cli)}, { mode: 0o755 });
 `, { mode: 0o755 });
   globalThis.fetch = async input => {
-    if (String(input) === "https://cursor.com/install")
-      return new Response(`#!/bin/bash\nprintf '%s' '${cli}' > "${home}/.local/bin/cursor-agent"\n/bin/chmod +x "${home}/.local/bin/cursor-agent"\n`);
     if (String(input).startsWith("https://registry.npmjs.org/"))
       return Response.json({ version: "1.2.3" });
     throw new Error("Unexpected network request: " + input);
@@ -71,7 +68,7 @@ fs.writeFileSync(path.join(dir, name), ${JSON.stringify(cli)}, { mode: 0o755 });
   assert.equal(failed.install, true);
   assert.equal(refreshed, 0);
   fs.rmSync(join(home, "fail"));
-  for (const provider of ["codex", "claude", "opencode", "cursor"]) {
+  for (const provider of ["codex", "claude", "opencode"]) {
     startProviderUpdate(provider, async () => {}, async () => refreshed++);
     const result = await settle(provider);
     assert.equal(result.status, "success", result.message);
@@ -79,7 +76,7 @@ fs.writeFileSync(path.join(dir, name), ${JSON.stringify(cli)}, { mode: 0o755 });
     assert.match(result.message, /Installed.*Sign in/);
     assert.equal(result.version, "1.2.3");
   }
-  assert.equal(refreshed, 4);
+  assert.equal(refreshed, 3);
   const calls = fs.readFileSync(join(home, "calls"), "utf8").trim().split("\n").map(JSON.parse);
   assert.equal(calls.length, 4);
   for (const args of calls) assert.deepEqual(args.slice(0, 4), ["install", "--global", "--prefix", join(home, ".local")]);

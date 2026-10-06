@@ -2,10 +2,11 @@ import type { QuestionRequest } from "../../../shared/questions.ts";
 import { SEARCH_ENGINES, type SearchEngine } from "./web-search.ts";
 import { environmentStorage } from "./environment.ts";
 import { DEFAULT_CUSTOM_COLOR, isHexColor } from "./custom-theme.ts";
+import { readTabs } from "./thread-tabs.ts";
 import "./migrate-preferences.ts";
+import { isProviderId } from "../../../shared/protocol.ts";
 import { create } from "zustand";
 import { defaultAssistance, type AssistanceSettings, type WritingModel } from "../../../shared/assistance.ts";
-import type { Language } from "./translations.ts";
 import type { GitHubUser } from "../../../shared/github.ts";
 import type {
   BrowserState,
@@ -63,7 +64,6 @@ const half = Math.ceil(COLOR_THEMES.length / 2);
 export const THEMES: readonly Theme[] = [...COLOR_THEMES.slice(0, half), "neutral", "custom", ...COLOR_THEMES.slice(half)];
 export const SCHEMES = ["dark", "light"] as const;
 export type Scheme = typeof SCHEMES[number];
-export type AppMode = "code" | "chat";
 export type NavigationStyle = "strip" | "bar";
 const STAGE_BACKGROUNDS = ["default", "ascii", "image"] as const;
 export type StageBackground = typeof STAGE_BACKGROUNDS[number];
@@ -84,7 +84,6 @@ export interface AppState {
   confirmation: Confirmation | null;
   searchResult: {
     query: string;
-    projectId?: string;
     results: Array<{ threadId: string; messageId?: string; snippet: string }>;
   } | null;
   searchMessageId: string | null;
@@ -121,6 +120,8 @@ export interface AppState {
   toasts: Toast[];
   activeProjectId: string | null;
   activeThreadId: string | null;
+  openThreadIds: string[];
+  previewThreadId: string | null;
   followRequest: number;
   readingThreadId: string | null;
   panels: PanelTab[];
@@ -133,8 +134,6 @@ export interface AppState {
   inspectorOpen: boolean;
   gitPanelOpen: boolean;
   sidebarOpen: boolean;
-  appMode: AppMode;
-  otherModeSelection: { projectId: string | null; threadId: string | null } | null;
   navigationStyle: NavigationStyle;
   searchEngine: SearchEngine;
   stageBackground: StageBackground;
@@ -150,10 +149,11 @@ export interface AppState {
   backgroundEverywhere: boolean;
   contentWidth: number;
   sidebarGroups: Record<string, boolean>;
+  threadQuery: string;
+  threadSearchFocusPending: boolean;
   theme: Theme;
   scheme: Scheme;
   customColor: string;
-  language: Language;
   uiScale: number;
   panelWidths: Partial<Record<PanelId, number>>;
   textStreaming: boolean;
@@ -162,10 +162,6 @@ export interface AppState {
   uiSounds: boolean;
   uiAlertSounds: boolean;
   uiSoundVolume: number;
-}
-
-export function modeProjects(state: Pick<AppState, "projects" | "appMode">): Project[] {
-  return state.projects.filter((project) => Boolean(project.chat) === (state.appMode === "chat"));
 }
 
 function oneOf<T extends string>(options: readonly T[], value: string, fallback: T): T {
@@ -209,57 +205,37 @@ const storedCustomColor = readPref<string>("citropy.customColor", "");
 const storedTheme = readPref<string>("citropy.theme", "neutral");
 
 function readPanelWidths(): Partial<Record<PanelId, number>> {
-  try {
-    const stored = JSON.parse(readPref("citropy.panelWidths", "{}"));
-    return Object.fromEntries(
-      ["sidebar", "inspector", "git", "github"]
-        .filter((key) => Number.isFinite(stored?.[key]) && stored[key] > 0)
-        .map((key) => [key, stored[key]]),
-    );
-  } catch {
-    return {};
-  }
+  const stored = JSON.parse(readPref("citropy.panelWidths", "{}"));
+  return Object.fromEntries(
+    ["sidebar", "inspector", "git", "github"]
+      .filter((key) => Number.isFinite(stored?.[key]) && stored[key] > 0)
+      .map((key) => [key, stored[key]]),
+  );
 }
 
 function readSidebarGroups(): Record<string, boolean> {
-  try {
-    const stored = JSON.parse(readPref("citropy.sidebarGroups", "{}"));
-    return Object.fromEntries(Object.entries(stored ?? {}).filter((entry): entry is [string, boolean] => typeof entry[1] === "boolean"));
-  } catch {
-    return {};
-  }
+  const stored = JSON.parse(readPref("citropy.sidebarGroups", "{}"));
+  return Object.fromEntries(Object.entries(stored ?? {}).filter((entry): entry is [string, boolean] => typeof entry[1] === "boolean"));
 }
 
 export function readOffline(id?: string): Record<string, QueuedMessage[]> {
-  try {
-    const stored = JSON.parse(readPref("citropy.offline", "{}", id));
-    return stored && typeof stored === "object" && !Array.isArray(stored)
-      ? stored
-      : {};
-  } catch {
-    return {};
-  }
+  const stored = JSON.parse(readPref("citropy.offline", "{}", id));
+  return stored && typeof stored === "object" && !Array.isArray(stored)
+    ? stored
+    : {};
 }
 
 function readThreadDefaults(): AppState["threadDefaults"] {
-  try {
-    const value = JSON.parse(readPref("citropy.threadDefaults", "null"));
-    return value && ["claude", "codex", "opencode", "cursor", "pi"].includes(value.provider) &&
-      (value.providerInstanceId == null || typeof value.providerInstanceId === "string") &&
-      (value.model === undefined || typeof value.model === "string") &&
-      (value.effort === undefined || typeof value.effort === "string") ? { ...value, providerInstanceId: value.providerInstanceId || undefined } : null;
-  } catch {
-    return null;
-  }
+  const value = JSON.parse(readPref("citropy.threadDefaults", "null"));
+  return value && isProviderId(value.provider) &&
+    (value.providerInstanceId == null || typeof value.providerInstanceId === "string") &&
+    (value.model === undefined || typeof value.model === "string") &&
+    (value.effort === undefined || typeof value.effort === "string") ? { ...value, providerInstanceId: value.providerInstanceId || undefined } : null;
 }
 
 function readFavoriteModels(): WritingModel[] {
-  try {
-    const value = JSON.parse(readPref("citropy.favoriteModels", "[]"));
-    return Array.isArray(value) ? value.filter((entry) => entry && ["claude", "codex", "opencode", "cursor", "pi"].includes(entry.provider) && typeof entry.model === "string" && (entry.providerInstanceId === undefined || typeof entry.providerInstanceId === "string")) : [];
-  } catch {
-    return [];
-  }
+  const value = JSON.parse(readPref("citropy.favoriteModels", "[]"));
+  return Array.isArray(value) ? value.filter((entry) => entry && isProviderId(entry.provider) && typeof entry.model === "string" && (entry.providerInstanceId === undefined || typeof entry.providerInstanceId === "string")) : [];
 }
 
 export const useApp = create<AppState>(() => ({
@@ -311,6 +287,7 @@ export const useApp = create<AppState>(() => ({
   toasts: [],
   activeProjectId: typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.project"),
   activeThreadId: typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.thread"),
+  ...(typeof localStorage === "undefined" ? { openThreadIds: [], previewThreadId: null } : readTabs()),
   followRequest: 0,
   readingThreadId: null,
   panels: [],
@@ -330,8 +307,6 @@ export const useApp = create<AppState>(() => ({
     typeof window !== "undefined" &&
       window.innerWidth / (initialScale / 100) > 720,
   ),
-  appMode: readPref<AppMode>("citropy.appMode", "code") === "chat" ? "chat" : "code",
-  otherModeSelection: null,
   navigationStyle: readPref<NavigationStyle>("citropy.navigationStyle", "bar") === "strip" ? "strip" : "bar",
   searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
   stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "ascii"), "ascii"),
@@ -347,11 +322,12 @@ export const useApp = create<AppState>(() => ({
   backgroundEverywhere: readFlag("citropy.backgroundEverywhere", false),
   contentWidth: Number.isFinite(storedContentWidth) ? Math.max(MIN_CONTENT_WIDTH, Math.min(MAX_CONTENT_WIDTH, storedContentWidth)) : DEFAULT_CONTENT_WIDTH,
   sidebarGroups: readSidebarGroups(),
+  threadQuery: "",
+  threadSearchFocusPending: false,
   theme: oneOf(THEMES, storedTheme, "neutral"),
   scheme: oneOf(SCHEMES, readPref<string>("citropy.scheme", storedTheme === "light" ? "light" : "dark"), "dark"),
   customColor: isHexColor(storedCustomColor) ? storedCustomColor : DEFAULT_CUSTOM_COLOR,
   uiScale: initialScale,
-  language: readPref<Language>("citropy.language", "en") === "es" ? "es" : "en",
   panelWidths: readPanelWidths(),
   textStreaming: readFlag("citropy.textStreaming", true),
   typingAnimation: readFlag("citropy.typingAnimation", false),

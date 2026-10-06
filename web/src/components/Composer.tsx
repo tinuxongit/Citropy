@@ -64,7 +64,6 @@ export function Composer({
   );
   const connected = useApp((state) => state.connected);
   const providers = useApp((state) => state.providers);
-  const chat = useApp((state) => Boolean(thread && state.projects.some((project) => project.id === thread.projectId && project.chat)));
   const hasMessages = useApp((state) => Boolean(threadId && state.order[threadId]?.length));
   const gitThread = useApp((state) => {
     let selected = thread;
@@ -76,7 +75,7 @@ export function Composer({
     return selected?.parentThreadId ? undefined : selected;
   });
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
-  const { value, setValue, attachments, setAttachments } = useComposerDraft(threadId, scope);
+  const { value, setValue, attachments, setAttachments, clearDraft } = useComposerDraft(threadId, scope);
   const { uploading, upload } = useAttachmentUpload({
     threadId,
     scopeSignal,
@@ -160,7 +159,6 @@ export function Composer({
     onSkills,
     modelButton,
     permissionButton,
-    chat,
   });
 
   const started = hasMessages || (!loaded && Boolean(thread && (thread.usage.turns || thread.externalId || thread.branchedFrom || thread.transfers?.length)));
@@ -187,9 +185,9 @@ export function Composer({
     <UsageLimitTab threadId={thread.id} />
     <PlanTab threadId={thread.id} />
     <QueueList thread={thread} provider={provider} onEdit={restore} />
-    {gitThread && !chat && <GitActions key={gitThread.id} thread={gitThread} />}
+    {gitThread && <GitActions key={gitThread.id} thread={gitThread} />}
     <RunningShells onOpen={onShell} />
-  </>, [thread, provider, restore, gitThread, onShell, chat]);
+  </>, [thread, provider, restore, gitThread, onShell]);
   const settingsBar = useMemo(() => thread && <>
     <ModelPicker
       value={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: configuredThread?.model ?? model?.id ?? "default" }}
@@ -215,12 +213,12 @@ export function Composer({
         ...provider.instances.map(entry => ({ value: entry.id, label: entry.name, disabled: !entry.available })),
       ]} /> : null}
 
-    {!chat && <PermissionMenu
+    <PermissionMenu
       thread={configuredThread!}
       disabled={!connected || sending || transferring}
       buttonRef={permissionButton}
-    />}
-  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal, chat, t]);
+    />
+  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal, t]);
 
   const submit = async () => {
     const text = value.trim();
@@ -236,8 +234,7 @@ export function Composer({
     setSending(true);
     try {
       await sendMessage(text, attachments);
-      setAttachments([]);
-      setValue("");
+      clearDraft();
     } catch (error) {
       reportError(error);
     } finally {

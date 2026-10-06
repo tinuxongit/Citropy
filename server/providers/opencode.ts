@@ -7,8 +7,9 @@ import { withSkills } from "./skill-prompt.ts";
 import { store } from "../store.ts";
 import type { ChildProcess } from "node:child_process";
 import { request } from "node:http";
-import { realpath } from "node:fs/promises";
 import { onLines } from "../lines.ts";
+import { logFailure } from "../../shared/expected-errors.mjs";
+import { readServerEvents, sameDirectory } from "./opencode-common.ts";
 import { askQuestion, answerQuestion, cancelQuestions } from "../questions.ts";
 import { ask, cancelThread } from "../permissions.ts";
 import type { AgentSession, Provider, ProviderLaunch, StartOptions } from "./types.ts";
@@ -17,7 +18,6 @@ import { normalizeTodos } from "../../shared/todos.ts";
 import { pathToFileURL } from "node:url";
 import type { ProviderCommand } from "../../shared/features.ts";
 
-const MAX_EVENT_BUFFER = 8 * 1024 * 1024;
 
 interface Instance {
   base: string;
@@ -27,11 +27,9 @@ interface Instance {
 function launch(options: StartOptions, signal: AbortSignal, textOnly = false): Promise<Instance> {
   return new Promise((resolve, reject) => {
     const inherited = JSON.parse(options.environment?.OPENCODE_CONFIG_CONTENT ?? process.env.OPENCODE_CONFIG_CONTENT ?? "{}");
-    const permission = options.chat
-      ? { "*": "deny", read: "allow", glob: "allow", grep: "allow", list: "allow", webfetch: "allow", websearch: "allow", question: "allow", "citropy_*": "allow" }
-      : options.permissionMode === "bypass" ? { "*": "allow" } : { "*": options.permissionMode === "plan" ? "deny" : "ask", read: "allow", glob: "allow", grep: "allow", list: "allow", task: "allow", question: "allow", edit: options.permissionMode === "acceptEdits" ? "allow" : options.permissionMode === "plan" ? "deny" : "ask", "citropy_*": "allow" };
+    const permission = options.permissionMode === "bypass" ? { "*": "allow" } : { "*": options.permissionMode === "plan" ? "deny" : "ask", read: "allow", glob: "allow", grep: "allow", list: "allow", task: "allow", question: "allow", edit: options.permissionMode === "acceptEdits" ? "allow" : options.permissionMode === "plan" ? "deny" : "ask", "citropy_*": "allow" };
     const citropy = options.mcp ? { citropy: { type: "remote", ...options.mcp, oauth: false, enabled: true, timeout: 1_860_000 } } : {};
-    const config = { ...inherited, permission: textOnly ? { "*": "deny" } : permission, mcp: options.chat ? citropy : { ...inherited.mcp, ...citropy } };
+    const config = { ...inherited, permission: textOnly ? { "*": "deny" } : permission, mcp: { ...inherited.mcp, ...citropy } };
     const child = spawnCommand(options.binary ?? "opencode", ["serve", "--port", "0", "--hostname", "127.0.0.1"], {
       detached: process.platform !== "win32",
       cwd: options.cwd,
@@ -92,7 +90,7 @@ export async function generateOpenCodeText(cwd: string, model: string, effort: s
     if (result.info?.error) throw new Error(result.info.error.data?.message || "OpenCode could not generate text.");
     return (result.parts ?? []).filter((part: OcPart) => part.type === "text").map((part: OcPart) => part.text ?? "").join("\n");
   } finally {
-    if (sessionId) await fetch(`${instance.base}/session/${encodeURIComponent(sessionId)}`, { method: "DELETE", signal: AbortSignal.timeout(2000) }).catch(() => {});
+    if (sessionId) await fetch(`${instance.base}/session/${encodeURIComponent(sessionId)}`, { method: "DELETE", signal: AbortSignal.timeout(2000) }).catch(logFailure("Deleting the OpenCode text session", sessionId));
     stopProcess(instance.child, true);
     await waitForStoppedProcesses();
   }
@@ -168,7 +166,7 @@ class OpenCodeSession implements AgentSession {
       } else {
         if (!response.ok) throw new Error(`OpenCode session lookup failed: ${response.status}`);
         const saved = await response.json() as { directory?: string };
-        if (saved.directory && await realpath(saved.directory).catch(() => saved.directory) !== await realpath(this.#options.cwd).catch(() => this.#options.cwd)) {
+        if (saved.directory && !(await sameDirectory(saved.directory, this.#options.cwd))) {
           const forked = await this.#post(`/session/${encodeURIComponent(sessionId)}/fork?directory=${encodeURIComponent(this.#options.cwd)}`, {});
           sessionId = String((forked as { id?: string }).id ?? "");
           if (!sessionId) throw new Error("OpenCode did not return a forked session ID.");
@@ -187,7 +185,7 @@ class OpenCodeSession implements AgentSession {
     if (!response.ok || !response.body) throw new Error(`OpenCode event stream failed: ${response.status}`);
     this.#sessionId = sessionId;
     this.#options.emit({ type: "session", externalId: this.#sessionId, model: this.#options.model });
-    void this.#listen(response).catch((error: Error) => {
+    void readServerEvents(response, (event) => this.#handle(event as Record<string, unknown>)).catch((error: Error) => {
       if (this.#abort.signal.aborted) return;
       this.#finish(error.message);
       this.#options.emit({ type: "exit", code: -1 });
@@ -224,40 +222,6 @@ class OpenCodeSession implements AgentSession {
       req.once("error", reject);
       req.end(JSON.stringify(body));
     });
-  }
-
-  async #listen(response: Response): Promise<void> {
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) throw new Error("OpenCode event stream closed");
-        buffer += decoder.decode(value, { stream: true });
-        if (buffer.length > MAX_EVENT_BUFFER) {
-          this.#options.emit({ type: "notice", level: "error", text: "OpenCode sent an event larger than 8 MB; the event stream was reset." });
-          throw new Error("OpenCode event stream exceeded its 8 MB buffer.");
-        }
-        const frames = buffer.split(/\r?\n\r?\n/);
-        buffer = frames.pop()!;
-        for (const frame of frames) {
-          const payload = frame
-            .split(/\r?\n/)
-            .filter((line) => line.startsWith("data:"))
-            .map((line) => line.slice(5).trim())
-            .join("");
-          if (!payload) continue;
-          try {
-            this.#handle(JSON.parse(payload) as Record<string, unknown>);
-          } catch {
-            /* ignore malformed frame */
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
   }
 
   #body(text: string, attachments: Attachment[]): Record<string, unknown> {
@@ -561,32 +525,23 @@ class OpenCodeSession implements AgentSession {
   }
 }
 
+const TOOL_NAMES: Record<string, string> = {
+  bash: "Bash",
+  read: "Read",
+  write: "Write",
+  edit: "Edit",
+  patch: "Edit",
+  grep: "Grep",
+  glob: "Glob",
+  list: "Glob",
+  webfetch: "WebFetch",
+  todowrite: "TodoWrite",
+  todoread: "TodoWrite",
+  task: "Task",
+};
+
 function mapTool(tool: string): string {
-  switch (tool) {
-    case "bash":
-      return "Bash";
-    case "read":
-      return "Read";
-    case "write":
-      return "Write";
-    case "edit":
-    case "patch":
-      return "Edit";
-    case "grep":
-      return "Grep";
-    case "glob":
-    case "list":
-      return "Glob";
-    case "webfetch":
-      return "WebFetch";
-    case "todowrite":
-    case "todoread":
-      return "TodoWrite";
-    case "task":
-      return "Task";
-    default:
-      return tool;
-  }
+  return Object.hasOwn(TOOL_NAMES, tool) ? TOOL_NAMES[tool]! : tool;
 }
 
 const detectedMajors = new Map<string, OpenCodeMajor>();

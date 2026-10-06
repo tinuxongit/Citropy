@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { waitUntil } from "./wait-until.mjs";
 
 const messages = (start, count) => Array.from({ length: count }, (_, offset) => {
   const index = start + offset;
@@ -217,7 +218,7 @@ test("conversation history paging", { timeout: 120_000 }, async t => {
     await page.getByRole("button", { name: "Loading older messages…", exact: true }).waitFor();
     push({ t: "thread.messages", threadId: "chat", requestId: requests[0].requestId, messages: messages(200, 80), page: { next: "reset-older", revision: 2 } });
     await page.waitForFunction(() => window.historyState().historyPages.chat.revision === 2);
-    await page.waitForTimeout(50);
+    await waitUntil(() => requests.length === 2);
     assert.equal(requests.length, 2);
     assert.deepEqual(requests[1].page, { before: "reset-older", revision: 2 });
     assert.equal(await page.evaluate(() => window.historyState().messages.m160), undefined);

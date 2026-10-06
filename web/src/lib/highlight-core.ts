@@ -124,7 +124,8 @@ export async function highlight(code: string, lang: string | undefined, theme: "
       lang: resolved,
       theme: theme === "light" ? "citropy-light" : "citropy-dark",
     });
-  } catch {
+  } catch (error) {
+    console.error("Code highlighting failed:", resolved, error);
     return `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
   }
 }
@@ -149,7 +150,8 @@ export async function highlightTokens(
         .map((token) => `<span style="color:${token.color ?? "inherit"}">${escapeHtml(token.content)}</span>`)
         .join(""),
     );
-  } catch {
+  } catch (error) {
+    console.error("Code highlighting failed:", resolved, error);
     return null;
   }
 }

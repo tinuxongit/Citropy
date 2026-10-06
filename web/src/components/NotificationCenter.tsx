@@ -1,7 +1,7 @@
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
-import { currentLocale, useI18n } from "../lib/i18n.ts";
+import { LOCALE, useI18n } from "../lib/i18n.ts";
 import { useEffect, useRef, useState } from "react";
 import {
   Bell,
@@ -173,7 +173,7 @@ export function NotificationCenter({
                     <span>{entry.kind === "update" ? t("{release} is available. Open settings to update when you're ready.", { release: entry.text }) : entry.text}</span>
                     <time
                       dateTime={new Date(entry.createdAt).toISOString()}
-                      title={new Date(entry.createdAt).toLocaleString(currentLocale())}
+                      title={new Date(entry.createdAt).toLocaleString(LOCALE)}
                     >
                       {ago(entry.createdAt)}
                     </time>

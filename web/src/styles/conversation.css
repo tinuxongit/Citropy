@@ -330,7 +330,7 @@
 }
 
 .activity-head[aria-expanded="true"] {
-  margin-bottom: var(--space-6);
+  margin-top: var(--space-6);
 }
 
 .activity-head .working { flex: none; padding: 0; }
@@ -353,6 +353,7 @@
   height: 12px;
   overflow: hidden;
 }
+.activity-chevron .group-chevron { transform: rotate(180deg); }
 .activity-update { padding: var(--space-6) 0 var(--space-2); }
 .activity-caption { display: block; margin-bottom: var(--space-4); color: var(--text-3); font-size: var(--text-xs); font-weight: 500; }
 .activity-update .prose { font-size: var(--text-base); color: var(--text-2); }
@@ -425,7 +426,7 @@
 }
 
 .activity-head[aria-expanded="true"] .group-chevron {
-  transform: rotate(180deg);
+  transform: none;
 }
 
 .group-label,
@@ -458,6 +459,10 @@
   --tree-delay: calc(var(--tree-step) * 70ms);
   position: relative;
   min-width: 0;
+}
+.work-tree-list {
+  display: grid;
+  gap: var(--space-6);
 }
 .work-tree-row[data-animate] > * {
   animation: tree-row-in var(--dur-base) var(--ease-out) calc(var(--tree-delay) + 90ms) both;
@@ -495,7 +500,7 @@
   bottom: 0;
   border-left-width: 1.5px;
 }
-.work-tree-row:last-child::before {
+.work-tree-row[data-last]::before {
   bottom: auto;
   height: 6px;
 }
@@ -641,14 +646,6 @@
 
 .tool-time {
   font-variant-numeric: tabular-nums;
-}
-
-.tool-deadline {
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-}
-.tool-deadline[data-urgent="true"] {
-  color: var(--warn);
 }
 
 .tool-ok {

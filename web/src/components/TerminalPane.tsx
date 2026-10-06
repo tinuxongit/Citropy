@@ -216,7 +216,8 @@ export function TerminalPane({
       const addon = new WebglAddon();
       try {
         instance.loadAddon(addon);
-      } catch {
+      } catch (error) {
+        console.error("The terminal's WebGL renderer failed; using the standard renderer:", error);
         webgl.current = false;
         addon.dispose();
         return;
@@ -234,7 +235,10 @@ export function TerminalPane({
       renderer.current = release;
       addon.onContextLoss(() => release.dispose());
       fit.current?.fit();
-    })().catch(() => { webgl.current = false; }), 500);
+    })().catch((error) => {
+      console.error("The terminal's WebGL renderer failed; using the standard renderer:", error);
+      webgl.current = false;
+    }), 500);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [active, connected, ready]);
 

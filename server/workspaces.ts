@@ -3,7 +3,7 @@ import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { uid } from "./ids.ts";
 import { store } from "./store.ts";
-import { git } from "./git.ts";
+import { git, isRepo, tryGit } from "./git.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
 import type { Project, WorkspaceChoice } from "../shared/protocol.ts";
 import type { WorkspaceOptions } from "../shared/features.ts";
@@ -27,86 +27,65 @@ export function resolveWorkspace(projectId: string, threadId?: string): Project 
 export async function workspaceOptions(
   project: Project,
 ): Promise<WorkspaceOptions> {
-  try {
-    const raw = await git(project.path, [
-      "worktree",
-      "list",
-      "--porcelain",
-      "-z",
-    ]);
-    const worktrees = raw
-      .split("\0\0")
-      .filter(Boolean)
-      .flatMap((block) => {
-        const lines = block.split("\0");
-        const path = lines
-          .find((line) => line.startsWith("worktree "))
-          ?.slice(9);
-        if (!path || lines.includes("bare")) return [];
-        return [
-          {
-            path,
-            branch:
-              lines
-                .find((line) => line.startsWith("branch "))
-                ?.slice(7)
-                .replace(/^refs\/heads\//, "") ?? "Detached HEAD",
-            current: path === project.path,
-            locked: lines.some((line) => line.startsWith("locked")),
-          },
-        ];
-      });
-    const branches = (
-      await git(project.path, [
-        "for-each-ref",
-        "--format=%(refname:short)",
-        "refs/heads",
-        "refs/remotes",
-      ])
-    )
-      .split("\n")
-      .filter(Boolean);
-    const hasCommits = await git(project.path, [
-      "rev-parse",
-      "--verify",
-      "HEAD",
-    ]).then(
-      () => true,
-      () => false,
-    );
-    return { worktrees, branches, hasCommits };
-  } catch {
-    return { worktrees: [], branches: [], hasCommits: false };
-  }
+  if (!(await isRepo(project.path))) return { worktrees: [], branches: [], hasCommits: false };
+  const raw = await git(project.path, [
+    "worktree",
+    "list",
+    "--porcelain",
+    "-z",
+  ]);
+  const worktrees = raw
+    .split("\0\0")
+    .filter(Boolean)
+    .flatMap((block) => {
+      const lines = block.split("\0");
+      const path = lines
+        .find((line) => line.startsWith("worktree "))
+        ?.slice(9);
+      if (!path || lines.includes("bare")) return [];
+      return [
+        {
+          path,
+          branch:
+            lines
+              .find((line) => line.startsWith("branch "))
+              ?.slice(7)
+              .replace(/^refs\/heads\//, "") ?? "Detached HEAD",
+          current: path === project.path,
+          locked: lines.some((line) => line.startsWith("locked")),
+        },
+      ];
+    });
+  const branches = (
+    await git(project.path, [
+      "for-each-ref",
+      "--format=%(refname:short)",
+      "refs/heads",
+      "refs/remotes",
+    ])
+  )
+    .split("\n")
+    .filter(Boolean);
+  const hasCommits = Boolean((await tryGit(project.path, ["rev-parse", "--verify", "HEAD"])).trim());
+  return { worktrees, branches, hasCommits };
 }
 
 export async function chooseThreadWorkspace(
   project: Project,
   choice?: WorkspaceChoice,
 ): Promise<{ workspacePath: string; workspaceBranch?: string }> {
-  if (project.chat) return { workspacePath: project.path };
   const defaults = resolveProjectSettings(store.projectDefaults, project.settings);
   const options = choice ?? { kind: defaults.workspace ?? "current" };
   if (options.kind === "current") {
     if (defaults.autoPull) {
-      const clean = await git(project.path, ["status", "--porcelain"]).then(
-        (text) => !text,
-        () => false,
-      );
-      const ahead = await git(project.path, [
-        "rev-list",
-        "--count",
-        "@{upstream}..HEAD",
-      ]).catch(() => "");
+      const clean = !(await tryGit(project.path, ["status", "--porcelain"]));
+      const ahead = await tryGit(project.path, ["rev-list", "--count", "@{upstream}..HEAD"]);
       if (clean && ahead.trim() === "0")
         await git(project.path, ["pull", "--ff-only"]);
     }
     return {
       workspacePath: project.path,
-      workspaceBranch: await git(project.path, [
-        "branch",
-        "--show-current",
-      ]).then((branch) => branch.trim()).catch(() => undefined),
+      workspaceBranch: (await tryGit(project.path, ["branch", "--show-current"])).trim() || undefined,
     };
   }
   const available = await workspaceOptions(project);

@@ -1,0 +1,114 @@
+.thread-tabs {
+  --tab-width: 200px;
+  --tab-min-width: 120px;
+  --tab-close-size: 20px;
+  display: flex;
+  flex: 0 1 auto;
+  align-self: stretch;
+  min-width: 0;
+  margin-bottom: -1px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-app-region: no-drag;
+}
+
+@container application (width > 720px) {
+  .shell .breadcrumb[data-view="chat"] {
+    align-self: stretch;
+    padding-left: 0;
+  }
+
+  .breadcrumb[data-view="chat"] > :is(.thread-title, .breadcrumb-separator) {
+    display: none;
+  }
+}
+
+.thread-tab {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  width: var(--tab-width);
+  min-width: var(--tab-min-width);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--canvas-deep);
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  transition: background var(--dur-instant), color var(--dur-instant);
+}
+
+.thread-tab:hover {
+  background: var(--highlight);
+  color: var(--text);
+}
+
+.thread-tab[data-active] {
+  border-bottom-color: transparent;
+  background: var(--canvas);
+  color: var(--text);
+}
+
+.thread-tab[data-preview] .truncate {
+  font-style: italic;
+}
+
+.thread-tab-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  align-self: stretch;
+  gap: var(--space-8);
+  min-width: 0;
+  padding-left: var(--space-12);
+  color: inherit;
+}
+
+.thread-tab-open .provider-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.thread-tab-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--tab-close-size);
+  height: var(--tab-close-size);
+  margin: 0 var(--space-6);
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  visibility: hidden;
+}
+
+.thread-tab:is(:hover, :focus-within, [data-active]) .thread-tab-close {
+  visibility: visible;
+}
+
+.thread-tab-close:hover {
+  background: var(--raised-2);
+  color: var(--text);
+}
+
+.thread-tabs-new {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--topbar);
+  color: var(--text-3);
+  transition: background var(--dur-instant), color var(--dur-instant);
+}
+
+.thread-tabs-new:hover:not(:disabled) {
+  background: var(--highlight);
+  color: var(--text);
+}
+
+.thread-tabs-new:disabled {
+  opacity: 0.5;
+}
+
+@container application (max-width: 720px) {
+  .thread-tabs {
+    display: none;
+  }
+}

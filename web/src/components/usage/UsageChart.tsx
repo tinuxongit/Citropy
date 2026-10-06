@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { cost, formatDate, providerLabels, tokens } from "../../lib/format.ts";
 import { useI18n } from "../../lib/i18n.ts";
-import type { Translator } from "../../lib/translations.ts";
+import type { Translator } from "../../lib/i18n.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { bucketTotal, measureOf, niceScale, type UsageBucket, type UsageMeasure, type UsagePeriod } from "./usage-series.ts";
 import type { ProviderId } from "../../../../shared/protocol.ts";

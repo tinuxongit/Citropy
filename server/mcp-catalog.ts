@@ -1,5 +1,6 @@
 import { remoteId } from "./remote.ts";
 import type { ToolDefinition } from "../shared/workbench.ts";
+import { PROVIDER_IDS } from "../shared/protocol.ts";
 
 const string = { type: "string" };
 const number = { type: "number" };
@@ -180,7 +181,7 @@ export const workspaceTools = ([
   {
     name: "subagent_providers",
     description: "List provider accounts available on this Citropy environment. Pass a provider to include its current model IDs and supported efforts before choosing a non-default model in subagent_start.",
-    inputSchema: { type: "object", properties: { provider: { enum: ["claude", "codex", "opencode", "cursor", "pi"] } }, additionalProperties: false },
+    inputSchema: { type: "object", properties: { provider: { enum: PROVIDER_IDS } }, additionalProperties: false },
     annotations: { readOnlyHint: true },
   },
   {
@@ -193,7 +194,7 @@ export const workspaceTools = ([
         title: string,
         task: string,
         provider: {
-          enum: ["claude", "codex", "opencode", "cursor", "pi"],
+          enum: PROVIDER_IDS,
           description:
             "Provider to run the subagent on. Defaults to this conversation's provider.",
         },
@@ -294,7 +295,7 @@ export const toolCategories = remoteId ? ["terminal", "workspace", "subagent"] :
 export const discoveryTools: ToolDefinition[] = [
   {
     name: "tool_help",
-    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, OpenCode, Cursor, and Pi accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, and panels; terminal has visible commands.`,
+    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, and OpenCode accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, and panels; terminal has visible commands.`,
     inputSchema: { type: "object", properties: { category: { type: "string", enum: toolCategories } }, required: ["category"], additionalProperties: false },
     annotations: { readOnlyHint: true },
   },

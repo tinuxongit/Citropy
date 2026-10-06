@@ -1,4 +1,5 @@
 import { readdir, rm, stat } from "node:fs/promises";
+import { ifMissing } from "../shared/expected-errors.mjs";
 import { join } from "node:path";
 
 export async function pruneRemoteBuilds(directory, current, previous) {
@@ -6,7 +7,7 @@ export async function pruneRemoteBuilds(directory, current, previous) {
   const builds = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     if (!entry.isDirectory() || !/^[a-f0-9]{64}$/.test(entry.name)) continue;
-    const ready = await stat(join(directory, entry.name, ".ready")).catch(() => undefined);
+    const ready = await stat(join(directory, entry.name, ".ready")).catch(ifMissing(undefined));
     if (ready?.isFile()) builds.push({ name: entry.name, at: ready.mtimeMs });
   }
   builds.sort((left, right) => right.at - left.at);

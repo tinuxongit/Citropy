@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, writeFile, rm, cp, lstat } from "node:fs/promises";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { store } from "./store.ts";
@@ -58,8 +59,8 @@ export async function copyToWorktree(thread: Thread): Promise<void> {
       disposeRuntime(thread.id, true);
       store.patchThread(thread.id, { workspacePath: target, workspaceBranch: branch, externalId: undefined, rebuildContext: true, usage: emptyUsage(), checkpoints: [], canRedo: false });
     } catch (error) {
-      await git(project.path, ["worktree", "remove", "--force", target]).catch(() => {});
-      await git(project.path, ["branch", "-d", branch]).catch(() => {});
+      await git(project.path, ["worktree", "remove", "--force", target]).catch(logFailure("Removing the unfinished worktree", target));
+      await git(project.path, ["branch", "-d", branch]).catch(logFailure("Deleting the unfinished branch", branch));
       throw error;
     } finally { await rm(temporary, { recursive: true, force: true }); }
   });

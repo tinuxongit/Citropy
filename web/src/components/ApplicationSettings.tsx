@@ -23,7 +23,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
     return window.citropyDesktop?.onWindowState?.(setDesktop);
   }, []);
   useEffect(() => {
-    void window.citropyDesktop?.updateState?.().then(setUpdate).catch(() => {});
+    void window.citropyDesktop?.updateState?.().then(setUpdate).catch((error) => console.error("Reading the update state failed:", error));
     return window.citropyDesktop?.onUpdateState?.(setUpdate);
   }, []);
   const applyingUpdate = Boolean(update && ["downloading", "ready", "installing"].includes(update.status));

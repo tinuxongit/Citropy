@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { ifMissing } from "../shared/expected-errors.mjs";
 import { constants } from "node:fs";
 import { lstat, open, realpath, rename, unlink } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
@@ -164,7 +165,7 @@ export async function saveEditorFile(
       await rename(temporary, pinned);
       return result;
     } finally {
-      await unlink(temporary).catch(() => {});
+      await unlink(temporary).catch(ifMissing(undefined));
       await directory?.close();
     }
   })();

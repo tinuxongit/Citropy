@@ -24,7 +24,7 @@ async function fixture(t) {
       provider.detect = async () => ({ available: false });
       provider.binary = 'citropy-missing-fixture-' + provider.id;
     }
-    const project = [...store.projects.values()].find(project => project.chat);
+    const project = store.openProject(process.cwd());
     const thread = store.createThread({ projectId: project.id, provider: 'claude', title: 'Large history' });
     store.addMessage(thread.id, { id: 'message', role: 'assistant', ts: 1, parts: [{ id: 'text', kind: 'text', text: 'x'.repeat(12 * 1024 * 1024), complete: true }] });
     const originalSend = WebSocket.prototype.send;

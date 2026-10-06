@@ -3,6 +3,7 @@ import { reportError } from "./api.ts";
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { useApp } from "./store.ts";
+import { readOffline } from "./app-state.ts";
 import type { Attachment, QueuedMessage } from "../../../shared/protocol.ts";
 import { randomId } from "./random-id.ts";
 
@@ -57,12 +58,10 @@ export async function flushHeld(): Promise<void> {
           break;
         }
         if (signal.aborted) {
-          try {
-            const offline = JSON.parse(environmentStorage.getItem("citropy.offline", scope) || "{}");
-            const remaining = offline[threadId]?.filter((entry: QueuedMessage) => entry.id !== item.id) ?? [];
-            if (remaining.length) offline[threadId] = remaining; else delete offline[threadId];
-            environmentStorage.setItem("citropy.offline", JSON.stringify(offline), scope);
-          } catch {}
+          const offline = readOffline(scope);
+          const remaining = offline[threadId]?.filter((entry) => entry.id !== item.id) ?? [];
+          if (remaining.length) offline[threadId] = remaining; else delete offline[threadId];
+          environmentStorage.setItem("citropy.offline", JSON.stringify(offline), scope);
           return;
         }
         takeHeld(threadId, item.id);

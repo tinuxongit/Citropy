@@ -1,3 +1,5 @@
+import { logFailure } from "../shared/expected-errors.mjs";
+
 const fill = { r: 250, g: 250, b: 250, a: 0.96 };
 const outline = { r: 20, g: 20, b: 20, a: 0.9 };
 const pressedFill = { r: 244, g: 211, b: 78, a: 0.96 };
@@ -22,7 +24,7 @@ export function createPointer(send, watched, touch, zoom) {
 
   const draw = (x, y, pressed = false) => {
     const size = 1 / Math.min(1, Math.max(zoom(), 0.12));
-    return send("Overlay.highlightQuad", { quad: touch() ? dot(x, y, size) : arrow(x, y, size), color: pressed ? pressedFill : fill, outlineColor: outline }).catch(() => {});
+    return send("Overlay.highlightQuad", { quad: touch() ? dot(x, y, size) : arrow(x, y, size), color: pressed ? pressedFill : fill, outlineColor: outline }).catch(logFailure("Drawing the browser pointer"));
   };
 
 
@@ -53,7 +55,7 @@ export function createPointer(send, watched, touch, zoom) {
           height: Math.max(1, Math.round(box.bottom - box.top)),
           color: flashFill,
           outlineColor: flashOutline,
-        }).catch(() => {});
+        }).catch(logFailure("Highlighting the clicked element"));
         await sleep(140);
       }
       await draw(position.x, position.y, true);
@@ -63,7 +65,7 @@ export function createPointer(send, watched, touch, zoom) {
       if (watched() && position) await draw(position.x, position.y);
     },
     async hide() {
-      await send("Overlay.hideHighlight").catch(() => {});
+      await send("Overlay.hideHighlight").catch(logFailure("Hiding the browser pointer"));
     },
   };
 }

@@ -385,13 +385,13 @@
   margin-left: auto;
 }
 .theme-preview {
-  --preview-canvas: #1f1e1d;
-  --preview-rail: #1a1918;
-  --preview-bar: #383734;
+  --preview-canvas: #0a0a09;
+  --preview-rail: #050505;
+  --preview-bar: #262524;
   --preview-strong: #9a9a9a;
   --preview-text: #777777;
-  --preview-bubble: #2e2d2b;
-  --preview-input: #2e2d2b;
+  --preview-bubble: #1a1918;
+  --preview-input: #1a1918;
   display: flex;
   height: 96px;
   border: 0;

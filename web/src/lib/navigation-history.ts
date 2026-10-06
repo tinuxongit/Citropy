@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { loadThread } from "./actions.ts";
 import type { AppState } from "./app-state.ts";
-import { selectProject, selectThread, showProjectMode, useApp } from "./store.ts";
+import { selectProject, selectThread, useApp } from "./store.ts";
 
 type Place = { view: AppState["activeView"]; projectId: string | null; threadId: string | null };
 
@@ -42,7 +42,6 @@ function go(step: -1 | 1): void {
   try {
     const state = useApp.getState();
     if (place.projectId && place.projectId !== state.activeProjectId && state.projects.some((project) => project.id === place.projectId)) {
-      showProjectMode(place.projectId);
       selectProject(place.projectId);
     }
     if (place.threadId && useApp.getState().threads[place.threadId]) {

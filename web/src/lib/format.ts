@@ -1,4 +1,4 @@
-import { currentLocale, translate } from "./i18n.ts";
+import { LOCALE, translate } from "./i18n.ts";
 import type {
   ModelOption,
   ProviderId,
@@ -11,9 +11,7 @@ import { selectedModel } from "../../../shared/model-options.ts";
 export const providerLabels: Record<ProviderId, string> = {
   claude: "Claude Code",
   codex: "Codex",
-  cursor: "Cursor",
   opencode: "OpenCode",
-  pi: "Pi",
 };
 
 export function modelLabel(models: ModelOption[], modelId?: string): string {
@@ -66,8 +64,7 @@ export function modelSource(
   model?: ModelOption,
 ): string {
   if (!provider) return translate("Provider unavailable");
-  if (provider.id === "cursor") return model?.hint ?? provider.label;
-  if (provider.id !== "opencode" && provider.id !== "pi") return provider.label;
+  if (provider.id !== "opencode") return provider.label;
   const source = model?.hint ?? model?.id.split("/")[0];
   if (!source) return provider.label;
   const name = modelSourceNames[source];
@@ -105,16 +102,16 @@ const formatters = new Map<string, Intl.NumberFormat>();
 const dateFormatters = new Map<string, Intl.DateTimeFormat>();
 
 export function formatDate(date: number | string, options: Intl.DateTimeFormatOptions): string {
-  const key = `${currentLocale()}:${JSON.stringify(options)}`;
+  const key = `${LOCALE}:${JSON.stringify(options)}`;
   let formatter = dateFormatters.get(key);
-  if (!formatter) dateFormatters.set(key, formatter = new Intl.DateTimeFormat(currentLocale(), options));
+  if (!formatter) dateFormatters.set(key, formatter = new Intl.DateTimeFormat(LOCALE, options));
   return formatter.format(new Date(date));
 }
 
 export function decimal(value: number, fractionDigits = 1): string {
-  const key = `${currentLocale()}:${fractionDigits}`;
+  const key = `${LOCALE}:${fractionDigits}`;
   let formatter = formatters.get(key);
-  if (!formatter) formatters.set(key, formatter = new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: fractionDigits }));
+  if (!formatter) formatters.set(key, formatter = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: fractionDigits }));
   return formatter.format(value);
 }
 

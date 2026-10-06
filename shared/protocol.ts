@@ -2,7 +2,13 @@ import type { QuestionPart, QuestionRequest } from "./questions.ts";
 import type { GitHubRequest, GitHubResponse } from "./github.ts";
 import type { BrowserAction, BrowserState, PanelKind, PanelTab, ToolConnection, ToolDefinition } from "./workbench.ts";
 
-export type ProviderId = "claude" | "codex" | "opencode" | "cursor" | "pi";
+export const PROVIDER_IDS = ["claude", "codex", "opencode"] as const;
+
+export type ProviderId = (typeof PROVIDER_IDS)[number];
+
+export function isProviderId(value: unknown): value is ProviderId {
+  return PROVIDER_IDS.includes(value as ProviderId);
+}
 
 export type ThreadStatus =
   | "idle"
@@ -197,7 +203,6 @@ export interface Usage {
   contextMax: number;
   turns: number;
   tokensPerSecond?: number;
-  contextEstimated?: boolean;
 }
 
 export const emptyUsage = (): Usage => ({
@@ -219,7 +224,6 @@ export interface Project {
   branch?: string;
   lastOpened: number;
   settings?: ProjectSettings;
-  chat?: boolean;
 }
 
 export interface ProjectSettings {
@@ -444,7 +448,7 @@ export type ServerEvent = (
   | { t: "tools.connection"; connection: ToolConnection }
   | { t: "github.result"; requestId: string; result?: GitHubResponse; error?: string }
   | { t: "git.manage"; requestId: string; result?: GitResult; error?: string }
-  | { t: "thread.search"; query: string; projectId?: string; results: Array<{ threadId: string; messageId?: string; snippet: string }> }
+  | { t: "thread.search"; query: string; results: Array<{ threadId: string; messageId?: string; snippet: string }> }
   | { t: "project.chosen"; projectId: string | null; error?: string }
   | { t: "providers.update"; providers: ProviderInfo[] }
   | { t: "hello"; snapshot: Snapshot; epoch?: string }
@@ -499,7 +503,7 @@ export type ClientEvent = (
   | { t: "thread.finish"; id: string; finished: boolean }
   | { t: "github.request"; requestId: string; request: GitHubRequest }
   | { t: "git.manage"; requestId: string; projectId: string; operation: GitOperation; value?: string; offset?: number; remote?: string }
-  | { t: "thread.search"; query: string; projectId?: string }
+  | { t: "thread.search"; query: string }
   | { t: "project.choose"; path?: string }
   | { t: "providers.refresh"; force?: boolean }
   | { t: "providers.configure"; provider: ProviderId; enabled: boolean }

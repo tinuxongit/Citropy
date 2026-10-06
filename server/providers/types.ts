@@ -14,7 +14,7 @@ export type AgentEvent =
   | { type: "compacted"; contextTokens?: number }
   | { type: "subagent"; id: string; title?: string; prompt?: string; model?: string; status: ThreadStatus; result?: string }
   | { type: "session"; externalId: string; model?: string; effort?: string; contextMax?: number; fastMode?: boolean }
-  /** The provider named the conversation itself (Cursor sends `session_info_update`). */
+  /** The provider named the conversation itself. */
   | { type: "title"; title: string }
   | { type: "status"; status: ThreadStatus; tool?: string }
   | { type: "question"; id: string; questions: UserQuestion[] }
@@ -51,7 +51,6 @@ export interface StartOptions extends ProviderLaunch {
   fastMode?: boolean;
   fastModeTier?: "priority" | "fast";
   permissionMode: PermissionMode;
-  chat?: boolean;
   externalId?: string;
   usage?: Partial<Usage>;
   emit: Emit;
@@ -70,7 +69,7 @@ export interface AgentSession {
   readonly pid?: number;
   /**
    * Apply new settings to the running session in place. Only defined by providers whose protocol
-   * supports it (ACP: `session/set_config_option` and `session/set_mode`). Rejects when the
+   * supports it. Rejects when the
    * provider refuses; the caller then falls back to restarting the session.
    */
   configure?(config: SessionConfig): Promise<void>;

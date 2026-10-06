@@ -70,7 +70,6 @@ export class ThreadRuntime {
   #outputAtTurnStart = 0;
   #usagePulse = 0;
   #autoTitle: string | undefined;
-  #providerTitled = false;
   #transcript: ThreadTranscript;
   #sessionStarted = 0;
 
@@ -336,7 +335,7 @@ export class ThreadRuntime {
       const title = (text.trim().split("\n")[0] || attachments.map((file) => file.label).join(", ")).slice(0, 64);
       this.#autoTitle = title || "New thread";
       store.patchThread(this.#thread.id, { title: this.#autoTitle });
-      if (this.#thread.provider !== "cursor") void generateThreadTitle(this.id, true);
+      void generateThreadTitle(this.id, true);
     }
     this.#transcript.closeMessage();
   }
@@ -492,9 +491,13 @@ export class ThreadRuntime {
     };
     const timer = setTimeout(restart, 5000);
     this.#stopping = stopping;
+    const interruptFailed = (error: unknown) => {
+      console.error("Interrupt failed, restarting the session:", this.id, error);
+      restart();
+    };
     try {
-      void Promise.all([turnEnded, session.interrupt()]).then(stopping.release, restart);
-    } catch { restart(); }
+      void Promise.all([turnEnded, session.interrupt()]).then(stopping.release, interruptFailed);
+    } catch (error) { interruptFailed(error); }
   }
 
   dispose(preserveStatus = false): void {
@@ -543,7 +546,6 @@ export class ThreadRuntime {
       fastMode: this.#thread.fastMode,
       fastModeTier: models.find((model) => model.id === this.#thread.model)?.fastModeTier,
       permissionMode: this.#thread.permissionMode,
-      chat: project.chat,
       externalId: this.#thread.externalId,
       usage: { ...this.#thread.usage },
       emit: (event) => {
@@ -567,17 +569,15 @@ export class ThreadRuntime {
     store.setUsage(this.id, mergeUsage({
       previous: this.#thread.usage,
       incoming,
-      provider: this.#thread.provider,
       messages: this.#thread.messages,
       contextMax: this.#thread.contextWindow ?? model?.contextMax,
       runStartedAt: this.#thread.runStartedAt,
       outputAtStart: this.#outputAtTurnStart,
-      estimateContext: this.#thread.provider === "cursor",
     }));
   }
 
   #pulseUsage(): void {
-    if (this.#thread.provider !== "cursor" && !this.#thread.runStartedAt) return;
+    if (!this.#thread.runStartedAt) return;
     const now = Date.now();
     if (now - this.#usagePulse < 2000) return;
     this.#usagePulse = now;
@@ -693,7 +693,7 @@ export class ThreadRuntime {
   #onCompacted(event: Extract<AgentEvent, { type: "compacted" }>): void {
     const manual = this.#thread.compacting;
     clearTimeout(this.#compactionTimer);
-    if (event.contextTokens !== undefined) this.#applyUsage({ contextTokens: event.contextTokens, contextEstimated: undefined });
+    if (event.contextTokens !== undefined) this.#applyUsage({ contextTokens: event.contextTokens });
     store.patchThread(this.id, { compacting: false, compactedAt: Date.now(), ...(manual ? { running: false, status: "idle", activeTool: undefined } : {}) });
     this.#transcript.notice("info", "Context compacted. Your conversation history is still available here.");
     if (manual) this.#transcript.closeMessage();
@@ -718,7 +718,6 @@ export class ThreadRuntime {
 
   #onTitle(event: Extract<AgentEvent, { type: "title" }>): void {
     if (this.#thread.parentThreadId || this.#autoTitle === undefined || this.#thread.title !== this.#autoTitle) return;
-    this.#providerTitled = true;
     store.patchThread(this.id, { title: event.title.slice(0, 80) });
   }
 
@@ -804,8 +803,6 @@ export class ThreadRuntime {
           permissionMode: "manual" as const,
           queue: [{ id: uid("que"), text: "Build the plan.", createdAt: Date.now() }, ...(this.#thread.queue ?? [])],
         });
-      if (this.#thread.provider === "cursor" && !this.#providerTitled && this.#autoTitle !== undefined && this.#thread.title === this.#autoTitle)
-        void generateThreadTitle(this.id, true);
       this.#resume = continuing && completed && !event.error;
       this.#checkpointCompletion = finishCheckpoint(this.#thread, messageId).catch((error) => console.error("Checkpoint failed:", this.id, error)).finally(() => {
         this.#checkpointCompletion = null;
@@ -821,7 +818,7 @@ export class ThreadRuntime {
         let live = false;
         if (session?.configure) {
           try { await session.configure({ permissionMode: "manual" }); live = true; }
-          catch { live = false; }
+          catch (error) { console.error("Switching to plan build failed, restarting the session:", this.id, error); }
         }
         try {
           if (!live || this.#disposed || generation !== this.#stopGeneration) {
@@ -924,7 +921,7 @@ const idleSince = new WeakMap<ThreadRuntime, number>();
 export function closeIdleSessions(now = Date.now()): void {
   for (const [id, runtime] of runtimes) {
     const thread = store.threads.get(id);
-    const waiting = !thread || runtime.busy || thread.queue?.length ||
+    const waiting = !thread || runtime.busy ||
       [...store.threads.values()].some(child => child.parentThreadId === id && (child.running || child.status === "awaiting"));
     if (waiting) { idleSince.delete(runtime); continue; }
     const since = idleSince.get(runtime) ?? now;

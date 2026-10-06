@@ -10,7 +10,7 @@ import { PassThrough } from "node:stream";
 import test from "node:test";
 import { providers } from "../server/providers/index.ts";
 import { claudeProvider } from "../server/providers/claude.ts";
-import { runtimeFor, disposeRuntime } from "../server/runtime.ts";
+import { runtimeFor, runtimeIfExists, disposeRuntime, closeIdleSessions } from "../server/runtime.ts";
 import { store } from "../server/store.ts";
 import { threadRoutes } from "../server/routes/threads.ts";
 
@@ -29,8 +29,9 @@ async function fixture(t, permissionMode = "manual", configure) {
   const project = store.openProject(directory);
   const thread = store.createThread({ projectId: project.id, provider: "claude", permissionMode, title: "Steering test" });
   const runtime = runtimeFor(thread.id);
-  const provider = { sent: [], sentModes: [], steered: [], emit: undefined, finishInterrupt: undefined };
+  const provider = { sent: [], sentModes: [], steered: [], starts: [], emit: undefined, finishInterrupt: undefined };
   t.mock.method(providers.claude, "start", options => {
+    provider.starts.push(options);
     provider.emit = options.emit;
     return {
       send: prompt => { provider.sent.push(prompt); provider.sentModes.push(thread.permissionMode); },
@@ -49,6 +50,38 @@ async function fixture(t, permissionMode = "manual", configure) {
 }
 
 const texts = thread => (thread.queue ?? []).map(item => item.text);
+
+test("idle sessions with paused queues release their process and retain resumable work", async t => {
+  for (const reason of ["stop", "usage limit"]) {
+    await t.test(reason, async t => {
+      const { thread, runtime, provider } = await fixture(t);
+      await runtime.send("First");
+      await runtime.send("Queued request");
+      store.patchThread(thread.id, { externalId: "saved-session" });
+      if (reason === "stop") runtime.stop();
+      provider.emit({ type: "turn.end", ...(reason === "usage limit" ? { error: "Usage limit reached" } : {}) });
+      if (reason === "stop") provider.finishInterrupt();
+      await until(() => !runtime.busy);
+      const { queue, status, usageLimit } = thread;
+      const now = Date.now();
+      closeIdleSessions(now);
+      closeIdleSessions(now + 60 * 60_000 - 1);
+      assert.equal(runtimeIfExists(thread.id), runtime);
+      closeIdleSessions(now + 60 * 60_000);
+      assert.equal(runtimeIfExists(thread.id), undefined);
+      assert.equal(provider.disposed, true);
+      assert.deepEqual(thread.queue, queue);
+      assert.equal(thread.status, status);
+      assert.deepEqual(thread.usageLimit, usageLimit);
+      assert.equal(thread.externalId, "saved-session");
+      await runtimeFor(thread.id).sendNow(queue[0].id);
+      assert.deepEqual(provider.sent, ["First", "Queued request"]);
+      assert.equal(provider.starts.length, 2);
+      assert.equal(provider.starts[1].externalId, "saved-session");
+      assert.deepEqual(texts(thread), []);
+    });
+  }
+});
 
 test("changing settings does not resume messages left queued by Stop", async t => {
   const { thread, runtime, provider } = await fixture(t, "manual", async () => {});

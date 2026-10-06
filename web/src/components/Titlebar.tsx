@@ -9,7 +9,8 @@ import { goBack, goForward, useNavigationHistory } from "../lib/navigation-histo
 import { AgentsPanel } from "./AgentsPanel.tsx";
 import { NotificationCenter } from "./NotificationCenter.tsx";
 import { WindowControls } from "./WindowControls.tsx";
-import { ModeSwitch } from "./ModeSwitch.tsx";
+import { ThreadTabs } from "./ThreadTabs.tsx";
+import { ThreadSearch } from "./sidebar/ThreadSearch.tsx";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
 
 /** Render workspace navigation using branch metadata scoped to the selected checkout. */
@@ -37,7 +38,6 @@ export function Titlebar({
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const panelActivity = useApp((state) => state.panels.some((panel) => panel.projectId === state.activeProjectId && state.unseenPanels[panel.id]));
   const canCreateThread = useApp((state) => state.connected && !state.creatingThread && Boolean(state.activeProjectId));
-  const chatMode = useApp((state) => state.appMode === "chat");
   const history = useNavigationHistory();
 
   const project = projects.find((entry) => entry.id === activeProjectId);
@@ -47,7 +47,7 @@ export function Titlebar({
   const branch = thread
     ? thread.workspaceBranch ?? (onProjectCheckout ? project?.branch : undefined)
     : project?.branch;
-  const workspaceContext = isRemote() || (!chatMode && Boolean(branch && view === "chat"));
+  const workspaceContext = isRemote() || Boolean(branch && view === "chat");
   const header = useRef<HTMLElement>(null);
   useEffect(() => {
     const element = header.current;
@@ -79,27 +79,26 @@ export function Titlebar({
           >
             <PanelLeft size={15} />
           </button>}
-          <div className="brand">
-            <span>Citropy</span>
-            <ModeSwitch />
-          </div>
+          {view === "chat" && sidebarOpen && <ThreadSearch />}
         </div>
-        <div className="topbar-navigation">
-          <button className="icon-btn topbar-history" type="button" onClick={goBack} disabled={!history.canGoBack} aria-label={t("Back")} title={t("Back")}>
-            <ArrowLeft size={15} />
-          </button>
-          <button className="icon-btn topbar-history" type="button" onClick={goForward} disabled={!history.canGoForward} aria-label={t("Forward")} title={t("Forward")}>
-            <ArrowRight size={15} />
-          </button>
-        </div>
+      </div>
+      <div className="topbar-navigation">
+        <button className="icon-btn topbar-history" type="button" onClick={goBack} disabled={!history.canGoBack} aria-label={t("Back")} title={t("Back")}>
+          <ArrowLeft size={15} />
+        </button>
+        <button className="icon-btn topbar-history" type="button" onClick={goForward} disabled={!history.canGoForward} aria-label={t("Forward")} title={t("Forward")}>
+          <ArrowRight size={15} />
+        </button>
       </div>
       <nav
         className="topbar-center breadcrumb"
+        data-view={view}
         aria-label={t("Current workspace and view")}
       >
+        {view === "chat" && <ThreadTabs />}
         {workspaceContext && <div className="workspace-breadcrumb">
           {isRemote() && <span className="environment-breadcrumb" title={environmentName()}><Server size={13} /><span className="truncate">{environmentName()}</span></span>}
-          {branch && view === "chat" && !chatMode && (
+          {branch && view === "chat" && (
             <span className="branch" title={branch}>
               <GitBranch size={12} />
               <span className="truncate">{branch}</span>
@@ -135,7 +134,7 @@ export function Titlebar({
             <SquarePen size={17} />
           </button>
         )}
-        {view === "chat" && !chatMode && (
+        {view === "chat" && (
           <button
             className="icon-btn inspector-toggle"
             type="button"

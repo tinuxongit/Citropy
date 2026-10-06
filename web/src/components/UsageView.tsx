@@ -5,7 +5,7 @@ import { clock, cost, decimal, providerLabels, tokens } from "../lib/format.ts";
 import { SectionSidebar } from "./SectionSidebar.tsx";
 import type { UsageReport } from "../../../shared/features.ts";
 import type { ProviderId } from "../../../shared/protocol.ts";
-import { currentLocale, useI18n } from "../lib/i18n.ts";
+import { LOCALE, useI18n } from "../lib/i18n.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import { ProviderLimits } from "./UsageLimits.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
@@ -216,7 +216,6 @@ export function UsageView({
                   period={period}
                   caption={t(periodInfo.caption, { measure: measureLabel })}
                 />
-                {known.includes("cursor") && <p className="settings-note">{t("Cursor does not save token counts on this computer, so Cursor shows only usage from Citropy.")}</p>}
                 {known.length > 0 && <>
                   <div className="feature-section-heading usage-subheading">
                     <h2>{t("Providers")}</h2>
@@ -242,7 +241,7 @@ export function UsageView({
                   </div>
                 )}
                 <p className="settings-note">
-                  {unlimited.length > 0 && `${t("No allowance data from {providers}.", { providers: new Intl.ListFormat(currentLocale(), { type: "conjunction" }).format(unlimited) })} `}
+                  {unlimited.length > 0 && `${t("No allowance data from {providers}.", { providers: new Intl.ListFormat(LOCALE, { type: "conjunction" }).format(unlimited) })} `}
                   {t("Allowance is shared with other apps using the same account.")}
                 </p>
               </section>}

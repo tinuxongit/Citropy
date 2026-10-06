@@ -5,6 +5,7 @@ import { useApp } from "../lib/store.ts";
 export function VirtualList<T>({
   items,
   itemKey,
+  activeKey,
   estimateSize,
   gap = 0,
   className = "",
@@ -12,6 +13,7 @@ export function VirtualList<T>({
 }: {
   items: T[];
   itemKey: keyof T;
+  activeKey?: string;
   estimateSize: number;
   gap?: number;
   className?: string;
@@ -23,6 +25,7 @@ export function VirtualList<T>({
   const [focusedKey, setFocusedKey] = useState<string>();
   const virtualized = items.length > 40;
   const focusedIndex = focusedKey === undefined ? -1 : items.findIndex((item) => String(item[itemKey]) === focusedKey);
+  const activeIndex = activeKey === undefined ? -1 : items.findIndex((item) => String(item[itemKey]) === activeKey);
   const getItemKey = useCallback((index: number) => String(items[index]![itemKey]), [items, itemKey]);
   const list = useVirtualizer<HTMLElement, HTMLDivElement>({
     count: items.length,
@@ -36,10 +39,11 @@ export function VirtualList<T>({
     measureElement: (element) => element.offsetHeight,
     rangeExtractor: useCallback((range: Range) => [...new Set([
       ...defaultRangeExtractor(range),
+      ...(activeIndex < 0 ? [] : [activeIndex]),
       ...[focusedIndex - 1, focusedIndex, focusedIndex + 1].filter(
         (index) => focusedIndex >= 0 && index >= 0 && index < range.count,
       ),
-    ])].sort((a, b) => a - b), [focusedIndex]),
+    ])].sort((a, b) => a - b), [focusedIndex, activeIndex]),
   });
 
   useLayoutEffect(() => {
@@ -78,8 +82,8 @@ export function VirtualList<T>({
       data-virtualized={virtualized}
       style={virtualized ? { height: list.getTotalSize() } : undefined}
       onFocusCapture={(event) => {
-        const row = event.target.closest<HTMLElement>("[data-virtual-key]");
-        setFocusedKey(row?.dataset.virtualKey);
+        const row = Array.from(event.currentTarget.children).find(row => row.contains(event.target));
+        setFocusedKey(row?.getAttribute("data-virtual-key") ?? undefined);
       }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocusedKey(undefined);

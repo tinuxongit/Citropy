@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { promisify } from "node:util";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,6 +8,7 @@ import type { FilePatch, GitFile, GitStatus } from "../shared/protocol.ts";
 import { parseUnifiedDiff } from "./diff.ts";
 
 const run = promisify(execFile);
+const GIT_ANSWERED_NO = [1, 128];
 
 /** Run Git with literal, case-sensitive UI selections and noninteractive authentication. */
 export async function git(cwd: string, args: string[], env: NodeJS.ProcessEnv = {}, input?: string): Promise<string> {
@@ -18,18 +20,19 @@ export async function git(cwd: string, args: string[], env: NodeJS.ProcessEnv = 
   };
   const command = run("git", args, { cwd, timeout: 60_000, env: gitEnv, maxBuffer: 128 * 1024 * 1024 });
   if (input !== undefined) {
-    command.child.stdin!.on("error", () => {});
+    command.child.stdin!.on("error", logFailure("Writing to git", cwd));
     command.child.stdin!.end(input);
   }
   return (await command).stdout;
 }
 
-async function tryGit(cwd: string, args: string[]): Promise<string> {
+export async function tryGit(cwd: string, args: string[]): Promise<string> {
   try {
     return await git(cwd, args);
   } catch (error) {
-    if (args.includes("--no-index") && (error as { code?: number }).code === 1) return String((error as { stdout?: string }).stdout ?? "");
-    return "";
+    const { code, stdout } = error as { code?: unknown; stdout?: string };
+    if (!GIT_ANSWERED_NO.includes(code as number)) throw error;
+    return args.includes("--no-index") && code === 1 ? String(stdout ?? "") : "";
   }
 }
 
@@ -149,7 +152,7 @@ export async function stage(cwd: string, path: string, staged: boolean): Promise
 
 export async function discard(cwd: string, path: string): Promise<void> {
   await tryGit(cwd, ["restore", "--staged", "--worktree", "--", path]);
-  await tryGit(cwd, ["clean", "-fd", "--", path]);
+  await git(cwd, ["clean", "-fd", "--", path]);
 }
 
 export async function commit(cwd: string, message: string): Promise<string> {
@@ -253,7 +256,7 @@ const operations = new Map<string, Promise<unknown>>();
 
 export async function serialized<T>(cwd: string, action: () => Promise<T>): Promise<T> {
   const previous = operations.get(cwd) ?? Promise.resolve();
-  const next = previous.catch(() => {}).then(action);
+  const next = previous.then(action, action);
   operations.set(cwd, next);
   try { return await next; }
   finally { if (operations.get(cwd) === next) operations.delete(cwd); }

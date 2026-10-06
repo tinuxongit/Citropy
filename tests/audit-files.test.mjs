@@ -87,7 +87,7 @@ test('short reads are retried and the descriptor is closed', async t => {
   } finally { fs.open = original; syncBuiltinESMExports(); }
 });
 
-test('read failures close the descriptor and return null', async t => {
+test('read failures close the descriptor and surface the error', async t => {
   const root = await fixture(t);
   await fs.writeFile(join(root, 'error.txt'), 'test');
   const original = fs.open;
@@ -101,7 +101,7 @@ test('read failures close the descriptor and return null', async t => {
   };
   syncBuiltinESMExports();
   try {
-    assert.equal(await read(root, 'error.txt'), null);
+    await assert.rejects(read(root, 'error.txt'), /simulated read failure/);
     assert.equal(closed, true);
   } finally { fs.open = original; syncBuiltinESMExports(); }
 });

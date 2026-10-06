@@ -33,6 +33,7 @@ import { fileURLToPath } from "node:url";
 import { basename, join, resolve, sep } from "node:path";
 import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, accessSync, constants, existsSync } from "node:fs";
 import { migrateDesktopData } from "./migrate-data.mjs";
+import { logFailure } from "../shared/expected-errors.mjs";
 
 const development = !app.isPackaged && process.env.CITROPY_DEVELOPMENT === "1";
 const { version } = JSON.parse(
@@ -131,12 +132,9 @@ const updateRepository = "tinuxongit/Citropy";
 
 function macScriptUpdates() {
   if (process.platform !== "darwin" || !app.isPackaged) return false;
-  try {
-    const result = spawnSync("/usr/bin/codesign", ["-dv", "--verbose=2", process.execPath], { encoding: "utf8" });
-    return !/Authority=Developer ID Application/.test(`${result.stdout ?? ""}${result.stderr ?? ""}`);
-  } catch {
-    return true;
-  }
+  const result = spawnSync("/usr/bin/codesign", ["-dv", "--verbose=2", process.execPath], { encoding: "utf8" });
+  if (result.error) throw result.error;
+  return !/Authority=Developer ID Application/.test(`${result.stdout}${result.stderr}`);
 }
 
 function address(raw) {
@@ -288,7 +286,7 @@ async function prepareTab(tab) {
 async function behindCover(tab, work) {
   if (!tab.visible || !window.isVisible() || window.isMinimized()) return work();
   const id = tab.state.id;
-  const still = (await capture(tab, 1))?.toDataURL();
+  const still = (await capture(tab))?.toDataURL();
   if (!still) return work();
   window.webContents.send("browser:cover", id, still);
   await window.webContents.executeJavaScript(`new Promise((resolve) => {
@@ -299,14 +297,14 @@ async function behindCover(tab, work) {
       else requestAnimationFrame(check);
     };
     check();
-  })`).catch(() => {});
+  })`).catch(logFailure("Waiting for the browser cover", id));
   const shown = tab.view.getBounds();
   tab.view.setBounds({ ...shown, x: window.getContentSize()[0] + 20 });
   try {
     return await work();
   } finally {
-    if (tab.metricsParams) await cdp(tab, "Emulation.setDeviceMetricsOverride", tab.metricsParams).catch(() => {});
-    await cdp(tab, "Runtime.evaluate", { expression: "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))", awaitPromise: true, timeout: 500 }).catch(() => {});
+    if (tab.metricsParams) await cdp(tab, "Emulation.setDeviceMetricsOverride", tab.metricsParams).catch(logFailure("Restoring the browser viewport", id));
+    await cdp(tab, "Runtime.evaluate", { expression: "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))", awaitPromise: true, timeout: 500 }).catch(logFailure("Waiting for the browser to paint", id));
     if (tab.visible) {
       tab.view.setBounds(shown);
       await new Promise((resolve) => setTimeout(resolve, 34));
@@ -315,26 +313,20 @@ async function behindCover(tab, work) {
   }
 }
 
-async function capture(tab, attempts = 3) {
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    let timer;
-    try {
-      const { width, height } = tab.view.getBounds();
-      return await Promise.race([
-        tab.view.webContents.capturePage({ x: 0, y: 0, width, height }),
-        new Promise((_, reject) => {
-          timer = setTimeout(
-            () => reject(new Error("Screenshot timed out")),
-            800,
-          );
-        }),
-      ]);
-    } catch {
-      if (attempt + 1 < attempts)
-        await new Promise((resolve) => setTimeout(resolve, 120));
-    } finally {
-      clearTimeout(timer);
-    }
+async function capture(tab) {
+  let timer;
+  const { width, height } = tab.view.getBounds();
+  try {
+    return await Promise.race([
+      tab.view.webContents.capturePage({ x: 0, y: 0, width, height }),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Screenshot timed out")), 800);
+      }),
+    ]);
+  } catch (error) {
+    logFailure("Capturing the browser cover", tab.state.id)(error);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -449,7 +441,7 @@ async function open(input) {
       const key = `f${++tab.frameCount}`;
       tab.frames.set(key, { sessionId: params.sessionId, targetId: params.targetInfo.targetId });
       for (const [domain, options] of [["Runtime.enable", {}], ["Log.enable", {}], ["Network.enable", { maxTotalBufferSize: 0, maxResourceBufferSize: 0, maxPostDataSize: 0 }], ["Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }]])
-        void cdp(tab, domain, options, params.sessionId).catch(() => {});
+        void cdp(tab, domain, options, params.sessionId).catch(logFailure(`Browser frame ${domain}`, input.id));
       return;
     }
     if (method === "Target.detachedFromTarget") {
@@ -686,15 +678,15 @@ async function withFrames(tab, nodes) {
   while (queue.length) {
     const node = queue.shift();
     if (node.role?.value !== "Iframe" || !node.backendDOMNodeId) continue;
-    const frameId = (await cdp(tab, "DOM.describeNode", { backendNodeId: node.backendDOMNodeId }, node.session).catch(() => undefined))?.node?.frameId;
+    const frameId = (await cdp(tab, "DOM.describeNode", { backendNodeId: node.backendDOMNodeId }, node.session).catch(logFailure("Reading a browser frame")))?.node?.frameId;
     if (!frameId) continue;
-    let inner = (await cdp(tab, "Accessibility.getFullAXTree", { frameId }, node.session).catch(() => undefined))?.nodes;
+    let inner = (await cdp(tab, "Accessibility.getFullAXTree", { frameId }, node.session).catch(logFailure("Reading a browser frame", frameId)))?.nodes;
     let frame;
     if (!inner?.length || inner.length === 1) {
       const entry = [...tab.frames].find(([, value]) => value.targetId === frameId);
       if (entry) {
         frame = { key: entry[0], sessionId: entry[1].sessionId };
-        inner = (await cdp(tab, "Accessibility.getFullAXTree", {}, frame.sessionId).catch(() => undefined))?.nodes;
+        inner = (await cdp(tab, "Accessibility.getFullAXTree", {}, frame.sessionId).catch(logFailure("Reading a browser frame", frameId)))?.nodes;
       }
     }
     if (!inner?.length) continue;
@@ -926,10 +918,10 @@ async function performAction(tab, input) {
         await cdp(tab, "Input.dispatchKeyEvent", {
           ...event,
           type: "keyUp",
-        }).catch(() => {});
+        }).catch(logFailure("Releasing a browser key"));
         await cdp(tab, "Emulation.setFocusEmulationEnabled", {
           enabled: false,
-        }).catch(() => {});
+        }).catch(logFailure("Ending browser focus emulation"));
         if (previous && previous !== content && !previous.isDestroyed())
           previous.focus();
       }
@@ -1173,7 +1165,7 @@ async function request(method, params) {
             fromSurface: true,
             captureBeyondViewport: Boolean(scope) || params.fullPage === true,
             clip: { ...clip, scale: cssVisualViewport.scale },
-          }).then((result) => result.data).catch(() => undefined);
+          }).then((result) => result.data, logFailure("Taking a browser screenshot"));
         } finally {
           await tab.pointer.release();
         }
@@ -1194,10 +1186,7 @@ async function request(method, params) {
 app
   .whenReady()
   .then(async () => {
-    let saved = {};
-    try {
-      saved = JSON.parse(readFileSync(windowFile, "utf8"));
-    } catch {}
+    const saved = existsSync(windowFile) ? JSON.parse(readFileSync(windowFile, "utf8")) : {};
     const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const minWidth = Math.min(960, workArea.width);
     const minHeight = Math.min(640, workArea.height);
@@ -1221,7 +1210,7 @@ app
         ? { titleBarStyle: "hidden", trafficLightPosition: { x: 15, y: 14 } }
         : {}),
       show: false,
-      backgroundColor: "#101010",
+      backgroundColor: "#0a0a09",
       autoHideMenuBar: true,
       webPreferences: {
         preload: fileURLToPath(new URL("./preload.cjs", import.meta.url)),
@@ -1568,12 +1557,12 @@ app
           for (const other of tabs.values())
             if (other !== tab) {
               other.visible = false;
-              void applyViewport(other).catch(() => {});
+              void applyViewport(other).catch(logFailure("Hiding a browser tab", other.state.id));
               other.activity.present(false);
             }
           window.webContents.send("browser:cover", id, undefined);
         } else if (cover && tab.visible) {
-          const image = (await capture(tab, 1))?.toDataURL();
+          const image = (await capture(tab))?.toDataURL();
           if (
             tab.view.webContents.isDestroyed() ||
             tab.presentation !== presentation
@@ -1584,7 +1573,7 @@ app
           if (tab.view.webContents.isDestroyed() || tab.presentation !== presentation) return;
         }
         tab.visible = Boolean(visible);
-        if (!visible) void applyViewport(tab).catch(() => {});
+        if (!visible) void applyViewport(tab).catch(logFailure("Hiding a browser tab", tab.state.id));
         tab.activity.present(tab.visible && window.isVisible() && !window.isMinimized());
         publish(tab);
       },
@@ -1600,7 +1589,8 @@ app
       let message;
       try {
         message = JSON.parse(String(raw));
-      } catch {
+      } catch (error) {
+        logFailure("Reading a message from the Citropy server")(error);
         return;
       }
       try {
@@ -1633,6 +1623,6 @@ app
     process.stderr.write(`${error.message}\n`);
     if (quitting) return;
     if (app.isPackaged && !forcedExit) dialog.showErrorBox("Citropy could not open", error.message);
-    await backend?.stop().catch(() => {});
+    await backend?.stop().catch(logFailure("Stopping the Citropy server"));
     app.quit();
   });

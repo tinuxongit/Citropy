@@ -1,4 +1,5 @@
 import { appendFileSync, chmodSync, existsSync, mkdirSync, renameSync, statSync } from "node:fs";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { join } from "node:path";
 
 export function desktopDiagnostics(directory) {
@@ -14,6 +15,8 @@ export function desktopDiagnostics(directory) {
         if (statSync(file).size + bytes > 128 * 1024) renameSync(file, `${file}.1`);
       }
       appendFileSync(file, line, { mode: 0o600 });
-    } catch {}
+    } catch (error) {
+      logFailure("Writing desktop diagnostics", file)(error);
+    }
   };
 }

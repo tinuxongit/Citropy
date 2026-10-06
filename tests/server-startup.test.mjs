@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { WebSocket } from "ws";
+import { PROVIDER_IDS } from "../shared/protocol.ts";
 
 test("backend readiness and saved-workspace access do not wait for provider discovery", { timeout: 20_000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-startup-"));
@@ -67,13 +68,13 @@ test("backend readiness and saved-workspace access do not wait for provider disc
     });
     socket.on("error", reject);
   });
-  assert.deepEqual(hello.snapshot.projects.map((project) => project.chat), [true]);
+  assert.deepEqual(hello.snapshot.projects, []);
   assert.deepEqual(hello.snapshot.providers, []);
   child.send({ t: "finish-discovery" });
   await new Promise((resolve, reject) => {
     const deadline = Date.now() + 5000;
     const check = () => {
-      if (messages.some(event => event.t === "providers.update" && event.providers.length === 5)) return resolve();
+      if (messages.some(event => event.t === "providers.update" && event.providers.length === PROVIDER_IDS.length)) return resolve();
       if (Date.now() > deadline) return reject(new Error(`Provider discovery did not publish: ${log}`));
       setTimeout(check, 10);
     };

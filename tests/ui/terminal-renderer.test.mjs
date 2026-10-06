@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { waitUntil } from "./wait-until.mjs";
 
 test("idle terminals release GPU contexts and preserve buffer, selection and resumed output", { timeout: 60_000 }, async t => {
   const root = fileURLToPath(new URL("../..", import.meta.url));
@@ -190,7 +191,9 @@ test("terminal panes reuse successful WebGL detection while preserving per-pane 
     await page.evaluate(() => { window.terminals[2].focus(); });
     await page.keyboard.type("pwd");
     await page.keyboard.press("Enter");
-    assert.equal(input.filter(event => event.termId === "terminal-2").map(event => event.data).join(""), "pwd\r");
+    const typed = () => input.filter(event => event.termId === "terminal-2").map(event => event.data).join("");
+    await waitUntil(() => typed() === "pwd\r");
+    assert.equal(typed(), "pwd\r");
     const before = await page.evaluate(() => ({ cols: window.terminals[2].cols, rows: window.terminals[2].rows }));
     await page.setViewportSize({ width: width - 40, height: 700 });
     await page.waitForFunction(cols => window.terminals[2].cols < cols, before.cols);

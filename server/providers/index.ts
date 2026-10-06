@@ -1,8 +1,6 @@
 import { claudeProvider } from "./claude.ts";
 import { codexProvider } from "./codex.ts";
-import { cursorProvider } from "./cursor.ts";
 import { openCodeVersionInfo, opencodeProvider } from "./opencode.ts";
-import { piProvider } from "./pi.ts";
 import { commandIdentity } from "./binary.ts";
 import type { Provider, ProviderLaunch } from "./types.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../shared/protocol.ts";
@@ -10,9 +8,7 @@ import type { ModelOption, ProviderId, ProviderInfo } from "../../shared/protoco
 export const providers: Record<ProviderId, Provider> = {
   claude: claudeProvider,
   codex: codexProvider,
-  cursor: cursorProvider,
   opencode: opencodeProvider,
-  pi: piProvider,
 };
 
 import { store } from "../store.ts";

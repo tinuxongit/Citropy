@@ -1,4 +1,5 @@
 import { commandVersion, spawnCommand } from "./binary.ts";
+import { logFailure } from "../../shared/expected-errors.mjs";
 import { stopProcess } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverModels } from "./models.ts";
@@ -133,7 +134,6 @@ class ClaudeSession implements AgentSession {
       }),
     ];
     if (options.mcp) args.push("--permission-prompt-tool", permissionToolName, "--allowedTools", "mcp__citropy__ask_user");
-    if (options.chat) args.push("--tools", "Read,Glob,Grep,WebSearch,WebFetch", "--strict-mcp-config");
     if (options.effort) args.push("--effort", options.effort);
     if (options.model)
       args.push(
@@ -164,7 +164,7 @@ class ClaudeSession implements AgentSession {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    this.#child.stdin.on("error", () => {});
+    this.#child.stdin.on("error", logFailure("Writing to Claude Code"));
     onJson(this.#child.stdout, (value) => this.#handle(value as Record<string, unknown>), (line) => {
       if (/^\s*$/.test(line)) return;
       this.#emit({ type: "notice", level: "warn", text: line });
@@ -279,11 +279,7 @@ class ClaudeSession implements AgentSession {
       pending.reject(new Error("Claude session has closed."));
     }
     this.#controls.clear();
-    try {
-      this.#child.stdin.end();
-    } catch {
-      /* already closed */
-    }
+    this.#child.stdin.end();
     stopProcess(this.#child, true);
   }
 
@@ -511,11 +507,15 @@ class ClaudeSession implements AgentSession {
           contextMax: this.#contextMax,
         },
       });
+      const origin = message.origin as { kind?: string } | undefined;
+      if (origin?.kind && origin.kind !== "human" && !message.user_message_uuid && !(Array.isArray(message.user_message_uuids) && message.user_message_uuids.length)) return;
+      const compacted = this.#compacted;
+      this.#compacted = false;
       const isError = message.is_error === true;
       if (this.#manualCompaction) {
         this.#manualCompaction = false;
         this.#active = false;
-        if (this.#compacted && !isError) this.#emit({ type: "compacted", contextTokens: this.#contextTokens });
+        if (compacted && !isError) this.#emit({ type: "compacted", contextTokens: this.#contextTokens });
         else this.#emit({ type: "turn.end", error: String(message.result ?? "The provider could not compact this conversation yet.") });
         return;
       }

@@ -1,7 +1,8 @@
 import { environmentStorage } from "./environment.ts";
+import { withoutTab } from "./thread-tabs.ts";
 import { resolveResponse } from "./requests.ts";
 import type { ServerEvent, ThreadMeta } from "../../../shared/protocol.ts";
-import { modeProjects, type AppState } from "./app-state.ts";
+import type { AppState } from "./app-state.ts";
 import {
   replaceHistory,
   removeMessages,
@@ -221,7 +222,7 @@ function applyProjectEvent(
           : state.projects.map((p) =>
               p.id === event.project.id ? event.project : p,
             );
-      if (!state.activeProjectId && Boolean(event.project.chat) === (state.appMode === "chat")) state.activeProjectId = event.project.id;
+      if (!state.activeProjectId) state.activeProjectId = event.project.id;
       return;
     }
     case "project.remove": {
@@ -231,7 +232,7 @@ function applyProjectEvent(
       state.git = remainingGit;
       state.activePanels = remainingPanels;
       if (state.activeProjectId === event.id)
-        state.activeProjectId = modeProjects(state)[0]?.id ?? null;
+        state.activeProjectId = state.projects[0]?.id ?? null;
       return;
     }
   }
@@ -262,6 +263,7 @@ function applyThreadEvent(
       state.toolConnections = remainingConnections;
       sortThreads(state);
       if (state.activeThreadId === event.id) state.activeThreadId = null;
+      Object.assign(state, withoutTab(state, event.id));
       return;
     }
     case "thread.accepted":

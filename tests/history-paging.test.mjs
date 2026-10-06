@@ -117,7 +117,7 @@ test("oversized older retained deltas are skipped before JSON hydration", t => {
 });
 
 test("paged reads preserve empty messages, mixed parts and interleaved Unicode deltas after reopen", t => {
-  const thread = store.createThread({ projectId: [...store.projects.values()].find(project => project.chat).id, provider: "claude" });
+  const thread = store.createThread({ projectId: store.openProject(process.cwd()).id, provider: "claude" });
   t.after(() => store.removeThread(thread.id));
   const entries = [
     { id: "empty-page-message", role: "user", ts: 1, parts: [] },
@@ -140,7 +140,7 @@ test("paged reads preserve empty messages, mixed parts and interleaved Unicode d
 });
 
 test("replacement history revisions survive journal reopen", t => {
-  const thread = store.createThread({ projectId: [...store.projects.values()].find(project => project.chat).id, provider: "claude" });
+  const thread = store.createThread({ projectId: store.openProject(process.cwd()).id, provider: "claude" });
   t.after(() => store.removeThread(thread.id));
   const revision = eventJournal.append({ t: "thread.messages", threadId: thread.id, messages: [message("reopened")] });
   eventJournal.close();
@@ -148,7 +148,7 @@ test("replacement history revisions survive journal reopen", t => {
 });
 
 test("paged route replies echo request IDs and legacy clients retain full history", t => {
-  const thread = store.createThread({ projectId: [...store.projects.values()].find(project => project.chat).id, provider: "claude" });
+  const thread = store.createThread({ projectId: store.openProject(process.cwd()).id, provider: "claude" });
   t.after(() => store.removeThread(thread.id));
   const messages = Array.from({ length: 100 }, (_, index) => message(index));
   store.replaceMessages(thread.id, messages);

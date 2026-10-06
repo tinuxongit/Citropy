@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { ifMissing } from "../shared/expected-errors.mjs";
 import { appendFile, mkdir, readFile, access } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -43,7 +44,7 @@ export async function nodeShellConfigured(bin: string): Promise<boolean> {
   if (process.platform === "win32") return windowsPath(bin, false);
   const files = await shellFiles(bin);
   for (const file of files) {
-    const content = await readFile(file.path, "utf8").catch(error => { if (error.code === "ENOENT") return ""; throw error; });
+    const content = await readFile(file.path, "utf8").catch(ifMissing(""));
     if (!content.includes(file.content)) return false;
   }
   return true;
@@ -52,7 +53,7 @@ export async function nodeShellConfigured(bin: string): Promise<boolean> {
 export async function configureNodeShell(bin: string): Promise<void> {
   if (process.platform === "win32") { await windowsPath(bin, true); return; }
   for (const file of await shellFiles(bin)) {
-    const content = await readFile(file.path, "utf8").catch(error => { if (error.code === "ENOENT") return ""; throw error; });
+    const content = await readFile(file.path, "utf8").catch(ifMissing(""));
     if (content.includes(file.content)) continue;
     await mkdir(dirname(file.path), { recursive: true });
     await appendFile(file.path, `\n${file.content}\n`, { mode: 0o600 });

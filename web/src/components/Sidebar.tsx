@@ -8,14 +8,12 @@ import { environmentSlice, useBackgroundEnvironments } from "../lib/live-environ
 import { useI18n } from "../lib/i18n.ts";
 import { scaled, selectProject, useApp } from "../lib/store.ts";
 import { Collapsible } from "./Collapsible.tsx";
-import { MessageSquarePlus, Search } from "./icons.ts";
 import { ResizeHandle } from "./ResizeHandle.tsx";
-import { ModeSwitch } from "./ModeSwitch.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { ThreadPreview } from "./ThreadPreview.tsx";
 import { WorkspaceSelector } from "./WorkspaceSelector.tsx";
 import { CachedThreadRow } from "./sidebar/CachedThreadRow.tsx";
-import { CategoryToggle, ProjectHeading, StatusHeading } from "./sidebar/GroupHeadings.tsx";
+import { ProjectHeading, StatusHeading } from "./sidebar/GroupHeadings.tsx";
 import { movableSiblings, threadKey, threadOrderAfterMove, useThreadGroups, type EnvironmentFolders, type SidebarThread, type ThreadGroup } from "./sidebar/thread-groups.ts";
 import { ThreadRow } from "./sidebar/ThreadRow.tsx";
 import { useProjectDrag } from "./sidebar/use-project-drag.ts";
@@ -23,15 +21,15 @@ import { useProjectOrder, type DropEdge } from "./sidebar/use-project-order.ts";
 import { useThreadDrag } from "./sidebar/use-thread-drag.ts";
 import { useThreadPreview } from "./sidebar/use-thread-preview.ts";
 import { useThreadSearch } from "./sidebar/use-thread-search.ts";
+import { ThreadSearch } from "./sidebar/ThreadSearch.tsx";
 import { rootThread, useThreadTree, type ThreadTree } from "./sidebar/use-thread-tree.ts";
 
 const VIRTUALIZE_AFTER = 40;
 const EMPTY_TREE: ThreadTree = { childrenByParent: new Map(), selectedPath: new Set(), activePaths: new Set() };
 
-function estimateRowHeight(globalMode: boolean, row: { item?: SidebarThread; empty: boolean } | undefined): number {
-  if (row?.item?.cached) return 34;
-  if (row?.item) return globalMode ? 34 : 96;
-  if (row?.empty && globalMode) return 30;
+function estimateRowHeight(row: { item?: SidebarThread; empty: boolean } | undefined): number {
+  if (row?.item) return 34;
+  if (row?.empty) return 30;
   return 40;
 }
 
@@ -46,44 +44,34 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
   const connected = useApp((state) => state.connected);
   const creatingThread = useApp((state) => state.creatingThread);
   const uiScale = useApp((state) => state.uiScale);
-  const chatMode = useApp((state) => state.appMode === "chat");
-  const globalMode = !chatMode;
   const { activeId: environment, connections } = useEnvironments();
   const background = useBackgroundEnvironments();
   const catalog = useWorkspaceCatalog();
-  const [query, setQuery] = useState("");
+  const query = useApp((state) => state.threadQuery);
   const [focusedRow, setFocusedRow] = useState<string>();
   const viewport = useRef<HTMLDivElement>(null);
   const threadList = useRef<HTMLDivElement>(null);
-  useEffect(() => setQuery(""), [activeProjectId, environment]);
+  useEffect(() => useApp.setState({ threadQuery: "" }), [activeProjectId, environment]);
   useEffect(() => { setFocusedRow(undefined); }, [environment]);
 
-  const matches = useThreadSearch(query, globalMode ? undefined : (activeProjectId ?? undefined));
+  const matches = useThreadSearch(query);
   const threadsByEnvironment = useMemo(() => Object.fromEntries([
     [environment, threadMap],
     ...Object.entries(background).filter(([, slice]) => slice.connected).map(([id, slice]) => [id, slice.threads]),
   ] as [string, Record<string, ThreadMeta>][]), [environment, threadMap, background]);
-  const chatProjectIds = useMemo(() => new Set([...projects, ...Object.values(background).flatMap((slice) => slice.projects)]
-    .filter((project) => project.chat).map((project) => project.id)), [projects, background]);
-  const shown = (thread: ThreadMeta) => chatMode || !chatProjectIds.has(thread.projectId);
   const threads = useMemo((): SidebarThread[] => {
     if (query.trim()) return (matches ?? []).flatMap((match): SidebarThread[] => {
-      if (!globalMode && match.environment !== environment) return [];
       const thread = threadsByEnvironment[match.environment]?.[match.threadId];
-      return thread && shown(thread) ? [{ thread, environment: match.environment }] : [];
-    });
-    if (!globalMode) return order.flatMap((id): SidebarThread[] => {
-      const thread = threadMap[id];
-      return thread?.projectId === activeProjectId ? [{ thread, environment }] : [];
+      return thread ? [{ thread, environment: match.environment }] : [];
     });
     return Object.entries(threadsByEnvironment).filter(([id]) => id !== environment || connected).flatMap(([id, map]): SidebarThread[] => {
       const ids = id === environment ? order : background[id]!.threadOrder;
-      return ids.flatMap((threadId): SidebarThread[] => map[threadId] && shown(map[threadId]) ? [{ thread: map[threadId]!, environment: id }] : []);
+      return ids.flatMap((threadId): SidebarThread[] => map[threadId] ? [{ thread: map[threadId]!, environment: id }] : []);
     });
-  }, [query, matches, globalMode, environment, connected, threadsByEnvironment, order, threadMap, activeProjectId, background, chatMode, chatProjectIds]);
+  }, [query, matches, environment, connected, threadsByEnvironment, order, background]);
   const activeRoot = rootThread(threadMap, activeThreadId);
   const projectSets = useMemo(() => Object.fromEntries(["local", ...connections.map(connection => connection.id)].map(id =>
-    [id, (id === environment && connected ? projects : background[id]?.connected ? background[id].projects : catalog[id]?.projects ?? []).filter((project) => !project.chat)],
+    [id, id === environment && connected ? projects : background[id]?.connected ? background[id].projects : catalog[id]?.projects ?? []],
   )), [environment, connections, connected, projects, background, catalog]);
   const { orderedProjects, moveProject, moveProjectBy } = useProjectOrder(projectSets);
   const environments = useMemo(() => ["local", ...connections.map((connection) => connection.id)].flatMap((id): EnvironmentFolders[] => {
@@ -91,26 +79,27 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
     if (!live && !catalog[id]?.projects.length) return [];
     return [{ environment: id, server: id !== "local", projects: orderedProjects[id] ?? [], cachedThreads: live ? undefined : catalog[id]?.threads ?? [] }];
   }), [environment, connections, connected, background, catalog, orderedProjects]);
-  const { groups, rows, revealFinished } = useThreadGroups({ threads, query, globalMode, environments, activeEnvironment: environment, activeRoot, activeThreadId });
+  const { groups, rows, revealFinished } = useThreadGroups({ threads, query, environments, activeEnvironment: environment, activeRoot, activeThreadId });
   const trees = useThreadTree(threadsByEnvironment, environment, activeThreadId);
-  const rowOrder = rows.map((row) => row.key).join("\0");
+  const rowOrder = useMemo(() => rows.map((row) => row.key).join("\0"), [rows]);
+  const rowIndexes = useMemo(() => new Map(rows.map((row, index) => [row.key, index])), [rowOrder]);
 
   const reorder = (targetEnvironment: string, source: string, target: string, edge?: DropEdge) => {
     const map = threadsByEnvironment[targetEnvironment];
-    const projectId = globalMode ? map?.[source]?.projectId : activeProjectId;
+    const projectId = map?.[source]?.projectId;
     if (source === target || query || !projectId) return;
-    if (globalMode && map?.[target]?.projectId !== projectId) return;
-    const ids = threadOrderAfterMove(groups, globalMode, targetEnvironment, projectId, source, target, edge);
+    if (map?.[target]?.projectId !== projectId) return;
+    const ids = threadOrderAfterMove(groups, targetEnvironment, projectId, source, target, edge);
     if (ids) void reorderThreads(projectId, ids, targetEnvironment).catch(reportError);
   };
   const moveThread = (item: SidebarThread, direction: number) => {
-    const siblings = movableSiblings(groups, item, globalMode);
+    const siblings = movableSiblings(groups, item);
     const next = siblings[siblings.findIndex((sibling) => sibling.thread.id === item.thread.id) + direction];
     if (next) reorder(item.environment, item.thread.id, next.thread.id);
   };
 
   const dragResetKey = [environment, activeProjectId, query, connected, uiScale, rowOrder].join("\n");
-  const threadDrag = useThreadDrag({ viewport, groups, globalMode, disabled: Boolean(query) || (!globalMode && !connected), resetKey: dragResetKey, onDrop: reorder });
+  const threadDrag = useThreadDrag({ viewport, groups, disabled: Boolean(query), resetKey: dragResetKey, onDrop: reorder });
   const folderGroups = groups.filter(group => group.project);
   const projectDrag = useProjectDrag({ viewport, list: threadList, projects: folderGroups, disabled: Boolean(query), resetKey: dragResetKey, onMove: (source, target, edge) => {
     const from = folderGroups.find(group => group.id === source);
@@ -130,9 +119,9 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
   }), []);
 
   const virtualized = rows.length > VIRTUALIZE_AFTER;
-  const focusedIndex = rows.findIndex((row) => row.key === focusedRow);
-  const draggingIndex = rows.findIndex((row) => row.key === threadDrag.draggingId);
-  const activeIndex = rows.findIndex((row) => row.key === (activeThreadId && threadKey(environment, activeThreadId)));
+  const focusedIndex = focusedRow ? rowIndexes.get(focusedRow) ?? -1 : -1;
+  const draggingIndex = threadDrag.draggingId ? rowIndexes.get(threadDrag.draggingId) ?? -1 : -1;
+  const activeIndex = activeRoot ? rowIndexes.get(threadKey(environment, activeRoot.id)) ?? -1 : -1;
   const getItemKey = useMemo(() => {
     const keys = rows.map((row) => row.key);
     return (index: number) => keys[index]!;
@@ -142,7 +131,7 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
     enabled: virtualized,
     getScrollElement: () => viewport.current,
     getItemKey,
-    estimateSize: (index) => scaled(estimateRowHeight(globalMode, rows[index])),
+    estimateSize: (index) => scaled(estimateRowHeight(rows[index])),
     measureElement: (element) => element.offsetHeight,
     overscan: 3,
     rangeExtractor: useCallback((range: Range) => [...new Set([
@@ -152,12 +141,14 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
   });
   useEffect(() => {
     if (virtualized) list.measure();
-  }, [globalMode, uiScale, virtualized]);
+  }, [uiScale, virtualized]);
   useEffect(() => {
     if (!virtualized) return;
+    const child = viewport.current?.querySelector<HTMLElement>('.thread-child[data-active="true"]');
+    if (child) { child.scrollIntoView({ block: "nearest" }); return; }
     const index = rows.findIndex((row) => row.item?.environment === environment && row.item.thread.id === activeRoot?.id);
     if (index >= 0) list.scrollToIndex(index, { align: "auto" });
-  }, [activeThreadId, activeProjectId, query, virtualized, globalMode]);
+  }, [activeThreadId, activeProjectId, query, virtualized]);
 
   const canCreateThread = connected && !creatingThread && providers.some((provider) => provider.enabled && (provider.available || provider.instances?.some(instance => instance.available)));
   const canCreateIn = (group: ThreadGroup) => {
@@ -202,15 +193,13 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
       onNewThread={() => startThread(group)}
       onConversation={onConversation}
     />;
-    if (globalMode) return <StatusHeading group={group} searching={searching} />;
-    return <CategoryToggle group={group} searching={searching} />;
+    return <StatusHeading group={group} searching={searching} />;
   };
 
   const renderThread = (item: SidebarThread & { thread: ThreadMeta; cached?: false }) => <ThreadRow
     key={threadKey(item.environment, item.thread.id)}
     thread={item.thread}
     environment={item.environment}
-    globalMode={globalMode}
     query={query}
     match={matches?.find((result) => result.environment === item.environment && result.threadId === item.thread.id)}
     categoryEnd={groups.some((group) => group.threads.at(-1) === item)}
@@ -236,7 +225,7 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
     return <>
       {renderHeading(group)}
       <Collapsible open={group.open || Boolean(query)} className="thread-category-content">
-        {group.threads.map((item) => <div className="thread-list-item" key={threadKey(item.environment, item.thread.id)}>{renderItem(item, group)}</div>)}
+        {(group.open || Boolean(query)) && group.threads.map((item) => <div className="thread-list-item" key={threadKey(item.environment, item.thread.id)}>{renderItem(item, group)}</div>)}
         {group.project && !query && !group.threads.length && renderEmpty(group)}
       </Collapsible>
     </>;
@@ -251,30 +240,8 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
         : t("No matching conversations.");
 
   return (
-    <aside className="rail" data-sidebar-mode={globalMode ? "global" : "workspaces"} data-app-mode={chatMode ? "chat" : "code"} aria-label={t("Conversations")}>
-      <div className="rail-mode"><ModeSwitch /></div>
-      <div className="thread-toolbar">
-        <label className="thread-search">
-          <Search size={16} aria-hidden="true" />
-          <input
-            aria-label={t("Find a conversation")}
-            placeholder={t("Search")}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        {!globalMode && <button
-          className="new-thread"
-          aria-label={t("New thread")}
-          title={t("New thread")}
-          type="button"
-          onClick={() => { onConversation(); createThread(); }}
-          disabled={!canCreateThread || !activeProjectId}
-        >
-          <MessageSquarePlus size={18} />
-        </button>}
-        {globalMode && <WorkspaceSelector />}
-      </div>
+    <aside className="rail" aria-label={t("Conversations")}>
+      <div className="thread-toolbar"><ThreadSearch /></div>
       <div className="rail-scroll">
         <div className="rail-list scroll" ref={viewport}
           onScroll={(event) => {
@@ -282,7 +249,7 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
             event.currentTarget.parentElement?.toggleAttribute("data-scrolled", event.currentTarget.scrollTop > 0);
           }}
           onFocusCapture={(event) => {
-            const index = event.target.closest<HTMLElement>("[data-index]")?.dataset.index;
+            const index = event.target.closest<HTMLElement>(".thread-list-item[data-index]")?.dataset.index;
             if (index !== undefined) setFocusedRow(rows[Number(index)]?.key);
           }}
           onBlurCapture={(event) => {
@@ -290,13 +257,14 @@ export function Sidebar({ onConversation, footer }: { onConversation: () => void
           }}
         >
           <div className="thread-list sliding-selection" ref={threadList} data-virtualized={virtualized} data-dragging={Boolean(threadDrag.draggingId)} style={virtualized ? { height: list.getTotalSize(), position: "relative" } : undefined}>
-            <SelectionHighlight value={activeThreadId ? threadKey(environment, activeThreadId) : undefined} layout={rowOrder} selector='.thread-card[data-active="true"], .thread-child[data-active="true"]' />
+            <SelectionHighlight value={activeThreadId ? threadKey(environment, activeThreadId) : undefined} layout={rowOrder} selector='.thread-card[data-active="true"]' />
             {groups.map((group, index) => <section className="thread-category" data-category={group.id} data-server-start={index > 0 && group.environment !== undefined && group.environment !== "local" && groups[index - 1]!.environment !== group.environment || undefined} key={group.id} style={virtualized ? { display: "contents" } : undefined}>
               {renderGroup(group)}
             </section>)}
             {projectDrag.drop && <div className="project-drop-line" style={{ top: projectDrag.drop.top }} />}
           </div>
-          {threads.length === 0 && (!globalMode || query || groups.length === 0) && <div className="rail-empty">{emptyMessage}</div>}
+          {threads.length === 0 && (query || groups.length === 0) && <div className="rail-empty">{emptyMessage}</div>}
+          {!query && <WorkspaceSelector />}
         </div>
       </div>
       {preview.shown && threadsByEnvironment[preview.shown.environment]?.[preview.shown.threadId] && <ThreadPreview

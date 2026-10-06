@@ -1,4 +1,5 @@
 import { mkdir, open, readFile, readlink, realpath, stat, writeFile } from "node:fs/promises";
+import { ifMissing } from "../shared/expected-errors.mjs";
 import { constants, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { basename, dirname, join, parse } from "node:path";
@@ -127,12 +128,8 @@ export async function serveToolImage(
   for (const [mime, extension] of Object.entries(types)) {
     const path = inside(root, join(threadId, `${id}.${extension}`));
     if (!path) break;
-    let body: Buffer;
-    try {
-      body = await readFile(path);
-    } catch {
-      continue;
-    }
+    const body = await readFile(path).catch(ifMissing(undefined));
+    if (!body) continue;
     res.writeHead(200, {
       "content-type": mime,
       "content-length": body.length,

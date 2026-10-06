@@ -4,16 +4,14 @@ import { assistanceBusy } from "./assistance.ts";
 import { pendingRequests } from "./permissions.ts";
 import { providerUpdating } from "./providers/maintenance.ts";
 import { providerBusy } from "./runtime.ts";
-import type { ProviderId } from "../shared/protocol.ts";
-
-const PROVIDERS: readonly ProviderId[] = ["claude", "codex", "opencode", "cursor", "pi"];
+import { PROVIDER_IDS } from "../shared/protocol.ts";
 
 let commands = 0;
 const requests = new Set<IncomingMessage>();
 
 export function activeWork(ownCommands = 0): boolean {
   return (
-    PROVIDERS.some((id) => providerBusy(id) || providerUpdating(id)) ||
+    PROVIDER_IDS.some((id) => providerBusy(id) || providerUpdating(id)) ||
     assistanceBusy() ||
     nodeRuntimeInstalling() ||
     commands > ownCommands ||

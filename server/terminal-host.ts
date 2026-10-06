@@ -60,7 +60,8 @@ export class TerminalHost {
         this.#emit({ type: "activity", id: session.id, busy, process: name });
       }
       this.#failures = 0;
-    } catch {
+    } catch (error) {
+      if (!this.#failures) console.error("Checking terminal activity failed:", error);
       this.#failures = Math.min(this.#failures + 1, 6);
       for (const session of sessions) {
         if (!session.pty || this.#sessions.get(session.id) !== session || session.busy === undefined) continue;

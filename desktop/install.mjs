@@ -35,6 +35,6 @@ for (const [command, args] of [
   ["update-desktop-database", [directory]],
   ["gtk-update-icon-cache", ["-f", join(data, "icons/hicolor")]],
 ]) {
-  try { spawnSync(command, args, { stdio: "ignore" }); } catch {}
+  spawnSync(command, args, { stdio: "ignore" });
 }
 console.log(`Installed ${name} in your application menu: ${path}`);

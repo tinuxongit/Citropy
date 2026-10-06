@@ -111,7 +111,8 @@ function load(name: UiSound): Promise<unknown> {
     .then((buffer) => {
       loaded.set(name, buffer);
     })
-    .catch(() => {
+    .catch((error) => {
+      console.error("Loading a sound failed:", name, error);
       loading.delete(name);
     });
   loading.set(name, task);

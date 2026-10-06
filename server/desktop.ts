@@ -44,7 +44,8 @@ export function attachDesktop(socket: WebSocket): void {
     let message;
     try {
       message = JSON.parse(String(raw));
-    } catch {
+    } catch (error) {
+      console.error("Citropy desktop sent an unreadable message:", error);
       return;
     }
     if (message.id !== undefined) {

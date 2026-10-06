@@ -1,4 +1,5 @@
 import { gt, valid } from "semver";
+import { logFailure } from "../shared/expected-errors.mjs";
 
 export function createAppUpdater({
   updater,
@@ -32,7 +33,8 @@ export function createAppUpdater({
       recovering = recoverInstall();
       try {
         await recovering;
-      } catch {
+      } catch (recoveryError) {
+        logFailure("Recovering from the update")(recoveryError);
         publish({ status: "error", retry: "install", message: "The update was not applied. Close and reopen Citropy to restart its server." });
         recovering = undefined;
         return;

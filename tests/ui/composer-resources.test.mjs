@@ -156,6 +156,48 @@ test("composer resource usage", { timeout: 120_000 }, async (t) => {
     await page.getByRole("button", { name: /Plan,/ }).waitFor({ state: "detached" });
   });
 
+  await t.test("draft saves coalesce typing and flush on switch, send and page exit", async t => {
+    const page = await fixture(t, `
+      import { flushSync } from 'react-dom';
+      import { useComposerDraft } from '/web/src/components/composer/use-composer-draft.ts';
+      import { environmentStorage } from '/web/src/lib/environment.ts';
+      const write = environmentStorage.setItem.bind(environmentStorage);
+      write('citropy.draft.chat', JSON.stringify({ text: 'Local draft', attachments: [] }), 'local');
+      write('citropy.draft.chat', JSON.stringify({ text: 'Remote draft', attachments: [] }), 'remote');
+      window.draftWrites = [];
+      environmentStorage.setItem = (...args) => { window.draftWrites.push(args); write(...args); };
+      function Fixture({ scope }) {
+        const draft = useComposerDraft('chat', scope);
+        window.changeDraft = value => flushSync(() => draft.setValue(value));
+        window.clearDraft = draft.clearDraft;
+        return React.createElement('textarea', { 'aria-label': 'Draft', value: draft.value, onChange: event => draft.setValue(event.target.value) });
+      }
+      const root = createRoot(document.querySelector('#fixture'));
+      window.mountDraft = scope => flushSync(() => root.render(React.createElement(Fixture, { key: scope, scope })));
+      window.mountDraft('local');
+    `);
+    await page.getByRole('textbox', { name: 'Draft' }).waitFor();
+    const immediate = await page.evaluate(() => {
+      window.draftWrites = [];
+      for (let index = 0; index < 20; index++) window.changeDraft('Typing ' + index);
+      return window.draftWrites.length;
+    });
+    assert.equal(immediate, 0);
+    await page.waitForFunction(() => window.draftWrites.length === 1);
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('citropy.draft.chat')).text), 'Typing 19');
+    await page.evaluate(() => { window.changeDraft('Before switch'); window.mountDraft('remote'); });
+    assert.equal(await page.getByRole('textbox', { name: 'Draft' }).inputValue(), 'Remote draft');
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('citropy.draft.chat')).text), 'Before switch');
+    await page.evaluate(() => { window.changeDraft('Sent message'); window.clearDraft(); window.mountDraft('local'); window.dispatchEvent(new Event('pagehide')); });
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('citropy.environment.remote.citropy.draft.chat') || '{}').text || ''), '');
+    await page.evaluate(() => window.mountDraft('remote'));
+    assert.equal(await page.getByRole('textbox', { name: 'Draft' }).inputValue(), '');
+    await page.evaluate(() => { window.changeDraft('Before exit'); window.dispatchEvent(new Event('pagehide')); });
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('citropy.environment.remote.citropy.draft.chat')).text), 'Before exit');
+    await page.evaluate(() => window.mountDraft('local'));
+    assert.equal(await page.getByRole('textbox', { name: 'Draft' }).inputValue(), 'Before switch');
+  });
+
   await t.test("frame masks change only when shell or animated tab geometry changes", async t => {
     const page = await fixture(t, `
       import { ComposerFrame } from '/web/src/components/composer/ComposerFrame.tsx';

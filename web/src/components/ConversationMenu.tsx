@@ -14,6 +14,7 @@ import {
   ArrowUp,
   ArrowDown,
   RefreshCw,
+  SquarePlus,
 } from "lucide-react";
 import { Menu, type MenuItem } from "./Menu.tsx";
 import { Modal } from "./Modal.tsx";
@@ -22,6 +23,8 @@ import { api, reportError } from "../lib/api.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { environmentSlice } from "../lib/live-environments.ts";
 import { useApp, confirmAction, viewportWidth } from "../lib/store.ts";
+import { environmentId } from "../lib/environment.ts";
+import { openInNewTab } from "../lib/actions.ts";
 import { useI18n } from "../lib/i18n.ts";
 
 export async function organizeConversation(id: string, patch: object, environment?: string) {
@@ -44,6 +47,7 @@ export function ConversationMenu({
 }) {
   const t = useI18n();
   const projects = useApp(state => state.projects);
+  const tabbable = useApp(state => (environment ?? environmentId()) === environmentId() && !state.openThreadIds.includes(thread.id));
   const project = (environment ? environmentSlice(environment)?.projects : projects)?.find(project => project.id === thread.projectId);
   const worktree = async (action: "copy" | "remove") => {
     if (!await confirmAction({ title: t(action === "copy" ? "Continue in a new worktree?" : "Remove this worktree?"), description: t(action === "copy" ? "Copy the current changes to a new branch and continue this task there. Changes remain in the original folder. The copied changes start unstaged." : "Only a clean worktree unused by other tasks can be removed. The branch and conversation history stay available."), label: t(action === "copy" ? "Copy and continue" : "Remove worktree"), danger: action === "remove" })) return;
@@ -96,6 +100,7 @@ export function ConversationMenu({
         sheet={viewportWidth() <= 600}
         triggerId={menuId}
         items={[
+          ...(tabbable ? [{ id: "open-tab", label: t("Open in new tab"), icon: <SquarePlus size={15} />, onSelect: () => openInNewTab(thread.id) }] : []),
           ...(project?.isGit ? [{ id: "worktree", label: t("Continue in new worktree…"), icon: <GitFork size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
           ...(thread.archived && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: t("Remove worktree…"), icon: <Trash2 size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
           ...(thread.canRedo ? [{ id: "redo", label: t("Redo restored turn"), icon: <RefreshCw size={15} />, disabled: thread.running, onSelect: () => { void api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ redo: true }) }, environment).catch(reportError); } }] : []),

@@ -1,20 +1,16 @@
 import { createHash } from "node:crypto";
 import { open, readdir, realpath, stat } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join, relative, isAbsolute, sep } from "node:path";
 import { createInterface } from "node:readline";
-import * as acp from "@agentclientprotocol/sdk";
 import { store } from "./store.ts";
 import { providerLogRoots } from "./provider-logs.ts";
 import { uid } from "./ids.ts";
+import { ifMissing } from "../shared/expected-errors.mjs";
 import { workspaceDirectory } from "./remote.ts";
-import { cursorConfig } from "./providers/cursor.ts";
-import { closeAgent, initializeAgent, spawnAgent, withTimeout } from "./providers/acp-connection.ts";
-import { contentText, toolReading } from "./providers/acp-tools.ts";
-import type { Message, Part, ToolPart } from "../shared/protocol.ts";
+import { isProviderId, type Message, type Part, type ToolPart } from "../shared/protocol.ts";
 import type { ImportableSession, ImportProvider } from "../shared/session-import.ts";
 
-const candidates = new Map<string, { provider: ImportProvider; path?: string; root?: string; sessionId?: string; cwd?: string; title?: string }>();
+const candidates = new Map<string, { provider: ImportProvider; path: string; root: string; sessionId?: string }>();
 const limit = 32 * 1024 * 1024;
 
 async function* records(path: string, root: string, metadata = false): AsyncGenerator<any> {
@@ -29,9 +25,16 @@ async function* records(path: string, root: string, metadata = false): AsyncGene
     if (!metadata && info.size > limit) throw new Error("This session exceeds the 32 MB import limit.");
     const stream = file.createReadStream({ autoClose: false, end: metadata ? 256 * 1024 - 1 : limit - 1 });
     const lines = createInterface({ input: stream, crlfDelay: Infinity });
+    let lineNumber = 0;
+    let unreadableLine: number | undefined;
     try {
       for await (const line of lines) {
-        try { yield JSON.parse(line); } catch {}
+        lineNumber++;
+        if (!line.trim()) continue;
+        if (unreadableLine !== undefined) throw new Error(`Line ${unreadableLine} of ${path} is not valid JSON.`);
+        let record: unknown;
+        try { record = JSON.parse(line); } catch { unreadableLine = lineNumber; continue; }
+        yield record;
       }
     } finally { lines.close(); stream.destroy(); }
   } finally { await file.close(); }
@@ -82,7 +85,7 @@ async function openCodeSession(path: string, sessionId: string) {
 
 async function listOpenCodeSessions(): Promise<ImportableSession[]> {
   const path = providerLogRoots("opencode")[0]!;
-  if (!await stat(path).catch(() => null)) return [];
+  if (!await stat(path).catch(ifMissing(null))) return [];
   const { DatabaseSync } = await import("node:sqlite");
   const db = new DatabaseSync(path, { readOnly: true });
   let sessions: Array<{ id: string; directory: string; title: string; time_updated: number }>;
@@ -99,122 +102,12 @@ async function listOpenCodeSessions(): Promise<ImportableSession[]> {
   return output;
 }
 
-async function cursorAgent<T>(cwd: string, onUpdate: (update: acp.SessionNotification) => void, run: (agent: acp.ClientContext) => Promise<T>): Promise<T> {
-  const { child, stream } = spawnAgent(cursorConfig, cwd);
-  const app = acp.client({ name: "citropy" }).onNotification(acp.methods.client.session.update, context => onUpdate(context.params));
-  const connection = app.connect(stream);
-  let fail: (error: Error) => void = () => {};
-  let closed: (code: number | null) => void = () => {};
-  const failed = new Promise<never>((_, reject) => {
-    fail = reject;
-    closed = code => reject(new Error(`Cursor exited while reading conversations (${code}).`));
-    child.on("error", fail);
-    child.on("close", closed);
-  });
-  try {
-    await Promise.race([initializeAgent(connection.agent, cursorConfig), failed]);
-    return await Promise.race([run(connection.agent), failed]);
-  } finally {
-    child.off("error", fail);
-    child.off("close", closed);
-    closeAgent(connection, child);
-  }
-}
-
-async function listCursorSessions(): Promise<ImportableSession[]> {
-  const sessions = await cursorAgent(homedir(), () => {}, async agent => {
-    const result: acp.SessionInfo[] = [];
-    const cursors = new Set<string>();
-    let cursor: string | null | undefined;
-    do {
-      const page = await withTimeout(agent.request(acp.methods.agent.session.list, cursor ? { cursor } : {}), 30_000, "Cursor did not list conversations within 30 seconds");
-      result.push(...page.sessions);
-      cursor = page.nextCursor;
-      if (cursor && cursors.has(cursor)) break;
-      if (cursor) cursors.add(cursor);
-    } while (cursor && result.length < 200);
-    return result;
-  });
-  return sessions.filter(session => typeof session.sessionId === "string" && session.sessionId && isAbsolute(session.cwd))
-    .sort((a, b) => (Date.parse(b.updatedAt || "") || 0) - (Date.parse(a.updatedAt || "") || 0))
-    .slice(0, 200).map(session => {
-      const id = createHash("sha256").update(`cursor:${session.sessionId}:${session.cwd}`).digest("hex");
-      candidates.set(id, { provider: "cursor", sessionId: session.sessionId, cwd: session.cwd, title: session.title ?? undefined });
-      const imported = [...store.threads.values()].find(thread => thread.provider === "cursor" && thread.externalId === session.sessionId);
-      return { id, provider: "cursor", sessionId: session.sessionId, title: session.title || "Imported conversation", cwd: session.cwd, updatedAt: Date.parse(session.updatedAt || "") || Date.now(), importedThreadId: imported?.id };
-    });
-}
-
-async function readCursorSession(sessionId: string, cwd: string, listedTitle?: string) {
-  const messages: Message[] = [];
-  const tools = new Map<string, ToolPart>();
-  let bytes = 0;
-  let title = "";
-  let currentId = "";
-  let current: Message | undefined;
-  const append = (role: "user" | "assistant", kind: "text" | "reasoning", value: string, messageId?: string) => {
-    if (!value) return;
-    if (!current || current.role !== role || role === "user" && messageId && messageId !== currentId) {
-      current = { id: uid("msg"), role, ts: Date.now(), parts: [], ...(role === "assistant" ? { provider: "cursor" as const } : {}) };
-      messages.push(current);
-      currentId = messageId || "";
-    }
-    const last = current.parts.at(-1);
-    if (last?.kind === kind) last.text += value;
-    else current.parts.push({ id: uid("prt"), kind, text: value, complete: true });
-  };
-  const loaded = await cursorAgent(cwd, notification => {
-    if (notification.sessionId !== sessionId) return;
-    const update = notification.update;
-    bytes += Buffer.byteLength(JSON.stringify(update));
-    if (bytes > limit) return;
-    if (update.sessionUpdate === "user_message_chunk" && update.content.type === "text") append("user", "text", update.content.text, update.messageId ?? undefined);
-    else if (update.sessionUpdate === "agent_message_chunk" && update.content.type === "text") append("assistant", "text", update.content.text, update.messageId ?? undefined);
-    else if (update.sessionUpdate === "agent_thought_chunk" && update.content.type === "text") append("assistant", "reasoning", update.content.text, update.messageId ?? undefined);
-    else if (update.sessionUpdate === "tool_call" || update.sessionUpdate === "tool_call_update") {
-      let tool = tools.get(update.toolCallId);
-      if (!tool) {
-        if (!current || current.role !== "assistant") {
-          current = { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [], provider: "cursor" };
-          messages.push(current);
-        }
-        const reading = toolReading(update);
-        tool = { id: uid("prt"), kind: "tool", callId: update.toolCallId, name: reading.name, headline: update.title || reading.name, shape: "generic", input: reading.input, status: "ok", startedAt: Date.now() };
-        tools.set(update.toolCallId, tool);
-        current.parts.push(tool);
-      }
-      if (update.rawInput !== undefined) tool.input = toolReading(update).input;
-      if (update.rawOutput !== undefined || update.content) tool.output = contentText(update.content, update.rawOutput);
-      if (update.status === "failed") tool.status = "error";
-      if (update.status === "failed" || update.status === "completed") tool.endedAt = Date.now();
-    } else if (update.sessionUpdate === "session_info_update" && typeof update.title === "string") title = update.title;
-  }, agent => withTimeout(agent.request(acp.methods.agent.session.load, { sessionId, cwd, mcpServers: [] }), 60_000, "Cursor did not load this conversation within 60 seconds"));
-  if (bytes > limit) throw new Error("This session exceeds the 32 MB import limit.");
-  if (!messages.length) return null;
-  const selected = loaded.configOptions?.find(option => option.type === "select" && option.category === "model")?.currentValue;
-  const model = typeof selected === "string" ? selected : undefined;
-  if (model) for (const message of messages) if (message.role === "assistant") message.model = model;
-  return { sessionId, cwd, title: title || listedTitle || "Imported conversation", model, messages };
-}
-
 async function readSession(path: string, root: string, provider: ImportProvider, metadata = false) {
   let sessionId = "", cwd = "", title = "", model: string | undefined;
   const messages: Message[] = [];
   const seen = new Set<string>();
   const tools = new Map<string, ToolPart>();
-  let rows: any[] = [];
-  for await (const row of records(path, root, metadata)) rows.push(row);
-  if (provider === "pi" && !metadata) {
-    const byId = new Map(rows.filter(row => typeof row.id === "string" && row.type !== "session").map(row => [row.id, row]));
-    const branch = new Set<string>();
-    let leaf = rows.at(-1)?.id;
-    while (typeof leaf === "string" && byId.has(leaf) && !branch.has(leaf)) {
-      branch.add(leaf);
-      leaf = byId.get(leaf).parentId;
-    }
-    rows = rows.filter(row => row.type === "session" || !row.id || branch.has(row.id));
-  }
-  for (const row of rows) {
+  for await (const row of records(path, root, metadata)) {
     if (provider === "claude" && row.isSidechain) continue;
     if (provider === "claude") {
       if (typeof row.sessionId === "string") sessionId ||= row.sessionId;
@@ -224,30 +117,20 @@ async function readSession(path: string, root: string, provider: ImportProvider,
       sessionId = row.payload?.id || row.payload?.session_id || "";
       cwd = row.payload?.cwd || "";
       if (row.payload?.parent_thread_id || typeof row.payload?.source === "object" && row.payload.source?.subagent) return null;
-    } else if (provider === "pi") {
-      if (row.type === "session") { sessionId = row.id; cwd = row.cwd; }
-      if (row.type === "session_info" && typeof row.name === "string") title = row.name;
-      if (row.type === "model_change" && typeof row.provider === "string" && typeof row.modelId === "string") model = `${row.provider}/${row.modelId}`;
     }
     if (provider === "codex" && row.type === "turn_context" && typeof row.payload?.model === "string") model = row.payload.model;
-    const payload = provider === "claude" || provider === "pi" && row.type === "message"
-      ? row.message : row.type === "response_item" ? row.payload : undefined;
+    const payload = provider === "claude" ? row.message : row.type === "response_item" ? row.payload : undefined;
     if (!payload) continue;
-    if (typeof payload.model === "string") model = provider === "pi" && typeof payload.provider === "string" ? `${payload.provider}/${payload.model}` : payload.model;
+    if (typeof payload.model === "string") model = payload.model;
     const timestamp = typeof payload.timestamp === "number" ? payload.timestamp : Date.parse(row.timestamp) || Date.now();
     if (provider === "codex" && ["function_call_output", "custom_tool_call_output"].includes(payload.type)) {
       const tool = tools.get(payload.call_id);
       if (tool) { tool.output = typeof payload.output === "string" ? payload.output : JSON.stringify(payload.output); tool.status = "ok"; tool.endedAt = timestamp; }
       continue;
     }
-    if (provider === "pi" && payload.role === "toolResult") {
-      const tool = tools.get(payload.toolCallId);
-      if (tool) { tool.output = text(payload.content); tool.status = payload.isError ? "error" : "ok"; tool.endedAt = timestamp; }
-      continue;
-    }
     const content = provider === "codex" && ["function_call", "custom_tool_call"].includes(payload.type)
       ? [{ type: "tool_use", id: payload.call_id, name: payload.name, input: payload.arguments ?? payload.input }]
-      : provider === "pi" && Array.isArray(payload.content) ? payload.content.map((block: any) => block.type === "toolCall" ? { type: "tool_use", id: block.id, name: block.name, input: block.arguments } : block) : payload.content;
+      : payload.content;
     const role = payload.role || (payload.type === "function_call" || payload.type === "custom_tool_call" ? "assistant" : undefined);
     if (role !== "user" && role !== "assistant") continue;
     const identity = row.uuid || payload.id;
@@ -276,20 +159,19 @@ async function readSession(path: string, root: string, provider: ImportProvider,
 }
 
 export async function listImportableSessions(provider: ImportProvider): Promise<ImportableSession[]> {
-  if (provider !== "claude" && provider !== "codex" && provider !== "cursor" && provider !== "opencode" && provider !== "pi") throw new Error("Choose a provider.");
+  if (!isProviderId(provider)) throw new Error("Choose a provider.");
   for (const [id, candidate] of candidates) if (candidate.provider === provider) candidates.delete(id);
   if (provider === "opencode") return listOpenCodeSessions();
-  if (provider === "cursor") return listCursorSessions();
   const files: { path: string; root: string; updatedAt: number }[] = [];
   async function scan(directory: string, root: string, depth: number): Promise<void> {
     if (depth > 4 || files.length >= 5000) return;
-    const entries = await readdir(directory, { withFileTypes: true }).catch(error => { if (error.code === "ENOENT") return []; throw error; });
+    const entries = await readdir(directory, { withFileTypes: true }).catch(ifMissing([]));
     for (const entry of entries) {
       if (entry.name.startsWith(".") || entry.name === "subagents") continue;
       const path = join(directory, entry.name);
       if (entry.isDirectory()) await scan(path, root, depth + 1);
       else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-        const info = await stat(path).catch(() => null);
+        const info = await stat(path).catch(ifMissing(null));
         if (info) files.push({ path, root, updatedAt: info.mtimeMs });
       }
       if (files.length >= 5000) break;
@@ -299,7 +181,7 @@ export async function listImportableSessions(provider: ImportProvider): Promise<
   const output: ImportableSession[] = [];
   const recent = files.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 200);
   for (const file of recent) {
-    const data = await readSession(file.path, file.root, provider, true).catch(() => null);
+    const data = await readSession(file.path, file.root, provider, true);
     if (!data) continue;
     const id = createHash("sha256").update(`${provider}:${file.path}`).digest("hex");
     candidates.set(id, { ...file, provider });
@@ -312,9 +194,8 @@ export async function listImportableSessions(provider: ImportProvider): Promise<
 export async function importSession(id: string): Promise<{ threadId: string; projectId: string }> {
   const candidate = candidates.get(id);
   if (!candidate) throw new Error("Refresh the session list and choose a session again.");
-  const session = candidate.provider === "opencode" ? await openCodeSession(candidate.path!, candidate.sessionId!)
-    : candidate.provider === "cursor" ? await readCursorSession(candidate.sessionId!, candidate.cwd!, candidate.title)
-      : await readSession(candidate.path!, candidate.root!, candidate.provider);
+  const session = candidate.provider === "opencode" ? await openCodeSession(candidate.path, candidate.sessionId!)
+    : await readSession(candidate.path, candidate.root, candidate.provider);
   if (!session) throw new Error("This session has no supported conversation history.");
   const path = await workspaceDirectory(session.cwd);
   const existing = [...store.threads.values()].find(thread => thread.provider === candidate.provider && thread.externalId === session.sessionId);

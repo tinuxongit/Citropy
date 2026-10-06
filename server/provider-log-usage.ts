@@ -8,15 +8,15 @@ import { USAGE_TOTAL_KEYS, emptyUsageTotals, localDay, record, type UsageTotals 
 import type { UsageDay } from "../shared/features.ts";
 import type { ProviderId } from "../shared/protocol.ts";
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const cacheFile = join(dataRoot, "provider-usage-cache.json");
 
-type LogProvider = "claude" | "codex" | "pi";
+const LOG_PROVIDERS = ["claude", "codex"] as const;
+type LogProvider = (typeof LOG_PROVIDERS)[number];
 
 const MARKERS: Record<LogProvider, string[]> = {
   claude: ['"usage"'],
   codex: ['"token_count"', '"turn_context"'],
-  pi: ['"usage"'],
 };
 
 interface CodexState {
@@ -88,18 +88,6 @@ function claudeReading(row: Record<string, unknown>): Reading | undefined {
   };
 }
 
-function piReading(row: Record<string, unknown>): Reading | undefined {
-  const message = record(row.message);
-  const usage = record(message?.usage);
-  if (row.type !== "message" || message?.role !== "assistant" || !usage) return;
-  return {
-    key: `pi:${String(row.id)}:${String(row.timestamp)}`,
-    at: Date.parse(text(row.timestamp) ?? ""),
-    model: text(message.model),
-    totals: totalsOf({ input: usage.input, output: usage.output, cacheRead: usage.cacheRead, cacheWrite: usage.cacheWrite, costUsd: record(usage.cost)?.total, turns: 1 }),
-  };
-}
-
 function codexReading(row: Record<string, unknown>, state: CodexState): Reading | undefined {
   const payload = record(row.payload);
   if (row.type === "turn_context" && typeof payload?.model === "string") state.model = payload.model;
@@ -134,10 +122,12 @@ async function readLog(path: string, file: LogFile, seen: Set<string>): Promise<
   const consume = (line: Buffer) => {
     if (!markers.some((marker) => line.includes(marker))) return;
     let parsed: unknown;
-    try { parsed = JSON.parse(line.toString("utf8")); } catch { return; }
+    try { parsed = JSON.parse(line.toString("utf8")); } catch (error) {
+      throw new Error(`Unreadable usage line at byte ${file.offset} in ${path}`, { cause: error });
+    }
     const row = record(parsed);
     if (!row) return;
-    const reading = file.provider === "claude" ? claudeReading(row) : file.provider === "pi" ? piReading(row) : codexReading(row, file.state);
+    const reading = file.provider === "claude" ? claudeReading(row) : codexReading(row, file.state);
     if (!reading || !Number.isFinite(reading.at) || seen.has(reading.key)) return;
     seen.add(reading.key);
     file.keys.push(reading.key);
@@ -158,7 +148,7 @@ async function readLog(path: string, file: LogFile, seen: Set<string>): Promise<
 
 async function scanLogs(current: Cache, seen: Set<string>): Promise<boolean> {
   let changed = false;
-  for (const provider of ["claude", "codex", "pi"] as const) {
+  for (const provider of LOG_PROVIDERS) {
     for (const root of providerLogRoots(provider)) {
       for (const path of await logFiles(root)) {
         const info = await stat(path);

@@ -1,8 +1,11 @@
 import { createServer } from "node:net";
+import { hasCode } from "../shared/expected-errors.mjs";
 import { chmod, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { TerminalHost } from "./terminal-host.ts";
+
+const CLIENT_GONE = ["ECONNRESET", "EPIPE"];
 
 const [address, directory] = process.argv.slice(2);
 if (!address || !directory) throw new Error("A terminal service address is required.");
@@ -24,7 +27,9 @@ const server = createServer(socket => {
   let input = "";
   const timer = setTimeout(() => socket.destroy(), 5000);
   socket.setEncoding("utf8");
-  socket.on("error", () => {});
+  socket.on("error", (error) => {
+    if (!hasCode(error, ...CLIENT_GONE)) console.error("Terminal client connection failed:", error);
+  });
   socket.on("drain", () => host.release(id));
   socket.on("close", () => { clearTimeout(timer); clients.delete(socket); host.observeActivity([...clients.values()].some(client => client.activity)); host.release(id); host.release(`${id}:render`); });
   socket.on("data", chunk => {

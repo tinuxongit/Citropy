@@ -1,9 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { reportError } from "../../lib/api.ts";
 import { useI18n } from "../../lib/i18n.ts";
+import { MOD } from "../../lib/modifier-key.ts";
 import { monaco } from "./monaco.ts";
-
-const MOD = navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl+";
 
 interface Item {
   id: string;

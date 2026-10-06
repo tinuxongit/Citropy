@@ -11,7 +11,7 @@ export const ENVIRONMENT_KEYS = [
   "choosingWorkspace", "home", "projects", "providers", "threads", "threadOrder",
   "messages", "parts", "reveals", "order", "loaded", "historyPaging", "historyPages", "historyBytes",
   "timelineVersions", "disclosures", "git", "permissions", "questions",
-  "questionDrafts", "activeProjectId", "activeThreadId", "followRequest",
+  "questionDrafts", "activeProjectId", "activeThreadId", "openThreadIds", "previewThreadId", "followRequest",
   "readingThreadId", "panels", "activePanels", "unseenPanels", "editorTerminals", "browsers",
   "toolConnections", "tools",
 ] as const satisfies readonly (keyof AppState)[];

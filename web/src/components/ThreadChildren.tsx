@@ -10,6 +10,7 @@ import { Collapsible } from "./Collapsible.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ThreadPulse } from "./ThreadPulse.tsx";
 import { useI18n } from "../lib/i18n.ts";
+import { VirtualList } from "./VirtualList.tsx";
 
 interface Props {
   parent: ThreadMeta;
@@ -33,11 +34,11 @@ export function ThreadChildren(props: Props) {
     onConversation,
   } = props;
   const children = childrenByParent.get(parent.id) ?? [];
-  const { current } = groupSubagents(children);
+  const current = new Set(groupSubagents(children).current);
   const active = children.some((child) => activePaths.has(child.id));
   const listed = children.filter(
     (child) =>
-      (active && current.includes(child)) ||
+      (active && current.has(child)) ||
       activePaths.has(child.id) ||
       selectedPath.has(child.id),
   );
@@ -46,8 +47,8 @@ export function ThreadChildren(props: Props) {
   return (
     <Collapsible open={shown} className="thread-children">
       <div className="thread-children-list" aria-label={t("Subagents for {title}", { title: parent.title })}>
-        {listed.map((child) => (
-          <div key={child.id}>
+        <VirtualList items={listed} itemKey="id" estimateSize={35} activeKey={listed.find(child => selectedPath.has(child.id))?.id}>
+          {child => <>
             <button
               type="button"
               className="thread-child"
@@ -75,8 +76,8 @@ export function ThreadChildren(props: Props) {
               )}
             </button>
             <ThreadChildren {...props} parent={child} />
-          </div>
-        ))}
+          </>}
+        </VirtualList>
       </div>
     </Collapsible>
   );

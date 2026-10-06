@@ -125,8 +125,8 @@ export const threadRoutes: Routes = {
     const controller = new AbortController();
     searches.set(send, controller);
     try {
-      const results = await store.search(event.query, event.projectId, controller.signal);
-      if (!controller.signal.aborted) send({ t: "thread.search", query: event.query, projectId: event.projectId, results });
+      const results = await store.search(event.query, controller.signal);
+      if (!controller.signal.aborted) send({ t: "thread.search", query: event.query, results });
     } catch (error) {
       if (!controller.signal.aborted) throw error;
     } finally {
@@ -159,8 +159,6 @@ export const threadRoutes: Routes = {
   "thread.config": async (event, send) => {
     const thread = store.threads.get(event.id);
     if (!thread) throw new Error("Conversation not found");
-    if (store.projects.get(thread.projectId)?.chat && event.permissionMode && event.permissionMode !== "manual")
-      throw new Error("Chat always asks before acting.");
     const selection = nextTurnSettings(thread);
     const { changedProvider, changedInstance, instanceId, settings } = resolveConfig(thread, event);
     const changedModel = changedProvider || changedInstance || settings.model !== thread.model;

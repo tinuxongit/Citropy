@@ -7,7 +7,8 @@ import type {
   GitHubResponses,
   GitHubRequest,
 } from "../../../shared/github.ts";
-import { selectThread, selectPanel, setEditorTerminal, useApp, confirmAction } from "./store.ts";
+import { selectProject, selectThread, selectPanel, setEditorTerminal, useApp, confirmAction, type AppState } from "./store.ts";
+import { neighborTab, saveTabs, withKeptTab, withoutTab, type Tabs } from "./thread-tabs.ts";
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { flushHeld, holdMessage } from "./offline.ts";
@@ -210,6 +211,40 @@ export async function createThread(provider?: ProviderId, options = false): Prom
   }
 }
 
+export function showThread(id: string): void {
+  const thread = useApp.getState().threads[id];
+  if (!thread) throw new Error(`Conversation ${id} is not loaded`);
+  if (thread.projectId !== useApp.getState().activeProjectId) {
+    selectProject(thread.projectId);
+  }
+  selectThread(id);
+  loadThread(id);
+  useApp.setState({ activeView: "chat" });
+}
+
+function updateTabs(change: (state: AppState) => Tabs): void {
+  useApp.setState(change);
+  saveTabs(useApp.getState());
+}
+
+export function keepTab(id: string): void {
+  updateTabs((state) => withKeptTab(state, id));
+}
+
+export function openInNewTab(id: string): void {
+  keepTab(id);
+  showThread(id);
+}
+
+export function closeTab(id: string): void {
+  const { activeThreadId, openThreadIds, threads } = useApp.getState();
+  updateTabs((state) => withoutTab(state, id));
+  if (id !== activeThreadId) return;
+  const next = neighborTab(openThreadIds.filter((open) => threads[open]), id);
+  if (next) showThread(next);
+  else selectThread(null);
+}
+
 export function loadThread(id: string): void {
   if (useApp.getState().loaded[id] || !claimHistoryRequest(id)) return;
   send({ t: "thread.load", id, ...(useApp.getState().historyPaging ? { page: {} } : {}) });
@@ -265,6 +300,7 @@ export async function sendMessage(
   const state = useApp.getState();
   const thread = state.threads[threadId];
   if (thread) rememberThreadSettings(thread);
+  keepTab(threadId);
   if (!state.connected || state.offline[threadId]?.length) {
     holdMessage(threadId, text, attachments);
     void flushHeld();

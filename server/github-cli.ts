@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { logFailure } from "../shared/expected-errors.mjs";
 
 const environment = {
   ...process.env,
@@ -42,7 +43,7 @@ export function command(
         );
       },
     );
-    child.stdin?.on("error", () => {});
+    child.stdin?.on("error", logFailure("Writing to the GitHub CLI"));
     child.stdin?.end(input === undefined ? undefined : JSON.stringify(input));
   });
 }

@@ -28,18 +28,17 @@ function fallback(text: string): string {
 
 export function useMarkdown(text: string, live: boolean, images = true): { html: string; blocks?: string[]; ready: boolean } {
   const theme = useApp((state) => state.scheme);
-  const language = useApp((state) => state.language);
   const projectId = useApp((state) => state.activeProjectId);
   const threadId = useApp((state) => state.activeThreadId);
-  const key = `${theme}:${language}:${projectId ?? ""}:${threadId ?? ""}:${images}:${text}`;
+  const key = `${theme}:${projectId ?? ""}:${threadId ?? ""}:${images}:${text}`;
   const [rendered, setRendered] = useState<{ html: string; blocks?: string[]; key: string | null }>(() => ({
     html: cache.get(key) ?? fallback(text),
     key: cache.has(key) ? key : null,
   }));
   const latest = useRef(key);
-  const settings = `${theme}:${language}:${projectId ?? ""}:${threadId ?? ""}:${images}`;
+  const settings = `${theme}:${projectId ?? ""}:${threadId ?? ""}:${images}`;
   const assets = projectId && threadId ? { projectId, threadId } : undefined;
-  const request = useRef({ text, key, settings, theme, language, images, assets });
+  const request = useRef({ text, key, settings, theme, images, assets });
   const stream = useRef<{ timer?: ReturnType<typeof setTimeout>; busy: boolean; last: number; generation: number; finished: FinishedBlocks; settings: string }>({ busy: false, last: 0, generation: 0, finished: { source: "", html: [] }, settings });
 
   useEffect(() => () => {
@@ -50,7 +49,7 @@ export function useMarkdown(text: string, live: boolean, images = true): { html:
 
   useEffect(() => {
     latest.current = key;
-    request.current = { text, key, settings, theme, language, images, assets };
+    request.current = { text, key, settings, theme, images, assets };
     const state = stream.current;
     if (!live) {
       clearTimeout(state.timer);
@@ -72,7 +71,7 @@ export function useMarkdown(text: string, live: boolean, images = true): { html:
           const target = request.current;
           if (state.settings !== target.settings) state.finished = { source: "", html: [] };
           state.settings = target.settings;
-          const streamed = await renderStreamingMarkdown(target.text, target.theme, undefined, target.assets, { images: target.images, language: target.language }, state.finished).catch(() => undefined);
+          const streamed = await renderStreamingMarkdown(target.text, target.theme, undefined, target.assets, { images: target.images }, state.finished).catch((error) => { console.error("Rendering markdown failed:", error); return undefined; });
           state.busy = false;
           if (generation !== state.generation) return;
           if (streamed) state.finished = streamed.finished;
@@ -85,7 +84,7 @@ export function useMarkdown(text: string, live: boolean, images = true): { html:
     }
     let cancelled = false;
     const controller = new AbortController();
-    void renderMarkdown(text, theme, controller.signal, assets, { images, language, live }).catch(() => fallback(text)).then((result) => {
+    void renderMarkdown(text, theme, controller.signal, assets, { images, live }).catch((error) => { console.error("Rendering markdown failed:", error); return fallback(text); }).then((result) => {
       if (cancelled || latest.current !== key) return;
       remember(key, result);
       setRendered({ html: result, key });
@@ -94,7 +93,7 @@ export function useMarkdown(text: string, live: boolean, images = true): { html:
       cancelled = true;
       controller.abort();
     };
-  }, [key, text, theme, language, live, projectId, threadId, images, settings]);
+  }, [key, text, theme, live, projectId, threadId, images, settings]);
 
   return { html: rendered.html, blocks: rendered.blocks, ready: rendered.key === key };
 }

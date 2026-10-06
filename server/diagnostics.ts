@@ -1,6 +1,6 @@
 import { dev } from "./config.ts";
 import { cpus, freemem, totalmem, loadavg } from "node:os";
-import { desktopRequest } from "./desktop.ts";
+import { desktopConnected, desktopRequest } from "./desktop.ts";
 import { store } from "./store.ts";
 import { panelList } from "./panels.ts";
 import { browserStates } from "./browser.ts";
@@ -27,11 +27,11 @@ async function collect(): Promise<DiagnosticReport> {
   const memory = process.memoryUsage();
   const terminalPid = servicePid();
   const [processes, desktop] = await Promise.all([
-    processTable([process.pid, ...(terminalPid ? [terminalPid] : [])]).catch(() => [] as ProcessEntry[]),
-    desktopRequest<ProcessEntry[]>("diagnostics").then((entries) => {
+    processTable([process.pid, ...(terminalPid ? [terminalPid] : [])]),
+    desktopConnected() ? desktopRequest<ProcessEntry[]>("diagnostics").then((entries) => {
       const sampledAt = performance.now();
       return entries.map((entry) => ({ ...entry, sampledAt }));
-    }).catch(() => [] as ProcessEntry[]),
+    }) : [],
   ]);
   const allProcesses = new Map(processes.map((entry) => [entry.pid, entry]));
   for (const entry of desktop) {

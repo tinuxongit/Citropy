@@ -8,7 +8,6 @@ const root = await mkdtemp(join(tmpdir(), "citropy-provider-logs-"));
 process.env.CITROPY_DATA_DIR = join(root, "citropy");
 process.env.CLAUDE_CONFIG_DIR = join(root, "claude");
 process.env.CODEX_HOME = join(root, "codex");
-process.env.PI_CODING_AGENT_DIR = join(root, "pi");
 process.env.XDG_DATA_HOME = join(root, "data");
 await mkdir(process.env.CITROPY_DATA_DIR, { recursive: true });
 const { providerLogUsage } = await import("../server/provider-log-usage.ts");
@@ -54,11 +53,12 @@ test("adds only Codex growth, skips copied events, and waits for unfinished line
 });
 
 test("keeps usage from logs the provider later deletes", async () => {
-  const sessions = join(process.env.PI_CODING_AGENT_DIR, "sessions");
-  await mkdir(sessions, { recursive: true });
-  const file = join(sessions, "session.jsonl");
-  await writeFile(file, line({ type: "message", id: "p1", timestamp: at, message: { role: "assistant", model: "kimi", usage: { input: 20, output: 3, cacheRead: 0, cacheWrite: 0, cost: { total: 0.5 } } } }));
-  assert.equal(find(await providerLogUsage(), "pi").costUsd, 0.5);
+  const project = join(process.env.CLAUDE_CONFIG_DIR, "projects", "deleted");
+  await mkdir(project, { recursive: true });
+  const file = join(project, "session.jsonl");
+  const before = find(await providerLogUsage(), "claude").output;
+  await writeFile(file, claude("deleted", 3));
+  assert.equal(find(await providerLogUsage(), "claude").output, before + 3);
   await rm(file);
-  assert.equal(find(await providerLogUsage(), "pi").output, 3);
+  assert.equal(find(await providerLogUsage(), "claude").output, before + 3);
 });

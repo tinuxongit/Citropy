@@ -21,7 +21,7 @@ test("paged selective sockets preserve durable replay, global state and subscrip
     import { eventJournal } from './server/event-journal.ts';
     globalThis.fetch = async () => { throw new Error('Network disabled in history fixture'); };
     for (const provider of Object.values(providers)) provider.detect = async () => ({ available: false });
-    const project = [...store.projects.values()].find(project => project.chat);
+    const project = store.openProject(process.cwd());
     const threads = ['selected', 'other'].map(title => store.createThread({ projectId: project.id, provider: 'claude', title }));
     for (const thread of threads) for (let index = 0; index < 200; index++) store.addMessage(thread.id, { id: thread.title + index, role: 'assistant', ts: index, parts: [{ id: thread.title + '-part-' + index, kind: 'text', text: 'message ' + index, complete: true }] });
     process.on('message', message => {

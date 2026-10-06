@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { unlessCode } from "../shared/expected-errors.mjs";
 import { promisify } from "node:util";
 import { constants } from "node:fs";
 import { stat, realpath, open, mkdir, writeFile, readFile } from "node:fs/promises";
@@ -12,6 +13,7 @@ import { contextReferences, type ContextSource } from "../shared/context.ts";
 import type { Thread } from "../shared/protocol.ts";
 
 const run = promisify(execFile);
+const NO_GIT_INDEX: unknown[] = [128, "ENOENT"];
 const cache = new Map<string, { at: number; paths: string[] }>();
 
 export async function prepareTransferContext(thread: Thread): Promise<string> {
@@ -41,11 +43,12 @@ async function indexedPaths(cwd: string): Promise<string[]> {
   let paths: string[];
   try {
     paths = (await run("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { cwd, timeout: 5000, maxBuffer: 2 * 1024 * 1024 })).stdout.split("\0").filter(Boolean).slice(0, 10_000);
-  } catch {
+  } catch (error) {
+    if (!NO_GIT_INDEX.includes((error as { code?: unknown }).code)) throw error;
     paths = [];
     const queue = [""];
     for (let count = 0; queue.length && count < 500 && paths.length < 5000; count++) {
-      for (const entry of await tree(cwd, queue.shift()!).catch(() => [])) {
+      for (const entry of await tree(cwd, queue.shift()!)) {
         if (entry.dir) queue.push(entry.path); else paths.push(entry.path);
       }
     }
@@ -130,6 +133,6 @@ export async function inspectContext(thread: Thread, draft: string) {
     while (parent !== "." && dirname(parent) !== parent && !parent.startsWith("..") && inside(cwd, parent)) { for (const name of names) paths.add(join(cwd, parent, name)); parent = dirname(parent); }
   }
   paths.add(globalInstructionLocation(thread.provider).path);
-  const instructions = (await Promise.all([...paths].map(async path => (await stat(path).catch(() => null))?.isFile() ? path : null))).filter(Boolean);
+  const instructions = (await Promise.all([...paths].map(async path => (await stat(path).catch(unlessCode(["ENOENT", "ENOTDIR"], null)))?.isFile() ? path : null))).filter(Boolean);
   return { references, lastSources: thread.contextSources ?? [], instructions, rebuilt: Boolean(thread.rebuildContext), provider: thread.provider };
 }

@@ -42,7 +42,7 @@ export function AgentsPanel() {
 
   useEffect(() => {
     let alive = true;
-    const load = () => api<{ agents: Agent[] }>(open ? "agents?usage=1" : "agents").then((value) => { if (alive) setAgents(value.agents); }).catch(() => {});
+    const load = () => api<{ agents: Agent[] }>(open ? "agents?usage=1" : "agents").then((value) => { if (alive) setAgents(value.agents); }).catch((error) => console.error("Loading agents failed:", error));
     void load();
     const timer = window.setInterval(load, open ? 2000 : 5000);
     return () => {

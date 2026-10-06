@@ -1,4 +1,5 @@
 import { bus } from "./bus.ts";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { uid } from "./ids.ts";
 import { closePanel, openPanel, renamePanel } from "./panels.ts";
 import {
@@ -158,7 +159,7 @@ export async function browserLogs(id: string, clear: boolean): Promise<Array<{ t
 export async function closeBrowser(id: string): Promise<void> {
   if (!sessions.delete(id)) return;
   queues.delete(id);
-  await desktopRequest("browser.close", { id }).catch(() => {});
+  await desktopRequest("browser.close", { id }).catch(logFailure("Closing browser tab", id));
   closePanel(id);
 }
 

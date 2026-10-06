@@ -95,6 +95,28 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
   const checks = [];
   const check = (name, run) => checks.push(t.test(name, run));
 
+  check("conversation tabs preview, keep, and close conversations", async t => {
+    const { page, push } = await app(t, { messages: history(2), preferences: { sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
+    for (const [id, title] of [["second", "Second conversation"], ["third", "Third conversation"]])
+      push({ t: "thread.upsert", thread: { ...thread, id, title, running: false, status: "idle", updatedAt: 2 } });
+    const tabs = page.locator(".thread-tab");
+    const titles = () => tabs.locator(".thread-tab-open").evaluateAll(buttons => buttons.map(button => button.title));
+    await expect(async () => (await titles()).join() === "Build a small world");
+    await page.locator('.thread-row[aria-label="Second conversation"]').click();
+    await expect(async () => (await titles()).join() === "Build a small world,Second conversation");
+    await page.locator('.thread-row[aria-label="Third conversation"]').click();
+    await expect(async () => (await titles()).join() === "Build a small world,Third conversation");
+    const third = tabs.filter({ hasText: "Third conversation" });
+    assert.equal(await third.getAttribute("data-preview"), "");
+    await page.screenshot({ path: `${root}/node_modules/.vite-tests/thread-tabs.png`, clip: { x: 0, y: 0, width: 1280, height: 80 } });
+    await third.locator(".thread-tab-open").dblclick();
+    assert.equal(await third.getAttribute("data-preview"), null);
+    await tabs.first().locator(".thread-tab-open").click();
+    await tabs.first().locator(".thread-tab-close").click();
+    await expect(async () => (await titles()).join() === "Third conversation");
+    assert.equal(await third.getAttribute("data-active"), "");
+  });
+
   for (const width of [900, 1280, 1600, 380]) check(`side panel transitions glide without repeatedly resizing the chat at ${width}px`, async t => {
     const { page } = await app(t, { width, messages: history(38), preferences: { inspector: "1", sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
     await settled(page);
@@ -276,49 +298,6 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.equal(await page.locator('.sliding-panel[data-side="left"]').getAttribute('data-open'), 'true');
   });
 
-  check("the brand follows its own background during sidebar transitions", async t => {
-    const { page } = await app(t, { messages: history(2), preferences: { sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
-    await page.evaluate(async () => {
-      const { saveBackgroundFile } = await import('/web/src/lib/background-files.ts');
-      const { useApp } = await import('/web/src/lib/store.ts');
-      const image = new OffscreenCanvas(100, 100);
-      const context = image.getContext('2d');
-      context.fillStyle = '#ffffff';
-      context.fillRect(0, 0, 100, 100);
-      await saveBackgroundFile('image', await image.convertToBlob());
-      useApp.setState({ stageBackground: 'image', backgroundFocus: 0, backgroundDim: 0 });
-    });
-    await page.locator('.stage-backdrop-image').waitFor();
-    await settled(page);
-    const coveredColor = await page.locator('.brand').evaluate(brand => getComputedStyle(brand).color);
-    await page.keyboard.press('Control+b');
-    await settled(page);
-    assert.equal(await page.locator('.brand').evaluate(brand => brand.closest('[data-contrast]')?.dataset.contrast), 'dark');
-    assert.notEqual(await page.locator('.brand').evaluate(brand => getComputedStyle(brand).color), coveredColor);
-    await page.keyboard.press('Control+b');
-    await page.evaluate(() => {
-      for (const element of document.querySelectorAll('.backdrop-layers, .topbar-left')) {
-        for (const animation of element.getAnimations()) { animation.pause(); animation.currentTime = 140; }
-      }
-    });
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    const brand = await page.locator('.brand').evaluate(brand => ({
-      covered: brand.getBoundingClientRect().right < document.querySelector('.shell-glass').getBoundingClientRect().right,
-      contrast: brand.closest('[data-contrast]')?.dataset.contrast,
-      transition: getComputedStyle(brand).transitionProperty,
-    }));
-    assert.equal(brand.covered, true);
-    assert.equal(brand.contrast, undefined);
-    assert.ok(brand.transition.includes('color'));
-    await page.evaluate(() => {
-      for (const element of document.querySelectorAll('.backdrop-layers, .topbar-left')) {
-        for (const animation of element.getAnimations()) animation.finish();
-      }
-    });
-    await settled(page);
-    assert.equal(await page.locator('.brand').evaluate(brand => getComputedStyle(brand).color), coveredColor);
-  });
-
   check("the reading area follows the chat throughout rapid panel reversals", async t => {
     const { page } = await app(t, { messages: history(8), preferences: { sidebar: "1", inspector: "1" }, threadPatch: { running: false, status: "idle" } });
     await page.evaluate(async () => {
@@ -430,6 +409,26 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.ok(page.url().includes("/fixture-"));
   });
 
+  check("persistent Markdown images load in chat and open the image viewer", async t => {
+    const id = "a8859cab-7485-42e5-8bf0-30a0bde22f4c";
+    const picture = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=", "base64");
+    const { page } = await app(t, {
+      messages: [{ id: "reply", role: "assistant", ts: 1, parts: [text("image", `![Screenshot](citropy-image:${id})`)] }],
+      threadPatch: { running: false, status: "idle" },
+      beforeNavigate: page => page.route("**/api/tool-images?*", route => {
+        const params = new URL(route.request().url()).searchParams;
+        assert.equal(params.get("threadId"), "chat");
+        assert.equal(params.get("id"), id);
+        return route.fulfill({ contentType: "image/png", body: picture });
+      }),
+    });
+    await page.waitForFunction(() => document.querySelector(".markdown-image img")?.naturalWidth > 0);
+    await page.getByRole("button", { name: "Preview Screenshot", exact: true }).click();
+    await page.getByRole("dialog", { name: "Screenshot", exact: true }).waitFor();
+    await page.waitForFunction(() => document.querySelector(".image-surface img")?.naturalWidth > 0);
+    assert.equal(await page.getByRole("button", { name: "Fit image", exact: true }).isVisible(), true);
+  });
+
   check("queue rows align controls and update their position numbers after reordering", async t => {
     const queue = [
       { id: "first", text: "First request", createdAt: 1 },
@@ -525,6 +524,32 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await expect(async () => await page.locator(".working").count() === 0);
     assert.equal(await page.getByRole("button", { name: "Work details", exact: true }).count(), 0);
     assert.ok(await page.getByText("Here is the answer.", { exact: true }).isVisible());
+  });
+
+  for (const width of [1280, 380]) check(`work details stay below updates and answers at ${width}px`, async t => {
+    const tool = id => ({ id, kind: "tool", callId: id, name: "Read", shape: "read", headline: `${id}.ts`, status: "ok", startedAt: 1, endedAt: 2, output: "Tool output" });
+    const { page, push } = await app(t, { width, preferences: { sidebar: "0", stageBackground: "default", textStreaming: "0" }, messages: [...history(12), { id: "reply", role: "assistant", ts: 20, parts: [tool("first"), text("update", "Checked the first file."), tool("second")] }] });
+    const details = page.getByRole("button", { name: "Work details", exact: true });
+    await page.getByRole("note", { name: "Latest update", exact: true }).waitFor();
+    await settled(page);
+    assert.ok(await page.locator(".activity-update").evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector(".activity-head").getBoundingClientRect().top));
+    push({ t: "part.add", threadId: "chat", messageId: "reply", part: text("answer", "Here is the final answer.", false) });
+    await page.getByText("Here is the final answer.", { exact: true }).waitFor();
+    await settled(page);
+    assert.ok(await page.locator('[data-part-id="answer"]').evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector(".activity-head").getBoundingClientRect().top));
+    await details.click();
+    await page.locator(".group-summary").first().waitFor();
+    await settled(page);
+    assert.ok(await page.locator(".group-body").last().evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector(".activity-head").getBoundingClientRect().top));
+    await details.click();
+    await settled(page);
+    assert.ok(await page.locator('[data-part-id="answer"]').evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector(".activity-head").getBoundingClientRect().top));
+    push({ t: "part.patch", threadId: "chat", messageId: "reply", partId: "answer", patch: { complete: true } });
+    push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle" } });
+    await expect(async () => await page.locator(".working").count() === 0);
+    await settled(page);
+    await page.screenshot({ path: `/tmp/citropy-work-footer-${width}.png` });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   });
 
   check("settings keep edits made while an earlier save is pending", async t => {

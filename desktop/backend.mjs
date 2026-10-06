@@ -1,4 +1,5 @@
 import { createServer } from "node:net";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { Worker } from "node:worker_threads";
 
 function waitForExit(running) {
@@ -87,7 +88,7 @@ export function packagedBackend(env, diagnose = () => {}) {
         running.once("exit", failed);
       });
     } catch (error) {
-      void waitForExit(running).catch(() => {});
+      void waitForExit(running).catch(logFailure("Stopping the server that failed to start"));
       throw error;
     }
   };

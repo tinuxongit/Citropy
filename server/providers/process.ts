@@ -1,4 +1,6 @@
 import { execFile, type ChildProcess } from "node:child_process";
+import { hasCode } from "../../shared/expected-errors.mjs";
+import { processExists } from "../../shared/process-exists.mjs";
 import type { IPty } from "node-pty";
 
 /**
@@ -7,7 +9,9 @@ import type { IPty } from "node-pty";
  */
 function killTreeOnWindows(pid: number | undefined, force: boolean): void {
   if (!pid) return;
-  execFile("taskkill", ["/pid", String(pid), "/T", ...(force ? ["/F"] : [])], { windowsHide: true }, () => {});
+  execFile("taskkill", ["/pid", String(pid), "/T", ...(force ? ["/F"] : [])], { windowsHide: true }, (error) => {
+    if (error) console.error("Stopping process tree failed:", pid, error);
+  });
 }
 
 const stopping = new Map<ChildProcess | IPty, Promise<void>>();
@@ -18,8 +22,7 @@ export function stopProcess(child: ChildProcess | IPty, processGroup = false): v
   const group = processGroup && process.platform !== "win32" ? child.pid : undefined;
   const alive = () => {
     if (!group) return !ended;
-    try { process.kill(-group, 0); return true; }
-    catch { return false; }
+    return processExists(-group);
   };
   if (!alive()) return;
   const signal = (value: NodeJS.Signals) => {
@@ -30,7 +33,7 @@ export function stopProcess(child: ChildProcess | IPty, processGroup = false): v
     }
     if (!group) { child.kill(value); return; }
     try { process.kill(-group, value); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== "ESRCH") child.kill(value); }
+    catch (error) { if (!hasCode(error, "ESRCH")) child.kill(value); }
   };
   let complete!: () => void;
   let escalated = false;

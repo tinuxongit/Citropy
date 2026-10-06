@@ -1,11 +1,12 @@
 import { useI18n } from "../lib/i18n.ts";
 import { BarChart3, GitBranch, Github, MessagesSquare, Settings } from "lucide-react";
 
+import { AccountMenu } from "./AccountMenu.tsx";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
 import { LocalSharing } from "./LocalSharing.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
-import { useApp } from "../lib/store.ts";
+import { useState } from "react";
 
 export function NavigationStrip({
   onChat,
@@ -24,12 +25,14 @@ export function NavigationStrip({
 }) {
   const t = useI18n();
   const usagePeek = useUsagePeek("right");
-  const chat = useApp((state) => state.appMode === "chat");
+  const [accountOpen, setAccountOpen] = useState(false);
   const conversations = { name: "Conversations", icon: MessagesSquare, run: onChat, view: "chat" };
   const code = [
     { name: "Source control", icon: GitBranch, run: onGit, view: "git" },
     { name: "GitHub", icon: Github, run: onGitHub, view: "github" },
   ];
+  const usage = { name: "Usage", icon: BarChart3, run: onUsage, view: "usage" };
+  const settings = { name: "Settings", icon: Settings, run: onSettings, view: "settings" };
   const button = ({ name, icon: Icon, run, view }: typeof conversations) => (
     <button
       type="button"
@@ -48,14 +51,17 @@ export function NavigationStrip({
   );
   return (
     <nav className="navigation-strip sliding-selection" aria-label={t("Workspace navigation")}>
-      <SelectionHighlight value={activeView} selector='.strip-action[aria-current="page"] > .strip-action-face' />
+      <div className="navigation-strip-brand" aria-hidden="true" />
+      <SelectionHighlight value={activeView} layout={String(accountOpen)} selector='.strip-action[aria-current="page"] > .strip-action-face' />
       {button(conversations)}
-      {!chat && code.map(button)}
+      {code.map(button)}
       <div className="navigation-strip-end">
-        {button({ name: "Usage", icon: BarChart3, run: onUsage, view: "usage" })}
-        <LocalSharing />
         <AppUpdateControl variant="strip" />
-        {button({ name: "Settings", icon: Settings, run: onSettings, view: "settings" })}
+        <AccountMenu open={accountOpen} onOpenChange={setAccountOpen}>
+          {button(usage)}
+          <LocalSharing />
+          {button(settings)}
+        </AccountMenu>
       </div>
       {usagePeek.card}
     </nav>

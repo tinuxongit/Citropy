@@ -265,7 +265,7 @@ export function AppearanceSettings() {
       <Collapsible open={colorPickerOpen && theme === "custom"} className="custom-color-reveal">
         <CustomColorPicker />
       </Collapsible>
-      <h2 className="settings-group-heading settings-group-heading-centered">{t("Background", undefined, "background")}</h2>
+      <h2 className="settings-group-heading settings-group-heading-centered">{t("Background")}</h2>
       <OptionStrip label={t("Conversation background")} selected={stageBackground}>
         {BACKGROUNDS.map(({ id, label }) => (
           <button
@@ -280,7 +280,7 @@ export function AppearanceSettings() {
               {id === "ascii" && ASCII_TEXTURE}
             </span>
             <span className="theme-option-label">
-              <span>{t(label, undefined, "background")}</span>
+              <span>{t(label)}</span>
               {stageBackground === id && <Check size={16} />}
             </span>
           </button>

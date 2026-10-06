@@ -1,5 +1,5 @@
-import { commandVersion, invocation, resolveCommand, spawnCommand } from "./binary.ts";
-import { execFile } from "node:child_process";
+import { commandVersion, spawnCommand } from "./binary.ts";
+import { logFailure } from "../../shared/expected-errors.mjs";
 import { stopProcess } from "./process.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { discoverModels } from "./models.ts";
@@ -9,28 +9,6 @@ import { ask, cancelThread } from "../permissions.ts";
 import type { AgentSession, Provider, StartOptions } from "./types.ts";
 import type { Attachment, PermissionMode } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
-
-const CHAT_DISABLED_FEATURES = ["shell_tool", "unified_exec", "computer_use", "browser_use", "apps"];
-
-async function chatOverrides(options: StartOptions, signal: AbortSignal): Promise<string[]> {
-  const call = invocation(resolveCommand(options.binary ?? "codex"), ["mcp", "list", "--json"]);
-  const stdout = await new Promise<string>((resolve, reject) => {
-    execFile(call.file, call.args, { encoding: "utf8", timeout: 15_000, windowsHide: true, windowsVerbatimArguments: call.verbatim, env: { ...process.env, ...options.environment }, signal }, (error, stdout, stderr) => {
-      if (error) reject(new Error(`Could not list Codex MCP servers: ${stderr.trim() || error.message}`));
-      else resolve(stdout);
-    });
-  });
-  const servers = JSON.parse(stdout) as Array<{ name: string; transport: { type: "stdio"; command: string } | { type: "streamable_http"; url: string } }>;
-  return [
-    ...CHAT_DISABLED_FEATURES.flatMap(feature => ["-c", `features.${feature}=false`]),
-    ...servers.filter(server => server.name !== "citropy").flatMap(server => [
-      "-c", `mcp_servers.${server.name}.enabled=false`,
-      "-c", server.transport.type === "stdio"
-        ? `mcp_servers.${server.name}.command=${JSON.stringify(server.transport.command)}`
-        : `mcp_servers.${server.name}.url=${JSON.stringify(server.transport.url)}`,
-    ]),
-  ];
-}
 
 const MODES: Record<PermissionMode, { approvalPolicy: string; sandbox: string; approvalsReviewer: string }> = {
   manual: { approvalPolicy: "untrusted", sandbox: "read-only", approvalsReviewer: "user" },
@@ -91,7 +69,6 @@ function elicitationContent(schema: unknown): Record<string, unknown> | undefine
 class CodexSession implements AgentSession {
   #options: StartOptions;
   #child: ChildProcessWithoutNullStreams | undefined;
-  #startupAbort = new AbortController();
 
   get pid(): number | undefined {
     return this.#child?.pid;
@@ -132,7 +109,6 @@ class CodexSession implements AgentSession {
     const options = this.#options;
     const args = ["app-server"];
     if (options.mcp) args.push("-c", `mcp_servers.citropy.url=${JSON.stringify(options.mcp.url)}`, "-c", 'mcp_servers.citropy.bearer_token_env_var="CITROPY_MCP_TOKEN"', "-c", "mcp_servers.citropy.tool_timeout_sec=1860");
-    if (options.chat) args.push(...await chatOverrides(options, this.#startupAbort.signal));
     if (this.#disposed) return;
     this.#child = spawnCommand(options.binary ?? "codex", args, {
       detached: process.platform !== "win32",
@@ -289,7 +265,6 @@ class CodexSession implements AgentSession {
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
-    this.#startupAbort.abort();
     clearTimeout(this.#backgroundTimer);
     this.#queue = [];
     cancelThread(this.#options.threadId, false);
@@ -362,7 +337,7 @@ class CodexSession implements AgentSession {
       for (const shell of shells) this.#options.emit({ type: "shell.background", callId: shell.itemId, taskId: shell.processId, command: shell.command, cwd: shell.cwd });
       for (const id of this.#background.keys()) if (!active.has(id)) this.#options.emit({ type: "shell.end", callId: id, ok: true });
       this.#background = active;
-    })().catch(() => {}).finally(() => {
+    })().catch(logFailure("Refreshing Codex background shells")).finally(() => {
       this.#backgroundRefresh = undefined;
       if (!this.#disposed && this.#background.size) {
         this.#backgroundTimer = setTimeout(() => { void this.#refreshBackground(); }, 2000);

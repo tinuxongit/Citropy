@@ -1,7 +1,7 @@
 import { openOnEnvironment } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import type { CachedThread } from "../../lib/environment.ts";
-import { currentLocale, useI18n } from "../../lib/i18n.ts";
+import { LOCALE, useI18n } from "../../lib/i18n.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
 
@@ -26,7 +26,7 @@ export function CachedThreadRow({ thread, categoryEnd, environment, showDisconne
           className="thread-row"
           data-active={false}
           aria-label={thread.title}
-          aria-description={new Date(thread.updatedAt).toLocaleString(currentLocale())}
+          aria-description={new Date(thread.updatedAt).toLocaleString(LOCALE)}
           onClick={open}
         >
           <span className="thread-row-body">

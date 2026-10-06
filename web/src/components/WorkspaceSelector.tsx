@@ -37,7 +37,7 @@ export function WorkspaceSelector() {
   };
   const group = (id: string): MenuItem[] => {
     const current = id === environments.activeId;
-    const entries = (current ? projects : catalog[id]?.projects ?? []).filter(entry => !entry.chat);
+    const entries = current ? projects : catalog[id]?.projects ?? [];
     const root = current ? home : catalog[id]?.home ?? "";
     return [
       { id: `${id}:open`, label: t("Open another folder…"), icon: <FolderPlus size={17} className="workspace-add-icon" />, disabled: choosing, onSelect: () => { void chooseWorkspaceOn(id); } },
@@ -68,8 +68,8 @@ export function WorkspaceSelector() {
   return <>
     <Menu align="start" side="right" header={t("Add project")} className="workspace-menu" width={340} searchable searchPlaceholder={t("Find a workspace")} items={items}
       trigger={({ toggle, id, open }) => <button id={id} type="button" className="new-thread project-add"
-        aria-label={t("Add project")} title={t("Add project")} aria-haspopup="menu" aria-expanded={open}
-        onClick={toggle} disabled={choosing}><Plus size={16} /></button>}
+        aria-haspopup="menu" aria-expanded={open}
+        onClick={toggle} disabled={choosing}><Plus size={16} />{t("Add project")}</button>}
     />
     <AnimatePresence>{importing && <ImportSessions onClose={() => setImporting(false)} />}{container && <ContainerEnvironment onClose={() => setContainer(false)} />}{adding && <NewSshConnection onClose={() => setAdding(false)} />}</AnimatePresence>
   </>;

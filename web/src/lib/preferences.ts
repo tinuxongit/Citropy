@@ -1,7 +1,6 @@
 import { environmentStorage } from "./environment.ts";
 import { MAX_CONTENT_WIDTH, MIN_CONTENT_WIDTH, useApp, type NavigationStyle, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
-import { loadSpanish, type Language } from "./translations.ts";
 import { applyCustomColor } from "./custom-theme.ts";
 import type { SearchEngine } from "./web-search.ts";
 
@@ -20,13 +19,6 @@ export function setPanelWidth(panel: PanelId, width?: number): void {
   else panelWidths[panel] = Math.round(width);
   useApp.setState({ panelWidths });
   environmentStorage.setItem("citropy.panelWidths", JSON.stringify(panelWidths));
-}
-
-export async function setLanguage(language: Language): Promise<void> {
-  if (language !== "en" && language !== "es") return;
-  if (language === "es") await loadSpanish();
-  useApp.setState({ language });
-  environmentStorage.setItem("citropy.language", language);
 }
 
 export function setTheme(theme: Theme): void {

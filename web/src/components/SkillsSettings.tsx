@@ -6,6 +6,8 @@ import { confirmAction, useApp } from "../lib/store.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { Prose } from "./parts/Prose.tsx";
 import type { SkillInfo } from "../../../shared/features.ts";
+import { PROVIDER_IDS } from "../../../shared/protocol.ts";
+import { providerLabels } from "../lib/format.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { Select } from "./Select.tsx";
 
@@ -103,10 +105,7 @@ export function SkillsSettings() {
           onChange={setProvider}
           options={[
             { value: "", label: t("All providers") },
-            { value: "claude", label: "Claude Code" },
-            { value: "codex", label: "Codex" },
-            { value: "opencode", label: "OpenCode" },
-            { value: "pi", label: "Pi" },
+            ...PROVIDER_IDS.map((id) => ({ value: id, label: providerLabels[id] })),
           ]}
         />
         <button

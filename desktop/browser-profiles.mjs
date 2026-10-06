@@ -11,6 +11,7 @@ import {
 import { isUtf8 } from "node:buffer";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { ifMissing, logFailure, unlessCode } from "../shared/expected-errors.mjs";
 
 const run = promisify(execFile);
 let preferences = {};
@@ -20,11 +21,7 @@ let operations = Promise.resolve();
 export async function initializeProfiles(userData) {
   await mkdir(userData, { recursive: true });
   file = join(userData, "browser-profiles.json");
-  try {
-    preferences = JSON.parse(await readFile(file, "utf8"));
-  } catch {
-    preferences = {};
-  }
+  preferences = JSON.parse(await readFile(file, "utf8").catch(ifMissing("{}")));
 }
 
 async function save() {
@@ -84,14 +81,12 @@ async function sources() {
     for (const [browser, relative, application] of locations) {
       const root = join(chromeRoot, relative);
       const entries = await readdir(root, { withFileTypes: true }).catch(
-        () => [],
+        unlessCode(["ENOENT", "ENOTDIR"], []),
       );
-      let names = {};
-      try {
-        names =
-          JSON.parse(await readFile(join(root, "Local State"), "utf8")).profile
-            ?.info_cache ?? {};
-      } catch {}
+      const names =
+        JSON.parse(
+          await readFile(join(root, "Local State"), "utf8").catch(ifMissing("{}")),
+        ).profile?.info_cache ?? {};
       for (const entry of entries) {
         if (!entry.isDirectory() || !/^(Default|Profile \d+)$/.test(entry.name))
           continue;
@@ -116,7 +111,7 @@ async function sources() {
       ? join(home, "Library/Application Support/Firefox/Profiles")
       : join(process.env.APPDATA || home, "Mozilla/Firefox/Profiles");
   for (const entry of await readdir(firefoxRoot, { withFileTypes: true }).catch(
-    () => [],
+    unlessCode(["ENOENT", "ENOTDIR"], []),
   )) {
     const path = join(firefoxRoot, entry.name, "cookies.sqlite");
     if (entry.isDirectory() && existsSync(path))
@@ -209,7 +204,7 @@ async function readCookies(source) {
               timeout: 30_000,
               maxBuffer: 4096,
             })
-      ).catch(() => null);
+      ).catch(logFailure("Reading the browser cookie key", source.browser));
       if (result?.stdout)
         keys[process.platform === "darwin" ? "v10" : "v11"] = pbkdf2Sync(
           result.stdout.replace(/\r?\n$/, ""),

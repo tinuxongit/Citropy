@@ -1,12 +1,12 @@
 import { memo, type CSSProperties } from "react";
-import { Clock, GitBranch, GitPullRequest } from "lucide-react";
+import { GitPullRequest } from "lucide-react";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
 import { finishThread, loadThread, openOnEnvironment, removeThread } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
-import { formatDate, modelLabel, threadActivity } from "../../lib/format.ts";
+import { threadActivity } from "../../lib/format.ts";
 import { environmentId, useEnvironments } from "../../lib/environment.ts";
 import { environmentSlice } from "../../lib/live-environments.ts";
-import { currentLocale, useI18n } from "../../lib/i18n.ts";
+import { LOCALE, useI18n } from "../../lib/i18n.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
 import { useTouchInput } from "../../lib/use-touch-input.ts";
 import { ConversationMenu } from "../ConversationMenu.tsx";
@@ -25,10 +25,9 @@ function pullRequestNumber(url: string): string | undefined {
   return url.split("/").at(-1);
 }
 
-export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMode, query, match, categoryEnd, drag, preview, describedBy, tree, onMove, onFinished, onConversation }: {
+export const ThreadRow = memo(function ThreadRow({ thread, environment, query, match, categoryEnd, drag, preview, describedBy, tree, onMove, onFinished, onConversation }: {
   thread: ThreadMeta;
   environment: string;
-  globalMode: boolean;
   query: string;
   match?: SearchMatch;
   categoryEnd: boolean;
@@ -45,12 +44,10 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
   const activeChildId = useApp((state) => tree.childrenByParent.has(thread.id) ? state.activeThreadId : null);
   const slice = environmentSlice(environment);
   const connected = slice?.connected ?? false;
-  const provider = slice?.providers.find((entry) => entry.id === thread.provider);
   const current = useEnvironments().activeId === environment;
   const active = current && selected;
   const key = threadKey(environment, thread.id);
   const { status, label } = threadActivity(thread);
-  const searching = Boolean(query.trim());
   const busy = thread.running || thread.status === "awaiting";
   const childRunning = (tree.childrenByParent.get(thread.id) ?? []).some((child) => child.running);
   const finishLabel = `${thread.finished ? t("Reopen") : t("Finish")} ${thread.title}`;
@@ -121,13 +118,12 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
           className="thread-row"
           data-active={active}
           aria-label={thread.title}
-          aria-description={new Date(thread.updatedAt).toLocaleString(currentLocale())}
+          aria-description={new Date(thread.updatedAt).toLocaleString(LOCALE)}
           aria-describedby={describedBy}
           aria-current={active ? "page" : undefined}
           onPointerEnter={(event) => {
             if (event.pointerType === "touch") return;
             preview.show(event.currentTarget, environment, thread.id);
-            if (environment === environmentId()) loadThread(thread.id);
           }}
           onPointerLeave={preview.leave}
           onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) preview.show(event.currentTarget, environment, thread.id, true); }}
@@ -144,25 +140,11 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
                 </span>
               )}
             </span>
-            {!globalMode && thread.snoozedUntil && (
-              <span className="thread-row-meta">
-                <Clock size={12} />
-                {t("Until")} {" "}
-                {formatDate(thread.snoozedUntil, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-            {!globalMode && searching && <span className="search-snippet">{match?.snippet}</span>}
           </span>
-          {!globalMode && <span className="thread-row-footer">
-            <span className="thread-row-summary">
-              <span className="thread-provider truncate">{modelLabel(provider?.models ?? [], thread.model)}</span>
-              {thread.workspaceBranch && <span className="thread-row-branch"><GitBranch size={11} /><span className="truncate">{thread.workspaceBranch}</span></span>}
-            </span>
-          </span>}
         </button>
         <div className="thread-row-actions" onPointerEnter={preview.hide}>
           <ConversationMenu thread={thread} environment={environment} onMove={(direction) => onMove({ thread, environment }, direction)} rowActions={rowActions} />
-          {globalMode && thread.pullRequest && <a
+          {thread.pullRequest && <a
             className="thread-row-pr"
             href={thread.pullRequest}
             target="_blank"
@@ -193,12 +175,6 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, globalMo
           </>}
         </div>
       </div>
-      {!globalMode && thread.pullRequest && (
-        <a className="thread-pr" href={thread.pullRequest} target="_blank" rel="noreferrer">
-          <GitPullRequest size={12} />
-          {t("Pull request")} #{pullRequestNumber(thread.pullRequest)}
-        </a>
-      )}
       {!query && <ThreadChildren parent={thread} environment={environment} {...tree} activeThreadId={current ? activeChildId : null} onConversation={onConversation} />}
     </div>
   );

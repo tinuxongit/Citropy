@@ -29,7 +29,7 @@ import { pendingRequests } from "./permissions.ts";
 import { handleMcp, workspaceTools } from "./mcp.ts";
 import { toolConnections } from "./mcp-access.ts";
 import * as browser from "./browser.ts";
-import { openDesktop, attachDesktop, authorizeDesktop, desktopRequest, desktopEvents } from "./desktop.ts";
+import { openDesktop, attachDesktop, authorizeDesktop, desktopConnected, desktopRequest, desktopEvents } from "./desktop.ts";
 import { panelList } from "./panels.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
 import { closeIdleSessions, disposeAll } from "./runtime.ts";
@@ -62,7 +62,7 @@ process.on("uncaughtExceptionMonitor", (error, origin) => writeLog("error", orig
 bus.subscribe((event) => {
   if (event.t === "toast" && event.level !== "info" && event.level !== "success") writeLog(event.level, "toast", event.text);
   if (event.t === "notification.add" && event.notification.level === "error") writeLog("error", "notification", `${event.notification.title}: ${event.notification.text}`);
-  if (event.t === "notification.add" && store.notificationPreferences.desktop)
+  if (event.t === "notification.add" && store.notificationPreferences.desktop && desktopConnected())
     void desktopRequest("notification", {
       ...event.notification,
       silent: !store.notificationPreferences.sound,
@@ -264,7 +264,8 @@ wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
     try {
       event = JSON.parse(String(raw)) as ClientEvent;
       if (!event || typeof event !== "object") return;
-    } catch {
+    } catch (error) {
+      console.error("The app sent an unreadable message:", error);
       return;
     }
     if (event.t === "thread.subscribe") {

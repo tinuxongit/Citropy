@@ -18,8 +18,11 @@ async function daemon(t) {
   await writeFile(join(root, 'package.json'), '{"type":"module"}');
   // Exercise the real socket/authentication implementation in a child process.
   // Only the native PTY dependency is replaced, so these tests require no GUI or node-pty.
-  await copyFile(new URL('../server/terminal-daemon.ts', import.meta.url), join(root, 'terminal-daemon.ts'));
-  await writeFile(join(root, 'terminal-host.ts'), `export class TerminalHost {
+  await mkdir(join(root, 'server'));
+  await mkdir(join(root, 'shared'));
+  await copyFile(new URL('../server/terminal-daemon.ts', import.meta.url), join(root, 'server', 'terminal-daemon.ts'));
+  await copyFile(new URL('../shared/expected-errors.mjs', import.meta.url), join(root, 'shared', 'expected-errors.mjs'));
+  await writeFile(join(root, 'server', 'terminal-host.ts'), `export class TerminalHost {
     constructor(emit) { this.emit = emit; }
     observeActivity() {}
     open() { this.emit({ type: "activity", id: "terminal", busy: true, process: "node" }); return {}; }
@@ -30,7 +33,7 @@ async function daemon(t) {
   }`);
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
-  const child = spawn(process.execPath, ['--experimental-strip-types', join(root, 'terminal-daemon.ts'), address, root], {
+  const child = spawn(process.execPath, ['--experimental-strip-types', join(root, 'server', 'terminal-daemon.ts'), address, root], {
     env, stdio: ['ignore', 'ignore', 'pipe'],
   });
   let stderr = '';

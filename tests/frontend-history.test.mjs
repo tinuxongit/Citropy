@@ -97,6 +97,37 @@ test("timeline fallback observes changed parts without version metadata", () => 
   assert.strictEqual(select(continued), select(next));
 });
 
+test("work details stay below streamed answers and expanded activity", () => {
+  const tool = { id: "tool", kind: "tool", name: "Read", callId: "call", shape: "read", headline: "app.ts", status: "ok" };
+  let state = applyEvents(initial(), [history("chat", [message("reply", [tool, text("answer", "Answer", false)])])]);
+  const select = createTimelineSelector("chat");
+  const closed = select(state);
+  assert.deepEqual(closed.map(entry => entry.row.kind), ["part", "activity"]);
+  assert.equal(closed[0].row.id, "answer");
+  assert.equal(closed.at(-1).row.active, true);
+  assert.equal(closed.at(-1).separator, true);
+  state = applyEvents(state, [append("answer", " continues")]);
+  assert.strictEqual(select(state), closed);
+  state = { ...state, disclosures: { tool: { activity: true } } };
+  const expanded = select(state);
+  assert.deepEqual(expanded.map(entry => entry.row.kind), ["part", "group", "activity"]);
+  assert.equal(expanded[0].first, true);
+  assert.equal(expanded.at(-1).last, true);
+  state = applyEvents(state, [patch("answer", { complete: true }), { t: "thread.upsert", thread: { ...state.threads.chat, running: false, status: "idle" } }]);
+  assert.equal(select(state).at(-1).row.active, false);
+  assert.deepEqual(select(state).map(entry => entry.row.kind), ["part", "group", "activity"]);
+});
+
+test("work details remain inside their own reply after later turns", () => {
+  const tool = { id: "tool", kind: "tool", name: "Read", callId: "call", shape: "read", headline: "app.ts", status: "ok" };
+  const state = applyEvents(initial(), [history("chat", [message("first", [tool, text("answer", "First answer")]), { id: "follow-up", role: "user", ts: 2, parts: [text("request", "Next question")] }, { ...message("second", [text("next-answer", "Next answer", false)]), ts: 3 }])]);
+  const rows = timelineRows(state, "chat");
+  assert.deepEqual(rows.map(entry => entry.row?.kind ?? "user"), ["part", "activity", "user", "part", "activity"]);
+  assert.equal(rows[1].messageId, "first");
+  assert.equal(rows[1].row.active, false);
+  assert.equal(rows.at(-1).row.active, true);
+});
+
 test("replacing and removing history releases only its parts and disclosure state", () => {
   let state = applyEvents(initial(), [history("chat", [message("reply")]), history("other", [message("other-reply")])]);
   state = { ...state, reveals: { "reply-text": true, "other-reply-text": true }, disclosures: { "reply-text": { activity: true } } };

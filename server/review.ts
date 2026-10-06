@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { ifMissing } from "../shared/expected-errors.mjs";
 import { promisify } from "node:util";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -45,7 +46,7 @@ export async function reviewWithModel(thread: Thread, scope: ReviewScope, messag
   const review = await reviewChanges(thread, scope, messageId);
   if (!review.patches.length) throw new Error("There are no text changes in this scope.");
   const cwd = workspacePath(thread.projectId, thread.id);
-  const rules = await readBounded(join(cwd, ".citropy", "review.md")).then(value => value.text).catch(() => "");
+  const rules = await readBounded(join(cwd, ".citropy", "review.md")).then(value => value.text, ifMissing(""));
   if (JSON.stringify(review.patches).length > 200_000 || review.patches.some(patch => patch.truncated)) throw new Error("This review exceeds the model input budget. Review a smaller turn or stage a smaller set of changes.");
   const result = await generateText(writingModel(thread, "reviewModel"), [
     "Review the supplied code changes for actionable bugs, data loss, security defects, concurrency failures and missing error handling.",

@@ -58,7 +58,7 @@ export function AppUpdateControl({ variant = "rail" }: { variant?: "rail" | "str
       .then((value) => {
         if (alive.current && !received) setState(value);
       })
-      .catch(() => {});
+      .catch((error) => console.error("Reading the update state failed:", error));
     return () => {
       alive.current = false;
       off?.();

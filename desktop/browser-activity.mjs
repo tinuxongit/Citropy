@@ -1,3 +1,5 @@
+import { logFailure } from "../shared/expected-errors.mjs";
+
 export function browserActivity(view, parent, activate) {
   const content = view.webContents;
   let presented = false;
@@ -26,7 +28,7 @@ export function browserActivity(view, parent, activate) {
       } else parent.removeChildView(view);
       attached = needed;
     }
-    void focus(needed).catch(() => {});
+    void focus(needed).catch(logFailure("Changing browser tab focus"));
   };
   return {
     present(value) {

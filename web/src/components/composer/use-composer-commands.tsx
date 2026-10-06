@@ -19,7 +19,6 @@ export function useComposerCommands({
   onSkills,
   modelButton,
   permissionButton,
-  chat,
 }: {
   thread: ThreadMeta | undefined;
   provider: ProviderInfo | undefined;
@@ -29,7 +28,6 @@ export function useComposerCommands({
   onSkills?: () => void;
   modelButton: RefObject<HTMLButtonElement | null>;
   permissionButton: RefObject<HTMLButtonElement | null>;
-  chat: boolean;
 }) {
   const t = useI18n();
   const threadId = thread?.id;
@@ -70,7 +68,7 @@ export function useComposerCommands({
       idleOnly: false,
       run: () => modelButton.current?.click(),
     },
-    ...(chat ? [] : [{
+    {
       id: "plan",
       label: "/plan",
       hint: t("Switch to Plan only permissions"),
@@ -79,7 +77,7 @@ export function useComposerCommands({
       run: () => {
         if (threadId) configureThread(threadId, { permissionMode: "plan" });
       },
-    }]),
+    },
     ...(hasModelOptions(model)
       ? [
           {
@@ -107,13 +105,13 @@ export function useComposerCommands({
           },
         ]
       : []),
-    ...(chat ? [] : [{
+    {
       id: "permissions",
       label: "/permissions",
       hint: t("Choose tool permissions"),
       icon: <ShieldCheck size={16} />,
       idleOnly: false,
       run: () => permissionButton.current?.click(),
-    }]),
+    },
   ];
 }

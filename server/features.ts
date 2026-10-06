@@ -42,7 +42,7 @@ import { diagnostics } from "./diagnostics.ts";
 import { usageReport } from "./usage.ts";
 import { configureAssistance, generateThreadTitle, startGitAction } from "./assistance.ts";
 import { listCommands } from "./commands.ts";
-import type { ProjectSettings, ProviderId, ProviderInfo } from "../shared/protocol.ts";
+import { isProviderId, type ProjectSettings, type ProviderId, type ProviderInfo } from "../shared/protocol.ts";
 
 async function body(req: IncomingMessage, limit = 128 * 1024): Promise<Record<string, any>> {
   let size = 0;
@@ -68,7 +68,7 @@ function settings(
   const out: ProjectSettings = {};
   if (input.provider !== undefined) {
     if (input.provider !== null && !(shared
-      ? ["claude", "codex", "opencode", "cursor", "pi"].includes(input.provider)
+      ? isProviderId(input.provider)
       : providers.some((provider) => provider.id === input.provider)))
       throw new Error("Unknown provider");
     out.provider = input.provider;
@@ -109,11 +109,6 @@ function settings(
       out[key] = input[key];
     }
   return out;
-}
-
-function editableWorkspace(projectId: string, threadId?: string): string {
-  if (store.projects.get(projectId)?.chat) throw new Error("Files in Chat are view only.");
-  return workspacePath(projectId, threadId);
 }
 
 export async function handleFeatures(
@@ -197,12 +192,12 @@ export async function handleFeatures(
     } else if (url.pathname === "/api/editor/tree" && req.method === "GET") {
       respond(await tree(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? "", true));
     } else if (url.pathname === "/api/editor/file" && req.method === "POST") {
-      respond(await createEditorFile(editableWorkspace(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
+      respond(await createEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
     } else if (url.pathname === "/api/editor/file" && req.method === "GET") {
       respond(await readEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
     } else if (url.pathname === "/api/editor/file" && req.method === "PUT") {
       const input = await body(req, 12 * 1024 * 1024 + 1024);
-      const saved = await saveEditorFile(editableWorkspace(projectId ?? "", threadId), url.searchParams.get("path") ?? "", input.text, input.revision);
+      const saved = await saveEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? "", input.text, input.revision);
       respond({ revision: saved.revision });
     } else if (url.pathname === "/api/threads/question" && req.method === "POST") {
       const input = await body(req);
@@ -269,7 +264,7 @@ export async function handleFeatures(
       respond({ ok: true });
     } else if (url.pathname === "/api/providers/sessions" && req.method === "GET") {
       const provider = url.searchParams.get("provider");
-      if (provider !== "claude" && provider !== "codex" && provider !== "cursor" && provider !== "opencode" && provider !== "pi") throw new Error("Choose a provider.");
+      if (!isProviderId(provider)) throw new Error("Choose a provider.");
       respond(await listImportableSessions(provider));
     } else if (url.pathname === "/api/providers/sessions" && req.method === "POST") {
       const input = await body(req);
@@ -301,16 +296,16 @@ export async function handleFeatures(
       }, refreshProviders));
     } else if (url.pathname === "/api/providers/update" && req.method === "POST") {
       const input = await body(req);
-      if (!["claude", "codex", "opencode", "cursor", "pi"].includes(input.provider)) throw new Error("Unknown provider.");
-      const provider = input.provider as ProviderId;
+      const provider = input.provider;
+      if (!isProviderId(provider)) throw new Error("Unknown provider.");
       if (providerBusy(provider)) throw new Error("Finish or stop this provider's active conversations before updating.");
       respond(startProviderUpdate(provider, async () => {
         reloadProviderSessions(new Set([provider]));
         await waitForStoppedProcesses();
       }, refreshProviders));
     } else if (url.pathname === "/api/providers/instructions" && ["GET", "PUT"].includes(req.method || "")) {
-      const provider = url.searchParams.get("provider") as ProviderId;
-      if (!["claude", "codex", "opencode", "cursor", "pi"].includes(provider)) throw new Error("Unknown provider.");
+      const provider = url.searchParams.get("provider");
+      if (!isProviderId(provider)) throw new Error("Unknown provider.");
       if (req.method === "GET") respond(readGlobalInstructions(provider));
       else {
         const input = await body(req);

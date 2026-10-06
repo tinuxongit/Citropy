@@ -5,6 +5,8 @@ import { chooseFolder } from "./folder-picker.ts";
 import { remoteId, workspaceDirectory } from "./remote.ts";
 import { store } from "./store.ts";
 import { api, command } from "./github-cli.ts";
+import { git, isRepo, tryGit } from "./git.ts";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { repositoryFromRemote, repositoryName, text } from "./github-input.ts";
 import type {
   GitHubRequest,
@@ -31,44 +33,22 @@ export async function githubStatus(projectId?: string): Promise<GitHubStatus> {
     result.error = (error as Error).message;
   }
   const project = projectId ? store.projects.get(projectId) : undefined;
-  if (project) {
-    try {
-      const output = await command(
-        "git",
-        ["remote", "-v"],
-        undefined,
-        project.path,
-      );
-      const seen = new Set<string>();
-      for (const line of output.split("\n")) {
-        const [name, url, direction] = line.split(/\s+/);
-        const repo = url ? repositoryFromRemote(url) : null;
-        if (name && repo && direction === "(fetch)" && !seen.has(repo)) {
-          result.repositories.push({ name, repo });
-          seen.add(repo);
-        }
+  if (project && (await isRepo(project.path))) {
+    const output = await git(project.path, ["remote", "-v"]);
+    const seen = new Set<string>();
+    for (const line of output.split("\n")) {
+      const [name, url, direction] = line.split(/\s+/);
+      const repo = url ? repositoryFromRemote(url) : null;
+      if (name && repo && direction === "(fetch)" && !seen.has(repo)) {
+        result.repositories.push({ name, repo });
+        seen.add(repo);
       }
-      result.repositories.sort(
-        (a, b) => Number(b.name === "origin") - Number(a.name === "origin"),
-      );
-      result.hasCommits = await command(
-        "git",
-        ["rev-parse", "--verify", "HEAD"],
-        undefined,
-        project.path,
-      ).then(
-        () => true,
-        () => false,
-      );
-      result.branch = (
-        await command(
-          "git",
-          ["branch", "--show-current"],
-          undefined,
-          project.path,
-        )
-      ).trim();
-    } catch {}
+    }
+    result.repositories.sort(
+      (a, b) => Number(b.name === "origin") - Number(a.name === "origin"),
+    );
+    result.hasCommits = Boolean((await tryGit(project.path, ["rev-parse", "--verify", "HEAD"])).trim());
+    result.branch = (await git(project.path, ["branch", "--show-current"])).trim();
   }
   return result;
 }
@@ -135,7 +115,7 @@ export async function cloneRepository(request: Request<"clone">) {
       180_000,
     );
   } catch (error) {
-    await rmdir(destination).catch(() => {});
+    await rmdir(destination).catch(logFailure("Removing the unfinished clone", destination));
     throw error;
   }
   return { project: store.openProject(destination) };
@@ -167,16 +147,10 @@ export async function publishRepository(request: Request<"publishRepository">): 
   const name = text(request.name, "repository name", true);
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name))
     throw new Error("Enter a valid repository name.");
-  await command(
-    "git",
-    ["rev-parse", "--verify", "HEAD"],
-    undefined,
-    project.path,
-  ).catch(() => {
+  if (!(await tryGit(project.path, ["rev-parse", "--verify", "HEAD"])).trim())
     throw new Error(
       "Create your first commit in Source control before publishing.",
     );
-  });
   const remotes = (
     await command("git", ["remote"], undefined, project.path)
   )

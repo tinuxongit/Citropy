@@ -137,7 +137,7 @@ export function Conversation() {
   const transitionActivity = useCallback((id: string, update: () => void) => {
     const canvas = viewport.current!;
     const summary = () => document.getElementById(`activity-count-${id}`)?.closest("button");
-    const offset = summary()!.getBoundingClientRect().top - canvas.getBoundingClientRect().top;
+    const offset = summary()!.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top;
     const pin = { id };
     pinnedActivity.current = pin;
     flushSync(update);
@@ -148,7 +148,7 @@ export function Conversation() {
         pinnedActivity.current = undefined;
         return;
       }
-      const drift = button.getBoundingClientRect().top - canvas.getBoundingClientRect().top - offset;
+      const drift = button.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top - offset;
       if (Math.abs(drift) >= 1) canvas.scrollTop += drift;
       const top = canvas.scrollTop;
       requestAnimationFrame(() => keepSummaryInPlace(frames - 1, top));

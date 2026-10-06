@@ -45,7 +45,6 @@ export function ComposerInput({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const connected = useApp((state) => state.connected);
-  const chat = useApp((state) => state.appMode === "chat");
   const mention = /(?:^|\s)@([^\s\[\]]*)$/.exec(value.slice(0, caret));
   const slash = /^\/[\w.:-]*$/.test(value) ? value : undefined;
   const query = mention ? `@${mention[1]}` : slash;
@@ -279,9 +278,7 @@ export function ComposerInput({
               ? t("Citropy is reconnecting. Your message will wait…")
               : thread.running
                 ? t("Queue a follow-up…")
-                : chat
-                  ? t("Ask anything…")
-                  : t("Ask a question or describe a change…")
+                : t("Ask a question or describe a change…")
           }
           spellCheck={false}
           onScroll={(event) => {

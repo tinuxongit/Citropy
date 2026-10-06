@@ -157,7 +157,6 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     const active = latest && running && (startedAt === undefined || continuing);
     if (!rows.length && !(active && busy)) return [];
     let visible: NonNullable<TimelineRow["row"]>[] = rows;
-    let answer: Row | undefined;
     const hasWork = rows.some(row => isActionRow(row, state.parts) || row.kind === "part" && state.parts.get(row.id)?.kind === "reasoning");
     if (hasWork) {
       const inProgress = active || continuing;
@@ -165,7 +164,6 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
         ? rows.findLast(row => row.kind === "part" && state.parts.get(row.id)?.kind === "todo")
         : undefined;
       const finalAnswer = finalAnswerRange(rows, state.parts, inProgress);
-      answer = finalAnswer ? rows[finalAnswer.start] : undefined;
       const work = new Set(rows.filter((row, index) => {
         if (finalAnswer && index >= finalAnswer.start && index <= finalAnswer.end) return false;
         if (row === plan) return false;
@@ -180,7 +178,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       const previewId = finalAnswer ? undefined : ids.findLast(id => state.parts.get(id)?.kind === "text");
       if (ids.length) {
         const workRows = open ? rows.filter(row => work.has(row)) : [];
-        visible = [{ kind: "activity", id, ids, messageIds, open, active, previewId }, ...workRows, ...rows.filter(row => !work.has(row))];
+        visible = [...rows.filter(row => !work.has(row)), ...workRows, { kind: "activity", id, ids, messageIds, open, active, previewId }];
       }
     }
     if (active && busy && !visible.some(row => row.kind === "activity")) {
@@ -192,7 +190,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       row,
       first: index === 0,
       last: index === visible.length - 1,
-      separator: row === answer || undefined,
+      separator: hasWork && index > 0 && row.kind === "activity" || undefined,
     }));
   });
   if (busy && !timeline.some(row => row.row?.kind === "activity" && row.row.active)) {

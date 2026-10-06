@@ -2,7 +2,7 @@ import type { Part, ToolPart, ToolShape } from "../../../shared/protocol.ts";
 import { isQuestionTool } from "../../../shared/questions.ts";
 import { normalizeTodos } from "../../../shared/todos.ts";
 import { translate } from "./i18n.ts";
-import type { Translator } from "./translations.ts";
+import type { Translator } from "./i18n.ts";
 
 export type Row = { kind: "part"; id: string } | { kind: "group"; ids: string[] };
 
@@ -53,7 +53,7 @@ const NOUN: Record<ToolShape, [string, string, string]> = {
 
 function phrase(shape: ToolShape, count: number, t: Translator): string {
   const [verb, one, many] = NOUN[shape];
-  return `${t(verb, undefined, "summary")} ${count} ${t(count === 1 ? one : many)}`;
+  return `${t(verb)} ${count} ${t(count === 1 ? one : many)}`;
 }
 
 export function summarize(tools: ToolPart[], t: Translator = translate): string {
@@ -129,5 +129,5 @@ export function toolLabel(name: string, status: ToolPart["status"], t: Translato
   if (status === "denied") return `${t("Blocked")} ${t(pair[1]).toLowerCase()}`;
   return status === "running"
     ? t(pair[0])
-    : t(pair[1], undefined, "past");
+    : t(pair[1]);
 }

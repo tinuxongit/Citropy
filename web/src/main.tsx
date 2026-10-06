@@ -5,6 +5,7 @@ import "@fontsource-variable/geist/wght-italic.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
+import "./styles/thread-tabs.css";
 import "./styles/sidebar.css";
 import "./styles/settings.css";
 import "./styles/conversation.css";
@@ -37,8 +38,7 @@ async function start() {
   followVisualViewport();
   await initializeEnvironment();
   applyReleaseDefaults();
-  const [{ App }, { connect, logClientError }, { useApp }, { loadSpanish }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts"), import("./lib/translations.ts")]);
-  if (useApp.getState().language === "es") await loadSpanish();
+  const [{ App }, { connect, logClientError }, { useApp }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts")]);
 
   if (!window.citropyDesktop && window.loomDesktop)
     window.citropyDesktop = window.loomDesktop;

@@ -2,6 +2,9 @@ import { lstat, open, readdir, stat, realpath } from "node:fs/promises";
 import { StringDecoder } from "node:string_decoder";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { FileEntry } from "../shared/protocol.ts";
+import { hasCode, unlessCode } from "../shared/expected-errors.mjs";
+
+const UNREADABLE = ["ENOENT", "ENOTDIR", "EACCES", "EPERM", "ELOOP"];
 
 const IGNORED = new Set([
   ".git",
@@ -104,14 +107,15 @@ export async function tree(root: string, sub = "", includeHidden = false): Promi
     }
     out.sort((a, b) => (a.dir === b.dir ? a.name.localeCompare(b.name) : a.dir ? -1 : 1));
     return out;
-  } catch {
-    return [];
+  } catch (error) {
+    if (hasCode(error, ...UNREADABLE)) return [];
+    throw error;
   }
 }
 
 /**
  * Read a contained regular file as a UTF-8 preview, capped at 512 KiB of input.
- * Append a truncation notice when more data exists; return null for denied or failed reads.
+ * Append a truncation notice when more data exists; return null for missing or denied files.
  */
 export async function read(root: string, path: string): Promise<string | null> {
   const abs = inside(root, path);
@@ -145,8 +149,9 @@ export async function read(root: string, path: string): Promise<string | null> {
     } finally {
       await file.close();
     }
-  } catch {
-    return null;
+  } catch (error) {
+    if (hasCode(error, ...UNREADABLE)) return null;
+    throw error;
   }
 }
 
@@ -182,7 +187,7 @@ export async function find(
     if (files.length > options.limit) files.pop();
   };
   const visit = async (directory: string) => {
-    const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+    const entries = await readdir(directory, { withFileTypes: true }).catch(unlessCode(UNREADABLE, []));
     scanned += entries.length;
     const matches: string[] = [];
     for (const entry of entries) {

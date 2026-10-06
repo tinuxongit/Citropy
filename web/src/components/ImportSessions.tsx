@@ -9,8 +9,7 @@ import { Select } from "./Select.tsx";
 import { Modal } from "./Modal.tsx";
 import { PixelLoader } from "./PixelLoader.tsx";
 import { providerLabels } from "../lib/format.ts";
-
-const importProviders: ImportProvider[] = ["claude", "codex", "cursor", "opencode", "pi"];
+import { PROVIDER_IDS } from "../../../shared/protocol.ts";
 
 export function ImportSessions({ onClose }: { onClose: () => void }) {
   const t = useI18n();
@@ -50,7 +49,7 @@ export function ImportSessions({ onClose }: { onClose: () => void }) {
     footer={<button type="button" className="btn" disabled={Boolean(busy)} onClick={onClose}>{t("Close")}</button>}>
     <div className="feature-field feature-inline session-import-controls">
       <Select aria-label={t("Provider")} value={provider} disabled={Boolean(busy)} onChange={value => setProvider(value as ImportProvider)}
-        options={importProviders.map(id => ({ value: id, label: providerLabels[id] }))} />
+        options={PROVIDER_IDS.map(id => ({ value: id, label: providerLabels[id] }))} />
       <input aria-label={t("Find a conversation")} placeholder={t("Find a conversation")} value={query} onChange={event => setQuery(event.target.value)} />
       <button type="button" className="icon-btn" aria-label={t("Refresh")} disabled={loading || Boolean(busy)} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={16} /></button>
     </div>

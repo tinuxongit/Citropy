@@ -1,18 +1,17 @@
 import { environmentStorage } from "./environment.ts";
 import { defaultAssistance } from "../../../shared/assistance.ts";
 import type { Project } from "../../../shared/protocol.ts";
-import { useApp, readOffline, modeProjects, type AppMode, type Confirmation } from "./app-state.ts";
+import { useApp, readOffline, type Confirmation } from "./app-state.ts";
 import { trimHistories } from "./history-cache.ts";
+import { readTabs, saveTabs, withPreviewTab } from "./thread-tabs.ts";
 import type { EnvironmentSlice } from "./live-environments.ts";
 
 export { useApp } from "./app-state.ts";
 export { applyEvent, applyEvents } from "./server-events.ts";
-export type { AppState, AppMode, Toast, Confirmation, PanelId } from "./app-state.ts";
-export { modeProjects } from "./app-state.ts";
+export type { AppState, Toast, Confirmation, PanelId } from "./app-state.ts";
 export {
   toggleFavoriteModel,
   setPanelWidth,
-  setLanguage,
   setTheme,
   setCustomColor,
   setScheme,
@@ -73,6 +72,7 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     questionDrafts: {},
     activeProjectId: environmentStorage.getItem("citropy.project", id),
     activeThreadId: environmentStorage.getItem("citropy.thread", id),
+    ...readTabs(id),
     followRequest: 0,
     readingThreadId: null,
     panels: [],
@@ -87,11 +87,12 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
 
 export function selectThread(id: string | null): void {
   useApp.setState((state) => {
-    if (state.activeThreadId === id) return state;
+    const tabs = id ? withPreviewTab(state, id) : state;
+    if (state.activeThreadId === id) return tabs === state ? state : { ...state, ...tabs };
     const git = { ...state.git };
     const projectId = id ? state.threads[id]?.projectId : state.activeProjectId;
     if (projectId) delete git[projectId];
-    const next = { ...state, activeThreadId: id, searchShellId: null, git };
+    const next = { ...state, ...tabs, activeThreadId: id, searchShellId: null, git };
     if (id && state.loaded[id]) {
       next.loaded = { ...state.loaded };
       delete next.loaded[id];
@@ -102,6 +103,7 @@ export function selectThread(id: string | null): void {
   });
   if (id) environmentStorage.setItem("citropy.thread", id);
   else environmentStorage.removeItem("citropy.thread");
+  saveTabs(useApp.getState());
 }
 
 export function selectProject(id: string): void {
@@ -112,34 +114,6 @@ export function selectProject(id: string): void {
   });
   environmentStorage.removeItem("citropy.thread");
   environmentStorage.setItem("citropy.project", id);
-}
-
-export function setAppMode(mode: AppMode): void {
-  const state = useApp.getState();
-  if (state.appMode === mode) return;
-  const saved = state.otherModeSelection;
-  useApp.setState({
-    appMode: mode,
-    activeView: "chat",
-    readingThreadId: null,
-    otherModeSelection: { projectId: state.activeProjectId, threadId: state.activeThreadId },
-  });
-  environmentStorage.setItem("citropy.appMode", mode);
-  const projects = modeProjects(useApp.getState());
-  const project = projects.find((entry) => entry.id === saved?.projectId) ?? projects[0];
-  if (!project) {
-    useApp.setState({ activeProjectId: null, activeThreadId: null });
-    environmentStorage.removeItem("citropy.project");
-    environmentStorage.removeItem("citropy.thread");
-    return;
-  }
-  selectProject(project.id);
-  if (saved?.threadId && useApp.getState().threads[saved.threadId]?.projectId === project.id) selectThread(saved.threadId);
-}
-
-export function showProjectMode(projectId: string): void {
-  const project = useApp.getState().projects.find((entry) => entry.id === projectId);
-  if (project) setAppMode(project.chat ? "chat" : "code");
 }
 
 export function selectPanel(id: string): void {

@@ -1,9 +1,10 @@
 import type { Readable } from "node:stream";
+import { logFailure } from "../shared/expected-errors.mjs";
 
 export function onLines(stream: Readable, handle: (line: string) => void): void {
   let buffer = "";
   stream.setEncoding("utf8");
-  stream.on("error", () => {});
+  stream.on("error", logFailure("Reading process output"));
   stream.on("data", (chunk: string) => {
     buffer += chunk;
     let index = buffer.indexOf("\n");

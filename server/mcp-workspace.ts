@@ -40,11 +40,6 @@ function required(args: Record<string, unknown>, key: string): string {
   return value;
 }
 
-const CHAT_TOOLS = new Set(["ask_user", "workspace_tree", "workspace_find", "workspace_read", "workspace_image"]);
-
-function chatTool(name: string): boolean {
-  return CHAT_TOOLS.has(name) || name.startsWith("browser_");
-}
 
 const MAX_RUNNING_SUBAGENTS = 4;
 const MAX_SUBAGENT_DEPTH = 3;
@@ -111,8 +106,7 @@ export async function callWorkspaceTool(
     const browserAllowed = resolveProjectSettings(store.projectDefaults, project.settings).browserAccess !== false;
     return text(workspaceTools.filter(tool =>
       (tool.name.startsWith(`${category}_`) || (category === "workspace" && tool.name === "open_panel")) &&
-      (!tool.name.startsWith("browser_") || browserAllowed) &&
-      (!project.chat || chatTool(tool.name)),
+      (!tool.name.startsWith("browser_") || browserAllowed),
     ));
   }
   if (name === "run_tool") {
@@ -121,7 +115,6 @@ export async function callWorkspaceTool(
     if (!args.arguments || typeof args.arguments !== "object" || Array.isArray(args.arguments)) throw new Error("Tool arguments must be an object");
     args = args.arguments as Record<string, unknown>;
   }
-  if (project.chat && name !== "approve" && !chatTool(name)) throw new Error("Chat can only use the browser and read files.");
   if (name === "approve") {
     const input = args.input ?? {};
     if (args.tool_name === "AskUserQuestion") {

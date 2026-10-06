@@ -6,7 +6,7 @@ import {
 import { useI18n } from "../../lib/i18n.ts";
 import { confirmAction } from "../../lib/store.ts";
 import { reportError } from "../../lib/api.ts";
-import type { Translator } from "../../lib/translations.ts";
+import type { Translator } from "../../lib/i18n.ts";
 import { Menu, type MenuItem } from "../Menu.tsx";
 import { Prose } from "../parts/Prose.tsx";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";

@@ -1,4 +1,5 @@
 import { closeSync, createReadStream, fstatSync, openSync, realpathSync, statSync } from "node:fs";
+import { ifMissing, unlessCode } from "../shared/expected-errors.mjs";
 import { extname, join, posix, relative, resolve, sep } from "node:path";
 import { pipeline } from "node:stream";
 import type { ServerResponse } from "node:http";
@@ -32,9 +33,9 @@ function openFile(root: string, file: string) {
     const info = fstatSync(fd);
     if (!info.isFile() || !sameFile(expected, info)) { closeSync(fd); return undefined; }
     return { fd, info, path: canonical };
-  } catch {
+  } catch (error) {
     if (fd !== undefined) closeSync(fd);
-    return undefined;
+    return unlessCode(["ENOENT", "ENOTDIR"], undefined)(error);
   }
 }
 
@@ -64,7 +65,7 @@ export function serveStatic(root: string, urlPath: string, res: ServerResponse):
   }
   let canonicalRoot: string;
   try { canonicalRoot = realpathSync(absoluteRoot); }
-  catch { return false; }
+  catch (error) { return ifMissing(false)(error); }
   let opened = openFile(canonicalRoot, requestedFile);
   // Only application navigations may use the SPA shell, never missing build resources.
   if (!opened && !posix.extname(clean) && !/^\/(assets|fonts)(\/|$)/.test(clean))
@@ -109,6 +110,8 @@ export function serveStatic(root: string, urlPath: string, res: ServerResponse):
     return true;
   }
   // The open descriptor survives renames; pipeline closes it on read errors or client aborts.
-  pipeline(createReadStream(path, { fd, autoClose: true, end: info.size - 1 }), res, () => {});
+  pipeline(createReadStream(path, { fd, autoClose: true, end: info.size - 1 }), res, (error) => {
+    if (error && error.code !== "ERR_STREAM_PREMATURE_CLOSE") console.error("Serving a static file failed:", path, error);
+  });
   return true;
 }

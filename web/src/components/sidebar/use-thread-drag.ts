@@ -12,10 +12,9 @@ export type ThreadDrag = ReturnType<typeof useThreadDrag>;
 
 const NO_SHIFTS = new Map<string, number>();
 
-export function useThreadDrag({ viewport, groups, globalMode, disabled, resetKey, onDrop }: {
+export function useThreadDrag({ viewport, groups, disabled, resetKey, onDrop }: {
   viewport: RefObject<HTMLElement | null>;
   groups: ThreadGroup[];
-  globalMode: boolean;
   disabled: boolean;
   resetKey: string;
   onDrop: (environment: string, source: string, target: string, edge: DropEdge) => void;
@@ -26,18 +25,18 @@ export function useThreadDrag({ viewport, groups, globalMode, disabled, resetKey
   const suppressClick = useRef(false);
   const cancel = useRef(() => {});
   useEffect(() => () => cancel.current(), [resetKey]);
-  const latest = useRef({ groups, globalMode, disabled, onDrop });
-  latest.current = { groups, globalMode, disabled, onDrop };
+  const latest = useRef({ groups, disabled, onDrop });
+  latest.current = { groups, disabled, onDrop };
 
   const start = useCallback((event: ReactPointerEvent<HTMLElement>, item: SidebarThread) => {
-    const { groups, globalMode, disabled, onDrop } = latest.current;
+    const { groups, disabled, onDrop } = latest.current;
     cancel.current();
     suppressClick.current = false;
     const control = (event.target as HTMLElement).closest("button, a, input, textarea");
     if (!canStartPointerDrag(event) || disabled || (control && !control.classList.contains("thread-row"))) return;
     const element = event.currentTarget;
     const scroll = viewport.current;
-    const siblings = movableSiblings(groups, item, globalMode);
+    const siblings = movableSiblings(groups, item);
     if (!scroll || !siblings.length) return;
     const indices = new Map(siblings.map((sibling, index) => [sibling.thread.id, index]));
     const sourceIndex = indices.get(item.thread.id)!;
@@ -116,7 +115,7 @@ export function useThreadDrag({ viewport, groups, globalMode, disabled, resetKey
   const shifts = useMemo(() => {
     if (!dragging || !drop) return NO_SHIFTS;
     const shifts = new Map<string, number>();
-    const siblings = movableSiblings(groups, dragging, globalMode);
+    const siblings = movableSiblings(groups, dragging);
     const from = siblings.findIndex((item) => item.thread.id === dragging.thread.id);
     const target = siblings.findIndex((item) => item.thread.id === drop.id);
     if (from < 0 || target < 0) return shifts;
@@ -125,7 +124,7 @@ export function useThreadDrag({ viewport, groups, globalMode, disabled, resetKey
       if (index !== from) shifts.set(threadKey(dragging.environment, siblings[index]!.thread.id), from < to ? -rowHeight.current : rowHeight.current);
     }
     return shifts;
-  }, [dragging, drop, groups, globalMode]);
+  }, [dragging, drop, groups]);
 
   const suppressClickAfterDrag = useCallback((event: MouseEvent) => {
     if (!suppressClick.current) return;

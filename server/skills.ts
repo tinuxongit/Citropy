@@ -8,12 +8,13 @@ import {
   mkdir,
 } from "node:fs/promises";
 import { dataRoot } from "./paths.ts";
+import { hasCode, ifMissing, unlessCode } from "../shared/expected-errors.mjs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { workspacePath } from "./workspaces.ts";
 import { store } from "./store.ts";
 import { providerControl } from "./providers/control.ts";
-import type { ProviderId, Thread } from "../shared/protocol.ts";
+import { PROVIDER_IDS, type ProviderId, type Thread } from "../shared/protocol.ts";
 import type { SkillInfo } from "../shared/features.ts";
 
 const disabledName = "SKILL.md.citropy-disabled";
@@ -70,13 +71,8 @@ async function roots(
       provider: "opencode",
       scope: "personal",
     },
-    {
-      path: join(process.env.PI_CODING_AGENT_DIR || join(home, ".pi", "agent"), "skills"),
-      provider: "pi",
-      scope: "personal",
-    },
   ];
-  for (const provider of ["claude", "codex", "opencode", "pi"] as const) {
+  for (const provider of PROVIDER_IDS) {
     locations.push({
       path: join(home, ".agents/skills"),
       provider,
@@ -95,44 +91,40 @@ async function roots(
       });
     }
   }
-  try {
-    const registry = JSON.parse(
-      await readFile(
-        join(
-          process.env.CLAUDE_CONFIG_DIR || join(home, ".claude"),
-          "plugins/installed_plugins.json",
-        ),
-        "utf8",
-      ),
-    );
-    const installed = Object.values(registry.plugins ?? {}).flat() as Array<{
-      installPath?: string;
-      projectPath?: string;
-    }>;
-    const filtered = locations.filter(
-      (root) => root.provider !== "claude" || root.scope !== "plugin",
-    );
-    for (const plugin of installed)
-      if (
-        plugin.installPath &&
-        (!plugin.projectPath || plugin.projectPath === projectPath)
-      )
-        filtered.push({
-          path: plugin.installPath,
-          provider: "claude",
-          scope: "plugin",
-        });
-    return filtered;
-  } catch {
-    return locations;
-  }
+  const registryFile = await readFile(
+    join(
+      process.env.CLAUDE_CONFIG_DIR || join(home, ".claude"),
+      "plugins/installed_plugins.json",
+    ),
+    "utf8",
+  ).catch(ifMissing(undefined));
+  if (registryFile === undefined) return locations;
+  const registry = JSON.parse(registryFile);
+  const installed = Object.values(registry.plugins ?? {}).flat() as Array<{
+    installPath?: string;
+    projectPath?: string;
+  }>;
+  const filtered = locations.filter(
+    (root) => root.provider !== "claude" || root.scope !== "plugin",
+  );
+  for (const plugin of installed)
+    if (
+      plugin.installPath &&
+      (!plugin.projectPath || plugin.projectPath === projectPath)
+    )
+      filtered.push({
+        path: plugin.installPath,
+        provider: "claude",
+        scope: "plugin",
+      });
+  return filtered;
 }
 
 async function codexSkills(
   projectPath?: string,
 ): Promise<SkillInfo[] | undefined> {
   const home = process.env.CODEX_HOME || join(homedir(), ".codex");
-  if (!(await realpath(home).catch(() => ""))) return;
+  if (!(await realpath(home).catch(ifMissing("")))) return;
   try {
     const result = await providerControl("codex", "skills/list", {
       cwds: [projectPath || homedir()],
@@ -169,8 +161,9 @@ async function codexSkills(
                 : ("personal" as const),
         })),
     );
-  } catch {
-    return undefined;
+  } catch (error) {
+    if (hasCode(error, "ENOENT")) return undefined;
+    throw error;
   }
 }
 
@@ -232,11 +225,11 @@ async function scanSkills(projectPath?: string): Promise<SkillInfo[]> {
     const seen = new Set<string>();
     for (let index = 0; index < queue.length && index < 10_000; index++) {
       const entry = queue[index]!;
-      const canonical = await realpath(entry.path).catch(() => "");
+      const canonical = await realpath(entry.path).catch(unlessCode(["ENOENT", "ENOTDIR"], ""));
       if (!canonical || seen.has(canonical)) continue;
       seen.add(canonical);
       const entries = await readdir(entry.path, { withFileTypes: true }).catch(
-        () => [],
+        unlessCode(["ENOTDIR"], []),
       );
       const skill = entries.find(
         (file) => file.name === "SKILL.md" || file.name === disabledName,
@@ -246,7 +239,7 @@ async function scanSkills(projectPath?: string): Promise<SkillInfo[]> {
         const key = `${root.provider}:${join(canonical, "SKILL.md")}`;
         if (!found.has(key)) {
           found.add(key);
-          const content = await instructions(path).catch(() => "");
+          const content = await instructions(path).catch(ifMissing(""));
           skills.push({
             id: createHash("sha256").update(key).digest("hex").slice(0, 24),
             name: field(content, "name") || basename(canonical),

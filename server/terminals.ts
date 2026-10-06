@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dataRoot } from "./paths.ts";
+import { hasCode, ifMissing, logFailure } from "../shared/expected-errors.mjs";
 import { bus } from "./bus.ts";
 import { panelList, closePanel, openPanel } from "./panels.ts";
 import { startShell, shellOutput, endShell, shellActivity } from "./shells.ts";
@@ -14,6 +15,7 @@ import type { TerminalSession, TerminalEvent } from "./terminal-host.ts";
 const key = createHash("sha256").update(dataRoot).digest("hex").slice(0, 24);
 const directory = join(tmpdir(), `citropy-terminals-${process.getuid?.() ?? "user"}-${key}`);
 const address = process.platform === "win32" ? `\\\\.\\pipe\\citropy-terminals-${key}` : join(directory, "service.sock");
+const SERVICE_DOWN = ["ENOENT", "ECONNREFUSED"];
 const sessions = new Map<string, TerminalSession>();
 const blocked = new Map<string, Set<string>>();
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
@@ -74,7 +76,7 @@ async function startService(): Promise<void> {
   try { await mkdir(join(directory, "lock"), { mode: 0o700 }); }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    const pid = Number(await readFile(join(directory, "lock", "pid"), "utf8").catch(() => ""));
+    const pid = Number(await readFile(join(directory, "lock", "pid"), "utf8").catch(ifMissing("")));
     let alive = false;
     if (pid > 0) try { process.kill(pid, 0); alive = true; } catch (error) { alive = (error as NodeJS.ErrnoException).code === "EPERM"; }
     const age = Date.now() - (await stat(join(directory, "lock"))).mtimeMs;
@@ -86,7 +88,10 @@ async function startService(): Promise<void> {
   const child = spawn(process.execPath, ["--experimental-strip-types", "--optimize-for-size", fileURLToPath(new URL("./terminal-daemon.ts", import.meta.url)), address, directory], {
     detached: true, stdio: "ignore", env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
   });
-  child.on("error", () => { void rm(join(directory, "lock"), { recursive: true, force: true }); });
+  child.on("error", (error) => {
+    console.error("Starting the terminal service failed:", error);
+    void rm(join(directory, "lock"), { recursive: true, force: true });
+  });
   child.unref();
 }
 
@@ -120,7 +125,7 @@ function dial(): Promise<void> {
         while ((end = buffer.indexOf("\n")) >= 0) {
           const line = buffer.slice(0, end); buffer = buffer.slice(end + 1);
           let message: { event?: TerminalEvent; id?: string; result?: unknown; error?: string };
-          try { message = JSON.parse(line); } catch { socket.destroy(); return; }
+          try { message = JSON.parse(line); } catch (error) { socket.destroy(error as Error); return; }
           if (message.event) {
             const event = message.event;
             queueMicrotask(() => {
@@ -146,7 +151,7 @@ function dial(): Promise<void> {
         connection = null;
         for (const entry of pending.values()) { clearTimeout(entry.timer); entry.reject(new Error("The terminal service disconnected.")); }
         pending.clear();
-        if (!detached && sessions.size) reconnect = setTimeout(() => { void ensure().catch(() => {}); }, 1000);
+        if (!detached && sessions.size) reconnect = setTimeout(() => { void ensure().catch(logFailure("Reconnecting to the terminal service")); }, 1000);
       });
       void readFile(join(directory, "key"), "utf8").then(token => request<TerminalSession[]>("hello", { version: 1, token, activity: true })).then(async entries => {
         if (connection !== socket || socket.destroyed) throw new Error("The terminal service disconnected during recovery.");
@@ -154,7 +159,7 @@ function dial(): Promise<void> {
         ready = true;
         for (const event of waiting) receive(event);
         waiting.length = 0;
-        daemonPid = Number(await readFile(join(directory, "lock", "pid"), "utf8").catch(() => "0")) || undefined;
+        daemonPid = Number(await readFile(join(directory, "lock", "pid"), "utf8").catch(ifMissing("0"))) || undefined;
         for (const [termId, consumers] of blocked) if (consumers.size) await request("flow", { termId, paused: true });
         resolve();
       }).catch(error => { socket.destroy(); reject(error); });
@@ -168,13 +173,20 @@ async function ensure(spawnService = true): Promise<void> {
   if (connecting) return connecting;
   if (connection && !connection.destroyed) return;
   connecting = (async () => {
-    try { await dial(); return; } catch { if (!spawnService) return; }
+    try { await dial(); return; } catch (error) {
+      if (!hasCode(error, ...SERVICE_DOWN)) throw error;
+      if (!spawnService) return;
+    }
     await startService();
+    let lastError: unknown;
     for (let attempt = 0; attempt < 80; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 100));
-      try { await dial(); return; } catch {}
+      try { await dial(); return; } catch (error) {
+        if (!hasCode(error, ...SERVICE_DOWN)) throw error;
+        lastError = error;
+      }
     }
-    throw new Error("The terminal service could not start. Check that Node and node-pty are installed.");
+    throw new Error("The terminal service could not start. Check that Node and node-pty are installed.", { cause: lastError });
   })().finally(() => { connecting = null; });
   return connecting;
 }
@@ -221,7 +233,7 @@ export function flow(termId: string, client: string, paused: boolean): void {
   const wasPaused = consumers.size > 0;
   if (paused) consumers.add(client); else consumers.delete(client);
   if (consumers.size) blocked.set(termId, consumers); else blocked.delete(termId);
-  if (connection && wasPaused !== (consumers.size > 0)) void request("flow", { termId, paused: consumers.size > 0 }).catch(() => {});
+  if (connection && wasPaused !== (consumers.size > 0)) void request("flow", { termId, paused: consumers.size > 0 }).catch(logFailure("Pausing terminal output", termId));
 }
 
 export function release(client: string): void { for (const id of [...blocked.keys()]) flow(id, client, false); }
@@ -254,7 +266,7 @@ bus.subscribe(event => {
   if (event.t !== "thread.remove" && event.t !== "project.remove") return;
   for (const panel of panelList()) {
     if (panel.kind !== "terminal" || (event.t === "thread.remove" ? panel.threadId !== event.id : panel.projectId !== event.id)) continue;
-    void close(panel.id).catch(() => {});
+    void close(panel.id).catch(logFailure("Closing a terminal", panel.id));
     closePanel(panel.id);
   }
 });

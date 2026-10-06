@@ -1,4 +1,5 @@
 import { nodeVersion, nodeChecksums, downloadNodeArchive } from "../shared/node-runtime.mjs";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, writeFile, rename, readdir, cp, rm } from "node:fs/promises";
@@ -201,7 +202,7 @@ export class SshEnvironments {
     const timer = setTimeout(abort, timeout);
     child.stdout.on("data", chunk => { stdout = `${stdout}${chunk}`.slice(-65536); });
     child.stderr.on("data", chunk => { stderr = `${stderr}${chunk}`.slice(-6000); });
-    child.stdin.on("error", () => {});
+    child.stdin.on("error", logFailure("Writing to", command));
     child.stdin.end(input);
     try {
       await new Promise((resolve, reject) => {
@@ -221,14 +222,12 @@ export class SshEnvironments {
     try {
       const payload = join(directory, "payload");
       await mkdir(payload);
-      for (const name of ["server", "shared", "package.json"])
+      for (const name of ["server", "shared", "package.json", "desktop/ssh-bootstrap.mjs", "desktop/remote-builds.mjs"])
         await cp(join(this.appRoot, name), join(payload, name), { recursive: true });
       await cp(join(this.appRoot, "package-lock.json"), join(payload, "package-lock.json")).catch(async error => {
         if (error.code !== "ENOENT") throw error;
         await cp(join(this.appRoot, "desktop/remote-package-lock.json"), join(payload, "package-lock.json"));
       });
-      await cp(join(this.appRoot, "desktop/ssh-bootstrap.mjs"), join(payload, "ssh-bootstrap.mjs"));
-      await cp(join(this.appRoot, "desktop/remote-builds.mjs"), join(payload, "remote-builds.mjs"));
       const hash = createHash("sha256");
       const walk = async relative => {
         for (const entry of (await readdir(join(payload, relative), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -331,7 +330,7 @@ ${runtime}/bin/node -e ${shellQuote(checkNode)}`, archive, 180000);
         await ssh(`set -eu; umask 077; mkdir -p ${root}; tar -xz -C ${root}; cd ${root}; PATH=${shellQuote(dirname(node))}:$PATH; export PATH; npm ci --omit=dev --no-audit --no-fund >&2; touch .ready`, archive, 300000);
       }
       progress("Starting remote environment…");
-      const output = await ssh(`${shellQuote(node)} ${root}/ssh-bootstrap.mjs ${shellQuote(id)} ${shellQuote(build)}`, undefined, 120000);
+      const output = await ssh(`${shellQuote(node)} ${root}/desktop/ssh-bootstrap.mjs ${shellQuote(id)} ${shellQuote(build)}`, undefined, 120000);
       const ready = output.split(/\r?\n/).find(line => line.startsWith("CITROPY_READY "));
       if (!ready) throw new Error("The SSH host did not return a remote environment.");
       const remote = JSON.parse(ready.slice(14));

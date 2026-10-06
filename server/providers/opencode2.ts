@@ -1,6 +1,5 @@
 import type { ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
@@ -9,13 +8,14 @@ import { MessageUsage } from "./message-usage.ts";
 import { stopProcess, waitForStoppedProcesses } from "./process.ts";
 import { withSkills } from "./skill-prompt.ts";
 import { onLines } from "../lines.ts";
+import { logFailure } from "../../shared/expected-errors.mjs";
+import { readServerEvents, sameDirectory } from "./opencode-common.ts";
 import { ask, cancelThread } from "../permissions.ts";
 import { answerQuestion, askQuestion, cancelQuestions } from "../questions.ts";
 import type { AgentSession, ProviderLaunch, StartOptions } from "./types.ts";
 import type { Attachment, ModelOption, PermissionMode } from "../../shared/protocol.ts";
 import type { ProviderCommand } from "../../shared/features.ts";
 
-const MAX_EVENT_BUFFER = 8 * 1024 * 1024;
 const DISCOVERY_MS = 10_000;
 
 interface Server {
@@ -71,11 +71,11 @@ function locationQuery(directory: string): string {
   return `location%5Bdirectory%5D=${encodeURIComponent(directory)}`;
 }
 
-function startServer(cwd: string, launch: ProviderLaunch | undefined, signal: AbortSignal, mcp?: StartOptions["mcp"], chat = false): Promise<Server> {
+function startServer(cwd: string, launch: ProviderLaunch | undefined, signal: AbortSignal, mcp?: StartOptions["mcp"]): Promise<Server> {
   return new Promise((resolve, reject) => {
     const inherited = JSON.parse(launch?.environment?.OPENCODE_CONFIG_CONTENT ?? process.env.OPENCODE_CONFIG_CONTENT ?? "{}");
     const citropy = mcp ? { citropy: { type: "remote", url: mcp.url, headers: mcp.headers, oauth: false, codemode: false, timeout: { execution: 1_860_000 } } } : {};
-    const config = { ...inherited, mcp: { ...inherited.mcp, servers: chat ? citropy : { ...inherited.mcp?.servers, ...citropy } } };
+    const config = { ...inherited, mcp: { ...inherited.mcp, servers: { ...inherited.mcp?.servers, ...citropy } } };
     const password = randomBytes(32).toString("base64url");
     const child = spawnCommand(launch?.binary ?? "opencode", ["serve", "--stdio", "--hostname", "127.0.0.1", "--port", "0"], {
       detached: process.platform !== "win32",
@@ -193,16 +193,13 @@ export async function generateOpenCode2Text(cwd: string, model: string, effort: 
     const result = await call<{ data: { text: string } }>(server, "POST", `/api/session/${encodeURIComponent(sessionId)}/generate`, { prompt }, signal);
     return result.data.text;
   } finally {
-    if (sessionId) await call(server, "DELETE", `/api/session/${encodeURIComponent(sessionId)}`, undefined, AbortSignal.timeout(2000)).catch(() => {});
+    if (sessionId) await call(server, "DELETE", `/api/session/${encodeURIComponent(sessionId)}`, undefined, AbortSignal.timeout(2000)).catch(logFailure("Deleting the OpenCode text session", sessionId));
     stopProcess(server.child, true);
     await waitForStoppedProcesses();
   }
 }
 
-const CHAT_ACTIONS = ["read", "glob", "grep", "list", "webfetch", "websearch", "question", "citropy_*"];
-
-function permissionRules(mode: PermissionMode, chat = false): Array<{ action: string; resource: string; effect: "allow" | "deny" | "ask" }> {
-  if (chat) return [{ action: "*", resource: "*", effect: "deny" }, ...CHAT_ACTIONS.map((action) => ({ action, resource: "*", effect: "allow" as const }))];
+function permissionRules(mode: PermissionMode): Array<{ action: string; resource: string; effect: "allow" | "deny" | "ask" }> {
   if (mode === "bypass") return [{ action: "*", resource: "*", effect: "allow" }];
   const allowed = ["read", "glob", "grep", "skill", "question", "subagent", "citropy_*", ...(mode === "acceptEdits" ? ["edit", "write", "patch"] : [])];
   return [
@@ -241,30 +238,21 @@ function toolOutput(content: Array<{ type: string; text?: string; name?: string 
   return (content ?? []).map((entry) => entry.type === "text" ? entry.text ?? "" : entry.name ?? entry.uri ?? "").join("\n");
 }
 
+const TOOL_NAMES: Record<string, string> = {
+  shell: "Bash",
+  read: "Read",
+  write: "Write",
+  edit: "Edit",
+  patch: "Edit",
+  grep: "Grep",
+  glob: "Glob",
+  webfetch: "WebFetch",
+  websearch: "WebSearch",
+  subagent: "Task",
+};
+
 function mapTool(tool: string): string {
-  switch (tool) {
-    case "shell":
-      return "Bash";
-    case "read":
-      return "Read";
-    case "write":
-      return "Write";
-    case "edit":
-    case "patch":
-      return "Edit";
-    case "grep":
-      return "Grep";
-    case "glob":
-      return "Glob";
-    case "webfetch":
-      return "WebFetch";
-    case "websearch":
-      return "WebSearch";
-    case "subagent":
-      return "Task";
-    default:
-      return tool;
-  }
+  return Object.hasOwn(TOOL_NAMES, tool) ? TOOL_NAMES[tool]! : tool;
 }
 
 export class OpenCode2Session implements AgentSession {
@@ -304,20 +292,20 @@ export class OpenCode2Session implements AgentSession {
   }
 
   async #boot(): Promise<void> {
-    const { cwd, externalId, model, effort, permissionMode, mcp, chat } = this.#options;
-    const server = await startServer(cwd, this.#options, this.#abort.signal, mcp, chat);
+    const { cwd, externalId, model, effort, permissionMode, mcp } = this.#options;
+    const server = await startServer(cwd, this.#options, this.#abort.signal, mcp);
     if (this.#abort.signal.aborted) { stopProcess(server.child, true); return; }
     this.#server = server;
     const events = await fetch(`${server.url}/api/event`, { headers: { authorization: server.auth, accept: "text/event-stream" }, signal: this.#abort.signal });
     if (!events.ok || !events.body) throw new Error(`OpenCode event stream failed: ${events.status}`);
-    void this.#listen(events).catch((error: Error) => {
+    void readServerEvents(events, (event) => this.#handle(event as { type: string; id: string; data?: EventData })).catch((error: Error) => {
       if (this.#abort.signal.aborted) return;
       this.#finish(error.message);
       this.#options.emit({ type: "exit", code: -1 });
       this.dispose();
     });
     const agent = permissionMode === "plan" ? "plan" : "build";
-    const permissions = permissionRules(permissionMode, chat);
+    const permissions = permissionRules(permissionMode);
     let sessionId = externalId;
     if (sessionId) {
       const saved = await this.#api<{ data: { location: { directory: string } } }>("GET", `/api/session/${encodeURIComponent(sessionId)}`).catch((error: unknown) => {
@@ -327,7 +315,7 @@ export class OpenCode2Session implements AgentSession {
       if (!saved) {
         this.#options.emit({ type: "notice", level: "warn", text: "The saved OpenCode session is unavailable. Starting a new session." });
         sessionId = undefined;
-      } else if (await realpath(saved.data.location.directory).catch(() => saved.data.location.directory) !== await realpath(cwd).catch(() => cwd)) {
+      } else if (!(await sameDirectory(saved.data.location.directory, cwd))) {
         const forked = await this.#api<{ data: { id: string } }>("POST", `/api/session/${encodeURIComponent(sessionId)}/fork`, {});
         sessionId = forked.data.id;
         await this.#api("POST", `/api/session/${encodeURIComponent(sessionId)}/move`, { directory: cwd });
@@ -352,28 +340,6 @@ export class OpenCode2Session implements AgentSession {
     const queued = this.#queue;
     this.#queue = [];
     for (const entry of queued) this.send(entry.text, entry.attachments);
-  }
-
-  async #listen(response: Response): Promise<void> {
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) throw new Error("OpenCode event stream closed");
-        buffer += decoder.decode(value, { stream: true });
-        if (buffer.length > MAX_EVENT_BUFFER) throw new Error("OpenCode event stream exceeded its 8 MB buffer.");
-        const frames = buffer.split(/\r?\n\r?\n/);
-        buffer = frames.pop()!;
-        for (const frame of frames) {
-          const payload = frame.split(/\r?\n/).filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trim()).join("");
-          if (payload) this.#handle(JSON.parse(payload) as { type: string; id: string; data?: EventData });
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
   }
 
   #files(attachments: Attachment[]): Array<{ uri: string; name: string }> {

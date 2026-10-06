@@ -13,23 +13,21 @@ const listeners = new Set<() => void>();
 export type CachedThread = WorkspaceThread;
 type WorkspaceCatalog = Record<string, WorkspaceSnapshot & { connected?: boolean }>;
 let workspaces: WorkspaceCatalog = {};
-try {
-  const saved = typeof localStorage === "undefined" ? {} : JSON.parse(localStorage.getItem("citropy.workspaces") || "{}");
-  for (const [id, value] of Object.entries(saved) as [string, WorkspaceCatalog[string]][]) {
-    if (typeof value?.home === "string" && Array.isArray(value.projects))
-      workspaces[id] = {
-        home: value.home,
-        projects: value.projects.filter(project => typeof project?.id === "string" && typeof project.name === "string" && typeof project.path === "string"),
-        threads: Array.isArray(value.threads) ? value.threads.filter(thread => typeof thread?.id === "string" && typeof thread.projectId === "string" && typeof thread.title === "string") : [],
-      };
-  }
-} catch {}
+const saved = typeof localStorage === "undefined" ? {} : JSON.parse(localStorage.getItem("citropy.workspaces") || "{}");
+for (const [id, value] of Object.entries(saved) as [string, WorkspaceCatalog[string]][]) {
+  if (typeof value?.home === "string" && Array.isArray(value.projects))
+    workspaces[id] = {
+      home: value.home,
+      projects: value.projects.filter(project => typeof project?.id === "string" && typeof project.name === "string" && typeof project.path === "string"),
+      threads: Array.isArray(value.threads) ? value.threads.filter(thread => typeof thread?.id === "string" && typeof thread.projectId === "string" && typeof thread.title === "string") : [],
+    };
+}
 
 function publish(): void { for (const listener of listeners) listener(); }
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
 
 function saveCatalog(): void {
-  try { localStorage.setItem("citropy.workspaces", JSON.stringify(workspaces)); } catch {}
+  localStorage.setItem("citropy.workspaces", JSON.stringify(workspaces));
 }
 
 export async function initializeEnvironment(): Promise<void> {
@@ -70,11 +68,10 @@ export function useWorkspaceCatalog(): WorkspaceCatalog {
 }
 
 export function rememberWorkspaces(id: string, projects: Project[], home: string, threads: ThreadMeta[], connected: boolean): void {
-  const code = projects.filter(project => !project.chat);
   const entry = {
     home,
-    projects: code.map(({ id, name, path, isGit, lastOpened }) => ({ id, name, path, isGit, lastOpened })),
-    threads: threads.filter(thread => !thread.parentThreadId && code.some(project => project.id === thread.projectId)).map(workspaceThread),
+    projects: projects.map(({ id, name, path, isGit, lastOpened }) => ({ id, name, path, isGit, lastOpened })),
+    threads: threads.filter(thread => !thread.parentThreadId && projects.some(project => project.id === thread.projectId)).map(workspaceThread),
     connected,
   };
   if (JSON.stringify(entry) === JSON.stringify(workspaces[id])) return;
@@ -160,7 +157,7 @@ export async function selectEnvironment(id: string, projectId?: string, threadId
 }
 
 function storageKey(key: string, id: string): string {
-  return id !== "local" && (/^citropy\.(project|thread|offline)$/.test(key) || key.startsWith("citropy.draft."))
+  return id !== "local" && (/^citropy\.(project|thread|offline|tabs)$/.test(key) || key.startsWith("citropy.draft."))
     ? `citropy.environment.${id}.${key}` : key;
 }
 

@@ -5,7 +5,6 @@ import { GitBranch, Github, Settings, BarChart3 } from "lucide-react";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
 import { LocalSharing } from "./LocalSharing.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
-import { useApp } from "../lib/store.ts";
 
 export function SidebarFooter({
   onGit,
@@ -27,16 +26,13 @@ export function SidebarFooter({
   const drag = useRef<number | undefined>(undefined);
   const moved = useRef(false);
   const usagePeek = useUsagePeek("top");
-  const chat = useApp((state) => state.appMode === "chat");
   const change = (value: boolean) => {
     setCompact(value);
     localStorage.setItem("citropy.compactNavigation", value ? "1" : "0");
   };
   const actions = [
-    ...(chat ? [] : [
-      { name: "Source control", icon: GitBranch, run: onGit, tone: "git" },
-      { name: "GitHub", icon: Github, run: onGitHub, tone: "github" },
-    ]),
+    { name: "Source control", icon: GitBranch, run: onGit, tone: "git" },
+    { name: "GitHub", icon: Github, run: onGitHub, tone: "github" },
     { name: "Usage", icon: BarChart3, run: onUsage, tone: "usage" },
     { name: "Settings", icon: Settings, run: onSettings, tone: "settings" },
   ];

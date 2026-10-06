@@ -2,7 +2,7 @@ import { bus } from "./bus.ts";
 import { uid } from "./ids.ts";
 import { store } from "./store.ts";
 import { describeTool } from "./tools.ts";
-import type { PermissionRequest, ToolShape } from "../shared/protocol.ts";
+import type { PermissionRequest } from "../shared/protocol.ts";
 
 export const ANSWER_WAIT_MS = 30 * 60 * 1000;
 
@@ -55,14 +55,6 @@ export function cancelTool(threadId: string, tool: string): void {
   }
 }
 
-const CHAT_SHAPES = new Set<ToolShape>(["read", "search", "web"]);
-
-function chatDecision(tool: string, shape: ToolShape): Decision | undefined {
-  if (tool.startsWith("mcp__citropy__browser_")) return undefined;
-  if (/^(?:mcp__citropy__|citropy_)/.test(tool) || tool === "App access: citropy") return "allow";
-  return CHAT_SHAPES.has(shape) ? "allow" : "deny";
-}
-
 export function ask(threadId: string, tool: string, input: unknown): Promise<Decision> {
   const thread = store.threads.get(threadId);
   if (!thread || thread.status === "stopped") return Promise.resolve("deny");
@@ -70,8 +62,6 @@ export function ask(threadId: string, tool: string, input: unknown): Promise<Dec
   const project = thread ? store.projects.get(thread.projectId) : undefined;
   const root = project?.path ?? "";
   const described = describeTool(tool, input, root);
-  const chat = project?.chat ? chatDecision(tool, described.shape) : undefined;
-  if (chat) return Promise.resolve(chat);
   const request: PermissionRequest = {
     id: uid("prm"),
     threadId,

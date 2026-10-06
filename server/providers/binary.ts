@@ -1,10 +1,11 @@
 import { execFile, spawn, type ChildProcessWithoutNullStreams, type SpawnOptions } from "node:child_process";
+import { ifMissing } from "../../shared/expected-errors.mjs";
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, posix, win32 } from "node:path";
 
 /**
- * Resolve a provider CLI name (for example `cursor-agent`) to something `spawn` can run on this
+ * Resolve a provider CLI name (for example `claude`) to something `spawn` can run on this
  * platform. On Linux and macOS this is the bare name. On Windows the CLIs are `.ps1` / `.cmd`
  * launchers that Node cannot spawn directly, so the result carries the interpreter and arguments.
  *
@@ -80,23 +81,20 @@ export function resolveIn(binary: string, options: ResolveInOptions): ResolvedCo
     .split(";")
     .map((value) => value.trim())
     .filter(Boolean);
-  const names = binary === "cursor-agent" ? [binary, "agent"] : [binary];
   let powershell: string | undefined;
   for (const dir of dirs) {
-    for (const name of names) {
-      for (const extension of [...extensions, ".ps1"]) {
-        const candidate = win32.join(dir, `${name}${extension}`);
-        if (!exists(candidate)) continue;
-        const lower = candidate.toLowerCase();
-        if (lower.endsWith(".ps1")) {
-          powershell ??= candidate;
-          continue;
-        }
-        if (lower.endsWith(".cmd") || lower.endsWith(".bat"))
-          return { file: process.env.ComSpec ?? "cmd.exe", prefix: [], path: candidate, shell: "cmd" };
-        if (lower.endsWith(".exe") || lower.endsWith(".com"))
-          return { file: candidate, prefix: [], path: candidate };
+    for (const extension of [...extensions, ".ps1"]) {
+      const candidate = win32.join(dir, `${binary}${extension}`);
+      if (!exists(candidate)) continue;
+      const lower = candidate.toLowerCase();
+      if (lower.endsWith(".ps1")) {
+        powershell ??= candidate;
+        continue;
       }
+      if (lower.endsWith(".cmd") || lower.endsWith(".bat"))
+        return { file: process.env.ComSpec ?? "cmd.exe", prefix: [], path: candidate, shell: "cmd" };
+      if (lower.endsWith(".exe") || lower.endsWith(".com"))
+        return { file: candidate, prefix: [], path: candidate };
     }
   }
   if (powershell) {
@@ -113,7 +111,6 @@ function pathDirectories(): string[] {
 function windowsDirectories(): string[] {
   const local = process.env.LOCALAPPDATA;
   const dirs: string[] = [];
-  if (local) dirs.push(win32.join(local, "cursor-agent"));
   if (process.env.APPDATA) dirs.push(win32.join(process.env.APPDATA, "npm"));
   if (local) dirs.push(win32.join(local, "Programs", "opencode"));
   dirs.push(win32.join(homedir(), ".opencode", "bin"));
@@ -152,8 +149,8 @@ export function commandIdentity(binary: string): string | undefined {
     const target = realpathSync(path);
     const { ino, size, mtimeMs, ctimeMs } = statSync(target);
     return `${target}:${ino}:${size}:${mtimeMs}:${ctimeMs}`;
-  } catch {
-    return undefined;
+  } catch (error) {
+    return ifMissing(undefined)(error);
   }
 }
 

@@ -1,5 +1,5 @@
 import { Bug, FileText, Lightbulb, ListChecks, NotebookPen, SearchCheck, Target, Users } from "lucide-react";
-import type { Translator } from "../../lib/translations.ts";
+import type { Translator } from "../../lib/i18n.ts";
 
 export interface NoteTemplate {
   id: string;

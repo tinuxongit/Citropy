@@ -1,4 +1,5 @@
 import type { ServerResponse } from "node:http";
+import { logFailure } from "../shared/expected-errors.mjs";
 
 const pageLimit = 512 * 1024;
 const iconLimit = 512 * 1024;
@@ -28,10 +29,7 @@ function iconLinks(html: string, base: string): string[] {
     const rel = attribute(match[0], "rel") ?? "";
     if (!rel.split(/\s+/).some((token) => token.toLowerCase().includes("icon"))) continue;
     const href = attribute(match[0], "href");
-    if (!href) continue;
-    try {
-      links.push(new URL(href, base).href);
-    } catch {}
+    if (href && URL.canParse(href, base)) links.push(new URL(href, base).href);
   }
   return links;
 }
@@ -84,12 +82,8 @@ function isIcon(type: string, url: string): boolean {
 
 export async function faviconFor(href: string, signal?: AbortSignal): Promise<{ type: string; body: Buffer } | undefined> {
   if (signal?.aborted) return undefined;
-  let url: URL;
-  try {
-    url = new URL(href);
-  } catch {
-    return undefined;
-  }
+  if (!URL.canParse(href)) return undefined;
+  const url = new URL(href);
   if (!["http:", "https:"].includes(url.protocol)) return undefined;
   const cached = cache.get(url.origin);
   if (cached && Date.now() - cached.at < (cached.body ? hitTtl : missTtl)) {
@@ -127,12 +121,18 @@ export async function faviconFor(href: string, signal?: AbortSignal): Promise<{ 
     };
     const abort = () => finish();
     signal?.addEventListener("abort", abort, { once: true });
-    entry.promise.then(finish, () => finish());
+    entry.promise.then(finish, (error) => {
+      logFailure("Loading a favicon", url.origin)(error);
+      finish();
+    });
   });
 }
 
+// Websites often refuse, time out, or have no icon; a miss is the normal answer, not a failure.
+const noIcon = () => undefined;
+
 async function loadFavicon(url: URL, signal: AbortSignal): Promise<{ type: string; body: Buffer } | undefined> {
-  const page = await download(url.href, "text/html,application/xhtml+xml", pageLimit, 2500, signal).catch(() => undefined);
+  const page = await download(url.href, "text/html,application/xhtml+xml", pageLimit, 2500, signal).catch(noIcon);
   const candidates = [
     ...new Set([
       ...(page?.type.includes("html") ? iconLinks(page.body.toString("utf8"), page.url).slice(0, 3) : []),
@@ -142,7 +142,7 @@ async function loadFavicon(url: URL, signal: AbortSignal): Promise<{ type: strin
   let found: { type: string; body: Buffer } | undefined;
   for (const candidate of candidates) {
     if (signal.aborted) return undefined;
-    const icon = await download(candidate, "image/*,*/*;q=0.8", iconLimit, 2500, signal).catch(() => undefined);
+    const icon = await download(candidate, "image/*,*/*;q=0.8", iconLimit, 2500, signal).catch(noIcon);
     if (icon && isIcon(icon.type, icon.url)) {
       found = { type: icon.type, body: icon.body };
       break;
@@ -166,7 +166,7 @@ export async function serveFavicon(res: ServerResponse, params: URLSearchParams)
   const controller = new AbortController();
   const abort = () => controller.abort();
   res.once("close", abort);
-  const icon = await faviconFor(params.get("url") ?? "", controller.signal).catch(() => undefined);
+  const icon = await faviconFor(params.get("url") ?? "", controller.signal);
   res.off("close", abort);
   if (res.destroyed) return;
   if (!icon) {

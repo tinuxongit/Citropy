@@ -11,7 +11,7 @@ import {
 import { Menu } from "../Menu.tsx";
 import { configureThread } from "../../lib/actions.ts";
 import { effortLabel as formatEffort, tokens } from "../../lib/format.ts";
-import { currentLocale, useI18n } from "../../lib/i18n.ts";
+import { LOCALE, useI18n } from "../../lib/i18n.ts";
 import { effectiveEffort } from "../../../../shared/model-options.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { AnimatePresence, motion, useSpring, type MotionStyle } from "motion/react";
@@ -83,7 +83,7 @@ export function ModelDetail({
             {contextWindow && (
               <span
                 className="composer-context"
-                title={t("Context window: {count} tokens", { count: contextWindow.toLocaleString(currentLocale()) })}
+                title={t("Context window: {count} tokens", { count: contextWindow.toLocaleString(LOCALE) })}
               >
                 {contextLabel(contextWindow)}
               </span>

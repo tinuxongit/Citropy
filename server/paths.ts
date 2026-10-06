@@ -17,14 +17,12 @@ function wellKnownDirs(env: NodeJS.ProcessEnv, home: string, platform: NodeJS.Pl
     platform === "win32" ? runtime : p.join(runtime, "bin"),
     p.join(home, ".local", "bin"),
     p.join(home, ".opencode", "bin"),
-    p.join(home, ".cursor", "bin"),
     p.join(home, ".npm-global", "bin"),
     p.join(home, ".bun", "bin"),
   ];
   if (platform === "darwin") dirs.push("/opt/homebrew/bin", "/usr/local/bin");
   if (platform === "win32") {
     const local = env.LOCALAPPDATA;
-    if (local) dirs.push(win32.join(local, "cursor-agent"));
     if (env.APPDATA) dirs.push(win32.join(env.APPDATA, "npm"));
     if (local) dirs.push(win32.join(local, "Programs", "opencode"));
     dirs.push(win32.join(home, ".opencode", "bin"));

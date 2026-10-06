@@ -1,4 +1,5 @@
 import { createServer, request } from "node:http";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { pipeline } from "node:stream";
 
 /**
@@ -34,7 +35,9 @@ export async function remoteProxy(allowedOrigin) {
       delete responseHeaders["set-cookie"];
       res.writeHead(response.statusCode || 502, responseHeaders);
       // A truncated upstream body must also close the renderer response.
-      pipeline(response, res, () => {});
+      pipeline(response, res, (error) => {
+        if (error && error.code !== "ERR_STREAM_PREMATURE_CLOSE") logFailure("Proxying a remote response")(error);
+      });
     });
     const active = { upstream, res, req, cors };
     requests.add(active);

@@ -1,4 +1,5 @@
 import { store } from "./store.ts";
+import { logFailure } from "../shared/expected-errors.mjs";
 import { providers } from "./providers/index.ts";
 import { providerInfo } from "./provider-registry.ts";
 import { generateText } from "./text-generation.ts";
@@ -117,8 +118,10 @@ export function startGitAction(threadId: string, action: GitActionState["action"
       if ((error as Error).name !== "AbortError") store.notify({ kind: "git", level: "error", title: "Git action failed", text: thread.gitAction?.message || message, target: { view: "chat", projectId: thread.projectId, threadId } });
     } finally {
       gitJobs.delete(cwd);
-      const status = await git.status(cwd).catch(() => undefined);
-      if (status) bus.emit({ t: "git.status", projectId: thread.projectId, threadId, status });
+      await git.status(cwd).then(
+        status => bus.emit({ t: "git.status", projectId: thread.projectId, threadId, status }),
+        logFailure("Refreshing Git status", cwd),
+      );
     }
   })();
   return initial;

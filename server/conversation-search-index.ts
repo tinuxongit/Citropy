@@ -60,7 +60,7 @@ export class ConversationSearchIndex {
     return true;
   }
 
-  search(threads: SearchThread[], query: string, projectId: string | undefined, cancelled: () => boolean): SearchResult[] {
+  search(threads: SearchThread[], query: string, cancelled: () => boolean): SearchResult[] {
     if (!this.#sync(cancelled)) return [];
     const needle = query.trim().toLocaleLowerCase().slice(0, 300);
     const characters = [...needle];
@@ -93,7 +93,7 @@ export class ConversationSearchIndex {
         yield { id: String(row.message), text: JSON.parse(String(row.text)) as string, normalized: true };
       }
     }
-    return searchConversations(threads, messageTexts, query, projectId, cancelled);
+    return searchConversations(threads, messageTexts, query, cancelled);
   }
 
   close(): void { this.#db.close(); }

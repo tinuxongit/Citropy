@@ -101,21 +101,6 @@ export async function providerLimits(provider: ProviderId, instanceId?: string):
           error:
             "OpenCode does not expose a combined remaining allowance. Check the connected model service.",
         };
-      if (provider === "cursor")
-        return {
-          provider,
-          windows: [],
-          updatedAt: Date.now(),
-          error:
-            "Cursor does not report a subscription allowance through its CLI. Check your Cursor account for usage.",
-        };
-      if (provider === "pi")
-        return {
-          provider,
-          windows: [],
-          updatedAt: Date.now(),
-          error: "Pi uses multiple model services. Check the connected service for its allowance.",
-        };
       return parseProviderLimits(
         provider,
         await providerControl(
@@ -186,10 +171,7 @@ export async function usageReport(
   }
   return {
     totals,
-    history: mergeDays([
-      ...await providerLogUsage(),
-      ...store.usageHistory.entries().filter((entry) => entry.provider === "cursor"),
-    ]),
+    history: mergeDays(await providerLogUsage()),
     conversations,
     providers: await Promise.all(providers.map(provider => providerLimits(provider))),
   };

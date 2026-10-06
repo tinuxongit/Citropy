@@ -9,6 +9,7 @@ import { useApp } from "../lib/store.ts";
 import { useDisclosure } from "../lib/use-disclosure.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { groupStats, summarize } from "../lib/group.ts";
+import { VirtualList } from "./VirtualList.tsx";
 
 let mountBatch = { at: 0, count: 0 };
 
@@ -33,10 +34,10 @@ function ToolStack({ tools }: { tools: ToolPart[] }) {
   return <span className="tool-stack" aria-hidden="true">{marks.slice(0, 4)}</span>;
 }
 
-function TreeRow({ id, live, animate }: { id: string; live: boolean; animate: boolean }) {
+function TreeRow({ id, live, animate, last }: { id: string; live: boolean; animate: boolean; last: boolean }) {
   const [step] = useState(() => animate ? nextTreeStep() : undefined);
   return (
-    <div className="work-tree-row" data-animate={step !== undefined || undefined} style={{ "--tree-step": step } as CSSProperties}>
+    <div className="work-tree-row" data-last={last || undefined} data-animate={step !== undefined || undefined} style={{ "--tree-step": step } as CSSProperties}>
       <PartView partId={id} live={live} />
     </div>
   );
@@ -46,7 +47,9 @@ function GroupTree({ ids, tools, live, auto }: { ids: string[]; tools: ToolPart[
   const [settled] = useState(() => new Set(auto ? tools.filter(tool => tool.status !== "running").map(tool => tool.id) : ids));
   return (
     <div className="group-body-inner">
-      {ids.map((id) => <TreeRow key={id} id={id} live={live} animate={live && !settled.has(id)} />)}
+      <VirtualList className="work-tree-list" items={tools} itemKey="id" estimateSize={28} gap={6}>
+        {tool => <TreeRow id={tool.id} live={live} animate={live && !settled.has(tool.id)} last={tool.id === ids.at(-1)} />}
+      </VirtualList>
     </div>
   );
 }

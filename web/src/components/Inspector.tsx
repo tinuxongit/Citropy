@@ -380,7 +380,7 @@ export function Inspector({ visible }: { visible: boolean }) {
               disabled={!connected}
               onClick={() => openWorkbenchPanel("files")}
             >
-              <Files size={15} />{t("Open files", undefined, "action")}
+              <Files size={15} />{t("Open files")}
             </button>
           </div>
         )}

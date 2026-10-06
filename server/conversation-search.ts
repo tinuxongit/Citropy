@@ -2,20 +2,19 @@ import { Worker } from "node:worker_threads";
 import type { ThreadMeta } from "../shared/protocol.ts";
 
 type MessageTexts = (threadId: string) => Iterable<{ id: string; text: string; normalized?: boolean }>;
-export type SearchThread = Pick<ThreadMeta, "id" | "title" | "updatedAt" | "projectId">;
+export type SearchThread = Pick<ThreadMeta, "id" | "title" | "updatedAt">;
 export type SearchResult = { threadId: string; messageId?: string; snippet: string };
 
 export function normalizeSearchText(text: string): string {
   return text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[`#*]/g, "").replace(/\s+/g, " ");
 }
 
-export function searchConversations(threads: Iterable<SearchThread>, messageTexts: MessageTexts, query: string, projectId?: string, cancelled?: () => boolean): SearchResult[] {
+export function searchConversations(threads: Iterable<SearchThread>, messageTexts: MessageTexts, query: string, cancelled?: () => boolean): SearchResult[] {
   const needle = query.trim().toLocaleLowerCase().slice(0, 300);
   if (!needle) return [];
   const results: SearchResult[] = [];
   for (const thread of [...threads].sort((a, b) => b.updatedAt - a.updatedAt)) {
     if (cancelled?.()) return [];
-    if (projectId && thread.projectId !== projectId) continue;
     let match: { threadId: string; messageId?: string; snippet: string } | undefined;
     for (const message of messageTexts(thread.id)) {
       if (cancelled?.()) return [];
@@ -42,7 +41,7 @@ export class ConversationSearch {
 
   constructor(path: string) { this.#path = path; }
 
-  search(threads: Iterable<SearchThread>, query: string, projectId?: string, signal?: AbortSignal): Promise<SearchResult[]> {
+  search(threads: Iterable<SearchThread>, query: string, signal?: AbortSignal): Promise<SearchResult[]> {
     if (signal?.aborted) return Promise.reject(signal.reason);
     if (!query.trim()) return Promise.resolve([]);
     clearTimeout(this.#idle);
@@ -85,7 +84,7 @@ export class ConversationSearch {
       this.#pending.set(id, { resolve, reject, cleanup, cancelled });
       signal?.addEventListener("abort", abort, { once: true });
       try {
-        worker.postMessage({ id, threads: [...threads].map(({ id, title, updatedAt, projectId }) => ({ id, title, updatedAt, projectId })), query, projectId, cancelled });
+        worker.postMessage({ id, threads: [...threads].map(({ id, title, updatedAt }) => ({ id, title, updatedAt })), query, cancelled });
       } catch (error) { cleanup(); reject(error); }
     });
   }

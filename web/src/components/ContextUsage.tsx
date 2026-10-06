@@ -1,15 +1,13 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
-import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDown, ListTree, Minimize2 } from "lucide-react";
 import { cost, decimal, tokenRate, tokens } from "../lib/format.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { useI18n } from "../lib/i18n.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
-import { estimateConversationTokens, estimateTokensFromChars, newInputTokens, reportedContext, uncachedInput } from "../../../shared/usage-metrics.ts";
+import { estimateTokensFromChars, newInputTokens, reportedContext, uncachedInput } from "../../../shared/usage-metrics.ts";
 import { ContextInspector } from "./ContextInspector.tsx";
-
-const ESTIMATE_STEP_BYTES = 4096;
 
 const PANEL_WIDTH = 304;
 
@@ -33,11 +31,7 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
   const details = useRef<HTMLDivElement>(null);
   const uiScale = useApp((state) => state.uiScale);
   const connected = useApp((state) => state.connected);
-  const activeThreadId = useApp((state) => state.activeThreadId);
   const thread = useApp((state) => state.threads[state.activeThreadId ?? ""]);
-  const historyStep = useApp((state) => state.threads[state.activeThreadId ?? ""]?.provider === "cursor"
-    ? Math.floor((state.historyBytes[state.activeThreadId ?? ""] ?? 0) / ESTIMATE_STEP_BYTES)
-    : 0);
   const provider = useApp((state) => state.providers.find((entry) => entry.id === thread?.provider));
   const canCompact = provider?.capabilities?.compact !== false;
   const usage = thread?.usage;
@@ -54,48 +48,11 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
   const reported = Boolean(usage && reportedContext(usage.contextTokens, contextMax));
   const hasTotals = Boolean(totals.input || totals.output || totals.cacheRead || totals.cacheWrite || totals.costUsd);
   const fresh = !thread?.externalId && !thread?.running && !usage?.turns && !(usage?.input || usage?.output || usage?.cacheRead || usage?.cacheWrite || usage?.costUsd);
-  const estimateCache = useRef<{ threadId: string | null; provider: string | undefined; step: number; tokens: number }>({
-    threadId: null,
-    provider: undefined,
-    step: -1,
-    tokens: 0,
-  });
-  const estimated = useMemo(() => {
-    if (thread?.provider !== "cursor" || fresh || reported) return 0;
-    const cache = estimateCache.current;
-    const changed =
-      cache.threadId !== activeThreadId ||
-      cache.provider !== thread?.provider ||
-      historyStep !== cache.step;
-    if (!changed) return cache.tokens;
-    const state = useApp.getState();
-    const messages = !activeThreadId
-      ? []
-      : (state.order[activeThreadId] ?? []).flatMap((id) => {
-          const shell = state.messages[id];
-          if (!shell) return [];
-          return [{
-            id: shell.id,
-            role: shell.role,
-            ts: shell.ts,
-            parts: shell.partIds.flatMap((partId) => {
-              const part = state.parts.get(partId);
-              return part ? [part] : [];
-            }),
-            attachments: shell.attachments,
-          }];
-        });
-    const value = estimateConversationTokens(messages);
-    estimateCache.current = { threadId: activeThreadId, provider: thread?.provider, step: historyStep, tokens: value };
-    return value;
-  }, [activeThreadId, fresh, historyStep, reported, thread?.provider]);
   const draftTokens = estimateTokensFromChars(draft.length);
-  const totalEstimated = estimated + draftTokens;
-  const contextTokens = fresh ? 0 : reported ? usage?.contextTokens ?? 0 : totalEstimated;
-  const shown = Boolean(!fresh && (reported || totalEstimated > 0));
+  const contextTokens = fresh ? 0 : reported ? usage?.contextTokens ?? 0 : draftTokens;
+  const shown = Boolean(!fresh && (reported || draftTokens > 0));
   const known = Boolean(contextMax > 0 && (shown || fresh));
-  const estimatedNote = Boolean((usage?.contextEstimated || (!reported && totalEstimated > 0)) && shown);
-  const estimatedClamped = Boolean(!reported && contextMax > 0 && totalEstimated >= contextMax);
+  const estimatedNote = !reported && shown;
   const cacheShare = totals.newInput + totals.cacheRead;
   const cacheRate = cacheShare > 0 ? totals.cacheRead / cacheShare : 0;
   const hasCache = Boolean(totals.cacheRead || totals.cacheWrite);
@@ -257,7 +214,7 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
                 <span style={{ width: `${fill * 100}%` }} />
               </div>
             )}
-            {estimatedNote && <p className="context-estimate">{t(estimatedClamped ? "Estimated from conversation · Cursor compacts automatically" : "Estimated from conversation")}</p>}
+            {estimatedNote && <p className="context-estimate">{t("Estimated from conversation")}</p>}
           </section>
           {hasCache && (
             <section className="context-section context-cache" aria-labelledby={`${id}-cache`}>

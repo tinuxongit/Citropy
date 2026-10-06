@@ -1,4 +1,6 @@
 import { execFile } from "node:child_process";
+import { logFailure } from "../shared/expected-errors.mjs";
+import { processExists } from "../shared/process-exists.mjs";
 import { promisify } from "node:util";
 
 const execute = promisify(execFile);
@@ -41,19 +43,14 @@ async function commandProcesses(): Promise<CommandProcess[]> {
   return parseCommandProcesses(stdout, windows);
 }
 
-const alive = (pid: number) => {
-  try { process.kill(pid, 0); return true; }
-  catch { return false; }
-};
-
 export async function stopCommandProcess(command: string, root = process.pid): Promise<void> {
   const tree = shellProcessTree(await commandProcesses(), command, root);
   if (!tree.length) throw new Error("Could not find this shell's process. It may have already finished.");
   if (process.platform === "win32") {
-    for (const pid of tree) if (alive(pid)) await execute("taskkill", ["/pid", String(pid), "/T", "/F"], { windowsHide: true }).catch(() => {});
+    for (const pid of tree) if (processExists(pid)) await execute("taskkill", ["/pid", String(pid), "/T", "/F"], { windowsHide: true }).catch(logFailure("Stopping process", pid));
     return;
   }
-  for (const pid of tree) if (alive(pid)) process.kill(pid, "SIGTERM");
-  for (let waited = 0; waited < 2000 && tree.some(alive); waited += 100) await new Promise(resolve => setTimeout(resolve, 100));
-  for (const pid of tree) if (alive(pid)) process.kill(pid, "SIGKILL");
+  for (const pid of tree) if (processExists(pid)) process.kill(pid, "SIGTERM");
+  for (let waited = 0; waited < 2000 && tree.some(processExists); waited += 100) await new Promise(resolve => setTimeout(resolve, 100));
+  for (const pid of tree) if (processExists(pid)) process.kill(pid, "SIGKILL");
 }

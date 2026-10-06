@@ -121,7 +121,7 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
 
 export function StatusHeading({ group, searching }: { group: ThreadGroup; searching: boolean }) {
   const t = useI18n();
-  const label = t(group.label, undefined, "conversations");
+  const label = t(group.label);
   const expanded = group.open || searching;
   return (
     <div className={`global-project-heading global-status-heading global-${group.id}-heading`}>
@@ -130,17 +130,5 @@ export function StatusHeading({ group, searching }: { group: ThreadGroup; search
         <span className="truncate">{label}</span>
       </button>
     </div>
-  );
-}
-
-export function CategoryToggle({ group, searching }: { group: ThreadGroup; searching: boolean }) {
-  const t = useI18n();
-  return (
-    <button className="finished-toggle" type="button" aria-expanded={group.open || searching} onClick={group.toggle}>
-      <ChevronRight size={12} className="category-chevron" />
-      <group.icon size={14} className={`category-icon${group.id === "finished" ? " category-finished" : ""}`} />
-      <span>{t(group.label, undefined, "conversations")}</span>
-      <span>{group.threads.length}</span>
-    </button>
   );
 }
