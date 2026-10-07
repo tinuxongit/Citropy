@@ -5,7 +5,7 @@ import { clock } from "../lib/format.ts";
 import { ProviderLimits } from "./UsageLimits.tsx";
 
 const CACHE_MS = 60_000;
-const DELAY_MS = 350;
+const DELAY_MS = 120;
 
 let cached: { at: number; report: UsageReport } | undefined;
 let pending: Promise<UsageReport> | undefined;
@@ -80,6 +80,7 @@ export function useUsagePeek(side: "right" | "top"): {
   };
   const show = (element: HTMLElement, delay: number) => {
     clearTimeout(timer.current);
+    loadUsage().catch(() => undefined);
     timer.current = window.setTimeout(() => setAnchor(element), delay);
   };
   return {

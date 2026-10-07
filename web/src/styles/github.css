@@ -477,7 +477,6 @@
   gap: var(--space-10);
   padding: var(--space-12);
   background: var(--panel);
-  cursor: default;
   font-size: var(--text-xs);
 }
 .github-files summary > span:first-of-type {
@@ -518,7 +517,6 @@
   flex-wrap: wrap;
   gap: var(--space-16);
   align-items: center;
-  cursor: default;
   font-size: var(--text-sm);
 }
 .github-jobs ol {
@@ -727,7 +725,6 @@
   color: var(--text-2);
   font-size: var(--text-sm);
   padding: var(--space-6) 0;
-  cursor: default;
 }
 .github-checkbox input {
   accent-color: var(--accent);

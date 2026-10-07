@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import {
+  setClock24,
   setShowGitHubIdentity,
   setUiSoundVolume,
   setUiSounds,
@@ -10,6 +11,7 @@ import { Range } from "./Range.tsx";
 
 export function GeneralSettings() {
   const showGitHubIdentity = useApp((state) => state.showGitHubIdentity);
+  const clock24 = useApp((state) => state.clock24);
   const uiSounds = useApp((state) => state.uiSounds);
   const uiAlertSounds = useApp((state) => state.uiAlertSounds);
   const uiSoundVolume = useApp((state) => state.uiSoundVolume);
@@ -30,6 +32,22 @@ export function GeneralSettings() {
             role="switch"
             checked={showGitHubIdentity}
             onChange={(event) => setShowGitHubIdentity(event.target.checked)}
+          />
+        </label>
+      </div>
+      <h2 className="settings-group-heading settings-group-spaced">Time</h2>
+      <div className="settings-group">
+        <label className="setting-row">
+          <span>
+            <strong>24-hour clock</strong>
+            <small>Show times like 14:30 instead of 2:30 PM.</small>
+          </span>
+          <input
+            className="setting-switch"
+            type="checkbox"
+            role="switch"
+            checked={clock24}
+            onChange={(event) => setClock24(event.target.checked)}
           />
         </label>
       </div>

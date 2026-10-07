@@ -158,8 +158,8 @@
   overflow: hidden;
 }
 .code-editor-surface .monaco-editor :is(.find-widget, .suggest-widget, .monaco-hover) {
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-popup);
+  box-shadow: var(--popup-edge);
   backdrop-filter: blur(24px);
   font-family: var(--font-ui);
   overflow: hidden;
@@ -177,15 +177,17 @@
 }
 .editor-context-menu {
   min-width: 220px;
-  padding: var(--space-4);
+  padding: var(--space-4) 0;
 }
 .editor-context-group + .editor-context-group {
-  margin-top: var(--space-6);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
 }
 .editor-context-menu .menu-item {
   width: 100%;
   justify-content: space-between;
-  padding: var(--space-6) var(--space-10);
+  padding: var(--space-6) var(--space-16);
 }
 .editor-context-menu kbd {
   color: var(--text-4);

@@ -6,7 +6,6 @@ import { toggleInspector, useApp } from "../lib/store.ts";
 import { createThread } from "../lib/actions.ts";
 import { WindowControls } from "./WindowControls.tsx";
 import { ThreadTabs } from "./ThreadTabs.tsx";
-import { ThreadSearch } from "./sidebar/ThreadSearch.tsx";
 import { ThreadDetailsButton } from "./thread-details/ThreadDetails.tsx";
 
 /** Render workspace navigation using branch metadata scoped to the selected checkout. */
@@ -70,7 +69,6 @@ export function Titlebar({
           >
             <PanelLeft size={15} />
           </button>}
-          {view === "chat" && sidebarOpen && <ThreadSearch />}
         </div>
       </div>
       <nav
@@ -82,12 +80,10 @@ export function Titlebar({
         {workspaceContext && <div className="workspace-breadcrumb">
           {isRemote() && <span className="environment-breadcrumb" title={environmentName()}><Server size={13} /><span className="truncate">{environmentName()}</span></span>}
         </div>}
-        {(thread || view !== "chat") && (
+        {view === "chat" && thread && (
           <>
             {workspaceContext && <span className="breadcrumb-separator" aria-hidden="true">/</span>}
-            <span className="thread-title truncate">
-              {view === "git" ? "Source control" : view === "github" ? "GitHub" : view === "usage" ? "Usage" : view === "settings" ? "Settings" : thread?.title}
-            </span>
+            <span className="thread-title truncate">{thread.title}</span>
           </>
         )}
         {view === "chat" && project && <span className="topbar-subtitle">

@@ -8,7 +8,8 @@ Calm and sparse. Everything shares one left edge, and nothing is there for decor
 - Page headers are the title and its actions. No description line, no icon.
 - Section lists (settings, usage, source control, GitHub) keep one icon per item, since long lists are scanned by shape.
 - Simple settings are open rows, not boxes. A bold sentence-case heading starts a section, and `--line` rules separate one setting row from the next. Complex blocks, like a provider with its accounts and actions, keep a `--panel` box.
-- Menus, popovers, inputs and buttons keep their fills. Rules are for page structure. The one framed box is a result card in the conversation, like the changed-files summary: a `--line-strong` outline on `--canvas`, no fill.
+- Menus, popovers, inputs and buttons keep their fills. Rules are for page structure. Result cards in the conversation, like the changed-files summary, are framed with a `--line-strong` outline on `--canvas` and no fill.
+- Pop-ups follow Aureo. Menus, popovers, hover cards, dialogs and toasts have 12px rounded corners (`--r-popup`), a 1px `--line-strong` outline (`--popup-edge`) and no drop shadow. Menu rows and search fields run edge to edge with a 16px text inset.
 - Empty states are one useful sentence, plus an action when there is one. No icon, no slogan.
 - Labels like "Experimental" are plain `--text-3` text, not pills.
 - The selected state is a fill change, `--accent-soft` or `--raised-2`. Never a ring.
@@ -21,13 +22,13 @@ Dark theme, from deepest to highest:
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--canvas-deep` | `#1a1918` | wells, tracks, segmented control backgrounds |
-| `--canvas` | `#1f1e1d` | app background |
-| `--panel`, `--overlay` | `#262624` | panels, menus |
-| `--raised` | `#2e2d2b` | inputs, hover |
-| `--raised-2` | `#383734` | selected segment, pressed |
+| `--canvas-deep` | `#050504` | wells, tracks, segmented control backgrounds |
+| `--canvas` | `#0a0a09` | app background |
+| `--panel`, `--overlay` | `#0f0f0e` | panels, menus |
+| `--raised` | `#1a1918` | inputs, hover |
+| `--raised-2` | `#262524` | selected segment, pressed |
 
-The neutral theme is warm grey in both schemes. Light theme mirrors these in `web/src/styles/tokens.css`.
+Every theme shares one lightness ramp in `web/src/styles/tokens.css`. A theme only sets `--tint`, and surfaces, lines and text take its hue at the same lightness, so colored themes are exactly as dark as neutral. Neutral is warm grey in both schemes.
 
 ## Type
 
@@ -69,5 +70,5 @@ Short and eased with `--ease-out`, at `--dur-instant`, `--dur-fast` or `--dur-ba
 ## Never
 
 - Emoji or icon glyphs as decoration.
-- Borders framing boxes, except conversation result cards.
+- Borders framing boxes, except conversation result cards and pop-ups.
 - Controls that move when their value changes.

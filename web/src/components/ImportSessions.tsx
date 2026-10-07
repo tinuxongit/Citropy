@@ -7,7 +7,7 @@ import { selectProject, selectThread, useApp } from "../lib/store.ts";
 import { Select } from "./Select.tsx";
 import { Modal } from "./Modal.tsx";
 import { PixelLoader } from "./PixelLoader.tsx";
-import { providerLabels } from "../lib/format.ts";
+import { dateTime, providerLabels } from "../lib/format.ts";
 import { PROVIDER_IDS } from "../../../shared/protocol.ts";
 import { ActionError } from "./ActionError.tsx";
 
@@ -57,7 +57,7 @@ export function ImportSessions({ onClose }: { onClose: () => void }) {
     <ActionError className="dialog-error" message={error} onDismiss={() => setError("")} />
     {loading ? <p role="status"><PixelLoader size={16} /> Loading sessions…</p> : <div className="session-import-list">
       {filtered.map(session => <div className="session-import-row" key={session.id}>
-        <div><strong>{session.title}</strong><small title={session.cwd}>{session.cwd}</small><small>{new Date(session.updatedAt).toLocaleString()}</small></div>
+        <div><strong>{session.title}</strong><small title={session.cwd}>{session.cwd}</small><small>{dateTime(session.updatedAt)}</small></div>
         <button className="btn" type="button" disabled={!connected || Boolean(busy)} aria-label={`Open ${session.title}`} onClick={() => void open(session)}>
           {busy === session.id ? <PixelLoader size={14} /> : null}{session.importedThreadId ? "Open" : "Import"}
         </button>

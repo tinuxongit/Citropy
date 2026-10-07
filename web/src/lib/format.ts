@@ -1,4 +1,5 @@
 import { LOCALE } from "./locale.ts";
+import { useApp } from "./app-state.ts";
 import type {
   ModelOption,
   ProviderId,
@@ -83,6 +84,10 @@ export function threadActivity(thread: Pick<ThreadMeta, "running" | "status" | "
   return { status, label };
 }
 
+const ACTIVE_STATUSES: ThreadStatus[] = ["queued", "thinking", "working", "awaiting"];
+
+export const threadIsActive = (thread: Pick<ThreadMeta, "running" | "status" | "usageLimit">) => ACTIVE_STATUSES.includes(threadActivity(thread).status);
+
 export function effortLabel(effort: string): string {
   return effort === "xhigh"
     ? "Extra high"
@@ -102,9 +107,10 @@ const formatters = new Map<string, Intl.NumberFormat>();
 const dateFormatters = new Map<string, Intl.DateTimeFormat>();
 
 export function formatDate(date: number | string, options: Intl.DateTimeFormatOptions): string {
-  const key = `${LOCALE}:${JSON.stringify(options)}`;
+  const hourCycle = useApp.getState().clock24 ? "h23" : "h12";
+  const key = `${LOCALE}:${hourCycle}:${JSON.stringify(options)}`;
   let formatter = dateFormatters.get(key);
-  if (!formatter) dateFormatters.set(key, formatter = new Intl.DateTimeFormat(LOCALE, options));
+  if (!formatter) dateFormatters.set(key, formatter = new Intl.DateTimeFormat(LOCALE, { ...options, hourCycle }));
   return formatter.format(new Date(date));
 }
 
@@ -161,6 +167,10 @@ export function until(ts: number, now = Date.now()): string {
     ? `${Math.floor(hours / 24)}d ${hours % 24}h`
     : `${hours / 24}d`;
   return formatDate(ts, { month: "short", day: "numeric" });
+}
+
+export function dateTime(ts: number | string): string {
+  return formatDate(ts, { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function clock(ts: number): string {

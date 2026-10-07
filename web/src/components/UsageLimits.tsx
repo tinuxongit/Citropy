@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import type { ProviderUsage, UsageWindow } from "../../../shared/features.ts";
-import { providerLabels, until } from "../lib/format.ts";
-import { LOCALE } from "../lib/locale.ts";
+import { formatDate, providerLabels, until } from "../lib/format.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 
 const DAY_MS = 86_400_000;
@@ -21,7 +20,7 @@ function windowLabel(entry: ProviderUsage, window: UsageWindow): string {
 
 function resetMoment(resetsAt: number): string {
   const soon = resetsAt - Date.now() < DAY_MS;
-  return new Date(resetsAt).toLocaleString(LOCALE, soon
+  return formatDate(resetsAt, soon
     ? { hour: "2-digit", minute: "2-digit" }
     : { weekday: "short", hour: "2-digit", minute: "2-digit" });
 }

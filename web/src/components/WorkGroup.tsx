@@ -53,7 +53,7 @@ function GroupTree({ ids, tools, live, auto }: { ids: string[]; tools: ToolPart[
   );
 }
 
-export const WorkGroup = memo(function WorkGroup({ ids, live }: { ids: string[]; live: boolean }) {
+export const WorkGroup = memo(function WorkGroup({ ids, live, latestStep }: { ids: string[]; live: boolean; latestStep?: boolean }) {
   const tools = useApp(useShallow(state => ids.map(id => state.parts.get(id)).filter((part): part is ToolPart => part?.kind === "tool")));
   const showFailedTools = useApp(state => state.showFailedTools);
   const stats = groupStats(tools);
@@ -61,7 +61,7 @@ export const WorkGroup = memo(function WorkGroup({ ids, live }: { ids: string[];
   const [, setOpen] = useDisclosure(ids[0], "group", false);
   const [held, setHeld] = useState(false);
   if (live && stats.running && !held) setHeld(true);
-  const open = chosen ?? (live && held);
+  const open = chosen ?? (live && held && !latestStep);
   return (
     <div className="group-body" data-open={open || undefined}>
       <button className="group-summary" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>

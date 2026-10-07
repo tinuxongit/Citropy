@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, type ComponentType } from "react";
 import { CircleCheck, Clock, Monitor, Pin, Server } from "lucide-react";
 import type { Project, ThreadMeta } from "../../../../shared/protocol.ts";
 import type { CachedThread } from "../../lib/environment.ts";
+import { threadIsActive } from "../../lib/format.ts";
 import { setSidebarGroupOpen, useApp } from "../../lib/store.ts";
 import { Folder } from "../icons.ts";
 import type { WorkspaceScope } from "../WorkspaceSelector.tsx";
@@ -44,7 +45,10 @@ type Sortable = Pick<ThreadMeta, "position" | "updatedAt">;
 const sortThreads = (a: Sortable, b: Sortable) =>
   (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || b.updatedAt - a.updatedAt;
 
-export const threadKey = (environment: string, id: string) => `thread:${environment}:${id}`;
+export const shownThreads = (group: ThreadGroup, searching: boolean) =>
+  group.open || searching ? group.threads : group.threads.filter((item) => !item.cached && threadIsActive(item.thread));
+
+export const threadKey =(environment: string, id: string) => `thread:${environment}:${id}`;
 const sortItems = (a: SidebarThread, b: SidebarThread) => sortThreads(a.thread, b.thread);
 
 function categoryOf({ pinned, finished, archived, snoozedUntil }: Pick<ThreadMeta, "pinned" | "finished" | "archived" | "snoozedUntil">): Category | undefined {
@@ -177,7 +181,7 @@ export function useThreadGroups({ threads, query, environments, sections, active
 
   const rows = useMemo(() => groups.flatMap((group): ThreadListRow[] => [
     { key: group.id, group, empty: false },
-    ...(group.open || searching ? group.threads.map((item) => ({ key: threadKey(item.environment, item.thread.id), group, item, empty: false })) : []),
+    ...shownThreads(group, searching).map((item) => ({ key: threadKey(item.environment, item.thread.id), group, item, empty: false })),
     ...(group.project && group.open && !searching && !group.threads.length ? [{ key: `${group.id}:empty`, group, empty: true }] : []),
   ]), [groups, searching]);
 

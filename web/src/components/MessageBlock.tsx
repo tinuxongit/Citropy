@@ -3,6 +3,7 @@ import { memo, useState } from "react";
 import { PartView } from "./PartView.tsx";
 import { WorkGroup } from "./WorkGroup.tsx";
 import { WorkDetails } from "./WorkDetails.tsx";
+import { Working } from "./Working.tsx";
 import { MessageActions } from "./MessageActions.tsx";
 import { UserBubble } from "./UserBubble.tsx";
 import type { TimelineRow } from "../lib/timeline.ts";
@@ -20,7 +21,8 @@ export const MessageBlock = memo(function MessageBlock({
   row,
   first,
   last,
-  separator,
+  replyIds,
+  latestStep,
   transitionActivity,
 }: Props) {
   const shell = useApp((state) => messageId ? state.messages[messageId] : undefined);
@@ -31,7 +33,7 @@ export const MessageBlock = memo(function MessageBlock({
     const thread = state.threads[threadId ?? ""];
     return shell ? shell.ts : thread?.runStartedAt ?? thread?.updatedAt ?? 0;
   });
-  const [fresh] = useState(() => first && Date.now() - timestamp < 2000);
+  const [fresh] = useState(() => first ? Date.now() - timestamp < 2000 : streaming);
 
   if (!shell && (messageId !== undefined || !threadId)) return null;
 
@@ -56,7 +58,7 @@ export const MessageBlock = memo(function MessageBlock({
     );
   }
 
-  const activity = Boolean(row && row.kind !== "part") || Boolean(partKind && partKind !== "text" && partKind !== "reasoning");
+  const activity = Boolean(row && row.kind !== "part") || Boolean(partKind && partKind !== "text");
 
   return (
     <article
@@ -68,13 +70,14 @@ export const MessageBlock = memo(function MessageBlock({
       data-activity={activity || undefined}
     >
       <div className="message-content">
-        {separator && <hr className="work-separator" />}
         {row && (
           <div className={activity ? "agent-activity" : "message-bubble agent-card"}>
-            {row.kind === "activity" ? (
-              <WorkDetails id={row.id} ids={row.ids} messageIds={row.messageIds} open={row.open} active={row.active} previewId={row.previewId} transitionActivity={transitionActivity} />
+            {row.kind === "fold" ? (
+              <WorkDetails id={row.id} ids={row.ids} messageIds={row.messageIds} open={row.open} active={row.active} since={row.since} transitionActivity={transitionActivity} />
+            ) : row.kind === "live" ? (
+              <Working messageIds={row.messageIds} />
             ) : row.kind === "group" ? (
-              <WorkGroup key={row.ids[0]} ids={row.ids} live={streaming} />
+              <WorkGroup key={row.ids[0]} ids={row.ids} live={streaming} latestStep={latestStep} />
             ) : (
               <PartView key={row.id} partId={row.id} live={streaming} />
             )}
@@ -83,7 +86,7 @@ export const MessageBlock = memo(function MessageBlock({
         {last && messageId && !streaming && (
           <div className="turn-meta">
             <time>{clock(timestamp)}</time>
-            {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} replyIds={row?.kind === "activity" ? row.messageIds : undefined} user={false} />}
+            {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} replyIds={replyIds} user={false} />}
           </div>
         )}
       </div>

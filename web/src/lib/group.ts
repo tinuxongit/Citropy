@@ -10,8 +10,8 @@ export function buildRows(parts: Array<Part | undefined>): Row[] {
   let batch: string[] = [];
 
   const flush = () => {
-    if (batch.length === 0) return;
-    rows.push({ kind: "group", ids: batch });
+    if (batch.length === 1) rows.push({ kind: "part", id: batch[0]! });
+    if (batch.length > 1) rows.push({ kind: "group", ids: batch });
     batch = [];
   };
 

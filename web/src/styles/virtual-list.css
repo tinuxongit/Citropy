@@ -28,5 +28,5 @@
 
 .notification-list:has(> :nth-child(41)) > .notification-row {
   content-visibility: auto;
-  contain-intrinsic-block-size: auto 96px;
+  contain-intrinsic-block-size: auto 57px;
 }

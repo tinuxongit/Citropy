@@ -93,7 +93,6 @@ export function AgentsPanel() {
           role="dialog"
           aria-label="Running agents"
         >
-          <div className="app-update-heading"><Bot size={16} /><strong>Running agents</strong></div>
           {agents.length === 0 ? (
             <p>No agents are running. An agent starts when you send a message and stays ready for an hour after it goes quiet.</p>
           ) : (

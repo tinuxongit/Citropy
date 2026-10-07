@@ -1,9 +1,9 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { ExternalLink, Square, Terminal } from "lucide-react";
 import type { NotificationTarget, ShellProcess } from "../../../shared/protocol.ts";
 import { useApp } from "../lib/store.ts";
-import { isActiveShell, shellStatus, stopShell } from "../lib/shells.ts";
+import { shellStatus, stopShell, useListedShells } from "../lib/shells.ts";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { ComposerPopover } from "./composer/ComposerPopover.tsx";
 import { ComposerTab } from "./composer/ComposerTab.tsx";
@@ -12,7 +12,7 @@ import { ActionError } from "./ActionError.tsx";
 type ShellEntry = ShellProcess;
 
 export function RunningShells({ onOpen }: { onOpen: (target: NotificationTarget) => void }) {
-  const count = useApp(state => Object.values(state.shells).filter(isActiveShell).length);
+  const count = useListedShells().length;
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const id = useId();
@@ -35,13 +35,12 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
   onClose: () => void;
   onOpen: (target: NotificationTarget) => void;
 }) {
-  const shells = useApp(state => state.shells);
+  const running = useListedShells();
   const threads = useApp(state => state.threads);
   const projects = useApp(state => state.projects);
   const connected = useApp(state => state.connected);
   const [pending, setPending] = useState<string>();
   const [error, setError] = useState<{ id: string; message: string }>();
-  const running = useMemo(() => Object.values(shells).filter(isActiveShell).sort((a, b) => b.startedAt - a.startedAt), [shells]);
   const [selectedId, setSelectedId] = useState<string | undefined>(() => running[0]?.id);
   const selected = running.find(shell => shell.id === selectedId) || running[0];
   const owner = (shell: ShellEntry) => shell.threadId && threads[shell.threadId]?.title || projects.find(project => project.id === shell.projectId)?.name || "Workspace";

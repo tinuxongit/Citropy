@@ -3,21 +3,30 @@
   --details-panel-inset: var(--space-12);
   --details-clearance: 32px;
   --details-min-chat: 640px;
+  --details-slide: var(--dur-panel);
 }
-@property --details-lane-fits {
+@property --details-push {
   syntax: "<number>";
-  inherits: true;
-  initial-value: 1;
+  inherits: false;
+  initial-value: 0;
 }
 .stage:has(> .thread-details-panel) :is(.canvas, .composer, .conversation-jump),
 .thread-details-panel {
-  --details-lane-right: calc(100cqw - var(--details-panel-inset) - var(--details-panel-width) - var(--details-clearance));
-  --details-lane-fits: max(0, sign(var(--details-lane-right) - var(--chat-gutter) - var(--details-min-chat)));
+  --details-card-room: calc(var(--details-panel-inset) + var(--details-panel-width) + var(--details-clearance));
+  --details-lane-right: calc(100cqw - var(--details-card-room));
+  --details-lane-fits: max(0, sign(var(--settled-stage-width) - var(--details-card-room) - var(--chat-gutter) - var(--details-min-chat)));
+  --details-shown: 0;
+  --details-push: calc(var(--details-lane-fits) * var(--details-shown));
+  transition: --details-push var(--details-slide) var(--ease-drawer);
+}
+.stage:has(> .thread-details-panel[data-open="true"]) :is(.canvas, .composer, .conversation-jump),
+.thread-details-panel[data-open="true"] {
+  --details-shown: 1;
 }
 .stage:has(> .thread-details-panel) :is(.canvas, .composer, .conversation-jump) {
   --details-lane: min(var(--reading), 100cqw - 2 * var(--chat-gutter), var(--details-lane-right) - var(--chat-gutter));
   --details-lane-left: max(var(--chat-gutter), min((100cqw - var(--details-lane)) / 2, var(--details-lane-right) - var(--details-lane)));
-  padding-right: calc(var(--chat-gutter) + (100cqw - 2 * var(--details-lane-left) - var(--details-lane)) * var(--details-lane-fits));
+  padding-right: calc(var(--chat-gutter) + (100cqw - 2 * var(--details-lane-left) - var(--details-lane)) * var(--details-push));
 }
 
 .thread-details-panel {
@@ -32,8 +41,14 @@
   max-height: calc(100% - 2 * var(--details-panel-inset));
   overflow-y: auto;
   border-radius: var(--details-card-radius);
+  translate: 0 calc((1 - var(--details-push)) * (-100% - var(--details-panel-inset)));
 }
-@container style(--details-lane-fits: 0) {
+@starting-style {
+  .thread-details-panel[data-open] {
+    --details-push: 0;
+  }
+}
+@container style(--details-push: 0) {
   .details-card { display: none; }
 }
 .thread-details-toggle[data-error] { color: var(--bad); }

@@ -275,7 +275,6 @@ export function App() {
   return (
     <div
       className="shell"
-      data-sidebar={navigationOpen}
       data-inspector={inspectorOpen && panelsShown}
       data-composer={view === "chat" && hasProject && hasActiveThread}
       data-section={view !== "chat" && !backgroundEverywhere || undefined}

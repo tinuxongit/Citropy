@@ -59,7 +59,8 @@ test("partial patch byte accounting matches a complete replacement without chang
 
 test("timeline caching follows grouping, visibility, and activity changes", () => {
   const tool = { id: "tool", kind: "tool", name: "Read", callId: "call", shape: "read", headline: "app.ts", status: "running" };
-  let state = applyEvents(initial(), [history("chat", [message("reply", [tool, text("live", "", false)])])]);
+  const other = { ...tool, id: "other", callId: "other-call", headline: "main.ts" };
+  let state = applyEvents(initial(), [history("chat", [message("reply", [tool, other, text("live", "", false)])])]);
   const select = createTimelineSelector("chat");
   let previousRows = select(state);
   const verify = event => {
@@ -75,7 +76,8 @@ test("timeline caching follows grouping, visibility, and activity changes", () =
   state = { ...state, disclosures: { tool: { activity: true } } };
   const openRows = select(state);
   assert.deepEqual(openRows, timelineRows(state, "chat"));
-  assert.ok(openRows.some(entry => entry.row?.kind === "group"));
+  assert.deepEqual(openRows.map(entry => entry.row.kind), ["fold", "group", "part", "live"]);
+  assert.ok(openRows.every(entry => !entry.latestStep));
   previousRows = verify(patch("tool", { images: ["data:image/png;base64,a"] }));
   assert.notDeepEqual(previousRows, openRows);
   verify(patch("live", { complete: true }));
@@ -97,35 +99,45 @@ test("timeline fallback observes changed parts without version metadata", () => 
   assert.strictEqual(select(continued), select(next));
 });
 
-test("work details stay below streamed answers and expanded activity", () => {
+test("work folds above the latest step while running and above the final answer once settled", () => {
   const tool = { id: "tool", kind: "tool", name: "Read", callId: "call", shape: "read", headline: "app.ts", status: "ok" };
   let state = applyEvents(initial(), [history("chat", [message("reply", [tool, text("answer", "Answer", false)])])]);
   const select = createTimelineSelector("chat");
-  const closed = select(state);
-  assert.deepEqual(closed.map(entry => entry.row.kind), ["part", "activity"]);
-  assert.equal(closed[0].row.id, "answer");
-  assert.equal(closed.at(-1).row.active, true);
-  assert.equal(closed.at(-1).separator, true);
+  const live = select(state);
+  assert.deepEqual(live.map(entry => entry.row.kind), ["fold", "part", "live"]);
+  assert.equal(live[0].row.active, true);
+  assert.equal(live[1].row.id, "answer");
+  assert.deepEqual(live.map(entry => entry.latestStep), [undefined, true, undefined]);
   state = applyEvents(state, [append("answer", " continues")]);
-  assert.strictEqual(select(state), closed);
+  assert.strictEqual(select(state), live);
+  state = applyEvents(state, [patch("answer", { complete: true }), { t: "thread.upsert", thread: { ...state.threads.chat, running: false, status: "idle" } }]);
+  const folded = select(state);
+  assert.deepEqual(folded.map(entry => entry.row.kind), ["fold", "part"]);
+  assert.equal(folded[0].first, true);
+  assert.equal(folded[1].row.id, "answer");
+  assert.equal(folded[1].latestStep, undefined);
+  assert.deepEqual(folded[1].replyIds, ["reply"]);
   state = { ...state, disclosures: { tool: { activity: true } } };
   const expanded = select(state);
-  assert.deepEqual(expanded.map(entry => entry.row.kind), ["part", "group", "activity"]);
-  assert.equal(expanded[0].first, true);
+  assert.deepEqual(expanded.map(entry => entry.row.kind === "part" ? entry.row.id : entry.row.kind), ["fold", "tool", "answer"]);
   assert.equal(expanded.at(-1).last, true);
-  state = applyEvents(state, [patch("answer", { complete: true }), { t: "thread.upsert", thread: { ...state.threads.chat, running: false, status: "idle" } }]);
-  assert.equal(select(state).at(-1).row.active, false);
-  assert.deepEqual(select(state).map(entry => entry.row.kind), ["part", "group", "activity"]);
 });
 
-test("work details remain inside their own reply after later turns", () => {
+test("one fold covers every assistant message in a turn", () => {
   const tool = { id: "tool", kind: "tool", name: "Read", callId: "call", shape: "read", headline: "app.ts", status: "ok" };
-  const state = applyEvents(initial(), [history("chat", [message("first", [tool, text("answer", "First answer")]), { id: "follow-up", role: "user", ts: 2, parts: [text("request", "Next question")] }, { ...message("second", [text("next-answer", "Next answer", false)]), ts: 3 }])]);
+  const state = applyEvents(initial(), [history("chat", [
+    { id: "ask", role: "user", ts: 1, parts: [text("ask-text", "Question")] },
+    { ...message("first", [text("note", "Checking"), tool]), ts: 2 },
+    { ...message("second", [text("answer", "First answer")]), ts: 5 },
+    { id: "follow-up", role: "user", ts: 6, parts: [text("request", "Next question")] },
+    { ...message("third", [text("next-answer", "Next answer", false)]), ts: 7 },
+  ])]);
   const rows = timelineRows(state, "chat");
-  assert.deepEqual(rows.map(entry => entry.row?.kind ?? "user"), ["part", "activity", "user", "part", "activity"]);
-  assert.equal(rows[1].messageId, "first");
-  assert.equal(rows[1].row.active, false);
-  assert.equal(rows.at(-1).row.active, true);
+  assert.deepEqual(rows.map(entry => entry.row?.kind ?? "user"), ["user", "fold", "part", "user", "part", "live"]);
+  assert.deepEqual(rows[1].row.messageIds, ["first", "second"]);
+  assert.deepEqual(rows[1].row.ids, ["note", "tool"]);
+  assert.equal(rows[1].row.since, 1);
+  assert.equal(rows[2].messageId, "second");
 });
 
 test("replacing and removing history releases only its parts and disclosure state", () => {

@@ -124,6 +124,8 @@ export function BrowserPane({
     reposition.current = schedule;
     const resize = new ResizeObserver(schedule);
     resize.observe(element);
+    const onscreen = new IntersectionObserver(schedule, { threshold: [0, 1] });
+    onscreen.observe(element);
     const observer = new MutationObserver((records) => {
       if (
         records.some(
@@ -147,6 +149,7 @@ export function BrowserPane({
     window.addEventListener("resize", schedule);
     return () => {
       resize.disconnect();
+      onscreen.disconnect();
       observer.disconnect();
       window.removeEventListener("resize", schedule);
       cancelAnimationFrame(frame);

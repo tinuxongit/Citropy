@@ -6,12 +6,10 @@ import { saveDocument, type TextDocument } from "./documents.ts";
 import { EditorContextMenu } from "./EditorContextMenu.tsx";
 
 function hexColor(value: string): string {
-  const context = document.createElement("canvas").getContext("2d")!;
+  const context = new OffscreenCanvas(1, 1).getContext("2d")!;
   context.fillStyle = value;
-  const color = context.fillStyle;
-  if (color.startsWith("#")) return color;
-  const [r, g, b, a = 1] = color.match(/[\d.]+/g)!.map(Number);
-  return `#${[r!, g!, b!, Math.round(a * 255)].map((part) => part.toString(16).padStart(2, "0")).join("")}`;
+  context.fillRect(0, 0, 1, 1);
+  return `#${[...context.getImageData(0, 0, 1, 1).data].map((part) => part.toString(16).padStart(2, "0")).join("")}`;
 }
 
 const SURFACES = new Set(["--panel", "--overlay", "--surface", "--raised", "--raised-2"]);

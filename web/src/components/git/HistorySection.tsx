@@ -9,8 +9,7 @@ import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview } from "../GitReview.tsx";
 import type { GitSelection } from "./selection.ts";
 import { EmptyState } from "./GitEmptyState.tsx";
-import { LOCALE } from "../../lib/locale.ts";
-import { formatDate } from "../../lib/format.ts";
+import { dateTime, formatDate } from "../../lib/format.ts";
 import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
 import type { ReactNode } from "react";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
@@ -162,7 +161,7 @@ export function HistorySection({
                   <h2>{selectedCommit.subject}</h2>
                   <p>
                     {selectedCommit.author} ·{" "}
-                    {new Date(selectedCommit.date).toLocaleString(LOCALE)}{" "}
+                    {dateTime(selectedCommit.date)}{" "}
                     · <code>{selectedCommit.hash.slice(0, 8)}</code>
                   </p>
                   {selectedCommit.refs && (

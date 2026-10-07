@@ -520,7 +520,6 @@
   padding: var(--space-12) 0;
 }
 .tool-definition summary {
-  cursor: default;
   font-size: var(--text-sm);
   text-transform: capitalize;
 }

@@ -1,6 +1,7 @@
 .thread-tabs {
   --tab-width: 200px;
-  --tab-min-width: 120px;
+  --tab-min-width: 36px;
+  --tab-active-min-width: 64px;
   --tab-close-size: 20px;
   display: flex;
   flex: 0 1 auto;
@@ -33,6 +34,7 @@
   width: var(--tab-width);
   min-width: var(--tab-min-width);
   height: var(--tab-height);
+  container: thread-tab / inline-size;
   border-radius: var(--r-md);
   color: var(--text-3);
   font-size: var(--text-sm);
@@ -61,6 +63,7 @@
 }
 
 .thread-tab[data-active] {
+  min-width: var(--tab-active-min-width);
   background: var(--raised);
   color: var(--text);
 }
@@ -104,6 +107,18 @@
 .thread-tab-close:hover {
   background: var(--raised-2);
   color: var(--text);
+}
+
+@container thread-tab (width < 80px) {
+  .thread-tab-open {
+    justify-content: center;
+    padding-left: 0;
+  }
+
+  .thread-tab-open .truncate,
+  .thread-tab:not([data-active]) .thread-tab-close {
+    display: none;
+  }
 }
 
 .thread-tabs-new {

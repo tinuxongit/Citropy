@@ -28,7 +28,6 @@
   color: var(--text);
   font-size: var(--text-sm);
   text-align: left;
-  cursor: default;
 }
 .remote-folder-row:hover:not(:disabled) { background: var(--hover); outline: none; }
 .remote-folder-row:focus-visible { background: var(--highlight); outline: none; }

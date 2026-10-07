@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const USER_SCROLL_MS = 400;
 const SETTLE_MS = 150;
+const AT_END_PX = 40;
+
+const contentEnd = (inner: HTMLElement) => inner.offsetTop + inner.offsetHeight;
 
 export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>() {
   const viewport = useRef<T>(null);
@@ -13,6 +16,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
   const lastClientHeight = useRef(0);
   const pointerHeld = useRef(false);
   const lastInput = useRef(0);
+  const shownEnd = useRef(0);
   const [atBottom, setAtBottom] = useState(true);
   const [nearBottom, setNearBottom] = useState(true);
   const stopFollowing = useCallback(() => {
@@ -28,6 +32,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     readingExpanded.current = false;
     setAtBottom(true);
     node.scrollTo({ top: node.scrollHeight, behavior });
+    if (content.current) shownEnd.current = contentEnd(content.current);
     lastTop.current = node.scrollTop;
     lastHeight.current = node.scrollHeight;
     lastClientHeight.current = node.clientHeight;
@@ -64,7 +69,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
       lastTop.current = node.scrollTop;
       lastHeight.current = node.scrollHeight;
       lastClientHeight.current = node.clientHeight;
-      setAtBottom(stuck.current || near);
+      setAtBottom(stuck.current || distance < AT_END_PX);
       setNearBottom(distance < 96);
       window.clearTimeout(settle);
       settle = window.setTimeout(fitHeld, SETTLE_MS);
@@ -109,17 +114,30 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
       inner.style.removeProperty("min-height");
       if (inner.offsetHeight < held) inner.style.minHeight = `${held}px`;
     };
+    const glide = (distance: number) => {
+      if (!distance || Math.abs(distance) >= node.clientHeight || scrolling() || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const style = getComputedStyle(inner);
+      const remaining = new DOMMatrix(style.transform).m42;
+      inner.getAnimations().forEach(animation => animation.cancel());
+      inner.animate(
+        [{ transform: `translateY(${remaining + distance}px)` }, { transform: "none" }],
+        { duration: parseFloat(style.getPropertyValue("--dur-panel")), easing: style.getPropertyValue("--ease-drawer") },
+      );
+    };
     const observer = new ResizeObserver(() => {
       if (stuck.current) {
         releaseFilled();
-        node.scrollTop = node.scrollHeight;
+        const end = contentEnd(inner);
+        node.scrollTop = end - node.clientHeight;
+        glide(Math.max(0, end - node.clientHeight) - Math.max(0, shownEnd.current - node.clientHeight));
       }
+      shownEnd.current = contentEnd(inner);
       lastTop.current = node.scrollTop;
       lastHeight.current = node.scrollHeight;
       lastClientHeight.current = node.clientHeight;
       const distance = node.scrollHeight - node.scrollTop - node.clientHeight;
       if (!readingExpanded.current && distance < 2 && !scrolling()) stuck.current = true;
-      setAtBottom(stuck.current || distance < 2);
+      setAtBottom(stuck.current || distance < AT_END_PX);
       setNearBottom(distance < 96);
     });
 
@@ -134,6 +152,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     window.addEventListener("touchcancel", onPointerUp);
     node.addEventListener("keydown", onKeyDown);
     if (stuck.current) node.scrollTop = node.scrollHeight;
+    shownEnd.current = contentEnd(inner);
     lastTop.current = node.scrollTop;
     lastHeight.current = node.scrollHeight;
     lastClientHeight.current = node.clientHeight;

@@ -4,10 +4,9 @@ import type { ThreadMeta } from "../../../../shared/protocol.ts";
 import { finishThread, loadThread, openOnEnvironment, removeThread } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { opensContextMenu } from "../../lib/context-menu-key.ts";
-import { threadActivity } from "../../lib/format.ts";
+import { dateTime, threadActivity } from "../../lib/format.ts";
 import { environmentId, useEnvironments } from "../../lib/environment.ts";
 import { environmentSlice } from "../../lib/live-environments.ts";
-import { LOCALE } from "../../lib/locale.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
 import { useTouchInput } from "../../lib/use-touch-input.ts";
 import { ConversationMenu } from "../ConversationMenu.tsx";
@@ -118,7 +117,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
           className="thread-row"
           data-active={active}
           aria-label={thread.title}
-          aria-description={new Date(thread.updatedAt).toLocaleString(LOCALE)}
+          aria-description={dateTime(thread.updatedAt)}
           aria-describedby={describedBy}
           aria-current={active ? "page" : undefined}
           onPointerEnter={(event) => {

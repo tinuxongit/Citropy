@@ -9,8 +9,6 @@ import { Folder, FolderOpen, MessageSquarePlus, Pencil, Trash2 } from "../icons.
 import { GitFork } from "lucide-react";
 import { Menu } from "../Menu.tsx";
 import { PixelLoader } from "../PixelLoader.tsx";
-import { ThreadPulse } from "../ThreadPulse.tsx";
-import { threadActivity } from "../../lib/format.ts";
 import { RenameProjectModal } from "./RenameProjectModal.tsx";
 import type { Project } from "../../../../shared/protocol.ts";
 import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
@@ -40,8 +38,6 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
   const [pending, setPending] = useState(false);
   const connecting = environments.connections.some(entry => entry.id === environment && entry.status === "connecting");
   const expanded = group.open || searching;
-  const activities = expanded ? [] : group.threads.flatMap((item) => item.cached ? [] : [threadActivity(item.thread)]).filter(({ status }) => ["queued", "thinking", "working", "awaiting"].includes(status));
-  const activity = activities.find(({ status }) => status === "awaiting") ?? activities[0];
   useEffect(() => { if (!current) setRenaming(false); }, [current]);
 
   const run = async (action: () => void) => {
@@ -97,9 +93,6 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
       >
         {pending || connecting ? <PixelLoader size={16} /> : <Icon size={16} strokeWidth={1.75} />}
         <span className="truncate">{group.label}</span>
-        {activity && <span className="thread-status" data-status={activity.status} role="img" aria-label={activity.label} title={activity.label}>
-          <ThreadPulse status={activity.status} />
-        </span>}
         {group.offline && <span className="global-project-offline" title="Disconnected"><DisconnectedIcon size={14} /></span>}
       </button>
       <Menu align="end" span=".global-project-heading" items={[

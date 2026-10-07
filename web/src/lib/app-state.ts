@@ -100,6 +100,7 @@ export interface AppState {
   resumeAfterLimits: boolean;
   githubAccount: GitHubUser | null;
   showGitHubIdentity: boolean;
+  clock24: boolean;
   showFailedTools: boolean;
   offline: Record<string, QueuedMessage[]>;
   choosingWorkspace: boolean;
@@ -260,6 +261,7 @@ export const useApp = create<AppState>(() => ({
   githubAccount: null,
   showFailedTools: readFlag("citropy.showFailedTools", true),
   showGitHubIdentity: readFlag("citropy.showGitHubIdentity", true),
+  clock24: readFlag("citropy.clock24", false),
   offline: readOffline(),
   choosingWorkspace: false,
   home: "",

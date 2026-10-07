@@ -81,7 +81,8 @@ function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): Mode
   for (const model of data) {
     const resolved = model.resolvedModel ?? model.value;
     if (resolved === "default") continue;
-    const id = resolved.replace(/\[1m\]$/i, "");
+    const base = resolved.replace(/\[1m\]$/i, "");
+    const id = [...models.values()].find((entry) => entry.aliases?.includes(base))?.id ?? base;
     const previous = models.get(id);
     const named =
       /^claude-(opus|fable|sonnet|haiku)-(\d+)(?:-(\d{1,2}))?(?:-|$)/.exec(id);
@@ -99,7 +100,7 @@ function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): Mode
     models.set(id, {
       id,
       label,
-      hint: model.description,
+      hint: previous?.hint ?? model.description,
       resolvedModel: id,
       aliases: [
         ...new Set([...(previous?.aliases ?? []), model.value, resolved]),
@@ -121,7 +122,8 @@ function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): Mode
         : previous?.fastModeHint,
     });
   }
-  return [...models.values()];
+  const listed = data.filter((model) => model.value !== "default").map((model) => [...models.values()].find((entry) => entry.aliases?.includes(model.value))?.id);
+  return [...models.values()].sort((a, b) => listed.indexOf(a.id) - listed.indexOf(b.id));
 }
 
 export async function discoverModels(provider: "codex" | "claude", launch?: ProviderLaunch): Promise<ModelOption[]> {

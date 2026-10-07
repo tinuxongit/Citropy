@@ -8,6 +8,12 @@ const ABOVE_CLEARANCE = 72;
 
 type Spot = { x: number; y: number; above: boolean; text: string };
 
+function selectionInside(node: HTMLElement): Selection | undefined {
+  const selection = document.getSelection();
+  if (!selection || selection.isCollapsed || !selection.toString().trim()) return undefined;
+  return node.contains(selection.getRangeAt(0).commonAncestorContainer) ? selection : undefined;
+}
+
 function quoted(text: string): string {
   const lines = text.trim().split("\n").map((line) => line.trim() ? `> ${line}` : ">");
   return `${lines.join("\n")}\n\n`;
@@ -25,9 +31,8 @@ export function SelectionQuote({ viewport, threadId }: { viewport: RefObject<HTM
       if (event.pointerType === "touch") return;
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        const selection = document.getSelection();
-        const text = selection?.toString() ?? "";
-        if (!selection || selection.isCollapsed || !text.trim() || !node.contains(selection.getRangeAt(0).commonAncestorContainer)) return hide();
+        const selection = selectionInside(node);
+        if (!selection) return hide();
         const bounds = node.getBoundingClientRect();
         const top = selection.getRangeAt(0).getBoundingClientRect().top - bounds.top;
         const above = top > ABOVE_CLEARANCE;
@@ -35,12 +40,12 @@ export function SelectionQuote({ viewport, threadId }: { viewport: RefObject<HTM
           x: Math.min(Math.max(event.clientX - bounds.left, EDGE_MARGIN), bounds.width - EDGE_MARGIN),
           y: above ? top - GAP : event.clientY - bounds.top + GAP,
           above,
-          text,
+          text: selection.toString(),
         });
       });
     };
     const onSelectionChange = () => {
-      if (document.getSelection()?.isCollapsed) hide();
+      if (!selectionInside(node)) hide();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") hide();

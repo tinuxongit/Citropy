@@ -6,11 +6,15 @@ import { normalizeTodos } from "../../../shared/todos.ts";
 export interface TimelineRow {
   key: string;
   messageId?: string;
-  row?: Row | { kind: "activity"; id: string; ids: string[]; messageIds: string[]; open: boolean; active: boolean; previewId?: string };
+  row?: Row | FoldRow | LiveRow;
   first: boolean;
   last: boolean;
-  separator?: boolean;
+  replyIds?: string[];
+  latestStep?: boolean;
 }
+
+export type FoldRow = { kind: "fold"; id: string; ids: string[]; messageIds: string[]; open: boolean; active: boolean; since: number };
+export type LiveRow = { kind: "live"; messageIds: string[] };
 
 export function partFingerprint(part: Part | undefined): string {
   if (!part) return "-";
@@ -90,17 +94,9 @@ function isActionRow(row: Row, parts: AppState["parts"]): boolean {
   return part?.kind === "tool" || part?.kind === "todo" || part?.kind === "question";
 }
 
-function finalAnswerRange(
-  rows: Row[],
-  parts: AppState["parts"],
-  inProgress: boolean,
-): { start: number; end: number } | undefined {
-  const lastContent = rows.findLast(row => row.kind !== "part" || parts.get(row.id)?.kind !== "notice");
-  const endsWithText = lastContent?.kind === "part" && parts.get(lastContent.id)?.kind === "text";
-  if (inProgress && !endsWithText) return;
-
+function finalAnswerRange(rows: Row[], parts: AppState["parts"]): { start: number; end: number } | undefined {
   const end = rows.findLastIndex(row => row.kind === "part" && parts.get(row.id)?.kind === "text");
-  if (end === -1 || rows.slice(end + 1).some(row => isActionRow(row, parts))) return;
+  if (end === -1) return;
 
   let start = end;
   while (start > 0) {
@@ -119,27 +115,14 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
   const busy = Boolean(thread?.compacting || ["thinking", "working", "queued"].includes(thread?.status ?? ""));
   const startedAt = thread?.runStartedAt;
   const lastAssistantId = order.findLast(id => state.messages[id]?.role === "assistant");
-  const replies: string[][] = [];
-  let unfinishedReply = false;
+  const turns: string[][] = [];
   for (const messageId of order) {
-    const message = state.messages[messageId];
-    if (message?.role !== "assistant") {
-      replies.push([messageId]);
-      unfinishedReply = false;
-      continue;
-    }
-    const previous = replies.at(-1);
-    if (previous && unfinishedReply) previous.push(messageId);
-    else replies.push([messageId]);
-    const lastId = message.partIds.findLast(id => {
-      const part = state.parts.get(id);
-      return part && part.kind !== "notice" &&
-        (!(part.kind === "text" || part.kind === "reasoning") || part.text.trim());
-    });
-    const last = lastId === undefined ? undefined : state.parts.get(lastId);
-    if (last) unfinishedReply = last.kind !== "text" || last.complete === false;
+    const assistant = state.messages[messageId]?.role === "assistant";
+    const previous = turns.at(-1);
+    if (assistant && previous && state.messages[previous[0]!]?.role === "assistant") previous.push(messageId);
+    else turns.push([messageId]);
   }
-  const timeline = replies.flatMap<TimelineRow>((messageIds, replyIndex) => {
+  const timeline = turns.flatMap<TimelineRow>((messageIds, turnIndex) => {
     const messageId = messageIds[0]!;
     const message = state.messages[messageId];
     if (!message) return [];
@@ -150,65 +133,62 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     }
     const partIds = [...owners.keys()];
     const rows = buildRows(partIds.map((id) => state.parts.get(id)));
-    const activityKey = `activity-after-${replies[replyIndex - 1]?.at(-1) ?? threadId}`;
+    const before = turns[turnIndex - 1]?.at(-1);
+    const turnKey = before ?? threadId;
     const continuing = running && startedAt !== undefined && messageIds.some(id => state.messages[id]!.ts >= startedAt);
-    const containsLatestReply = messageIds.includes(lastAssistantId ?? "");
-    const latest = order.at(-1) === messageIds.at(-1) || (continuing && containsLatestReply);
+    const latest = order.at(-1) === messageIds.at(-1) || (continuing && messageIds.includes(lastAssistantId ?? ""));
     const active = latest && running && (startedAt === undefined || continuing);
-    if (!rows.length && !(active && busy)) return [];
+    if (!rows.length && !active) return [];
     let visible: NonNullable<TimelineRow["row"]>[] = rows;
-    const hasWork = rows.some(row => isActionRow(row, state.parts) || row.kind === "part" && state.parts.get(row.id)?.kind === "reasoning");
-    if (hasWork) {
-      const inProgress = active || continuing;
-      const plan = inProgress
-        ? rows.findLast(row => row.kind === "part" && state.parts.get(row.id)?.kind === "todo")
-        : undefined;
-      const finalAnswer = finalAnswerRange(rows, state.parts, inProgress);
-      const work = new Set(rows.filter((row, index) => {
+    let latestStep: Row | undefined;
+    if (rows.some(row => isActionRow(row, state.parts) || row.kind === "part" && state.parts.get(row.id)?.kind === "reasoning")) {
+      const finalAnswer = active ? undefined : finalAnswerRange(rows, state.parts);
+      const work = rows.filter((row, index) => {
         if (finalAnswer && index >= finalAnswer.start && index <= finalAnswer.end) return false;
-        if (row === plan) return false;
         const part = row.kind === "part" ? state.parts.get(row.id) : undefined;
         if (part?.kind === "question" && part.status === "pending") return false;
         if (part?.kind === "images" || part?.kind === "changes") return false;
         return part?.kind !== "notice" || part.level === "info";
-      }));
-      const ids = [...work].flatMap(row => row.kind === "part" ? [row.id] : row.ids);
+      });
+      const hidden = active ? work.slice(0, -1) : work;
       const id = partIds[0]!;
       const open = state.disclosures[id]?.activity ?? false;
-      const previewId = finalAnswer ? undefined : ids.findLast(id => state.parts.get(id)?.kind === "text");
-      if (ids.length) {
-        const workRows = open ? rows.filter(row => work.has(row)) : [];
-        visible = [...rows.filter(row => !work.has(row)), ...workRows, { kind: "activity", id, ids, messageIds, open, active, previewId }];
+      if (active && !open) latestStep = work.at(-1);
+      if (hidden.length) {
+        const since = state.messages[before ?? ""]?.ts ?? message.ts;
+        const ids = work.flatMap(row => row.kind === "part" ? [row.id] : row.ids);
+        visible = [{ kind: "fold", id, ids, messageIds, open, active, since }, ...rows.filter(row => open || !hidden.includes(row))];
       }
     }
-    if (active && busy && !visible.some(row => row.kind === "activity")) {
-      visible = [...visible, { kind: "activity", id: activityKey, ids: [], messageIds, open: false, active: true }];
-    }
+    if (active) visible = [...visible, { kind: "live", messageIds }];
     return visible.map((row, index) => ({
-      key: row.kind === "activity" ? activityKey : row.kind === "part" ? row.id : `${row.kind}-${row.ids[0]}`,
-      messageId: row.kind === "activity" ? messageId : owners.get(row.kind === "part" ? row.id : row.ids[0]!)!,
+      key: row.kind === "fold" ? `fold-${turnKey}` : row.kind === "live" ? `live-${turnKey}` : row.kind === "part" ? row.id : `${row.kind}-${row.ids[0]}`,
+      messageId: row.kind === "fold" || row.kind === "live" ? messageId : owners.get(row.kind === "part" ? row.id : row.ids[0]!)!,
       row,
       first: index === 0,
       last: index === visible.length - 1,
-      separator: hasWork && index > 0 && row.kind === "activity" || undefined,
+      replyIds: index === visible.length - 1 ? messageIds : undefined,
+      latestStep: row === latestStep || undefined,
     }));
   });
-  if (busy && !timeline.some(row => row.row?.kind === "activity" && row.row.active)) {
-    const key = `activity-after-${order.at(-1) ?? threadId}`;
-    timeline.push({ key, first: true, last: true, row: { kind: "activity", id: key, ids: [], messageIds: [], open: false, active: true } });
+  if (busy && !timeline.some(row => row.row?.kind === "live")) {
+    timeline.push({ key: `live-${order.at(-1) ?? threadId}`, first: true, last: true, row: { kind: "live", messageIds: [] } });
   }
   return timeline;
 }
 
+function sameIds(ids: string[] | undefined, other: string[] | undefined): boolean {
+  return ids?.length === other?.length && (ids ?? []).every((id, i) => id === other![i]);
+}
+
 function sameTimelineRow(item: TimelineRow, other: TimelineRow): boolean {
   if (item.key !== other.key || item.messageId !== other.messageId ||
-    item.first !== other.first || item.last !== other.last || item.separator !== other.separator || item.row?.kind !== other.row?.kind) return false;
+    item.first !== other.first || item.last !== other.last || item.latestStep !== other.latestStep || !sameIds(item.replyIds, other.replyIds) || item.row?.kind !== other.row?.kind) return false;
   const row = item.row;
   const next = other.row;
-  if (!row || row.kind === "part") return true;
-  if (!next || next.kind === "part") return false;
-  if (row.kind === "activity" && next.kind === "activity" &&
-    (row.id !== next.id || row.open !== next.open || row.active !== next.active || row.previewId !== next.previewId || row.messageIds.length !== next.messageIds.length ||
-      row.messageIds.some((id, i) => id !== next.messageIds[i]))) return false;
-  return row.ids.length === next.ids.length && row.ids.every((id, i) => id === next.ids[i]);
+  if (!row || !next || row.kind === "part") return true;
+  if (row.kind === "live" && next.kind === "live") return sameIds(row.messageIds, next.messageIds);
+  if (row.kind === "fold" && next.kind === "fold" &&
+    (row.id !== next.id || row.open !== next.open || row.active !== next.active || row.since !== next.since || !sameIds(row.messageIds, next.messageIds))) return false;
+  return row.kind !== "live" && next.kind !== "live" && next.kind !== "part" && sameIds(row.ids, next.ids);
 }

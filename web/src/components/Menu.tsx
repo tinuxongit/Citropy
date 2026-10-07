@@ -154,9 +154,7 @@ export function Menu({
         element.dataset.side = "right";
         element.style.maxHeight = `${scaled(viewport - 24)}px`;
         element.style.left = `${scaled(Math.min(bounds.right / scale + 8, viewportWidth() - menuWidth - 12))}px`;
-        const top = Math.max(12, Math.min(bounds.top / scale, viewport - fitted - 12));
-        element.style.top = `${scaled(top)}px`;
-        element.style.setProperty("--menu-arrow-y", `${scaled((bounds.top + bounds.height / 2) / scale - top)}px`);
+        element.style.top = `${scaled(Math.max(12, Math.min(bounds.top / scale, viewport - fitted - 12)))}px`;
         return;
       }
       const top = clearance?.top ?? bounds.top;

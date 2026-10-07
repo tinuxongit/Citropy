@@ -26,7 +26,6 @@ import {
 import { confirmAction, selectThread, useApp } from "../lib/store.ts";
 import { playUiSound } from "../lib/ui-sound.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
-import { usePanelMotion } from "../lib/use-panel-motion.ts";
 import { Select } from "./Select.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { RunningShells } from "./RunningShells.tsx";
@@ -156,8 +155,6 @@ export function Composer({
   const started = thread ? threadStarted(thread, hasMessages, loaded) : hasMessages;
   const starting = !started && !running && !thread?.parentThreadId;
   const composerRef = useRef<HTMLDivElement>(null);
-  const columnRef = useRef<HTMLDivElement>(null);
-  usePanelMotion(columnRef, thread?.id);
   const startTop = useRef<number>(undefined);
   const reducedMotion = useReducedMotion();
   useLayoutEffect(() => {
@@ -278,7 +275,7 @@ export function Composer({
           {instance?.modelsError ?? provider?.modelsError}
         </div>
       )}
-      <div ref={columnRef} className="composer-column">
+      <div className="composer-column">
       <div
         className="composer-shell"
         data-dragging={dragging}

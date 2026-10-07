@@ -85,9 +85,9 @@
   display: grid;
   gap: var(--space-6);
   padding: var(--space-6);
-  border-radius: var(--r-md);
+  border-radius: var(--r-popup);
   background: var(--overlay);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--popup-edge);
   pointer-events: none;
 }
 .screen-color-loupe[hidden] {

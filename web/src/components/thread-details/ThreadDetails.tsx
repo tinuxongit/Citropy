@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { CircleAlert, FolderOpen, GitBranchPlus, SquareMenu, SquarePen } from "lucide-react";
 import { selectThread, toggleInspector, toggleThreadDetails, useApp } from "../../lib/store.ts";
@@ -7,7 +7,7 @@ import { openWorkbenchPanel } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { isRemote } from "../../lib/environment.ts";
 import { gitActionBusy } from "../../../../shared/assistance.ts";
-import type { ThreadMeta } from "../../../../shared/protocol.ts";
+import type { Project, ThreadMeta } from "../../../../shared/protocol.ts";
 import { PixelLoader } from "../PixelLoader.tsx";
 import { ActionError } from "../ActionError.tsx";
 import { TaskReview } from "../TaskReview.tsx";
@@ -17,6 +17,8 @@ import { GitSection } from "./GitSection.tsx";
 import { ShellsSection } from "./ShellsSection.tsx";
 import { useGitActions } from "./use-git-actions.ts";
 import { useVisibleInterval } from "../../lib/use-visible-interval.ts";
+import { usePresent } from "../../lib/use-present.ts";
+import { useLaggedValue } from "../../lib/use-lagged-value.ts";
 
 const SETTINGS = { refreshMs: 5000 };
 
@@ -55,16 +57,22 @@ export function ThreadDetailsButton() {
 
 export function ThreadDetailsPanel() {
   const thread = useRootThread();
-  const open = useDetailsShown();
-  return open && thread ? <ThreadDetails key={thread.id} thread={thread} /> : null;
+  const project = useApp((state) => state.projects.find((project) => project.id === thread?.projectId));
+  const open = useDetailsShown() && Boolean(thread && project);
+  const shown = useLaggedValue(open);
+  const panel = useRef<HTMLElement>(null);
+  const present = usePresent(shown, panel);
+  if (!(open || present) || !thread || !project) return null;
+  return <aside ref={panel} className="thread-details-panel" data-open={shown} inert={!open} aria-label="Conversation details">
+    <ThreadDetails key={thread.id} thread={thread} project={project} />
+  </aside>;
 }
 
-function ThreadDetails({ thread }: { thread: ThreadMeta }) {
-  const project = useApp((state) => state.projects.find((project) => project.id === thread.projectId));
+function ThreadDetails({ thread, project }: { thread: ThreadMeta; project: Project }) {
   const connected = useApp((state) => state.connected);
   const [reviewing, setReviewing] = useState(false);
   const git = useGitActions(thread);
-  const isGit = Boolean(project?.isGit);
+  const isGit = Boolean(project.isGit);
 
   const refresh = useCallback(() => {
     send({ t: "git.refresh", projectId: thread.projectId, threadId: thread.id });
@@ -82,11 +90,10 @@ function ThreadDetails({ thread }: { thread: ThreadMeta }) {
   useEffect(() => { if (watching) refresh(); }, [watching, refresh]);
   useVisibleInterval(refresh, SETTINGS.refreshMs, watching);
 
-  if (!project) return null;
   const folder = thread.workspacePath ?? project.path;
   const openFolder = !isRemote() && window.citropyDesktop?.openFolder;
   const branch = git.status?.branch || thread.workspaceBranch || project.branch || "Branch";
-  return <aside className="thread-details-panel" aria-label="Conversation details">
+  return <>
     <section className="details-card">
       <div className="details-section" aria-label="Workspace">
         <DetailRow icon={<SquarePen size={16} />} label="Open in editor" disabled={!connected} onClick={() => showInChat(() => openWorkbenchPanel("files"))} />
@@ -104,5 +111,5 @@ function ThreadDetails({ thread }: { thread: ThreadMeta }) {
       {!connected && <p className="details-note">Disconnected from Citropy</p>}
     </section>
     <AnimatePresence>{reviewing && <TaskReview thread={thread} onClose={() => setReviewing(false)} />}</AnimatePresence>
-  </aside>;
+  </>;
 }

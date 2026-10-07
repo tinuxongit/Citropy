@@ -12,7 +12,7 @@
 .ssh-form > label:not(:first-child) { margin-top: var(--space-6); }
 .ssh-form input { min-width: 0; width: 100%; padding: var(--space-10) var(--space-12); }
 .ssh-form details { margin-top: var(--space-8); }
-.ssh-form summary { cursor: default; color: var(--text-3); }
+.ssh-form summary { color: var(--text-3); }
 .ssh-options { padding-top: var(--space-16); }
 .ssh-error { color: var(--bad) !important; overflow-wrap: anywhere; white-space: pre-wrap; }
 .ssh-progress { display: flex; align-items: center; gap: var(--space-8); }
@@ -27,7 +27,7 @@
   gap: var(--space-8);
   width: min(560px, calc(100% - 24px));
   padding: var(--space-10) var(--space-12);
-  border-radius: var(--r-md);
+  border-radius: var(--r-popup);
   background: var(--overlay);
 }
 .remote-connection-banner > span { flex: 1; min-width: 0; font-size: var(--text-sm); overflow-wrap: anywhere; }

@@ -8,10 +8,10 @@ import { scaled, useApp } from "../lib/store.ts";
 import { loadOlderThread, loadThread, readThreadNotifications, refreshGit } from "../lib/actions.ts";
 import { reportError } from "../lib/api.ts";
 import { useStickToBottom } from "../lib/use-stick.ts";
-import { usePanelMotion } from "../lib/use-panel-motion.ts";
 import {
   timelineRows,
   createTimelineSelector,
+  type TimelineRow,
 } from "../lib/timeline.ts";
 import { LatestButton } from "./LatestButton.tsx";
 import { SelectionQuote } from "./SelectionQuote.tsx";
@@ -58,7 +58,6 @@ export function Conversation() {
     stopFollowing,
     following,
   } = useStickToBottom<HTMLDivElement, HTMLDivElement>();
-  usePanelMotion(content, threadId);
   const virtualized = rows.length > 40;
   const pinnedActivity = useRef<{ id: string }>(undefined);
   const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);
@@ -90,7 +89,7 @@ export function Conversation() {
     rangeExtractor: (range) => {
       const indexes = defaultRangeExtractor(range);
       if (!pinnedActivity.current) return indexes;
-      const pinned = rows.findIndex(row => row.row?.kind === "activity" && row.row.id === pinnedActivity.current!.id);
+      const pinned = rows.findIndex(row => row.row?.kind === "fold" && row.row.id === pinnedActivity.current!.id);
       if (pinned < 0 || indexes.includes(pinned)) return indexes;
       return defaultRangeExtractor({ ...range, startIndex: Math.min(range.startIndex, pinned), endIndex: Math.max(range.endIndex, pinned) });
     },
@@ -151,7 +150,7 @@ export function Conversation() {
   }, [threadId, olderCursor, rows, placeRow]);
   const transitionActivity = useCallback((id: string, update: () => void) => {
     const canvas = viewport.current!;
-    const summary = () => document.getElementById(`activity-count-${id}`)?.closest("button");
+    const summary = () => document.getElementById(`fold-${id}`);
     const offset = summary()!.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top;
     const pin = { id };
     pinnedActivity.current = pin;
@@ -265,16 +264,17 @@ export function Conversation() {
       return;
     }
     stopFollowing();
-    const activity = rows.find(row => row.row?.kind === "activity" && row.row.messageIds.includes(messageId))?.row;
-    const expanding = activity?.kind === "activity" && !activity.open;
+    const target = ({ row, messageId: owner }: TimelineRow) => partId
+      ? row?.kind === "group" && row.ids.includes(partId) || row?.kind === "part" && row.id === partId
+      : owner === messageId;
+    const activity = rows.find(row => row.row?.kind === "fold" && row.row.messageIds.includes(messageId))?.row;
+    const expanding = activity?.kind === "fold" && !activity.open && !rows.some(row => row.row !== activity && target(row));
     let disclosures = expanding ? {
       ...state.disclosures,
       [activity.id]: { ...state.disclosures[activity.id], activity: true },
     } : state.disclosures;
     const expandedRows = expanding ? timelineRows({ ...state, disclosures }, threadId) : rows;
-    const index = expandedRows.findIndex(({ row, messageId: owner }) => partId
-      ? row?.kind === "group" && row.ids.includes(partId) || row?.kind === "part" && row.id === partId
-      : owner === messageId);
+    const index = expandedRows.findIndex(target);
     const group = expandedRows[index]?.row;
     if (partId && (!disclosures[partId]?.tool || group?.kind === "group" && !disclosures[group.ids[0]!]?.group)) {
       disclosures = { ...disclosures };
@@ -349,13 +349,15 @@ export function Conversation() {
                   className="timeline-row"
                   data-index={item.index}
                   data-message-id={row.messageId}
+                  data-end={item.index === rows.length - 1 || undefined}
                   ref={timeline.measureElement}
                 >
                   <MessageBlock
                     messageId={row.messageId}
                     row={row.row}
                     first={row.first}
-                    separator={row.separator}
+                    replyIds={row.replyIds}
+                    latestStep={row.latestStep}
                     transitionActivity={transitionActivity}
                     last={row.last}
                     streaming={
@@ -380,7 +382,7 @@ export function Conversation() {
       />
 
       <LatestButton
-        viewport={viewport}
+        away={!atBottom}
         onJump={() => {
           setSelectedMessageId(undefined);
           scrollToBottom(virtualized ? "auto" : "smooth");

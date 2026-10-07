@@ -24,6 +24,7 @@ export {
   setChatWidth,
   setTextStreaming,
   setShowGitHubIdentity,
+  setClock24,
   setShowFailedTools,
   setTypingAnimation,
   setUiSounds,

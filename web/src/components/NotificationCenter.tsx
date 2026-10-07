@@ -1,7 +1,6 @@
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
-import { LOCALE } from "../lib/locale.ts";
 import { useEffect, useRef, useState } from "react";
 import {
   BellRing,
@@ -18,7 +17,7 @@ import {
 import { useApp } from "../lib/store.ts";
 import { Inbox } from "./icons.ts";
 import { send } from "../lib/socket.ts";
-import { ago } from "../lib/format.ts";
+import { ago, dateTime } from "../lib/format.ts";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
 
 export function NotificationCenter({
@@ -96,9 +95,23 @@ export function NotificationCenter({
           aria-label="Notifications"
         >
           <header>
-            <div>
-              <h2>Notifications</h2>
-              <span>{unread ? `${unread} unread` : "You're up to date"}</span>
+            <div
+              className="notification-filters sliding-selection"
+              role="group"
+              aria-label="Filter notifications"
+            >
+              <SelectionHighlight value={filter} />
+              <button
+                type="button"
+                aria-pressed={filter === "all"}
+                onClick={() => setFilter("all")}
+              >All activity</button>
+              <button
+                type="button"
+                aria-pressed={filter === "unread"}
+                onClick={() => setFilter("unread")}
+              >Unread{unread > 0 && <span>{unread}</span>}
+              </button>
             </div>
             <button
               className="icon-btn"
@@ -123,24 +136,6 @@ export function NotificationCenter({
               <X size={17} />
             </button>
           </header>
-          <div
-            className="notification-filters sliding-selection"
-            role="group"
-            aria-label="Filter notifications"
-          >
-            <SelectionHighlight value={filter} />
-            <button
-              type="button"
-              aria-pressed={filter === "all"}
-              onClick={() => setFilter("all")}
-            >All activity</button>
-            <button
-              type="button"
-              aria-pressed={filter === "unread"}
-              onClick={() => setFilter("unread")}
-            >Unread{unread > 0 && <span>{unread}</span>}
-            </button>
-          </div>
           <div className="notification-list scroll">
             {visible.map((entry) => {
               const Icon =
@@ -176,7 +171,7 @@ export function NotificationCenter({
                     <span>{entry.kind === "update" ? `${entry.text} is available. Open settings to update when you're ready.` : entry.text}</span>
                     <time
                       dateTime={new Date(entry.createdAt).toISOString()}
-                      title={new Date(entry.createdAt).toLocaleString(LOCALE)}
+                      title={dateTime(entry.createdAt)}
                     >
                       {ago(entry.createdAt)}
                     </time>

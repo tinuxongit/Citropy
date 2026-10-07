@@ -14,7 +14,7 @@ import { ThreadPreview } from "./ThreadPreview.tsx";
 import { canConnectServers, WorkspaceDialogs, type WorkspaceDialog, type WorkspaceScope } from "./WorkspaceSelector.tsx";
 import { CachedThreadRow } from "./sidebar/CachedThreadRow.tsx";
 import { ProjectHeading, SectionHeading, StatusHeading } from "./sidebar/GroupHeadings.tsx";
-import { movableSiblings, threadKey, threadOrderAfterMove, useThreadGroups, type EnvironmentFolders, type SidebarThread, type ThreadGroup } from "./sidebar/thread-groups.ts";
+import { movableSiblings, shownThreads, threadKey, threadOrderAfterMove, useThreadGroups, type EnvironmentFolders, type SidebarThread, type ThreadGroup } from "./sidebar/thread-groups.ts";
 import { ThreadRow } from "./sidebar/ThreadRow.tsx";
 import { useProjectDrag } from "./sidebar/use-project-drag.ts";
 import { useProjectOrder, type DropEdge } from "./sidebar/use-project-order.ts";
@@ -230,6 +230,7 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
         {(group.open || Boolean(query)) && group.threads.map((item) => <div className="thread-list-item" key={threadKey(item.environment, item.thread.id)}>{renderItem(item, group)}</div>)}
         {group.project && !query && !group.threads.length && renderEmpty(group)}
       </Collapsible>
+      {!group.open && !query && shownThreads(group, false).map((item) => <div className="thread-list-item" key={threadKey(item.environment, item.thread.id)}>{renderItem(item, group)}</div>)}
     </>;
   };
 

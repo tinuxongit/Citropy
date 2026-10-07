@@ -5,7 +5,8 @@ import { colorLight, lightMap, regionLight, type LightMap } from "../lib/backdro
 import { reportError } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
-import { onPanelSettled, panelMoving } from "../lib/panel-motion.ts";
+
+const READING_COLUMN = ".settings, .github-main, .git-manager, .canvas-inner";
 
 interface StageMetrics { left: number; center: number; right: number; column?: number }
 
@@ -15,16 +16,15 @@ function useStageMetrics(root: RefObject<HTMLElement | null>): RefObject<StageMe
     const layers = root.current!;
     const shell = layers.parentElement!;
     const stage = shell.querySelector<HTMLElement>(".stage")!;
-    let frame = 0;
-    let geometry: StageMetrics = metrics.current;
-    let animation: Animation | undefined;
-    let from = 0;
-    const place = () => {
-      const progress = animation?.effect?.getComputedTiming().progress;
-      const moving = animation?.playState === "running" || animation?.pending;
-      frame = panelMoving() || moving ? requestAnimationFrame(place) : 0;
-      const { left, right, column: width } = geometry;
-      const center = Math.round(geometry.center + (progress == null ? 0 : from * (1 - progress)));
+    const update = () => {
+      const reading = stage.querySelector<HTMLElement>(READING_COLUMN);
+      const outer = shell.getBoundingClientRect();
+      const inner = stage.getBoundingClientRect();
+      const column = reading?.getBoundingClientRect() ?? inner;
+      const left = Math.round(inner.left - outer.left);
+      const center = Math.round(column.left - outer.left + column.width / 2);
+      const right = Math.round(outer.right - inner.right);
+      const width = reading ? Math.round(column.width) : undefined;
       const last = metrics.current;
       if (left === last.left && center === last.center && right === last.right && width === last.column) return;
       metrics.current = { left, center, right, column: width };
@@ -35,44 +35,21 @@ function useStageMetrics(root: RefObject<HTMLElement | null>): RefObject<StageMe
       else layers.style.removeProperty("--stage-column");
       layers.dispatchEvent(new Event("stage-metrics"));
     };
-    const schedule = () => { frame ||= requestAnimationFrame(place); };
-    const update = () => {
-      const reading = stage.querySelector<HTMLElement>(".settings, .github-main, .git-manager, .canvas-inner");
-      animation = reading?.getAnimations().find(candidate => candidate.effect instanceof KeyframeEffect && candidate.effect.getKeyframes()[0]?.translate !== undefined);
-      from = animation?.effect instanceof KeyframeEffect ? parseFloat(String(animation.effect.getKeyframes()[0]?.translate)) || 0 : 0;
-      const shift = animation && reading ? parseFloat(getComputedStyle(reading).translate) || 0 : 0;
-      const outer = shell.getBoundingClientRect();
-      const inner = stage.getBoundingClientRect();
-      const column = reading?.getBoundingClientRect() ?? inner;
-      geometry = {
-        left: Math.round(inner.left - outer.left),
-        center: column.left - shift - outer.left + column.width / 2,
-        right: Math.round(outer.right - inner.right),
-        column: reading ? Math.round(column.width) : undefined,
-      };
-      cancelAnimationFrame(frame);
-      place();
-    };
     const observer = new ResizeObserver(update);
     const watch = () => {
       observer.disconnect();
       observer.observe(shell);
       observer.observe(stage);
-      const column = stage.querySelector<HTMLElement>(".settings, .github-main, .git-manager, .canvas-inner");
+      const column = stage.querySelector<HTMLElement>(READING_COLUMN);
       if (column) observer.observe(column);
       update();
     };
     watch();
-    stage.addEventListener("panel-motion", update);
     const views = new MutationObserver(watch);
     views.observe(stage, { childList: true });
-    const stopSettled = onPanelSettled(schedule);
     return () => {
-      cancelAnimationFrame(frame);
       observer.disconnect();
       views.disconnect();
-      stopSettled();
-      stage.removeEventListener("panel-motion", update);
     };
   }, [root]);
   return metrics;

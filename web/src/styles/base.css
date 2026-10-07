@@ -150,7 +150,10 @@ button {
   background: none;
   border: none;
   padding: 0;
-  cursor: default;
+}
+
+:where(button, a[href], summary, select, [role="button"], [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"], [role="tab"], [role="switch"], input:is([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), label:has(input:is([type="checkbox"], [type="radio"]))):where(:not(:disabled, [aria-disabled="true"])) {
+  cursor: pointer;
 }
 
 input,

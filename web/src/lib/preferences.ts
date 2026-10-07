@@ -165,6 +165,11 @@ export function setShowGitHubIdentity(value: boolean): void {
   environmentStorage.setItem("citropy.showGitHubIdentity", value ? "1" : "0");
 }
 
+export function setClock24(value: boolean): void {
+  useApp.setState({ clock24: value });
+  environmentStorage.setItem("citropy.clock24", value ? "1" : "0");
+}
+
 export function setTypingAnimation(value: boolean): void {
   useApp.setState({ typingAnimation: value });
   environmentStorage.setItem("citropy.typingAnimation", value ? "1" : "0");

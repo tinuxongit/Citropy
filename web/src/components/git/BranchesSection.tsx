@@ -11,8 +11,7 @@ import {
 } from "lucide-react";
 import { Menu } from "../Menu.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
-import { LOCALE } from "../../lib/locale.ts";
-import { formatDate } from "../../lib/format.ts";
+import { dateTime, formatDate } from "../../lib/format.ts";
 import type { Section } from "./labels.ts";
 import type { GitDialogAction } from "../GitDialog.tsx";
 import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
@@ -155,7 +154,7 @@ export function BranchesSection({
                   </div>
                   <time
                     className="git-row-date"
-                    title={new Date(entry.date).toLocaleString(LOCALE)}
+                    title={dateTime(entry.date)}
                   >
                     {formatDate(entry.date, { month: "short", day: "numeric" })}
                   </time>

@@ -1,15 +1,12 @@
 import { Square, Terminal } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
 import { selectThread, useApp } from "../../lib/store.ts";
 import { reportError } from "../../lib/api.ts";
-import { isActiveShell, shellStatus, stopShell } from "../../lib/shells.ts";
+import { shellStatus, stopShell, useListedShells } from "../../lib/shells.ts";
 import type { ShellProcess } from "../../../../shared/protocol.ts";
 import { DetailSplitRow } from "./DetailRow.tsx";
 
 export function ShellsSection({ threadId, disabled }: { threadId: string; disabled: boolean }) {
-  const running = useApp(useShallow((state) => Object.values(state.shells)
-    .filter((shell) => shell.threadId === threadId && isActiveShell(shell))
-    .sort((a, b) => b.startedAt - a.startedAt)));
+  const running = useListedShells(threadId);
   const show = (shell: ShellProcess) => {
     selectThread(threadId);
     useApp.setState({ searchMessageId: null, searchShellId: shell.id });

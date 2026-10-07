@@ -2,6 +2,29 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.6.1
+
+### Added
+- A 24-hour clock option in Settings.
+- The main chat has a visible scrollbar you can drag.
+- A working conversation stays visible in the sidebar while its project is collapsed.
+
+### Changed
+- An agent's work folds into one "N steps" row that shows the latest step while it works, and a "Worked for" row when it finishes.
+- Side panels slide open and closed smoothly.
+- The Latest button has a new design.
+- Notifications and running agents take less space.
+- Menus and pop-ups have rounder corners, and clickable items show a pointer cursor.
+- Color themes tint the whole interface.
+- The newest reply always shows its time and copy button.
+
+### Fixed
+- The browser panel no longer stays black after the sidebar reopens.
+- The Latest button no longer turns see-through on hover.
+- Short shell commands no longer flash in the shell lists.
+- Jumping to an older command opens its folded steps.
+- Claude models appear in the right order without duplicates.
+
 ## 0.6.0
 
 ### Added

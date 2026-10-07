@@ -117,58 +117,36 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.equal(await third.getAttribute("data-active"), "true");
   });
 
-  for (const width of [900, 1280, 1600, 380]) check(`side panel transitions glide without repeatedly resizing the chat at ${width}px`, async t => {
+  for (const width of [900, 1280, 1600, 380]) check(`side panel transitions glide the chat in one direction at ${width}px`, async t => {
     const { page } = await app(t, { width, messages: history(38), preferences: { inspector: "1", sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
     await settled(page);
-    await page.evaluate(() => {
-      window.stageWidths = [];
-      new ResizeObserver(([entry]) => window.stageWidths.push(entry.contentRect.width)).observe(document.querySelector('.stage'));
-      window.originalAnimate = Element.prototype.animate;
-      Element.prototype.animate = function (...options) {
-        const animation = window.originalAnimate.apply(this, options);
-        if (this.matches('.canvas-inner, .composer-shell')) {
-          animation.pause();
-          window.panelAnimations.push(animation);
-        }
-        return animation;
-      };
-    });
     let movements = 0;
     for (const shortcut of ["Control+j", "Control+b", "Control+b", "Control+j"]) {
-      await page.evaluate(() => { window.stageWidths = []; window.panelAnimations = []; });
-      await page.keyboard.press(shortcut);
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      const samples = await page.evaluate(() => {
+      await page.evaluate(() => {
         const stage = document.querySelector(".stage");
-        const targets = [...document.querySelectorAll('.canvas-inner, .composer-shell')];
-        const animations = window.panelAnimations;
-        const samples = [0, 70, 140, 280].map(time => {
-          for (const animation of animations) { animation.pause(); animation.currentTime = time; }
+        const targets = [...document.querySelectorAll(".canvas-inner, .composer-shell")];
+        window.panelFrames = [];
+        const sample = () => {
           const rect = stage.getBoundingClientRect();
-          return { width: rect.width, left: rect.left, right: rect.right, layoutLeft: stage.offsetLeft + stage.offsetParent.getBoundingClientRect().left, positions: targets.map(target => target.getBoundingClientRect().left), rightEdges: targets.map(target => target.getBoundingClientRect().right) };
-        });
-        for (const animation of animations) animation.finish();
-        return samples;
+          window.panelFrames.push({ width: rect.width, left: rect.left, right: rect.right, edges: targets.map(target => { const box = target.getBoundingClientRect(); return [box.left, box.right]; }) });
+          window.panelFrame = requestAnimationFrame(sample);
+        };
+        sample();
       });
-      for (const bounds of samples) {
-        assert.ok(Math.abs(bounds.left - bounds.layoutLeft) < 1, JSON.stringify(bounds));
-        assert.equal(bounds.width, samples[0].width);
-        for (const left of bounds.positions) assert.ok(left >= bounds.left - 1, JSON.stringify(bounds));
-        for (const right of bounds.rightEdges) assert.ok(right <= bounds.right + 1, JSON.stringify(bounds));
-      }
-      for (let index = 0; index < samples[0].positions.length; index++) {
-        const start = samples[0].positions[index];
-        const end = samples.at(-1).positions[index];
-        if (Math.abs(end - start) < 1) continue;
-        movements++;
-        for (const sample of samples.slice(1, -1)) assert.ok(sample.positions[index] > Math.min(start, end) && sample.positions[index] < Math.max(start, end));
-      }
+      await page.keyboard.press(shortcut);
       await settled(page);
-      assert.ok(await page.evaluate(() => new Set(window.stageWidths).size <= 2));
+      const frames = await page.evaluate(() => {
+        cancelAnimationFrame(window.panelFrame);
+        return window.panelFrames;
+      });
+      for (const frame of frames)
+        for (const [left, right] of frame.edges) assert.ok(left >= frame.left - 1 && right <= frame.right + 1, JSON.stringify(frame));
+      const steps = frames.slice(1).map((frame, index) => frame.width - frames[index].width);
+      assert.ok(steps.every(step => step >= -1) || steps.every(step => step <= 1), JSON.stringify(frames.map(frame => frame.width)));
+      if (new Set(frames.map(frame => Math.round(frame.width))).size > 2) movements++;
     }
     if (width > 720) assert.ok(movements >= 2);
     else assert.equal(movements, 0);
-    await page.evaluate(() => { Element.prototype.animate = window.originalAnimate; });
     await page.keyboard.press('Control+j');
     await page.waitForTimeout(80);
     await page.keyboard.press('Control+j');
@@ -256,17 +234,22 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     for (const shortcut of ['Control+b', 'Control+b', 'Control+j', 'Control+j']) {
       await page.evaluate(() => {
         const glass = document.querySelector('.composer-glass');
+        const shell = glass.parentElement;
         window.masks = new Set([glass.style.maskImage]);
-        window.maskObserver = new MutationObserver(() => window.masks.add(glass.style.maskImage));
+        window.shellSizes = new Set([`${shell.offsetWidth}x${shell.offsetHeight}`]);
+        window.maskObserver = new MutationObserver(() => {
+          window.masks.add(glass.style.maskImage);
+          window.shellSizes.add(`${shell.offsetWidth}x${shell.offsetHeight}`);
+        });
         window.maskObserver.observe(glass, { attributes: true, attributeFilter: ['style'] });
       });
       await page.keyboard.press(shortcut);
       await settled(page);
-      const masks = await page.evaluate(() => {
+      const { masks, sizes } = await page.evaluate(() => {
         window.maskObserver.disconnect();
-        return window.masks.size;
+        return { masks: window.masks.size, sizes: window.shellSizes.size };
       });
-      assert.ok(masks <= 2, `The composer regenerated ${masks} masks during one panel toggle`);
+      assert.ok(masks <= sizes + 1, `The composer regenerated ${masks} masks for ${sizes} sizes during one panel toggle`);
     }
   });
 
@@ -475,7 +458,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
           window.thinkingFrames.push({
             same: document.querySelector(".working") === working && working.closest("article") === article,
             opacity: Number(getComputedStyle(article).opacity),
-            height: canvas.scrollHeight,
+            gap: canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight,
             top: canvas.scrollTop,
           });
           window.thinkingFrame = requestAnimationFrame(sample);
@@ -487,11 +470,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       push({ t: "part.add", threadId: "chat", messageId: "reply", part: { id: "reason", kind: "reasoning", text: "", complete: false } });
       await settled(page);
       push({ t: "part.append", threadId: "chat", messageId: "reply", partId: "reason", text: "Checking the application." });
-      await page.getByRole("button", { name: "Work details", exact: true }).waitFor();
-      await page.waitForFunction(() => {
-        const arrow = document.querySelector(".activity-chevron");
-        return arrow?.getBoundingClientRect().width === 12;
-      });
+      await page.locator(".reasoning-head").waitFor();
       await settled(page);
       const frames = await page.evaluate(() => {
         cancelAnimationFrame(window.thinkingFrame);
@@ -499,11 +478,9 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       });
       assert.ok(frames.length >= 3);
       assert.ok(frames.every(frame => frame.same && frame.opacity === 1), JSON.stringify(frames));
-      assert.ok(Math.max(...frames.map(frame => frame.height)) - Math.min(...frames.map(frame => frame.height)) <= 1, JSON.stringify(frames));
-      assert.ok(Math.max(...frames.map(frame => frame.top)) - Math.min(...frames.map(frame => frame.top)) <= 1, JSON.stringify(frames));
-      const details = page.getByRole("button", { name: "Work details", exact: true });
-      assert.ok(await details.isEnabled());
-      await details.click();
+      assert.ok(frames.every((frame, index) => index === 0 || frame.top >= frames[index - 1].top - 1), JSON.stringify(frames));
+      assert.ok(Math.abs(frames.at(-1).gap - frames[0].gap) <= 1, JSON.stringify(frames));
+      await page.locator(".reasoning-head").click();
       await page.getByText("Checking the application.", { exact: true }).waitFor();
       push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle", runStartedAt } });
       await expect(async () => await page.locator(".working").count() === 0);
@@ -522,32 +499,38 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     push({ t: "part.patch", threadId: "chat", messageId: "reply", partId: "answer", patch: { complete: true } });
     push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle", runStartedAt: 100 } });
     await expect(async () => await page.locator(".working").count() === 0);
-    assert.equal(await page.getByRole("button", { name: "Work details", exact: true }).count(), 0);
+    assert.equal(await page.locator(".work-fold").count(), 0);
     assert.ok(await page.getByText("Here is the answer.", { exact: true }).isVisible());
   });
 
-  for (const width of [1280, 380]) check(`work details stay below updates and answers at ${width}px`, async t => {
+  for (const width of [1280, 380]) check(`the steps fold stays above updates and answers at ${width}px`, async t => {
     const tool = id => ({ id, kind: "tool", callId: id, name: "Read", shape: "read", headline: `${id}.ts`, status: "ok", startedAt: 1, endedAt: 2, output: "Tool output" });
     const { page, push } = await app(t, { width, preferences: { sidebar: "0", stageBackground: "default", textStreaming: "0" }, messages: [...history(12), { id: "reply", role: "assistant", ts: 20, parts: [tool("first"), text("update", "Checked the first file."), tool("second")] }] });
-    const details = page.getByRole("button", { name: "Work details", exact: true });
-    await page.getByRole("note", { name: "Latest update", exact: true }).waitFor();
+    const fold = page.locator(".work-fold");
+    const update = page.locator('[data-part-id="update"]');
+    const answer = page.locator('[data-part-id="answer"]');
+    const belowFold = locator => locator.evaluate(node => node.getBoundingClientRect().top >= document.querySelector(".work-fold").getBoundingClientRect().bottom);
+    await fold.waitFor();
     await settled(page);
-    assert.ok(await page.locator(".activity-update").evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector(".activity-head").getBoundingClientRect().top));
+    assert.match(await fold.textContent(), /^\d+ steps$/);
+    await expect(async () => await update.count() === 0);
     push({ t: "part.add", threadId: "chat", messageId: "reply", part: text("answer", "Here is the final answer.", false) });
     await page.getByText("Here is the final answer.", { exact: true }).waitFor();
     await settled(page);
-    assert.ok(await page.locator('[data-part-id="answer"]').evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector(".activity-head").getBoundingClientRect().top));
-    await details.click();
-    await page.locator(".group-summary").first().waitFor();
+    assert.ok(await belowFold(answer));
+    await fold.click();
+    await update.waitFor();
     await settled(page);
-    assert.ok(await page.locator(".group-body").last().evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector(".activity-head").getBoundingClientRect().top));
-    await details.click();
-    await settled(page);
-    assert.ok(await page.locator('[data-part-id="answer"]').evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector(".activity-head").getBoundingClientRect().top));
+    assert.ok(await belowFold(update));
+    assert.ok(await update.evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector('[data-part-id="answer"]').getBoundingClientRect().top));
+    await fold.click();
+    await expect(async () => await update.count() === 0);
     push({ t: "part.patch", threadId: "chat", messageId: "reply", partId: "answer", patch: { complete: true } });
     push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle" } });
     await expect(async () => await page.locator(".working").count() === 0);
     await settled(page);
+    assert.match(await fold.textContent(), /^Worked for /);
+    assert.ok(await belowFold(answer));
     await page.screenshot({ path: `/tmp/citropy-work-footer-${width}.png` });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   });
@@ -606,7 +589,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.equal(await page.getByRole("button", { name: "Latest", exact: true }).count(), 0);
   });
 
-  check("text folding into work details while working keeps the chat height steady", async (t) => {
+  check("text folding into the steps fold while working keeps the chat height steady", async (t) => {
     const tool = (id, status) => ({ id, kind: "tool", callId: id, name: "Bash", shape: "command", headline: "npm test", input: { command: "npm test" }, status, startedAt: 1 });
     const { page, push } = await app(t, { messages: [...history(12), { id: "reply", role: "assistant", ts: 20, parts: [tool("first", "ok"), text("update", "Checked the first part. ".repeat(12))] }] });
     await page.locator('[data-part-id="update"]').waitFor();
@@ -618,7 +601,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       requestAnimationFrame(sample);
     });
     push({ t: "part.add", threadId: "chat", messageId: "reply", part: tool("second", "running") });
-    await page.locator(".activity-update").waitFor();
+    await page.locator(".work-fold").waitFor();
     await settled(page);
     const heights = await page.evaluate(() => window.heights);
     const lowest = heights.indexOf(Math.min(...heights));

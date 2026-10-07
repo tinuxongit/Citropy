@@ -60,7 +60,7 @@
   display: block;
   width: 28px;
   height: 1px;
-  margin: var(--space-10) auto;
+  margin: var(--space-6) auto;
   background: var(--line-strong);
 }
 .navigation-strip .app-update-control {
@@ -69,9 +69,21 @@
 .account-menu-items {
   display: flex;
   flex-direction: column;
+  height: auto;
+  overflow: hidden;
+  interpolate-size: allow-keywords;
+  transition:
+    height var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out),
+    visibility var(--dur-base);
 }
 .account-menu:not([data-open]) > .account-menu-items {
-  display: none;
+  height: 0;
+  opacity: 0;
+  visibility: hidden;
+}
+.account-menu-button > .strip-action-face > * {
+  scale: 0.95;
 }
 .account-menu-avatar {
   width: 30px;
@@ -176,9 +188,9 @@
   z-index: 100;
   padding: var(--space-16);
   border: 0;
-  border-radius: var(--r-md);
+  border-radius: var(--r-popup);
   background: var(--overlay);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--popup-edge);
   font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--text-2);
@@ -375,12 +387,18 @@
   background: linear-gradient(to right, transparent, var(--line), transparent);
   pointer-events: none;
 }
-.thread-toolbar .thread-search,
-.topbar-start .thread-search {
+.thread-toolbar .thread-search {
   flex: 1;
 }
 @container application (width > 720px) {
-  .rail .thread-toolbar { display: none; }
+  .rail .thread-toolbar {
+    flex: none;
+    align-items: center;
+    height: var(--topbar);
+    margin: 0;
+    padding: 0 var(--space-10);
+  }
+  .rail .thread-toolbar::after { content: none; }
 }
 .thread-search:hover {
   border-color: var(--line-strong);
@@ -423,10 +441,16 @@
 .thread-card:not([data-active="true"]):is(:hover, :has(:focus-visible)) { background: var(--hover); }
 .thread-list { --selection-fill: var(--highlight); }
 .thread-list > .selection-highlight { border-radius: var(--rail-tab-shape); }
-@property --thread-fade {
+@property --row-fade {
   syntax: "<length>";
   inherits: false;
   initial-value: 0px;
+}
+.thread-row,
+.global-project-toggle {
+  --row-fade: -16px;
+  mask: linear-gradient(to left, transparent var(--row-fade), #000 calc(var(--row-fade) + 16px));
+  transition: --row-fade var(--dur-fast) var(--ease-out);
 }
 .thread-card { --thread-actions: 90px; }
 .thread-card:has(.thread-row-pr) { --thread-actions: 115px; }
@@ -442,12 +466,9 @@
   text-align: left;
   color: var(--text-2);
   font-size: var(--text-sm);
-  --thread-fade: -16px;
-  mask: linear-gradient(to left, transparent var(--thread-fade), #000 calc(var(--thread-fade) + 16px));
-  transition: --thread-fade var(--dur-fast) var(--ease-out);
 }
 .thread-card:is(:hover, :has(:focus-visible), :has(.thread-row-actions [aria-expanded="true"])) .thread-row {
-  --thread-fade: var(--thread-actions);
+  --row-fade: var(--thread-actions);
 }
 .thread-card:is([data-active="true"], :hover) .thread-row { color: var(--text); }
 @media (hover: none) { .thread-row { padding-right: var(--thread-actions); } }
@@ -487,10 +508,10 @@
   max-height: calc(var(--viewport-height) - 24px);
   padding: var(--space-16);
   border: 0;
-  border-radius: var(--r-md);
+  border-radius: var(--r-popup);
   background: var(--overlay);
   color: var(--text-2);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--popup-edge);
   font-size: var(--text-sm);
   line-height: 1.5;
   pointer-events: auto;
@@ -577,8 +598,11 @@
   color: var(--text-2);
   transition: color var(--dur-instant);
 }
-.global-project-heading:has(.global-project-toggle[aria-expanded="true"]) {
+.thread-list-item > .global-project-heading:has(.global-project-toggle[aria-expanded="true"]) {
   margin-bottom: var(--rail-inset);
+}
+.global-project-heading + .thread-category-content > .collapsible-clip > :first-child {
+  margin-top: var(--rail-inset);
 }
 .global-project-heading::after {
   content: "";
@@ -598,15 +622,13 @@
 .global-project-toggle { display: flex; align-items: center; gap: var(--space-8); flex: 1; min-width: 0; height: 100%; padding: 0 var(--rail-pad); color: inherit; text-align: left; font-size: var(--text-sm); font-weight: 500; }
 .global-project-toggle > svg { flex: none; }
 .global-project-offline { display: inline-flex; flex: none; margin-left: -3px; color: var(--text-3); }
-.global-status-heading .global-project-toggle,
-.global-status-heading .global-project-toggle:active { cursor: default; }
-.global-project-heading:not(.global-status-heading):is(:hover, :has(:focus-visible), :has(.global-project-edit[aria-expanded="true"])) .global-project-toggle { padding-right: calc(2 * var(--rail-heading-action)); }
+.global-project-heading:not(.global-status-heading):is(:hover, :has(:focus-visible), :has(.global-project-edit[aria-expanded="true"])) .global-project-toggle { --row-fade: calc(2 * var(--rail-heading-action)); }
 .global-project-heading > .menu-wrap { position: absolute; top: 0; right: calc(var(--rail-tab-gap) + var(--rail-heading-action)); }
 .global-project-edit,
 .global-project-new { display: grid; place-items: center; flex: none; width: var(--rail-heading-action); height: var(--rail-heading); color: var(--text-3); opacity: 0; transition: background var(--dur-instant), color var(--dur-instant); }
 .global-project-new { position: absolute; top: 0; right: var(--rail-tab-gap); border-radius: var(--rail-tab-shape); }
 .global-project-heading:is(:hover, :has(:focus-visible), :has(.global-project-edit[aria-expanded="true"])) :is(.global-project-new, .global-project-edit) { opacity: 1; }
-.global-project-edit:is(:hover, [aria-expanded="true"]),
+.global-project-edit:is(:hover, [aria-expanded="true"]) { color: var(--text); }
 .global-project-new:hover:not(:disabled) { background: var(--raised-2); color: var(--text); }
 .global-project-new:disabled { cursor: default; }
 .global-project-heading:is(:hover, :has(:focus-visible), :has(.global-project-edit[aria-expanded="true"])) .global-project-new:disabled { opacity: 0.35; }
@@ -665,9 +687,8 @@
   min-width: var(--space-16);
   height: 1px;
   background: var(--line-strong);
-  transition: opacity var(--dur-instant);
 }
-.rail-section-heading:is(:hover, :has(:focus-visible), :has(.rail-section-add[aria-expanded="true"])) .rail-section-toggle::after { opacity: 0; }
+.rail-section-heading:has(> .menu-wrap):is(:hover, :has(:focus-visible), :has(.rail-section-add[aria-expanded="true"])) .rail-section-toggle { padding-right: var(--rail-section); }
 .rail-section-heading > .menu-wrap { position: absolute; top: 0; right: 0; }
 .rail-section-toggle[aria-expanded="false"] { color: var(--text-4); }
 .rail-section-heading:is(:hover, :has(:focus-visible)) .rail-section-toggle { color: var(--text); }

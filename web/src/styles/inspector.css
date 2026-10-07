@@ -231,7 +231,6 @@
   padding: var(--space-4) 0;
   color: var(--text-3);
   font-size: var(--text-xs);
-  cursor: default;
 }
 .commit-description summary span {
   margin-left: var(--space-6);

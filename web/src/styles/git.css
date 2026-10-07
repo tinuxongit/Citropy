@@ -180,7 +180,6 @@
   margin-top: var(--space-8);
 }
 .git-alert summary {
-  cursor: default;
   font-size: var(--text-xs);
   color: var(--text-2);
   width: fit-content;
@@ -623,7 +622,6 @@
   gap: var(--space-10);
   padding: var(--space-12) var(--space-16);
   background: var(--panel);
-  cursor: default;
   font-size: var(--text-sm);
   overflow-wrap: anywhere;
   width: 100%;
@@ -1036,7 +1034,6 @@
   margin-top: var(--space-8);
 }
 .git-dialog-error summary {
-  cursor: default;
   color: var(--text-2);
   font-size: var(--text-xs);
 }
