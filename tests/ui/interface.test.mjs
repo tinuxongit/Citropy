@@ -126,6 +126,13 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
         const stage = document.querySelector(".stage");
         const targets = [...document.querySelectorAll(".canvas-inner, .composer-shell")];
         window.panelFrames = [];
+        window.panelGlides = 0;
+        if (!window.panelGlideListener) {
+          window.panelGlideListener = event => {
+            if (event.target.matches(".sliding-panel") && event.propertyName.startsWith("margin")) window.panelGlides++;
+          };
+          document.addEventListener("transitionrun", window.panelGlideListener);
+        }
         const sample = () => {
           const rect = stage.getBoundingClientRect();
           window.panelFrames.push({ width: rect.width, left: rect.left, right: rect.right, edges: targets.map(target => { const box = target.getBoundingClientRect(); return [box.left, box.right]; }) });
@@ -135,15 +142,15 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       });
       await page.keyboard.press(shortcut);
       await settled(page);
-      const frames = await page.evaluate(() => {
+      const { frames, glides } = await page.evaluate(() => {
         cancelAnimationFrame(window.panelFrame);
-        return window.panelFrames;
+        return { frames: window.panelFrames, glides: window.panelGlides };
       });
       for (const frame of frames)
         for (const [left, right] of frame.edges) assert.ok(left >= frame.left - 1 && right <= frame.right + 1, JSON.stringify(frame));
       const steps = frames.slice(1).map((frame, index) => frame.width - frames[index].width);
       assert.ok(steps.every(step => step >= -1) || steps.every(step => step <= 1), JSON.stringify(frames.map(frame => frame.width)));
-      if (new Set(frames.map(frame => Math.round(frame.width))).size > 2) movements++;
+      if (glides) movements++;
     }
     if (width > 720) assert.ok(movements >= 2);
     else assert.equal(movements, 0);

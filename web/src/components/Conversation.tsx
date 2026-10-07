@@ -257,7 +257,7 @@ export function Conversation() {
       if (searchShellId) useApp.setState(state => {
           if (state.searchShellId !== searchShellId) return state;
           return { searchShellId: null, toasts: [...state.toasts, {
-            id: `shell-${searchShellId}`, level: "info", text: "This command is no longer in the conversation history. Its recent output is available in Running shells.",
+            id: `shell-${searchShellId}`, level: "info", text: "This command is no longer in the conversation history. You can still stop it from conversation details.",
           }] };
         });
       else if (searchMessageId) useApp.setState(state => state.searchMessageId === searchMessageId ? { searchMessageId: null } : state);

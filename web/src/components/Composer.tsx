@@ -28,8 +28,6 @@ import { playUiSound } from "../lib/ui-sound.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { Select } from "./Select.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
-import { RunningShells } from "./RunningShells.tsx";
-import type { NotificationTarget } from "../../../shared/protocol.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import {
   ContextMenu,
@@ -49,11 +47,9 @@ import { PlanTab } from "./composer/PlanTab.tsx";
 export function Composer({
   onUsage,
   onSkills,
-  onShell,
 }: {
   onUsage?: () => void;
   onSkills?: () => void;
-  onShell: (target: NotificationTarget) => void;
 }) {
   const [scope] = useState(environmentId);
   const [scopeSignal] = useState(environmentSignal);
@@ -174,8 +170,7 @@ export function Composer({
     <UsageLimitTab threadId={thread.id} />
     <PlanTab threadId={thread.id} />
     <QueueList thread={thread} provider={provider} onEdit={restore} />
-    <RunningShells onOpen={onShell} />
-  </>, [thread, provider, restore, onShell]);
+  </>, [thread, provider, restore]);
   const settingsBar = useMemo(() => thread && <>
     <ModelPicker
       value={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: configuredThread?.model ?? model?.id ?? "default" }}

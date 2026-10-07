@@ -14,6 +14,7 @@ Each release publishes its section below as the release notes, which the app sho
 - Side panels slide open and closed smoothly.
 - The Latest button has a new design.
 - Notifications and running agents take less space.
+- Running shells appear only in conversation details, no longer above the message box.
 - Menus and pop-ups have rounder corners, and clickable items show a pointer cursor.
 - Color themes tint the whole interface.
 - The newest reply always shows its time and copy button.

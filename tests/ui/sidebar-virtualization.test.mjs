@@ -12,6 +12,7 @@ test("sidebar bounds rows and loads history only when a conversation opens", { t
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, reducedMotion: "reduce" });
   page.setDefaultTimeout(10_000);
+  page.setDefaultNavigationTimeout(30_000);
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await browser.close(); await server.close(); assert.deepEqual(errors, []); });

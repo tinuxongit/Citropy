@@ -363,7 +363,6 @@ export function App() {
                 <ThreadDetailsPanel />
                 <Composer
                   onUsage={() => openView("usage")}
-                  onShell={openNotification}
                   onSkills={() => {
                     setSettingsSection("Skills");
                     openView("settings");
