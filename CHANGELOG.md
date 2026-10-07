@@ -15,6 +15,7 @@ Each release publishes its section below as the release notes, which the app sho
 
 ### Fixed
 - SSH connections can reconnect after an interrupted session.
+- macOS terminal services start correctly when the system temporary path is long.
 
 ## 0.5.7
 

@@ -22,6 +22,7 @@ const START_RETRY_MS = 100;
 const MAX_INBOUND_BYTES = 32 * 1024 * 1024;
 const MAX_QUEUED_BYTES = 1024 * 1024;
 const MAX_UNIX_SOCKET_PATH_BYTES = 100;
+const MAX_DARWIN_SOCKET_PATH_BYTES = 104;
 const STALE_LOCK_MS = 10_000;
 
 const key = createHash("sha256").update(dataRoot).digest("hex").slice(0, 24);
@@ -140,7 +141,9 @@ async function readSocketAddress(): Promise<string | undefined> {
 
 async function dial(): Promise<void> {
   const savedAddress = await readSocketAddress();
-  const addresses = [...new Set([savedAddress, legacyAddress].filter((value): value is string => !!value))];
+  const candidates = [...new Set([savedAddress, legacyAddress].filter((value): value is string => !!value))];
+  const addresses = candidates.filter(address => process.platform !== "darwin" || Buffer.byteLength(address) < MAX_DARWIN_SOCKET_PATH_BYTES);
+  if (!addresses.length) throw Object.assign(new Error("The terminal service socket path is too long."), { code: "ENAMETOOLONG" });
   let lastError: unknown;
   for (const address of addresses) {
     try { await dialAddress(address); return; }
