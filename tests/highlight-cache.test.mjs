@@ -221,6 +221,17 @@ test("shared failures and worker disposal allow retries without retaining failed
   assert.deepEqual(await recovered, ["recovered"]);
 });
 
+test("a failed highlight returns raw markup without caching it", async t => {
+  const fixtureState = await fixture(t);
+  const failed = fixtureState.highlight("x", "typescript", "dark");
+  fixtureState.worker.finish(null);
+  assert.equal(await failed, '<pre class="raw"><code>x</code></pre>');
+  const retry = fixtureState.highlight("x", "typescript", "dark");
+  assert.equal(fixtureState.worker.requests.length, 1);
+  fixtureState.worker.finish("highlighted HTML");
+  assert.equal(await retry, "highlighted HTML");
+});
+
 test("a shared worker deadline releases every consumer and allows recovery", async t => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const fixtureState = await fixture(t);

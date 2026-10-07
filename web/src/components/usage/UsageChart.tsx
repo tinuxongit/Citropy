@@ -1,12 +1,8 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
-import { cost, formatDate, providerLabels, tokens } from "../../lib/format.ts";
+import { formatDate, providerLabels } from "../../lib/format.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
-import { bucketTotal, measureOf, niceScale, type UsageBucket, type UsageMeasure, type UsagePeriod } from "./usage-series.ts";
+import { bucketTotal, formatMeasure, measureOf, niceScale, type UsageBucket, type UsageMeasure, type UsagePeriod } from "./usage-series.ts";
 import type { ProviderId } from "../../../../shared/protocol.ts";
-
-function formatMeasure(measure: UsageMeasure, value: number): string {
-  return measure === "cost" ? cost(value) : tokens(Math.round(value));
-}
 
 function axisLabel(period: UsagePeriod, start: Date): string {
   return formatDate(start.getTime(), period === "monthly" ? { month: "short" } : { month: "short", day: "numeric" });

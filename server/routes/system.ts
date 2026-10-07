@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { defaultPort } from "../../shared/ports.mjs";
 import { activeWork } from "../activity.ts";
 import { dev } from "../config.ts";
 import { desktopConnected, openDesktop } from "../desktop.ts";
@@ -23,7 +24,7 @@ async function restartDevelopmentServer(prepare = () => {}): Promise<void> {
 
 async function regularAppRunning(): Promise<boolean> {
   try {
-    const response = await fetch("http://127.0.0.1:4177/api/health", { signal: AbortSignal.timeout(1000) });
+    const response = await fetch(`http://127.0.0.1:${defaultPort()}/api/health`, { signal: AbortSignal.timeout(1000) });
     const health = await response.json() as { app?: string; development?: boolean };
     return health.app === "citropy" && health.development !== true;
   } catch {

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { ArrowUp, Square } from "./icons.ts";
 import { Paperclip, CheckCircle2 } from "lucide-react";
 import { nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
+import { providerAccount } from "../../../shared/provider-account.ts";
 import { ContextUsage } from "./ContextUsage.tsx";
 import {
   configureThread,
@@ -40,7 +41,7 @@ import {
 } from "./composer/ComposerOptions.tsx";
 import { useComposerDraft } from "./composer/use-composer-draft.ts";
 import { threadStarted } from "../lib/thread-started.ts";
-import { onComposerAttachments, takeComposerAttachments } from "../lib/composer-inbox.ts";
+import { onComposerDelivery, takeComposerDeliveries, type ComposerDelivery } from "../lib/composer-inbox.ts";
 import { useAttachmentUpload } from "./composer/use-attachment-upload.ts";
 import { useComposerCommands } from "./composer/use-composer-commands.tsx";
 import { ComposerFrame } from "./composer/ComposerFrame.tsx";
@@ -73,15 +74,6 @@ export function Composer({
     onUploaded: (attachment) =>
       setAttachments((previous) => [...previous, attachment]),
   });
-  useEffect(() => {
-    if (!threadId) return;
-    const receive = () => {
-      const incoming = takeComposerAttachments(threadId);
-      if (incoming.length) setAttachments((previous) => [...previous, ...incoming]);
-    };
-    receive();
-    return onComposerAttachments(receive);
-  }, [threadId, setAttachments]);
   const [sending, setSending] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -101,18 +93,17 @@ export function Composer({
   const settingsFor = (choice: WritingModel) => transferSettings.key === transferKey(choice) ? transferSettings.settings : {};
   const modelFor = (choice: WritingModel) => {
     const target = providers.find((entry) => entry.id === choice.provider);
-    const account = target?.instances?.find(entry => entry.id === choice.providerInstanceId);
-    return selectedModel(account?.models ?? target?.models ?? [], choice.model);
+    return selectedModel(providerAccount(target, choice.providerInstanceId).models, choice.model);
   };
   const transfer = async (choice: WritingModel) => {
     if (!thread || transferring) return;
     const target = providers.find((entry) => entry.id === choice.provider);
-    const account = target?.instances?.find(entry => entry.id === choice.providerInstanceId);
+    const { instance } = providerAccount(target, choice.providerInstanceId);
     const name = modelFor(choice)?.label ?? choice.model;
     if (!await confirmAction({
       title: `Transfer to ${name}?`,
       description: "A new agent reads the conversation and continues here. This uses extra usage on the selected provider and may cost more. Your chat history, workspace and draft stay in place.",
-      context: account ? `${target?.label} · ${account.name}` : target?.label,
+      context: instance ? `${target?.label} · ${instance.name}` : target?.label,
       label: "Transfer and continue",
     }) || scopeSignal.aborted || !useApp.getState().connected) return;
     setTransferring(true);
@@ -121,24 +112,33 @@ export function Composer({
     } catch (error) { reportError(error); }
     finally { if (!scopeSignal.aborted) setTransferring(false); }
   };
-  const restore = useCallback((item: QueuedMessage) => {
-    setValue((previous) =>
-      previous.trim() ? `${item.text}\n\n${previous}` : item.text,
+  const place = useCallback(({ text, attachments = [], placement }: Pick<QueuedMessage, "text" | "attachments"> & Pick<ComposerDelivery, "placement">) => {
+    const before = placement === "before";
+    if (text) setValue((previous) =>
+      !previous.trim() ? text : before ? `${text}\n\n${previous}` : `${previous.trimEnd()}\n\n${text}`,
     );
-    setAttachments((previous) => [...(item.attachments ?? []), ...previous]);
+    setAttachments((previous) => before ? [...attachments, ...previous] : [...previous, ...attachments]);
   }, [setValue, setAttachments]);
+  const restore = useCallback((item: QueuedMessage) => place({ ...item, placement: "before" }), [place]);
+  useEffect(() => {
+    if (!threadId) return;
+    const receive = () => {
+      for (const delivery of takeComposerDeliveries(threadId)) place(delivery);
+    };
+    receive();
+    return onComposerDelivery(receive);
+  }, [threadId, place]);
 
   const running = thread?.running ?? false;
   const provider = providers.find((entry) => entry.id === thread?.provider);
-  const instance = thread?.providerInstanceId ? provider?.instances?.find(entry => entry.id === thread.providerInstanceId) : undefined;
-  const models = thread?.providerInstanceId ? instance?.models ?? [] : provider?.models ?? [];
+  const { instance, models, usable } = providerAccount(provider, thread?.providerInstanceId);
   const canSend =
     !sending &&
     !transferring &&
     !thread?.compacting &&
     !gitActionBusy(thread?.gitAction) &&
     !uploading &&
-    Boolean(provider?.enabled && (thread?.providerInstanceId ? instance?.available : provider.available));
+    usable;
   const configuredThread = useMemo(() => thread ? { ...thread, ...nextTurnSettings(thread) } : undefined, [thread]);
   const model = selectedModel(models, configuredThread?.model);
   const commands = useComposerCommands({

@@ -10,11 +10,11 @@ import { Menu, type MenuItem } from "../Menu.tsx";
 import { AttachToChatButton } from "../AttachToChatButton.tsx";
 import { DrawingLayers } from "./DrawingLayers.tsx";
 import { cachedImage, loadImage, storeImage } from "./drawing-images.ts";
-import { DrawingStyle, DrawingTools, TOOL_KEYS, brushWidth } from "./DrawingToolbar.tsx";
+import { DrawingStyle, DrawingTools, TOOL_KEYS } from "./DrawingToolbar.tsx";
 import { useDrawing } from "./use-drawing.ts";
 import {
-  INK, boxAround, constrain, contains, drawMarks, drawPaper, drawSelection, inkColor, isFillable, isMovable, markAt, markBox,
-  moveLayer, moveMark, paperWith, renderImage, restack, settleStroke, textFont, textFontSize,
+  INK, boxAround, brushWidth, constrain, contains, drawMarks, drawPaper, drawSelection, inkColor, isFillable, isMovable, markAt,
+  markBox, moveLayer, moveMark, paperWith, renderImage, restack, settleStroke, tenth, textFont, textFontSize,
   type FrameKind, type FreehandTool, type Mark, type Pattern, type Point, type Tone, type Tool,
 } from "./marks.ts";
 import "../../styles/drawing.css";
@@ -44,7 +44,6 @@ const PASTE_OFFSET = 16;
 const CLIPBOARD_TYPE = "application/x-citropy-drawing";
 const PASTED_IMAGE_ROOM = 0.8;
 
-const round = (value: number) => Math.round(value * 10) / 10;
 const isTyping = (target: EventTarget) => target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 const isFreehand = (tool: Tool): tool is FreehandTool => tool === "pen" || tool === "highlighter" || tool === "eraser";
 
@@ -171,7 +170,7 @@ export function DrawingPane({ projectId }: { projectId: string }) {
 
   const pointFrom = (event: { clientX: number; clientY: number }): Point => {
     const rect = inkLayer.current!.getBoundingClientRect();
-    return [round(event.clientX - rect.left), round(event.clientY - rect.top)];
+    return [tenth(event.clientX - rect.left), tenth(event.clientY - rect.top)];
   };
 
   const strokePoint = (event: globalThis.PointerEvent): Point => {
@@ -308,9 +307,9 @@ export function DrawingPane({ projectId }: { projectId: string }) {
     const { id, bitmap } = await storeImage(file);
     const room = { width: bounds!.width * PASTED_IMAGE_ROOM, height: bounds!.height * PASTED_IMAGE_ROOM };
     const scale = Math.min(1 / window.devicePixelRatio, room.width / bitmap.width, room.height / bitmap.height);
-    const width = round(bitmap.width * scale);
-    const height = round(bitmap.height * scale);
-    paste([{ kind: "image", image: id, at: [round((bounds!.width - width) / 2), round((bounds!.height - height) / 2)], width, height }], 0);
+    const width = tenth(bitmap.width * scale);
+    const height = tenth(bitmap.height * scale);
+    paste([{ kind: "image", image: id, at: [tenth((bounds!.width - width) / 2), tenth((bounds!.height - height) / 2)], width, height }], 0);
   };
 
   const onCopy = (event: ClipboardEvent<HTMLDivElement>) => {
@@ -475,7 +474,7 @@ export function DrawingPane({ projectId }: { projectId: string }) {
                 if (event.key === "Escape") {
                   openText.current = null;
                   setTextAt(null);
-                } else if (event.key === "Enter" && !event.shiftKey) {
+                } else if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();
                   commitText();
                 }

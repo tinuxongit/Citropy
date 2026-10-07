@@ -2,8 +2,14 @@ import { create } from "zustand";
 import type { monaco } from "./monaco.ts";
 import { api } from "../../lib/api.ts";
 import { environmentId } from "../../lib/environment.ts";
-import { fileTypeFor } from "../../lib/file-type.ts";
+import { fileTypeFor, type FileType } from "../../lib/file-type.ts";
 import type { EditorFile } from "../../../../shared/editor.ts";
+
+const maxOpenDocuments = 24;
+const previewOnlyFileTypes: readonly FileType[] = [
+  "image", "video", "audio", "pdf", "document", "presentation",
+  "archive", "font", "binary",
+];
 
 interface DocumentBase {
   id: string;
@@ -58,16 +64,14 @@ export async function openDocument(
   if (pending) return pending;
   const environment = environmentId();
   const operation = (async () => {
-    if (useDocuments.getState().documents.length + loading.size >= 24)
-      throw new Error(
-        "Close an editor tab before opening another file (24 open files maximum).",
-      );
     if (
-      [
-        "image", "video", "audio", "pdf", "document", "presentation",
-        "archive", "font", "binary",
-      ].includes(fileTypeFor(path))
-    ) {
+      useDocuments.getState().documents.length + loading.size >=
+      maxOpenDocuments
+    )
+      throw new Error(
+        `Close an editor tab before opening another file (${maxOpenDocuments} open files maximum).`,
+      );
+    if (previewOnlyFileTypes.includes(fileTypeFor(path))) {
       const document: PreviewDocument = {
         kind: "preview", id, scope, environment, path, query,
       };

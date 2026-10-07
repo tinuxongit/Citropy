@@ -1,7 +1,8 @@
+import { RAW_CODE_CLOSE, RAW_CODE_OPEN } from "./raw-code.ts";
+
 const applied = new WeakMap<Element, string | string[]>();
 const streamed = new WeakMap<Element, { joined: string; blocks: string[]; counts: number[] }>();
-const rawCodeOpen = '<pre class="raw"><code>';
-const rawCodeClose = "</code></pre></figure>";
+const rawCodeClose = `${RAW_CODE_CLOSE}</figure>`;
 
 function markupOf(node: Node): string {
   return node instanceof Element ? node.outerHTML : `${node.nodeType}:${node.textContent ?? ""}`;
@@ -61,10 +62,10 @@ export function patchBlocks(root: Element, blocks: string[]): void {
       next.startsWith(previous.slice(0, -rawCodeClose.length)) && current?.counts[keep] === 1 &&
       paragraph instanceof HTMLElement && paragraph.tagName === "FIGURE" && paragraph.childNodes.length === 2 &&
       paragraph.firstElementChild?.tagName === "FIGCAPTION") {
-    const start = previous.indexOf(rawCodeOpen) + rawCodeOpen.length;
+    const start = previous.indexOf(RAW_CODE_OPEN) + RAW_CODE_OPEN.length;
     const pre = paragraph.lastElementChild;
     const code = pre?.firstElementChild;
-    if (start >= rawCodeOpen.length && !/[<\r]/.test(next.slice(start, -rawCodeClose.length)) && !/&[^;]*$/.test(previous.slice(start, -rawCodeClose.length)) &&
+    if (start >= RAW_CODE_OPEN.length && !/[<\r]/.test(next.slice(start, -rawCodeClose.length)) && !/&[^;]*$/.test(previous.slice(start, -rawCodeClose.length)) &&
         pre instanceof HTMLPreElement && pre.className === "raw" && pre.childNodes.length === 1 &&
         code?.tagName === "CODE" && code.attributes.length === 0 &&
         (code.childNodes.length === 0 || (code.childNodes.length === 1 && code.firstChild instanceof Text))) {

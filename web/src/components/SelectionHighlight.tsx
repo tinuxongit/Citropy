@@ -38,13 +38,13 @@ export function SelectionHighlight({ value, layout, selector = SELECTED }: {
     const pill = ref.current;
     const host = pill?.parentElement;
     if (!pill || !host) return;
-    const selected = host.querySelector<HTMLElement>(selector);
+    let selected: HTMLElement | null | undefined;
     const hide = () => {
       pill.hidden = true;
       previous.current = undefined;
     };
-    if (!selected) return hide();
     const position = () => {
+      if (!selected) return hide();
       const bounds = visibleBounds(host, selected);
       if (bounds[2] < 1 || bounds[3] < 1) return hide();
       const last = previous.current;
@@ -59,10 +59,23 @@ export function SelectionHighlight({ value, layout, selector = SELECTED }: {
       previous.current = { value, bounds };
     };
     const resize = new ResizeObserver(position);
+    const track = () => {
+      const next = host.querySelector<HTMLElement>(selector);
+      if (next === selected) return;
+      if (selected) resize.unobserve(selected);
+      selected = next;
+      if (selected) resize.observe(selected);
+      position();
+    };
+    const mutations = new MutationObserver(track);
     resize.observe(host);
-    resize.observe(selected);
     if (host.children.length <= WATCHED_CHILDREN) for (const child of host.children) if (child !== pill) resize.observe(child);
-    return () => resize.disconnect();
+    mutations.observe(host, { childList: true, subtree: true });
+    track();
+    return () => {
+      resize.disconnect();
+      mutations.disconnect();
+    };
   }, [value, layout, selector]);
 
   return <span ref={ref} className="selection-highlight" aria-hidden="true" hidden />;

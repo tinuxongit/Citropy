@@ -107,14 +107,14 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.locator('.thread-row[aria-label="Third conversation"]').click();
     await expect(async () => (await titles()).join() === "Build a small world,Third conversation");
     const third = tabs.filter({ hasText: "Third conversation" });
-    assert.equal(await third.getAttribute("data-preview"), "");
+    assert.equal(await third.getAttribute("data-preview"), "true");
     await page.screenshot({ path: `${root}/node_modules/.vite-tests/thread-tabs.png`, clip: { x: 0, y: 0, width: 1280, height: 80 } });
     await third.locator(".thread-tab-open").dblclick();
     assert.equal(await third.getAttribute("data-preview"), null);
     await tabs.first().locator(".thread-tab-open").click();
     await tabs.first().locator(".thread-tab-close").click();
     await expect(async () => (await titles()).join() === "Third conversation");
-    assert.equal(await third.getAttribute("data-active"), "");
+    assert.equal(await third.getAttribute("data-active"), "true");
   });
 
   for (const width of [900, 1280, 1600, 380]) check(`side panel transitions glide without repeatedly resizing the chat at ${width}px`, async t => {
@@ -625,7 +625,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.ok(Math.max(...heights.slice(lowest)) - heights[lowest] < 20, `height grew back after folding: ${heights.join(",")}`);
   });
 
-  check("questions, plans, and Git share the composer tabs", async (t) => {
+  check("questions and plans share the composer tabs", async (t) => {
     const { page } = await app(t, {
       messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("intro", "Working on it."), plan] }],
       questions: [{ id: "request", threadId: "chat", messageId: "answer", questions, createdAt: 1 }],
@@ -636,12 +636,8 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.getByRole("button", { name: "Plan, 1 of 3 done", exact: true }).click();
     const planPanel = page.getByRole("dialog", { name: "Plan", exact: true });
     await planPanel.getByText("Draw the chart", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "Git actions", exact: true }).click();
+    await page.getByRole("button", { name: "Plan, 1 of 3 done", exact: true }).click();
     await planPanel.waitFor({ state: "detached" });
-    const git = page.getByRole("dialog", { name: "Git actions", exact: true });
-    await git.waitFor();
-    await page.locator(".canvas").click({ position: { x: 10, y: 10 } });
-    await git.waitFor({ state: "detached" });
     await question.getByText("Multiplayer", { exact: true }).click();
     const answered = page.waitForRequest("**/api/threads/question*");
     await question.getByRole("button", { name: "Send answers", exact: true }).click();

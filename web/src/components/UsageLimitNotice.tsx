@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { Check, Hourglass } from "lucide-react";
 import { organizeConversation } from "./ConversationMenu.tsx";
 import { reportError } from "../lib/api.ts";
@@ -8,9 +8,8 @@ import { environmentId } from "../lib/environment.ts";
 import { clock, formatDate } from "../lib/format.ts";
 import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
-import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
-import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
+import { ComposerPopover } from "./composer/ComposerPopover.tsx";
 import { ComposerTab } from "./composer/ComposerTab.tsx";
 
 function resetTime(resetsAt: number): string {
@@ -53,17 +52,13 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
   limit: NonNullable<ThreadMeta["usageLimit"]>;
 }) {
   const connected = useApp((state) => state.connected);
-  const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
-  const panel = useRef<HTMLElement>(null);
   const id = useId();
   const close = () => {
     setOpen(false);
     trigger.current?.focus({ preventScroll: true });
   };
-  useAnchoredPanel(panel, trigger, { open, width: 300 });
-  useDismiss(panel, trigger, close, { open, outside: true });
   const time = upcoming(limit.resetsAt);
   const snoozed = Boolean(limit.resetsAt && thread.snoozedUntil === limit.resetsAt);
   const status = time
@@ -86,18 +81,7 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
         {limit.resume ? <Check size={13} aria-hidden="true" /> : <Hourglass size={13} aria-hidden="true" />}
         {time ?? "Usage limit"}
       </ComposerTab>
-      <AnimatePresence>{open && <motion.section
-        ref={panel}
-        id={id}
-        popover="manual"
-        role="dialog"
-        aria-label="Usage limit reached"
-        className="tab-panel usage-limit-panel"
-        initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }}
-        animate={{ opacity: 1, transform: "none" }}
-        exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }}
-        transition={{ duration: reducedMotion ? 0 : 0.16 }}
-      >
+      <AnimatePresence>{open && <ComposerPopover id={id} label="Usage limit reached" className="usage-limit-panel" anchor={trigger} width={300} onClose={close}>
         <header>
           <Hourglass size={15} aria-hidden="true" />
           <h2>Usage limit reached</h2>
@@ -140,7 +124,7 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
             </label>
           )}
         </div>
-      </motion.section>}</AnimatePresence>
+      </ComposerPopover>}</AnimatePresence>
     </>
   );
 }

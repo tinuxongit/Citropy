@@ -5,8 +5,8 @@ import { mkdtemp, rm, access, readFile, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createServer } from "node:net";
 import { _electron as electron } from "playwright";
+import { freePort } from "../shared/ports.mjs";
 import { checkPackagedTerminal } from "./smoke-terminal.mjs";
 
 const root = fileURLToPath(new URL("../release/linux-unpacked/", import.meta.url));
@@ -15,10 +15,7 @@ const display = spawn("Xvfb", ["-displayfd", "3", "-screen", "0", "1440x1000x24"
 let desktop;
 try {
   const [number] = await once(display.stdio[3], "data");
-  const probe = createServer();
-  await new Promise(resolve => probe.listen(0, "127.0.0.1", resolve));
-  const port = probe.address().port;
-  await new Promise(resolve => probe.close(resolve));
+  const port = await freePort();
   const appRoot = join(root, "resources/app");
   await access(join(appRoot, "LICENSE"));
   await access(join(appRoot, "dist/index.html"));

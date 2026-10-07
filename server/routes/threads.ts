@@ -1,11 +1,13 @@
 import { checkUsageResume } from "../usage-resume.ts";
 import { answer as answerPermission } from "../permissions.ts";
 import { providerInfo } from "../provider-registry.ts";
+import { usableProviderAccount } from "../provider-account.ts";
 import { disposeRuntime, runtimeFor, runtimeIfExists } from "../runtime.ts";
 import { store } from "../store.ts";
 import { chooseThreadWorkspace, workspacePath } from "../workspaces.ts";
 import { cleanupCheckpoints } from "../checkpoints.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../shared/model-options.ts";
+import { providerAccount } from "../../shared/provider-account.ts";
 import type { ClientEvent, Thread } from "../../shared/protocol.ts";
 import type { Respond, Routes } from "./types.ts";
 
@@ -58,13 +60,12 @@ function resolveConfig(thread: Thread, event: ConfigEvent): { changedProvider: b
   const provider = providerInfo().find((entry) => entry.id === (event.provider ?? thread.provider));
   const instanceId = event.providerInstanceId === undefined ? changedProvider ? undefined : thread.providerInstanceId : event.providerInstanceId ?? undefined;
   const changedInstance = instanceId !== thread.providerInstanceId;
-  const instance = instanceId ? provider?.instances?.find(entry => entry.id === instanceId) : undefined;
+  const account = providerAccount(provider, instanceId);
   if (changedProvider || changedInstance) {
-    if (!provider?.enabled || (instanceId ? !instance?.available : !provider.available)) throw new Error("Select an enabled, installed provider account.");
+    if (!account.usable) throw new Error("Select an enabled, installed provider account.");
     if (hasHistory(thread) || runtimeIfExists(thread.id)?.turnActive) throw new Error("Start a new thread to use a different provider after sending a message.");
   }
-  const models = instanceId ? instance?.models ?? [] : provider?.models ?? [];
-  const model = selectedModel(models, event.model ?? (changedProvider || changedInstance ? undefined : selection.model));
+  const model = selectedModel(account.models, event.model ?? (changedProvider || changedInstance ? undefined : selection.model));
   if (event.model && !model) throw new Error("This model is no longer available. Refresh the model list.");
   if (event.effort && !model?.efforts?.includes(event.effort))
     throw new Error("This effort is not supported by the selected model");
@@ -73,7 +74,7 @@ function resolveConfig(thread: Thread, event: ConfigEvent): { changedProvider: b
   if (event.fastMode !== undefined && (typeof event.fastMode !== "boolean" || (event.fastMode && !model?.fastMode)))
     throw new Error("Fast mode is not supported by the selected model");
   const changedModel = changedProvider || changedInstance || (event.model !== undefined && event.model !== selection.model);
-  const settings = modelSettings(models, {
+  const settings = modelSettings(account.models, {
     model: event.model ?? (changedProvider || changedInstance ? model?.id : selection.model),
     effort: event.effort === null || changedModel ? (event.effort ?? undefined) : (event.effort ?? selection.effort),
     contextWindow: event.contextWindow ?? (changedModel ? undefined : selection.contextWindow),
@@ -84,11 +85,7 @@ function resolveConfig(thread: Thread, event: ConfigEvent): { changedProvider: b
 
 export const threadRoutes: Routes = {
   "thread.create": async (event, send) => {
-    const provider = providerInfo().find((entry) => entry.id === event.provider);
-    const instance = event.providerInstanceId ? provider?.instances?.find(entry => entry.id === event.providerInstanceId) : undefined;
-    if (!provider?.enabled || (event.providerInstanceId ? !instance?.available : !provider.available))
-      throw new Error("This provider is not available on this computer.");
-    const models = instance?.models ?? provider.models;
+    const { models } = usableProviderAccount(providerInfo().find((entry) => entry.id === event.provider), event.providerInstanceId);
     if (event.model && !models.some(model => model.id === event.model)) throw new Error("This model is not available for the selected provider instance.");
     const project = store.projects.get(event.projectId);
     if (!project) throw new Error("Workspace not found");

@@ -3,7 +3,7 @@ import { FileIcon } from "../FileIcon.tsx";
 import { VirtualList } from "../VirtualList.tsx";
 import { fileLabel } from "./files.ts";
 import { groupGitFiles } from "../../lib/git-files.ts";
-import type { GitSelection } from "../GitReview.tsx";
+import type { GitSelection } from "./selection.ts";
 import type { GitFile, GitOperation } from "../../../../shared/protocol.ts";
 
 export function FileGroup({

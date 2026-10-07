@@ -3,6 +3,7 @@ import { logFailure } from "../../shared/expected-errors.mjs";
 import { stopProcess } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverModels } from "./models.ts";
+import { toolContent } from "./tool-content.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -11,6 +12,9 @@ import { ANSWER_WAIT_MS, permissionToolName } from "../permissions.ts";
 import type { AgentEvent, AgentSession, Provider, SessionConfig, StartOptions } from "./types.ts";
 import type { Attachment, PermissionMode, ThreadStatus, TodoItem } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
+
+const DEFAULT_CONTEXT_MAX = 200_000;
+const EXTENDED_CONTEXT_MAX = 1_000_000;
 
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
 
@@ -49,31 +53,6 @@ function currentContextTokens(usage: ClaudeUsage): number | undefined {
     : undefined;
 }
 
-function contentOf(content: unknown): { text: string; images: Array<{ mime: string; data: string }> } {
-  if (typeof content === "string") return { text: content, images: [] };
-  if (!Array.isArray(content)) return { text: content == null ? "" : JSON.stringify(content), images: [] };
-  const images: Array<{ mime: string; data: string }> = [];
-  const text: string[] = [];
-  for (const entry of content) {
-    if (typeof entry === "string") {
-      text.push(entry);
-      continue;
-    }
-    const record = entry as Record<string, unknown>;
-    if (record.type === "text" && typeof record.text === "string") {
-      text.push(record.text);
-      continue;
-    }
-    if (record.type === "image") {
-      const source = record.source as { type?: unknown; media_type?: unknown; data?: unknown } | undefined;
-      if (source?.type === "base64" && typeof source.media_type === "string" && typeof source.data === "string") images.push({ mime: source.media_type, data: source.data });
-      continue;
-    }
-    text.push(JSON.stringify(record));
-  }
-  return { text: text.join("\n"), images };
-}
-
 class ClaudeSession implements AgentSession {
   #child: ChildProcessWithoutNullStreams;
 
@@ -84,7 +63,8 @@ class ClaudeSession implements AgentSession {
   #turn = 0;
   #disposed = false;
   #openBlocks = new Set<string>();
-  #contextMax = 200_000;
+  #configuredContextMax: number;
+  #reportedContextMax: number;
   #tasks = new Map<string, TodoItem>();
   #pendingTasks = new Map<string, string>();
   #agents = new Map<string, { title: string; prompt?: string; model?: string }>();
@@ -112,9 +92,10 @@ class ClaudeSession implements AgentSession {
     this.#effort = options.effort;
     this.#fastMode = options.fastMode ?? false;
     this.#permissionMode = options.permissionMode;
-    this.#contextMax = options.contextMax ?? 200_000;
+    this.#configuredContextMax = options.contextMax ?? DEFAULT_CONTEXT_MAX;
+    this.#reportedContextMax = this.#configuredContextMax;
     const contextTokens = options.usage?.contextTokens ?? 0;
-    this.#contextTokens = contextTokens <= this.#contextMax ? contextTokens : 0;
+    this.#contextTokens = contextTokens <= this.#configuredContextMax ? contextTokens : 0;
     const args = [
       "-p",
       "--input-format",
@@ -139,7 +120,7 @@ class ClaudeSession implements AgentSession {
       args.push(
         "--model",
         options.model.replace(/\[1m\]$/i, "") +
-          (options.contextMax === 1_000_000 ? "[1m]" : ""),
+          (options.contextMax === EXTENDED_CONTEXT_MAX ? "[1m]" : ""),
       );
     args.push(
       "--settings",
@@ -157,7 +138,7 @@ class ClaudeSession implements AgentSession {
         ...(options.contextMax
           ? {
               CLAUDE_CODE_DISABLE_1M_CONTEXT:
-                options.contextMax <= 200_000 ? "1" : "0",
+                options.contextMax <= DEFAULT_CONTEXT_MAX ? "1" : "0",
             }
           : {}),
       },
@@ -245,11 +226,11 @@ class ClaudeSession implements AgentSession {
 
   async configure(config: SessionConfig): Promise<void> {
     if (config.effort !== this.#effort ||
-      (config.contextMax ?? 200_000) !== this.#contextMax ||
+      (config.contextMax ?? DEFAULT_CONTEXT_MAX) !== this.#configuredContextMax ||
       (config.fastMode ?? false) !== this.#fastMode)
       throw new Error("Claude must restart to apply this setting.");
     if (config.model !== undefined && config.model !== this.#model) {
-      await this.#control({ subtype: "set_model", model: config.model === "default" ? null : config.model.replace(/\[1m\]$/i, "") + (this.#contextMax === 1_000_000 ? "[1m]" : "") }, "Claude did not confirm the model change.");
+      await this.#control({ subtype: "set_model", model: config.model === "default" ? null : config.model.replace(/\[1m\]$/i, "") + (this.#configuredContextMax === EXTENDED_CONTEXT_MAX ? "[1m]" : "") }, "Claude did not confirm the model change.");
       this.#model = config.model;
     }
     if (config.permissionMode !== undefined && config.permissionMode !== this.#permissionMode) {
@@ -370,7 +351,7 @@ class ClaudeSession implements AgentSession {
           const contextTokens = currentContextTokens(usage);
           if (contextTokens !== undefined) this.#contextTokens = contextTokens;
         }
-        this.#emit({ type: "usage", usage: { ...this.#usage.totals, contextTokens: this.#contextTokens, contextMax: this.#contextMax } });
+        this.#emit({ type: "usage", usage: { ...this.#usage.totals, contextTokens: this.#contextTokens, contextMax: this.#reportedContextMax } });
       }
     }
     if (type === "system" && message.subtype === "compact_boundary") {
@@ -414,7 +395,7 @@ class ClaudeSession implements AgentSession {
         type: "session",
         externalId: String(message.session_id ?? ""),
         model: typeof message.model === "string" ? message.model : undefined,
-        contextMax: this.#contextMax,
+        contextMax: this.#reportedContextMax,
       });
       return;
     }
@@ -470,7 +451,7 @@ class ClaudeSession implements AgentSession {
         const block = raw as Record<string, unknown>;
         if (block.type !== "tool_result") continue;
         const callId = String(block.tool_use_id);
-        const result = contentOf(block.content);
+        const result = toolContent(block.content);
         const output = result.text;
         const agent = this.#agents.get(callId);
         if (agent && !/running.*background|launched.*asynchronously/i.test(output)) this.#emit({ type: "subagent", id: callId, ...agent, status: block.is_error ? "error" : "idle", result: output });
@@ -486,7 +467,7 @@ class ClaudeSession implements AgentSession {
       const modelUsage = message.modelUsage as Record<string, { contextWindow?: number; inputTokens?: number; outputTokens?: number; cacheReadInputTokens?: number; cacheCreationInputTokens?: number }> | undefined;
       const models = Object.values(modelUsage ?? {});
       const contextMax = (modelUsage?.[this.#model ?? ""] ?? (models.length === 1 ? models[0] : undefined))?.contextWindow;
-      if (contextMax && Number.isFinite(contextMax) && contextMax > 0) this.#contextMax = contextMax;
+      if (contextMax && Number.isFinite(contextMax) && contextMax > 0) this.#reportedContextMax = contextMax;
       for (const [key, field] of [["input", "inputTokens"], ["output", "outputTokens"], ["cacheRead", "cacheReadInputTokens"], ["cacheWrite", "cacheCreationInputTokens"]] as const) {
         const counts = models.map((model) => model[field]);
         if (counts.length && counts.every((value): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0)) {
@@ -504,7 +485,7 @@ class ClaudeSession implements AgentSession {
           ...this.#usage.totals,
           costUsd: cost,
           contextTokens: this.#contextTokens,
-          contextMax: this.#contextMax,
+          contextMax: this.#reportedContextMax,
         },
       });
       const origin = message.origin as { kind?: string } | undefined;

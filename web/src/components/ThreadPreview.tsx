@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
+import { providerAccount } from "../../../shared/provider-account.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { environmentSlice } from "../lib/live-environments.ts";
 import { modelLabel, providerLabels, shortPath, threadActivity } from "../lib/format.ts";
@@ -67,7 +68,7 @@ export function ThreadPreview({ id, thread, environment, anchor, onClose, onPoin
 
   return <div ref={ref} id={id} className="thread-preview scroll" role="tooltip" popover="manual" onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}>
     <strong className="thread-preview-title">{thread.title}</strong>
-    <div className="thread-preview-model"><ProviderIcon provider={thread.provider} /><span>{modelLabel(provider?.models ?? [], thread.model)}<small>{provider?.label ?? providerLabels[thread.provider]}</small></span></div>
+    <div className="thread-preview-model"><ProviderIcon provider={thread.provider} /><span>{modelLabel(providerAccount(provider, thread.providerInstanceId).models, thread.model)}<small>{provider?.label ?? providerLabels[thread.provider]}</small></span></div>
     <dl>
       <dt>Status</dt><dd data-status={status}>{statusLabel}</dd>
       <dt>Last activity</dt><dd><time dateTime={new Date(thread.updatedAt).toISOString()}>{new Date(thread.updatedAt).toLocaleString(LOCALE, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></dd>

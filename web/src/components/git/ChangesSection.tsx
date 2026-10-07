@@ -10,7 +10,8 @@ import {
   X,
 } from "lucide-react";
 import { ResizeHandle } from "../ResizeHandle.tsx";
-import { GitReview, type GitSelection } from "../GitReview.tsx";
+import { GitReview } from "../GitReview.tsx";
+import type { GitSelection } from "./selection.ts";
 import { EmptyState } from "./GitEmptyState.tsx";
 import { FileGroup } from "./FileGroup.tsx";
 import { fileLabel } from "./files.ts";

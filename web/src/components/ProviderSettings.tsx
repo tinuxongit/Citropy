@@ -16,6 +16,7 @@ import { confirmAction, useApp } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
 import type { ProviderInfo } from "../../../shared/protocol.ts";
 import type { ProviderMaintenance } from "../../../shared/provider-settings.ts";
+import { hasUsableAccount } from "../../../shared/provider-account.ts";
 import { Select } from "./Select.tsx";
 import { selectEnvironment, useEnvironments } from "../lib/environment.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
@@ -238,7 +239,7 @@ export function ProviderSettings() {
                   </div>
                 </div>
                 <div className="provider-setting-status">
-                  <span data-available={provider.enabled && (provider.available || provider.instances?.some(entry => entry.available))}>
+                  <span data-available={hasUsableAccount(provider)}>
                     {!provider.enabled
                       ? "Disabled"
                       : provider.available

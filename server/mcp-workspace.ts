@@ -7,8 +7,10 @@ import { answerQuestion, askQuestion, hasPendingQuestion, pendingQuestions } fro
 import { ask } from "./permissions.ts";
 import { store } from "./store.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
+import { providerAccount } from "../shared/provider-account.ts";
 import { providers } from "./providers/index.ts";
 import { providerInfo } from "./provider-registry.ts";
+import { resolveProviderAccount } from "./provider-account.ts";
 import { runtimeFor, runtimeIfExists } from "./runtime.ts";
 import { bus } from "./bus.ts";
 import * as browser from "./browser.ts";
@@ -341,18 +343,15 @@ export async function callWorkspaceTool(
       const requestedInstanceId = args.providerInstanceId;
       if (requestedInstanceId !== undefined && (typeof requestedInstanceId !== "string" || !requestedInstanceId.trim())) throw new Error("Choose a provider account returned by subagent_providers");
       const providerInstanceId = requestedInstanceId === "default" ? undefined : requestedInstanceId ?? (providerId === thread.provider ? thread.providerInstanceId : undefined);
-      const instance = providerInstanceId ? store.providerInstances.get(providerInstanceId) : undefined;
-      if (providerInstanceId && (!instance || instance.provider !== providerId)) throw new Error("Requested provider account is unavailable. Call subagent_providers to see available accounts.");
+      const { instance, launch } = resolveProviderAccount(providerId, providerInstanceId);
       if (
         !provider ||
         store.disabledProviders.has(providerId) ||
-        !(await provider.detect({ binary: instance?.binary, environment: instance?.environment })).available
+        !(await provider.detect(launch)).available
       )
         throw new Error("Requested provider account is unavailable. Call subagent_providers to see available accounts.");
-      const listedModels = providerInstanceId
-        ? providerInfo().find(entry => entry.id === providerId)?.instances?.find(entry => entry.id === providerInstanceId)?.models ?? []
-        : provider.models;
-      const models = listedModels.length || !providerInstanceId ? listedModels : await provider.listModels({ binary: instance?.binary, environment: instance?.environment });
+      const listedModels = providerAccount(providerInfo().find(entry => entry.id === providerId), providerInstanceId).models;
+      const models = listedModels.length || !providerInstanceId ? listedModels : await provider.listModels(launch);
       if (
         !store.threads.has(threadId) ||
         !store.projects.has(project.id) ||

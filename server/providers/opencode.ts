@@ -9,7 +9,7 @@ import type { ChildProcess } from "node:child_process";
 import { request } from "node:http";
 import { onLines } from "../lines.ts";
 import { logFailure } from "../../shared/expected-errors.mjs";
-import { readServerEvents, sameDirectory } from "./opencode-common.ts";
+import { parseModelRef, readServerEvents, sameDirectory } from "./opencode-common.ts";
 import { askQuestion, answerQuestion, cancelQuestions } from "../questions.ts";
 import { ask, cancelThread } from "../permissions.ts";
 import type { AgentSession, Provider, ProviderLaunch, StartOptions } from "./types.ts";
@@ -65,11 +65,10 @@ function launch(options: StartOptions, signal: AbortSignal, textOnly = false): P
   });
 }
 
-export async function generateOpenCodeText(cwd: string, model: string, effort: string | undefined, prompt: string, signal: AbortSignal, launchOptions?: import("./types.ts").ProviderLaunch): Promise<string> {
+export async function generateOpenCodeText(cwd: string, modelId: string, effort: string | undefined, prompt: string, signal: AbortSignal, launchOptions?: import("./types.ts").ProviderLaunch): Promise<string> {
   const resolved = await resolveOpenCode(launchOptions);
-  if (resolved.major === 2) return generateOpenCode2Text(cwd, model, effort, prompt, signal, resolved.launch);
-  const [providerID, ...modelParts] = model.split("/");
-  if (!providerID || !modelParts.length) throw new Error("Select an OpenCode model with a provider.");
+  if (resolved.major === 2) return generateOpenCode2Text(cwd, modelId, effort, prompt, signal, resolved.launch);
+  const model = parseModelRef(modelId);
   const instance = await launch({ cwd, threadId: "writing", permissionMode: "plan", emit: () => {}, ...launchOptions }, signal, true);
   let sessionId: string | undefined;
   try {
@@ -82,7 +81,7 @@ export async function generateOpenCodeText(cwd: string, model: string, effort: s
     if (typeof session.id !== "string") throw new Error("OpenCode did not create a writing session.");
     sessionId = session.id;
     const result = await request(`/session/${encodeURIComponent(sessionId!)}/message`, {
-      model: { providerID, modelID: modelParts.join("/") },
+      model,
       ...(effort ? { variant: effort } : {}),
       parts: [{ type: "text", text: prompt }],
       tools: { "*": false },
@@ -129,8 +128,7 @@ class OpenCodeSession implements AgentSession {
   #queue: Array<{ text: string; attachments: Attachment[] }> = [];
   #ready: Promise<void>;
   #prompting: Promise<void> | null = null;
-  #blocks = new Set<string>();
-  #emitted = new Map<string, number>();
+  #blocks = new Map<string, number>();
   #tools = new Map<string, string>();
   #roles = new Map<string, string>();
   #busy = false;
@@ -225,10 +223,9 @@ class OpenCodeSession implements AgentSession {
   }
 
   #body(text: string, attachments: Attachment[]): Record<string, unknown> {
-    const model = this.#options.model?.includes("/") ? this.#options.model.split("/") : null;
     const body: Record<string, unknown> = { parts: [{ type: "text", text: text || "Please inspect the attached files." }, ...attachments.map((file) => ({ type: "file", mime: file.mime ?? "application/octet-stream", filename: file.label, url: pathToFileURL(file.path).href }))] };
     if (this.#options.effort) body.variant = this.#options.effort;
-    if (model) body.model = { providerID: model[0], modelID: model.slice(1).join("/") };
+    if (this.#options.model) body.model = parseModelRef(this.#options.model);
     return body;
   }
 
@@ -278,12 +275,11 @@ class OpenCodeSession implements AgentSession {
 
   async compact(): Promise<void> {
     await this.#ready;
-    const model = this.#options.model?.split("/");
-    if (!model || model.length < 2) throw new Error("Select a model before compacting.");
+    const model = parseModelRef(this.#options.model);
     this.#compacting = true;
     this.#compactionError = "";
     try {
-      const result = await this.#post(`/session/${this.#sessionId}/summarize`, { providerID: model[0], modelID: model.slice(1).join("/"), auto: false });
+      const result = await this.#post(`/session/${this.#sessionId}/summarize`, { ...model, auto: false });
       if (this.#compactionError) throw new Error(this.#compactionError);
       if (result !== true) throw new Error("OpenCode did not complete context compaction.");
       this.#options.emit({ type: "compacted" });
@@ -314,7 +310,6 @@ class OpenCodeSession implements AgentSession {
     this.#instance = null;
     this.#queue = [];
     this.#blocks.clear();
-    this.#emitted.clear();
     this.#tools.clear();
     this.#roles.clear();
     this.#agentSessions.clear();
@@ -354,10 +349,11 @@ class OpenCodeSession implements AgentSession {
       const partId = String(props.partID ?? "");
       const field = String(props.field ?? "");
       if (field !== "text") return;
-      if (!this.#blocks.has(partId)) return;
+      const sent = this.#blocks.get(partId);
+      if (sent === undefined) return;
       const delta = String(props.delta ?? "");
       emit({ type: "block.delta", blockId: partId, text: delta });
-      this.#emitted.set(partId, (this.#emitted.get(partId) ?? 0) + delta.length);
+      this.#blocks.set(partId, sent + delta.length);
       return;
     }
 
@@ -391,9 +387,8 @@ class OpenCodeSession implements AgentSession {
         });
       }
       if (info.time?.completed) {
-        for (const id of this.#blocks) emit({ type: "block.end", blockId: id });
+        for (const id of this.#blocks.keys()) emit({ type: "block.end", blockId: id });
         this.#blocks.clear();
-        this.#emitted.clear();
       }
       return;
     }
@@ -459,9 +454,8 @@ class OpenCodeSession implements AgentSession {
     if (!this.#busy) return;
     this.#busy = false;
     this.#busySeen = false;
-    for (const id of this.#blocks) this.#options.emit({ type: "block.end", blockId: id });
+    for (const id of this.#blocks.keys()) this.#options.emit({ type: "block.end", blockId: id });
     this.#blocks.clear();
-    this.#emitted.clear();
     cancelThread(this.#options.threadId, false);
     cancelQuestions(this.#options.threadId);
     this.#tools.clear();
@@ -473,15 +467,16 @@ class OpenCodeSession implements AgentSession {
     if (part.messageID && this.#roles.get(part.messageID) === "user") return;
     if (part.type === "text" || part.type === "reasoning") {
       const kind = part.type === "reasoning" ? "reasoning" : "text";
-      if (!this.#blocks.has(part.id)) {
-        this.#blocks.add(part.id);
+      let sent = this.#blocks.get(part.id);
+      if (sent === undefined) {
+        sent = 0;
+        this.#blocks.set(part.id, 0);
         emit({ type: "block.start", blockId: part.id, block: kind });
       }
       const full = part.text ?? "";
-      const sent = this.#emitted.get(part.id) ?? 0;
       if (full.length > sent) {
         emit({ type: "block.delta", blockId: part.id, text: full.slice(sent) });
-        this.#emitted.set(part.id, full.length);
+        this.#blocks.set(part.id, full.length);
       }
       return;
     }

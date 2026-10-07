@@ -113,6 +113,7 @@ const VERBS: Record<string, [string, string]> = {
   WebFetch: ["Fetching", "Fetched"],
   Task: ["Delegating", "Delegated"],
   Agent: ["Delegating", "Delegated"],
+  Skill: ["Using skill", "Used skill"],
   citropy_terminal_open: ["Opening terminal", "Opened terminal"],
   citropy_terminal_read: ["Reading terminal output", "Read terminal output"],
   citropy_terminal_write: ["Writing to terminal", "Wrote to terminal"],
@@ -125,6 +126,7 @@ export function toolLabel(name: string, status: ToolPart["status"]): string {
     return status === "running" ? `Running ${short}` : short;
   }
   if (status === "denied") return `Blocked ${pair[1].toLowerCase()}`;
+  if (status === "stopped") return `Stopped ${pair[0].toLowerCase()}`;
   return status === "running"
     ? pair[0]
     : pair[1];

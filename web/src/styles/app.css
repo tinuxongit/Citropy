@@ -75,8 +75,6 @@
 .topbar {
   display: flex;
   align-items: center;
-  background: var(--panel-solid);
-  border-bottom: 1px solid var(--line);
   z-index: 20;
 }
 
@@ -257,6 +255,12 @@
 }
 .workspace-menu .menu-item[data-danger] .menu-icon { color: var(--heat); }
 .workspace-menu .menu-item[data-danger]:hover .menu-icon { color: var(--bad); }
+.workspace-menu .menu-option[data-group] { margin-top: var(--space-4); }
+.workspace-menu .menu-option[data-group]:first-child { margin-top: 0; }
+.workspace-menu .menu-option[data-group] > .menu-item { min-height: 50px; }
+.workspace-menu .menu-option[data-group] .menu-label { font-weight: 500; }
+.menu-group-chevron { flex: none; margin-left: auto; color: var(--text-3); transition: transform 160ms ease; }
+.menu-group-chevron[data-expanded="true"] { transform: rotate(90deg); }
 
 .breadcrumb {
   display: flex;
@@ -384,7 +388,7 @@
   opacity: 0;
   transition: opacity 280ms var(--ease-out);
   mask: none;
-  clip-path: inset(var(--topbar) 0 0 calc(100% - var(--stage-right, 0px)) round 14px 0 0 0);
+  clip-path: inset(var(--topbar) 0 0 calc(100% - var(--stage-right, 0px)) round var(--r-lg) 0 0 0);
 }
 .shell:has(> .shell-body > .sliding-panel[data-side="right"][data-open="true"]) .stage-backdrop-inspector {
   opacity: 1;
@@ -456,6 +460,7 @@
   background: var(--canvas);
 }
 .shell[data-backdrop]:not([data-section]) .section-view { background: transparent; }
+.shell[data-section] .backdrop-layers { visibility: hidden; }
 
 .sidebar-scrim {
   display: none;

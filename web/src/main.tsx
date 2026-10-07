@@ -19,6 +19,11 @@ import "./styles/thread-details.css";
 import "./styles/git.css";
 import "./styles/github.css";
 import "./styles/features.css";
+import "./styles/projects.css";
+import "./styles/settings-pages.css";
+import "./styles/usage.css";
+import "./styles/media.css";
+import "./styles/dialogs.css";
 import "./styles/virtual-list.css";
 import "./styles/environments.css";
 import { initializeEnvironment } from "./lib/environment.ts";
@@ -39,12 +44,13 @@ async function start() {
   followVisualViewport();
   await initializeEnvironment();
   applyReleaseDefaults();
-  const [{ App }, { connect, logClientError }, { useApp }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts")]);
+  const [{ App }, { connect, logClientError }, { useApp, applyChatWidth }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts")]);
 
   if (!window.citropyDesktop && window.loomDesktop)
     window.citropyDesktop = window.loomDesktop;
 
-  const { theme, scheme, customColor } = useApp.getState();
+  const { theme, scheme, customColor, chatWidth } = useApp.getState();
+  applyChatWidth(chatWidth);
   document.documentElement.dataset.theme = theme;
   document.documentElement.dataset.scheme = scheme;
   applyCustomColor(customColor, scheme);

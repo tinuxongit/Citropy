@@ -14,7 +14,12 @@ import {
   createTimelineSelector,
 } from "../lib/timeline.ts";
 import { LatestButton } from "./LatestButton.tsx";
+import { SelectionQuote } from "./SelectionQuote.tsx";
 import { onPanelSettled, panelMoving } from "../lib/panel-motion.ts";
+
+type RowAnchor = { key: string; offset: number };
+
+const readingPositions = new Map<string, RowAnchor>();
 
 export function Conversation() {
   const searchMessageId = useApp((state) => state.searchMessageId);
@@ -43,7 +48,7 @@ export function Conversation() {
   const loadingOlder = loadingOlderThread === threadId;
   const olderRequests = useRef(new Set<string>());
   const failedOlder = useRef<{ threadId: string; cursor: string }>(undefined);
-  const olderAnchor = useRef<{ threadId: string; cursor: string; key: string; offset: number }>(undefined);
+  const olderAnchor = useRef<RowAnchor & { threadId: string; cursor: string }>(undefined);
   const {
     viewport,
     content,
@@ -57,15 +62,22 @@ export function Conversation() {
   const virtualized = rows.length > 40;
   const pinnedActivity = useRef<{ id: string }>(undefined);
   const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);
+  const [savedPosition] = useState(() => {
+    const saved = threadId ? readingPositions.get(threadId) : undefined;
+    const index = saved ? rows.findIndex(row => row.key === saved.key) : -1;
+    return saved && index >= 0 ? { ...saved, index } : undefined;
+  });
+  const estimatedRowHeight = scaled(180);
+  const paddingStart = scaled(olderCursor ? 76 : 30);
   const rowHeights = useRef(new WeakMap<Element, number>());
   const timeline = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: rows.length,
     getScrollElement: () => viewport.current,
     getItemKey,
     anchorTo: "end",
-    estimateSize: () => scaled(180),
-    initialOffset: () => viewport.current?.scrollTop ?? rows.length * scaled(180),
-    paddingStart: scaled(olderCursor ? 76 : 30),
+    estimateSize: () => estimatedRowHeight,
+    initialOffset: () => savedPosition ? paddingStart + savedPosition.index * estimatedRowHeight : viewport.current?.scrollTop ?? rows.length * estimatedRowHeight,
+    paddingStart,
     overscan: virtualized ? 4 : 40,
     measureElement: (element, entry) => {
       const cached = rowHeights.current.get(element);
@@ -92,6 +104,17 @@ export function Conversation() {
     return (instance.itemSizeCache.has(item.key) ? item.end : item.start) <= offset;
   };
   const virtualItems = timeline.getVirtualItems();
+  const topRow = useCallback((): RowAnchor | undefined => {
+    const canvas = viewport.current;
+    const item = timeline.getVirtualItems().find(item => item.end > (canvas?.scrollTop ?? 0));
+    const element = item && timeline.elementsCache.get(item.key);
+    if (canvas && item && element) return { key: String(item.key), offset: element.getBoundingClientRect().top - canvas.getBoundingClientRect().top };
+  }, [viewport, timeline]);
+  const placeRow = useCallback((anchor: RowAnchor) => {
+    const canvas = viewport.current;
+    const element = timeline.elementsCache.get(anchor.key);
+    if (canvas && element?.isConnected) canvas.scrollTop += element.getBoundingClientRect().top - canvas.getBoundingClientRect().top - anchor.offset;
+  }, [viewport, timeline]);
   const loadOlder = useCallback(async () => {
     if (!threadId || !connected || olderRequests.current.has(threadId)) return;
     const cursor = useApp.getState().historyPages[threadId]?.next;
@@ -100,10 +123,8 @@ export function Conversation() {
     failedOlder.current = undefined;
     setLoadingOlderThread(threadId);
     stopFollowing();
-    const canvas = viewport.current;
-    const item = timeline.getVirtualItems().find(item => item.end > (canvas?.scrollTop ?? 0));
-    const element = item && timeline.elementsCache.get(item.key);
-    if (canvas && item && element) olderAnchor.current = { threadId, cursor, key: String(item.key), offset: element.getBoundingClientRect().top - canvas.getBoundingClientRect().top };
+    const anchor = topRow();
+    if (anchor) olderAnchor.current = { threadId, cursor, ...anchor };
     try {
       await loadOlderThread(threadId);
     } catch (error) {
@@ -114,22 +135,20 @@ export function Conversation() {
       olderRequests.current.delete(threadId);
       setLoadingOlderThread(current => current === threadId ? undefined : current);
     }
-  }, [threadId, connected, stopFollowing, viewport, timeline]);
+  }, [threadId, connected, stopFollowing, topRow]);
   useLayoutEffect(() => {
     const anchor = olderAnchor.current;
     if (!anchor || anchor.threadId !== threadId || anchor.cursor === olderCursor) return;
     let frame = 0;
     const restore = (frames: number) => {
       if (olderAnchor.current !== anchor) return;
-      const canvas = viewport.current;
-      const element = timeline.elementsCache.get(anchor.key);
-      if (canvas && element?.isConnected) canvas.scrollTop += element.getBoundingClientRect().top - canvas.getBoundingClientRect().top - anchor.offset;
+      placeRow(anchor);
       if (frames) frame = requestAnimationFrame(() => restore(frames - 1));
       else olderAnchor.current = undefined;
     };
     restore(3);
     return () => cancelAnimationFrame(frame);
-  }, [threadId, olderCursor, rows, timeline, viewport]);
+  }, [threadId, olderCursor, rows, placeRow]);
   const transitionActivity = useCallback((id: string, update: () => void) => {
     const canvas = viewport.current!;
     const summary = () => document.getElementById(`activity-count-${id}`)?.closest("button");
@@ -160,10 +179,25 @@ export function Conversation() {
     }
   }, [threadId, connected]);
 
+  const mountFollowRequest = useRef(followRequest);
   useLayoutEffect(() => {
     setSelectedMessageId(undefined);
-    scrollToBottom("auto");
-  }, [threadId, followRequest, scrollToBottom]);
+    if (!savedPosition || mountFollowRequest.current !== followRequest) return scrollToBottom("auto");
+    stopFollowing();
+    let frame = 0;
+    const restore = (frames: number) => {
+      placeRow(savedPosition);
+      if (frames) frame = requestAnimationFrame(() => restore(frames - 1));
+    };
+    restore(3);
+    return () => cancelAnimationFrame(frame);
+  }, [savedPosition, followRequest, scrollToBottom, stopFollowing, placeRow]);
+  const rememberPosition = () => {
+    if (!threadId) return;
+    const anchor = following() ? undefined : topRow();
+    if (anchor) readingPositions.set(threadId, anchor);
+    else readingPositions.delete(threadId);
+  };
 
   useLayoutEffect(() => {
     if (following()) scrollToBottom("instant");
@@ -285,6 +319,7 @@ export function Conversation() {
       <div
         className="canvas scroll"
         ref={viewport}
+        onScroll={rememberPosition}
         onWheel={() => { olderAnchor.current = undefined; setSelectedMessageId(undefined); }}
         onPointerDown={() => { olderAnchor.current = undefined; setSelectedMessageId(undefined); }}
         onKeyDown={(event) => {
@@ -351,6 +386,8 @@ export function Conversation() {
           scrollToBottom(virtualized ? "auto" : "smooth");
         }}
       />
+
+      {threadId && <SelectionQuote key={threadId} viewport={viewport} threadId={threadId} />}
     </div>
   );
 }

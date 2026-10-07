@@ -6,6 +6,14 @@ import { discoverOpenCodeCommands } from "./providers/opencode.ts";
 import type { ProviderCommand } from "../shared/features.ts";
 import type { ProviderId } from "../shared/protocol.ts";
 
+const HIDDEN_COMMAND_NAMES = new Set([
+  "color",
+  "config",
+  "clear",
+  "rename",
+  "workflow-launch-exec",
+]);
+
 const catalogs = new Map<
   string,
   { time: number; value: Promise<ProviderCommand[]> }
@@ -68,6 +76,7 @@ export function listCommands(
           typeof command.name === "string" &&
           /^[\w.:-]+$/.test(command.name) &&
           !command.name.startsWith("_") &&
+          !HIDDEN_COMMAND_NAMES.has(command.name) &&
           !String(command.description).startsWith("(removed)"),
       )
       .map((command) => ({

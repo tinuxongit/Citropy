@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type HTMLAttributes, type RefObject } from
 import { ArrowLeft, ArrowRight, Pencil, X } from "lucide-react";
 import type { PanelTab } from "../../../shared/workbench.ts";
 import { moveWorkbenchPanel } from "../lib/actions.ts";
+import { opensContextMenu } from "../lib/context-menu-key.ts";
 import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
 import { Menu } from "./Menu.tsx";
@@ -119,7 +120,7 @@ export function usePanelTabActions(panels: PanelTab[], strip: RefObject<HTMLDivE
         event.preventDefault();
         event.stopPropagation();
         move(panel.id, event.key === "ArrowLeft" ? -1 : 1);
-      } else if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+      } else if (opensContextMenu(event)) {
         event.preventDefault();
         event.stopPropagation();
         setMenu({ id: panel.id, anchor: event.target });

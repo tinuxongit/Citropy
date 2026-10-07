@@ -4,8 +4,13 @@ import { chmod, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { TerminalHost } from "./terminal-host.ts";
+import type { TerminalRequest } from "../shared/terminal.ts";
 
 const CLIENT_GONE = ["ECONNRESET", "EPIPE"];
+const AUTH_TIMEOUT_MS = 5000;
+const MAX_REQUEST_BYTES = 1024 * 1024;
+const MAX_CLIENT_BACKLOG_BYTES = 512 * 1024;
+const IDLE_CHECK_MS = 30_000;
 
 const [address, directory] = process.argv.slice(2);
 if (!address || !directory) throw new Error("A terminal service address is required.");
@@ -17,7 +22,7 @@ const host = new TerminalHost(event => {
   for (const [socket, client] of clients) {
     if (event.type === "activity" && !client.activity) continue;
     if (!socket.write(data)) host.flow(event.id, client.id, true);
-    if (socket.writableLength > 512 * 1024) socket.destroy();
+    if (socket.writableLength > MAX_CLIENT_BACKLOG_BYTES) socket.destroy();
   }
 });
 host.observeActivity(false);
@@ -25,7 +30,7 @@ const server = createServer(socket => {
   const id = randomUUID();
   let authenticated = false;
   let input = "";
-  const timer = setTimeout(() => socket.destroy(), 5000);
+  const timer = setTimeout(() => socket.destroy(), AUTH_TIMEOUT_MS);
   socket.setEncoding("utf8");
   socket.on("error", (error) => {
     if (!hasCode(error, ...CLIENT_GONE)) console.error("Terminal client connection failed:", error);
@@ -34,12 +39,12 @@ const server = createServer(socket => {
   socket.on("close", () => { clearTimeout(timer); clients.delete(socket); host.observeActivity([...clients.values()].some(client => client.activity)); host.release(id); host.release(`${id}:render`); });
   socket.on("data", chunk => {
     input += chunk;
-    if (input.length > 1024 * 1024) { socket.destroy(); return; }
+    if (input.length > MAX_REQUEST_BYTES) { socket.destroy(); return; }
     let end: number;
     while ((end = input.indexOf("\n")) >= 0) {
       const line = input.slice(0, end); input = input.slice(end + 1);
       void (async () => {
-        let request: Record<string, any>;
+        let request: TerminalRequest & { id: string };
         try { request = JSON.parse(line); } catch { socket.destroy(); return; }
         // JSON primitives (especially null) cannot be read as protocol envelopes.
         // Reject before the error handler, which also needs a valid request object.
@@ -71,7 +76,7 @@ const server = createServer(socket => {
 });
 server.on("error", () => process.exit(1));
 server.listen(address, async () => { if (process.platform !== "win32") await chmod(address, 0o600); });
-const idle = setInterval(() => { if (!clients.size && !host.list().some(session => session.running)) void shutdown(); }, 30_000);
+const idle = setInterval(() => { if (!clients.size && !host.list().some(session => session.running)) void shutdown(); }, IDLE_CHECK_MS);
 async function shutdown() {
   clearInterval(idle);
   server.close();

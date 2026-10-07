@@ -66,6 +66,12 @@ export const SCHEMES = ["dark", "light"] as const;
 export type Scheme = typeof SCHEMES[number];
 const STAGE_BACKGROUNDS = ["default", "ascii", "image"] as const;
 export type StageBackground = typeof STAGE_BACKGROUNDS[number];
+export const CHAT_WIDTHS = {
+  comfortable: { label: "Comfortable", pixels: 780 },
+  wide: { label: "Wide", pixels: 1080 },
+  wider: { label: "Extra wide", pixels: 1400 },
+} as const;
+export type ChatWidth = keyof typeof CHAT_WIDTHS;
 export type PanelId = "sidebar" | "inspector" | "git" | "github";
 
 export interface AppState {
@@ -135,6 +141,7 @@ export interface AppState {
   threadDetailsOpen: boolean;
   searchEngine: SearchEngine;
   stageBackground: StageBackground;
+  chatWidth: ChatWidth;
   backgroundDim: number;
   backgroundBlur: number;
   backgroundFocus: number;
@@ -170,10 +177,8 @@ function readPref<T extends string>(key: string, fallback: T, id?: string): T {
   return (environmentStorage.getItem(key, id) as T | null) ?? fallback;
 }
 
-function readLevel(key: string, min: number, max: number, flags: { on: number; off: number }, fallback: number): number {
+function readLevel(key: string, min: number, max: number, fallback: number): number {
   const stored = readPref<string>(key, "");
-  if (stored === "1") return flags.on;
-  if (stored === "0") return flags.off;
   const value = Number(stored);
   return stored && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
 }
@@ -302,14 +307,15 @@ export const useApp = create<AppState>(() => ({
   ),
   searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
   stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "ascii"), "ascii"),
+  chatWidth: oneOf(Object.keys(CHAT_WIDTHS) as ChatWidth[], readPref<string>("citropy.chatWidth", "comfortable"), "comfortable"),
   backgroundDim: Number.isFinite(storedDim) ? Math.max(0, Math.min(90, storedDim)) : 68,
-  backgroundBlur: readLevel("citropy.backgroundBlur", 0, 40, { on: 14, off: 0 }, 0),
-  backgroundFocus: readLevel("citropy.backgroundFocus", 0, 100, { on: 70, off: 0 }, 70),
+  backgroundBlur: readLevel("citropy.backgroundBlur", 0, 40, 0),
+  backgroundFocus: readLevel("citropy.backgroundFocus", 0, 100, 70),
   backgroundFocusSpread: Number.isFinite(storedFocusSpread) ? Math.max(0, Math.min(400, storedFocusSpread)) : 140,
-  asciiDim: readLevel("citropy.asciiDim", 0, 90, { on: 0, off: 0 }, 0),
-  asciiBlur: readLevel("citropy.asciiBlur", 0, 12, { on: 0, off: 0 }, 0),
-  asciiFocus: readLevel("citropy.asciiFocus", 0, 100, { on: 0, off: 0 }, 0),
-  uiTransparency: readLevel("citropy.uiTransparency", 0, 60, { on: 20, off: 0 }, 20),
+  asciiDim: readLevel("citropy.asciiDim", 0, 90, 0),
+  asciiBlur: readLevel("citropy.asciiBlur", 0, 12, 0),
+  asciiFocus: readLevel("citropy.asciiFocus", 0, 100, 0),
+  uiTransparency: readLevel("citropy.uiTransparency", 0, 60, 20),
   opaquePopups: readFlag("citropy.opaquePopups", false),
   backgroundEverywhere: readFlag("citropy.backgroundEverywhere", false),
   sidebarGroups: readSidebarGroups(),

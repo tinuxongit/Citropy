@@ -7,7 +7,7 @@ import { PassThrough } from "node:stream";
 import test from "node:test";
 import { claudeProvider } from "../server/providers/claude.ts";
 
-function fixture(t) {
+function fixture(t, startOptions = {}) {
   const child = new EventEmitter();
   child.stdin = new PassThrough();
   child.stdout = new PassThrough();
@@ -21,7 +21,7 @@ function fixture(t) {
   childProcess.spawn = () => child;
   syncBuiltinESMExports();
   const events = [];
-  const session = claudeProvider.start({ threadId: "fixture", externalId: "resumed-session", cwd: process.cwd(), permissionMode: "manual", emit: event => events.push(event) });
+  const session = claudeProvider.start({ threadId: "fixture", externalId: "resumed-session", cwd: process.cwd(), permissionMode: "manual", emit: event => events.push(event), ...startOptions });
   t.after(() => {
     session.dispose();
     childProcess.spawn = originalSpawn;
@@ -70,4 +70,19 @@ test("Claude context usage keeps updating after manual and automatic compaction"
       assert.equal(events.findLast(event => event.type === "usage").usage.contextTokens, 14_500);
     });
   }
+});
+
+test("Claude reporting a larger context window does not change the configured window", async t => {
+  const { session, events, receive } = fixture(t);
+  receive({ ...result, modelUsage: { "claude-opus-5-5": { contextWindow: 1_000_000 } } });
+  assert.equal(events.findLast(event => event.type === "usage").usage.contextMax, 1_000_000);
+  await session.configure({});
+  await assert.rejects(session.configure({ contextMax: 1_000_000 }), /restart/);
+});
+
+test("Claude reporting a smaller context window does not change the configured window", async t => {
+  const { session, receive } = fixture(t, { contextMax: 1_000_000 });
+  receive({ ...result, modelUsage: { "claude-opus-5-5": { contextWindow: 200_000 } } });
+  await session.configure({ contextMax: 1_000_000 });
+  await assert.rejects(session.configure({ contextMax: 200_000 }), /restart/);
 });

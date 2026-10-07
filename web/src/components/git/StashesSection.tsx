@@ -5,7 +5,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { ResizeHandle } from "../ResizeHandle.tsx";
-import { GitReview, type GitSelection } from "../GitReview.tsx";
+import { GitReview } from "../GitReview.tsx";
+import type { GitSelection } from "./selection.ts";
 import { EmptyState } from "./GitEmptyState.tsx";
 import type { GitDialogAction } from "../GitDialog.tsx";
 import type { GitFile, GitOperation, GitOverview } from "../../../../shared/protocol.ts";

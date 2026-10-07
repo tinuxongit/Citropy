@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useDisclosure } from "../../lib/use-disclosure.ts";
 import { Collapsible } from "../Collapsible.tsx";
-import { AlertTriangle, Ban, ChevronRight, ExternalLink, shapeIcon } from "../icons.ts";
+import { AlertTriangle, Ban, ChevronRight, ExternalLink, Square, shapeIcon } from "../icons.ts";
 import { toolLabel } from "../../lib/group.ts";
 import { DiffView } from "../DiffView.tsx";
 import { ansiToHtml } from "../../lib/ansi.ts";
@@ -11,6 +11,8 @@ import { ImageStrip } from "./ImageStrip.tsx";
 import { PixelLoader } from "../PixelLoader.tsx";
 import { FileIcon } from "../FileIcon.tsx";
 import { LineCounts } from "../LineCounts.tsx";
+import { useHighlightedLines } from "../../lib/use-highlighted-lines.ts";
+import { escapeHtml } from "../../lib/escape-html.ts";
 
 export function ToolCard({ part }: { part: ToolPart }) {
   const [open, setOpen] = useDisclosure(part.id, "tool");
@@ -27,10 +29,12 @@ export function ToolCard({ part }: { part: ToolPart }) {
       ? part.input.command
       : part.headline
     : null;
+  const empty = !command && !url && !part.patch && !output && !hasImages && part.status !== "running";
+  const expanded = open && !empty;
 
   return (
-    <div id={`tool-${part.id}`} className="tool" data-shape={part.shape} data-status={part.status} data-open={open} data-images={hasImages || undefined}>
-      <button className="tool-head" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+    <div id={`tool-${part.id}`} className="tool" data-shape={part.shape} data-status={part.status} data-open={expanded} data-images={hasImages || undefined}>
+      <button className="tool-head" type="button" disabled={empty} aria-expanded={expanded} onClick={() => setOpen((value) => !value)}>
         <ChevronRight size={12} className="tool-chevron" aria-hidden="true" />
         <span className="tool-icon">
           <Icon size={12} aria-hidden="true" />
@@ -49,9 +53,9 @@ export function ToolCard({ part }: { part: ToolPart }) {
         </span>
       </button>
 
-      <Collapsible open={open} className="tool-body">
+      <Collapsible open={expanded} className="tool-body">
         <div className="tool-body-inner">
-          {command && <pre className="tool-output">{command}</pre>}
+          {command && <Highlighted text={command} lang="bash" />}
           {url && (
             <a className="tool-url truncate" href={url} target="_blank" rel="noreferrer noopener">
               {url}
@@ -66,12 +70,9 @@ export function ToolCard({ part }: { part: ToolPart }) {
               Running
             </div>
           )}
-          {!part.patch && !output && !hasImages && part.status !== "running" && (
-            <div className="tool-empty">No output</div>
-          )}
         </div>
       </Collapsible>
-      {hasImages && <ImageStrip part={part} compact={!open} />}
+      {hasImages && <ImageStrip part={part} compact={!expanded} />}
     </div>
   );
 }
@@ -80,7 +81,23 @@ function StatusMark({ status }: { status: ToolPart["status"] }) {
   if (status === "running") return <PixelLoader size={12} className="tool-spin" role="img" aria-label="running" />;
   if (status === "ok") return null;
   if (status === "denied") return <Ban size={12} className="tool-bad" aria-label="denied" />;
+  if (status === "stopped") return <Square size={10} className="tool-stopped" aria-label="stopped" />;
   return <AlertTriangle size={12} className="tool-bad" aria-label="failed" />;
+}
+
+function isJson(text: string): boolean {
+  if (!/^\s*[[{]/.test(text)) return false;
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function Highlighted({ text, lang }: { text: string; lang: string }) {
+  const lines = useHighlightedLines(text, lang);
+  return <pre className="tool-output" dangerouslySetInnerHTML={{ __html: lines?.join("\n") ?? escapeHtml(text) }} />;
 }
 
 function Output({ text, shape, partId }: { text: string; shape: ToolPart["shape"]; partId: string }) {
@@ -89,11 +106,13 @@ function Output({ text, shape, partId }: { text: string; shape: ToolPart["shape"
   const cap = shape === "command" ? 18 : 14;
   const shown = expanded ? lines.length : Math.min(lines.length, cap);
   const hidden = lines.length - shown;
-  const html = useMemo(() => ansiToHtml(lines.slice(0, shown).join("\n")), [lines, shown]);
+  const visible = useMemo(() => lines.slice(0, shown).join("\n"), [lines, shown]);
+  const json = useMemo(() => shape !== "command" && isJson(text), [text, shape]);
+  const html = useMemo(() => json ? "" : ansiToHtml(visible), [json, visible]);
 
   return (
     <>
-      <pre className="tool-output" dangerouslySetInnerHTML={{ __html: html }} />
+      {json ? <Highlighted text={visible} lang="json" /> : <pre className="tool-output" dangerouslySetInnerHTML={{ __html: html }} />}
       {hidden > 0 && (
         <button className="diff-more" type="button" onClick={() => setExpanded(true)}>
           Show {hidden} more {hidden === 1 ? "line" : "lines"}

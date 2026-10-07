@@ -10,6 +10,7 @@ import { selectThread, useApp, type AppState } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ThreadPulse } from "./ThreadPulse.tsx";
+import { providerAccount } from "../../../shared/provider-account.ts";
 import { modelLabel } from "../lib/format.ts";
 
 export function SubagentsPane() {
@@ -44,8 +45,7 @@ export function SubagentsPane() {
       </div>
       <p>
         {modelLabel(
-          providers.find((provider) => provider.id === child.provider)
-            ?.models ?? [],
+          providerAccount(providers.find((provider) => provider.id === child.provider), child.providerInstanceId).models,
           child.model,
         )}
       </p>

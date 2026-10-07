@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { ImageOff, Play } from "lucide-react";
 import { useApp } from "../../lib/store.ts";
 import { serverUrl } from "../../lib/environment.ts";
 import { ImageViewer } from "../ImageViewer.tsx";
+import { MediaThumb } from "../MediaThumb.tsx";
 import { VideoViewer } from "../VideoViewer.tsx";
 import type { ToolPart } from "../../../../shared/protocol.ts";
 
@@ -12,7 +12,6 @@ export function ImageStrip({ part, compact = false }: { part: ToolPart; compact?
   const projectId = useApp((state) => state.activeProjectId);
   const threadId = useApp((state) => state.activeThreadId);
   const [preview, setPreview] = useState<string | null>(null);
-  const [missing, setMissing] = useState<ReadonlySet<string>>(() => new Set());
   const sources = useMemo(() => {
     const collected = new Map<string, { src: string; name: string; video: boolean }>();
     if (part.images?.length) {
@@ -47,23 +46,7 @@ export function ImageStrip({ part, compact = false }: { part: ToolPart; compact?
             title={source.name}
             onClick={() => setPreview(source.key)}
           >
-            {missing.has(source.src) ? <span className="image-unavailable" role="img" aria-label="Image unavailable"><ImageOff size={compact ? 14 : 20} aria-hidden="true" /><span>Image unavailable</span></span> : source.video ? <span className="video-thumbnail">
-              <video
-                src={`${source.src}#t=0.1`}
-                preload="metadata"
-                muted
-                playsInline
-                aria-hidden="true"
-                onError={() => setMissing((previous) => new Set(previous).add(source.src))}
-              />
-              <Play size={compact ? 12 : 22} fill="currentColor" aria-hidden="true" />
-            </span> : <img
-              src={source.src}
-              alt={source.name}
-              loading="lazy"
-              decoding="async"
-              onError={() => setMissing((previous) => new Set(previous).add(source.src))}
-            />}
+            <MediaThumb src={source.src} alt={source.name} video={source.video} size={compact ? "compact" : "strip"} />
           </button>
         ))}
       </div>

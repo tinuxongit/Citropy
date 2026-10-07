@@ -53,10 +53,19 @@ export interface ProviderUsage {
   updatedAt: number;
 }
 
+export type UsageSpeed = "fast" | "ultrafast";
+
+export const COST_TYPES = ["input", "cacheRead", "cacheWrite", "output"] as const;
+
+export type CostByType = Record<(typeof COST_TYPES)[number], number>;
+
 export interface UsageDay {
   day: string;
   provider: ProviderId;
   model?: string;
+  speed?: UsageSpeed;
+  unpriced?: boolean;
+  costByType?: CostByType;
   input: number;
   output: number;
   cacheRead: number;
@@ -65,9 +74,15 @@ export interface UsageDay {
   turns: number;
 }
 
+export interface UsagePricing {
+  fetchedAt?: number;
+  error?: string;
+}
+
 export interface UsageReport {
   totals: Usage;
   history: UsageDay[];
+  pricing: UsagePricing;
   providers: ProviderUsage[];
   conversations: Array<{
     id: string;

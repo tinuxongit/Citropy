@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { freePort } from "../shared/ports.mjs";
 import { checkPackagedTerminal } from "./smoke-terminal.mjs";
 
 const root = fileURLToPath(new URL("../release/", import.meta.url));
@@ -37,10 +37,7 @@ try {
   }
   assert.equal(JSON.parse(await readFile(join(appRoot, "package.json"), "utf8")).version, version);
   await checkPackagedTerminal(join(app, "Citropy.exe"), appRoot);
-  const probe = createServer();
-  await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
-  const port = probe.address().port;
-  await new Promise((resolve) => probe.close(resolve));
+  const port = await freePort();
   desktop = spawn(join(app, "Citropy.exe"), [], {
     env: {
       ...process.env,

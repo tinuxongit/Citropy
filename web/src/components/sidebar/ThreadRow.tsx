@@ -3,6 +3,7 @@ import { GitPullRequest } from "lucide-react";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
 import { finishThread, loadThread, openOnEnvironment, removeThread } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
+import { opensContextMenu } from "../../lib/context-menu-key.ts";
 import { threadActivity } from "../../lib/format.ts";
 import { environmentId, useEnvironments } from "../../lib/environment.ts";
 import { environmentSlice } from "../../lib/live-environments.ts";
@@ -105,7 +106,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
           openMenu(event.currentTarget);
         }}
         onKeyDown={(event) => {
-          if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
+          if (!opensContextMenu(event)) return;
           if ((event.target as HTMLElement).closest('[role="menu"], dialog, a')) return;
           event.preventDefault();
           event.stopPropagation();

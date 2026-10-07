@@ -9,7 +9,7 @@ import { stopProcess, waitForStoppedProcesses } from "./process.ts";
 import { withSkills } from "./skill-prompt.ts";
 import { onLines } from "../lines.ts";
 import { logFailure } from "../../shared/expected-errors.mjs";
-import { readServerEvents, sameDirectory } from "./opencode-common.ts";
+import { parseModelRef, readServerEvents, sameDirectory } from "./opencode-common.ts";
 import { ask, cancelThread } from "../permissions.ts";
 import { answerQuestion, askQuestion, cancelQuestions } from "../questions.ts";
 import type { AgentSession, ProviderLaunch, StartOptions } from "./types.ts";
@@ -150,9 +150,8 @@ async function discover<T>(server: Server, path: string, cwd: string): Promise<T
 }
 
 function modelRef(model: string, effort?: string): { providerID: string; id: string; variant?: string } {
-  const [providerID, ...id] = model.split("/");
-  if (!providerID || !id.length) throw new Error("Select an OpenCode model with a provider.");
-  return { providerID, id: id.join("/"), ...(effort ? { variant: effort } : {}) };
+  const { providerID, modelID } = parseModelRef(model);
+  return { providerID, id: modelID, ...(effort ? { variant: effort } : {}) };
 }
 
 export async function openCode2Models(launch?: ProviderLaunch): Promise<ModelOption[]> {

@@ -26,6 +26,15 @@ interface Profiles {
   profiles: BrowserProfile[];
 }
 
+interface ImportResult {
+  imported: number;
+  skipped: number;
+}
+
+interface ClearResult {
+  ok: true;
+}
+
 export function BrowserProfiles() {
   const projects = useApp((state) => state.projects);
   const projectDefaults = useApp((state) => state.projectDefaults);
@@ -65,26 +74,19 @@ export function BrowserProfiles() {
       });
     return () => controller.abort();
   }, [projectId, revision]);
-  const action = async (path: string, input: object, method = "POST") => {
+  const send = <T,>(path: string, method: string, input: object) =>
+    api<T>(`browser/${path}${query}`, { method, body: JSON.stringify(input) });
+  const loadProfiles = () => api<Profiles>(`browser/profiles${query}`);
+  const showProfiles = (result: Profiles) => {
+    setData(result);
+    setProfileId(result.selected);
+  };
+  const perform = async (operation: () => Promise<void>) => {
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      const result = await api<
-        Profiles & { imported?: number; skipped?: number }
-      >(`browser/${path}${query}`, { method, body: JSON.stringify(input) });
-      if (result.profiles) {
-        setData(result);
-        setProfileId(result.selected);
-      } else if (result.imported !== undefined) {
-        setMessage(
-          `Imported ${result.imported} cookies. ${result.skipped || 0} expired, partitioned, or protected cookies were skipped.`,
-        );
-        setData(await api<Profiles>(`browser/profiles${query}`));
-      } else {
-        setMessage("Browser data cleared.");
-        setData(await api<Profiles>(`browser/profiles${query}`));
-      }
+      await operation();
       setName("");
     } catch (error) {
       setError((error as Error).message);
@@ -92,7 +94,30 @@ export function BrowserProfiles() {
       setBusy(false);
     }
   };
-  const clear = async (kind: string) => {
+  const selectProfile = (id: string) =>
+    perform(async () =>
+      showProfiles(await send<Profiles>("profiles", "POST", { selected: id })),
+    );
+  const addProfile = () =>
+    perform(async () =>
+      showProfiles(await send<Profiles>("profiles", "POST", { name })),
+    );
+  const deleteProfile = (id: string) =>
+    perform(async () =>
+      showProfiles(await send<Profiles>("profiles", "DELETE", { id })),
+    );
+  const importCookies = () =>
+    perform(async () => {
+      const result = await send<ImportResult>("import", "POST", {
+        profileId,
+        sourceId,
+      });
+      setMessage(
+        `Imported ${result.imported} cookies. ${result.skipped} expired, partitioned, or protected cookies were skipped.`,
+      );
+      setData(await loadProfiles());
+    });
+  const clearData = async (kind: string) => {
     if (
       await confirmAction({
         title: `Clear ${kind} from this profile?`,
@@ -104,7 +129,11 @@ export function BrowserProfiles() {
         danger: true,
       })
     )
-      await action("clear", { profileId, kind });
+      await perform(async () => {
+        await send<ClearResult>("clear", "POST", { profileId, kind });
+        setMessage("Browser data cleared.");
+        setData(await loadProfiles());
+      });
   };
   const configureAccess = async (browserAccess: boolean) => {
     setBusy(true);
@@ -190,7 +219,7 @@ export function BrowserProfiles() {
             <button
               className="btn"
               disabled={busy || data.selected === profile.id}
-              onClick={() => action("profiles", { selected: profile.id })}
+              onClick={() => void selectProfile(profile.id)}
             >
               {data.selected === profile.id ? (
                 <>
@@ -221,7 +250,7 @@ export function BrowserProfiles() {
                       danger: true,
                     })
                   )
-                    await action("profiles", { id: profile.id }, "DELETE");
+                    await deleteProfile(profile.id);
                 }}
               >
                 <Trash2 size={15} />
@@ -233,7 +262,7 @@ export function BrowserProfiles() {
           className="feature-inline"
           onSubmit={(event) => {
             event.preventDefault();
-            void action("profiles", { name });
+            void addProfile();
           }}
         >
           <input
@@ -283,7 +312,7 @@ export function BrowserProfiles() {
           className="btn"
           data-variant="primary"
           disabled={busy || !sourceId || !data}
-          onClick={() => action("import", { profileId, sourceId })}
+          onClick={() => void importCookies()}
         >
           <Download size={15} />
           {busy ? "Working…" : "Import cookies"}
@@ -300,13 +329,13 @@ export function BrowserProfiles() {
           <button
             className="btn"
             disabled={busy || !data}
-            onClick={() => clear("cookies")}
+            onClick={() => clearData("cookies")}
           >
             <Cookie size={15} />{" "}Clear cookies{" "}</button>
           <button
             className="btn"
             disabled={busy || !data}
-            onClick={() => clear("cache")}
+            onClick={() => clearData("cache")}
           >{" "}Clear cache{" "}</button>
         </div>
       </section>

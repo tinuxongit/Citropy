@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { ChevronUp, Clock3, Paperclip } from "lucide-react";
 import { Pencil, X } from "./icons.ts";
 import { editQueued } from "../lib/actions.ts";
@@ -8,8 +8,7 @@ import { reportError } from "../lib/api.ts";
 import { flushHeld, takeHeld } from "../lib/offline.ts";
 import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
-import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
-import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { ComposerPopover } from "./composer/ComposerPopover.tsx";
 import { ComposerTab } from "./composer/ComposerTab.tsx";
 import type {
   ProviderInfo,
@@ -35,12 +34,7 @@ export function QueueList({
   const count = queued.length + held.length;
   const [expanded, setExpanded] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
-  const panel = useRef<HTMLElement>(null);
-  const reducedMotion = useReducedMotion();
   const id = useId();
-  useEffect(() => {
-    setExpanded(false);
-  }, [thread.id]);
   useEffect(() => {
     if (!count) setExpanded(false);
   }, [count]);
@@ -48,8 +42,6 @@ export function QueueList({
     setExpanded(false);
     trigger.current?.focus({ preventScroll: true });
   };
-  useAnchoredPanel(panel, trigger, { open: expanded, width: 460 });
-  useDismiss(panel, trigger, close, { open: expanded, outside: true });
   const state = !connected
       ? "Sends when Citropy reconnects"
     : queued.length && thread.running
@@ -99,18 +91,7 @@ export function QueueList({
         Queued
         <span>{count}</span>
       </ComposerTab>}</AnimatePresence>
-      <AnimatePresence>{expanded && <motion.section
-        ref={panel}
-        id={id}
-        popover="manual"
-        role="dialog"
-        aria-label="Queued messages"
-        className="tab-panel composer-queue-panel"
-        initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }}
-        animate={{ opacity: 1, transform: "none" }}
-        exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }}
-        transition={{ duration: reducedMotion ? 0 : 0.16 }}
-      >
+      <AnimatePresence>{expanded && <ComposerPopover id={id} label="Queued messages" className="composer-queue-panel" anchor={trigger} width={460} onClose={close}>
         <ol className="composer-queue-list scroll" aria-label="Queued messages">
           {queued.map((item, index) => (
             <li className="composer-queue-item" key={item.id}>
@@ -225,7 +206,7 @@ export function QueueList({
             </li>
           ))}
         </ol>
-      </motion.section>}</AnimatePresence>
+      </ComposerPopover>}</AnimatePresence>
     </>
   );
 }

@@ -13,6 +13,7 @@ import { useApp, confirmAction, setEditorTerminal } from "../../lib/store.ts";
 import { useEnvironments, serverUrl } from "../../lib/environment.ts";
 import { openEditorTerminal } from "../../lib/actions.ts";
 import { api, assetQuery } from "../../lib/api.ts";
+import { scrollTabIntoView } from "../../lib/tab-strip.ts";
 import { EditorTerminal } from "./EditorTerminal.tsx";
 import { EditorResizeHandle } from "./EditorResizeHandle.tsx";
 import { FilePreview } from "../FilePreview.tsx";
@@ -121,10 +122,7 @@ function Workspace({
     const strip = tabStrip.current;
     const selected = strip?.querySelector('[data-active="true"]');
     if (!active || !strip || !selected) return;
-    const bounds = strip.getBoundingClientRect();
-    const tab = selected.getBoundingClientRect();
-    if (tab.left < bounds.left) strip.scrollLeft -= bounds.left - tab.left;
-    else if (tab.right > bounds.right) strip.scrollLeft += tab.right - bounds.right;
+    scrollTabIntoView(strip, selected);
   }, [active, current?.id]);
 
   async function open(path: string) {

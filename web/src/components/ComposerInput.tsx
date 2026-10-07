@@ -8,10 +8,10 @@ import {
 import { BookOpen, TerminalSquare, Folder, FileText } from "lucide-react";
 import { contextReference } from "../../../shared/context.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
-import type { ProviderCommand, SkillInfo } from "../../../shared/features.ts";
-import { api } from "../lib/api.ts";
 import { providerLabels } from "../lib/format.ts";
 import { scaled, useApp } from "../lib/store.ts";
+import { useComposerCatalog } from "./composer/use-composer-catalog.ts";
+import { useTypeToFocus } from "./composer/use-type-to-focus.ts";
 
 export function ComposerInput({
   value,
@@ -37,11 +37,6 @@ export function ComposerInput({
   const [caret, setCaret] = useState(value.length);
   const [selected, setSelected] = useState(0);
   const [dismissed, setDismissed] = useState<string>();
-  const [skills, setSkills] = useState<SkillInfo[]>([]);
-  const [paths, setPaths] = useState<Array<{ path: string; dir: boolean }>>([]);
-  const [nativeCommands, setNativeCommands] = useState<ProviderCommand[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const connected = useApp((state) => state.connected);
   const mention = /(?:^|\s)@([^\s\[\]]*)$/.exec(value.slice(0, caret));
   const slash = /^\/[\w.:-]*$/.test(value) ? value : undefined;
@@ -51,6 +46,13 @@ export function ComposerInput({
   const catalogMode = mode === "commands"
     ? "commands"
     : mode === "skills" || hasMentions ? "skills" : undefined;
+  const { skills, nativeCommands, paths, loading, error } = useComposerCatalog({
+    thread,
+    mode,
+    catalogMode,
+    mentionText: mention?.[1] ?? "",
+  });
+  const pasteFiles = useTypeToFocus({ box, disabled, onFiles });
   useLayoutEffect(() => {
     const node = box.current;
     if (!node || CSS.supports("field-sizing", "content")) return;
@@ -74,53 +76,9 @@ export function ComposerInput({
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    if (!catalogMode) return;
-    const controller = new AbortController();
-    setLoading(true);
-    setError("");
-    setNativeCommands([]);
-    const params = new URLSearchParams({
-      projectId: thread.projectId,
-      threadId: thread.id,
-    });
-    const readSkills = api<SkillInfo[]>(`skills?${params}`, {
-      signal: controller.signal,
-    }).then((value) => {
-      if (!controller.signal.aborted) setSkills(value);
-    });
-    const requests =
-      catalogMode === "commands"
-        ? [
-            readSkills,
-            api<ProviderCommand[]>(`commands?${params}`, {
-              signal: controller.signal,
-            }).then((value) => {
-              if (!controller.signal.aborted) setNativeCommands(value);
-            }),
-          ]
-        : [readSkills];
-    void Promise.all(requests)
-      .catch((error) => {
-        if (!controller.signal.aborted) setError(error.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [catalogMode, thread.id, thread.provider, thread.projectId]);
-  useEffect(() => {
     setSelected(0);
     setDismissed(undefined);
   }, [query]);
-  useEffect(() => {
-    if (mode !== "skills") { setPaths([]); return; }
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      const params = new URLSearchParams({ threadId: thread.id, query: (mention?.[1] ?? "").split("#")[0]! });
-      void api<Array<{ path: string; dir: boolean }>>(`threads/context?${params}`, { signal: controller.signal }).then(setPaths).catch(error => { if (!controller.signal.aborted) setError(error.message); });
-    }, 120);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [query, mode, thread.id]);
   const enabled = skills
     .filter((skill) => skill.enabled && skill.provider === thread.provider)
     .sort(
@@ -130,15 +88,7 @@ export function ComposerInput({
       (skill, index, entries) =>
         entries.findIndex((entry) => entry.name === skill.name) === index,
     );
-  const reserved = new Set([
-    ...commands.map((command) => command.label.slice(1)),
-    "color",
-    "config",
-    "clear",
-    "rename",
-    "__remote-workflow",
-    "workflow-launch-exec",
-  ]);
+  const localCommandNames = new Set(commands.map((command) => command.label.slice(1)));
   const highlighted: ReactNode[] = [];
   let end = 0;
   for (const match of value.matchAll(/(?:^|\s)@([\w.:-]+)(?![\w./:-])/g)) {
@@ -170,7 +120,7 @@ export function ComposerInput({
           ...nativeCommands
             .filter(
               (command) =>
-                !reserved.has(command.name) &&
+                !localCommandNames.has(command.name) &&
                 !skills.some(
                   (skill) =>
                     skill.provider === thread.provider &&
@@ -284,10 +234,7 @@ export function ComposerInput({
               highlights.current.scrollTop = event.currentTarget.scrollTop;
           }}
           onPaste={(event) => {
-            const files = Array.from(event.clipboardData.items)
-              .filter((item) => item.kind === "file")
-              .map((item) => item.getAsFile())
-              .filter((file): file is File => Boolean(file));
+            const files = pasteFiles(event.clipboardData);
             if (files.length) {
               event.preventDefault();
               onFiles(files);

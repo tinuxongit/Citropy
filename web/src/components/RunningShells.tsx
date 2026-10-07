@@ -1,12 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { ExternalLink, Square, Terminal } from "lucide-react";
 import type { NotificationTarget, ShellProcess } from "../../../shared/protocol.ts";
 import { useApp } from "../lib/store.ts";
-import { useAnchoredPanel, useDismiss } from "../lib/use-anchored-panel.ts";
 import { isActiveShell, shellStatus, stopShell } from "../lib/shells.ts";
-import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
+import { ComposerPopover } from "./composer/ComposerPopover.tsx";
 import { ComposerTab } from "./composer/ComposerTab.tsx";
 import { ActionError } from "./ActionError.tsx";
 
@@ -36,22 +35,17 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
   onClose: () => void;
   onOpen: (target: NotificationTarget) => void;
 }) {
-  const reducedMotion = useReducedMotion();
   const shells = useApp(state => state.shells);
   const threads = useApp(state => state.threads);
   const projects = useApp(state => state.projects);
   const connected = useApp(state => state.connected);
   const [pending, setPending] = useState<string>();
   const [error, setError] = useState<{ id: string; message: string }>();
-  const panel = useRef<HTMLElement>(null);
   const running = useMemo(() => Object.values(shells).filter(isActiveShell).sort((a, b) => b.startedAt - a.startedAt), [shells]);
   const [selectedId, setSelectedId] = useState<string | undefined>(() => running[0]?.id);
   const selected = running.find(shell => shell.id === selectedId) || running[0];
   const owner = (shell: ShellEntry) => shell.threadId && threads[shell.threadId]?.title || projects.find(project => project.id === shell.projectId)?.name || "Workspace";
   const label = (shell: ShellEntry) => shell.command || "Shell command";
-
-  useAnchoredPanel(panel, trigger, { open: true, width: 420 });
-  useDismiss(panel, trigger, onClose, { open: true, outside: true });
 
   useEffect(() => { setError(undefined); }, [selected?.id]);
 
@@ -66,7 +60,7 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
     <span className="shell-row-copy"><code title={shell.command}>{label(shell)}</code><small>{owner(shell)}</small></span>
     <span className="shell-status" data-status={shell.status}>{shellStatus(shell)}</span>
   </button>);
-  return <motion.section ref={panel} id={id} popover="manual" role="dialog" aria-label="Running shells" className="tab-panel shells-panel" initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }} animate={{ opacity: 1, transform: "none" }} exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
+  return <ComposerPopover id={id} label="Running shells" className="shells-panel" anchor={trigger} width={420} onClose={onClose}>
     <div className="shells-list scroll sliding-selection">
       <SelectionHighlight value={selected?.id} selector='.shell-row[data-selected="true"]' />
       {rows(running)}
@@ -83,5 +77,5 @@ function ShellsPanel({ id, trigger, onClose, onOpen }: {
       </div>
       <ActionError className="shell-error" message={error?.id === selected.id ? error.message : ""} onDismiss={() => setError(undefined)} />
     </div>}
-  </motion.section>;
+  </ComposerPopover>;
 }

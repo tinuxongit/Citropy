@@ -9,7 +9,8 @@ import {
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
-import type { AppUpdateState, ReleaseNotes } from "../../../shared/app-update.ts";
+import type { ReleaseNotes } from "../../../shared/app-update.ts";
+import { useAppUpdate } from "../lib/use-app-update.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 
 const notesMotion = {
@@ -23,12 +24,7 @@ const size = (bytes?: number) =>
 
 export function AppUpdateControl({ variant }: { variant: "strip" | "settings" }) {
   const reducedMotion = useReducedMotion();
-  const [state, setState] = useState<AppUpdateState>({
-    status: "unsupported",
-    currentVersion: "",
-    message:
-      "Open the installed Citropy desktop app to manage release updates.",
-  });
+  const { state, command } = useAppUpdate();
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [history, setHistory] = useState<ReleaseNotes[]>();
@@ -41,25 +37,10 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
   const id = useId();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const alive = useRef(true);
-  const revision = useRef(0);
   useEffect(() => {
     alive.current = true;
-    const desktop = window.citropyDesktop;
-    let received = false;
-    const off = desktop?.onUpdateState?.((value) => {
-      received = true;
-      revision.current++;
-      setState(value);
-    });
-    void desktop
-      ?.updateState?.()
-      .then((value) => {
-        if (alive.current && !received) setState(value);
-      })
-      .catch((error) => console.error("Reading the update state failed:", error));
     return () => {
       alive.current = false;
-      off?.();
       clearTimeout(timer.current);
     };
   }, []);
@@ -144,20 +125,7 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
   const run = async () => {
     show();
     if (busy || state.status === "unsupported") return;
-    try {
-      const before = revision.current;
-      const value = await window.citropyDesktop?.updateCommand(action);
-      if (value && alive.current && revision.current === before)
-        setState(value);
-    } catch {
-      if (alive.current)
-        setState((previous) => ({
-          ...previous,
-          status: "error",
-          retry: action,
-          message: "The desktop update service did not respond. Try again.",
-        }));
-    }
+    await command(action);
   };
   const releaseArrows = (
     <>

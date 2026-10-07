@@ -141,7 +141,7 @@ export function NoteEditor({
           value={note.title}
           onChange={(event) => onChange({ title: event.target.value })}
           onKeyDown={(event) => {
-            if (event.key !== "Enter") return;
+            if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
             event.preventDefault();
             body.current?.focus();
           }}

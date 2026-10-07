@@ -1,5 +1,5 @@
 import { environmentStorage } from "./environment.ts";
-import { useApp, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
+import { CHAT_WIDTHS, useApp, type ChatWidth, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import { applyCustomColor } from "./custom-theme.ts";
 import type { SearchEngine } from "./web-search.ts";
@@ -110,6 +110,16 @@ export function setUiTransparency(value: number): void {
 export function setStageBackground(background: StageBackground): void {
   useApp.setState({ stageBackground: background });
   environmentStorage.setItem("citropy.stageBackground", background);
+}
+
+export function applyChatWidth(width: ChatWidth): void {
+  document.documentElement.style.setProperty("--reading", `${CHAT_WIDTHS[width].pixels}px`);
+}
+
+export function setChatWidth(width: ChatWidth): void {
+  useApp.setState({ chatWidth: width });
+  environmentStorage.setItem("citropy.chatWidth", width);
+  applyChatWidth(width);
 }
 
 export function setSidebarGroupOpen(id: string, open: boolean): void {

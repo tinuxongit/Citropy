@@ -10,12 +10,12 @@ import {
   X,
 } from "lucide-react";
 import { send } from "../lib/socket.ts";
-import { reportError } from "../lib/api.ts";
 import { addressOrSearch } from "../lib/web-search.ts";
 import { useApp } from "../lib/store.ts";
 import { BrowserViewport } from "./BrowserViewport.tsx";
 import type { BrowserAction, PanelTab } from "../../../shared/workbench.ts";
-import { copyText } from "../lib/copy-text.ts";
+import { useCopied } from "../lib/use-copied.ts";
+import { OPEN_OVERLAYS } from "../lib/overlays.ts";
 
 function covers(overlay: Element, bounds: DOMRect): boolean {
   if (overlay.matches('dialog:modal, [aria-modal="true"]')) return true;
@@ -45,7 +45,7 @@ export function BrowserPane({
   const [address, setAddress] = useState("");
   const [dialogText, setDialogText] = useState("");
   const [cover, setCover] = useState<string>();
-  const [copied, setCopied] = useState(false);
+  const [copied, copy] = useCopied();
   const screen = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const act = (action: BrowserAction) => {
@@ -89,12 +89,10 @@ export function BrowserPane({
     }
     let previous = "";
     let frame = 0;
-    const overlays =
-      'dialog[open], [role="menu"], [role="dialog"], [aria-modal="true"]';
     const update = () => {
       const current = latest.current;
       const bounds = element.getBoundingClientRect();
-      const overlay = [...document.querySelectorAll(overlays)].some((node) => covers(node, bounds));
+      const overlay = [...document.querySelectorAll(OPEN_OVERLAYS)].some((node) => covers(node, bounds));
       const visible =
         Boolean(current) &&
         !current!.dialog &&
@@ -134,7 +132,7 @@ export function BrowserPane({
             [...record.addedNodes, ...record.removedNodes].some(
               (node) =>
                 node instanceof Element &&
-                (node.matches(overlays) || node.querySelector(overlays)),
+                (node.matches(OPEN_OVERLAYS) || node.querySelector(OPEN_OVERLAYS)),
             ),
         )
       )
@@ -232,12 +230,7 @@ export function BrowserPane({
               type="button"
               aria-label={copied ? "Copied" : "Copy link"}
               title={copied ? "Copied" : "Copy link"}
-              onClick={() =>
-                void copyText(state.url).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }, reportError)
-              }
+              onClick={() => copy(state.url)}
             >
               {copied ? <Check size={14} /> : <Link size={14} />}
             </button>

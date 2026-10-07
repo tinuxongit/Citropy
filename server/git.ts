@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
-import { logFailure } from "../shared/expected-errors.mjs";
+import { ifMissing, logFailure } from "../shared/expected-errors.mjs";
 import { promisify } from "node:util";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { FilePatch, GitFile, GitStatus } from "../shared/protocol.ts";
@@ -16,7 +16,7 @@ export async function git(cwd: string, args: string[], env: NodeJS.ProcessEnv = 
   // Neutralize inherited pathspec modes as well as enabling literal matching.
   const gitEnv = {
     ...process.env, ...env, GIT_TERMINAL_PROMPT: "0", GIT_LITERAL_PATHSPECS: "1",
-    GIT_GLOB_PATHSPECS: "0", GIT_NOGLOB_PATHSPECS: "0", GIT_ICASE_PATHSPECS: "0",
+    GIT_GLOB_PATHSPECS: "0", GIT_NOGLOB_PATHSPECS: "0", GIT_ICASE_PATHSPECS: "0", GIT_OPTIONAL_LOCKS: "0",
   };
   const command = run("git", args, { cwd, timeout: 60_000, env: gitEnv, maxBuffer: 128 * 1024 * 1024 });
   if (input !== undefined) {
@@ -37,6 +37,7 @@ export async function tryGit(cwd: string, args: string[]): Promise<string> {
 }
 
 export async function isRepo(cwd: string): Promise<boolean> {
+  if (!await stat(cwd).catch(ifMissing(null))) return false;
   const out = await tryGit(cwd, ["rev-parse", "--is-inside-work-tree"]);
   return out.trim() === "true";
 }

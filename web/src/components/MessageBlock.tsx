@@ -4,6 +4,7 @@ import { PartView } from "./PartView.tsx";
 import { WorkGroup } from "./WorkGroup.tsx";
 import { WorkDetails } from "./WorkDetails.tsx";
 import { MessageActions } from "./MessageActions.tsx";
+import { UserBubble } from "./UserBubble.tsx";
 import type { TimelineRow } from "../lib/timeline.ts";
 import { useApp } from "../lib/store.ts";
 import { clock } from "../lib/format.ts";
@@ -45,11 +46,7 @@ export const MessageBlock = memo(function MessageBlock({
               threadId={threadId}
             />
           ) : null}
-          <div className="message-bubble user-card">
-            {shell.partIds.map((id) => (
-              <PartView key={id} partId={id} live={false} />
-            ))}
-          </div>
+          <UserBubble partIds={shell.partIds} />
           <div className="turn-meta">
             <time>{clock(shell.ts)}</time>
             {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} user />}
@@ -83,10 +80,10 @@ export const MessageBlock = memo(function MessageBlock({
             )}
           </div>
         )}
-        {last && !streaming && (
+        {last && messageId && !streaming && (
           <div className="turn-meta">
             <time>{clock(timestamp)}</time>
-            {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} user={false} />}
+            {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} replyIds={row?.kind === "activity" ? row.messageIds : undefined} user={false} />}
           </div>
         )}
       </div>

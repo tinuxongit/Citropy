@@ -1,4 +1,4 @@
-import { spawn, execFile } from "node:child_process";
+import { execFile } from "node:child_process";
 import { access, realpath, readFile, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { constants } from "node:fs";
 import { delimiter, dirname, join } from "node:path";
@@ -7,7 +7,8 @@ import { promisify, stripVTControlCharacters } from "node:util";
 import { valid, gt } from "semver";
 import { providers } from "./index.ts";
 import { openCodeBinary, openCodePackage } from "./opencode.ts";
-import { clearCommandCache, commandIdentity, invocation, resolveCommand } from "./binary.ts";
+import { clearCommandCache, commandIdentity, resolveCommand, spawnCommand } from "./binary.ts";
+import { stopProcess } from "./process.ts";
 import { bus } from "../bus.ts";
 import { hasCode, ifMissing } from "../../shared/expected-errors.mjs";
 import { notifyUpdateAvailable } from "../update-notifications.ts";
@@ -405,12 +406,7 @@ async function runUpdate(
       args = [...plan.args!, path];
     }
     await new Promise<void>((resolve, reject) => {
-      const command = process.platform === "win32" && /\.(cmd|bat)$/i.test(plan.executable!)
-        ? invocation({ file: process.env.ComSpec || "cmd.exe", path: plan.executable, prefix: [], shell: "cmd" }, args)
-        : { file: plan.executable!, args, verbatim: false };
-      const child = spawn(command.file, command.args, {
-        windowsHide: true,
-        windowsVerbatimArguments: command.verbatim,
+      const child = spawnCommand(plan.executable!, args, {
         cwd: homedir(),
         stdio: ["ignore", "pipe", "pipe"],
         detached: process.platform !== "win32",
@@ -423,15 +419,7 @@ async function runUpdate(
       };
       child.stdout.on("data", append);
       child.stderr.on("data", append);
-      const terminate = () => {
-        try {
-          if (process.platform !== "win32" && child.pid)
-            process.kill(-child.pid, "SIGKILL");
-          else child.kill("SIGKILL");
-        } catch (error) {
-          if (!hasCode(error, "ESRCH")) throw error;
-        }
-      };
+      const terminate = () => stopProcess(child, true);
       let timedOut = false;
       const timer = setTimeout(() => {
         timedOut = true;

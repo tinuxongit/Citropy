@@ -1,5 +1,6 @@
 import { createServer, request } from "node:http";
 import { logFailure } from "../shared/expected-errors.mjs";
+import { REMOTE_TOKEN_HEADER } from "../shared/remote-connection.mjs";
 import { pipeline } from "node:stream";
 
 /**
@@ -20,7 +21,7 @@ export async function remoteProxy(allowedOrigin) {
     if (req.headers["sec-fetch-site"] !== "cross-site") return true;
     try { return new URL(req.headers.referer || "").origin === origin(); } catch { return false; }
   };
-  const headersFor = req => ({ ...req.headers, host: `127.0.0.1:${target.remotePort}`, origin: `http://127.0.0.1:${target.remotePort}`, "x-citropy-remote-token": target.token });
+  const headersFor = req => ({ ...req.headers, host: `127.0.0.1:${target.remotePort}`, origin: `http://127.0.0.1:${target.remotePort}`, [REMOTE_TOKEN_HEADER]: target.token });
   const server = createServer((req, res) => {
     if (!trusted(req)) { res.writeHead(403).end(); return; }
     const cors = { "access-control-allow-origin": origin(), vary: "Origin" };

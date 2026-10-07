@@ -1,0 +1,88 @@
+.context-source-path { overflow-wrap: anywhere; font-size: var(--text-sm); }
+.citropy-dialog.remote-folder-dialog { width: min(560px, calc(var(--viewport-width) - 32px)); }
+.remote-folder-path { flex-wrap: nowrap; }
+.remote-folder-path > input { font-family: var(--font-mono); font-size: var(--text-xs); }
+.remote-folder-path > label { margin-right: 0; white-space: nowrap; }
+.remote-folder-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-12);
+  max-height: min(340px, calc(var(--viewport-height) - 320px));
+  min-height: 120px;
+  overflow: auto;
+  padding: var(--space-4);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+}
+.remote-folder-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-10);
+  flex: none;
+  min-height: 32px;
+  padding: 0 var(--space-10);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: default;
+}
+.remote-folder-row:hover:not(:disabled) { background: var(--hover); outline: none; }
+.remote-folder-row:focus-visible { background: var(--highlight); outline: none; }
+.remote-folder-row > svg { flex: none; color: var(--text-3); }
+.remote-folder-row[data-hidden] { color: var(--text-3); }
+.remote-folder-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  padding: var(--space-40) var(--space-12);
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+
+.session-import-dialog {
+  width: min(760px, calc(var(--viewport-width) - 32px));
+}
+.session-import-controls {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+.session-import-controls .select {
+  width: auto;
+}
+.session-import-controls input {
+  flex: 1;
+  min-width: 140px;
+}
+.session-import-list {
+  max-height: 48vh;
+  overflow: auto;
+}
+.session-import-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  padding: var(--space-12) var(--space-4);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 90px;
+}
+.session-import-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.session-import-row strong,
+.session-import-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.session-import-row small {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  margin-top: var(--space-4);
+}

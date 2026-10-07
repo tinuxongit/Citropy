@@ -1,8 +1,9 @@
 import { serverUrl } from "../lib/environment.ts";
 import { AnimatePresence } from "motion/react";
 import { useState } from "react";
-import { X, Download, ImageOff, Play } from "lucide-react";
+import { X, Download } from "lucide-react";
 import { FileIcon } from "./FileIcon.tsx";
+import { MediaThumb } from "./MediaThumb.tsx";
 import { Modal } from "./Modal.tsx";
 import { FilePreview } from "./FilePreview.tsx";
 import { ImageViewer } from "./ImageViewer.tsx";
@@ -22,7 +23,6 @@ export function Attachments({
   onRemove?: (id: string) => void;
 }) {
   const [preview, setPreview] = useState<Attachment>();
-  const [missing, setMissing] = useState<ReadonlySet<string>>(() => new Set());
   const images = files.filter(file => file.mime?.startsWith("image/"));
   const media = (file: Attachment) => file.mime?.startsWith("image/") || file.mime?.startsWith("video/");
   return (
@@ -38,22 +38,11 @@ export function Attachments({
               title={`Preview ${file.label}`}
             >
               {media(file) ? (
-                missing.has(file.id ?? file.path) ? <span className="image-unavailable" role="img" aria-label="Image unavailable"><ImageOff size={20} aria-hidden="true" /><span>Image unavailable</span></span> : file.mime?.startsWith("video/") ? <span className="video-thumbnail">
-                  <video
-                    src={`${serverUrl(`/api/assets?${assetQuery(projectId, file.path, threadId, file.id)}`)}#t=0.1`}
-                    preload="metadata"
-                    muted
-                    playsInline
-                    aria-hidden="true"
-                    onError={() => setMissing(previous => new Set(previous).add(file.id ?? file.path))}
-                  />
-                  <Play size={14} fill="currentColor" aria-hidden="true" />
-                </span> : <img
-                  alt={file.label}
-                  loading="lazy"
-                  decoding="async"
+                <MediaThumb
                   src={serverUrl(`/api/assets?${assetQuery(projectId, file.path, threadId, file.id)}`)}
-                  onError={() => setMissing(previous => new Set(previous).add(file.id ?? file.path))}
+                  alt={file.label}
+                  video={file.mime?.startsWith("video/")}
+                  size="tile"
                 />
               ) : (
                 <FileIcon path={file.label} mime={file.mime} size={22} className="attachment-file-icon" />

@@ -6,7 +6,7 @@ import { cancelThreadSearch, threadRoutes } from "../server/routes/threads.ts";
 
 test("disconnecting a search client cancels its work without cancelling another client", async t => {
   const pending = new Map();
-  t.mock.method(store, "search", (query, projectId, signal) => new Promise((resolve, reject) => {
+  t.mock.method(store, "search", (query, signal) => new Promise((resolve, reject) => {
     pending.set(query, { signal, resolve });
     signal.addEventListener("abort", () => reject(signal.reason), { once: true });
   }));
@@ -24,7 +24,7 @@ test("disconnecting a search client cancels its work without cancelling another 
   const results = [{ threadId: "match", snippet: "second result" }];
   pending.get("second").resolve(results);
   await second;
-  assert.deepEqual(secondReplies, [{ t: "thread.search", query: "second", projectId: undefined, results }]);
+  assert.deepEqual(secondReplies, [{ t: "thread.search", query: "second", results }]);
   cancelThreadSearch(secondClient);
   assert.equal(pending.get("second").signal.aborted, false);
   cancelThreadSearch(firstClient);

@@ -1,20 +1,17 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createServer } from "node:net";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { WebSocket } from "ws";
+import { freePort } from "../shared/ports.mjs";
 import { PROVIDER_IDS } from "../shared/protocol.ts";
 
 test("backend readiness and saved-workspace access do not wait for provider discovery", { timeout: 20_000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-startup-"));
-  const reserve = createServer();
-  await new Promise(resolve => reserve.listen(0, "127.0.0.1", resolve));
-  const port = reserve.address().port;
-  await new Promise(resolve => reserve.close(resolve));
+  const port = await freePort();
   const script = `
     import { providers } from './server/providers/index.ts';
     globalThis.fetch = async () => { throw new Error('Network disabled in startup fixture'); };

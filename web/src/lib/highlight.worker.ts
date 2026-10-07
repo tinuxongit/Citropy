@@ -1,4 +1,5 @@
 import { highlight, highlightTokens } from "./highlight-core.ts";
+import { CACHE_BYTES, CACHE_ENTRIES } from "./highlight-settings.ts";
 import type { HighlightRequest } from "./highlight.ts";
 
 const queue = new Map<number, HighlightRequest>();
@@ -23,8 +24,8 @@ async function drain(): Promise<void> {
         : await highlightTokens(request.code, request.lang, request.theme);
       const size = 2 * (key.length + (typeof result === "string" ? result.length : result?.reduce((total, line) => total + line.length, 0) ?? 0));
       entry = { result, bytes: size };
-      if (size <= 2 * 1024 * 1024) {
-        while (cache.size >= 128 || bytes + size > 2 * 1024 * 1024) {
+      if (result !== null && size <= CACHE_BYTES) {
+        while (cache.size >= CACHE_ENTRIES || bytes + size > CACHE_BYTES) {
           const oldest = cache.entries().next().value;
           if (!oldest) break;
           bytes -= oldest[1].bytes;

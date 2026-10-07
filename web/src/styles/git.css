@@ -856,7 +856,7 @@
 .shell[data-backdrop] :is(.git-branch-row, .git-remote-row) {
   padding: var(--space-20) var(--space-16);
   border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--canvas) 72%, transparent);
+  background: var(--backdrop-card-bg);
 }
 .shell[data-backdrop] :is(.git-branch-row, .git-remote-row) + :is(.git-branch-row, .git-remote-row) {
   margin-top: var(--space-4);

@@ -1,29 +1,23 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { Sparkles } from "lucide-react";
-import type { AppUpdateState, ReleaseNotes } from "../../../shared/app-update.ts";
-import { reportError } from "../lib/api.ts";
+import type { ReleaseNotes } from "../../../shared/app-update.ts";
 import { useApp } from "../lib/store.ts";
+import { useAppUpdate } from "../lib/use-app-update.ts";
 import { Modal } from "./Modal.tsx";
 
 const SEEN_VERSION = "citropy.whatsNewSeen";
 
 function useNotesAfterUpdate() {
   const agentReplying = useApp((state) => Boolean(state.threads[state.activeThreadId ?? ""]?.running));
+  const { state } = useAppUpdate();
   const [waiting, setWaiting] = useState<ReleaseNotes>();
   useEffect(() => {
-    const desktop = window.citropyDesktop;
-    if (!desktop) return;
-    const receive = (state: AppUpdateState) => {
-      if (!state.currentVersion) return;
-      const seen = localStorage.getItem(SEEN_VERSION);
-      if (!seen) localStorage.setItem(SEEN_VERSION, state.currentVersion);
-      else if (seen !== state.currentVersion && state.notes?.version === state.currentVersion) setWaiting(state.notes);
-    };
-    const off = desktop.onUpdateState(receive);
-    desktop.updateState().then(receive, reportError);
-    return off;
-  }, []);
+    if (!state.currentVersion) return;
+    const seen = localStorage.getItem(SEEN_VERSION);
+    if (!seen) localStorage.setItem(SEEN_VERSION, state.currentVersion);
+    else if (seen !== state.currentVersion && state.notes?.version === state.currentVersion) setWaiting(state.notes);
+  }, [state]);
   useEffect(() => {
     if (!waiting || agentReplying) return;
     localStorage.setItem(SEEN_VERSION, waiting.version);

@@ -7,6 +7,7 @@ import { createEditorFile, readEditorFile, saveEditorFile } from "./editor.ts";
 import { tree } from "./files.ts";
 import { store } from "./store.ts";
 import { refreshProvidersNow } from "./provider-registry.ts";
+import { usableProviderAccount } from "./provider-account.ts";
 import { closeProject } from "./routes/projects.ts";
 import { removeThread } from "./routes/threads.ts";
 import { answerQuestion } from "./questions.ts";
@@ -23,6 +24,7 @@ import { providerMaintenance, startProviderUpdate, startProviderUpdates, assertP
 import { readGlobalInstructions, saveGlobalInstructions } from "./providers/instructions.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
 import { modelSettings } from "../shared/model-options.ts";
+import { hasUsableAccount } from "../shared/provider-account.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
 import {
   chooseThreadWorkspace,
@@ -375,15 +377,12 @@ export async function handleFeatures(
       const project = store.projects.get(input.projectId);
       if (!project) throw new Error("Workspace not found");
       const defaults = resolveProjectSettings(store.projectDefaults, project.settings);
-      const provider = providers.find(
-        (entry) => entry.id === (input.provider ?? defaults?.provider),
-      );
       const instanceId = input.providerInstanceId;
       if (instanceId !== undefined && typeof instanceId !== "string") throw new Error("Invalid provider instance.");
-      const instance = instanceId ? provider?.instances?.find(entry => entry.id === instanceId) : undefined;
-      if (!provider?.enabled || (instanceId ? !instance?.available : !provider.available))
-        throw new Error("Select an enabled, installed provider.");
-      const models = instance?.models ?? provider.models;
+      const { provider, models } = usableProviderAccount(
+        providers.find((entry) => entry.id === (input.provider ?? defaults?.provider)),
+        instanceId,
+      );
       if (input.model && !models.some(model => model.id === input.model)) throw new Error("This model is not available for the selected provider instance.");
       if (
         input.permissionMode &&
@@ -518,7 +517,7 @@ export async function handleFeatures(
       respond(
         await usageReport(
           providers
-            .filter((entry) => entry.enabled && (entry.available || entry.instances?.some(instance => instance.available)))
+            .filter(hasUsableAccount)
             .map((entry) => entry.id),
         ),
       );

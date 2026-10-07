@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { ago, cost, providerLabels, tokens } from "../../lib/format.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
-import { promptTokens } from "../../../../shared/usage-metrics.ts";
+import { uncachedInput } from "../../../../shared/usage-metrics.ts";
 import type { UsageReport } from "../../../../shared/features.ts";
 
 type Conversation = UsageReport["conversations"][number];
@@ -10,11 +10,11 @@ type SortKey = "title" | "input" | "output" | "cacheRead" | "cacheWrite" | "cost
 
 const COLUMNS: Array<{ key: SortKey; label: string; value: (entry: Conversation) => number | string }> = [
   { key: "title", label: "Conversation", value: (entry) => entry.title.toLocaleLowerCase() },
-  { key: "input", label: "Input", value: (entry) => promptTokens(entry.provider, entry.usage) },
+  { key: "input", label: "Input", value: (entry) => uncachedInput(entry.provider, entry.usage) },
   { key: "output", label: "Output", value: (entry) => entry.usage.output },
   { key: "cacheRead", label: "Cache read", value: (entry) => entry.usage.cacheRead },
   { key: "cacheWrite", label: "Cache write", value: (entry) => entry.usage.cacheWrite },
-  { key: "cost", label: "Cost", value: (entry) => entry.usage.costUsd },
+  { key: "cost", label: "API cost", value: (entry) => entry.usage.costUsd },
   { key: "updatedAt", label: "Last used", value: (entry) => entry.updatedAt },
 ];
 
@@ -58,7 +58,7 @@ export function ConversationUsage({ conversations }: { conversations: Conversati
                   </span>
                 </span>
               </td>
-              <td>{tokens(promptTokens(entry.provider, entry.usage))}</td>
+              <td>{tokens(uncachedInput(entry.provider, entry.usage))}</td>
               <td>{tokens(entry.usage.output)}</td>
               <td>{tokens(entry.usage.cacheRead)}</td>
               <td>{tokens(entry.usage.cacheWrite)}</td>

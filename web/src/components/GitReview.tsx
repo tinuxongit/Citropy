@@ -8,11 +8,7 @@ import type { FilePatch } from "../../../shared/protocol.ts";
 import { scaled } from "../lib/store.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
 import { LineCounts } from "./LineCounts.tsx";
-
-export type GitSelection =
-  | { kind: "file"; path: string; staged: boolean }
-  | { kind: "commit"; hash: string }
-  | { kind: "stash"; ref: string };
+import type { GitSelection } from "./git/selection.ts";
 
 export function GitReview({
   projectId,

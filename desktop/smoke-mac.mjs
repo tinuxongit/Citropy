@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { freePort } from "../shared/ports.mjs";
 import { checkPackagedTerminal } from "./smoke-terminal.mjs";
 
 const run = promisify(execFile);
@@ -53,10 +53,7 @@ try {
       console.log(`${zip}: ${arch} bundle verified without launching (host is ${hostArch}).`);
       continue;
     }
-    const probe = createServer();
-    await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
-    const port = probe.address().port;
-    await new Promise((resolve) => probe.close(resolve));
+    const port = await freePort();
     desktop = spawn(join(app, `Contents/MacOS/${appName}`), [], {
       env: {
         ...process.env,

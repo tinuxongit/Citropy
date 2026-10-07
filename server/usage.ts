@@ -3,6 +3,8 @@ import { emptyUsage } from "../shared/protocol.ts";
 import { providerControl } from "./providers/control.ts";
 import { USAGE_TOTAL_KEYS, promptTokens } from "../shared/usage-metrics.ts";
 import { providerLogUsage } from "./provider-log-usage.ts";
+import { resolveProviderAccount } from "./provider-account.ts";
+import { costByType, costOf, isUnpriced, priceTable } from "./usage-pricing.ts";
 import type { ProviderId } from "../shared/protocol.ts";
 import type {
   ProviderUsage,
@@ -14,64 +16,64 @@ import type {
 const cached = new Map<string, ProviderUsage>();
 const pending = new Map<string, Promise<ProviderUsage>>();
 
+const WEEK_MINUTES = 7 * 24 * 60;
+const MONTH_MINUTES = 30 * 24 * 60;
+const SESSION_MINUTES = 5 * 60;
+const MONTHLY_PLANS = new Set(["free", "go"]);
+const CLAUDE_WINDOW_LABELS: Record<string, string> = { five_hour: "5 hours", seven_day: "Weekly", session: "5 hours", weekly_all: "Weekly", weekly_scoped: "Weekly" };
+
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, value));
+}
+
+function durationLabel(minutes: number): string {
+  if (minutes >= MONTH_MINUTES) return "Monthly";
+  if (minutes >= WEEK_MINUTES) return "Weekly";
+  return `${minutes / 60} hours`;
+}
+
+function codexWindows(result: Record<string, any>): UsageWindow[] {
+  const limits: Array<[string, Record<string, any> | undefined]> = result.rateLimitsByLimitId
+    ? Object.entries(result.rateLimitsByLimitId)
+    : [["codex", result.rateLimits]];
+  return limits.flatMap(([id, bucket]) => ["primary", "secondary"].flatMap((key) => {
+    const window = bucket?.[key];
+    if (!Number.isFinite(window?.usedPercent)) return [];
+    const fallback = key === "secondary" ? WEEK_MINUTES : MONTHLY_PLANS.has(bucket?.planType) ? MONTH_MINUTES : SESSION_MINUTES;
+    const label = durationLabel(window.windowDurationMins || fallback);
+    const name = bucket?.limitName || (id === "codex" ? "" : id);
+    return [{
+      label: name ? `${name} · ${label}` : label,
+      usedPercent: clampPercent(window.usedPercent),
+      resetsAt: Number.isFinite(window.resetsAt) ? window.resetsAt * 1000 : undefined,
+    }];
+  }));
+}
+
+function claudeWindows(limits: Record<string, any>): UsageWindow[] {
+  if (Array.isArray(limits.limits))
+    return limits.limits.filter((entry: any) => Number.isFinite(entry?.percent)).map((entry: any) => {
+      const label = CLAUDE_WINDOW_LABELS[entry.kind] ?? String(entry.kind).replaceAll("_", " ");
+      const scope = entry.scope?.model?.display_name ?? entry.scope?.surface?.display_name;
+      return { label: scope ? `${label} · ${scope}` : label, usedPercent: clampPercent(entry.percent), resetsAt: Date.parse(entry.resets_at) || undefined };
+    });
+  const windows: UsageWindow[] = [];
+  for (const key of ["five_hour", "seven_day"]) {
+    const window = limits[key];
+    if (Number.isFinite(window?.utilization))
+      windows.push({ label: CLAUDE_WINDOW_LABELS[key]!, usedPercent: clampPercent(window.utilization), resetsAt: Date.parse(window.resets_at) || undefined });
+  }
+  for (const window of limits.model_scoped ?? [])
+    if (Number.isFinite(window.utilization))
+      windows.push({ label: `Weekly · ${window.display_name}`, usedPercent: clampPercent(window.utilization), resetsAt: Date.parse(window.resets_at) || undefined });
+  return windows;
+}
+
 function parseProviderLimits(
   provider: ProviderId,
   result: Record<string, any>,
 ): ProviderUsage {
-  const windows: UsageWindow[] = [];
-  if (provider === "codex") {
-    const limits = result.rateLimitsByLimitId
-      ? Object.entries(result.rateLimitsByLimitId)
-      : [["Codex", result.rateLimits]];
-    for (const [name, raw] of limits) {
-      const bucket = raw as Record<string, any> | undefined;
-      for (const key of ["primary", "secondary"]) {
-        const window = bucket?.[key];
-        if (!Number.isFinite(window?.usedPercent)) continue;
-        const minutes = window.windowDurationMins;
-        const label =
-          minutes === 300
-            ? "5 hours"
-            : minutes === 10080
-              ? "Weekly"
-              : minutes
-                ? `${minutes / 60} hours`
-                : key;
-        windows.push({
-          label: `${bucket?.limitName || name} · ${label}`,
-          usedPercent: Math.max(0, Math.min(100, window.usedPercent)),
-          resetsAt: Number.isFinite(window.resetsAt)
-            ? window.resetsAt * 1000
-            : undefined,
-        });
-      }
-    }
-  } else {
-    const limits = result.rate_limits ?? result;
-    for (const [key, raw] of Object.entries(limits)) {
-      const window = raw as Record<string, any> | null;
-      if (!Number.isFinite(window?.utilization)) continue;
-      windows.push({
-        label:
-          key === "five_hour"
-            ? "5 hours"
-            : key === "seven_day"
-              ? "Weekly"
-              : key.replaceAll("_", " "),
-        usedPercent: Math.max(0, Math.min(100, window!.utilization)),
-        resetsAt: window?.resets_at
-          ? Date.parse(window.resets_at) || undefined
-          : undefined,
-      });
-    }
-    for (const window of limits.model_scoped ?? [])
-      if (Number.isFinite(window.utilization))
-        windows.push({
-          label: window.display_name,
-          usedPercent: Math.max(0, Math.min(100, window.utilization)),
-          resetsAt: Date.parse(window.resets_at) || undefined,
-        });
-  }
+  const windows = provider === "codex" ? codexWindows(result) : claudeWindows(result.rate_limits ?? result);
   return {
     provider,
     windows,
@@ -83,9 +85,7 @@ function parseProviderLimits(
 }
 
 export async function providerLimits(provider: ProviderId, instanceId?: string): Promise<ProviderUsage> {
-  const instance = instanceId ? store.providerInstances.get(instanceId) : undefined;
-  if (instanceId && (!instance || instance.provider !== provider))
-    throw new Error("The selected provider account is unavailable.");
+  const { instance, launch } = resolveProviderAccount(provider, instanceId);
   const key = JSON.stringify([provider, instanceId, instance?.binary, instance?.environment]);
   const saved = cached.get(key);
   if (saved && Date.now() - saved.updatedAt < 30_000) return saved;
@@ -106,9 +106,9 @@ export async function providerLimits(provider: ProviderId, instanceId?: string):
         await providerControl(
           provider,
           provider === "codex" ? "account/rateLimits/read" : "get_usage",
-          {},
+          provider === "codex" ? {} : { skip_behaviors: true },
           undefined,
-          { binary: instance?.binary, environment: instance?.environment },
+          launch,
         ),
       );
     } catch (error) {
@@ -138,7 +138,7 @@ export async function providerLimits(provider: ProviderId, instanceId?: string):
 function mergeDays(days: UsageDay[]): UsageDay[] {
   const merged = new Map<string, UsageDay>();
   for (const day of days) {
-    const key = `${day.day}\u0000${day.provider}\u0000${day.model ?? ""}`;
+    const key = `${day.day}\u0000${day.provider}\u0000${day.model ?? ""}\u0000${day.speed ?? ""}`;
     const existing = merged.get(key);
     if (!existing) { merged.set(key, { ...day }); continue; }
     for (const field of USAGE_TOTAL_KEYS) existing[field] += day[field];
@@ -149,6 +149,7 @@ function mergeDays(days: UsageDay[]): UsageDay[] {
 export async function usageReport(
   providers: ProviderId[],
 ): Promise<UsageReport> {
+  const prices = await priceTable();
   const conversations = [...store.threads.values()]
     .filter((thread) => !thread.nativeAgentId)
     .flatMap((thread) => [...(thread.transfers ?? []), { provider: thread.provider, model: thread.model, usage: thread.usage, at: thread.updatedAt }].map((session, index) => ({
@@ -156,7 +157,7 @@ export async function usageReport(
       title: thread.title,
       provider: session.provider,
       model: session.model,
-      usage: session.usage,
+      usage: { ...session.usage, costUsd: session.usage.costUsd || costOf(prices, session.provider, session.model, session.usage) },
       updatedAt: session.at,
     })))
     .sort((a, b) => b.updatedAt - a.updatedAt);
@@ -171,7 +172,16 @@ export async function usageReport(
   }
   return {
     totals,
-    history: mergeDays(await providerLogUsage()),
+    history: mergeDays(await providerLogUsage()).map((day) => {
+      const parts = costByType(prices, day.provider, day.model, day, day.speed);
+      return {
+        ...day,
+        costUsd: costOf(prices, day.provider, day.model, day, day.speed),
+        ...(parts ? { costByType: parts } : {}),
+        ...(isUnpriced(prices, day.provider, day.model) ? { unpriced: true } : {}),
+      };
+    }),
+    pricing: prices.pricing,
     conversations,
     providers: await Promise.all(providers.map(provider => providerLimits(provider))),
   };

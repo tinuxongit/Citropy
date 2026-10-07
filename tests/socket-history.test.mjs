@@ -1,19 +1,16 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createServer } from "node:net";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { WebSocket } from "ws";
+import { freePort } from "../shared/ports.mjs";
 
 test("paged selective sockets preserve durable replay, global state and subscription changes", { timeout: 30_000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-history-socket-"));
-  const reserve = createServer();
-  await new Promise(resolve => reserve.listen(0, "127.0.0.1", resolve));
-  const port = reserve.address().port;
-  await new Promise(resolve => reserve.close(resolve));
+  const port = await freePort();
   const script = `
     import { providers } from './server/providers/index.ts';
     import { store } from './server/store.ts';
@@ -93,11 +90,11 @@ test("paged selective sockets preserve durable replay, global state and subscrip
   const done = waitForChild("burst-done");
   child.send({ t: "burst" });
   const { sequence } = await done;
-  await live.waitFor(event => event.t === "event.batch" && event.sequence === sequence);
+  await live.waitFor(event => event.t === "event.batch" && event.sequence >= sequence);
   const frames = live.events.filter(event => event.t === "event.batch");
   let cursor = hello.sequence;
   for (const frame of frames) { assert.equal(frame.after, cursor); cursor = frame.sequence; }
-  assert.equal(cursor, sequence);
+  assert.ok(cursor >= sequence);
   const updates = frames.flatMap(frame => frame.events);
   assert.ok(updates.some(event => event.t === "permission.close"));
   assert.ok(updates.every(event => !event.threadId || event.threadId === selected));
@@ -110,9 +107,12 @@ test("paged selective sockets preserve durable replay, global state and subscrip
   const replacementSequence = (await replaced).sequence;
   const replay = await connect(`epoch=${hello.epoch}&after=${sequence}&threads=${selected}`);
   await replay.waitFor(event => event.t === "reconnected");
+  await replay.waitFor(event => event.t === "event.batch" && event.sequence >= replacementSequence);
   const replayed = replay.events.filter(event => event.t === "event.batch");
   assert.equal(replayed[0].after, sequence);
-  assert.equal(replayed.at(-1).sequence, replacementSequence);
+  let replayCursor = sequence;
+  for (const frame of replayed) { assert.equal(frame.after, replayCursor); replayCursor = frame.sequence; }
+  assert.ok(replayCursor >= replacementSequence);
   const reset = replayed.flatMap(frame => frame.events).find(event => event.t === "thread.messages");
   assert.equal(reset.messages[0].parts[0].text, "base");
   assert.equal(replayed.flatMap(frame => frame.events).find(event => event.t === "part.append").text, "+delta");

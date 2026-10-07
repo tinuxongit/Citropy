@@ -6,6 +6,7 @@ import type { MenuItem } from "../Menu.tsx";
 import { PixelLoader } from "../PixelLoader.tsx";
 import { LineCounts } from "../LineCounts.tsx";
 import { manageGit, openWorkbenchPanel } from "../../lib/actions.ts";
+import { reportError } from "../../lib/api.ts";
 import { useGitHub } from "../../lib/use-github.ts";
 import type { GitHubBranchPull } from "../../../../shared/github.ts";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
@@ -34,7 +35,7 @@ export function GitSection({ thread, git, branch, onReview, onSourceControl, onC
   const [branches, setBranches] = useState<string[]>();
   const loadBranches = () => void manageGit(thread.projectId, "overview", undefined, undefined, undefined, thread.id).then((result) => {
     if (typeof result === "object" && "branches" in result) setBranches(result.branches.filter((entry) => !entry.remote).map((entry) => entry.name));
-  });
+  }).catch(reportError);
   const branchMenu: MenuItem[] = branches
     ? branches.map((name) => ({ id: name, label: name, selected: name === branch, disabled: blocked || name === branch, onSelect: () => void git.manage("switchBranch", name) }))
     : [{ id: "loading", label: "Loading branches…", disabled: true }];

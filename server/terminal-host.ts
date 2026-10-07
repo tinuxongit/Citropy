@@ -2,23 +2,27 @@ import { spawn, type IPty } from "node-pty";
 import { randomUUID } from "node:crypto";
 import { stopProcess, waitForStoppedProcesses } from "./providers/process.ts";
 import { terminalProcesses } from "./terminal-processes.ts";
-import type { PanelTab } from "../shared/workbench.ts";
+import { appendOutput, exitNotice } from "../shared/terminal.ts";
+import type { TerminalEvent, TerminalOpenInput, TerminalSession } from "../shared/terminal.ts";
 
-export interface TerminalSession {
-  id: string;
-  cwd: string;
-  command?: string;
-  panel?: PanelTab;
-  output: string;
-  offset?: number;
-  sessionId?: string;
-  running: boolean;
-  busy?: boolean;
-  process?: string;
-  code?: number;
+const MAX_TERMINALS = 64;
+const MAX_ID_LENGTH = 200;
+const MAX_INPUT_LENGTH = 128 * 1024;
+const MIN_COLS = 20;
+const MAX_COLS = 1000;
+const MIN_ROWS = 5;
+const MAX_ROWS = 1000;
+const FLUSH_DELAY_MS = 16;
+const FLUSH_CHUNK = 16_384;
+const PAUSE_ABOVE = 65_536;
+const RESUME_BELOW = 32_768;
+const ACTIVITY_POLL_MS = 1000;
+const ACTIVITY_POLL_MAX_MS = 60_000;
+const ACTIVITY_MAX_FAILURES = 6;
+
+function clampSize(cols: number, rows: number): { cols: number; rows: number } {
+  return { cols: Math.max(MIN_COLS, Math.min(cols, MAX_COLS)), rows: Math.max(MIN_ROWS, Math.min(rows, MAX_ROWS)) };
 }
-
-export type TerminalEvent = { type: "data"; id: string; data: string; offset?: number } | { type: "activity"; id: string; busy?: boolean; process?: string } | { type: "exit"; id: string; code: number };
 
 export class TerminalHost {
   #sessions = new Map<string, TerminalSession & { pty?: IPty; pending: string; timer?: NodeJS.Timeout; blocked: Set<string> }>();
@@ -38,7 +42,7 @@ export class TerminalHost {
 
   #scheduleActivity(): void {
     if (!this.#observeActivity || this.#poll || this.#polling || ![...this.#sessions.values()].some(session => session.pty)) return;
-    this.#poll = setTimeout(() => { this.#poll = undefined; void this.#checkActivity(); }, Math.min(1000 * 2 ** this.#failures, 60000));
+    this.#poll = setTimeout(() => { this.#poll = undefined; void this.#checkActivity(); }, Math.min(ACTIVITY_POLL_MS * 2 ** this.#failures, ACTIVITY_POLL_MAX_MS));
     this.#poll.unref();
   }
 
@@ -62,7 +66,7 @@ export class TerminalHost {
       this.#failures = 0;
     } catch (error) {
       if (!this.#failures) console.error("Checking terminal activity failed:", error);
-      this.#failures = Math.min(this.#failures + 1, 6);
+      this.#failures = Math.min(this.#failures + 1, ACTIVITY_MAX_FAILURES);
       for (const session of sessions) {
         if (!session.pty || this.#sessions.get(session.id) !== session || session.busy === undefined) continue;
         Object.assign(session, { busy: undefined, process: undefined });
@@ -78,41 +82,40 @@ export class TerminalHost {
     return [...this.#sessions.values()].map(({ pty, pending, timer, blocked, ...session }) => ({ ...session }));
   }
 
-  open(input: { id: string; cwd: string; cols: number; rows: number; command?: string; panel?: PanelTab; env?: Record<string, string> }): TerminalSession {
+  open(input: TerminalOpenInput): TerminalSession {
     const existing = this.#sessions.get(input.id);
     if (existing) {
       if (existing.cwd !== input.cwd) throw new Error("Terminal belongs to another workspace.");
       return this.list().find(session => session.id === input.id)!;
     }
-    if (!input.id || input.id.length > 200 || !input.cwd || !Number.isFinite(input.cols) || !Number.isFinite(input.rows)) throw new Error("Invalid terminal options.");
-    if (this.#sessions.size >= 64) throw new Error("Close an existing terminal before opening more than 64 terminals.");
+    if (!input.id || input.id.length > MAX_ID_LENGTH || !input.cwd || !Number.isFinite(input.cols) || !Number.isFinite(input.rows)) throw new Error("Invalid terminal options.");
+    if (this.#sessions.size >= MAX_TERMINALS) throw new Error(`Close an existing terminal before opening more than ${MAX_TERMINALS} terminals.`);
     const program = process.platform === "win32" ? process.env.COMSPEC ?? "powershell.exe" : process.env.SHELL ?? "/bin/bash";
     const args = input.command ? process.platform === "win32" ? /cmd\.exe$/i.test(program) ? ["/d", "/s", "/c", input.command] : ["-NoProfile", "-Command", input.command] : ["-c", input.command] : process.platform === "win32" ? [] : ["-l"];
     const env = { ...process.env, ...input.env, TERM: "xterm-256color", COLORTERM: "truecolor", TERM_PROGRAM: "Citropy", CLICOLOR: "1" };
     for (const key of ["NO_COLOR", "FORCE_COLOR", "CLICOLOR_FORCE", "CITROPY_REMOTE_TOKEN", "CITROPY_DESKTOP_TOKEN"]) delete (env as NodeJS.ProcessEnv)[key];
-    const pty = spawn(program, args, { cwd: input.cwd, cols: Math.max(20, Math.min(input.cols, 1000)), rows: Math.max(5, Math.min(input.rows, 1000)), env: env as Record<string, string>, name: "xterm-256color" });
+    const pty = spawn(program, args, { cwd: input.cwd, ...clampSize(input.cols, input.rows), env: env as Record<string, string>, name: "xterm-256color" });
     const session = { id: input.id, sessionId: randomUUID(), cwd: input.cwd, command: input.command, panel: input.panel, output: input.command ? `${input.command}\r\n` : "", offset: input.command ? input.command.length + 2 : 0, running: true, busy: undefined as boolean | undefined, process: undefined as string | undefined, pty: pty as IPty | undefined, pending: "", timer: undefined as NodeJS.Timeout | undefined, blocked: new Set<string>() };
     this.#sessions.set(input.id, session);
     this.#scheduleActivity();
     const flush = () => {
       session.timer = undefined;
       if (!session.pending) return;
-      let length = Math.min(session.pending.length, 16_384);
+      let length = Math.min(session.pending.length, FLUSH_CHUNK);
       const last = session.pending.charCodeAt(length - 1);
       if (last >= 0xd800 && last <= 0xdbff) length--;
       const data = session.pending.slice(0, length);
       session.pending = session.pending.slice(length);
       this.#emit({ type: "data", id: input.id, data, offset: session.offset - session.pending.length });
-      if (session.pending.length) session.timer = setTimeout(flush, 16);
-      if (session.pending.length < 32_768 && !session.blocked.size) session.pty?.resume();
+      if (session.pending.length) session.timer = setTimeout(flush, FLUSH_DELAY_MS);
+      if (session.pending.length < RESUME_BELOW && !session.blocked.size) session.pty?.resume();
     };
     pty.onData(data => {
       if (this.#sessions.get(input.id) !== session) return;
-      session.output = (session.output + data).slice(-200_000);
-      session.offset += data.length;
+      appendOutput(session, data);
       session.pending += data;
-      if (session.pending.length > 65_536) session.pty?.pause();
-      if (!session.timer) session.timer = setTimeout(flush, 16);
+      if (session.pending.length > PAUSE_ABOVE) session.pty?.pause();
+      if (!session.timer) session.timer = setTimeout(flush, FLUSH_DELAY_MS);
     });
     pty.onExit(({ exitCode }) => {
       if (this.#sessions.get(input.id) !== session) return;
@@ -121,9 +124,7 @@ export class TerminalHost {
         if (this.#sessions.get(input.id) !== session) return;
         if (session.pending.length) { setTimeout(finish, 20); return; }
         Object.assign(session, { code: exitCode, running: false, busy: false, process: undefined });
-        const ending = `\r\n[process exited with code ${exitCode}]\r\n`;
-        session.output = (session.output + ending).slice(-200_000);
-        session.offset += ending.length;
+        appendOutput(session, exitNotice(exitCode));
         this.#emit({ type: "exit", id: input.id, code: exitCode });
       };
       finish();
@@ -134,13 +135,14 @@ export class TerminalHost {
   write(id: string, data: string): void {
     const pty = this.#sessions.get(id)?.pty;
     if (!pty) throw new Error("This terminal has exited. Open a new terminal.");
-    if (typeof data !== "string" || data.length > 128 * 1024) throw new Error("Terminal input is too large.");
+    if (typeof data !== "string" || data.length > MAX_INPUT_LENGTH) throw new Error("Terminal input is too large.");
     pty.write(data);
   }
 
   resize(id: string, cols: number, rows: number): void {
     if (!Number.isFinite(cols) || !Number.isFinite(rows)) return;
-    this.#sessions.get(id)?.pty?.resize(Math.max(20, Math.min(cols, 1000)), Math.max(5, Math.min(rows, 1000)));
+    const size = clampSize(cols, rows);
+    this.#sessions.get(id)?.pty?.resize(size.cols, size.rows);
   }
 
   flow(id: string, client: string, paused: boolean): void {
@@ -148,7 +150,7 @@ export class TerminalHost {
     if (!session) return;
     if (paused) session.blocked.add(client); else session.blocked.delete(client);
     if (session.blocked.size) session.pty?.pause();
-    else if (session.pending.length < 65_536) session.pty?.resume();
+    else if (session.pending.length < PAUSE_ABOVE) session.pty?.resume();
   }
 
   release(client: string): void { for (const id of this.#sessions.keys()) this.flow(id, client, false); }

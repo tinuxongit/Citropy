@@ -1,34 +1,21 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Download, Minus, Plus } from "lucide-react";
+import { useRef, useState } from "react";
+import { Download } from "lucide-react";
+import { useCloseOnOutsideClick, useViewportBounds } from "../lib/use-viewer.ts";
 import { Modal } from "./Modal.tsx";
 import { VideoPlayer } from "./VideoPlayer.tsx";
+import { ViewerZoom } from "./ViewerZoom.tsx";
+
+const MIN_ZOOM = 0.25;
 
 export function VideoViewer({ src, download, name, onClose }: { src: string; download: string; name: string; onClose: () => void }) {
   const viewport = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [bounds, setBounds] = useState({ width: 0, height: 0 });
+  const bounds = useViewportBounds(viewport);
   const [zoom, setZoom] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    const element = viewport.current;
-    if (!element) return;
-    const measure = () => setBounds({ width: element.clientWidth, height: element.clientHeight });
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  useEffect(() => {
-    const dialog = viewport.current?.closest("dialog");
-    if (!dialog) return;
-    const closeOutside = (event: MouseEvent) => {
-      if (event.target instanceof Element && !event.target.closest(".video-player, button, a, .image-zoom")) onClose();
-    };
-    dialog.addEventListener("click", closeOutside);
-    return () => dialog.removeEventListener("click", closeOutside);
-  }, [onClose]);
+  useCloseOnOutsideClick(viewport, ".video-player", onClose);
   const fit = size.width && bounds.width ? Math.min(bounds.width / size.width, bounds.height / size.height) : 1;
   const scale = zoom ?? fit;
-  const minimum = Math.min(fit, 0.25);
+  const minimum = Math.min(fit, MIN_ZOOM);
   const maximum = fit;
   const ready = size.width > 0;
   return <Modal
@@ -37,11 +24,7 @@ export function VideoViewer({ src, download, name, onClose }: { src: string; dow
     onClose={onClose}
     initialFocus=".video-player"
     actions={<a className="icon-btn" aria-label="Download video" title="Download video" href={download} download={name}><Download size={18} /></a>}
-    footer={ready && <div className="image-zoom" role="group" aria-label="Video zoom">
-      <button className="icon-btn" type="button" aria-label="Zoom out" disabled={scale <= minimum} onClick={() => setZoom(Math.max(minimum, scale / 1.25))}><Minus size={18} /></button>
-      <button className="image-zoom-reset" type="button" title="Fit video" aria-label="Fit video" onClick={() => setZoom(null)}>{Math.round(scale * 100)}%</button>
-      <button className="icon-btn" type="button" aria-label="Zoom in" disabled={scale >= maximum} onClick={() => setZoom(Math.min(maximum, scale * 1.25))}><Plus size={18} /></button>
-    </div>}
+    footer={ready && <ViewerZoom group="Video zoom" fit="Fit video" scale={scale} minimum={minimum} maximum={maximum} onZoom={next => setZoom(next === null ? null : Math.min(maximum, Math.max(minimum, next)))} />}
   >
     <div className="image-viewport scroll" ref={viewport}>
       <div className="image-surface">

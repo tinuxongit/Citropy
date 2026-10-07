@@ -26,11 +26,11 @@ function fallback(text: string): string {
   return `<p>${escapeHtml(text).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br />")}</p>`;
 }
 
-export function useMarkdown(text: string, live: boolean, images = true): { html: string; blocks?: string[]; ready: boolean } {
+export function useMarkdown(text: string, live: boolean, images = true, commands = false): { html: string; blocks?: string[]; ready: boolean } {
   const theme = useApp((state) => state.scheme);
   const projectId = useApp((state) => state.activeProjectId);
   const threadId = useApp((state) => state.activeThreadId);
-  const key = `${theme}:${projectId ?? ""}:${threadId ?? ""}:${images}:${text}`;
+  const key = `${theme}:${projectId ?? ""}:${threadId ?? ""}:${images}:${commands}:${text}`;
   const [rendered, setRendered] = useState<{ html: string; blocks?: string[]; key: string | null }>(() => ({
     html: cache.get(key) ?? fallback(text),
     key: cache.has(key) ? key : null,
@@ -84,7 +84,7 @@ export function useMarkdown(text: string, live: boolean, images = true): { html:
     }
     let cancelled = false;
     const controller = new AbortController();
-    void renderMarkdown(text, theme, controller.signal, assets, { images, live }).catch((error) => { console.error("Rendering markdown failed:", error); return fallback(text); }).then((result) => {
+    void renderMarkdown(text, theme, controller.signal, assets, { images, live, commands }).catch((error) => { console.error("Rendering markdown failed:", error); return fallback(text); }).then((result) => {
       if (cancelled || latest.current !== key) return;
       remember(key, result);
       setRendered({ html: result, key });
@@ -93,7 +93,7 @@ export function useMarkdown(text: string, live: boolean, images = true): { html:
       cancelled = true;
       controller.abort();
     };
-  }, [key, text, theme, live, projectId, threadId, images, settings]);
+  }, [key, text, theme, live, projectId, threadId, images, commands, settings]);
 
   return { html: rendered.html, blocks: rendered.blocks, ready: rendered.key === key };
 }

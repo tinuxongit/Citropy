@@ -1,5 +1,6 @@
 import { USAGE_TOTAL_KEYS, emptyUsageTotals, localDay, promptTokens, type UsageTotals } from "../../../../shared/usage-metrics.ts";
-import type { UsageDay } from "../../../../shared/features.ts";
+import { cost, tokens } from "../../lib/format.ts";
+import { COST_TYPES, type CostByType, type UsageDay, type UsageSpeed } from "../../../../shared/features.ts";
 import type { ProviderId } from "../../../../shared/protocol.ts";
 
 export type UsagePeriod = "daily" | "weekly" | "monthly";
@@ -34,6 +35,10 @@ function parseDay(day: string): Date {
 function addTotals(target: UsageTotals, source: UsageTotals): UsageTotals {
   for (const key of USAGE_TOTAL_KEYS) target[key] += source[key];
   return target;
+}
+
+export function formatMeasure(measure: UsageMeasure, value: number): string {
+  return measure === "cost" ? cost(value) : tokens(Math.round(value));
 }
 
 export function measureOf(measure: UsageMeasure, provider: ProviderId, totals: UsageTotals): number {
@@ -82,6 +87,25 @@ export function modelTotals(history: UsageDay[], provider: ProviderId, from: Dat
     models.set(model, addTotals(models.get(model) ?? emptyUsageTotals(), entry));
   }
   return [...models].map(([model, totals]) => ({ model, totals }));
+}
+
+export interface CostSplit {
+  byType: CostByType & { other: number };
+  bySpeed: Record<UsageSpeed | "standard", number>;
+}
+
+export function costSplit(history: UsageDay[], providers: ProviderId[], from: Date): CostSplit {
+  const split: CostSplit = {
+    byType: { input: 0, cacheRead: 0, cacheWrite: 0, output: 0, other: 0 },
+    bySpeed: { standard: 0, fast: 0, ultrafast: 0 },
+  };
+  for (const entry of history) {
+    if (!providers.includes(entry.provider) || parseDay(entry.day) < from) continue;
+    if (entry.costByType) for (const type of COST_TYPES) split.byType[type] += entry.costByType[type];
+    else split.byType.other += entry.costUsd;
+    split.bySpeed[entry.speed ?? "standard"] += entry.costUsd;
+  }
+  return split;
 }
 
 export function niceScale(max: number, steps = 4): number[] {

@@ -7,7 +7,10 @@ import { loadThread } from "../lib/actions.ts";
 import { ago, duration } from "../lib/format.ts";
 import { selectProject, selectThread, useApp } from "../lib/store.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { useVisibleInterval } from "../lib/use-visible-interval.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
+
+const SETTINGS = { pollMs: 5000, openPollMs: 2000 };
 
 interface Agent {
   threadId: string;
@@ -38,16 +41,9 @@ export function AgentsPanel() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [busy, setBusy] = useState<string>();
 
-  useEffect(() => {
-    let alive = true;
-    const load = () => api<{ agents: Agent[] }>(open ? "agents?usage=1" : "agents").then((value) => { if (alive) setAgents(value.agents); }).catch((error) => console.error("Loading agents failed:", error));
-    void load();
-    const timer = window.setInterval(load, open ? 2000 : 5000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
-  }, [open]);
+  const load = () => api<{ agents: Agent[] }>(open ? "agents?usage=1" : "agents").then((value) => setAgents(value.agents)).catch((error) => console.error("Loading agents failed:", error));
+  useEffect(() => { void load(); }, [open]);
+  useVisibleInterval(load, open ? SETTINGS.openPollMs : SETTINGS.pollMs);
 
   useEffect(() => {
     if (!open) return;

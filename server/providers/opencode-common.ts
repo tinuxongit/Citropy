@@ -29,3 +29,9 @@ export async function sameDirectory(first: string, second: string): Promise<bool
   const [a, b] = await Promise.all([realpath(first).catch(ifMissing(first)), realpath(second).catch(ifMissing(second))]);
   return a === b;
 }
+
+export function parseModelRef(model: string | undefined): { providerID: string; modelID: string } {
+  const [providerID, ...modelParts] = model?.split("/") ?? [];
+  if (!providerID || !modelParts.length) throw new Error("Select an OpenCode model with a provider.");
+  return { providerID, modelID: modelParts.join("/") };
+}

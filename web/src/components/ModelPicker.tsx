@@ -4,6 +4,7 @@ import { ArrowRightLeft, Check, ChevronDown, LockKeyhole, Star } from "lucide-re
 import type { WritingModel } from "../../../shared/assistance.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../../shared/protocol.ts";
 import { effectiveEffort, selectedModel } from "../../../shared/model-options.ts";
+import { providerAccount } from "../../../shared/provider-account.ts";
 import { toggleFavoriteModel, useApp, viewportWidth } from "../lib/store.ts";
 import { effortLabel, modelLabel, modelSource } from "../lib/format.ts";
 import { send } from "../lib/socket.ts";
@@ -47,7 +48,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const locked = transferring ? undefined : lockedProvider;
   const catalog = locked ? providers.find((entry) => entry.id === locked) : available.find((entry) => entry.id === browsing) ?? available[0];
   const currentInstanceId = choice?.providerInstanceId ?? instanceId;
-  const choiceModels = currentInstanceId ? provider?.instances?.find(instance => instance.id === currentInstanceId)?.models ?? [] : provider?.models ?? [];
+  const choiceModels = providerAccount(provider, currentInstanceId).models;
   const model = selectedModel(choiceModels, choice?.model);
   const tunedEffort = tune && value ? effectiveEffort(model, tune.settings.effort) : undefined;
   const tuning = customTuning ?? (tune && (() => <ModelTuning key={`${choice?.provider}:${model?.id}`} settings={tune.settings} model={value ? model : undefined} onChange={tune.onChange} only={tune.only} />));
@@ -82,8 +83,8 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     },
   }))));
   const targetProvider = target && providers.find(entry => entry.id === target.provider);
-  const targetModels = target?.providerInstanceId ? targetProvider?.instances?.find(instance => instance.id === target.providerInstanceId)?.models : targetProvider?.models;
-  const targetName = target && selectedModel(targetModels ?? [], target.model)?.label;
+  const targetModels = providerAccount(targetProvider, target?.providerInstanceId).models;
+  const targetName = target && selectedModel(targetModels, target.model)?.label;
   const transferLabel = transferring && target ? `Transfer to ${targetName ?? target.model}` : "Transfer to another agent";
   const transferButton = onTransfer && <button
     className="model-picker-transfer"

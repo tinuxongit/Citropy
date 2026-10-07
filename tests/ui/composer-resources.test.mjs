@@ -120,7 +120,8 @@ test("composer resource usage", { timeout: 120_000 }, async (t) => {
       function Fixture() {
         const [threadId, setThreadId] = React.useState('chat');
         window.setThread = setThreadId;
-        return React.createElement('div', { className: 'composer-tabs' }, React.createElement(PlanTab, { threadId }));
+        return React.createElement('div', { className: 'composer-shell', style: { position: 'relative', width: 500, height: 200 } },
+          React.createElement('div', { className: 'composer-tabs' }, React.createElement(PlanTab, { threadId })));
       }
       createRoot(document.querySelector('#fixture')).render(React.createElement(Fixture));
     `);
@@ -214,17 +215,17 @@ test("composer resource usage", { timeout: 120_000 }, async (t) => {
     `);
     await page.waitForFunction(() => document.querySelector('.composer-glass')?.style.maskImage);
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    assert.equal(await page.evaluate(() => window.maskWrites), 3);
+    assert.equal(await page.evaluate(() => window.maskWrites), 2);
     const initial = await page.locator('.composer-glass').evaluate(node => node.style.maskImage);
     await page.locator('.composer-tab').evaluate(node => { node.style.opacity = '0.5'; });
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
-    assert.equal(await page.evaluate(() => window.maskWrites), 3);
+    assert.equal(await page.evaluate(() => window.maskWrites), 2);
     await page.locator('.composer-tab').evaluate(node => { node.style.transform = 'translateY(12px)'; });
     await page.waitForFunction(initial => document.querySelector('.composer-glass').style.maskImage !== initial, initial);
-    assert.equal(await page.evaluate(() => window.maskWrites), 6);
+    assert.equal(await page.evaluate(() => window.maskWrites), 4);
     const moved = await page.locator('.composer-glass').evaluate(node => node.style.maskImage);
     await page.locator('.composer-shell').evaluate(node => { node.style.height = '140px'; });
     await page.waitForFunction(moved => document.querySelector('.composer-glass').style.maskImage !== moved, moved);
-    assert.equal(await page.evaluate(() => window.maskWrites), 9);
+    assert.equal(await page.evaluate(() => window.maskWrites), 6);
   });
 });

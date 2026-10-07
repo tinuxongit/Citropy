@@ -1,6 +1,12 @@
 import type { HighlighterCore } from "shiki/core";
 import { escapeHtml } from "./escape-html.ts";
+import { memoizeAsync } from "./memoize-async.ts";
+import { rawCode } from "./raw-code.ts";
 import { citropyDark, citropyLight } from "./theme-code.ts";
+
+const HTML_CODE_LIMIT = 120_000;
+const TOKEN_CODE_LIMIT = 200_000;
+const ASCII_CHUNK = 8192;
 
 const LOADERS: Record<string, () => Promise<unknown>> = {
   typescript: () => import("shiki/langs/typescript.mjs"),
@@ -56,25 +62,23 @@ const ALIASES: Record<string, string> = {
   patch: "diff",
 };
 
-let core: Promise<HighlighterCore> | null = null;
-const loaded = new Set<string>();
-const inflight = new Map<string, Promise<void>>();
+const highlighter = memoizeAsync<void, HighlighterCore>(async () => {
+  const [{ createHighlighterCore }, { createJavaScriptRegexEngine }] = await Promise.all([
+    import("shiki/core"),
+    import("shiki/engine/javascript"),
+  ]);
+  return createHighlighterCore({
+    themes: [citropyDark, citropyLight],
+    langs: [],
+    engine: createJavaScriptRegexEngine({ forgiving: true }),
+  });
+});
 
-function highlighter(): Promise<HighlighterCore> {
-  if (core) return core;
-  core = (async () => {
-    const [{ createHighlighterCore }, { createJavaScriptRegexEngine }] = await Promise.all([
-      import("shiki/core"),
-      import("shiki/engine/javascript"),
-    ]);
-    return createHighlighterCore({
-      themes: [citropyDark, citropyLight],
-      langs: [],
-      engine: createJavaScriptRegexEngine({ forgiving: true }),
-    });
-  })();
-  return core;
-}
+const ensureLanguage = memoizeAsync(async (lang: string) => {
+  const shiki = await highlighter();
+  const mod = (await LOADERS[lang]!()) as { default: unknown };
+  await shiki.loadLanguage(mod.default as never);
+});
 
 function resolveLang(input: string | undefined): string | null {
   if (!input) return null;
@@ -83,42 +87,22 @@ function resolveLang(input: string | undefined): string | null {
   return LOADERS[name] ? name : null;
 }
 
-async function ensure(lang: string): Promise<boolean> {
-  if (loaded.has(lang)) return true;
-  const loader = LOADERS[lang];
-  if (!loader) return false;
-  let pending = inflight.get(lang);
-  if (!pending) {
-    pending = (async () => {
-      const shiki = await highlighter();
-      const mod = (await loader()) as { default: unknown };
-      await shiki.loadLanguage(mod.default as never);
-      loaded.add(lang);
-    })();
-    inflight.set(lang, pending);
-  }
-  await pending;
-  inflight.delete(lang);
-  return true;
-}
-
 function oneByte(text: string): string {
   if (!/^[\x00-\xff]*$/.test(text)) return text;
   let copy = "";
-  for (let start = 0; start < text.length; start += 8192) {
+  for (let start = 0; start < text.length; start += ASCII_CHUNK) {
     const codes: number[] = [];
-    for (let index = start; index < Math.min(text.length, start + 8192); index++) codes.push(text.charCodeAt(index));
+    for (let index = start; index < Math.min(text.length, start + ASCII_CHUNK); index++) codes.push(text.charCodeAt(index));
     copy += String.fromCharCode(...codes);
   }
   return copy;
 }
 
-export async function highlight(code: string, lang: string | undefined, theme: "dark" | "light"): Promise<string> {
+export async function highlight(code: string, lang: string | undefined, theme: "dark" | "light"): Promise<string | null> {
   const resolved = resolveLang(lang);
-  if (!resolved || code.length > 120_000) return `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
+  if (!resolved || code.length > HTML_CODE_LIMIT) return rawCode(code);
   try {
-    const ok = await ensure(resolved);
-    if (!ok) return `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
+    await ensureLanguage(resolved);
     const shiki = await highlighter();
     return shiki.codeToHtml(oneByte(code), {
       lang: resolved,
@@ -126,7 +110,7 @@ export async function highlight(code: string, lang: string | undefined, theme: "
     });
   } catch (error) {
     console.error("Code highlighting failed:", resolved, error);
-    return `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
+    return null;
   }
 }
 
@@ -136,10 +120,9 @@ export async function highlightTokens(
   theme: "dark" | "light",
 ): Promise<string[] | null> {
   const resolved = resolveLang(lang);
-  if (!resolved || code.length > 200_000) return null;
+  if (!resolved || code.length > TOKEN_CODE_LIMIT) return null;
   try {
-    const ok = await ensure(resolved);
-    if (!ok) return null;
+    await ensureLanguage(resolved);
     const shiki = await highlighter();
     const result = shiki.codeToTokens(oneByte(code), {
       lang: resolved,

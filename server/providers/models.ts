@@ -1,9 +1,8 @@
-import { stopProcess } from "./process.ts";
-import { invocation, resolveCommand, spawnCommand } from "./binary.ts";
+import { invocation, resolveCommand } from "./binary.ts";
+import { providerControl } from "./control.ts";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { tmpdir } from "node:os";
-import { onJson } from "../lines.ts";
+import type { ProviderLaunch } from "./types.ts";
 import type { ModelOption } from "../../shared/protocol.ts";
 
 const run = promisify(execFile);
@@ -125,69 +124,22 @@ function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): Mode
   return [...models.values()];
 }
 
-export function discoverModels(provider: "codex" | "claude", launch?: import("./types.ts").ProviderLaunch): Promise<ModelOption[]> {
-  return new Promise((resolve, reject) => {
-    const args = provider === "codex" ? ["app-server"] : [
-      "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
-      "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--no-session-persistence",
-    ];
-    const child = spawnCommand(launch?.binary ?? provider, args, { cwd: tmpdir(), env: { ...process.env, ...launch?.environment }, stdio: ["pipe", "pipe", "ignore"] });
-    let finished = false;
-    const models: ModelOption[] = [];
-    const cursors = new Set<string>();
-    const finish = (error?: Error) => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(timer);
-      child.stdin.end();
-      stopProcess(child);
-      if (error) reject(error);
-      else resolve(models);
-    };
-    const timer = setTimeout(() => finish(new Error(`${provider} model discovery timed out`)), 20_000);
-    const send = (message: unknown) => child.stdin.write(`${JSON.stringify(message)}\n`);
-    child.on("error", finish);
-    child.stdin.on("error", finish);
-    child.on("exit", () => finish(new Error(`${provider} exited before returning its models`)));
-    onJson(child.stdout, (raw) => {
-      if (finished) return;
-      try {
-        const message = raw as {
-          id?: number;
-          type?: string;
-          error?: { message?: string };
-          response?: { request_id?: string; subtype?: string; response?: { models: ClaudeModel[]; commands?: ClaudeCommand[] } };
-          result?: { data: CodexModel[]; nextCursor?: string | null };
-        };
-        if (provider === "claude") {
-          if (message.type !== "control_response" || message.response?.request_id !== "models") return;
-          if (message.response.subtype !== "success") throw new Error("Claude model discovery failed");
-          if (!message.response.response?.models) throw new Error("Claude returned no models");
-          models.push(...claudeModels(message.response.response.models, message.response.response.commands));
-          finish();
-        } else {
-          if (message.error) throw new Error(message.error.message ?? "Codex model discovery failed");
-          if (message.id === 1) {
-            send({ method: "initialized" });
-            send({ id: 2, method: "model/list", params: {} });
-          } else if (message.id === 2) {
-            if (!message.result?.data) throw new Error("Codex returned no models");
-            models.push(...codexModels(message.result.data));
-            const cursor = message.result.nextCursor;
-            if (!cursor) return finish();
-            if (cursors.has(cursor)) throw new Error("Codex returned a repeated model cursor");
-            cursors.add(cursor);
-            send({ id: 2, method: "model/list", params: { cursor } });
-          }
-        }
-      } catch (error) {
-        finish(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
-    send(provider === "codex"
-      ? { id: 1, method: "initialize", params: { clientInfo: { name: "citropy", version: "0.1.0" }, capabilities: { experimentalApi: true } } }
-      : { type: "control_request", request_id: "models", request: { subtype: "initialize" } });
-  });
+export async function discoverModels(provider: "codex" | "claude", launch?: ProviderLaunch): Promise<ModelOption[]> {
+  if (provider === "claude") {
+    const init = await providerControl("claude", "initialize", {}, undefined, launch);
+    if (!init.models) throw new Error("Claude returned no models");
+    return claudeModels(init.models, init.commands);
+  }
+  const models: ModelOption[] = [];
+  for (let cursor: string | undefined, seen = new Set<string>(); ;) {
+    const result = await providerControl("codex", "model/list", cursor ? { cursor } : {}, undefined, launch);
+    if (!result.data) throw new Error("Codex returned no models");
+    models.push(...codexModels(result.data));
+    if (!result.nextCursor) return models;
+    if (seen.has(result.nextCursor)) throw new Error("Codex returned a repeated model cursor");
+    seen.add(result.nextCursor);
+    cursor = result.nextCursor;
+  }
 }
 
 function openCodeModels(output: string): ModelOption[] {
@@ -200,7 +152,7 @@ function openCodeModels(output: string): ModelOption[] {
   return models;
 }
 
-export async function discoverOpenCodeModels(launch?: import("./types.ts").ProviderLaunch): Promise<ModelOption[]> {
+export async function discoverOpenCodeModels(launch?: ProviderLaunch): Promise<ModelOption[]> {
   const call = invocation(resolveCommand(launch?.binary ?? "opencode"), ["models", "--verbose", "--refresh"]);
   const { stdout } = await run(call.file, call.args, { timeout: 20_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, ...launch?.environment }, windowsVerbatimArguments: call.verbatim });
   return openCodeModels(stdout);

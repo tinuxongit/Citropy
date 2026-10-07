@@ -16,6 +16,7 @@ import { ProjectScripts } from "./ProjectScripts.tsx";
 import { GitSection } from "./GitSection.tsx";
 import { ShellsSection } from "./ShellsSection.tsx";
 import { useGitActions } from "./use-git-actions.ts";
+import { useVisibleInterval } from "../../lib/use-visible-interval.ts";
 
 const SETTINGS = { refreshMs: 5000 };
 
@@ -66,7 +67,7 @@ function ThreadDetails({ thread }: { thread: ThreadMeta }) {
   const isGit = Boolean(project?.isGit);
 
   const refresh = useCallback(() => {
-    if (document.visibilityState === "visible") send({ t: "git.refresh", projectId: thread.projectId, threadId: thread.id });
+    send({ t: "git.refresh", projectId: thread.projectId, threadId: thread.id });
   }, [thread.projectId, thread.id]);
   const showInChat = (show: () => void) => {
     selectThread(thread.id);
@@ -77,16 +78,9 @@ function ThreadDetails({ thread }: { thread: ThreadMeta }) {
     useApp.setState({ activeView: "git", readingThreadId: null });
   };
 
-  useEffect(() => {
-    if (!connected || !isGit || git.busy) return;
-    refresh();
-    const timer = window.setInterval(refresh, SETTINGS.refreshMs);
-    window.addEventListener("focus", refresh);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("focus", refresh);
-    };
-  }, [connected, isGit, git.busy, refresh]);
+  const watching = connected && isGit && !git.busy;
+  useEffect(() => { if (watching) refresh(); }, [watching, refresh]);
+  useVisibleInterval(refresh, SETTINGS.refreshMs, watching);
 
   if (!project) return null;
   const folder = thread.workspacePath ?? project.path;

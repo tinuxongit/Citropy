@@ -2,6 +2,7 @@ import { Folder, MessageSquarePlus } from "./icons.ts";
 import { createThread, openProject, chooseWorkspace } from "../lib/actions.ts";
 import { shortPath } from "../lib/format.ts";
 import { useApp } from "../lib/store.ts";
+import { hasUsableAccount } from "../../../shared/provider-account.ts";
 
 export function Welcome() {
   const projects = useApp((state) => state.projects);
@@ -25,7 +26,7 @@ export function Welcome() {
         </p>
 
         {hasProject ? (
-          <button className="btn" type="button" data-variant="primary" onClick={() => createThread()} disabled={!connected || creating || !providers.some((provider) => provider.enabled && (provider.available || provider.instances?.some(instance => instance.available)))}>
+          <button className="btn" type="button" data-variant="primary" onClick={() => createThread()} disabled={!connected || creating || !providers.some(hasUsableAccount)}>
             <MessageSquarePlus size={14} />New thread</button>
         ) : (
           <button className="btn" type="button" data-variant="primary" onClick={chooseWorkspace} disabled={choosing}>
@@ -34,7 +35,7 @@ export function Welcome() {
           </button>
         )}
 
-        {hasProject && !providers.some((provider) => provider.enabled && (provider.available || provider.instances?.some(instance => instance.available))) && <p className="settings-note">Enable a provider in Settings to start a conversation.</p>}
+        {hasProject && !providers.some(hasUsableAccount) && <p className="settings-note">Enable a provider in Settings to start a conversation.</p>}
         {projects.length > 0 && (
           <div className="recent-list">
             <span className="eyebrow">Recent</span>

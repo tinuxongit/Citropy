@@ -12,9 +12,11 @@ import {
   setTypingAnimation,
   setTypingSpeed,
   setUiScale,
+  setChatWidth,
   useApp,
 } from "../lib/store.ts";
-import { DEFAULT_UI_SCALE, SCHEMES, THEMES, type Scheme, type StageBackground, type Theme } from "../lib/app-state.ts";
+import { CHAT_WIDTHS, DEFAULT_UI_SCALE, SCHEMES, THEMES, type ChatWidth, type Scheme, type StageBackground, type Theme } from "../lib/app-state.ts";
+import { Select } from "./Select.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { OptionStrip } from "./OptionStrip.tsx";
 import { Range } from "./Range.tsx";
@@ -122,6 +124,7 @@ export function AppearanceSettings() {
   const typingAnimation = useApp((state) => state.typingAnimation);
   const typingSpeed = useApp((state) => state.typingSpeed);
   const showFailedTools = useApp((state) => state.showFailedTools);
+  const chatWidth = useApp((state) => state.chatWidth);
 
   return (
     <>
@@ -153,7 +156,7 @@ export function AppearanceSettings() {
           <span>Larger</span>
         </div>
       </div>
-      <h2 className="settings-group-heading settings-group-heading-centered">Theme</h2>
+      <h2 className="settings-group-heading">Theme</h2>
       <div className="scheme-switch sliding-selection" role="group" aria-label="Mode">
         <SelectionHighlight value={scheme} />
         {SCHEMES.map((value) => {
@@ -229,7 +232,7 @@ export function AppearanceSettings() {
       <Collapsible open={colorPickerOpen && theme === "custom"} className="custom-color-reveal">
         <CustomColorPicker />
       </Collapsible>
-      <h2 className="settings-group-heading settings-group-heading-centered">Background</h2>
+      <h2 className="settings-group-heading">Background</h2>
       <OptionStrip label="Conversation background" selected={stageBackground}>
         {BACKGROUNDS.map(({ id, label }) => (
           <button
@@ -324,6 +327,14 @@ export function AppearanceSettings() {
       )}
       <h2 className="settings-group-heading settings-group-spaced">Conversation display</h2>
       <div className="settings-group">
+        <label className="setting-row">
+          <span>
+            <strong>Chat width</strong>
+            <small>How wide messages and the chat box can grow on large screens.</small>
+          </span>
+          <Select value={chatWidth} onChange={(value) => setChatWidth(value as ChatWidth)}
+            options={Object.entries(CHAT_WIDTHS).map(([value, { label }]) => ({ value, label }))} />
+        </label>
         <label className="setting-row">
           <span>
             <strong>Show failed-tools badge</strong>

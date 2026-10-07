@@ -1,5 +1,5 @@
-import { createServer } from "node:net";
 import { logFailure } from "../shared/expected-errors.mjs";
+import { defaultPort, portAvailable } from "../shared/ports.mjs";
 import { Worker } from "node:worker_threads";
 
 function waitForExit(running) {
@@ -26,11 +26,7 @@ export function packagedBackend(env, diagnose = () => {}) {
   let worker;
   const start = async () => {
     if (worker) return;
-    await new Promise((resolve, reject) => {
-      const probe = createServer();
-      probe.once("error", () => reject(new Error("Another server is using Citropy's port. Close it before opening this release.")));
-      probe.listen(Number(env.CITROPY_PORT || 4177), "127.0.0.1", () => probe.close(resolve));
-    });
+    if (!(await portAvailable(Number(env.CITROPY_PORT || defaultPort())))) throw new Error("Another server is using Citropy's port. Close it before opening this release.");
     worker = new Worker(new URL("../server/main.ts", import.meta.url), {
       argv: ["--packaged"],
       execArgv: [],

@@ -133,7 +133,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     window.addEventListener("touchend", onPointerUp);
     window.addEventListener("touchcancel", onPointerUp);
     node.addEventListener("keydown", onKeyDown);
-    node.scrollTop = node.scrollHeight;
+    if (stuck.current) node.scrollTop = node.scrollHeight;
     lastTop.current = node.scrollTop;
     lastHeight.current = node.scrollHeight;
     lastClientHeight.current = node.clientHeight;

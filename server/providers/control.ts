@@ -3,6 +3,10 @@ import type { ProviderLaunch } from "./types.ts";
 import { tmpdir } from "node:os";
 import { onJson } from "../lines.ts";
 import { stopProcess } from "./process.ts";
+import packageInfo from "../../package.json" with { type: "json" };
+
+const CONTROL_TIMEOUT_MS = 20_000;
+export const CLIENT_INFO = { name: "citropy", version: packageInfo.version };
 
 export function providerControl(
   provider: "codex" | "claude",
@@ -43,9 +47,9 @@ export function providerControl(
     const timer = setTimeout(
       () =>
         finish(
-          new Error(`${provider} did not return ${method} within 20 seconds.`),
+          new Error(`${provider} did not return ${method} within ${CONTROL_TIMEOUT_MS / 1000} seconds.`),
         ),
-      20_000,
+      CONTROL_TIMEOUT_MS,
     );
     const write = (message: unknown) => {
       if (!finished) child.stdin.write(`${JSON.stringify(message)}\n`);
@@ -91,7 +95,7 @@ export function providerControl(
             id: 1,
             method: "initialize",
             params: {
-              clientInfo: { name: "citropy", version: "0.1.0" },
+              clientInfo: CLIENT_INFO,
               capabilities: { experimentalApi: true },
             },
           }

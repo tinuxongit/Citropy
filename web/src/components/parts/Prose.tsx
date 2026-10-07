@@ -5,6 +5,8 @@ import { useApp } from "../../lib/store.ts";
 import { useTextReveal } from "../../lib/use-text-reveal.ts";
 import { ImageViewer, type ViewerImage } from "../ImageViewer.tsx";
 import { copyText } from "../../lib/copy-text.ts";
+import { runCommand } from "../../lib/actions.ts";
+import { reportError } from "../../lib/api.ts";
 
 interface Props {
   text: string;
@@ -12,12 +14,13 @@ interface Props {
   partId?: string;
   className?: string;
   images?: boolean;
+  commands?: boolean;
 }
 
-export function Prose({ partId, text, live, className, images = true }: Props) {
+export function Prose({ partId, text, live, className, images = true, commands = false }: Props) {
   const streaming = useApp((state) => state.textStreaming);
   const waiting = live && !streaming;
-  const { html, blocks, ready } = useMarkdown(waiting ? "" : text, live && streaming, images);
+  const { html, blocks, ready } = useMarkdown(waiting ? "" : text, live && streaming, images, commands);
   const root = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<{ images: ViewerImage[]; index: number } | null>(null);
   const shown = Boolean(text) && !waiting && (streaming || ready);
@@ -36,6 +39,11 @@ export function Prose({ partId, text, live, className, images = true }: Props) {
       data-live={(streaming && live) || revealing || undefined}
       aria-busy={revealing || undefined}
       onClick={event => {
+        const run = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button.code-run") : null;
+        if (run && root.current?.contains(run)) {
+          try { runCommand(run.closest("figure")?.querySelector("pre code")?.textContent ?? ""); } catch (error) { reportError(error); }
+          return;
+        }
         const copy = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button.code-copy") : null;
         if (copy && root.current?.contains(copy)) {
           const code = copy.closest("figure")?.querySelector("pre code")?.textContent ?? "";

@@ -1,15 +1,24 @@
 import { useId, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { GitBranch, RotateCcw, FileDiff, MessagesSquare, Layers } from "lucide-react";
+import { GitBranch, RotateCcw, FileDiff, MessagesSquare, Layers, Copy, Check } from "lucide-react";
 import { api, reportError } from "../lib/api.ts";
 import { selectThread, useApp } from "../lib/store.ts";
+import { useCopied } from "../lib/use-copied.ts";
+import { sendToComposer } from "../lib/composer-inbox.ts";
 import { Modal } from "./Modal.tsx";
 import { TaskReview } from "./TaskReview.tsx";
 import { fileRestoreIssue } from "../../../shared/review.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { ActionError } from "./ActionError.tsx";
 
-export function MessageActions({ threadId, messageId, user }: { threadId: string; messageId: string; user: boolean }) {
+function answerText(messageIds: string[], user: boolean): string {
+  const { messages, parts } = useApp.getState();
+  const content = messageIds.flatMap(id => messages[id]!.partIds).map(id => parts.get(id)!).filter(part => part.kind !== "notice");
+  const answer = user ? content : content.slice(content.findLastIndex(part => part.kind !== "text") + 1);
+  return answer.flatMap(part => part.kind === "text" && part.text.trim() ? [part.text.trim()] : []).join("\n\n");
+}
+
+export function MessageActions({ threadId, messageId, replyIds = [messageId], user }: { threadId: string; messageId: string; replyIds?: string[]; user: boolean }) {
   const [dialog, setDialog] = useState<"restore" | "review">();
   const checkpoints = useApp(state => state.threads[threadId]?.checkpoints);
   const running = useApp(state => Boolean(state.threads[threadId]?.running));
@@ -39,9 +48,15 @@ export function MessageActions({ threadId, messageId, user }: { threadId: string
   const restore = async () => {
     if (restoreDisabled) return;
     setBusy(true); setError("");
-    try { await api(`threads/restore?threadId=${threadId}`, { method: "POST", body: JSON.stringify({ messageId, mode }) }); setDialog(undefined); }
+    const resend = { text: answerText([messageId], true), attachments: useApp.getState().messages[messageId]!.attachments ?? [], placement: "before" as const };
+    try {
+      await api(`threads/restore?threadId=${threadId}`, { method: "POST", body: JSON.stringify({ messageId, mode }) });
+      if (mode !== "files") sendToComposer(threadId, resend);
+      setDialog(undefined);
+    }
     catch (error) { setError((error as Error).message); } finally { setBusy(false); }
   };
+  const [copied, copy] = useCopied();
   const fork = async () => {
     setBusy(true);
     try {
@@ -50,11 +65,11 @@ export function MessageActions({ threadId, messageId, user }: { threadId: string
       selectThread(next.id);
     } catch (error) { reportError(error); } finally { setBusy(false); }
   };
-  if (nativeAgent) return null;
   return <><span className="message-actions">
-    <button className="icon-btn" type="button" aria-label="Branch from this message" title="Branch from this message" disabled={busy} onClick={() => void fork()}><GitBranch size={13} /></button>
-    {user && <button className="icon-btn" type="button" aria-label="Restore before this message" title="Restore before this message" disabled={busy || running} onClick={() => { setMode("conversation"); setDialog("restore"); setError(""); }}><RotateCcw size={13} /></button>}
-    {checkpoint?.before && <button className="icon-btn" type="button" aria-label="Review this turn" title="Review this turn" onClick={() => setDialog("review")}><FileDiff size={13} /></button>}
+    <button className="icon-btn" type="button" aria-label={copied ? "Copied" : "Copy message"} title={copied ? "Copied" : "Copy message"} onClick={() => copy(answerText(replyIds, user))}>{copied ? <Check size={13} /> : <Copy size={13} />}</button>
+    {!nativeAgent && <button className="icon-btn" type="button" aria-label="Branch from this message" title="Branch from this message" disabled={busy} onClick={() => void fork()}><GitBranch size={13} /></button>}
+    {user && !nativeAgent && <button className="icon-btn" type="button" aria-label="Restore before this message" title="Restore before this message" disabled={busy || running} onClick={() => { setMode("conversation"); setDialog("restore"); setError(""); }}><RotateCcw size={13} /></button>}
+    {checkpoint?.before && !nativeAgent && <button className="icon-btn" type="button" aria-label="Review this turn" title="Review this turn" onClick={() => setDialog("review")}><FileDiff size={13} /></button>}
   </span>
     <AnimatePresence>
       {reviewThread && <TaskReview thread={reviewThread} messageId={messageId} onClose={() => setDialog(undefined)} />}

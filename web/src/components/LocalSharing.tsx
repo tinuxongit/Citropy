@@ -4,7 +4,10 @@ import { renderSVG } from "uqr";
 import { api, reportError } from "../lib/api.ts";
 import { isRemote } from "../lib/environment.ts";
 import { ago } from "../lib/format.ts";
-import { copyText } from "../lib/copy-text.ts";
+import { useCopied } from "../lib/use-copied.ts";
+import { useVisibleInterval } from "../lib/use-visible-interval.ts";
+
+const SETTINGS = { pollMs: 3000 };
 
 interface SharingState {
   enabled: boolean;
@@ -24,20 +27,14 @@ export const canShareLocally = () => ["127.0.0.1", "localhost", "[::1]"].include
 export function LocalSharing() {
   const [state, setState] = useState<SharingState>();
   const [pairing, setPairing] = useState<Pairing>();
-  const [copied, setCopied] = useState(false);
+  const [pairingCopied, copyPairing] = useCopied();
+  const [firewallCopied, copyFirewall] = useCopied();
   const [unblocking, setUnblocking] = useState(false);
   const deviceCount = state?.devices.length ?? 0;
 
-  useEffect(() => {
-    let alive = true;
-    const load = () => api<SharingState>("sharing").then((value) => { if (alive) setState(value); }).catch(reportError);
-    void load();
-    const timer = window.setInterval(load, 3000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
-  }, []);
+  const load = () => api<SharingState>("sharing").then(setState).catch(reportError);
+  useEffect(() => { void load(); }, []);
+  useVisibleInterval(load, SETTINGS.pollMs);
 
   useEffect(() => {
     if (!state?.enabled || !state.addresses.length) {
@@ -64,12 +61,6 @@ export function LocalSharing() {
     setUnblocking(true);
     api<SharingState>("sharing/firewall", { method: "POST" }).then(setState).catch(reportError).finally(() => setUnblocking(false));
   };
-  const copy = (text: string) => {
-    void copyText(text).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    }).catch(reportError);
-  };
 
   return (
     <>
@@ -90,7 +81,7 @@ export function LocalSharing() {
           {state.firewall.canFix && <button type="button" className="btn" data-variant="primary" disabled={unblocking} onClick={unblock}>{unblocking ? "Waiting for your password…" : "Allow through firewall"}</button>}
           <div className="sharing-address">
             <code className="truncate" title={state.firewall.command}>{state.firewall.command}</code>
-            <button type="button" className="icon-btn" aria-label="Copy firewall command" title="Copy firewall command" onClick={() => copy(state.firewall!.command)}><Copy size={14} /></button>
+            <button type="button" className="icon-btn" aria-label="Copy firewall command" title={firewallCopied ? "Copied" : "Copy firewall command"} onClick={() => copyFirewall(state.firewall!.command)}><Copy size={14} /></button>
           </div>
         </div>
       )}
@@ -101,7 +92,7 @@ export function LocalSharing() {
             <p>Scan with your phone's camera. Each code works once and changes every 5 minutes.</p>
             <div className="sharing-address">
               <span className="truncate" title={state?.addresses[0]}>{state?.addresses[0]}</span>
-              <button type="button" className="icon-btn" aria-label="Copy pairing link" title={copied ? "Copied" : "Copy pairing link"} onClick={() => copy(pairing.url)}><Copy size={14} /></button>
+              <button type="button" className="icon-btn" aria-label="Copy pairing link" title={pairingCopied ? "Copied" : "Copy pairing link"} onClick={() => copyPairing(pairing.url)}><Copy size={14} /></button>
             </div>
           </div>
         </div>

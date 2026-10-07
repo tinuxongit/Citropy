@@ -3,6 +3,7 @@ import { Plus, TerminalSquare, X } from "lucide-react";
 import { openEditorTerminal } from "../../lib/actions.ts";
 import { setEditorTerminal, useApp } from "../../lib/store.ts";
 import { send } from "../../lib/socket.ts";
+import { nextTabIndex, scrollTabIntoView } from "../../lib/tab-strip.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { TerminalPane } from "../TerminalPane.tsx";
 import { usePanelTabActions } from "../use-panel-tab-actions.tsx";
@@ -32,10 +33,7 @@ export function EditorTerminal({
     const strip = tabStrip.current;
     const selected = strip?.querySelector<HTMLElement>('[aria-selected="true"]');
     if (!active || !visible || !strip || !selected) return;
-    const bounds = strip.getBoundingClientRect();
-    const tab = selected.parentElement!.getBoundingClientRect();
-    if (tab.left < bounds.left) strip.scrollLeft -= bounds.left - tab.left;
-    else if (tab.right > bounds.right) strip.scrollLeft += tab.right - bounds.right;
+    scrollTabIntoView(strip, selected.parentElement!);
   }, [active, visible, selected?.id, tabActions.orderKey]);
 
   return (
@@ -49,14 +47,10 @@ export function EditorTerminal({
           aria-label="Editor terminals"
           onKeyDown={(event) => {
             if (!(event.target instanceof HTMLElement) || !event.target.matches('[role="tab"]')) return;
-            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-            event.preventDefault();
             const index = panels.findIndex((panel) => panel.id === selectedId);
-            const next = event.key === "Home"
-              ? 0
-              : event.key === "End"
-                ? panels.length - 1
-                : (index + (event.key === "ArrowRight" ? 1 : -1) + panels.length) % panels.length;
+            const next = nextTabIndex(event.key, index, panels.length);
+            if (next === undefined) return;
+            event.preventDefault();
             const panel = panels[next];
             if (!panel) return;
             setEditorTerminal(panelId, panel.id);

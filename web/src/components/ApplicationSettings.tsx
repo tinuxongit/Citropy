@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, Monitor, RefreshCw, RotateCcw } from "lucide-react";
-import type { AppUpdateState } from "../../../shared/app-update.ts";
 import type { DesktopWindowState } from "../desktop.d.ts";
 import { isRemote } from "../lib/environment.ts";
 import { send } from "../lib/socket.ts";
 import { confirmAction, useApp } from "../lib/store.ts";
+import { useAppUpdate } from "../lib/use-app-update.ts";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
 import { ActionError } from "./ActionError.tsx";
 
@@ -14,18 +14,14 @@ export function ApplicationSettings({ active }: { active: boolean }) {
     Object.values(state.threads).some((thread) => thread.running),
   );
   const [desktop, setDesktop] = useState<DesktopWindowState>();
-  const [update, setUpdate] = useState<AppUpdateState>();
+  const { state: update } = useAppUpdate();
   const [applicationError, setApplicationError] = useState("");
   const [updating, setUpdating] = useState(false);
   useEffect(() => {
     void window.citropyDesktop?.windowState?.().then(setDesktop);
     return window.citropyDesktop?.onWindowState?.(setDesktop);
   }, []);
-  useEffect(() => {
-    void window.citropyDesktop?.updateState?.().then(setUpdate).catch((error) => console.error("Reading the update state failed:", error));
-    return window.citropyDesktop?.onUpdateState?.(setUpdate);
-  }, []);
-  const applyingUpdate = Boolean(update && ["downloading", "ready", "installing"].includes(update.status));
+  const applyingUpdate = ["downloading", "ready", "installing"].includes(update.status);
   const development = useApp((state) => state.development);
   const restartServer = async () => {
     if (!(await confirmAction({
@@ -69,7 +65,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
     <>
       <div className="application-identity">
         <span>
-          <Monitor size={24} />
+          <Monitor size={20} />
         </span>
         <div>
           <h2>{development ? "Citropy development" : "Citropy desktop"}</h2>

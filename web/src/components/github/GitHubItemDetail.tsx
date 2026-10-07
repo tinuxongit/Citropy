@@ -5,6 +5,7 @@ import { FileIcon } from "../FileIcon.tsx";
 import { Prose } from "../parts/Prose.tsx";
 import { DiffView } from "../DiffView.tsx";
 import { VirtualList } from "../VirtualList.tsx";
+import { nextTabIndex } from "../../lib/tab-strip.ts";
 import { parseUnifiedDiff } from "../../../../shared/diff.ts";
 import { GitHubLink, GitHubState, githubDate } from "./GitHubShared.tsx";
 import type { ItemAction } from "./GitHubItemDialog.tsx";
@@ -28,19 +29,10 @@ function moveTabFocus(event: KeyboardEvent<HTMLDivElement>) {
     event.currentTarget.querySelectorAll<HTMLButtonElement>("button"),
   );
   const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
-  if (
-    current < 0 ||
-    !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
-  )
-    return;
+  if (current < 0) return;
+  const next = nextTabIndex(event.key, current, buttons.length);
+  if (next === undefined) return;
   event.preventDefault();
-  const next =
-    event.key === "Home"
-      ? 0
-      : event.key === "End"
-        ? buttons.length - 1
-        : (current + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) %
-          buttons.length;
   buttons[next]?.click();
   buttons[next]?.focus();
 }

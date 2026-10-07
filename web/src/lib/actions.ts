@@ -8,7 +8,7 @@ import type {
   GitHubRequest,
 } from "../../../shared/github.ts";
 import { selectProject, selectThread, selectPanel, setEditorTerminal, useApp, confirmAction, type AppState } from "./store.ts";
-import { neighborTab, saveTabs, withKeptTab, withoutTab, type Tabs } from "./thread-tabs.ts";
+import { neighborTab, rememberClosedTab, saveTabs, stepTab, takeClosedTab, withKeptTab, withoutTab, type Tabs } from "./thread-tabs.ts";
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { flushHeld, holdMessage } from "./offline.ts";
@@ -17,6 +17,7 @@ import { isUnusedThread } from "./thread-started.ts";
 import { api, reportError } from "./api.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
+import { hasUsableAccount, providerAccount } from "../../../shared/provider-account.ts";
 import type {
   FilePatch,
   GitResult,
@@ -137,9 +138,7 @@ export async function createThread(provider?: ProviderId, options = false): Prom
   const state = useApp.getState();
   const projectId = state.activeProjectId;
   if (!projectId || !state.connected || state.creatingThread) return;
-  const available = state.providers.filter(
-    (entry) => entry.enabled && (entry.available || entry.instances?.some(instance => instance.available)),
-  );
+  const available = state.providers.filter(hasUsableAccount);
   const previous = state.activeThreadId
     ? state.threads[state.activeThreadId]
     : undefined;
@@ -178,7 +177,7 @@ export async function createThread(provider?: ProviderId, options = false): Prom
       : undefined;
   const lastInstanceId = last && "providerInstanceId" in last ? last.providerInstanceId : undefined;
   const providerInstanceId = lastInstanceId && catalog.instances?.some(instance => instance.id === lastInstanceId && instance.available) ? lastInstanceId : !catalog.available ? catalog.instances?.find(instance => instance.available)?.id : undefined;
-  const models = providerInstanceId ? catalog.instances?.find(instance => instance.id === providerInstanceId)?.models ?? [] : catalog.models;
+  const models = providerAccount(catalog, providerInstanceId).models;
   const model = selectedModel(models, last?.model) ?? selectedModel(models);
   useApp.setState({ creatingThread: true });
   try {
@@ -244,10 +243,23 @@ export function closeTab(id: string): void {
   const unused = state.connected && isUnusedThread(state, id);
   updateTabs((state) => withoutTab(state, id));
   if (unused) send({ t: "thread.remove", id });
+  else rememberClosedTab(id);
   if (id !== activeThreadId) return;
   const next = neighborTab(openThreadIds.filter((open) => threads[open]), id);
   if (next) showThread(next);
   else selectThread(null);
+}
+
+export function reopenClosedTab(): void {
+  const { threads, openThreadIds } = useApp.getState();
+  const id = takeClosedTab((closed) => Boolean(threads[closed]) && !openThreadIds.includes(closed));
+  if (id) openInNewTab(id);
+}
+
+export function showNextTab(step: number): void {
+  const { threads, openThreadIds, activeThreadId } = useApp.getState();
+  const next = stepTab(openThreadIds.filter((open) => threads[open]), activeThreadId, step);
+  if (next && next !== activeThreadId) showThread(next);
 }
 
 export function loadThread(id: string): void {
@@ -507,6 +519,13 @@ export function saveProjectScripts(projectId: string, scripts: ProjectScript[]):
 export function runProjectScript(projectId: string, threadId: string, scriptId: string): void {
   useApp.setState({ inspectorOpen: true });
   send({ t: "project.runScript", projectId, threadId, scriptId });
+}
+
+export function runCommand(command: string): void {
+  const { activeProjectId, activeThreadId } = useApp.getState();
+  if (!activeProjectId) throw new Error("Open a workspace to run commands.");
+  useApp.setState({ inspectorOpen: true });
+  send({ t: "project.runCommand", projectId: activeProjectId, threadId: activeThreadId ?? undefined, command });
 }
 
 export async function github<K extends keyof GitHubRequests>(

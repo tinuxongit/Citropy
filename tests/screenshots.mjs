@@ -612,7 +612,7 @@ async function main() {
         },
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
-          await page.getByRole("button", { name: "Add project", exact: true }).click();
+          await page.getByRole("button", { name: "Add server project", exact: true }).click();
           await page.locator(".workspace-menu").waitFor();
           await page.getByText("citropy-vps", { exact: true }).waitFor();
           await page.getByText("sandbox", { exact: true }).waitFor();

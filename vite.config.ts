@@ -1,6 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { brotliCompressSync, constants, gzipSync } from "node:zlib";
+import { defaultPort } from "./shared/ports.mjs";
+
+const backendPort = process.env.CITROPY_PORT ?? defaultPort(process.env.CITROPY_DEVELOPMENT === "1");
 
 export default defineConfig({
   plugins: [react(), {
@@ -34,9 +37,9 @@ export default defineConfig({
     port: Number(process.env.CITROPY_UI_PORT ?? 5177),
     strictPort: true,
     proxy: {
-      "/api": `http://127.0.0.1:${process.env.CITROPY_PORT ?? (process.env.CITROPY_DEVELOPMENT === "1" ? 4178 : 4177)}`,
+      "/api": `http://127.0.0.1:${backendPort}`,
       "/socket": {
-        target: `ws://127.0.0.1:${process.env.CITROPY_PORT ?? (process.env.CITROPY_DEVELOPMENT === "1" ? 4178 : 4177)}`,
+        target: `ws://127.0.0.1:${backendPort}`,
         ws: true,
       },
     },

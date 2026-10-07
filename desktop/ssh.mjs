@@ -1,9 +1,10 @@
 import { nodeVersion, nodeChecksums, downloadNodeArchive } from "../shared/node-runtime.mjs";
 import { logFailure } from "../shared/expected-errors.mjs";
+import { freePort } from "../shared/ports.mjs";
+import { readRemoteHealth } from "../shared/remote-connection.mjs";
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, writeFile, rename, readdir, cp, rm } from "node:fs/promises";
-import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { validateContainer, startContainer, stopContainer } from "./containers.mjs";
@@ -335,11 +336,7 @@ ${runtime}/bin/node -e ${shellQuote(checkNode)}`, archive, 180000);
       if (!ready) throw new Error("The SSH host did not return a remote environment.");
       const remote = JSON.parse(ready.slice(14));
       if (!Number.isInteger(remote.port) || remote.port < 1 || remote.port > 65535 || !/^[a-f0-9]{64}$/.test(remote.token) || !/^[a-f0-9]{64}$/.test(remote.build)) throw new Error("Invalid remote connection response.");
-      const port = await new Promise((resolve, reject) => {
-        const probe = createServer();
-        probe.once("error", reject);
-        probe.listen(0, "127.0.0.1", () => { const port = probe.address().port; probe.close(() => resolve(port)); });
-      });
+      const port = await freePort();
       progress("Opening SSH tunnel…");
       const child = spawn("ssh", [...sshArguments(connection), "-o", "ExitOnForwardFailure=yes", "-N", "-L", `127.0.0.1:${port}:127.0.0.1:${remote.port}`, connection.target], { stdio: ["ignore", "ignore", "pipe"] });
       session.child = child;
@@ -358,8 +355,7 @@ ${runtime}/bin/node -e ${shellQuote(checkNode)}`, archive, 180000);
       for (let attempt = 0; attempt < 60; attempt++) {
         signal.throwIfAborted();
         if (session.child !== child) throw new Error(tunnelError || "The SSH tunnel closed.");
-        const health = await fetch(`http://127.0.0.1:${port}/api/health`, { headers: { "x-citropy-remote-token": remote.token }, signal: AbortSignal.timeout(800) }).then(response => response.ok ? response.json() : null).catch(() => null);
-        if (health?.environmentId === id && health.protocol === 1 && health.build === remote.build) { healthy = true; break; }
+        if ((await readRemoteHealth({ port, token: remote.token, environmentId: id }))?.build === remote.build) { healthy = true; break; }
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       if (!healthy) throw new Error("The SSH tunnel could not reach the remote backend.");

@@ -1,18 +1,30 @@
 import { Marked, type Tokens } from "marked";
 import { escapeHtml } from "./escape-html.ts";
 import { highlight } from "./highlight.ts";
+import { rawCode } from "./raw-code.ts";
 import { serverUrl } from "./environment.ts";
 
 interface CodeToken extends Tokens.Code {
   rendered?: string;
 }
 
+const SHELL_LANGUAGES = ["sh", "bash", "zsh", "fish", "shell", "powershell", "pwsh"];
+
 interface AssetContext {
   projectId: string;
   threadId: string;
 }
 
-function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, assets: AssetContext | undefined, images: boolean, live: boolean) {
+function closedFence(raw: string): boolean {
+  return /(^|\n) {0,3}(`{3,}|~{3,})\s*$/.test(raw.trimEnd());
+}
+
+function runnable(code: Tokens.Code, label: string): boolean {
+  const command = code.text.trim();
+  return SHELL_LANGUAGES.includes(label) && closedFence(code.raw) && Boolean(command) && !command.endsWith("\\") && !/[\p{Cc}\p{Cf}]/u.test(command.replace(/[\n\t]/g, ""));
+}
+
+function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, assets: AssetContext | undefined, images: boolean, live: boolean, commands: boolean) {
   let linkedImage = false;
   const marked = new Marked({
     gfm: true,
@@ -31,16 +43,18 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
     walkTokens: async (token) => {
       if (token.type !== "code" || signal?.aborted) return;
       const code = token as CodeToken;
-      if (live && !/(^|\n) {0,3}(`{3,}|~{3,})\s*$/.test(code.raw.trimEnd())) return;
+      if (live && !closedFence(code.raw)) return;
       code.rendered = await highlight(code.text, code.lang, theme, signal);
     },
     renderer: {
       code(token) {
         const code = token as CodeToken;
         const label = (code.lang ?? "").split(/\s+/)[0] ?? "";
-        const body = code.rendered ?? `<pre class="raw"><code>${escapeHtml(code.text)}</code></pre>`;
+        const body = code.rendered ?? rawCode(code.text);
         const copy = escapeHtml("Copy code");
-        return `<figure class="code-block" data-lang="${escapeHtml(label)}"><figcaption><span>${escapeHtml(label || "text")}</span><button type="button" class="code-copy" aria-label="${copy}" title="${copy}"><svg class="code-copy-idle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><svg class="code-copy-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button></figcaption>${body}</figure>`;
+        const runLabel = escapeHtml("Run in terminal");
+        const run = commands && runnable(code, label) ? `<button type="button" class="code-run" aria-label="${runLabel}" title="${runLabel}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16l14-8z"/></svg></button>` : "";
+        return `<figure class="code-block" data-lang="${escapeHtml(label)}"><figcaption><span>${escapeHtml(label || "text")}</span>${run}<button type="button" class="code-copy" aria-label="${copy}" title="${copy}"><svg class="code-copy-idle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><svg class="code-copy-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button></figcaption>${body}</figure>`;
       },
       html(token) {
         return escapeHtml((token as Tokens.HTML).raw);
@@ -94,7 +108,7 @@ export interface FinishedBlocks {
 
 export async function renderStreamingMarkdown(text: string, mode: "dark" | "light", signal: AbortSignal | undefined, assets: AssetContext | undefined, { images = true }: { images?: boolean }, previous: FinishedBlocks): Promise<{ finished: FinishedBlocks; blocks: string[] }> {
   const base = text.startsWith(previous.source) ? previous : { source: "", html: [] };
-  const marked = createParser(mode, signal, assets, images, true);
+  const marked = createParser(mode, signal, assets, images, true, false);
   const rest = text.slice(base.source.length);
   const tokens = marked.lexer(rest);
   await Promise.all(marked.walkTokens(tokens, marked.defaults.walkTokens!));
@@ -115,7 +129,7 @@ export async function renderStreamingMarkdown(text: string, mode: "dark" | "ligh
   };
 }
 
-export async function renderMarkdown(text: string, mode: "dark" | "light", signal?: AbortSignal, assets?: AssetContext, { images = true, live = false }: { images?: boolean; live?: boolean } = {}): Promise<string> {
+export async function renderMarkdown(text: string, mode: "dark" | "light", signal?: AbortSignal, assets?: AssetContext, { images = true, live = false, commands = false }: { images?: boolean; live?: boolean; commands?: boolean } = {}): Promise<string> {
   if (/^\s*\d+[.)]\s*$/.test(text)) return `<p>${escapeHtml(text.trim())}</p>`;
-  return (await createParser(mode, signal, assets, images, live).parse(text)) as string;
+  return (await createParser(mode, signal, assets, images, live, commands).parse(text)) as string;
 }

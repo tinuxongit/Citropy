@@ -23,6 +23,22 @@
   font-weight: 600;
   letter-spacing: -0.02em;
 }
+.settings-heading-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  min-width: 0;
+}
+.settings-heading-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  color: var(--accent-text);
+}
 .settings-title {
   display: flex;
   align-items: center;
@@ -50,26 +66,25 @@
   flex: none;
 }
 .settings-group-heading {
-  margin: 0 0 var(--space-4);
-  padding: 0;
-  color: var(--text);
-  font-size: var(--text-body);
+  margin: 0 0 var(--space-8);
+  padding: 0 var(--settings-inset);
+  color: var(--text-3);
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 .settings-inner :is(.settings-group, .option-strip-zone, .custom-color-reveal, .settings-note) + .settings-group-heading {
   margin-top: var(--space-32);
 }
-.settings-group-heading-centered {
-  margin-left: 0;
-  text-align: center;
-}
 .settings-group {
   overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--panel);
 }
-.settings .settings-group:not(.provider-card),
-.settings .settings-group:not(.provider-card) > * {
-  padding-left: 0;
-  padding-right: 0;
+.settings-group > .settings-group-heading {
+  padding: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  label.setting-row:hover { background: var(--hover); }
 }
 .settings-group > .setting-row + .setting-row {
   border-top: 1px solid var(--line);
@@ -265,13 +280,14 @@
 }
 .settings-note {
   margin: var(--space-10) 0 0;
+  padding: 0 var(--settings-inset);
   font-size: var(--text-xs);
   line-height: 1.6;
   color: var(--text-4);
 }
 .settings-connection {
   margin-top: var(--space-24);
-  padding-top: var(--space-20);
+  padding: var(--space-20) var(--settings-inset) 0;
   font-size: var(--text-xs);
   color: var(--text-3);
 }
@@ -837,25 +853,28 @@
   display: flex;
   align-items: center;
   gap: var(--space-16);
-  margin: var(--space-12) 0 var(--space-32);
+  margin-bottom: var(--space-32);
+  padding: var(--settings-inset);
+  border-radius: var(--r-lg);
+  background: var(--panel);
 }
 .application-identity > span {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   background: var(--raised);
-  border: 0;
-  border-radius: 15px;
+  border-radius: var(--r-lg);
   color: var(--text-2);
 }
 .application-identity h2 {
-  font-size: var(--text-lg);
+  font-size: var(--text-base);
+  font-weight: 600;
 }
 .application-identity p {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--text-3);
-  margin-top: var(--space-6);
+  margin-top: var(--space-4);
 }
 .setting-row > .btn {
   flex: none;
@@ -864,12 +883,6 @@
 .provider-settings-group {
   display: grid;
   gap: var(--space-16);
-}
-.provider-card {
-  border: 0;
-  border-radius: var(--r-md);
-  background: var(--panel);
-  overflow: hidden;
 }
 .provider-maintenance {
   padding: 0 var(--settings-inset) 16px;

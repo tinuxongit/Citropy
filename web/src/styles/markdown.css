@@ -67,6 +67,10 @@
   padding-left: 1.35em;
 }
 
+.prose ol:has(> li:nth-child(10)) {
+  padding-left: calc(1.35em + 1ch);
+}
+
 .prose li {
   margin-bottom: 0.3em;
 }
@@ -209,6 +213,7 @@ button.markdown-image:focus-visible { box-shadow: 0 0 0 1px var(--accent-line); 
   text-transform: uppercase;
 }
 
+.code-run,
 .code-copy {
   display: grid;
   place-items: center;
@@ -218,6 +223,8 @@ button.markdown-image:focus-visible { box-shadow: 0 0 0 1px var(--accent-line); 
   color: var(--text-3);
   transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
+.code-run { margin-left: auto; }
+.code-run svg { width: 12px; height: 12px; }
 .code-copy svg {
   grid-area: 1 / 1;
   width: 14px;
@@ -235,6 +242,7 @@ button.markdown-image:focus-visible { box-shadow: 0 0 0 1px var(--accent-line); 
   color: var(--ok);
 }
 @media (hover: hover) and (pointer: fine) {
+  .code-run:hover,
   .code-copy:hover {
     background: var(--hover);
     color: var(--text);

@@ -2,6 +2,9 @@ import { randomBytes, createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, writeFile, rm, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { tmpdir } from "node:os";
+import { readRemoteHealth } from "../shared/remote-connection.mjs";
+
+const CONTAINER_PORT = 4177;
 
 export function validateContainer(input) {
   const name = String(input?.name || "").trim();
@@ -71,23 +74,23 @@ CMD ["node", "--experimental-strip-types", "--optimize-for-size", "server/main.t
     }
     progress("Starting container workspace…");
     const envPath = join(directory, "runtime.env");
-    await writeFile(envPath, `CITROPY_REMOTE_ID=${connection.id}\nCITROPY_REMOTE_TOKEN=${token}\nCITROPY_REMOTE_BUILD=${build}\nCITROPY_CONTAINER=1\nCITROPY_HOST=0.0.0.0\nCITROPY_PORT=4177\nCITROPY_DATA_DIR=/home/citropy/.citropy\n`, { mode: 0o600 });
+    await writeFile(envPath, `CITROPY_REMOTE_ID=${connection.id}\nCITROPY_REMOTE_TOKEN=${token}\nCITROPY_REMOTE_BUILD=${build}\nCITROPY_CONTAINER=1\nCITROPY_HOST=0.0.0.0\nCITROPY_PORT=${CONTAINER_PORT}\nCITROPY_DATA_DIR=/home/citropy/.citropy\n`, { mode: 0o600 });
     const uid = process.getuid?.();
     const gid = process.getgid?.();
     const create = ["create", "--name", containerName(connection.id), "--init", "--label", `app.citropy.environment=${connection.id}`, "--label", `app.citropy.build=${build}`];
     if (uid !== undefined && gid !== undefined) create.push("--user", `${uid}:${gid}`);
-    create.push("--security-opt", "no-new-privileges", "--cap-drop", "ALL", "--pids-limit", "1024", "--publish", "127.0.0.1::4177", "--mount", `type=bind,source=${source},target=/workspace`, "--mount", `type=bind,source=${home},target=/home/citropy`, "--env-file", envPath, image);
+    create.push("--security-opt", "no-new-privileges", "--cap-drop", "ALL", "--pids-limit", "1024", "--publish", `127.0.0.1::${CONTAINER_PORT}`, "--mount", `type=bind,source=${source},target=/workspace`, "--mount", `type=bind,source=${home},target=/home/citropy`, "--env-file", envPath, image);
     await manager.command("docker", create, { signal });
   }
   if (!container?.State.Running) await manager.command("docker", ["start", containerName(connection.id)], { signal });
   container = await inspect(manager, connection, signal);
-  const port = Number(container?.NetworkSettings?.Ports?.["4177/tcp"]?.find(entry => entry.HostIp === "127.0.0.1")?.HostPort);
+  const port = Number(container?.NetworkSettings?.Ports?.[`${CONTAINER_PORT}/tcp`]?.find(entry => entry.HostIp === "127.0.0.1")?.HostPort);
   if (!port || port > 65535) throw new Error("Docker did not publish a loopback port for the backend.");
   progress("Connecting to container workspace…");
   for (let attempt = 0; attempt < 100; attempt++) {
     signal.throwIfAborted();
-    const health = await fetch(`http://127.0.0.1:${port}/api/health`, { headers: { "x-citropy-remote-token": token }, signal: AbortSignal.any([signal, AbortSignal.timeout(800)]) }).then(response => response.ok ? response.json() : null).catch(() => null);
-    if (health?.environmentId === connection.id && health.protocol === 1) return { port, remotePort: 4177, token, outdated: health.build !== build };
+    const health = await readRemoteHealth({ port, token, environmentId: connection.id, signal });
+    if (health) return { port, remotePort: CONTAINER_PORT, token, outdated: health.build !== build };
     await new Promise(resolve => setTimeout(resolve, 200));
   }
   throw new Error("The container backend did not become ready. Check Docker and reconnect.");

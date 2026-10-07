@@ -19,7 +19,7 @@ const at = "2026-09-20T10:00:00.000Z";
 const day = localDay(Date.parse(at));
 const line = (value) => `${JSON.stringify(value)}\n`;
 const claude = (id, output) => line({ type: "assistant", timestamp: at, requestId: `req_${id}`, message: { id: `msg_${id}`, model: "claude-opus-5", usage: { input_tokens: 10, output_tokens: output, cache_read_input_tokens: 100, cache_creation_input_tokens: 5 } } });
-const codex = (timestamp, input, output) => line({ timestamp, type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: input, cached_input_tokens: 0, output_tokens: output, total_tokens: input + output } } } });
+  const codex = (timestamp, input, output) => line({ timestamp, type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: input, cached_input_tokens: 0, output_tokens: output, total_tokens: input + output }, last_token_usage: { input_tokens: input, cached_input_tokens: 0, output_tokens: output, total_tokens: input + output } } } });
 const find = (days, provider) => {
   const entries = days.filter((entry) => entry.provider === provider);
   const sum = { day: entries[0]?.day, provider, model: entries[0]?.model, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, turns: 0 };

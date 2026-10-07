@@ -7,10 +7,21 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dataRoot } from "./paths.ts";
 import { hasCode, ifMissing, logFailure } from "../shared/expected-errors.mjs";
+import { processExists } from "../shared/process-exists.mjs";
 import { bus } from "./bus.ts";
 import { panelList, closePanel, openPanel } from "./panels.ts";
 import { startShell, shellOutput, endShell, shellActivity } from "./shells.ts";
-import type { TerminalSession, TerminalEvent } from "./terminal-host.ts";
+import { appendOutput, exitNotice } from "../shared/terminal.ts";
+import type { TerminalEvent, TerminalRequest, TerminalSession } from "../shared/terminal.ts";
+
+const REQUEST_TIMEOUT_MS = 10_000;
+const CONNECT_TIMEOUT_MS = 1500;
+const RECONNECT_DELAY_MS = 1000;
+const START_ATTEMPTS = 80;
+const START_RETRY_MS = 100;
+const MAX_INBOUND_BYTES = 32 * 1024 * 1024;
+const MAX_QUEUED_BYTES = 1024 * 1024;
+const STALE_LOCK_MS = 10_000;
 
 const key = createHash("sha256").update(dataRoot).digest("hex").slice(0, 24);
 const directory = join(tmpdir(), `citropy-terminals-${process.getuid?.() ?? "user"}-${key}`);
@@ -31,10 +42,9 @@ function receive(event: TerminalEvent): void {
   const session = sessions.get(event.id);
   if (!session) return;
   if (event.type === "data") {
-    if (event.offset !== undefined && session.offset !== undefined && event.offset <= session.offset) return;
-    const data = event.offset !== undefined && session.offset !== undefined ? event.data.slice(Math.max(0, session.offset - (event.offset - event.data.length))) : event.data;
-    session.offset = event.offset;
-    session.output = (session.output + data).slice(-200_000);
+    if (event.offset <= session.offset) return;
+    const data = event.data.slice(Math.max(0, session.offset - (event.offset - event.data.length)));
+    appendOutput(session, data);
     shellOutput(`terminal:${event.id}`, data, true);
     bus.emit({ t: "term.data", termId: event.id, data, offset: session.offset, sessionId: session.sessionId });
   } else if (event.type === "activity") {
@@ -46,9 +56,7 @@ function receive(event: TerminalEvent): void {
     session.busy = false;
     session.process = undefined;
     session.code = event.code;
-    const ending = `\r\n[process exited with code ${event.code}]\r\n`;
-    session.output = (session.output + ending).slice(-200_000);
-    if (session.offset !== undefined) session.offset += ending.length;
+    appendOutput(session, exitNotice(event.code));
     endShell(`terminal:${event.id}`, event.code === 0 ? "finished" : "failed");
     bus.emit({ t: "term.exit", termId: event.id, code: event.code, offset: session.offset, sessionId: session.sessionId });
   }
@@ -72,15 +80,14 @@ function attach(session: TerminalSession, recovered = false): void {
 async function startService(): Promise<void> {
   await mkdir(directory, { recursive: true, mode: 0o700 });
   try { await writeFile(join(directory, "key"), randomBytes(32).toString("hex"), { mode: 0o600, flag: "wx" }); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
+  catch (error) { if (!hasCode(error, "EEXIST")) throw error; }
   try { await mkdir(join(directory, "lock"), { mode: 0o700 }); }
   catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    if (!hasCode(error, "EEXIST")) throw error;
     const pid = Number(await readFile(join(directory, "lock", "pid"), "utf8").catch(ifMissing("")));
-    let alive = false;
-    if (pid > 0) try { process.kill(pid, 0); alive = true; } catch (error) { alive = (error as NodeJS.ErrnoException).code === "EPERM"; }
+    const alive = pid > 0 && processExists(pid);
     const age = Date.now() - (await stat(join(directory, "lock"))).mtimeMs;
-    if (alive || (!pid && age < 10_000)) return;
+    if (alive || (!pid && age < STALE_LOCK_MS)) return;
     await rm(join(directory, "lock"), { recursive: true, force: true });
     return startService();
   }
@@ -95,20 +102,20 @@ async function startService(): Promise<void> {
   child.unref();
 }
 
-function request<T>(op: string, input: Record<string, unknown> = {}): Promise<T> {
+function request<T>(message: TerminalRequest): Promise<T> {
   if (!connection || connection.destroyed) return Promise.reject(new Error("The terminal service is reconnecting."));
   const id = randomUUID();
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { pending.delete(id); reject(new Error("The terminal service did not respond.")); }, 10_000);
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error("The terminal service did not respond.")); }, REQUEST_TIMEOUT_MS);
     pending.set(id, { resolve: (value) => resolve(value as T), reject, timer });
-    connection!.write(JSON.stringify({ id, op, ...input }) + "\n");
+    connection!.write(JSON.stringify({ id, ...message }) + "\n");
   });
 }
 
 function dial(): Promise<void> {
   return new Promise((resolve, reject) => {
     const socket = connectSocket(address);
-    const timer = setTimeout(() => socket.destroy(new Error("Terminal service connection timed out.")), 1500);
+    const timer = setTimeout(() => socket.destroy(new Error("Terminal service connection timed out.")), CONNECT_TIMEOUT_MS);
     socket.once("error", reject);
     socket.once("connect", () => {
       clearTimeout(timer);
@@ -120,7 +127,7 @@ function dial(): Promise<void> {
       socket.setEncoding("utf8");
       socket.on("data", data => {
         buffer += data;
-        if (buffer.length > 32 * 1024 * 1024) { socket.destroy(); return; }
+        if (buffer.length > MAX_INBOUND_BYTES) { socket.destroy(); return; }
         let end: number;
         while ((end = buffer.indexOf("\n")) >= 0) {
           const line = buffer.slice(0, end); buffer = buffer.slice(end + 1);
@@ -134,7 +141,7 @@ function dial(): Promise<void> {
               else {
                 waiting.push(event);
                 waitingBytes += event.type === "data" ? event.data.length : 0;
-                if (waitingBytes > 1024 * 1024) socket.destroy();
+                if (waitingBytes > MAX_QUEUED_BYTES) socket.destroy();
               }
             });
           }
@@ -151,16 +158,16 @@ function dial(): Promise<void> {
         connection = null;
         for (const entry of pending.values()) { clearTimeout(entry.timer); entry.reject(new Error("The terminal service disconnected.")); }
         pending.clear();
-        if (!detached && sessions.size) reconnect = setTimeout(() => { void ensure().catch(logFailure("Reconnecting to the terminal service")); }, 1000);
+        if (!detached && sessions.size) reconnect = setTimeout(() => { void ensure().catch(logFailure("Reconnecting to the terminal service")); }, RECONNECT_DELAY_MS);
       });
-      void readFile(join(directory, "key"), "utf8").then(token => request<TerminalSession[]>("hello", { version: 1, token, activity: true })).then(async entries => {
+      void readFile(join(directory, "key"), "utf8").then(token => request<TerminalSession[]>({ op: "hello", version: 1, token, activity: true })).then(async entries => {
         if (connection !== socket || socket.destroyed) throw new Error("The terminal service disconnected during recovery.");
         for (const session of entries) attach(session, true);
         ready = true;
         for (const event of waiting) receive(event);
         waiting.length = 0;
         daemonPid = Number(await readFile(join(directory, "lock", "pid"), "utf8").catch(ifMissing("0"))) || undefined;
-        for (const [termId, consumers] of blocked) if (consumers.size) await request("flow", { termId, paused: true });
+        for (const [termId, consumers] of blocked) if (consumers.size) await request({ op: "flow", termId, paused: true });
         resolve();
       }).catch(error => { socket.destroy(); reject(error); });
     });
@@ -179,8 +186,8 @@ async function ensure(spawnService = true): Promise<void> {
     }
     await startService();
     let lastError: unknown;
-    for (let attempt = 0; attempt < 80; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+    for (let attempt = 0; attempt < START_ATTEMPTS; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, START_RETRY_MS));
       try { await dial(); return; } catch (error) {
         if (!hasCode(error, ...SERVICE_DOWN)) throw error;
         lastError = error;
@@ -195,9 +202,9 @@ export async function restore(): Promise<void> { await ensure(false); }
 
 export async function open(termId: string, cwd: string, cols: number, rows: number, command?: string, env?: Record<string, string>): Promise<void> {
   await ensure();
-  const session = await request<TerminalSession>("open", { input: { id: termId, cwd, cols, rows, command, env, panel: panelList().find(panel => panel.id === termId) } });
+  const session = await request<TerminalSession>({ op: "open", input: { id: termId, cwd, cols, rows, command, env, panel: panelList().find(panel => panel.id === termId) } });
   attach(session);
-  await request("resize", { termId, cols, rows });
+  await request({ op: "resize", termId, cols, rows });
 }
 
 export function session(termId: string): TerminalSession | undefined { return sessions.get(termId); }
@@ -221,11 +228,11 @@ export function replay(termId: string, offset?: number, sessionId?: string): { d
 
 export async function write(termId: string, data: string): Promise<void> {
   await ensure();
-  await request("write", { termId, data });
+  await request({ op: "write", termId, data });
 }
 
 export async function resize(termId: string, cols: number, rows: number): Promise<void> {
-  if (connection) await request("resize", { termId, cols, rows });
+  if (connection) await request({ op: "resize", termId, cols, rows });
 }
 
 export function flow(termId: string, client: string, paused: boolean): void {
@@ -233,20 +240,20 @@ export function flow(termId: string, client: string, paused: boolean): void {
   const wasPaused = consumers.size > 0;
   if (paused) consumers.add(client); else consumers.delete(client);
   if (consumers.size) blocked.set(termId, consumers); else blocked.delete(termId);
-  if (connection && wasPaused !== (consumers.size > 0)) void request("flow", { termId, paused: consumers.size > 0 }).catch(logFailure("Pausing terminal output", termId));
+  if (connection && wasPaused !== (consumers.size > 0)) void request({ op: "flow", termId, paused: consumers.size > 0 }).catch(logFailure("Pausing terminal output", termId));
 }
 
 export function release(client: string): void { for (const id of [...blocked.keys()]) flow(id, client, false); }
 
 export async function close(termId: string): Promise<void> {
   const exists = sessions.has(termId);
-  if (exists) { await ensure(false); await request("close", { termId }); }
+  if (exists) { await ensure(false); await request({ op: "close", termId }); }
   sessions.delete(termId); blocked.delete(termId);
   if (exists) endShell(`terminal:${termId}`, "stopped");
 }
 
 export async function closeAll(): Promise<void> {
-  if (sessions.size) { await ensure(false); await request("closeAll"); }
+  if (sessions.size) { await ensure(false); await request({ op: "closeAll" }); }
   for (const id of sessions.keys()) endShell(`terminal:${id}`, "stopped");
   sessions.clear(); blocked.clear();
   detach();

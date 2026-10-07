@@ -92,14 +92,15 @@ test("indexed candidates retain first exact match order, title fallback and comm
   journal.append({ t: "thread.messages", threadId: "thread-0", messages: Array.from({ length: 350 }, (_, index) => ({
     id: `ordered-${index}`, ts: index, role: "assistant", parts: [{ id: `ordered-part-${index}`, kind: "text", text: index === 200 || index === 280 ? `Exact abcd match ${index}` : "abc separated bcd", complete: true }],
   })) });
-  for (const projectId of [undefined, "first", "second"])
-    assert.deepEqual(await search.search(threads, "ABCD", projectId), searchConversations(threads, id => journal.messageTexts(id), "ABCD", projectId));
-  assert.equal((await search.search(threads, "abcd", "first"))[0].messageId, "ordered-200");
+  for (const query of ["ABCD", "abcd"])
+    assert.deepEqual(await search.search(threads, query), searchConversations(threads, id => journal.messageTexts(id), query));
+  const threadZeroMessage = async query => (await search.search(threads, query)).find(result => result.threadId === "thread-0");
+  assert.equal((await threadZeroMessage("abcd")).messageId, "ordered-200");
   journal.append({ t: "part.append", threadId: "thread-0", messageId: "ordered-30", partId: "ordered-part-30", text: " now abcd" });
   assert.deepEqual(await search.search(threads, "abcd"), searchConversations(threads, id => journal.messageTexts(id), "abcd"));
-  assert.equal((await search.search(threads, "abcd", "first"))[0].messageId, "ordered-30");
+  assert.equal((await threadZeroMessage("abcd")).messageId, "ordered-30");
   journal.append({ t: "part.patch", threadId: "thread-0", messageId: "ordered-30", partId: "ordered-part-30", patch: { text: "No matching terms", complete: true } });
-  assert.equal((await search.search(threads, "abcd", "first"))[0].messageId, "ordered-200");
+  assert.equal((await threadZeroMessage("abcd")).messageId, "ordered-200");
 });
 
 test("an unavailable or corrupt derived index falls back to the readable conversation journal", async t => {
@@ -162,7 +163,7 @@ test("a source crash and an interrupted index transaction recover committed sear
     const journal = new EventJournal(${JSON.stringify(path)}, true);
     const index = new ConversationSearchIndex(${JSON.stringify(path + ".search.sqlite")}, journal);
     let checks = 0;
-    index.search(${JSON.stringify(threads)}, "recovered", undefined, () => { if (++checks === 10) process.kill(process.pid, "SIGKILL"); return false; });
+    index.search(${JSON.stringify(threads)}, "recovered", () => { if (++checks === 10) process.kill(process.pid, "SIGKILL"); return false; });
   `], { encoding: "utf8", timeout: 10_000 });
   assert.ok(indexing.signal === "SIGKILL" || (process.platform === "win32" && indexing.status !== 0), indexing.stderr);
   assert.equal((await search.search(threads, "recovered"))[0].messageId, "replacement-0");

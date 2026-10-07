@@ -121,6 +121,7 @@ function useTopbarContrast(map: LightMap | undefined, layer: RefObject<HTMLEleme
   const theme = useApp((state) => state.theme);
   const scheme = useApp((state) => state.scheme);
   const customColor = useApp((state) => state.customColor);
+  const chatWidth = useApp((state) => state.chatWidth);
   useEffect(() => {
     const element = layer.current;
     if (!element || !map) return;
@@ -163,7 +164,7 @@ function useTopbarContrast(map: LightMap | undefined, layer: RefObject<HTMLEleme
       observer.disconnect();
       for (const group of groups) delete group.dataset.contrast;
     };
-  }, [map, dim, focus, theme, scheme, customColor, layer, metrics]);
+  }, [map, dim, focus, theme, scheme, customColor, chatWidth, layer, metrics]);
 }
 
 async function animationDecoder(file: Blob): Promise<ImageDecoder | undefined> {

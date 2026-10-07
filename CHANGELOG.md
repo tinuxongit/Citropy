@@ -2,6 +2,20 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.6.0
+
+### Added
+- Usage reports estimate API costs by provider and model, with input, cache, output, and speed breakdowns.
+- Import conversation history from Claude Code, Codex, and OpenCode.
+- Manage conversations in tabs, search from the title bar, and open Settings, Usage, and running agents from the profile menu.
+
+### Changed
+- Navigation, window controls, and settings pages use a more consistent layout.
+- Removed Chat mode, language selection, and support for Pi and Cursor.
+
+### Fixed
+- SSH connections can reconnect after an interrupted session.
+
 ## 0.5.7
 
 ### Improved

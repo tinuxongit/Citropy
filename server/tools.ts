@@ -95,6 +95,8 @@ export function describeTool(name: string, rawInput: unknown, root = ""): ToolDe
       return { shape: "todo", headline: `Task ${str(input.taskId) || "?"} ${str(input.status) || "updated"}` };
     case "TaskView":
       return { shape: "todo", headline: "Plan" };
+    case "Skill":
+      return { shape: "generic", headline: str(input.skill) || "skill", detail: firstLine(str(input.args), 90) || undefined };
     case "ExitPlanMode":
       return { shape: "task", headline: "Plan ready for review" };
     default: {

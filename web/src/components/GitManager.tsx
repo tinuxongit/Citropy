@@ -7,8 +7,8 @@ import {
   X,
 } from "lucide-react";
 import { chooseWorkspace } from "../lib/actions.ts";
-import { useApp, viewportWidth } from "../lib/store.ts";
-import { SectionSidebar } from "./SectionSidebar.tsx";
+import { useApp } from "../lib/store.ts";
+import { SectionLink, SectionSidebar } from "./SectionSidebar.tsx";
 import { GitDialog, type GitDialogAction } from "./GitDialog.tsx";
 import { EmptyState } from "./git/GitEmptyState.tsx";
 import { GitHeader } from "./git/GitHeader.tsx";
@@ -25,10 +25,10 @@ import { ActionError } from "./ActionError.tsx";
 
 export function GitManager({
   sidebarOpen,
-  onCloseSidebar,
+  onNavigate,
 }: {
   sidebarOpen: boolean;
-  onCloseSidebar: () => void;
+  onNavigate: () => void;
 }) {
   const projectId = useApp((state) => state.activeProjectId);
   const thread = useApp((state) => state.threads[state.activeThreadId ?? ""]);
@@ -72,7 +72,7 @@ export function GitManager({
   });
 
   const changeSection = (next: Section) => {
-    if (viewportWidth() <= 720) onCloseSidebar();
+    onNavigate();
     setSection(next);
     setFilter("");
     setSelection(sectionSelection(next, data));
@@ -165,20 +165,18 @@ export function GitManager({
   return (
     <section className="section-view" aria-label="Git manager">
       <SectionSidebar activeItem={section} open={sidebarOpen} title="Source control">
-          {tabs.map(({ name, icon: Icon }) => (
-            <button
-              className="section-link"
-              type="button"
+          {tabs.map(({ name, icon }) => (
+            <SectionLink
               key={name}
-              aria-current={section === name ? "page" : undefined}
-              onClick={() => changeSection(name)}
+              icon={icon}
+              label={name}
+              active={section === name}
+              onSelect={() => changeSection(name)}
             >
-              <Icon size={17} />
-              <span>{name}</span>
               {data?.repository && counts[name] !== undefined && (
                 <span className="section-count">{counts[name]}</span>
               )}
-            </button>
+            </SectionLink>
           ))}
       </SectionSidebar>
       <div className="git-manager">

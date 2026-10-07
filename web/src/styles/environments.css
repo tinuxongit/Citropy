@@ -17,12 +17,6 @@
 .ssh-error { color: var(--bad) !important; overflow-wrap: anywhere; white-space: pre-wrap; }
 .ssh-progress { display: flex; align-items: center; gap: var(--space-8); }
 .ssh-progress > svg { flex: none; }
-.workspace-menu .menu-option[data-group] { margin-top: var(--space-4); }
-.workspace-menu .menu-option[data-group]:first-child { margin-top: 0; }
-.workspace-menu .menu-option[data-group] > .menu-item { min-height: 50px; }
-.workspace-menu .menu-option[data-group] .menu-label { font-weight: 500; }
-.menu-group-chevron { flex: none; margin-left: auto; color: var(--text-3); transition: transform 160ms ease; }
-.menu-group-chevron[data-expanded="true"] { transform: rotate(90deg); }
 .remote-connection-banner {
   position: absolute;
   top: calc(var(--topbar) + 8px);

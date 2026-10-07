@@ -40,10 +40,11 @@ import {
 } from "./lib/store.ts";
 import { send } from "./lib/socket.ts";
 import { useUiSounds } from "./lib/use-ui-sounds.ts";
-import { chooseWorkspace, createThread } from "./lib/actions.ts";
+import { chooseWorkspace, closeTab, createThread, reopenClosedTab, showNextTab } from "./lib/actions.ts";
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
 
+const NARROW_VIEWPORT = 720;
 const INSPECTOR_MIN_WIDTH = 260;
 const CONVERSATION_MIN_WIDTH = 360;
 
@@ -64,11 +65,11 @@ export function App() {
   const setView = (activeView: typeof view) => useApp.setState({ activeView });
   const [settingsSection, setSettingsSection] = useState("General");
   const [sectionSidebarOpen, setSectionSidebarOpen] = useState(
-    viewportWidth() > 720,
+    viewportWidth() > NARROW_VIEWPORT,
   );
   const newThreadProvider = useApp((state) => state.newThreadProvider);
   const sidebarOpen = useApp((state) => state.sidebarOpen);
-  const narrow = useSyncExternalStore(subscribeResize, () => viewportWidth() <= 720);
+  const narrow = useSyncExternalStore(subscribeResize, () => viewportWidth() <= NARROW_VIEWPORT);
   const stageBackground = useApp((state) => state.stageBackground);
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const panelWidths = useApp((state) => state.panelWidths);
@@ -113,7 +114,7 @@ export function App() {
   useEffect(() => {
     const previous = openPanels.current;
     openPanels.current = { sidebarOpen, inspectorOpen };
-    if (!panelsShown || !sidebarOpen || !inspectorOpen || viewportWidth() <= 720) return;
+    if (!panelsShown || !sidebarOpen || !inspectorOpen || viewportWidth() <= NARROW_VIEWPORT) return;
     const shell = shellBody.current!.parentElement!;
     const strip = parseFloat(getComputedStyle(shell).paddingLeft);
     const rail = shell.querySelector<HTMLElement>(".rail")!.offsetWidth;
@@ -146,15 +147,18 @@ export function App() {
     if (next !== "chat") useApp.setState({ readingThreadId: null });
     setView(next);
     if (next === "chat") {
-      if (viewportWidth() <= 720 && useApp.getState().sidebarOpen)
+      if (viewportWidth() <= NARROW_VIEWPORT && useApp.getState().sidebarOpen)
         toggleSidebar();
     } else {
-      setSectionSidebarOpen(viewportWidth() > 720);
+      setSectionSidebarOpen(viewportWidth() > NARROW_VIEWPORT);
     }
   };
   const toggleNavigation = () => {
     if (view === "chat") toggleSidebar();
     else setSectionSidebarOpen((open) => !open);
+  };
+  const closeSectionSidebarOnNarrow = () => {
+    if (viewportWidth() <= NARROW_VIEWPORT) setSectionSidebarOpen(false);
   };
   const openSettings = () => {
     setSettingsSection("General");
@@ -225,6 +229,7 @@ export function App() {
       // every contenteditable form via isContentEditable.
       (target.isContentEditable ||
         target.closest(".xterm, textarea, select, input:not([type='checkbox']):not([type='radio'])") !== null);
+    const inTerminal = (target: EventTarget | null) => target instanceof HTMLElement && target.closest(".xterm") !== null;
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const mod = event.metaKey || event.ctrlKey;
@@ -254,6 +259,13 @@ export function App() {
         event.preventDefault();
         setView("chat");
         createThread();
+      } else if (view === "chat" && !event.altKey && !inTerminal(event.target) && (key === "w" || key === "t" || key === "tab")) {
+        const activeThreadId = useApp.getState().activeThreadId;
+        if (key === "w" && !event.shiftKey && activeThreadId) closeTab(activeThreadId);
+        else if (key === "t" && event.shiftKey) reopenClosedTab();
+        else if (key === "tab") showNextTab(event.shiftKey ? -1 : 1);
+        else return;
+        event.preventDefault();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -323,12 +335,13 @@ export function App() {
               <UsageView
                 key={environment}
                 sidebarOpen={sectionSidebarOpen}
+                onNavigate={closeSectionSidebarOnNarrow}
               />
             ) : view === "git" ? (
               <GitManager
                 key={`${environment}:${activeProjectId}:${activeThreadId}`}
                 sidebarOpen={sectionSidebarOpen}
-                onCloseSidebar={() => setSectionSidebarOpen(false)}
+                onNavigate={closeSectionSidebarOnNarrow}
               />
             ) : view === "github" ? (
               <GitHub
@@ -336,14 +349,14 @@ export function App() {
                 onGit={() => openView("git")}
                 key={`${environment}:${activeProjectId}`}
                 sidebarOpen={sectionSidebarOpen}
-                onCloseSidebar={() => setSectionSidebarOpen(false)}
+                onNavigate={closeSectionSidebarOnNarrow}
                 onBack={() => openView("chat")}
               />
             ) : view === "settings" ? (
               <Settings
                 initialSection={settingsSection}
                 sidebarOpen={sectionSidebarOpen}
-                onCloseSidebar={() => setSectionSidebarOpen(false)}
+                onNavigate={closeSectionSidebarOnNarrow}
               />
             ) : hasProject && activeThreadId ? (
               <Fragment key={`${environment}:${activeThreadId}`}>

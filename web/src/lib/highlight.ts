@@ -1,4 +1,8 @@
-import { escapeHtml } from "./escape-html.ts";
+import { CACHE_BYTES, CACHE_ENTRIES } from "./highlight-settings.ts";
+import { rawCode } from "./raw-code.ts";
+
+const WORKER_DEADLINE_MS = 30_000;
+const WORKER_IDLE_MS = 60_000;
 
 export interface HighlightRequest {
   id: number;
@@ -50,13 +54,13 @@ async function render(
   clearTimeout(idle);
   const id = ++sequence;
   return new Promise((resolve) => {
-    const timeout = setTimeout(dispose, 30_000);
+    const timeout = setTimeout(dispose, WORKER_DEADLINE_MS);
     const finish = (result: Result) => {
       if (!pending.delete(id)) return;
       clearTimeout(timeout);
       signal?.removeEventListener("abort", cancel);
       resolve(result);
-      if (!pending.size && worker) idle = setTimeout(dispose, 60_000);
+      if (!pending.size && worker) idle = setTimeout(dispose, WORKER_IDLE_MS);
     };
     const cancel = () => {
       worker?.postMessage({ cancel: id });
@@ -72,7 +76,6 @@ async function render(
   });
 }
 
-const CACHE_LIMIT = 2 * 1024 * 1024;
 const cache = new Map<string, { result: string | string[]; bytes: number }>();
 const inflight = new Map<string, { controller: AbortController; result: Promise<Result>; consumers: number }>();
 let cacheSize = 0;
@@ -80,8 +83,8 @@ let cacheSize = 0;
 function remember(key: string, result: string | string[]): void {
   if (cache.has(key)) return;
   const size = key.length * 2 + (typeof result === "string" ? result.length * 2 : result.reduce((total, line) => total + line.length * 2 + 16, 0));
-  if (size > CACHE_LIMIT) return;
-  while (cache.size >= 128 || cacheSize + size > CACHE_LIMIT) {
+  if (size > CACHE_BYTES) return;
+  while (cache.size >= CACHE_ENTRIES || cacheSize + size > CACHE_BYTES) {
     const [oldKey, entry] = cache.entries().next().value!;
     cache.delete(oldKey);
     cacheSize -= entry.bytes;
@@ -136,7 +139,7 @@ export async function highlight(code: string, lang: string | undefined, theme: "
     return cached.result;
   }
   const result = await sharedRender(key, { kind: "html", code, lang, theme }, signal);
-  if (typeof result !== "string") return `<pre class="raw"><code>${escapeHtml(code)}</code></pre>`;
+  if (typeof result !== "string") return rawCode(code);
   remember(key, result);
   return result;
 }

@@ -2,6 +2,7 @@ import { useEffect, useState, type MouseEvent, type PointerEvent as ReactPointer
 import { AnimatePresence } from "motion/react";
 import { closeProject, createThread, openOnEnvironment } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
+import { opensContextMenu } from "../../lib/context-menu-key.ts";
 import { connectionName, environmentId, useEnvironments } from "../../lib/environment.ts";
 import { confirmAction, selectProject, useApp } from "../../lib/store.ts";
 import { Folder, FolderOpen, MessageSquarePlus, Pencil, Trash2 } from "../icons.ts";
@@ -14,6 +15,7 @@ import { RenameProjectModal } from "./RenameProjectModal.tsx";
 import type { Project } from "../../../../shared/protocol.ts";
 import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
 import type { ThreadGroup } from "./thread-groups.ts";
+import { WorkspaceMenu, type WorkspaceDialog } from "../WorkspaceSelector.tsx";
 
 export function ProjectHeading({ group, project, searching, dragging, isFirst, isLast, canCreateThread, onDragStart, consumeDrag, onMove, onNewThread, onConversation }: {
   group: ThreadGroup;
@@ -82,7 +84,7 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         openMenu(event.currentTarget);
       }}
       onKeyDown={event => {
-        if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
+        if (!opensContextMenu(event)) return;
         if ((event.target as HTMLElement).closest('[role="menu"], dialog')) return;
         event.preventDefault();
         openMenu(event.currentTarget);
@@ -125,6 +127,17 @@ export function StatusHeading({ group, searching }: { group: ThreadGroup; search
         <group.icon size={15} />
         <span className="truncate">{label}</span>
       </button>
+    </div>
+  );
+}
+
+export function SectionHeading({ group, searching, onDialog }: { group: ThreadGroup; searching: boolean; onDialog: (dialog: WorkspaceDialog) => void }) {
+  return (
+    <div className="rail-section-heading">
+      <button className="rail-section-toggle" type="button" aria-label={`${group.open ? "Collapse" : "Expand"} ${group.label}`} aria-expanded={group.open || searching} onClick={group.toggle}>
+        <span className="truncate">{group.label}</span>
+      </button>
+      {group.section && <WorkspaceMenu scope={group.section} onDialog={onDialog} />}
     </div>
   );
 }

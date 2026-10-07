@@ -13,15 +13,12 @@ void main() {
   gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
 }`;
 
-const CELLS = `#version 300 es
+const CELL_STATE = `#version 300 es
 precision highp float;
 precision highp int;
-uniform highp sampler2D atlas;
-uniform vec2 cell;
-uniform float height;
 uniform float time;
 uniform float firstColumn;
-out vec4 color;
+out vec4 state;
 
 float hash(int x, int y, int z) {
   uint h = (uint(x) * 374761393u) ^ (uint(y) * 668265263u) ^ (uint(z) * 1274126177u);
@@ -43,18 +40,35 @@ float valueNoise(vec3 point) {
 }
 
 void main() {
-  vec2 pixel = vec2(gl_FragCoord.x, height - gl_FragCoord.y);
-  vec2 index = floor(pixel / cell);
-  if (index.x < firstColumn) discard;
-  int column = int(index.x), row = int(index.y);
+  state = vec4(0.0);
+  int column = int(gl_FragCoord.x), row = int(gl_FragCoord.y);
+  if (float(column) < firstColumn) return;
   float density = valueNoise(vec3(float(column) * 0.032, float(row) * 0.058, time * 0.04)) * 0.7
     + valueNoise(vec3(float(column) * 0.12, float(row) * 0.2, time * 0.11 + 17.0)) * 0.3;
   float strength = (density - ${THRESHOLD}) / (1.0 - ${THRESHOLD});
   float seed = hash(column, row, 3);
-  if (strength <= 0.0 || seed > 0.35 + strength) discard;
+  if (strength <= 0.0 || seed > 0.35 + strength) return;
   float glyph = floor(hash(column, row, int(floor(time * 0.6 + seed * 9.0))) * ${GLYPHS.length}.0);
   float level = min(${LEVELS.length - 1}.0, floor(strength * ${LEVELS.length}.0 * 1.4));
-  color = texelFetch(atlas, ivec2(vec2(glyph, level) * cell + pixel - index * cell), 0);
+  state = vec4(glyph, level, 0.0, 255.0) / 255.0;
+}`;
+
+const CELLS = `#version 300 es
+precision highp float;
+precision highp int;
+uniform highp sampler2D atlas;
+uniform highp sampler2D cellState;
+uniform vec2 cell;
+uniform float height;
+out vec4 color;
+
+void main() {
+  vec2 pixel = vec2(gl_FragCoord.x, height - gl_FragCoord.y);
+  vec2 index = floor(pixel / cell);
+  vec4 state = texelFetch(cellState, ivec2(index), 0);
+  if (state.a == 0.0) discard;
+  vec2 glyph = floor(state.xy * 255.0 + 0.5);
+  color = texelFetch(atlas, ivec2(glyph * cell + pixel - index * cell), 0);
 }`;
 
 const STAR_SHAPE = `#version 300 es
@@ -170,21 +184,31 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
   let pausedAt: number | undefined = performance.now();
   const clock = (now: number) => (now - pausedFor) / 1000;
 
+  let cellState: WebGLProgram;
   let cells: WebGLProgram;
   let starProgram: WebGLProgram;
   let atlas: WebGLTexture;
+  let stateTexture: WebGLTexture;
+  let stateBuffer: WebGLFramebuffer;
+  let columns = 0;
+  let rows = 0;
   let shapeBuffer: WebGLBuffer;
   let motionBuffer: WebGLBuffer;
   let starLayout: WebGLVertexArrayObject;
+  let stateUniforms: Record<string, WebGLUniformLocation | null>;
   let cellUniforms: Record<string, WebGLUniformLocation | null>;
   let starUniforms: Record<string, WebGLUniformLocation | null>;
 
   const setup = () => {
+    cellState = compile(gl, FULL_SCREEN, CELL_STATE);
     cells = compile(gl, FULL_SCREEN, CELLS);
     starProgram = compile(gl, STAR_SHAPE, STAR_FILL);
-    cellUniforms = Object.fromEntries(["atlas", "cell", "height", "time", "firstColumn"].map((name) => [name, gl.getUniformLocation(cells, name)]));
+    stateUniforms = Object.fromEntries(["time", "firstColumn"].map((name) => [name, gl.getUniformLocation(cellState, name)]));
+    cellUniforms = Object.fromEntries(["atlas", "cellState", "cell", "height"].map((name) => [name, gl.getUniformLocation(cells, name)]));
     starUniforms = Object.fromEntries(["size", "time", "starColor", "height"].map((name) => [name, gl.getUniformLocation(starProgram, name)]));
     atlas = gl.createTexture();
+    stateTexture = gl.createTexture();
+    stateBuffer = gl.createFramebuffer();
     shapeBuffer = gl.createBuffer();
     motionBuffer = gl.createBuffer();
     starLayout = gl.createVertexArray();
@@ -204,6 +228,15 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
 
   const draw = (now: number) => {
     const time = clock(now);
+    gl.disable(gl.BLEND);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, stateBuffer);
+    gl.viewport(0, 0, columns, rows);
+    gl.useProgram(cellState);
+    gl.uniform1f(stateUniforms.time!, time);
+    gl.uniform1f(stateUniforms.firstColumn!, Math.max(0, Math.floor(visibleFrom / cellWidth)));
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.enable(gl.BLEND);
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -211,10 +244,11 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, atlas);
     gl.uniform1i(cellUniforms.atlas!, 0);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, stateTexture);
+    gl.uniform1i(cellUniforms.cellState!, 1);
     gl.uniform2f(cellUniforms.cell!, cellWidth * scale, CELL_HEIGHT * scale);
     gl.uniform1f(cellUniforms.height!, canvas.height);
-    gl.uniform1f(cellUniforms.time!, time);
-    gl.uniform1f(cellUniforms.firstColumn!, Math.max(0, Math.floor(visibleFrom / cellWidth)));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.useProgram(starProgram);
     gl.uniform2f(starUniforms.size!, canvas.width, canvas.height);
@@ -238,6 +272,15 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, glyphAtlas(color, cellWidth, CELL_HEIGHT, scale));
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    columns = Math.ceil(canvas.width / (cellWidth * scale));
+    rows = Math.ceil(canvas.height / (CELL_HEIGHT * scale));
+    gl.bindTexture(gl.TEXTURE_2D, stateTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, columns, rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, stateBuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, stateTexture, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     const scattered = stars(width, height, scale);
     starCount = scattered.count;
     gl.bindBuffer(gl.ARRAY_BUFFER, shapeBuffer);
@@ -272,8 +315,10 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
       canvas.removeEventListener("webglcontextlost", lose);
       canvas.removeEventListener("webglcontextrestored", restore);
       if (gl.isContextLost()) return;
-      for (const program of [cells, starProgram]) gl.deleteProgram(program);
+      for (const program of [cellState, cells, starProgram]) gl.deleteProgram(program);
       gl.deleteTexture(atlas);
+      gl.deleteTexture(stateTexture);
+      gl.deleteFramebuffer(stateBuffer);
       gl.deleteBuffer(shapeBuffer);
       gl.deleteBuffer(motionBuffer);
       gl.deleteVertexArray(starLayout);

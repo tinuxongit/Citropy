@@ -170,9 +170,22 @@
 
 .question-history summary {
   width: fit-content;
+  max-width: 100%;
   cursor: default;
   list-style: none;
 }
+
+.question-history summary > svg { flex: none; }
+
+.question-history-asked {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
+}
+
+.question-history-state { flex: none; }
 
 .question-history[open] summary > svg:first-child {
   transform: rotate(90deg);

@@ -6,7 +6,8 @@ import {
   GitCommitHorizontal,
 } from "lucide-react";
 import { ResizeHandle } from "../ResizeHandle.tsx";
-import { GitReview, type GitSelection } from "../GitReview.tsx";
+import { GitReview } from "../GitReview.tsx";
+import type { GitSelection } from "./selection.ts";
 import { EmptyState } from "./GitEmptyState.tsx";
 import { LOCALE } from "../../lib/locale.ts";
 import { formatDate } from "../../lib/format.ts";

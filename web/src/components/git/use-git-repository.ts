@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { manageGit } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { groupGitFiles } from "../../lib/git-files.ts";
-import { doneLabels, type Section } from "./labels.ts";
-import { isConflict, readableError } from "./files.ts";
-import type { GitSelection } from "../GitReview.tsx";
+import { doneLabels, readableError, type Section } from "./labels.ts";
+import { isConflict } from "./files.ts";
+import type { GitSelection } from "./selection.ts";
 import type {
   GitOperation,
   GitOverview,

@@ -4,9 +4,11 @@
   --tab-close-size: 20px;
   display: flex;
   flex: 0 1 auto;
+  align-items: center;
   align-self: stretch;
+  gap: var(--tab-gap);
   min-width: 0;
-  margin-bottom: -1px;
+  padding: 0 var(--space-6);
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-app-region: no-drag;
@@ -24,17 +26,33 @@
 }
 
 .thread-tab {
+  position: relative;
   display: flex;
   flex: 0 1 auto;
   align-items: center;
   width: var(--tab-width);
   min-width: var(--tab-min-width);
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  background: var(--panel);
+  height: var(--tab-height);
+  border-radius: var(--r-md);
   color: var(--text-3);
   font-size: var(--text-sm);
   transition: background var(--dur-instant), color var(--dur-instant);
+}
+
+:is(.thread-tab, .workbench-tab) + :is(.thread-tab, .thread-tabs-new, .workbench-tab)::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--tab-gap) / -2);
+  width: 1px;
+  height: var(--tab-separator-height);
+  background: var(--line-bright);
+  transition: opacity var(--dur-instant);
+  pointer-events: none;
+}
+
+:is(.thread-tab:is(:hover, [data-active]), .workbench-tab:is(:hover, [data-active="true"]))::before,
+:is(.thread-tab:is(:hover, [data-active]), .workbench-tab:is(:hover, [data-active="true"])) + :is(.thread-tab, .thread-tabs-new, .workbench-tab)::before {
+  opacity: 0;
 }
 
 .thread-tab:hover {
@@ -43,8 +61,7 @@
 }
 
 .thread-tab[data-active] {
-  border-bottom-color: transparent;
-  background: var(--canvas);
+  background: var(--raised);
   color: var(--text);
 }
 
@@ -90,10 +107,13 @@
 }
 
 .thread-tabs-new {
+  position: relative;
   display: grid;
   flex: none;
   place-items: center;
-  width: var(--topbar);
+  width: var(--tab-height);
+  height: var(--tab-height);
+  border-radius: var(--r-md);
   color: var(--text-3);
   transition: background var(--dur-instant), color var(--dur-instant);
 }

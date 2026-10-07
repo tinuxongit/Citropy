@@ -176,15 +176,13 @@ export class ThreadTranscript {
     this.#todo = this.#add({ id: uid("prt"), kind: "todo", items });
   }
 
-  finish(): void {
+  finish(stopped: boolean): void {
     for (const ref of this.#blocks.values())
       store.patchPart(this.#thread.id, ref.messageId, ref.partId, { complete: true });
     for (const ref of this.#tools.values())
-      store.patchPart(this.#thread.id, ref.messageId, ref.partId, {
-        status: "error",
-        output: "The provider stopped before returning a tool result.",
-        endedAt: Date.now(),
-      });
+      store.patchPart(this.#thread.id, ref.messageId, ref.partId, stopped
+        ? { status: "stopped", endedAt: Date.now() }
+        : { status: "error", output: "The provider stopped before returning a tool result.", endedAt: Date.now() });
     this.#tools.clear();
     this.#blocks.clear();
     this.#todo = null;

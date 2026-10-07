@@ -12,11 +12,13 @@ import { mentionedSkills } from "./skills.ts";
 import { expandCommand } from "./commands.ts";
 import { providers } from "./providers/index.ts";
 import { providerInfo } from "./provider-registry.ts";
+import { resolveProviderAccount, usableProviderAccount } from "./provider-account.ts";
 import { receiveAgentEvent } from "./providers/events.ts";
 import { beginCheckpoint, finishCheckpoint, checkpointBusy, historyPrompt } from "./checkpoints.ts";
 import { prepareContext, prepareTransferContext, transferPrompt } from "./context.ts";
 import { assertProviderReady } from "./providers/maintenance.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../shared/model-options.ts";
+import { providerAccount } from "../shared/provider-account.ts";
 import { emptyUsage } from "../shared/protocol.ts";
 import { mergeUsage } from "../shared/usage-metrics.ts";
 import { connectTools, disconnectTools } from "./mcp-access.ts";
@@ -142,11 +144,9 @@ class ThreadRuntime {
       throw new Error("Transfer is only available in an existing chat.");
     if ([...store.threads.values()].some(child => child.parentThreadId === this.id && (child.running || child.status === "awaiting")))
       throw new Error("Wait for this conversation's subagents to finish before transferring.");
-    const instance = providerInstanceId ? provider.instances?.find(entry => entry.id === providerInstanceId) : undefined;
-    if (providerInstanceId && (!instance || store.providerInstances.get(providerInstanceId)?.provider !== provider.id)) throw new Error("This provider account is unavailable.");
-    if (!(instance ? instance.available : provider.available) || !provider.enabled || store.disabledProviders.has(provider.id))
-      throw new Error("Select an enabled, installed provider.");
-    const models = instance?.models ?? provider.models;
+    resolveProviderAccount(provider.id, providerInstanceId);
+    const { models } = usableProviderAccount(provider, providerInstanceId);
+    if (store.disabledProviders.has(provider.id)) throw new Error("Enable this provider before transferring.");
     const model = selectedModel(models, modelId);
     if (!model) throw new Error("This model is no longer available. Refresh the model list.");
     if (providerInstanceId === thread.providerInstanceId && provider.id === thread.provider && model.id === selectedModel(models, thread.model)?.id)
@@ -162,7 +162,7 @@ class ThreadRuntime {
       assertApplicationReady();
       assertProviderReady(provider.id);
       if (store.disabledProviders.has(provider.id)) throw new Error("Enable this provider before transferring.");
-      if (providerInstanceId && store.providerInstances.get(providerInstanceId)?.provider !== provider.id) throw new Error("This provider account is unavailable.");
+      resolveProviderAccount(provider.id, providerInstanceId);
       const previous = { provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: thread.model, externalId: thread.externalId, usage: { ...thread.usage }, at: Date.now() };
       this.#buildPlan = false;
       this.#closeSession();
@@ -175,7 +175,7 @@ class ThreadRuntime {
       assertApplicationReady();
       assertProviderReady(provider.id);
       if (store.disabledProviders.has(provider.id)) throw new Error("Enable this provider before transferring.");
-      if (providerInstanceId && store.providerInstances.get(providerInstanceId)?.provider !== provider.id) throw new Error("This provider account is unavailable.");
+      resolveProviderAccount(provider.id, providerInstanceId);
       store.replaceMessages(this.id, thread.messages.map(message => message.role === "assistant" ? { ...message, provider: message.provider ?? previous.provider, model: message.model ?? previous.model } : message));
       store.patchThread(this.id, {
         provider: provider.id,
@@ -517,17 +517,13 @@ class ThreadRuntime {
   }
 
   #models(): ProviderInfo["models"] {
-    const provider = providers[this.#thread.provider];
-    return this.#thread.providerInstanceId
-      ? providerInfo().find(entry => entry.id === provider.id)?.instances?.find(entry => entry.id === this.#thread.providerInstanceId)?.models ?? []
-      : provider.models;
+    return providerAccount(providerInfo().find(entry => entry.id === this.#thread.provider), this.#thread.providerInstanceId).models;
   }
 
   #ensureSession(): AgentSession {
     if (this.#session) return this.#session;
     const provider = providers[this.#thread.provider];
-    const instance = this.#thread.providerInstanceId ? store.providerInstances.get(this.#thread.providerInstanceId) : undefined;
-    if (this.#thread.providerInstanceId && (!instance || instance.provider !== provider.id)) throw new Error("The provider instance for this conversation is unavailable. Restore it in Provider settings.");
+    const { launch } = resolveProviderAccount(provider.id, this.#thread.providerInstanceId);
     const models = this.#models();
     const project = store.projects.get(this.#thread.projectId);
     if (!project) throw new Error(`thread ${this.#thread.id} has no project`);
@@ -535,8 +531,7 @@ class ThreadRuntime {
     const generation = ++this.#sessionGeneration;
     this.#sessionStarted = Date.now();
     this.#session = provider.start({
-      binary: instance?.binary,
-      environment: instance?.environment,
+      ...launch,
       mcp: connectTools(this.#thread.id),
       threadId: this.#thread.id,
       cwd: this.#cwd,
@@ -595,8 +590,9 @@ class ThreadRuntime {
   }
 
   #finishParts(): void {
-    this.#transcript.finish();
-    endThreadShells(this.id, "failed", true);
+    const stopped = this.#thread.status === "stopped";
+    this.#transcript.finish(stopped);
+    endThreadShells(this.id, stopped ? "stopped" : "failed", true);
   }
 
   #shellId(callId: string): string {

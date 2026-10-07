@@ -1,6 +1,5 @@
 import { store } from "./store.ts";
 import { logFailure } from "../shared/expected-errors.mjs";
-import { providers } from "./providers/index.ts";
 import { providerInfo } from "./provider-registry.ts";
 import { generateText } from "./text-generation.ts";
 import { workspacePath } from "./workspaces.ts";
@@ -8,6 +7,7 @@ import { assertApplicationReady } from "./update-lock.ts";
 import * as git from "./git.ts";
 import { bus } from "./bus.ts";
 import { gitActionBusy, type AssistanceSettings, type GitActionState, type WritingModel } from "../shared/assistance.ts";
+import { providerAccount } from "../shared/provider-account.ts";
 import type { ProviderInfo, Thread } from "../shared/protocol.ts";
 
 const titleJobs = new Set<string>();
@@ -42,10 +42,9 @@ export function configureAssistance(input: Record<string, unknown>, available: P
     if (input[key] === null) { next[key] = null; continue; }
     const value = input[key] as WritingModel;
     const provider = value && available.find((entry) => entry.id === value.provider && entry.enabled);
-    const instance = value.providerInstanceId ? provider?.instances?.find(entry => entry.id === value.providerInstanceId) : undefined;
-    const models = instance ? instance.models : provider?.models ?? [];
-    const model = models.find((entry) => entry.id === value.model);
-    if (!provider || (value.providerInstanceId ? !instance?.available : !provider.available) || !model) throw new Error("Select an available writing model.");
+    const account = providerAccount(provider, value.providerInstanceId);
+    const model = account.models.find((entry) => entry.id === value.model);
+    if (!provider || !account.usable || !model) throw new Error("Select an available writing model.");
     if (value.effort !== undefined && !model.efforts?.includes(value.effort)) throw new Error("Select an effort this writing model supports.");
     next[key] = { provider: provider.id, model: value.model, ...(value.providerInstanceId ? { providerInstanceId: value.providerInstanceId } : {}), ...(value.effort ? { effort: value.effort } : {}) };
   }
@@ -56,7 +55,7 @@ export function configureAssistance(input: Record<string, unknown>, available: P
 export function writingModel(thread: Thread, kind: "titleModel" | "commitModel" | "reviewModel"): WritingModel {
   const configured = store.assistance[kind];
   if (configured) return configured;
-  const models = thread.providerInstanceId ? providerInfo().find(entry => entry.id === thread.provider)?.instances?.find(entry => entry.id === thread.providerInstanceId)?.models ?? [] : providers[thread.provider].models;
+  const { models } = providerAccount(providerInfo().find(entry => entry.id === thread.provider), thread.providerInstanceId);
   const model = thread.model || models.find((model) => model.isDefault)?.id || models[0]?.id;
   if (!model) throw new Error("Select a writing model in Settings > AI assistance.");
   return { provider: thread.provider, model, ...(thread.providerInstanceId ? { providerInstanceId: thread.providerInstanceId } : {}) };

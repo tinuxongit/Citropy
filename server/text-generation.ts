@@ -10,6 +10,7 @@ import { assertProviderReady } from "./providers/maintenance.ts";
 import { stopProcess } from "./providers/process.ts";
 import { assertApplicationReady } from "./update-lock.ts";
 import { store } from "./store.ts";
+import { resolveProviderAccount } from "./provider-account.ts";
 import type { WritingModel } from "../shared/assistance.ts";
 
 const jobs = new Map<AbortController, string>();
@@ -64,9 +65,7 @@ export async function generateText(selection: WritingModel, instruction: string,
   if (store.disabledProviders.has(selection.provider)) throw new Error("Enable the selected writing provider in Settings > Providers.");
   const provider = providers[selection.provider];
   if (!provider) throw new Error("The selected writing provider is not installed.");
-  const instance = selection.providerInstanceId ? store.providerInstances.get(selection.providerInstanceId) : undefined;
-  if (selection.providerInstanceId && (!instance || instance.provider !== selection.provider)) throw new Error("The selected writing account is unavailable.");
-  const launch = { binary: instance?.binary, environment: instance?.environment };
+  const { launch } = resolveProviderAccount(selection.provider, selection.providerInstanceId);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(new DOMException("Text generation timed out. Try again.", "TimeoutError")), 90_000);
   jobs.set(controller, selection.provider);

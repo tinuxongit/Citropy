@@ -1,13 +1,13 @@
 import { spawn } from "node:child_process";
-import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
+import { defaultPort, portAvailable } from "../shared/ports.mjs";
 
 const development = process.argv.includes("--dev");
 const serverOnly = process.argv.includes("--server-only");
 const previous = Number(process.argv.find((arg) => arg.startsWith("--after="))?.slice(8));
 const explicitPort = process.env.CITROPY_PORT !== undefined;
 const explicitUiPort = process.env.CITROPY_UI_PORT !== undefined;
-let port = Number(process.env.CITROPY_PORT ?? (development ? 4178 : 4177));
+let port = Number(process.env.CITROPY_PORT ?? defaultPort(development));
 let uiPort = Number(process.env.CITROPY_UI_PORT ?? 5177);
 const origin = () => `http://127.0.0.1:${port}`;
 function running(pid) {
@@ -37,22 +37,15 @@ async function healthy() {
     return false;
   }
 }
-async function available(candidate) {
-  const probe = createServer();
-  return await new Promise((resolve) => {
-    probe.once("error", () => resolve(false));
-    probe.listen(candidate, "127.0.0.1", () => probe.close(() => resolve(true)));
-  });
-}
-async function freePort(start) {
+async function nextFreePort(start) {
   for (let candidate = start; candidate < start + 100; candidate++)
-    if (await available(candidate)) return candidate;
+    if (await portAvailable(candidate)) return candidate;
   throw new Error(`Could not find an available Citropy port near ${start}.`);
 }
 let state = await healthy();
 if (state !== true) {
-  if (!explicitPort && !(await available(port))) port = await freePort(port + 1);
-  if (development && !explicitUiPort && !(await available(uiPort))) uiPort = await freePort(uiPort + 1);
+  if (!explicitPort && !(await portAvailable(port))) port = await nextFreePort(port + 1);
+  if (development && !explicitUiPort && !(await portAvailable(uiPort))) uiPort = await nextFreePort(uiPort + 1);
   const server = spawn(
     process.execPath,
     [

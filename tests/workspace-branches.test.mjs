@@ -127,4 +127,12 @@ test("Git refresh keeps conversation branches synchronized with their actual wor
       { encoding: "utf8", env: { ...process.env }, stdio: ["ignore", "pipe", "pipe"] });
     assert.equal(JSON.parse(restored), "release-prep/0.4.2");
   });
+
+  await t.test("a project whose folder was deleted refreshes without error or Git status", async () => {
+    const missing = store.openProject(join(directory, "deleted-project"));
+    events.length = 0;
+    await refreshGit(missing.id, true);
+    assert.equal(events.filter(event => event.t === "git.status").length, 0);
+    assert.equal(missing.isGit, false);
+  });
 });

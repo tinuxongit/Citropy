@@ -23,6 +23,18 @@ function validScripts(scripts: unknown): ProjectScript[] {
   });
 }
 
+async function runInTerminal(projectId: string, threadId: string | undefined, name: string, command: string): Promise<void> {
+  const cwd = workspacePath(projectId, threadId);
+  const panel = openPanel(projectId, "terminal", threadId);
+  renameTerminal(panel.id, name);
+  try {
+    await terminals.open(panel.id, cwd, 100, 28, command);
+  } catch (error) {
+    closePanel(panel.id);
+    throw error;
+  }
+}
+
 export async function closeProject(id: string): Promise<void> {
   for (const panel of panelList()) {
     if (panel.projectId !== id) continue;
@@ -67,14 +79,11 @@ export const projectRoutes: Routes = {
   "project.runScript": async (event) => {
     const script = store.projects.get(event.projectId)?.scripts?.find((entry) => entry.id === event.scriptId);
     if (!script) throw new Error("Project script not found.");
-    const cwd = workspacePath(event.projectId, event.threadId);
-    const panel = openPanel(event.projectId, "terminal", event.threadId);
-    renameTerminal(panel.id, script.name);
-    try {
-      await terminals.open(panel.id, cwd, 100, 28, script.command);
-    } catch (error) {
-      closePanel(panel.id);
-      throw error;
-    }
+    await runInTerminal(event.projectId, event.threadId, script.name, script.command);
+  },
+  "project.runCommand": async (event) => {
+    const command = event.command.trim();
+    if (!command || command.length > SCRIPT_LIMITS.command) throw new Error(`Command must be between 1 and ${SCRIPT_LIMITS.command} characters.`);
+    await runInTerminal(event.projectId, event.threadId, command.split("\n")[0]!.slice(0, SCRIPT_LIMITS.name), command);
   },
 };

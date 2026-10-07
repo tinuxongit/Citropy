@@ -3,6 +3,8 @@ import { logFailure } from "../../shared/expected-errors.mjs";
 import { stopProcess } from "./process.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { discoverModels } from "./models.ts";
+import { CLIENT_INFO } from "./control.ts";
+import { toolContent, type ToolContent } from "./tool-content.ts";
 import { onJson, onLines } from "../lines.ts";
 import { askQuestion, cancelQuestions } from "../questions.ts";
 import { ask, cancelThread } from "../permissions.ts";
@@ -35,7 +37,8 @@ interface Item {
   server?: string;
   tool?: string;
   arguments?: unknown;
-  result?: unknown;
+  result?: { content?: unknown } | null;
+  contentItems?: unknown[] | null;
   error?: { message?: string };
   query?: string;
   receiverThreadIds?: string[];
@@ -124,7 +127,7 @@ class CodexSession implements AgentSession {
     this.#child.on("error", (error) => this.#fail(error.message));
     this.#child.on("close", (code) => this.#fail(this.#stderr.trim() || `Codex app-server exited with code ${code}`));
     await this.#request("initialize", {
-      clientInfo: { name: "citropy", version: "0.1.0" },
+      clientInfo: CLIENT_INFO,
       capabilities: { experimentalApi: true },
     });
     this.#write({ method: "initialized" });
@@ -478,6 +481,7 @@ class CodexSession implements AgentSession {
     let name: string;
     let input: unknown;
     let output = "";
+    let images: ToolContent["images"] = [];
     let ok = item.status !== "failed" && item.status !== "declined";
     switch (item.type) {
       case "subAgentActivity":
@@ -501,7 +505,7 @@ class CodexSession implements AgentSession {
       case "dynamicToolCall":
         name = item.server ? `mcp__${item.server}__${item.tool}` : item.tool ?? "Tool";
         input = item.arguments ?? {};
-        output = JSON.stringify(item.result ?? item.error ?? "");
+        ({ text: output, images } = item.error ? { text: item.error.message ?? "", images: [] } : toolContent(item.result?.content ?? item.contentItems));
         break;
       case "webSearch":
         name = "WebSearch";
@@ -524,7 +528,7 @@ class CodexSession implements AgentSession {
     }
     if (!started) emit({ type: "tool.start", callId: item.id, name, input });
     else emit({ type: "tool.input", callId: item.id, input });
-    if (done) emit({ type: "tool.end", callId: item.id, ok, output });
+    if (done) emit({ type: "tool.end", callId: item.id, ok, output, ...(images.length ? { images } : {}) });
     else emit({ type: "status", status: "working", tool: name });
     if (done && item.type === "commandExecution" && item.processId && item.exitCode == null) void this.#refreshBackground();
   }

@@ -3,6 +3,7 @@ import type { IncomingMessage } from "node:http";
 import { stat, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { REMOTE_TOKEN_HEADER } from "../shared/remote-connection.mjs";
 
 export const remoteId = process.env.CITROPY_REMOTE_ID;
 const token = process.env.CITROPY_REMOTE_TOKEN;
@@ -11,7 +12,7 @@ if (remoteId && (!token || token.length < 64 || (process.env.CITROPY_HOST !== "1
 
 export function authorizeRemote(req: IncomingMessage): boolean {
   if (!remoteId) return true;
-  const value = req.headers["x-citropy-remote-token"];
+  const value = req.headers[REMOTE_TOKEN_HEADER];
   if (typeof value !== "string" || !token) return false;
   const supplied = Buffer.from(value);
   const expected = Buffer.from(token);

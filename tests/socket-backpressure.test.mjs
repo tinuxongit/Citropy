@@ -1,19 +1,16 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createServer } from "node:net";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { WebSocket } from "ws";
+import { freePort } from "../shared/ports.mjs";
 
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), "citropy-socket-"));
-  const reserve = createServer();
-  await new Promise(resolve => reserve.listen(0, "127.0.0.1", resolve));
-  const port = reserve.address().port;
-  await new Promise(resolve => reserve.close(resolve));
+  const port = await freePort();
   const script = `
     import { providers } from './server/providers/index.ts';
     import { store } from './server/store.ts';

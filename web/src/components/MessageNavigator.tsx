@@ -2,6 +2,7 @@ import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } 
 import { useApp } from "../lib/store.ts";
 import { clock, modelLabel } from "../lib/format.ts";
 import type { TimelineRow } from "../lib/timeline.ts";
+import { providerAccount } from "../../../shared/provider-account.ts";
 
 export const MessageNavigator = memo(function MessageNavigator({
   rows,
@@ -130,7 +131,7 @@ function MessagePreview({
     const provider = state.providers.find(
       (entry) => entry.id === thread?.provider,
     );
-    return modelLabel(provider?.models ?? [], message?.model ?? thread?.model);
+    return modelLabel(providerAccount(provider, thread?.providerInstanceId).models, message?.model ?? thread?.model);
   });
   const excerpt = useApp((state) => {
     const shell = state.messages[messageId];

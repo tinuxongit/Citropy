@@ -1,7 +1,6 @@
 import { ImportSessions } from "./ImportSessions.tsx";
-import { useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Box, FolderOpen, FolderPlus, Import, Monitor, Plus, Server, Trash2 } from "lucide-react";
+import { Box, FolderOpen, FolderPlus, Import, Plus, Server, Trash2 } from "lucide-react";
 import { ContainerEnvironment } from "./ContainerEnvironment.tsx";
 import { NewSshConnection } from "./EnvironmentSettings.tsx";
 import { selectEnvironment, useEnvironments, useWorkspaceCatalog } from "../lib/environment.ts";
@@ -13,17 +12,20 @@ import type { Project } from "../../../shared/protocol.ts";
 import { Menu, type MenuItem } from "./Menu.tsx";
 import { PixelLoader } from "./PixelLoader.tsx";
 
-export function WorkspaceSelector() {
+export type WorkspaceScope = "local" | "servers";
+export type WorkspaceDialog = "import" | "container" | "ssh";
+
+export const canConnectServers = () => Boolean(window.citropyDesktop?.connectEnvironment);
+
+const SCOPE_LABELS: Record<WorkspaceScope, string> = { local: "Add local project", servers: "Add server project" };
+
+export function WorkspaceMenu({ scope, onDialog }: { scope: WorkspaceScope; onDialog: (dialog: WorkspaceDialog) => void }) {
   const environments = useEnvironments();
   const catalog = useWorkspaceCatalog();
-  const [importing, setImporting] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [container, setContainer] = useState(false);
   const projects = useApp(state => state.projects);
   const activeProjectId = useApp(state => state.activeProjectId);
   const home = useApp(state => state.home);
   const choosing = useApp(state => state.choosingWorkspace);
-  const desktop = Boolean(window.citropyDesktop?.connectEnvironment);
   const remove = async (environment: string, entry: Project) => {
     const confirmed = await confirmAction({
       title: "Remove project?",
@@ -52,23 +54,29 @@ export function WorkspaceSelector() {
       ...(!current && !catalog[id] ? [{ id: `${id}:load`, label: "Load workspaces", icon: <Server size={17} />, onSelect: () => { void selectEnvironment(id).catch(reportError); } }] : []),
     ];
   };
-  const items: MenuItem[] = desktop ? [
-    { id: "environment:local", label: "Local", hint: "This computer", icon: <Monitor size={17} />, children: group("local") },
+  const items: MenuItem[] = scope === "local" ? [
+    ...group("local"),
+    { id: "import-sessions", label: "Import conversations…", section: "Workspace actions", icon: <Import size={17} />, onSelect: () => onDialog("import") },
+  ] : [
     ...environments.connections.map(entry => ({
       id: `environment:${entry.id}`, label: entry.name, hint: entry.target,
       icon: entry.status === "connecting" ? <PixelLoader size={17} /> : entry.kind === "container" ? <Box size={17} /> : <Server size={17} />,
       children: group(entry.id),
     })),
-    { id: "environment:container", label: "Add container…", section: "Workspace actions", icon: <Box size={17} />, onSelect: () => setContainer(true) },
-    { id: "environment:add", label: "Connect over SSH…", section: "Workspace actions", icon: <Server size={17} />, onSelect: () => setAdding(true) },
-  ] : group("local");
-  items.push({ id: "import-sessions", label: "Import conversations…", section: "Workspace actions", icon: <Import size={17} />, onSelect: () => setImporting(true) });
-  return <>
-    <Menu align="start" side="right" header="Add project" className="workspace-menu" width={340} searchable searchPlaceholder="Find a workspace" items={items}
-      trigger={({ toggle, id, open }) => <button id={id} type="button" className="new-thread project-add"
-        aria-haspopup="menu" aria-expanded={open}
-        onClick={toggle} disabled={choosing}><Plus size={16} />Add project</button>}
-    />
-    <AnimatePresence>{importing && <ImportSessions onClose={() => setImporting(false)} />}{container && <ContainerEnvironment onClose={() => setContainer(false)} />}{adding && <NewSshConnection onClose={() => setAdding(false)} />}</AnimatePresence>
-  </>;
+    { id: "environment:container", label: "Add container…", section: "Workspace actions", icon: <Box size={17} />, onSelect: () => onDialog("container") },
+    { id: "environment:add", label: "Connect over SSH…", section: "Workspace actions", icon: <Server size={17} />, onSelect: () => onDialog("ssh") },
+  ];
+  const label = SCOPE_LABELS[scope];
+  return <Menu align="start" side="right" header={label} className="workspace-menu" width={340} searchable searchPlaceholder="Find a workspace" items={items}
+    trigger={({ toggle, id, open }) => <button id={id} type="button" className="rail-section-add" aria-label={label} title={label}
+      aria-haspopup="menu" aria-expanded={open} onClick={toggle} disabled={choosing}><Plus size={14} /></button>}
+  />;
+}
+
+export function WorkspaceDialogs({ dialog, onClose }: { dialog: WorkspaceDialog | undefined; onClose: () => void }) {
+  return <AnimatePresence>
+    {dialog === "import" && <ImportSessions onClose={onClose} />}
+    {dialog === "container" && <ContainerEnvironment onClose={onClose} />}
+    {dialog === "ssh" && <NewSshConnection onClose={onClose} />}
+  </AnimatePresence>;
 }

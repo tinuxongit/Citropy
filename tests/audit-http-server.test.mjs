@@ -1,24 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { createServer, request } from 'node:http';
+import { request } from 'node:http';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { WebSocket } from 'ws';
-
-/** Reserve an ephemeral loopback port for the isolated backend child process. */
-async function freePort() {
-  const server = createServer();
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  const port = server.address().port;
-  await new Promise(resolve => server.close(resolve));
-  return port;
-}
+import { freePort } from '../shared/ports.mjs';
 
 /** Send an unnormalized request target, with a deadline and response-error handling. */
 function exchange(port, path, method = 'GET') {

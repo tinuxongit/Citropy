@@ -35,8 +35,7 @@
   flex-shrink: 0;
 }
 .github-sidebar-repo {
-  margin: var(--space-20) var(--space-6) 0;
-  padding: var(--space-20) var(--space-6) var(--space-10);
+  padding: var(--space-40) var(--rail-pad) var(--space-10);
   font-size: var(--text-xs);
   color: var(--text-3);
 }
@@ -52,12 +51,15 @@
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  padding: var(--space-12);
-  width: 100%;
-  border-radius: var(--r-sm);
+  margin-right: var(--rail-tab-gap);
+  padding: var(--space-12) var(--rail-pad);
+  border-radius: var(--rail-tab-shape);
   text-align: left;
   color: var(--text-3);
   font-size: var(--text-xs);
+}
+.github-sidebar-account > span {
+  flex: 1;
 }
 .github-sidebar-account:hover {
   background: var(--hover);
@@ -74,7 +76,6 @@
 }
 .github-sidebar-account svg {
   color: var(--text-3);
-  margin-left: auto;
 }
 .section-link:disabled {
   opacity: 0.4;
@@ -180,7 +181,7 @@
 .shell[data-backdrop] :is(.github-repositories article, .github-releases article, .github-notifications article, .github-local-workspace) {
   padding: var(--space-20) var(--space-16);
   border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--canvas) 72%, transparent);
+  background: var(--backdrop-card-bg);
 }
 .github-repository-icon {
   display: block;

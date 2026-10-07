@@ -2,6 +2,7 @@ import { flushSync } from "react-dom";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { isRemote } from "../lib/environment.ts";
+import { nextTabIndex } from "../lib/tab-strip.ts";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Globe2,
@@ -124,7 +125,7 @@ export function Inspector({ visible }: { visible: boolean }) {
       : tabs[0]?.id;
   const tabGap = scaled(4);
   const tabSpan = scaled(48) + tabGap;
-  const overflowButton = scaled(32);
+  const overflowButton = scaled(30);
   const tabLimit = tabCapacity !== null && tabs.length > tabCapacity ? overflowCapacity : tabs.length;
   const visibleTabs = tabs.slice(0, tabLimit);
   const selectedTab = tabs.find(panel => panel.id === activeId);
@@ -184,20 +185,11 @@ export function Inspector({ visible }: { visible: boolean }) {
           aria-label="Open workspace panels"
           onKeyDown={(event) => {
             if (!(event.target instanceof HTMLElement) || !event.target.closest('[role="tab"]')) return;
-            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
-              return;
-            event.preventDefault();
             const focused = event.target.closest('[role="tab"]')?.id;
             const index = tabs.findIndex((panel) => `panel-tab-${panel.id}` === focused);
-            const next =
-              event.key === "Home"
-                ? 0
-                : event.key === "End"
-                  ? tabs.length - 1
-                  : (index +
-                      (event.key === "ArrowRight" ? 1 : -1) +
-                      tabs.length) %
-                    tabs.length;
+            const next = nextTabIndex(event.key, index, tabs.length);
+            if (next === undefined) return;
+            event.preventDefault();
             const panel = tabs[next];
             if (panel) {
               focusTab.current = panel.id !== activeId;

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { isRemote, useEnvironments } from "../lib/environment.ts";
 import { send } from "../lib/socket.ts";
-import { useApp, viewportWidth } from "../lib/store.ts";
+import { useApp } from "../lib/store.ts";
 import { AppearanceSettings } from "./AppearanceSettings.tsx";
 import { ApplicationSettings } from "./ApplicationSettings.tsx";
 import { AssistanceSettings } from "./AssistanceSettings.tsx";
@@ -29,39 +29,40 @@ import { canShareLocally, LocalSharing } from "./LocalSharing.tsx";
 import { NotificationSettings } from "./NotificationSettings.tsx";
 import { ProjectSettings } from "./ProjectSettings.tsx";
 import { ProviderSettings } from "./ProviderSettings.tsx";
-import { SectionSidebar } from "./SectionSidebar.tsx";
+import { SectionLink, SectionSidebar } from "./SectionSidebar.tsx";
 import { SkillsSettings } from "./SkillsSettings.tsx";
 
 const GROUPS = ["Preferences", "Workspaces", "Agents", "Tools", "System"] as const;
 
-const sections: { name: string; group: typeof GROUPS[number]; icon: LucideIcon; available?: () => boolean }[] = [
-  { name: "General", group: "Preferences", icon: SlidersHorizontal },
-  { name: "Appearance", group: "Preferences", icon: Palette },
-  { name: "Notifications", group: "Preferences", icon: Bell },
-  { name: "Projects", group: "Workspaces", icon: FolderCog },
-  { name: "Environments", group: "Workspaces", icon: Server },
-  { name: "Providers", group: "Agents", icon: Workflow },
-  { name: "AI assistance", group: "Agents", icon: PencilLine },
-  { name: "Skills", group: "Agents", icon: BookOpen },
-  { name: "Browser", group: "Tools", icon: Globe },
-  { name: "Local sharing", group: "Tools", icon: Smartphone, available: canShareLocally },
-  { name: "Resources", group: "System", icon: Activity },
-  { name: "Application", group: "System", icon: AppWindow },
+const sections: { name: string; description: string; group: typeof GROUPS[number]; icon: LucideIcon; available?: () => boolean }[] = [
+  { name: "General", description: "Chat identity and interface sounds.", group: "Preferences", icon: SlidersHorizontal },
+  { name: "Appearance", description: "Interface size, theme, background, and how conversations look.", group: "Preferences", icon: Palette },
+  { name: "Notifications", description: "Alerts when an agent finishes, and the sound they make.", group: "Preferences", icon: Bell },
+  { name: "Projects", description: "Your project folders and their options.", group: "Workspaces", icon: FolderCog },
+  { name: "Environments", description: "This computer, and the servers and containers you connect to.", group: "Workspaces", icon: Server },
+  { name: "Providers", description: "Installed providers, accounts, and usage limits.", group: "Agents", icon: Workflow },
+  { name: "AI assistance", description: "Models for conversation titles, commit messages, and code review.", group: "Agents", icon: PencilLine },
+  { name: "Skills", description: "Skills your providers can use, and how they are shared.", group: "Agents", icon: BookOpen },
+  { name: "Browser", description: "Search engine, browser profiles, and what providers can access.", group: "Tools", icon: Globe },
+  { name: "Local sharing", description: "Use Citropy from your phone on the same Wi-Fi.", group: "Tools", icon: Smartphone, available: canShareLocally },
+  { name: "Resources", description: "Memory use, running conversations, and logs.", group: "System", icon: Activity },
+  { name: "Application", description: "Updates and restarts.", group: "System", icon: AppWindow },
 ];
 
 export function Settings({
   sidebarOpen,
-  onCloseSidebar,
+  onNavigate,
   initialSection = "General",
 }: {
   sidebarOpen: boolean;
-  onCloseSidebar: () => void;
+  onNavigate: () => void;
   initialSection?: string;
 }) {
   const { activeId: environment } = useEnvironments();
   const [section, setSection] = useState(initialSection);
   useEffect(() => setSection(initialSection), [initialSection]);
   const connected = useApp((state) => state.connected);
+  const current = sections.find((entry) => entry.name === section)!;
 
   return (
     <section className="section-view" aria-label="Settings">
@@ -71,21 +72,17 @@ export function Settings({
             if (!entries.length) return null;
             return <Fragment key={group}>
               <h2 className="section-nav-label">{group}</h2>
-              {entries.map(({ name, icon: Icon }) => (
-                <button
-                  className="section-link"
-                  data-settings-section={name.toLowerCase()}
-                  type="button"
+              {entries.map(({ name, icon }) => (
+                <SectionLink
                   key={name}
-                  aria-current={section === name ? "page" : undefined}
-                  onClick={() => {
+                  icon={icon}
+                  label={name}
+                  active={section === name}
+                  onSelect={() => {
                     setSection(name);
-                    if (viewportWidth() <= 720) onCloseSidebar();
+                    onNavigate();
                   }}
-                >
-                  <Icon size={17} />
-                  <span>{name}</span>
-                </button>
+                />
               ))}
             </Fragment>;
           })}
@@ -94,13 +91,17 @@ export function Settings({
         <div className="settings-inner">
           <Fragment key={environment}>
             <header className="settings-heading">
-              <div>
-                <h1
-                  className="settings-title"
-                  data-settings-section={section.toLowerCase()}
-                >
-                  {section}
-                </h1>
+              <div className="settings-heading-identity">
+                <span className="settings-heading-icon"><current.icon size={20} /></span>
+                <div>
+                  <h1
+                    className="settings-title"
+                    data-settings-section={section.toLowerCase()}
+                  >
+                    {section}
+                  </h1>
+                  <p>{current.description}</p>
+                </div>
               </div>
               {section === "Providers" && (
                 <button

@@ -9,6 +9,7 @@ import { loadThread, refreshGit, rememberThreadSettings } from "../lib/actions.t
 import { selectThread, useApp } from "../lib/store.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
+import { providerAccount } from "../../../shared/provider-account.ts";
 import type { WorkspaceOptions } from "../../../shared/features.ts";
 import type { ThreadMeta, WorkspaceChoice } from "../../../shared/protocol.ts";
 import { PixelLoader } from "./PixelLoader.tsx";
@@ -52,8 +53,7 @@ export function NewConversation() {
     return () => controller.abort();
   }, [project?.id]);
   if (!project || !provider) return null;
-  const instance = provider.instances?.find(entry => entry.id === providerInstanceId);
-  const models = instance?.models ?? provider.models;
+  const { instance, models } = providerAccount(provider, providerInstanceId);
   const currentModel = selectedModel(models, model) ?? selectedModel(models);
   const close = () => useApp.setState({ newThreadProvider: null });
   const create = async () => {

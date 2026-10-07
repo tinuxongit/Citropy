@@ -14,8 +14,8 @@ import {
   Tag,
   UserRound,
 } from "lucide-react";
-import { SectionSidebar } from "../SectionSidebar.tsx";
-import { useApp, selectProject, viewportWidth } from "../../lib/store.ts";
+import { SectionLink, SectionSidebar } from "../SectionSidebar.tsx";
+import { useApp, selectProject } from "../../lib/store.ts";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
 import { GitHubItems } from "./GitHubItems.tsx";
@@ -44,13 +44,13 @@ type Section = (typeof sections)[number]["name"] | "Account";
 
 export function GitHub({
   sidebarOpen,
-  onCloseSidebar,
+  onNavigate,
   onBack,
   onGit,
   status,
 }: {
   sidebarOpen: boolean;
-  onCloseSidebar: () => void;
+  onNavigate: () => void;
   onBack: () => void;
   onGit: () => void;
   status: ReturnType<typeof useGitHub<"status">>;
@@ -70,14 +70,11 @@ export function GitHub({
   const [connecting, setConnecting] = useState(false);
   const [fork, setFork] = useState(false);
   const [message, setMessage] = useState("");
-  const closeSidebarOnNarrow = () => {
-    if (viewportWidth() <= 720) onCloseSidebar();
-  };
   const chooseRepo = (name: string) => {
     setRepo(name);
     setSection("Pull requests");
     setMessage("");
-    closeSidebarOnNarrow();
+    onNavigate();
   };
   useEffect(() => {
     if (!repo && status.data?.repositories[0])
@@ -92,20 +89,18 @@ export function GitHub({
   return (
     <section className="section-view github-view" aria-label="GitHub">
       <SectionSidebar activeItem={section} open={sidebarOpen} title="GitHub">
-          {sections.map(({ name, icon: Icon, global }) => (
-            <button
-              className="section-link"
+          {sections.map(({ name, icon, global }) => (
+            <SectionLink
               key={name}
-              aria-current={section === name ? "page" : undefined}
+              icon={icon}
+              label={name}
+              active={section === name}
               disabled={!global && !repo}
-              onClick={() => {
+              onSelect={() => {
                 setSection(name);
-                closeSidebarOnNarrow();
+                onNavigate();
               }}
-            >
-              <Icon size={17} />
-              <span>{name}</span>
-            </button>
+            />
           ))}
           {repo && (
             <div className="github-sidebar-repo">
@@ -124,7 +119,7 @@ export function GitHub({
             aria-current={section === "Account" ? "page" : undefined}
             onClick={() => {
               setSection("Account");
-              closeSidebarOnNarrow();
+              onNavigate();
             }}
           >
             {status.data?.account ? (

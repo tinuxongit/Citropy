@@ -4,7 +4,7 @@ import { ColorPicker } from "../ColorPicker.tsx";
 import { Menu } from "../Menu.tsx";
 import { Range } from "../Range.tsx";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
-import { INK, type Tool } from "./marks.ts";
+import { INK, brushWidth, type Tool } from "./marks.ts";
 
 const TOOLS = [
   { tool: "select", label: "Select", key: "V", icon: MousePointer2, hint: "Click or drag a box to select, then drag to move. Ctrl+C copies, Ctrl+V pastes marks or screenshots, Delete removes." },
@@ -36,10 +36,6 @@ const SWATCHES = [
 
 const MAX_SIZE = 24;
 const MAX_PREVIEW = 22;
-
-export function brushWidth(tool: Tool, size: number): number {
-  return tool === "highlighter" || tool === "eraser" ? size * 3 : size;
-}
 
 export function DrawingTools({
   tool,

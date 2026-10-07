@@ -1,13 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { ListTodo } from "lucide-react";
 import { send } from "../../lib/socket.ts";
 import { normalizeTodos } from "../../../../shared/todos.ts";
 import type { TodoItem } from "../../../../shared/protocol.ts";
 import { useApp, type AppState } from "../../lib/store.ts";
-import { useReducedMotion } from "../../lib/use-reduced-motion.ts";
-import { useAnchoredPanel, useDismiss } from "../../lib/use-anchored-panel.ts";
 import { TodoSteps } from "../parts/TodoBoard.tsx";
+import { ComposerPopover } from "./ComposerPopover.tsx";
 import { ComposerTab } from "./ComposerTab.tsx";
 
 function useLatestPlan(threadId: string): TodoItem[] {
@@ -61,14 +60,10 @@ export function PlanTab({ threadId }: { threadId: string }) {
 }
 
 function PlanPanel({ id, threadId, trigger, steps, done, onClose }: { id: string; threadId: string; trigger: RefObject<HTMLButtonElement | null>; steps: TodoItem[]; done: number; onClose: () => void }) {
-  const reducedMotion = useReducedMotion();
   const connected = useApp((state) => state.connected);
-  const panel = useRef<HTMLElement>(null);
-  useAnchoredPanel(panel, trigger, { open: true, width: 360 });
-  useDismiss(panel, trigger, onClose, { open: true, outside: true });
-  return <motion.section ref={panel} id={id} popover="manual" role="dialog" aria-label="Plan" className="tab-panel plan-panel scroll" initial={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)" }} animate={{ opacity: 1, transform: "none" }} exit={{ opacity: 0, transform: reducedMotion ? "none" : "translateY(5px)", pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
+  return <ComposerPopover id={id} label="Plan" className="plan-panel scroll" anchor={trigger} width={360} onClose={onClose}>
     <header className="plan-panel-heading"><ListTodo size={15} aria-hidden="true" /><strong>Plan</strong><span>{done}/{steps.length}</span></header>
     <TodoSteps steps={steps} />
     <button type="button" className="btn plan-discard" disabled={!connected} title="Hide this plan and mark its open steps as cancelled" onClick={() => send({ t: "thread.discardPlan", id: threadId })}>Discard plan</button>
-  </motion.section>;
+  </ComposerPopover>;
 }

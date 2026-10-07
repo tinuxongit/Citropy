@@ -20,6 +20,8 @@ export {
   toggleSidebar,
   setSidebarGroupOpen,
   setUiScale,
+  applyChatWidth,
+  setChatWidth,
   setTextStreaming,
   setShowGitHubIdentity,
   setShowFailedTools,

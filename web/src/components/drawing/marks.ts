@@ -20,6 +20,7 @@ type Freehand = Extract<Mark, { kind: "freehand" }>;
 
 const STREAMLINE = 0.5;
 const SETTLE_TOLERANCE = 0.25;
+const WIDE_BRUSH_SCALE = 3;
 const outlines = new WeakMap<Freehand, { length: number; path: Path2D }>();
 const boxes = new WeakMap<Mark, Box>();
 
@@ -204,7 +205,6 @@ export function settleStroke(mark: Freehand): Freehand {
   const smoothed = getStrokePoints(mark.points as number[][], { size: strokeWidth(mark), streamline: STREAMLINE, last: true })
     .map(({ point: [x, y], pressure }) => ({ x, y, pressure }));
   const kept = simplify(smoothed, SETTLE_TOLERANCE, true) as typeof smoothed;
-  const tenth = (value: number) => Math.round(value * 10) / 10;
   return {
     ...mark,
     settled: true,
@@ -240,8 +240,16 @@ const HIT_SLOP = 4;
 const SELECTION_COLOR = "#0090ff";
 const SELECTION_GAP = 4;
 
+export function brushWidth(tool: Tool, size: number): number {
+  return tool === "highlighter" || tool === "eraser" ? size * WIDE_BRUSH_SCALE : size;
+}
+
+export function tenth(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
 function strokeWidth(mark: Extract<Mark, { kind: "freehand" | "shape" }>): number {
-  return mark.kind === "freehand" && mark.tool !== "pen" ? mark.size * 3 : mark.size;
+  return brushWidth(mark.tool, mark.size);
 }
 
 function arrowHead(size: number): number {
@@ -335,7 +343,7 @@ export function contains(outer: Box, inner: Box): boolean {
 }
 
 export function moveMark(mark: Mark, dx: number, dy: number): Mark {
-  const shift = ([x, y, ...pressure]: Point): Point => [Math.round((x + dx) * 10) / 10, Math.round((y + dy) * 10) / 10, ...pressure];
+  const shift = ([x, y, ...pressure]: Point): Point => [tenth(x + dx), tenth(y + dy), ...pressure];
   if (mark.kind === "freehand") return { ...mark, points: mark.points.map(shift) };
   if (mark.kind === "shape") return { ...mark, from: shift(mark.from), to: shift(mark.to) };
   return { ...mark, at: shift(mark.at) };

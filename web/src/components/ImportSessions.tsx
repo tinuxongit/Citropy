@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Import, RefreshCw } from "lucide-react";
-import type { ImportableSession, ImportProvider } from "../../../shared/session-import.ts";
+import { IMPORT_LIST_LIMIT, type ImportableSession, type ImportProvider } from "../../../shared/session-import.ts";
 import { api } from "../lib/api.ts";
 import { environmentName } from "../lib/environment.ts";
 import { selectProject, selectThread, useApp } from "../lib/store.ts";
@@ -52,7 +52,7 @@ export function ImportSessions({ onClose }: { onClose: () => void }) {
       <input aria-label="Find a conversation" placeholder="Find a conversation" value={query} onChange={event => setQuery(event.target.value)} />
       <button type="button" className="icon-btn" aria-label="Refresh" disabled={loading || Boolean(busy)} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={16} /></button>
     </div>
-    <p className="settings-note">Choose from the 200 most recent conversations on this machine.</p>
+    <p className="settings-note">{`Choose from the ${IMPORT_LIST_LIMIT} most recent conversations on this machine.`}</p>
     <p className="settings-note">Import messages and tool history, then continue in the original workspace. Attachments are not copied.</p>
     <ActionError className="dialog-error" message={error} onDismiss={() => setError("")} />
     {loading ? <p role="status"><PixelLoader size={16} /> Loading sessions…</p> : <div className="session-import-list">

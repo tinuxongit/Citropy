@@ -19,7 +19,7 @@ export type ThreadStatus =
   | "error"
   | "stopped";
 
-type ToolStatus = "running" | "ok" | "error" | "denied";
+type ToolStatus = "running" | "ok" | "error" | "denied" | "stopped";
 
 export type ToolShape =
   | "command"
@@ -520,6 +520,7 @@ export type ClientEvent = (
   | { t: "project.close"; id: string }
   | { t: "project.scripts"; id: string; scripts: ProjectScript[] }
   | { t: "project.runScript"; projectId: string; threadId?: string; scriptId: string }
+  | { t: "project.runCommand"; projectId: string; threadId?: string; command: string }
   | {
       t: "thread.create";
       projectId: string;

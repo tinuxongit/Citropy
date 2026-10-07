@@ -7,6 +7,7 @@ import { onTerminal, send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
 import { environmentSignal } from "../lib/environment.ts";
 import type { PanelTab } from "../../../shared/workbench.ts";
+import { exitNotice } from "../../../shared/terminal.ts";
 
 const DARK = {
   background: "#191919",
@@ -277,7 +278,7 @@ export function TerminalPane({
       else {
         if (event.sessionId && Number.isSafeInteger(event.offset)) {
           const previous = cursor.current;
-          const ending = `\r\n[process exited with code ${event.code}]\r\n`;
+          const ending = exitNotice(event.code);
           if (!previous || previous.sessionId !== event.sessionId || previous.offset !== event.offset! - ending.length) return;
           cursor.current = { sessionId: event.sessionId, offset: event.offset! };
         } else cursor.current = undefined;

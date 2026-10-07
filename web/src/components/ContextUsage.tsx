@@ -5,6 +5,7 @@ import { ChevronDown, ListTree, Minimize2 } from "lucide-react";
 import { cost, decimal, tokenRate, tokens } from "../lib/format.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
+import { providerAccount } from "../../../shared/provider-account.ts";
 import { estimateTokensFromChars, newInputTokens, reportedContext, uncachedInput } from "../../../shared/usage-metrics.ts";
 import { ContextInspector } from "./ContextInspector.tsx";
 
@@ -41,7 +42,7 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
     cacheWrite: sum.cacheWrite + session.usage.cacheWrite,
     costUsd: sum.costUsd + session.usage.costUsd,
   }), { input: 0, newInput: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0 });
-  const model = selectedModel(provider?.models ?? [], thread?.model);
+  const model = selectedModel(providerAccount(provider, thread?.providerInstanceId).models, thread?.model);
   const contextMax = (usage?.contextMax || thread?.contextWindow || model?.contextMax) ?? 0;
   const reported = Boolean(usage && reportedContext(usage.contextTokens, contextMax));
   const hasTotals = Boolean(totals.input || totals.output || totals.cacheRead || totals.cacheWrite || totals.costUsd);

@@ -1,6 +1,37 @@
 import { gt, valid } from "semver";
 import { logFailure } from "../shared/expected-errors.mjs";
 
+const STARTUP_CHECK_DELAY_MS = 5000;
+const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+const MESSAGES = {
+  recoveryFailed:
+    "The update was not applied. Close and reopen Citropy to restart its server.",
+  verification:
+    "The download failed verification. Download a fresh copy to try again.",
+  noRelease:
+    "No release is accessible. Check published Citropy releases and, for private repositories, your GitHub sign-in.",
+  failed: {
+    install:
+      "The update could not be applied. Citropy has kept the current version.",
+    download:
+      "The download could not finish. Check your connection and try again.",
+    check: "Could not check for updates. Check your connection and try again.",
+  },
+  downloaded:
+    "The update is downloaded and verified. Restart Citropy to apply it.",
+};
+
+const errorMessage = (error, action) => {
+  const code = String(error?.code || "");
+  const detail = String(error?.message || "");
+  if (code.includes("SHA512") || detail.includes("checksum"))
+    return MESSAGES.verification;
+  if (/404|403|401|token|release|not found/i.test(`${code} ${detail}`))
+    return MESSAGES.noRelease;
+  if (action === "install" && error?.userMessage) return error.userMessage;
+  return MESSAGES.failed[action];
+};
+
 export function createAppUpdater({
   updater,
   version,
@@ -35,26 +66,13 @@ export function createAppUpdater({
         await recovering;
       } catch (recoveryError) {
         logFailure("Recovering from the update")(recoveryError);
-        publish({ status: "error", retry: "install", message: "The update was not applied. Close and reopen Citropy to restart its server." });
+        publish({ status: "error", retry: "install", message: MESSAGES.recoveryFailed });
         recovering = undefined;
         return;
       }
       recovering = undefined;
     }
-    const code = String(error?.code || "");
-    const detail = String(error?.message || "");
-    const message =
-      code.includes("SHA512") || detail.includes("checksum")
-        ? "The download failed verification. Download a fresh copy to try again."
-        : /404|403|401|token|release|not found/i.test(`${code} ${detail}`)
-          ? "No release is accessible. Check published Citropy releases and, for private repositories, your GitHub sign-in."
-          : action === "install"
-            ? error?.userMessage ||
-              "The update could not be applied. Citropy has kept the current version."
-            : action === "download"
-              ? "The download could not finish. Check your connection and try again."
-              : "Could not check for updates. Check your connection and try again.";
-    publish({ status: "error", retry: action, message });
+    publish({ status: "error", retry: action, message: errorMessage(error, action) });
   };
   const loadNotes = (target) => {
     if (!releaseNotes || !target || state.notes?.version === target) return;
@@ -64,6 +82,25 @@ export function createAppUpdater({
       },
       (error) => publish({ notesError: String(error?.message || error) }),
     );
+  };
+  const publishAvailability = (latest) => {
+    if (!valid(latest) || !gt(latest, version)) {
+      publish({
+        status: "current",
+        version: undefined,
+        checkedAt: Date.now(),
+        message: undefined,
+      });
+      return;
+    }
+    publish({
+      status: "available",
+      version: latest,
+      checkedAt: Date.now(),
+      percent: undefined,
+      message: undefined,
+    });
+    loadNotes(latest);
   };
   const listen = (name, handler) => {
     updater.on(name, handler);
@@ -76,33 +113,8 @@ export function createAppUpdater({
     updater.allowPrerelease = false;
     updater.disableWebInstaller = true;
     updater.logger = null;
-    listen("update-available", (info) => {
-      if (!valid(info.version) || !gt(info.version, version)) {
-        publish({
-          status: "current",
-          version: undefined,
-          checkedAt: Date.now(),
-          message: undefined,
-        });
-        return;
-      }
-      publish({
-        status: "available",
-        version: info.version,
-        checkedAt: Date.now(),
-        percent: undefined,
-        message: undefined,
-      });
-      loadNotes(info.version);
-    });
-    listen("update-not-available", () =>
-      publish({
-        status: "current",
-        version: undefined,
-        checkedAt: Date.now(),
-        message: undefined,
-      }),
-    );
+    listen("update-available", (info) => publishAvailability(info.version));
+    listen("update-not-available", () => publishAvailability());
     listen("download-progress", (progress) => {
       if (state.status !== "downloading") return;
       publish({
@@ -166,24 +178,7 @@ export function createAppUpdater({
     void (async () => {
       try {
         if (action === "check" && external) {
-          const next = await external.check();
-          if (!valid(next) || !gt(next, version)) {
-            publish({
-              status: "current",
-              version: undefined,
-              checkedAt: Date.now(),
-              message: undefined,
-            });
-          } else {
-            publish({
-              status: "available",
-              version: next,
-              checkedAt: Date.now(),
-              percent: undefined,
-              message: undefined,
-            });
-            loadNotes(next);
-          }
+          publishAvailability(await external.check());
         } else if (action === "check") {
           const result = await updater.checkForUpdates();
           if (!result) throw new Error("No release feed is available");
@@ -192,7 +187,7 @@ export function createAppUpdater({
           publish({
             status: "ready",
             percent: 100,
-            message: "The update is downloaded and verified. Restart Citropy to apply it.",
+            message: MESSAGES.downloaded,
           });
         } else if (action === "download") {
           await updater.downloadUpdate();
@@ -217,7 +212,7 @@ export function createAppUpdater({
   };
   const startup = unavailable
     ? undefined
-    : setTimeout(() => void command("check"), 5000);
+    : setTimeout(() => void command("check"), STARTUP_CHECK_DELAY_MS);
   const interval = unavailable
     ? undefined
     : setInterval(
@@ -225,7 +220,7 @@ export function createAppUpdater({
           if (["idle", "current", "available"].includes(state.status))
             void command("check");
         },
-        4 * 60 * 60 * 1000,
+        RECHECK_INTERVAL_MS,
       );
   loadNotes(version);
   startup?.unref();

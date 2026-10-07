@@ -212,9 +212,7 @@ export class Store {
           }
         }
       } catch (error) {
-        process.stderr.write(
-          `Could not load provider settings: ${String(error)}\n`,
-        );
+        throw new Error(`Could not read ${settingsFile}. Fix or delete that file, then start Citropy again.`, { cause: error });
       }
     }
     if (existsSync(notificationsFile)) {

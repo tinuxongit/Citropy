@@ -70,6 +70,22 @@ export async function workspaceOptions(
   return { worktrees, branches, hasCommits };
 }
 
+export function managedWorktreeRoot(projectId: string): string {
+  return join(dataRoot, "worktrees", projectId);
+}
+
+export function newWorktreeBranch(): string {
+  return `citropy/${uid("work")}`;
+}
+
+export async function createManagedWorktree(project: Project, branch: string, base: string): Promise<string> {
+  const root = managedWorktreeRoot(project.id);
+  await mkdir(root, { recursive: true });
+  const path = join(root, uid("checkout"));
+  await git(project.path, ["worktree", "add", "-b", branch, path, base]);
+  return path;
+}
+
 export async function chooseThreadWorkspace(
   project: Project,
   choice?: WorkspaceChoice,
@@ -101,7 +117,7 @@ export async function chooseThreadWorkspace(
     throw new Error(
       "Create the repository's first commit before creating a worktree.",
     );
-  const branch = options.branch?.trim() || `citropy/${uid("work")}`;
+  const branch = options.branch?.trim() || newWorktreeBranch();
   await git(project.path, ["check-ref-format", "--branch", branch]);
   if (branch.startsWith("-")) throw new Error("Invalid branch name");
   const base = options.base || "HEAD";
@@ -109,9 +125,6 @@ export async function chooseThreadWorkspace(
     throw new Error(
       "Choose a branch from this repository as the starting point.",
     );
-  const parent = join(dataRoot, "worktrees", project.id);
-  await mkdir(parent, { recursive: true });
-  const path = join(parent, uid("checkout"));
-  await git(project.path, ["worktree", "add", "-b", branch, path, base]);
+  const path = await createManagedWorktree(project, branch, base);
   return { workspacePath: path, workspaceBranch: branch };
 }

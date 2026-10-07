@@ -40,6 +40,7 @@ import { logFile, setLogging, writeLog } from "./logs.ts";
 import { startUsageResume } from "./usage-resume.ts";
 import * as terminals from "./terminals.ts";
 import type { ClientEvent, ServerEvent, Snapshot } from "../shared/protocol.ts";
+import { REMOTE_PROTOCOL } from "../shared/remote-connection.mjs";
 
 if (process.versions.electron) delete process.env.ELECTRON_RUN_AS_NODE;
 
@@ -138,7 +139,7 @@ const server = createServer(requestHandler(async (req, res) => {
       JSON.stringify({
         ok: true,
         app: "citropy",
-        ...(remoteId ? { environmentId: remoteId, build: process.env.CITROPY_REMOTE_BUILD, protocol: 1 } : {}),
+        ...(remoteId ? { environmentId: remoteId, build: process.env.CITROPY_REMOTE_BUILD, protocol: REMOTE_PROTOCOL } : {}),
         development: dev,
         providers: providerInfo(),
       }),

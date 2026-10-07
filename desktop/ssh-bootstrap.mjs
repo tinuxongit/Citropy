@@ -1,12 +1,15 @@
 import { fork } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile, rename, rm, open, stat } from "node:fs/promises";
-import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { pruneRemoteBuilds } from "./remote-builds.mjs";
 import { ifMissing, logFailure } from "../shared/expected-errors.mjs";
+import { freePort } from "../shared/ports.mjs";
 import { processExists } from "../shared/process-exists.mjs";
+import { readRemoteHealth, REMOTE_TOKEN_HEADER } from "../shared/remote-connection.mjs";
+
+const SAVED_SERVER_HEALTH_TIMEOUT_MS = 2000;
 
 const [id, build] = process.argv.slice(2);
 if (!/^[a-f0-9-]{36}$/.test(id || "") || !/^[a-f0-9]{64}$/.test(build || "")) throw new Error("Invalid remote environment.");
@@ -32,9 +35,9 @@ try {
   const previous = await readFile(statePath, "utf8").then(JSON.parse).catch(error => { if (error.code === "ENOENT") return null; throw new Error("The saved remote server state could not be read. Repair server.json before reconnecting."); });
   if (previous) {
     const url = `http://127.0.0.1:${previous.port}`;
-    const headers = { "x-citropy-remote-token": previous.token };
-    const health = await fetch(`${url}/api/health`, { headers, signal: AbortSignal.timeout(2000) }).then(response => response.ok ? response.json() : null).catch(() => null);
-    if (health?.environmentId === id && health.protocol === 1) {
+    const headers = { [REMOTE_TOKEN_HEADER]: previous.token };
+    const health = await readRemoteHealth({ port: previous.port, token: previous.token, environmentId: id, timeout: SAVED_SERVER_HEALTH_TIMEOUT_MS });
+    if (health) {
       if (health.build === build) {
         process.stdout.write(`CITROPY_READY ${JSON.stringify(previous)}\n`);
         reused = true;
@@ -55,14 +58,7 @@ try {
     }
   }
   if (!reused) {
-    const port = await new Promise((resolve, reject) => {
-      const probe = createServer();
-      probe.once("error", reject);
-      probe.listen(0, "127.0.0.1", () => {
-        const port = probe.address().port;
-        probe.close(() => resolve(port));
-      });
-    });
+    const port = await freePort();
     const token = randomBytes(32).toString("hex");
     const appRoot = join(root, "builds", build);
     const log = await open(join(root, "server.log"), "a", 0o600);

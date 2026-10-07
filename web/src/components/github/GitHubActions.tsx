@@ -1,6 +1,6 @@
 import { AnimatePresence } from "motion/react";
 import { ResizeHandle } from "../ResizeHandle.tsx";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, Play, RefreshCw, Terminal } from "lucide-react";
 import { useGitHub } from "../../lib/use-github.ts";
 import { Select } from "../Select.tsx";
@@ -19,6 +19,9 @@ import type {
   GitHubMutation,
 } from "../../../../shared/github.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
+import { useVisibleInterval } from "../../lib/use-visible-interval.ts";
+
+const SETTINGS = { refreshMs: 20_000 };
 
 export function GitHubActions({
   repository,
@@ -48,22 +51,7 @@ export function GitHubActions({
     if (selected) detail.refresh();
   };
   const active = detail.data?.run.status !== "completed";
-  useEffect(() => {
-    if (!list.data?.items.some((run) => run.status !== "completed")) return;
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const resume = () => {
-      clearInterval(timer);
-      if (document.hidden) return;
-      refresh();
-      timer = setInterval(refresh, 20_000);
-    };
-    if (!document.hidden) timer = setInterval(refresh, 20_000);
-    document.addEventListener("visibilitychange", resume);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", resume);
-    };
-  }, [list.data, selected]);
+  useVisibleInterval(refresh, SETTINGS.refreshMs, Boolean(list.data?.items.some((run) => run.status !== "completed")));
   return (
     <div className="github-workspace">
       <div className="github-toolbar">
