@@ -187,7 +187,6 @@ class ThreadRuntime {
         transfers: [...(thread.transfers ?? []), previous],
         transferContext: context,
         rebuildContext: false,
-        contextSources: [],
         canRedo: false,
         compactedAt: undefined,
         error: undefined,
@@ -329,7 +328,6 @@ class ThreadRuntime {
       contextSources,
     };
     store.addMessage(this.#thread.id, message);
-    store.patchThread(this.id, { contextSources });
     store.raiseThread(this.id);
     if (!this.#thread.title || this.#thread.title === "New thread") {
       const title = (text.trim().split("\n")[0] || attachments.map((file) => file.label).join(", ")).slice(0, 64);

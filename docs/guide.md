@@ -78,7 +78,7 @@ Continue in new worktree copies tracked and untracked changes into a new branch 
 
 ## Context
 
-Type `@` to select files, folders, or skills. File references use `@[src/file.ts]`; append `#L10-L20` for a line range. Folder references add a bounded file listing. Context usage > Inspect context sources shows selected excerpts, character counts, and discovered instruction locations. The provider controls its own additional context and instruction loading; character counts are not exact token counts.
+Type `@` to select files, folders, or skills. File references use `@[src/file.ts]`; append `#L10-L20` for a line range. Folder references add a bounded file listing.
 
 ## Workspace panel
 

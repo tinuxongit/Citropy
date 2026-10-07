@@ -1,13 +1,12 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { ChevronDown, ListTree, Minimize2 } from "lucide-react";
+import { ChevronDown, Minimize2 } from "lucide-react";
 import { cost, decimal, tokenRate, tokens } from "../lib/format.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { estimateTokensFromChars, newInputTokens, reportedContext, uncachedInput } from "../../../shared/usage-metrics.ts";
-import { ContextInspector } from "./ContextInspector.tsx";
 
 const PANEL_WIDTH = 304;
 
@@ -24,7 +23,6 @@ function exactTokens(value: number): string {
 export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }: { onCompact?: () => void; draft?: string }) {
   const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
-  const [inspecting, setInspecting] = useState(false);
   const id = useId();
   const ring = useRef<HTMLButtonElement>(null);
   const details = useRef<HTMLDivElement>(null);
@@ -287,19 +285,15 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
             </div>
           ) : null}
           {!connected && <div className="context-connection" role="status">Reconnecting…</div>}
-          <div className="context-actions">
-            {!thread?.compacting && thread?.externalId && canCompact && onCompact && (
+          {!thread?.compacting && thread?.externalId && canCompact && onCompact && (
+            <div className="context-actions">
               <button className="btn" type="button" disabled={thread.running || !connected} onClick={onCompact}>
                 <Minimize2 size={15} aria-hidden="true" />Compact context
               </button>
-            )}
-            <button type="button" className="btn" data-variant="ghost" onClick={() => setInspecting(true)}>
-              <ListTree size={15} aria-hidden="true" />Inspect context sources
-            </button>
-          </div>
+            </div>
+          )}
         </motion.div>
       )}</AnimatePresence>
-      <AnimatePresence>{inspecting && thread && <ContextInspector thread={thread} draft={draft} onClose={() => setInspecting(false)} />}</AnimatePresence>
     </div>
   );
 });

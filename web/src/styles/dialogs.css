@@ -1,4 +1,3 @@
-.context-source-path { overflow-wrap: anywhere; font-size: var(--text-sm); }
 .citropy-dialog.remote-folder-dialog { width: min(560px, calc(var(--viewport-width) - 32px)); }
 .remote-folder-path { flex-wrap: nowrap; }
 .remote-folder-path > input { font-family: var(--font-mono); font-size: var(--text-xs); }

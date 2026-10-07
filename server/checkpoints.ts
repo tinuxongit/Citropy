@@ -271,7 +271,7 @@ export async function restoreCheckpoint(thread: Thread, messageId: string, mode:
     if (mode !== "conversation") await restoreFiles(cwd, checkpoint!.before!, latest!.after!, saveBackup);
     else await saveBackup();
     if (mode !== "files") store.replaceMessages(thread.id, thread.messages.slice(0, index));
-    store.patchThread(thread.id, { canRedo: true, ...(mode !== "files" ? { externalId: undefined, transferContext: undefined, usage: emptyUsage(), contextSources: [], rebuildContext: true, status: "idle", error: undefined, queue: [], checkpoints: thread.checkpoints?.filter(entry => entry.createdAt < (checkpoint?.createdAt ?? 0)) } : {}) });
+    store.patchThread(thread.id, { canRedo: true, ...(mode !== "files" ? { externalId: undefined, transferContext: undefined, usage: emptyUsage(), rebuildContext: true, status: "idle", error: undefined, queue: [], checkpoints: thread.checkpoints?.filter(entry => entry.createdAt < (checkpoint?.createdAt ?? 0)) } : {}) });
   });
 }
 

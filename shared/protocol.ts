@@ -254,7 +254,6 @@ export interface ThreadMeta {
   pendingConfig?: Pick<ThreadMeta, "model" | "effort" | "contextWindow" | "fastMode" | "permissionMode">;
   transferContext?: string;
   transfers?: Array<{ provider: ProviderId; providerInstanceId?: string; model?: string; externalId?: string; usage: Usage; at: number }>;
-  contextSources?: import("./context.ts").ContextSource[];
   checkpoints?: import("./review.ts").TurnCheckpoint[];
   branchedFrom?: { threadId: string; messageId: string };
   rebuildContext?: boolean;

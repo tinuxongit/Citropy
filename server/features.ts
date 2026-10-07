@@ -18,7 +18,7 @@ import { reloadProviderSessions, providerBusy, runtimeFor, disposeRuntime, liveA
 import { assertWorkspaceIdle, restoreCheckpoint, redoCheckpoint, forkConversation, reviewChanges, reviewSummary, reviewFile } from "./checkpoints.ts";
 import type { ReviewScope } from "../shared/review.ts";
 import { changeHunk, reviewWithModel } from "./review.ts";
-import { findContextPaths, findWorkspacePaths, inspectContext } from "./context.ts";
+import { findContextPaths, findWorkspacePaths } from "./context.ts";
 import { copyToWorktree, removeWorktree } from "./worktree-actions.ts";
 import { providerMaintenance, startProviderUpdate, startProviderUpdates, assertProviderReady } from "./providers/maintenance.ts";
 import { readGlobalInstructions, saveGlobalInstructions } from "./providers/instructions.ts";
@@ -213,11 +213,10 @@ export async function handleFeatures(
       else if (input.action === "remove") await removeWorktree(thread);
       else throw new Error("Choose a worktree action.");
       respond(store.meta(thread));
-    } else if (url.pathname === "/api/threads/context" && ["GET", "POST"].includes(req.method || "")) {
+    } else if (url.pathname === "/api/threads/context" && req.method === "GET") {
       const thread = store.threads.get(threadId ?? "");
       if (!thread) throw new Error("Conversation not found.");
-      if (req.method === "GET") respond(await findContextPaths(thread, url.searchParams.get("query") || ""));
-      else respond(await inspectContext(thread, String((await body(req)).draft || "")));
+      respond(await findContextPaths(thread, url.searchParams.get("query") || ""));
     } else if (url.pathname === "/api/threads/hunk" && req.method === "POST") {
       const thread = store.threads.get(threadId ?? "");
       if (!thread) throw new Error("Conversation not found.");
