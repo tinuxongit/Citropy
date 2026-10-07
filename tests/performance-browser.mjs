@@ -96,6 +96,7 @@ try {
   console.log(JSON.stringify({ scenario: "idle chat feature loading", secondary: secondary.map(url => new URL(url).pathname.split("/").at(-1)), javascriptBytes: idle.javascriptResponses.reduce((total, entry) => total + entry.bytes, 0), javascriptRequests: idle.javascriptResponses.length, ...await idle.metrics() }));
   assert.deepEqual(secondary, [], "unused screens must remain deferred after startup");
   assert.equal(idle.requests.some(url => /\/(DrawingPane|NotesPane)-[^/]+\.js$/.test(url)), false);
+  await idle.page.locator(".account-menu-button").click();
   await idle.page.getByRole("button", { name: "Settings", exact: true }).click();
   await idle.page.getByRole("heading", { name: "General", exact: true }).waitFor();
   assert.equal(idle.requests.some(url => /\/Settings-[^/]+\.js$/.test(url)), true);

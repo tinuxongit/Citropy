@@ -1,8 +1,8 @@
 import { connect as connectSocket, type Socket } from "node:net";
 import { spawn } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile, rm, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, mkdtemp, readFile, writeFile, rm, stat } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dataRoot } from "./paths.ts";
@@ -21,12 +21,14 @@ const START_ATTEMPTS = 80;
 const START_RETRY_MS = 100;
 const MAX_INBOUND_BYTES = 32 * 1024 * 1024;
 const MAX_QUEUED_BYTES = 1024 * 1024;
+const MAX_UNIX_SOCKET_PATH_BYTES = 100;
 const STALE_LOCK_MS = 10_000;
 
 const key = createHash("sha256").update(dataRoot).digest("hex").slice(0, 24);
 const directory = join(tmpdir(), `citropy-terminals-${process.getuid?.() ?? "user"}-${key}`);
-const address = process.platform === "win32" ? `\\\\.\\pipe\\citropy-terminals-${key}` : join(directory, "service.sock");
-const SERVICE_DOWN = ["ENOENT", "ECONNREFUSED"];
+const legacyAddress = process.platform === "win32" ? `\\\\.\\pipe\\citropy-terminals-${key}` : join(directory, "service.sock");
+const addressFile = join(directory, "address");
+const SERVICE_DOWN = ["ENOENT", "ECONNREFUSED", "ENAMETOOLONG"];
 const sessions = new Map<string, TerminalSession>();
 const blocked = new Map<string, Set<string>>();
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
@@ -91,7 +93,24 @@ async function startService(): Promise<void> {
     await rm(join(directory, "lock"), { recursive: true, force: true });
     return startService();
   }
-  if (process.platform !== "win32") await rm(address, { force: true });
+  let address = legacyAddress;
+  if (process.platform !== "win32") {
+    const savedAddress = await readSocketAddress();
+    if (savedAddress) address = savedAddress;
+    else {
+      let socketDirectory = await mkdtemp(join(tmpdir(), "ct-"));
+      address = join(socketDirectory, "service.sock");
+      if (Buffer.byteLength(address) >= MAX_UNIX_SOCKET_PATH_BYTES) {
+        await rm(socketDirectory, { recursive: true, force: true });
+        socketDirectory = await mkdtemp(join("/tmp", "ct-"));
+        address = join(socketDirectory, "service.sock");
+      }
+      if (Buffer.byteLength(address) >= MAX_UNIX_SOCKET_PATH_BYTES) throw new Error("The terminal service socket path is too long.");
+      await writeFile(addressFile, address, { mode: 0o600 });
+    }
+    await mkdir(dirname(address), { recursive: true, mode: 0o700 });
+    await rm(address, { force: true });
+  }
   const child = spawn(process.execPath, ["--experimental-strip-types", "--optimize-for-size", fileURLToPath(new URL("./terminal-daemon.ts", import.meta.url)), address, directory], {
     detached: true, stdio: "ignore", env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
   });
@@ -112,7 +131,28 @@ function request<T>(message: TerminalRequest): Promise<T> {
   });
 }
 
-function dial(): Promise<void> {
+async function readSocketAddress(): Promise<string | undefined> {
+  if (process.platform === "win32") return undefined;
+  const address = (await readFile(addressFile, "utf8").catch(ifMissing(""))).trim();
+  if (!isAbsolute(address) || basename(address) !== "service.sock" || !basename(dirname(address)).startsWith("ct-")) return undefined;
+  return address;
+}
+
+async function dial(): Promise<void> {
+  const savedAddress = await readSocketAddress();
+  const addresses = [...new Set([savedAddress, legacyAddress].filter((value): value is string => !!value))];
+  let lastError: unknown;
+  for (const address of addresses) {
+    try { await dialAddress(address); return; }
+    catch (error) {
+      if (!hasCode(error, ...SERVICE_DOWN)) throw error;
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error("The terminal service address is unavailable.");
+}
+
+function dialAddress(address: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const socket = connectSocket(address);
     const timer = setTimeout(() => socket.destroy(new Error("Terminal service connection timed out.")), CONNECT_TIMEOUT_MS);
