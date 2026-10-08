@@ -3,7 +3,7 @@ import { ArrowDownToLine, ArrowUpFromLine, CircleAlert, CircleCheck, CircleDot, 
 import { DetailRow, DetailSplitRow } from "./DetailRow.tsx";
 import type { GitActions } from "./use-git-actions.ts";
 import type { MenuItem } from "../Menu.tsx";
-import { PixelLoader } from "../PixelLoader.tsx";
+import { Loader } from "../Loader.tsx";
 import { LineCounts } from "../LineCounts.tsx";
 import { manageGit, openWorkbenchPanel } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
@@ -83,7 +83,7 @@ function GitActionRow({ git, onReview, onSourceControl }: { git: GitActions; onR
   const Icon = failed ? CircleAlert : quick.icon;
   return <div className="details-git-action" data-error={failed || undefined}>
     <DetailSplitRow
-      icon={busy ? <PixelLoader size={14} /> : <Icon size={16} />}
+      icon={busy ? <Loader size={14} /> : <Icon size={16} />}
       label={busy ? git.activity : quick.label}
       hint={busy ? undefined : quick.hint}
       disabled={blocked || !status}

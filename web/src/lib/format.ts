@@ -142,16 +142,41 @@ export function duration(ms: number): string {
   return `${minutes}m ${rest}s`;
 }
 
-export function ago(ts: number, now = Date.now()): string {
+const ELAPSED_UNITS = [
+  { suffix: "m", ms: 60_000, below: 60 },
+  { suffix: "h", ms: 3_600_000, below: 24 },
+  { suffix: "d", ms: 86_400_000, below: 7 },
+  { suffix: "w", ms: 604_800_000, below: 5 },
+  { suffix: "mo", ms: 2_629_800_000, below: 12 },
+  { suffix: "y", ms: 31_557_600_000, below: Infinity },
+];
+
+function elapsed(ts: number, now: number): string | undefined {
   const delta = Math.max(now - ts, 0);
-  if (delta < 45_000) return "just now";
-  const minutes = Math.round(delta / 60_000);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(delta / 3_600_000);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(delta / 86_400_000);
-  if (days < 7) return `${days}d ago`;
-  return formatDate(ts, { month: "short", day: "numeric" });
+  if (delta < 45_000) return undefined;
+  const unit = ELAPSED_UNITS.find(({ ms, below }) => Math.round(delta / ms) < below)!;
+  return `${Math.round(delta / unit.ms)}${unit.suffix}`;
+}
+
+export function ago(ts: number, now = Date.now()): string {
+  const span = elapsed(ts, now);
+  return span ? `${span} ago` : "just now";
+}
+
+export function since(ts: number, now = Date.now()): string {
+  return elapsed(ts, now) ?? "now";
+}
+
+const relativeDays = new Intl.RelativeTimeFormat(LOCALE, { numeric: "auto" });
+
+export function day(ts: number, now = Date.now()): string {
+  const midnight = (time: number) => new Date(time).setHours(0, 0, 0, 0);
+  const offset = Math.round((midnight(ts) - midnight(now)) / 86_400_000);
+  if (offset >= -1) {
+    const label = relativeDays.format(offset, "day");
+    return label[0]!.toUpperCase() + label.slice(1);
+  }
+  return formatDate(ts, { weekday: "long", month: "short", day: "numeric" });
 }
 
 export function until(ts: number, now = Date.now()): string {

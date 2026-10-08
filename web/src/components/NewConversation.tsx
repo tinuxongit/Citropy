@@ -12,7 +12,7 @@ import { resolveProjectSettings } from "../../../shared/project-settings.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import type { WorkspaceOptions } from "../../../shared/features.ts";
 import type { ThreadMeta, WorkspaceChoice } from "../../../shared/protocol.ts";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
 import { ActionError } from "./ActionError.tsx";
 
 export function NewConversation() {
@@ -121,7 +121,7 @@ export function NewConversation() {
               (kind === "new" && !options.hasCommits)
             }
           >
-            {busy && <PixelLoader size={15} />}Create conversation
+            {busy && <Loader size={15} />}Create conversation
           </button>
         </>
       }

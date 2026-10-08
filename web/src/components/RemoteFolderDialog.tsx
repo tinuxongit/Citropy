@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { ArrowUp, Folder, FolderOpen, LoaderCircle, Server } from "lucide-react";
+import { ArrowUp, FolderOpen } from "lucide-react";
+import { Loader } from "./Loader.tsx";
+import { FolderIcon } from "./FolderIcon.tsx";
+import { ServerIcon } from "./ServerIcon.tsx";
 import { Modal } from "./Modal.tsx";
 import { VirtualList } from "./VirtualList.tsx";
 import { finishRemoteFolder, useRemoteFolderRequest, type RemoteFolderRequest as Request } from "../lib/remote-folder.ts";
@@ -46,7 +49,7 @@ function RemoteFolderBrowser({ request }: { request: Request }) {
   return (
     <Modal
       title={`Choose a folder on ${request.host}`}
-      icon={<Server size={20} />}
+      icon={<ServerIcon size={20} />}
       className="remote-folder-dialog"
       initialFocus=".remote-folder-path input"
       onClose={() => finish(null)}
@@ -66,10 +69,10 @@ function RemoteFolderBrowser({ request }: { request: Request }) {
         <label><input type="checkbox" checked={hidden} onChange={(event) => setHidden(event.target.checked)} />Hidden</label>
       </div>
       <div className="remote-folder-list scroll" role="list" aria-busy={loading} aria-label="Folders">
-        {loading && !listing ? <div className="remote-folder-empty"><LoaderCircle size={18} className="spin" />Loading…</div>
+        {loading && !listing ? <div className="remote-folder-empty"><Loader size={18} />Loading…</div>
           : folders.length === 0 ? <div className="remote-folder-empty">No folders here</div>
             : <VirtualList key={listing?.path} items={folders} itemKey="name" estimateSize={32}>
-              {(folder) => <button type="button" role="listitem" className="remote-folder-row" data-hidden={folder.hidden || undefined} disabled={loading} onClick={() => void open(join(folder.name))}><Folder size={16} /><span className="truncate">{folder.name}</span></button>}
+              {(folder) => <button type="button" role="listitem" className="remote-folder-row" data-hidden={folder.hidden || undefined} disabled={loading} onClick={() => void open(join(folder.name))}><FolderIcon size={16} /><span className="truncate">{folder.name}</span></button>}
             </VirtualList>}
       </div>
       <ActionError className="dialog-error" message={error} onDismiss={() => setError("")} />

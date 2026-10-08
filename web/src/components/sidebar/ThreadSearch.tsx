@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { MOD } from "../../lib/modifier-key.ts";
 import { useApp } from "../../lib/store.ts";
-import { Search } from "../icons.ts";
+import { X } from "../icons.ts";
+import { SearchIcon } from "../SearchIcon.tsx";
 
 export function ThreadSearch() {
   const query = useApp((state) => state.threadQuery);
@@ -14,7 +15,7 @@ export function ThreadSearch() {
   }, [focusPending]);
   return (
     <label className="thread-search" title={`Find a conversation (${MOD}K)`}>
-      <Search size={14} aria-hidden="true" />
+      <SearchIcon size={16} />
       <input
         ref={input}
         aria-label="Find a conversation"
@@ -27,6 +28,19 @@ export function ThreadSearch() {
           event.currentTarget.blur();
         }}
       />
+      {query && (
+        <button
+          type="button"
+          className="thread-search-clear"
+          aria-label="Clear search"
+          onClick={() => {
+            useApp.setState({ threadQuery: "" });
+            input.current!.focus();
+          }}
+        >
+          <X size={12} aria-hidden="true" />
+        </button>
+      )}
     </label>
   );
 }

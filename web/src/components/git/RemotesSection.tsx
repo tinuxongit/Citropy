@@ -1,12 +1,12 @@
 import {
   ArrowDown,
   ArrowUp,
-  GitBranch,
-  Globe2,
   Plus,
   RefreshCw,
   Trash2,
 } from "lucide-react";
+import { BranchIcon } from "../BranchIcon.tsx";
+import { RemoteIcon } from "../RemoteIcon.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import type { GitDialogAction } from "../GitDialog.tsx";
 import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
@@ -71,7 +71,9 @@ export function RemotesSection({
         <>
           <div className="git-sync">
             <div className="git-sync-title">
-              <GitBranch size={20} />
+              <span className="git-row-mark" data-current="true">
+                <BranchIcon size={16} />
+              </span>
               <div>
                 <h3>{branch}</h3>
                 <p>
@@ -143,9 +145,12 @@ export function RemotesSection({
               </span>
             </h3>
           </div>
+          <div className="git-card-list">
           {data.remotes.map((remote) => (
             <div className="git-remote-row" key={remote.name}>
-              <Globe2 size={20} className="muted" />
+              <span className="git-row-mark">
+                <RemoteIcon size={16} />
+              </span>
               <div className="git-row-main">
                 <strong>{remote.name}</strong>
                 <code>{remote.url}</code>
@@ -194,6 +199,7 @@ export function RemotesSection({
               </div>
             </div>
           ))}
+          </div>
           <p className="git-page-note">{" "}Fetch checks for remote updates. Pull brings them into your branch using fast-forward only.{" "}</p>
         </>
       )}

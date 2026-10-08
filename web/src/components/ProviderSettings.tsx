@@ -19,7 +19,7 @@ import type { ProviderMaintenance } from "../../../shared/provider-settings.ts";
 import { hasUsableAccount } from "../../../shared/provider-account.ts";
 import { Select } from "./Select.tsx";
 import { selectEnvironment, useEnvironments } from "../lib/environment.ts";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
 import { Modal } from "./Modal.tsx";
 import type { ProviderInstance } from "../../../shared/protocol.ts";
 import { ActionError } from "./ActionError.tsx";
@@ -43,7 +43,7 @@ function InstanceEditor({ provider, instance, onClose, onSaved }: { provider: Pr
   };
   return <Modal title={instance ? "Edit account" : "Add account"} description={`Run ${provider.label} with a separate CLI configuration.`} busy={busy} onClose={onClose} onSubmit={() => void save()} initialFocus="#provider-instance-name" footer={<>
     <button className="btn" type="button" data-cancel onClick={onClose} disabled={busy}>Cancel</button>
-    <button className="btn" data-variant="primary" disabled={busy || !name.trim()}>{busy && <PixelLoader size={14} />}Save account</button>
+    <button className="btn" data-variant="primary" disabled={busy || !name.trim()}>{busy && <Loader size={14} />}Save account</button>
   </>}>
     <label className="feature-field">Name<input id="provider-instance-name" value={name} maxLength={80} onChange={event => setName(event.target.value)} /></label>
     <label className="feature-field">CLI path (optional)<input value={binary} onChange={event => setBinary(event.target.value)} placeholder={provider.binary} /></label>
@@ -202,7 +202,7 @@ export function ProviderSettings() {
           disabled={!connected || switching || updating || checking}
           onClick={() => setRefresh((value) => value + 1)}
         >
-          {checking ? <PixelLoader size={14} /> : <RefreshCw size={14} />}{" "}Check for updates{" "}</button>
+          {checking ? <Loader size={14} /> : <RefreshCw size={14} />}{" "}Check for updates{" "}</button>
       </div>
       <div className="provider-settings-group">
         {providers.map((provider) => {
@@ -355,7 +355,7 @@ export function ProviderSettings() {
                       onClick={() => void update(provider)}
                     >
                       {isUpdating ? (
-                        <PixelLoader size={14} />
+                        <Loader size={14} />
                       ) : (
                         <ArrowUpToLine size={14} />
                       )}

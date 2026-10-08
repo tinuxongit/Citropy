@@ -4,7 +4,7 @@ import type { ThreadMeta } from "../../../../shared/protocol.ts";
 import { finishThread, loadThread, openOnEnvironment, removeThread } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { opensContextMenu } from "../../lib/context-menu-key.ts";
-import { dateTime, threadActivity } from "../../lib/format.ts";
+import { dateTime, since, threadActivity } from "../../lib/format.ts";
 import { environmentId, useEnvironments } from "../../lib/environment.ts";
 import { environmentSlice } from "../../lib/live-environments.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
@@ -25,12 +25,12 @@ function pullRequestNumber(url: string): string | undefined {
   return url.split("/").at(-1);
 }
 
-export const ThreadRow = memo(function ThreadRow({ thread, environment, query, match, categoryEnd, drag, preview, describedBy, tree, onMove, onFinished, onConversation }: {
+export const ThreadRow = memo(function ThreadRow({ thread, environment, now, query, match, drag, preview, describedBy, tree, onMove, onFinished, onConversation }: {
   thread: ThreadMeta;
   environment: string;
+  now: number;
   query: string;
   match?: SearchMatch;
-  categoryEnd: boolean;
   drag: ThreadDrag;
   preview: ThreadPreviewControls;
   describedBy?: string;
@@ -87,7 +87,6 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
       className="thread-entry"
       data-thread-id={thread.id}
       data-environment={environment}
-      data-category-end={categoryEnd}
       data-dragging={drag.draggingId === key}
       style={{ "--thread-shift": `${drag.shifts.get(key) ?? 0}px` } as CSSProperties}
       onPointerDown={(event) => drag.start(event, { thread, environment })}
@@ -131,11 +130,11 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, query, m
         >
           <ProviderIcon provider={thread.provider} />
           <span className="thread-row-title">{thread.title}</span>
-          {status !== "idle" && status !== "stopped" && (
+          {status !== "idle" && status !== "stopped" ? (
             <span className="thread-status" data-status={status} role="img" aria-label={label}>
               <ThreadPulse status={status} />
             </span>
-          )}
+          ) : <time className="thread-row-time" dateTime={new Date(thread.updatedAt).toISOString()}>{since(thread.updatedAt, now)}</time>}
         </button>
         <div className="thread-row-actions" onPointerEnter={preview.hide}>
           <ConversationMenu thread={thread} environment={environment} onMove={(direction) => onMove({ thread, environment }, direction)} rowActions={rowActions} />

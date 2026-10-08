@@ -1,14 +1,14 @@
 import { openOnEnvironment } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import type { CachedThread } from "../../lib/environment.ts";
-import { dateTime } from "../../lib/format.ts";
+import { dateTime, since } from "../../lib/format.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
 
-export function CachedThreadRow({ thread, categoryEnd, environment, showDisconnected, onConversation }: {
+export function CachedThreadRow({ thread, now, environment, showDisconnected, onConversation }: {
   thread: CachedThread;
+  now: number;
   showDisconnected: boolean;
-  categoryEnd: boolean;
   environment: string;
   onConversation: () => void;
 }) {
@@ -18,7 +18,7 @@ export function CachedThreadRow({ thread, categoryEnd, environment, showDisconne
   };
 
   return (
-    <div className="thread-entry" data-thread-id={thread.id} data-environment={environment} data-category-end={categoryEnd}>
+    <div className="thread-entry" data-thread-id={thread.id} data-environment={environment}>
       <div className="thread-card" data-active={false}>
         <button
           type="button"
@@ -30,7 +30,9 @@ export function CachedThreadRow({ thread, categoryEnd, environment, showDisconne
         >
           <ProviderIcon provider={thread.provider} />
           <span className="thread-row-title">{thread.title}</span>
-          {showDisconnected && <span className="thread-status" role="img" aria-label="Disconnected" title="Disconnected"><DisconnectedIcon size={14} /></span>}
+          {showDisconnected
+            ? <span className="thread-status" role="img" aria-label="Disconnected" title="Disconnected"><DisconnectedIcon size={14} /></span>
+            : <time className="thread-row-time" dateTime={new Date(thread.updatedAt).toISOString()}>{since(thread.updatedAt, now)}</time>}
         </button>
       </div>
     </div>

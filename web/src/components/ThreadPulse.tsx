@@ -5,7 +5,7 @@ import {
   MessageCircleQuestion,
 } from "lucide-react";
 import type { ThreadStatus } from "../../../shared/protocol.ts";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
 
 export function ThreadPulse({
   status,
@@ -15,7 +15,7 @@ export function ThreadPulse({
   size?: number;
 }) {
   if (status === "idle") return null;
-  if (status === "working" || status === "thinking") return <PixelLoader size={size} />;
+  if (status === "working" || status === "thinking") return <Loader size={size} />;
   const Icon = status === "queued"
       ? Clock3
       : status === "error"

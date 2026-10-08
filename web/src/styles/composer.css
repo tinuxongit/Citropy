@@ -4,6 +4,17 @@
   z-index: 5;
   background: var(--canvas);
 }
+.composer-start-heading {
+  position: absolute;
+  bottom: 100%;
+  left: var(--chat-gutter);
+  right: var(--chat-gutter);
+  padding-bottom: var(--space-12);
+  font-size: var(--text-display);
+  font-weight: 400;
+  text-align: center;
+  animation: citropy-rise var(--dur-base) var(--ease-out) both;
+}
 .composer-dock {
   display: grid;
   overflow: hidden;
@@ -103,7 +114,6 @@
   container-type: size;
   overflow: hidden;
   pointer-events: none;
-  background: color-mix(in srgb, var(--text-3) 16%, transparent);
   opacity: 0;
   transition: opacity var(--dur-base) var(--ease-out);
 }
@@ -203,7 +213,7 @@
   width: 1px;
   height: 16px;
   transform: translate(-50%, -50%);
-  background: var(--line-strong);
+  background: var(--line);
   pointer-events: none;
 }
 .composer-bar > :first-child {

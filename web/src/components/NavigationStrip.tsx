@@ -1,14 +1,24 @@
-import { BarChart3, GitBranch, Github, MessagesSquare, Settings } from "lucide-react";
 
 import { AccountMenu } from "./AccountMenu.tsx";
 import { AgentsPanel } from "./AgentsPanel.tsx";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
+import { GitHubIcon, GitIcon } from "./BrandIcon.tsx";
+import { ConversationsIcon } from "./ConversationsIcon.tsx";
 import { NotificationCenter } from "./NotificationCenter.tsx";
+import { SettingsIcon } from "./SettingsIcon.tsx";
+import { UsageIcon } from "./UsageIcon.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { useEnvironments } from "../lib/environment.ts";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
+
+interface StripButton {
+  name: string;
+  icon: ComponentType<{ size?: number }>;
+  run: () => void;
+  view: string;
+}
 
 export function NavigationStrip({
   onChat,
@@ -30,14 +40,14 @@ export function NavigationStrip({
   const usagePeek = useUsagePeek("right");
   const { activeId: environment } = useEnvironments();
   const [accountOpen, setAccountOpen] = useState(false);
-  const conversations = { name: "Conversations", icon: MessagesSquare, run: onChat, view: "chat" };
+  const conversations: StripButton = { name: "Conversations", icon: ConversationsIcon, run: onChat, view: "chat" };
   const code = [
-    { name: "Source control", icon: GitBranch, run: onGit, view: "git" },
-    { name: "GitHub", icon: Github, run: onGitHub, view: "github" },
+    { name: "Source control", icon: GitIcon, run: onGit, view: "git" },
+    { name: "GitHub", icon: GitHubIcon, run: onGitHub, view: "github" },
   ];
-  const usage = { name: "Usage", icon: BarChart3, run: onUsage, view: "usage" };
-  const settings = { name: "Settings", icon: Settings, run: onSettings, view: "settings" };
-  const button = ({ name, icon: Icon, run, view }: typeof conversations) => (
+  const usage = { name: "Usage", icon: UsageIcon, run: onUsage, view: "usage" };
+  const settings = { name: "Settings", icon: SettingsIcon, run: onSettings, view: "settings" };
+  const button = ({ name, icon: Icon, run, view }: StripButton) => (
     <button
       type="button"
       className="strip-action"

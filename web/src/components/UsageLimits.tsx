@@ -33,7 +33,7 @@ function LimitWindow({ entry, window }: { entry: ProviderUsage; window: UsageWin
     <div className="limit-window" data-level={level}>
       <div className="limit-line">
         <span className="truncate" title={label}>{label}</span>
-        <strong>{left}% left</strong>
+        <strong>{left}%<span> left</span></strong>
       </div>
       <i style={{ "--left": `${left}%` } as CSSProperties} />
       <div className="limit-line limit-reset">

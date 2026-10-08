@@ -6,6 +6,8 @@ import { groupGitFiles } from "../../lib/git-files.ts";
 import type { GitSelection } from "./selection.ts";
 import type { GitFile, GitOperation } from "../../../../shared/protocol.ts";
 
+const ROW_HEIGHT = 34;
+
 export function FileGroup({
   title,
   list,
@@ -51,7 +53,7 @@ export function FileGroup({
       {groupGitFiles(list.filter((file) => match(file.path)), inIndex).map((group) => (
         <div className="git-change-category" key={group.kind}>
           <h4 className="change-category" data-kind={group.kind}>{group.label}<span>{group.files.length}</span></h4>
-          <VirtualList items={group.files} itemKey="path" estimateSize={52}>
+          <VirtualList items={group.files} itemKey="path" estimateSize={ROW_HEIGHT}>
           {(file) => {
             const label = fileLabel(file, inIndex);
             const active =

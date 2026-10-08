@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, type ComponentType } from "react";
-import { CircleCheck, Clock, Monitor, Pin, Server } from "lucide-react";
+import { CircleCheck, Clock, Monitor, Pin } from "lucide-react";
 import type { Project, ThreadMeta } from "../../../../shared/protocol.ts";
 import type { CachedThread } from "../../lib/environment.ts";
 import { threadIsActive } from "../../lib/format.ts";
 import { setSidebarGroupOpen, useApp } from "../../lib/store.ts";
-import { Folder } from "../icons.ts";
+import { FolderIcon } from "../FolderIcon.tsx";
+import { ServerIcon } from "../ServerIcon.tsx";
 import type { WorkspaceScope } from "../WorkspaceSelector.tsx";
 
 type Category = "pinned" | "snoozed" | "finished";
@@ -25,6 +26,7 @@ export interface ThreadGroup {
   offline?: boolean;
   section?: WorkspaceScope;
   heading?: "section";
+  parent?: string;
 }
 
 export interface ThreadListRow {
@@ -45,8 +47,8 @@ type Sortable = Pick<ThreadMeta, "position" | "updatedAt">;
 const sortThreads = (a: Sortable, b: Sortable) =>
   (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || b.updatedAt - a.updatedAt;
 
-export const shownThreads = (group: ThreadGroup, searching: boolean) =>
-  group.open || searching ? group.threads : group.threads.filter((item) => !item.cached && threadIsActive(item.thread));
+export const shownThreads = (group: ThreadGroup, searching: boolean, selected: string | undefined) =>
+  group.open || searching ? group.threads : group.threads.filter((item) => threadKey(item.environment, item.thread.id) === selected || (!item.cached && threadIsActive(item.thread)));
 
 export const threadKey =(environment: string, id: string) => `thread:${environment}:${id}`;
 const sortItems = (a: SidebarThread, b: SidebarThread) => sortThreads(a.thread, b.thread);
@@ -120,7 +122,7 @@ const DEFAULT_OPEN: Record<string, boolean> = { pinned: true, snoozed: false, fi
 
 const SECTIONS: { id: WorkspaceScope; label: string; icon: ThreadGroup["icon"]; server: boolean }[] = [
   { id: "local", label: "Local", icon: Monitor, server: false },
-  { id: "servers", label: "Servers", icon: Server, server: true },
+  { id: "servers", label: "Servers", icon: ServerIcon, server: true },
 ];
 
 export function useThreadGroups({ threads, query, environments, sections, activeEnvironment, activeRoot, activeThreadId }: {
@@ -145,6 +147,7 @@ export function useThreadGroups({ threads, query, environments, sections, active
   }, [activeEnvironment, activeThreadId, revealed]);
 
   const searching = Boolean(query);
+  const selected = activeRoot && threadKey(activeEnvironment, activeRoot.id);
   const placed = useMemo(() => placeThreads(threads, environments, searching), [threads, environments, searching]);
   const groups = useMemo(() => {
     const group = (base: Omit<ThreadGroup, "open" | "toggle">, key: string): ThreadGroup => {
@@ -154,7 +157,7 @@ export function useThreadGroups({ threads, query, environments, sections, active
     const category = (id: Category, groupThreads: SidebarThread[]) => group({ ...CATEGORIES.find((entry) => entry.id === id)!, threads: groupThreads }, id);
 
     const foldersOf = (servers: boolean) => environments.filter((entry) => entry.server === servers).flatMap(({ environment, server, projects, cachedThreads }): ThreadGroup[] => {
-      const icon = server ? Server : Folder;
+      const icon = server ? ServerIcon : FolderIcon;
       const projectKey = (id: string) => environment === "local" ? `project:${id}` : `environment:${environment}:project:${id}`;
       return projects.map((project) => group({
         id: projectKey(project.id),
@@ -169,7 +172,7 @@ export function useThreadGroups({ threads, query, environments, sections, active
     const folders = SECTIONS.flatMap(({ id, label, icon, server }): ThreadGroup[] => {
       if (searching || !sections.includes(id)) return foldersOf(server);
       const heading = group({ id: `section:${id}`, label, icon, threads: [], section: id, heading: "section" }, `section:${id}`);
-      return [heading, ...(heading.open ? foldersOf(server) : [])];
+      return [heading, ...(heading.open ? foldersOf(server).map((folder) => ({ ...folder, parent: heading.id })) : [])];
     });
     return [
       ...(placed.categories.pinned.length ? [category("pinned", placed.categories.pinned)] : []),
@@ -181,9 +184,9 @@ export function useThreadGroups({ threads, query, environments, sections, active
 
   const rows = useMemo(() => groups.flatMap((group): ThreadListRow[] => [
     { key: group.id, group, empty: false },
-    ...shownThreads(group, searching).map((item) => ({ key: threadKey(item.environment, item.thread.id), group, item, empty: false })),
+    ...shownThreads(group, searching, selected).map((item) => ({ key: threadKey(item.environment, item.thread.id), group, item, empty: false })),
     ...(group.project && group.open && !searching && !group.threads.length ? [{ key: `${group.id}:empty`, group, empty: true }] : []),
-  ]), [groups, searching]);
+  ]), [groups, searching, selected]);
 
-  return { groups, rows, revealFinished: () => reveal("finished") };
+  return { groups, rows, selected, revealFinished: () => reveal("finished") };
 }

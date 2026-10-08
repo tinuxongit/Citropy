@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  GitBranch,
   GitCommitHorizontal,
   GitMerge,
   Minus,
@@ -9,6 +8,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { BranchIcon } from "../BranchIcon.tsx";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview } from "../GitReview.tsx";
 import type { GitSelection } from "./selection.ts";
@@ -21,7 +21,7 @@ import type {
   GitOperation,
   GitOverview,
 } from "../../../../shared/protocol.ts";
-import { PixelLoader } from "../PixelLoader.tsx";
+import { Loader } from "../Loader.tsx";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 
 export function ChangesSection({
@@ -128,6 +128,7 @@ export function ChangesSection({
         data-detail={selection?.kind === "file"}
       >
         <div className="git-change-list">
+          <div className="git-change-files">
           <label className="git-filter">
             <Search size={15} />
             <input
@@ -156,6 +157,7 @@ export function ChangesSection({
               </p>
             )}
           </div>
+          </div>
           <form
             className="git-commit-form"
             onSubmit={(event) => {
@@ -164,11 +166,8 @@ export function ChangesSection({
                 void act("commit", [message.trim(), description.trim()].filter(Boolean).join("\n\n"));
             }}
           >
-            <label htmlFor="git-commit-message">
-              Commit title
-            </label>
             <input
-              id="git-commit-message"
+              aria-label="Commit title"
               value={message}
               disabled={busy === "commit"}
               onChange={(event) => setMessage(event.target.value)}
@@ -178,19 +177,16 @@ export function ChangesSection({
                   : "Initial commit"
               }
             />
-            <label htmlFor="git-commit-description">
-              Description <span className="git-optional">Optional</span>
-            </label>
             <textarea
-              id="git-commit-description"
-              rows={3}
+              aria-label="Description"
+              rows={2}
               value={description}
               disabled={busy === "commit"}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Explain why this change was made and any useful details."
+              placeholder="Description, optional"
             />
             <div className="git-commit-target">
-              <GitBranch size={13} />
+              <BranchIcon size={13} />
               <span className="truncate">{branch}</span>
               <span>{staged.length} staged</span>
             </div>
@@ -200,7 +196,7 @@ export function ChangesSection({
               disabled={!canCommit}
             >
               {busy === "commit" ? (
-                <PixelLoader size={15} />
+                <Loader size={15} />
               ) : (
                 <GitCommitHorizontal size={17} />
               )}

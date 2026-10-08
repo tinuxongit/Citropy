@@ -2,6 +2,37 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.7.0
+
+### Added
+- An Inbox replaces Notifications, with tabs, an "Unread only" filter, and day headings.
+- A new loading icon: one blob splits into three drops, turns, and joins back together.
+- The new chat screen shows "What's next for <project>?" above the message box.
+- The Conversations page in Usage can be sorted and filtered by project.
+- An open chat stays visible in the sidebar when its project folder is closed.
+- The Git and GitHub buttons use their real logos.
+
+### Changed
+- Icons across the app are redrawn as solid shapes with thin cut-out details, including the left bar, sidebar, Git, GitHub, Settings, Usage, folders, servers, and the update button.
+- Left bar icons grow slightly on hover and shrink when pressed. Conversation and panel tabs do the same.
+- The left bar groups its buttons into soft rounded blobs instead of separating them with lines.
+- Projects are a plain list, with each project's chats indented under its folder.
+- The Local and Servers sections slide open and closed like projects.
+- The sidebar search bar has a new look and no outline.
+- Usage opens on Limits, shown as full-width provider cards.
+- The Git section has a new layout, with the file list and code viewer in separate rounded panels.
+- Messages stop at 75% of the chat width, so long messages wrap.
+- Outlines and dividers use the same soft color as conversation details.
+- The message box no longer shows a grey outline when focused.
+- Chat titles in the sidebar are brighter and easier to read.
+
+### Fixed
+- Projects animate open and closed in long lists again. Before, lists over 40 rows closed instantly.
+- Closing a project no longer shows its open chat twice.
+- Chats inside projects no longer have extra space above or below.
+- Hovering over a tab no longer moves its text.
+- Sidebar rows without a logo line up with the rows that have one.
+
 ## 0.6.1
 
 ### Added

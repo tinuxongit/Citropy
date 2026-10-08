@@ -20,7 +20,7 @@ import { HistorySection } from "./git/HistorySection.tsx";
 import { BranchesSection } from "./git/BranchesSection.tsx";
 import { StashesSection } from "./git/StashesSection.tsx";
 import { RemotesSection } from "./git/RemotesSection.tsx";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
 import { ActionError } from "./ActionError.tsx";
 
 export function GitManager({
@@ -244,7 +244,7 @@ export function GitManager({
           ) : !data ? (
             busy ? (
               <div className="git-preview-placeholder" role="status">
-                <PixelLoader size={24} />
+                <Loader size={24} />
                 <p>Reading repository…</p>
               </div>
             ) : (

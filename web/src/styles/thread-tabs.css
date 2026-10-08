@@ -38,7 +38,18 @@
   border-radius: var(--r-md);
   color: var(--text-3);
   font-size: var(--text-sm);
-  transition: background var(--dur-instant), color var(--dur-instant);
+  isolation: isolate;
+  transition: color var(--dur-instant), transform var(--dur-fast) var(--ease-out);
+}
+
+:is(.thread-tab, .workbench-tab)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  transition: background var(--dur-instant), transform var(--dur-fast) var(--ease-out);
+  pointer-events: none;
 }
 
 :is(.thread-tab, .workbench-tab) + :is(.thread-tab, .thread-tabs-new, .workbench-tab)::before {
@@ -47,7 +58,7 @@
   left: calc(var(--tab-gap) / -2);
   width: 1px;
   height: var(--tab-separator-height);
-  background: var(--line-bright);
+  background: var(--line);
   transition: opacity var(--dur-instant);
   pointer-events: none;
 }
@@ -58,14 +69,33 @@
 }
 
 .thread-tab:hover {
-  background: var(--hover);
   color: var(--text);
+}
+
+.thread-tab:hover::after {
+  background: var(--hover);
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :is(.thread-tab, .workbench-tab:not([data-active="true"])):hover::after {
+    transform: scale(var(--tab-hover-grow));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :is(.thread-tab, .workbench-tab):active {
+    transform: scale(var(--tab-press-shrink));
+    transition-duration: var(--dur-instant);
+  }
 }
 
 .thread-tab[data-active] {
   min-width: var(--tab-active-min-width);
-  background: var(--raised);
   color: var(--text);
+}
+
+.thread-tab[data-active]::after {
+  background: var(--raised);
 }
 
 .thread-tab[data-preview] .truncate {

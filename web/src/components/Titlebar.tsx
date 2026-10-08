@@ -1,4 +1,4 @@
-import { Server } from "lucide-react";
+import { ServerIcon } from "./ServerIcon.tsx";
 import { useEffect, useRef } from "react";
 import { environmentName, isRemote } from "../lib/environment.ts";
 import { GitBranch, PanelLeft, PanelRight, SquarePen } from "./icons.ts";
@@ -78,7 +78,7 @@ export function Titlebar({
       >
         {view === "chat" && <ThreadTabs />}
         {workspaceContext && <div className="workspace-breadcrumb">
-          {isRemote() && <span className="environment-breadcrumb" title={environmentName()}><Server size={13} /><span className="truncate">{environmentName()}</span></span>}
+          {isRemote() && <span className="environment-breadcrumb" title={environmentName()}><ServerIcon size={13} /><span className="truncate">{environmentName()}</span></span>}
         </div>}
         {view === "chat" && thread && (
           <>

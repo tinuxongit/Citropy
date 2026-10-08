@@ -12,7 +12,6 @@ export {
   FolderOpen,
   GitBranch,
   GitCommitVertical,
-  Inbox,
   Layers,
   ListChecks,
   MessageSquarePlus,

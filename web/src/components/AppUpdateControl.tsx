@@ -5,13 +5,13 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Download,
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
 import type { ReleaseNotes } from "../../../shared/app-update.ts";
 import { useAppUpdate } from "../lib/use-app-update.ts";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
+import { UpdateIcon } from "./UpdateIcon.tsx";
 
 const notesMotion = {
   enter: ({ step, reducedMotion }: { step: number; reducedMotion: boolean }) => ({ opacity: 0, transform: reducedMotion ? "none" : `translateX(${-8 * step}px)` }),
@@ -140,10 +140,10 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
         ? RefreshCw
         : state.status === "current" && confirming
           ? Check
-          : Download;
+          : UpdateIcon;
   const face = (
     <>
-      {state.status !== "error" && busy && !downloading ? <PixelLoader size={17} /> : <Icon size={17} />}
+      {state.status !== "error" && busy && !downloading ? <Loader size={17} /> : <Icon size={17} />}
       {variant === "settings" ? label : downloading && <small>{Math.floor(state.percent || 0)}%</small>}
     </>
   );

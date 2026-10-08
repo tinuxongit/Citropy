@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../lib/store.ts";
 import { formatDate } from "../../lib/format.ts";
-import { PixelLoader } from "../PixelLoader.tsx";
+import { Loader } from "../Loader.tsx";
 
 export function GitHubLink({
   href,
@@ -57,7 +57,7 @@ export function GitHubFeedback({
   if (loading)
     return (
       <div className="github-feedback" role="status">
-        <PixelLoader size={18} />
+        <Loader size={18} />
         <span>Loading from GitHub…</span>
       </div>
     );
@@ -208,7 +208,7 @@ export function GitHubDialog({
               data-variant={danger ? "danger" : "primary"}
               disabled={busy || !connected}
             >
-              {busy && <PixelLoader size={14} />}
+              {busy && <Loader size={14} />}
               {busy ? "Working…" : submitLabel && submitLabel}
             </button>
           )}

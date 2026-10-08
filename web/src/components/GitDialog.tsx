@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowRight, GitBranch } from "lucide-react";
 import { Modal } from "./Modal.tsx";
 import type { GitOperation } from "../../../shared/protocol.ts";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
 
 export interface GitDialogAction {
   operation: GitOperation;
@@ -72,7 +72,7 @@ export function GitDialog({
             disabled={busy || !valid || !connected}
           >
             {busy ? (
-              <PixelLoader size={15} />
+              <Loader size={15} />
             ) : (
               !action.danger && <ArrowRight size={15} />
             )}

@@ -87,6 +87,7 @@ export interface UsageReport {
   conversations: Array<{
     id: string;
     title: string;
+    projectId: string;
     provider: ProviderId;
     model?: string;
     usage: Usage;

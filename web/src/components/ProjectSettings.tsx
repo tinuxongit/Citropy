@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { ChevronDown, Folder, Globe2, Save } from "lucide-react";
+import { ChevronDown, Globe2, Save } from "lucide-react";
+import { FolderIcon } from "./FolderIcon.tsx";
 import { api } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
 import { saveProjectDefaults } from "../lib/actions.ts";
@@ -21,7 +22,7 @@ export function ProjectSettings() {
       <GlobalDefaultsForm />
       <section className="project-folder-section" aria-labelledby="folder-configuration-heading">
         <div className="project-scope-heading">
-          <Folder size={19} />
+          <FolderIcon size={19} />
           <div>
             <h2 id="folder-configuration-heading">Folder configuration</h2>
             <p className="feature-note">Override global defaults for a folder.</p>
@@ -34,7 +35,7 @@ export function ProjectSettings() {
             searchPlaceholder="Find a workspace"
             items={projects.map((entry) => ({
               id: entry.id, label: entry.name, hint: entry.path,
-              icon: <Folder size={17} />, selected: entry.id === project.id,
+              icon: <FolderIcon size={17} />, selected: entry.id === project.id,
               onSelect: () => setSelected(entry.id),
             }))}
             trigger={({ id, toggle, open }) => <button
@@ -42,7 +43,7 @@ export function ProjectSettings() {
               aria-label={`Configure folder: ${project.name}`}
               aria-haspopup="menu" aria-expanded={open} onClick={toggle}
             >
-              <Folder size={18} />
+              <FolderIcon size={18} />
               <span><strong>{project.name}</strong><small>{project.path}</small></span>
               <ChevronDown size={15} />
             </button>}

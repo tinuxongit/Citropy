@@ -1,4 +1,5 @@
 .git-manager {
+  --git-row-mark: 32px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -242,9 +243,13 @@
 }
 
 .git-split {
+  --git-pane-gap: var(--space-12);
+  --git-pane-inset: var(--space-16);
   position: relative;
   isolation: isolate;
   display: grid;
+  column-gap: calc(var(--git-pane-gap) / 2);
+  padding: 0 var(--git-pane-inset) var(--git-pane-inset);
   grid-template-columns: clamp(
       240px,
       var(--git-width, clamp(290px, 29%, 390px)),
@@ -257,26 +262,32 @@
 }
 
 .git-change-list,
+.git-change-files,
 .git-history-list {
   display: flex;
   flex-direction: column;
-  background: var(--panel);
   min-width: 0;
   min-height: 0;
+}
+.git-change-list {
+  gap: var(--git-pane-gap);
+}
+.git-change-files {
+  flex: 1;
 }
 
 .git-filter {
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  margin: var(--space-16) var(--space-16) var(--space-8);
+  margin: var(--space-12) var(--space-12) var(--space-4);
   padding: 0 var(--space-10);
   height: 34px;
   flex: none;
   color: var(--text-3);
   background: var(--raised);
   border: 0;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
 }
 
 .git-filter:focus-within {
@@ -306,11 +317,11 @@
 .git-file-groups {
   flex: 1;
   min-height: 0;
-  padding: var(--space-4) var(--space-8) var(--space-20);
+  padding: 0 var(--space-6) var(--space-12);
 }
 
 .git-file-group {
-  margin-bottom: var(--space-20);
+  margin-bottom: var(--space-12);
 }
 .git-file-group > header {
   display: flex;
@@ -318,7 +329,7 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--space-10);
-  padding: var(--space-10) var(--space-10);
+  padding: var(--space-10) var(--space-8) var(--space-6);
 }
 .git-file-group h3 {
   display: flex;
@@ -362,9 +373,9 @@
 .git-file-row {
   display: flex;
   align-items: center;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   min-width: 0;
-  padding: 0 var(--space-4) 0 var(--space-6);
+  padding: 0 var(--space-2) 0 var(--space-4);
   transition: background var(--dur-instant);
 }
 
@@ -378,10 +389,10 @@
 .git-file-name {
   display: flex;
   align-items: center;
-  gap: var(--space-10);
+  gap: var(--space-8);
   min-width: 0;
   flex: 1;
-  padding: var(--space-10) var(--space-4);
+  padding: var(--space-8) var(--space-4);
   text-align: left;
 }
 .git-file-name > svg {
@@ -389,17 +400,22 @@
   color: var(--text-3);
 }
 .git-file-label {
-  display: grid;
+  display: flex;
+  align-items: baseline;
   min-width: 0;
   flex: 1;
-  gap: 1px;
+  gap: var(--space-8);
 }
 .git-file-label strong {
+  flex: 0 1 auto;
+  min-width: 0;
   font-weight: 400;
   font-size: var(--text-sm);
 }
 .git-file-label small {
-  color: var(--text-3);
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--text-4);
   font-size: var(--text-xs);
 }
 .git-file-status {
@@ -429,36 +445,25 @@
 
 .git-commit-form {
   display: grid;
-  gap: var(--space-10);
-  padding: var(--space-16);
+  gap: var(--space-8);
+  padding: var(--space-12);
   flex: none;
-  background: var(--panel);
 }
 
-.git-commit-form > label {
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
 .git-commit-form input,
 .git-commit-form textarea {
   width: 100%;
   border: 0;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   background: var(--raised);
   font-size: var(--text-sm);
-  line-height: 1.7;
-  padding: var(--space-10);
+  line-height: 1.6;
+  padding: var(--space-8) var(--space-10);
 }
 .git-commit-form textarea {
-  min-height: 76px;
+  min-height: 58px;
   max-height: 190px;
   resize: vertical;
-}
-.git-optional {
-  margin-left: var(--space-6);
-  font-size: var(--text-xs);
-  font-weight: 400;
-  color: var(--text-4);
 }
 
 .git-commit-form input::placeholder,
@@ -469,6 +474,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-6);
+  padding: var(--space-2) var(--space-2) 0;
   color: var(--text-3);
   font-size: var(--text-xs);
 }
@@ -481,9 +487,17 @@
 }
 .git-commit-form .btn {
   width: 100%;
-  margin-top: var(--space-4);
 }
 
+.git-change-files,
+.git-commit-form,
+.git-history-list,
+.git-stash-list,
+.git-review-pane {
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  overflow: hidden;
+}
 .git-review-pane {
   display: flex;
   flex-direction: column;
@@ -667,7 +681,7 @@
 }
 
 .git-list-heading {
-  padding: var(--space-24) var(--space-24) var(--space-16);
+  padding: var(--space-16) var(--space-16) var(--space-8);
   flex: none;
 }
 .git-list-heading h2 {
@@ -685,14 +699,14 @@
 .git-commits {
   flex: 1;
   min-height: 0;
-  padding: var(--space-8);
+  padding: var(--space-6);
 }
 .git-history-row {
   display: flex;
   align-items: flex-start;
   gap: var(--space-10);
-  padding: var(--space-16) var(--space-12);
-  border-radius: var(--r-xs);
+  padding: var(--space-10);
+  border-radius: var(--r-sm);
   text-align: left;
   width: 100%;
   transition: background var(--dur-instant);
@@ -707,10 +721,13 @@
   min-width: 0;
 }
 .git-history-row strong {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   font-size: var(--text-sm);
   font-weight: 500;
-  line-height: 1.65;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .git-history-row small {
@@ -720,10 +737,8 @@
   margin-top: var(--space-4);
 }
 .git-history-row code {
-  color: var(--text-3);
+  color: var(--text-4);
   font-size: var(--text-xs);
-  display: inline-block;
-  margin-top: var(--space-4);
 }
 .git-history-row:hover {
   background: var(--hover);
@@ -813,8 +828,9 @@
   background: var(--raised);
 }
 .git-branch-filter {
-  margin: var(--space-24) 0 var(--space-10);
+  margin: 0 0 var(--space-4);
   width: min(320px, 100%);
+  border-radius: var(--r-md);
   background: var(--panel);
 }
 .git-table-heading {
@@ -822,8 +838,7 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--space-16);
-  padding: var(--space-16) 0 var(--space-12);
-  margin-top: var(--space-12);
+  padding: var(--space-20) var(--space-4) var(--space-10);
 }
 .git-table-heading h3 {
   display: flex;
@@ -838,32 +853,44 @@
   color: var(--text-3);
 }
 
+.git-card-list {
+  display: grid;
+  padding: var(--space-6);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+}
 .git-branch-row,
 .git-remote-row {
   display: flex;
   align-items: center;
-  gap: var(--space-16);
-  padding: var(--space-20) var(--space-4);
+  gap: var(--space-12);
+  min-height: 56px;
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--r-sm);
   min-width: 0;
+  transition: background var(--dur-instant) var(--ease-out);
 }
-
-.git-branch-row:nth-of-type(even),
-.git-remote-row:nth-of-type(even) {
-  background: var(--panel);
+.git-branch-row:hover,
+.git-remote-row:hover {
+  background: color-mix(in oklab, var(--panel), var(--text) 4%);
 }
-.shell[data-backdrop] :is(.git-branch-row, .git-remote-row) {
-  padding: var(--space-20) var(--space-16);
-  border-radius: var(--r-lg);
-  background: var(--backdrop-card-bg);
-}
-.shell[data-backdrop] :is(.git-branch-row, .git-remote-row) + :is(.git-branch-row, .git-remote-row) {
-  margin-top: var(--space-4);
-}
-.git-branch-row > svg,
-.git-remote-row > svg {
+.git-row-mark {
+  display: grid;
+  place-items: center;
   flex: none;
+  width: var(--git-row-mark);
+  height: var(--git-row-mark);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  color: var(--text-3);
+}
+.git-row-mark[data-current="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 .git-row-main {
+  display: grid;
+  gap: var(--space-2);
   min-width: 0;
   flex: 1;
 }
@@ -871,42 +898,31 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-10);
+  gap: var(--space-8);
 }
 .git-row-main strong {
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: 500;
   overflow-wrap: anywhere;
 }
 .git-row-main p {
-  font-size: var(--text-sm);
-  color: var(--text-3);
-  margin: var(--space-6) 0 0;
-}
-.git-row-main small {
-  display: block;
   font-size: var(--text-xs);
   color: var(--text-3);
-  margin-top: var(--space-6);
+  margin: 0;
 }
+.git-row-main small,
 .git-row-main code {
   display: block;
   font-size: var(--text-xs);
-  color: var(--text-3);
-  margin-top: var(--space-6);
+  color: var(--text-4);
   overflow-wrap: anywhere;
 }
 .git-row-date {
   font-size: var(--text-xs);
   color: var(--text-3);
-  padding: 0 var(--space-16);
+  padding: 0 var(--space-8);
   flex: none;
-}
-.git-accent {
-  color: var(--accent-text);
-}
-.git-branch-list {
-  padding-bottom: var(--space-12);
+  font-variant-numeric: tabular-nums;
 }
 .git-inline-empty {
   display: flex;
@@ -932,7 +948,8 @@
   line-height: 1.7;
 }
 .git-page-note {
-  margin-top: var(--space-24);
+  margin-top: var(--space-16);
+  padding: 0 var(--space-4);
   color: var(--text-3);
   font-size: var(--text-sm);
 }
@@ -955,11 +972,11 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-24);
-  padding: var(--space-24);
+  padding: var(--space-16) var(--space-20);
   border: 0;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-lg);
   background: var(--panel);
-  margin-bottom: var(--space-24);
+  margin-bottom: var(--space-4);
 }
 .git-sync-title {
   display: flex;
@@ -968,18 +985,15 @@
   flex: 1;
   min-width: 200px;
 }
-.git-sync-title > svg {
-  color: var(--accent-text);
-  flex: none;
-}
 .git-sync-title h3 {
   overflow-wrap: anywhere;
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
+  font-weight: 500;
 }
 .git-sync-title p {
-  margin: var(--space-6) 0 0;
+  margin: var(--space-2) 0 0;
   color: var(--text-3);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
 }
 .git-sync-counts {
   display: flex;
@@ -1175,13 +1189,12 @@
   .git-remote-row {
     gap: var(--space-10);
     flex-wrap: wrap;
-    padding: var(--space-20) 0;
   }
   .git-row-main {
-    flex-basis: calc(100% - 32px);
+    flex-basis: calc(100% - var(--git-row-mark) - var(--space-10));
   }
   .git-row-date {
-    margin-left: var(--space-32);
+    margin-left: calc(var(--git-row-mark) + var(--space-10));
     margin-right: auto;
   }
   .git-branch-row .git-inline-actions {

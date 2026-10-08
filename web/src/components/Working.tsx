@@ -1,13 +1,10 @@
-import { useRef } from "react";
-import { useAnimationClock } from "../lib/animation-clock.ts";
 import { useSecondClock } from "../lib/use-second-clock.ts";
 import type { ThreadStatus } from "../../../shared/protocol.ts";
 import { duration } from "../lib/format.ts";
 import { toolLabel } from "../lib/group.ts";
 import { useApp } from "../lib/store.ts";
 import { AnimatedText } from "./AnimatedText.tsx";
-
-const SPIRAL = [0, 1, 2, 7, 8, 3, 6, 5, 4];
+import { Loader } from "./Loader.tsx";
 
 const WAITING: Partial<Record<ThreadStatus, string>> = {
   queued: "Queued",
@@ -25,16 +22,12 @@ export function Working({ messageIds }: { messageIds: string[] }) {
   });
   const startedAt = thread?.runStartedAt ?? thread?.updatedAt ?? 0;
   const now = useSecondClock(startedAt);
-  const grid = useRef<HTMLSpanElement>(null);
-  useAnimationClock(grid);
 
   const text = thread?.compacting ? "Compacting context" : (thread?.status && WAITING[thread.status]) || tool || "Thinking";
 
   return (
     <span className="working">
-      <span className="working-grid" ref={grid} aria-hidden="true">
-        {SPIRAL.map((step, index) => <i key={index} style={{ animationDelay: `${step * 150 - 1350}ms` }} />)}
-      </span>
+      <Loader size={16} />
       <span className="working-text truncate" role="status"><AnimatedText text={text} /></span>
       <span className="working-time">{duration(Math.max(0, now - startedAt))}</span>
     </span>

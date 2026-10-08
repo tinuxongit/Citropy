@@ -391,7 +391,8 @@
   gap: var(--space-8);
   max-width: 100%;
   min-height: 28px;
-  padding: var(--space-4) var(--space-8) var(--space-4) var(--space-2);
+  margin-left: calc(var(--space-2) - var(--space-8));
+  padding: var(--space-4) var(--space-8);
   border-radius: var(--r-md);
   color: var(--text-3);
   font-size: var(--text-sm);
@@ -929,30 +930,8 @@
   font-size: var(--text-sm);
 }
 
-.working-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 4px);
-  grid-template-rows: repeat(3, 4px);
-  flex: none;
-  gap: var(--space-2);
-}
-
-.working-grid i {
-  display: block;
-  border-radius: 0.5px;
-  background: var(--text-2);
-  opacity: 0.12;
-  animation: citropy-pixel 1.35s ease-in-out infinite paused;
-}
-
-@keyframes citropy-pixel {
-  0%, 45%, 100% { opacity: 0.12; }
-  15% { opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .working-grid i { animation: none; }
-  .working-grid i:nth-child(-n + 3) { opacity: 1; }
+.working > .loader {
+  color: var(--text-2);
 }
 
 .working-text {
@@ -1120,6 +1099,7 @@
 }
 .user-card {
   width: fit-content;
+  max-width: 75%;
   margin-left: auto;
   background: var(--raised);
 }
@@ -1176,9 +1156,8 @@
   display: grid;
   margin-top: var(--space-12);
   padding: var(--space-4);
-  border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
-  background: var(--canvas);
+  background: var(--panel);
 }
 .turn-changes-head {
   display: flex;

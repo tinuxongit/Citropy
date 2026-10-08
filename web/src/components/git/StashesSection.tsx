@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Trash2,
 } from "lucide-react";
+import { StashIcon } from "../StashIcon.tsx";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview } from "../GitReview.tsx";
 import type { GitSelection } from "./selection.ts";
@@ -118,7 +119,7 @@ export function StashesSection({
                   setSelection({ kind: "stash", ref: entry.ref })
                 }
               >
-                <Archive size={18} />
+                <StashIcon size={16} />
                 <span>
                   <strong>{entry.subject}</strong>
                   <small>{entry.ref}</small>

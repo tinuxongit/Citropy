@@ -98,7 +98,7 @@ export function GeneralSettings() {
           />
         </div>
       </div>
-      <p className="settings-note">{" "}Volume also applies to the Citropy chime chosen in Notifications.{" "}</p>
+      <p className="settings-note">{" "}Volume also applies to the Citropy chime chosen in Inbox.{" "}</p>
     </>
   );
 }

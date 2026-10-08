@@ -6,7 +6,7 @@ import { fetchDiff, manageGit } from "../lib/actions.ts";
 import { DiffView } from "./DiffView.tsx";
 import type { FilePatch } from "../../../shared/protocol.ts";
 import { scaled } from "../lib/store.ts";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
 import { LineCounts } from "./LineCounts.tsx";
 import type { GitSelection } from "./git/selection.ts";
 
@@ -83,7 +83,7 @@ export function GitReview({
     <div className="git-review-scroll scroll" data-kind={selection.kind} ref={viewport}>
       {loading ? (
         <div className="git-preview-placeholder" role="status">
-          <PixelLoader size={22} />
+          <Loader size={22} />
           <span>Loading changes…</span>
         </div>
       ) : error ? (

@@ -16,7 +16,7 @@ export function ProviderIcon({ provider }: { provider: ProviderId }) {
   const scheme = useApp((state) => state.scheme);
   // Conversations saved by agents that Citropy no longer ships keep their old provider id.
   const logo = logos[provider];
-  if (!logo) return null;
+  if (!logo) return <span className="provider-icon" data-provider={provider} aria-hidden="true" />;
   return (
     <img
       className="provider-icon"

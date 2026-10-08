@@ -51,8 +51,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  margin-right: var(--rail-tab-gap);
-  padding: var(--space-12) var(--rail-pad);
+  margin: 0 var(--rail-tab-gap);
+  padding: var(--space-12) var(--rail-tab-pad);
   border-radius: var(--rail-tab-shape);
   text-align: left;
   color: var(--text-3);

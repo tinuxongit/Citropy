@@ -1,21 +1,19 @@
-import {
-  Archive,
-  Files,
-  GitBranch,
-  Globe2,
-  History,
-  type LucideIcon,
-} from "lucide-react";
+import type { ComponentType } from "react";
+import { BranchIcon } from "../BranchIcon.tsx";
+import { ChangesIcon } from "../ChangesIcon.tsx";
+import { HistoryIcon } from "../HistoryIcon.tsx";
+import { RemoteIcon } from "../RemoteIcon.tsx";
+import { StashIcon } from "../StashIcon.tsx";
 import type { GitOperation } from "../../../../shared/protocol.ts";
 
 export type Section = "Changes" | "History" | "Branches" | "Stashes" | "Remotes";
 
-export const tabs: Array<{ name: Section; icon: LucideIcon }> = [
-  { name: "Changes", icon: Files },
-  { name: "History", icon: History },
-  { name: "Branches", icon: GitBranch },
-  { name: "Stashes", icon: Archive },
-  { name: "Remotes", icon: Globe2 },
+export const tabs: Array<{ name: Section; icon: ComponentType<{ size?: number }> }> = [
+  { name: "Changes", icon: ChangesIcon },
+  { name: "History", icon: HistoryIcon },
+  { name: "Branches", icon: BranchIcon },
+  { name: "Stashes", icon: StashIcon },
+  { name: "Remotes", icon: RemoteIcon },
 ];
 
 export const workingLabels: Partial<Record<GitOperation, string>> = {

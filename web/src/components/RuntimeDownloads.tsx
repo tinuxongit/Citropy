@@ -3,7 +3,7 @@ import { Check, Download } from "lucide-react";
 import type { NodeRuntimeStatus } from "../../../shared/runtime-downloads.ts";
 import { api } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
 
 export function RuntimeDownloads({ onInstalled }: { onInstalled: () => void }) {
   const connected = useApp(state => state.connected);
@@ -64,7 +64,7 @@ export function RuntimeDownloads({ onInstalled }: { onInstalled: () => void }) {
         </span>
         {runtime?.ready && runtime.shellReady !== false && runtime.status !== "error" && !busy ? <span className="provider-up-to-date"><Check size={14} />Installed</span>
           : <button className="btn" type="button" disabled={!connected || !runtime?.supported || busy}
-            onClick={() => void install()}>{busy ? <PixelLoader size={14} /> : <Download size={14} />}
+            onClick={() => void install()}>{busy ? <Loader size={14} /> : <Download size={14} />}
             {busy ? "Installing…" : runtime?.ready ? "Set up terminals" : "Install Node.js"}</button>}
       </div>
     </div>

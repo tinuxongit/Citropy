@@ -1,7 +1,8 @@
-import { GitBranch, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { BranchIcon } from "../BranchIcon.tsx";
 import { shortPath } from "../../lib/format.ts";
 import { workingLabels, type Section } from "./labels.ts";
-import { PixelLoader } from "../PixelLoader.tsx";
+import { Loader } from "../Loader.tsx";
 import type {
   GitOperation,
   GitOverview,
@@ -49,7 +50,7 @@ export function GitHeader({
       <div className="git-repository-state">
         {data?.repository && (
           <div className="git-current-branch">
-            <GitBranch size={16} />
+            <BranchIcon size={15} />
             <strong>
               {branch === "detached" ? "Detached HEAD" : branch}
             </strong>
@@ -70,7 +71,7 @@ export function GitHeader({
           disabled={refreshDisabled}
           onClick={onRefresh}
         >
-          {busy === "overview" ? <PixelLoader size={17} /> : <RefreshCw size={17} />}
+          {busy === "overview" ? <Loader size={17} /> : <RefreshCw size={17} />}
         </button>
       </div>
     </header>

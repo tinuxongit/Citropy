@@ -1,20 +1,21 @@
 import { AnimatePresence } from "motion/react";
 import { useEffect, useState } from "react";
 import {
-  Bell,
   BookOpen,
   Check,
-  CircleDot,
   Download,
   GitBranch,
   GitFork,
-  GitPullRequest,
-  Play,
   Star,
-  Tag,
   UserRound,
 } from "lucide-react";
 import { SectionLink, SectionSidebar } from "../SectionSidebar.tsx";
+import { BellIcon } from "../BellIcon.tsx";
+import { BookIcon } from "../BookIcon.tsx";
+import { IssueIcon } from "../IssueIcon.tsx";
+import { PlayIcon } from "../PlayIcon.tsx";
+import { PullRequestIcon } from "../PullRequestIcon.tsx";
+import { TagIcon } from "../TagIcon.tsx";
 import { useApp, selectProject } from "../../lib/store.ts";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
@@ -30,15 +31,15 @@ import {
   GitHubLink,
   formText,
 } from "./GitHubShared.tsx";
-import { PixelLoader } from "../PixelLoader.tsx";
+import { Loader } from "../Loader.tsx";
 
 const sections = [
-  { name: "Repositories", icon: BookOpen, global: true },
-  { name: "Pull requests", icon: GitPullRequest, global: false },
-  { name: "Issues", icon: CircleDot, global: false },
-  { name: "Actions", icon: Play, global: false },
-  { name: "Releases", icon: Tag, global: false },
-  { name: "Notifications", icon: Bell, global: true },
+  { name: "Repositories", icon: BookIcon, global: true },
+  { name: "Pull requests", icon: PullRequestIcon, global: false },
+  { name: "Issues", icon: IssueIcon, global: false },
+  { name: "Actions", icon: PlayIcon, global: false },
+  { name: "Releases", icon: TagIcon, global: false },
+  { name: "Notifications", icon: BellIcon, global: true },
 ] as const;
 type Section = (typeof sections)[number]["name"] | "Account";
 
@@ -152,7 +153,7 @@ export function GitHub({
         </header>
         {!connected && (
           <div className="github-connection" role="status">
-            <PixelLoader size={16} />
+            <Loader size={16} />
             <span>Reconnecting to Citropy… Your loaded pages will stay here.</span>
           </div>
         )}

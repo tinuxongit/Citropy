@@ -1,20 +1,17 @@
-import { Fragment, useEffect, useState } from "react";
-import {
-  Activity,
-  AppWindow,
-  Bell,
-  BookOpen,
-  FolderCog,
-  Globe,
-  Palette,
-  PencilLine,
-  RefreshCw,
-  Server,
-  SlidersHorizontal,
-  Smartphone,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
+import { Fragment, useEffect, useState, type ComponentType } from "react";
+import { RefreshCw } from "lucide-react";
+import { BookIcon } from "./BookIcon.tsx";
+import { FolderIcon } from "./FolderIcon.tsx";
+import { GlobeIcon } from "./GlobeIcon.tsx";
+import { InboxIcon } from "./InboxIcon.tsx";
+import { PaletteIcon } from "./PaletteIcon.tsx";
+import { PhoneIcon } from "./PhoneIcon.tsx";
+import { PulseIcon } from "./PulseIcon.tsx";
+import { ServerIcon } from "./ServerIcon.tsx";
+import { SlidersIcon } from "./SlidersIcon.tsx";
+import { SparkleIcon } from "./SparkleIcon.tsx";
+import { WindowIcon } from "./WindowIcon.tsx";
+import { WorkflowIcon } from "./WorkflowIcon.tsx";
 import { isRemote, useEnvironments } from "../lib/environment.ts";
 import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
@@ -26,7 +23,7 @@ import { DiagnosticsSettings } from "./DiagnosticsSettings.tsx";
 import { EnvironmentSettings } from "./EnvironmentSettings.tsx";
 import { GeneralSettings } from "./GeneralSettings.tsx";
 import { canShareLocally, LocalSharing } from "./LocalSharing.tsx";
-import { NotificationSettings } from "./NotificationSettings.tsx";
+import { InboxSettings } from "./InboxSettings.tsx";
 import { ProjectSettings } from "./ProjectSettings.tsx";
 import { ProviderSettings } from "./ProviderSettings.tsx";
 import { SectionLink, SectionSidebar } from "./SectionSidebar.tsx";
@@ -34,19 +31,19 @@ import { SkillsSettings } from "./SkillsSettings.tsx";
 
 const GROUPS = ["Preferences", "Workspaces", "Agents", "Tools", "System"] as const;
 
-const sections: { name: string; description: string; group: typeof GROUPS[number]; icon: LucideIcon; available?: () => boolean }[] = [
-  { name: "General", description: "Chat identity and interface sounds.", group: "Preferences", icon: SlidersHorizontal },
-  { name: "Appearance", description: "Interface size, theme, background, and how conversations look.", group: "Preferences", icon: Palette },
-  { name: "Notifications", description: "Alerts when an agent finishes, and the sound they make.", group: "Preferences", icon: Bell },
-  { name: "Projects", description: "Your project folders and their options.", group: "Workspaces", icon: FolderCog },
-  { name: "Environments", description: "This computer, and the servers and containers you connect to.", group: "Workspaces", icon: Server },
-  { name: "Providers", description: "Installed providers, accounts, and usage limits.", group: "Agents", icon: Workflow },
-  { name: "AI assistance", description: "Models for conversation titles, commit messages, and code review.", group: "Agents", icon: PencilLine },
-  { name: "Skills", description: "Skills your providers can use, and how they are shared.", group: "Agents", icon: BookOpen },
-  { name: "Browser", description: "Search engine, browser profiles, and what providers can access.", group: "Tools", icon: Globe },
-  { name: "Local sharing", description: "Use Citropy from your phone on the same Wi-Fi.", group: "Tools", icon: Smartphone, available: canShareLocally },
-  { name: "Resources", description: "Memory use, running conversations, and logs.", group: "System", icon: Activity },
-  { name: "Application", description: "Updates and restarts.", group: "System", icon: AppWindow },
+const sections: { name: string; description: string; group: typeof GROUPS[number]; icon: ComponentType<{ size?: number }>; available?: () => boolean }[] = [
+  { name: "General", description: "Chat identity and interface sounds.", group: "Preferences", icon: SlidersIcon },
+  { name: "Appearance", description: "Interface size, theme, background, and how conversations look.", group: "Preferences", icon: PaletteIcon },
+  { name: "Inbox", description: "What reaches your inbox, popups, and the alert sound.", group: "Preferences", icon: InboxIcon },
+  { name: "Projects", description: "Your project folders and their options.", group: "Workspaces", icon: FolderIcon },
+  { name: "Environments", description: "This computer, and the servers and containers you connect to.", group: "Workspaces", icon: ServerIcon },
+  { name: "Providers", description: "Installed providers, accounts, and usage limits.", group: "Agents", icon: WorkflowIcon },
+  { name: "AI assistance", description: "Models for conversation titles, commit messages, and code review.", group: "Agents", icon: SparkleIcon },
+  { name: "Skills", description: "Skills your providers can use, and how they are shared.", group: "Agents", icon: BookIcon },
+  { name: "Browser", description: "Search engine, browser profiles, and what providers can access.", group: "Tools", icon: GlobeIcon },
+  { name: "Local sharing", description: "Use Citropy from your phone on the same Wi-Fi.", group: "Tools", icon: PhoneIcon, available: canShareLocally },
+  { name: "Resources", description: "Memory use, running conversations, and logs.", group: "System", icon: PulseIcon },
+  { name: "Application", description: "Updates and restarts.", group: "System", icon: WindowIcon },
 ];
 
 export function Settings({
@@ -122,7 +119,7 @@ export function Settings({
             {section === "Local sharing" && <LocalSharing />}
             {section === "Resources" && <DiagnosticsSettings />}
             {section === "General" && <GeneralSettings />}
-            {section === "Notifications" && <NotificationSettings />}
+            {section === "Inbox" && <InboxSettings />}
             {section === "Appearance" && <AppearanceSettings />}
             {section === "Providers" && <ProviderSettings key={environment} />}
           </Fragment>

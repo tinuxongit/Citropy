@@ -155,6 +155,7 @@ export async function usageReport(
     .flatMap((thread) => [...(thread.transfers ?? []), { provider: thread.provider, model: thread.model, usage: thread.usage, at: thread.updatedAt }].map((session, index) => ({
       id: index === (thread.transfers?.length ?? 0) ? thread.id : `${thread.id}:${index}`,
       title: thread.title,
+      projectId: thread.projectId,
       provider: session.provider,
       model: session.model,
       usage: { ...session.usage, costUsd: session.usage.costUsd || costOf(prices, session.provider, session.model, session.usage) },

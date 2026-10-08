@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
-import { Bot, Power } from "lucide-react";
+import { Power } from "lucide-react";
 import type { ProviderId } from "../../../shared/protocol.ts";
 import { api, reportError } from "../lib/api.ts";
 import { loadThread } from "../lib/actions.ts";
@@ -8,6 +8,7 @@ import { ago, duration } from "../lib/format.ts";
 import { selectProject, selectThread, useApp } from "../lib/store.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useVisibleInterval } from "../lib/use-visible-interval.ts";
+import { AgentsIcon } from "./AgentsIcon.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 
 const SETTINGS = { pollMs: 5000, openPollMs: 2000 };
@@ -78,7 +79,7 @@ export function AgentsPanel() {
         onClick={() => setOpen((value) => !value)}
       >
         <span className="strip-action-face">
-          <Bot size={18} />
+          <AgentsIcon size={18} />
           {agents.length > 0 && <span className="agents-count" aria-hidden="true">{agents.length}</span>}
         </span>
       </button>

@@ -1,6 +1,8 @@
 import { ImportSessions } from "./ImportSessions.tsx";
 import { AnimatePresence } from "motion/react";
-import { Box, FolderOpen, FolderPlus, Import, Plus, Server, Trash2 } from "lucide-react";
+import { Box, FolderPlus, Import, Plus, Trash2 } from "lucide-react";
+import { ServerIcon } from "./ServerIcon.tsx";
+import { FolderOpenIcon } from "./FolderIcon.tsx";
 import { ContainerEnvironment } from "./ContainerEnvironment.tsx";
 import { NewSshConnection } from "./EnvironmentSettings.tsx";
 import { selectEnvironment, useEnvironments, useWorkspaceCatalog } from "../lib/environment.ts";
@@ -10,7 +12,7 @@ import { shortPath } from "../lib/format.ts";
 import { confirmAction, selectProject, useApp } from "../lib/store.ts";
 import type { Project } from "../../../shared/protocol.ts";
 import { Menu, type MenuItem } from "./Menu.tsx";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
 
 export type WorkspaceScope = "local" | "servers";
 export type WorkspaceDialog = "import" | "container" | "ssh";
@@ -44,14 +46,14 @@ export function WorkspaceMenu({ scope, onDialog }: { scope: WorkspaceScope; onDi
       ...entries.map(entry => ({
         id: `${id}:${entry.id}`, label: entry.name, hint: shortPath(entry.path, root),
         selected: current && entry.id === activeProjectId,
-        icon: <FolderOpen size={17} className="workspace-folder-icon" />,
+        icon: <FolderOpenIcon size={17} className="workspace-folder-icon" />,
         action: { label: `Remove project ${entry.name}`, icon: <Trash2 size={14} />, onSelect: () => { void remove(id, entry); } },
         onSelect: () => {
           if (current) { if (entry.id !== activeProjectId) selectProject(entry.id); }
           else void selectEnvironment(id, entry.id).catch(reportError);
         },
       })),
-      ...(!current && !catalog[id] ? [{ id: `${id}:load`, label: "Load workspaces", icon: <Server size={17} />, onSelect: () => { void selectEnvironment(id).catch(reportError); } }] : []),
+      ...(!current && !catalog[id] ? [{ id: `${id}:load`, label: "Load workspaces", icon: <ServerIcon size={17} />, onSelect: () => { void selectEnvironment(id).catch(reportError); } }] : []),
     ];
   };
   const items: MenuItem[] = scope === "local" ? [
@@ -60,11 +62,11 @@ export function WorkspaceMenu({ scope, onDialog }: { scope: WorkspaceScope; onDi
   ] : [
     ...environments.connections.map(entry => ({
       id: `environment:${entry.id}`, label: entry.name, hint: entry.target,
-      icon: entry.status === "connecting" ? <PixelLoader size={17} /> : entry.kind === "container" ? <Box size={17} /> : <Server size={17} />,
+      icon: entry.status === "connecting" ? <Loader size={17} /> : entry.kind === "container" ? <Box size={17} /> : <ServerIcon size={17} />,
       children: group(entry.id),
     })),
     { id: "environment:container", label: "Add container…", section: "Workspace actions", icon: <Box size={17} />, onSelect: () => onDialog("container") },
-    { id: "environment:add", label: "Connect over SSH…", section: "Workspace actions", icon: <Server size={17} />, onSelect: () => onDialog("ssh") },
+    { id: "environment:add", label: "Connect over SSH…", section: "Workspace actions", icon: <ServerIcon size={17} />, onSelect: () => onDialog("ssh") },
   ];
   const label = SCOPE_LABELS[scope];
   return <Menu align="start" side="right" header={label} className="workspace-menu" width={340} searchable searchPlaceholder="Find a workspace" items={items}

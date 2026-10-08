@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChartColumnStacked, Gauge, MessagesSquare, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { api } from "../lib/api.ts";
 import { clock, cost, decimal, providerLabels, tokens } from "../lib/format.ts";
 import { SectionLink, SectionSidebar } from "./SectionSidebar.tsx";
 import type { UsageReport } from "../../../shared/features.ts";
 import type { ProviderId } from "../../../shared/protocol.ts";
 import { LOCALE } from "../lib/locale.ts";
-import { PixelLoader } from "./PixelLoader.tsx";
+import { Loader } from "./Loader.tsx";
 import { ProviderLimits } from "./UsageLimits.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ChartIcon } from "./ChartIcon.tsx";
+import { UsageIcon } from "./UsageIcon.tsx";
+import { ConversationsIcon } from "./ConversationsIcon.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { UsageChart } from "./usage/UsageChart.tsx";
 import { ProviderBreakdown } from "./usage/ProviderBreakdown.tsx";
@@ -28,9 +31,9 @@ import { USAGE_TOTAL_KEYS, emptyUsageTotals, localDay, type UsageTotals } from "
 import { useStoredChoice } from "../lib/use-stored-choice.ts";
 
 const PAGES = [
-  { id: "overview", label: "Overview", icon: ChartColumnStacked },
-  { id: "limits", label: "Limits", icon: Gauge },
-  { id: "conversations", label: "Conversations", icon: MessagesSquare },
+  { id: "limits", label: "Limits", icon: UsageIcon },
+  { id: "overview", label: "Overview", icon: ChartIcon },
+  { id: "conversations", label: "Conversations", icon: ConversationsIcon },
 ] as const;
 
 const PERIODS: Array<{ id: UsagePeriod; label: string; caption: string; previous: string }> = [
@@ -63,7 +66,7 @@ export function UsageView({
   const [period, setPeriod] = useStoredChoice("citropy.usagePeriod", PERIODS.map((entry) => entry.id), "daily");
   const [measure, setMeasure] = useStoredChoice("citropy.usageMeasure", MEASURES.map((entry) => entry.id), "tokens");
   const [hidden, setHidden] = useState<ReadonlySet<ProviderId>>(new Set());
-  const [active, setActive] = useStoredChoice("citropy.usagePage", PAGES.map((entry) => entry.id), "overview");
+  const [active, setActive] = useStoredChoice("citropy.usagePage", PAGES.map((entry) => entry.id), "limits");
   const scroller = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -114,20 +117,20 @@ export function UsageView({
   const periodInfo = PERIODS.find((entry) => entry.id === period)!;
   const measureLabel = MEASURES.find((entry) => entry.id === shownMeasure)!.label;
 
-  const change = (current: number, previous: number) => {
-    if (!previous) return current ? "New this period" : "No usage in either period";
+  const change = (current: number, previous: number): { delta?: string; note: string } => {
+    if (!previous) return { note: current ? "New this period" : "No usage in either period" };
     const percent = ((current - previous) / previous) * 100;
-    return `${`${percent > 0 ? "+" : ""}${decimal(percent, 0)}`}% vs ${periodInfo.previous}`;
+    return { delta: `${percent > 0 ? "+" : ""}${decimal(percent, 0)}%`, note: `vs ${periodInfo.previous}` };
   };
-  const costNote = !reportsCost ? "No prices for these models"
-    : unpriced.length === 1 ? `Leaves out ${unpriced[0]}, which has no known price`
-    : unpriced.length ? `Leaves out ${unpriced.length} models with no known price`
+  const costNote = !reportsCost ? { note: "No prices for these models" }
+    : unpriced.length === 1 ? { note: `Leaves out ${unpriced[0]}, which has no known price` }
+    : unpriced.length ? { note: `Leaves out ${unpriced.length} models with no known price` }
     : change(combined.costUsd, sumTotals(previousTotals, visible, "cost"));
   const kpis = [
-    { label: "Tokens", value: tokens(sumTotals(totals, visible, "tokens")), note: change(sumTotals(totals, visible, "tokens"), sumTotals(previousTotals, visible, "tokens")) },
-    { label: "Output tokens", value: tokens(combined.output), note: change(combined.output, sumTotals(previousTotals, visible, "output")) },
-    { label: "API cost", value: reportsCost ? cost(combined.costUsd) : "Unknown", note: data?.pricing.error ?? costNote },
-    { label: "Responses", value: decimal(combined.turns, 0), note: change(combined.turns, visible.reduce((sum, provider) => sum + (previousTotals[provider]?.turns ?? 0), 0)) },
+    { label: "Tokens", value: tokens(sumTotals(totals, visible, "tokens")), ...change(sumTotals(totals, visible, "tokens"), sumTotals(previousTotals, visible, "tokens")) },
+    { label: "Output tokens", value: tokens(combined.output), ...change(combined.output, sumTotals(previousTotals, visible, "output")) },
+    { label: "API cost", value: reportsCost ? cost(combined.costUsd) : "Unknown", ...(data?.pricing.error ? { note: data.pricing.error } : costNote) },
+    { label: "Responses", value: decimal(combined.turns, 0), ...change(combined.turns, visible.reduce((sum, provider) => sum + (previousTotals[provider]?.turns ?? 0), 0)) },
   ];
 
   const toggle = (provider: ProviderId) => setHidden((current) => {
@@ -180,7 +183,7 @@ export function UsageView({
               </h1>
             </div>
             <button className="btn" disabled={busy} onClick={() => setRevision((value) => value + 1)}>
-              {busy ? <PixelLoader size={15} /> : <RefreshCw size={15} />}
+              {busy ? <Loader size={15} /> : <RefreshCw size={15} />}
               Refresh
             </button>
           </header>
@@ -206,11 +209,11 @@ export function UsageView({
                   {providerFilter}
                 </div>
                 <div className="usage-kpis">
-                  {kpis.map(({ label, value, note }) => (
+                  {kpis.map(({ label, value, delta, note }) => (
                     <div key={label}>
                       <span>{label}</span>
                       <strong>{value}</strong>
-                      <small>{note}</small>
+                      <small>{delta && <b>{delta}</b>}{note}</small>
                     </div>
                   ))}
                 </div>
@@ -239,23 +242,19 @@ export function UsageView({
                 </>}
               </section>}
               {active === "limits" && <section id="usage-limits">
-                <div className="feature-section-heading">
-                  <h2>Remaining allowance</h2>
-                  {updated > 0 && <span>Updated {clock(updated)}</span>}
-                </div>
                 {limited.length > 0 && (
                   <div className="usage-limit-grid">
                     {limited.map((entry) => <ProviderLimits key={entry.provider} entry={entry} />)}
                   </div>
                 )}
-                <p className="settings-note">
+                <p className="settings-note usage-limits-note">
+                  {updated > 0 && `Updated ${clock(updated)}. `}
                   {unlimited.length > 0 && `${`No allowance data from ${new Intl.ListFormat(LOCALE, { type: "conjunction" }).format(unlimited)}.`} `}
                   Allowance is shared with other apps using the same account.
                 </p>
               </section>}
               {active === "conversations" && <section id="usage-conversations">
-                {providerFilter}
-                <ConversationUsage conversations={data.conversations.filter((entry) => visible.includes(entry.provider))} />
+                <ConversationUsage conversations={data.conversations.filter((entry) => visible.includes(entry.provider))} filter={providerFilter} />
               </section>}
             </div>
           )}

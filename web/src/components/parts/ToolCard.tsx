@@ -8,7 +8,7 @@ import { ansiToHtml } from "../../lib/ansi.ts";
 import { duration } from "../../lib/format.ts";
 import type { ToolPart } from "../../../../shared/protocol.ts";
 import { ImageStrip } from "./ImageStrip.tsx";
-import { PixelLoader } from "../PixelLoader.tsx";
+import { Loader } from "../Loader.tsx";
 import { FileIcon } from "../FileIcon.tsx";
 import { LineCounts } from "../LineCounts.tsx";
 import { useHighlightedLines } from "../../lib/use-highlighted-lines.ts";
@@ -66,7 +66,7 @@ export function ToolCard({ part }: { part: ToolPart }) {
           {!part.patch && output && <Output text={output} shape={part.shape} partId={part.id} />}
           {!part.patch && !output && !hasImages && part.status === "running" && (
             <div className="tool-waiting">
-              <PixelLoader size={12} />
+              <Loader size={12} />
               Running
             </div>
           )}
@@ -78,7 +78,7 @@ export function ToolCard({ part }: { part: ToolPart }) {
 }
 
 function StatusMark({ status }: { status: ToolPart["status"] }) {
-  if (status === "running") return <PixelLoader size={12} className="tool-spin" role="img" aria-label="running" />;
+  if (status === "running") return <Loader size={12} className="tool-spin" role="img" aria-label="running" />;
   if (status === "ok") return null;
   if (status === "denied") return <Ban size={12} className="tool-bad" aria-label="denied" />;
   if (status === "stopped") return <Square size={10} className="tool-stopped" aria-label="stopped" />;

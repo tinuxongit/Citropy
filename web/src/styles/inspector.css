@@ -8,8 +8,6 @@
   grid-template-rows: auto minmax(0, 1fr);
   width: var(--inspector);
   background: var(--panel);
-  border: 1px solid var(--line-strong);
-  border-width: 1px 0 0 1px;
   border-top-left-radius: var(--r-lg);
   min-height: 0;
 }

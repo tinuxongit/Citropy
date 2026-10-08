@@ -5,10 +5,11 @@ import { reportError } from "../../lib/api.ts";
 import { opensContextMenu } from "../../lib/context-menu-key.ts";
 import { connectionName, environmentId, useEnvironments } from "../../lib/environment.ts";
 import { confirmAction, selectProject, useApp } from "../../lib/store.ts";
-import { Folder, FolderOpen, MessageSquarePlus, Pencil, Trash2 } from "../icons.ts";
+import { FolderIcon, FolderOpenIcon } from "../FolderIcon.tsx";
+import { FolderOpen, MessageSquarePlus, Pencil, Trash2 } from "../icons.ts";
 import { GitFork } from "lucide-react";
 import { Menu } from "../Menu.tsx";
-import { PixelLoader } from "../PixelLoader.tsx";
+import { Loader } from "../Loader.tsx";
 import { RenameProjectModal } from "./RenameProjectModal.tsx";
 import type { Project } from "../../../../shared/protocol.ts";
 import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
@@ -68,7 +69,7 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
     if (button?.getAttribute("aria-expanded") !== "true") button?.click();
   };
   const editLabel = `Edit project ${group.label}`;
-  const Icon = group.icon === Folder && expanded ? FolderOpen : group.icon;
+  const Icon = group.icon === FolderIcon && expanded ? FolderOpenIcon : group.icon;
   const newThreadLabel = `New thread · ${group.label}`;
   const disabled = pending || connecting || (current && !connected && !window.citropyDesktop?.connectEnvironment);
 
@@ -91,7 +92,7 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         title={environment === "local" ? project.path : `${connectionName(environment)}: ${project.path}`}
         onPointerDown={onDragStart} onClick={event => { if (!consumeDrag(event)) group.toggle(); }}
       >
-        {pending || connecting ? <PixelLoader size={16} /> : <Icon size={16} strokeWidth={1.75} />}
+        {pending || connecting ? <Loader size={16} /> : <Icon size={16} />}
         <span className="truncate">{group.label}</span>
         {group.offline && <span className="global-project-offline" title="Disconnected"><DisconnectedIcon size={14} /></span>}
       </button>

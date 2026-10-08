@@ -66,7 +66,8 @@
   container: workspace-tab / inline-size;
   color: var(--text-3);
   border-radius: var(--r-md);
-  transition: background var(--dur-instant), color var(--dur-instant);
+  isolation: isolate;
+  transition: background var(--dur-instant), color var(--dur-instant), transform var(--dur-fast) var(--ease-out);
 }
 .workbench-tabs > .selection-highlight {
   border-radius: var(--r-md);
@@ -99,8 +100,10 @@
   pointer-events: none;
 }
 .workbench-tab:hover:not([data-active="true"]) {
-  background: var(--hover);
   color: var(--text);
+}
+.workbench-tab:hover:not([data-active="true"])::after {
+  background: var(--hover);
 }
 .workbench-tab > [role="tab"] {
   display: flex;
@@ -264,7 +267,7 @@
   aspect-ratio: var(--page-width) / var(--page-height);
   overflow: hidden;
   background: var(--canvas-deep);
-  box-shadow: 0 0 0 1px var(--line-strong);
+  box-shadow: 0 0 0 1px var(--line);
 }
 .browser-frame > .browser-start {
   padding: var(--space-16);

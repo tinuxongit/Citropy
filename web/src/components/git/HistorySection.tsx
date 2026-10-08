@@ -2,9 +2,8 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  GitBranch,
-  GitCommitHorizontal,
 } from "lucide-react";
+import { BranchIcon } from "../BranchIcon.tsx";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview } from "../GitReview.tsx";
 import type { GitSelection } from "./selection.ts";
@@ -66,7 +65,7 @@ export function HistorySection({
           <header className="git-list-heading">
             <h2>Commit history</h2>
             <p>
-              <GitBranch size={13} />
+              <BranchIcon size={13} />
               {branch}
             </p>
           </header>
@@ -87,16 +86,15 @@ export function HistorySection({
                   })
                 }
               >
-                <GitCommitHorizontal size={19} />
                 <span>
                   <strong>{commit.subject}</strong>
                   <small>
                     {commit.author} ·{" "}
-                    {formatDate(commit.date, { month: "short", day: "numeric" })}
+                    {formatDate(commit.date, { month: "short", day: "numeric" })} ·{" "}
+                    <code>{commit.hash.slice(0, 7)}</code>
                   </small>
-                  <code>{commit.hash.slice(0, 7)}</code>
                 </span>
-                {commit.refs.includes("HEAD") && (
+                {commit.refs.split(", ").some((ref) => ref === "HEAD" || ref.startsWith("HEAD -> ")) && (
                   <span className="git-tag">Latest</span>
                 )}
               </button>

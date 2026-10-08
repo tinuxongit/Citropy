@@ -26,7 +26,7 @@ html[data-platform]:not([data-platform="darwin"], [data-window-filled]) body::af
   position: fixed;
   inset: 0;
   z-index: 1000;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line);
   pointer-events: none;
 }
 
@@ -273,7 +273,7 @@ kbd {
   padding: 0 var(--space-10);
   border-radius: var(--r-sm);
   border: 0;
-  box-shadow: inset 0 0 0 1px var(--line-bright);
+  box-shadow: inset 0 0 0 1px var(--line);
   background: var(--raised);
   color: var(--text-2);
   font-size: var(--text-sm);
@@ -395,46 +395,29 @@ kbd {
   }
 }
 
-.pixel-loader {
-  --pixel-step: calc(var(--pixel-cell) + var(--pixel-gap));
-  position: relative;
-  display: inline-grid;
-  grid-template-columns: repeat(3, var(--pixel-cell));
-  grid-template-rows: repeat(3, var(--pixel-cell));
+.loader {
   flex: none;
-  gap: var(--pixel-gap);
   vertical-align: middle;
 }
 
-.pixel-loader i {
-  display: block;
-  border-radius: 1px;
-  background: color-mix(in srgb, currentColor 12%, transparent);
+.loader-turn {
+  transform-box: view-box;
+  transform-origin: center;
+  animation: citropy-loader-turn var(--loader-loop) var(--loader-turn-ease) var(--loader-start) infinite;
 }
 
-.pixel-loader .pixel-loader-head {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: var(--pixel-cell);
-  height: var(--pixel-cell);
-  background: currentColor;
-  animation: citropy-pixel-head 960ms step-end infinite paused;
+.loader-drop {
+  animation: citropy-loader-split var(--loader-loop) var(--ease-in-out) var(--loader-start) infinite;
 }
 
-@keyframes citropy-pixel-head {
+@keyframes citropy-loader-turn {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(var(--loader-turn)); }
+}
+
+@keyframes citropy-loader-split {
   0%, 100% { transform: translate(0, 0); }
-  12.5% { transform: translate(var(--pixel-step), 0); }
-  25% { transform: translate(calc(2 * var(--pixel-step)), 0); }
-  37.5% { transform: translate(calc(2 * var(--pixel-step)), var(--pixel-step)); }
-  50% { transform: translate(calc(2 * var(--pixel-step)), calc(2 * var(--pixel-step))); }
-  62.5% { transform: translate(var(--pixel-step), calc(2 * var(--pixel-step))); }
-  75% { transform: translate(0, calc(2 * var(--pixel-step))); }
-  87.5% { transform: translate(0, var(--pixel-step)); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pixel-loader .pixel-loader-head { animation: none; }
+  30%, 70% { transform: translate(var(--loader-dx), var(--loader-dy)); }
 }
 
 .file-type-icon {

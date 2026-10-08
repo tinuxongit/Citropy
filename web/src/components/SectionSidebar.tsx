@@ -1,6 +1,5 @@
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
-import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { SlidingPanel } from "./SlidingPanel.tsx";
 import { ResizeHandle } from "./ResizeHandle.tsx";
 
@@ -34,7 +33,7 @@ export function SectionLink({
   onSelect,
   children,
 }: {
-  icon: LucideIcon;
+  icon: ComponentType<{ size?: number }>;
   label: string;
   active: boolean;
   disabled?: boolean;

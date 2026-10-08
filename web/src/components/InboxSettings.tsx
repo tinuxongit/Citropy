@@ -5,7 +5,7 @@ import { previewUiSound } from "../lib/ui-sound.ts";
 
 type AlertSound = "chime" | "system" | "off";
 
-export function NotificationSettings() {
+export function InboxSettings() {
   const connected = useApp((state) => state.connected);
   const notificationPreferences = useApp((state) => state.notificationPreferences);
   const uiAlertSounds = useApp((state) => state.uiAlertSounds);
@@ -18,13 +18,13 @@ export function NotificationSettings() {
 
   return (
     <>
-      <h2 className="settings-group-heading">Completion alerts</h2>
+      <h2 className="settings-group-heading">Alerts</h2>
       <div className="settings-group">
         {(
           [
             {
               key: "toasts",
-              label: "In-app notifications",
+              label: "Popups",
               detail: "Show a brief popup when a response or Git action finishes.",
             },
             {
@@ -35,7 +35,7 @@ export function NotificationSettings() {
             {
               key: "subagents",
               label: "Subagent completions",
-              detail: "Notify you when a subagent finishes or fails. Results remain available in the conversation.",
+              detail: "Add an inbox item when a subagent finishes or fails. Results remain available in the conversation.",
             },
           ] as const
         ).map(({ key, label, detail }) => (
@@ -82,7 +82,7 @@ export function NotificationSettings() {
           </span>
         </label>
       </div>
-      <p className="settings-note">{" "}Your last 100 notifications stay in the notification center until you clear them. Desktop alerts require Citropy desktop and follow your system's notification settings.{" "}</p>
+      <p className="settings-note">{" "}Your last 100 items stay in the inbox until you clear them. Desktop notifications require Citropy desktop and follow your system's notification settings.{" "}</p>
     </>
   );
 }

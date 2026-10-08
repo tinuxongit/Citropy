@@ -1,15 +1,15 @@
 import {
   ArrowRight,
   Check,
-  GitBranch,
   GitMerge,
-  Globe2,
   MoreHorizontal,
   Plus,
   Search,
   Trash2,
 } from "lucide-react";
+import { BranchIcon } from "../BranchIcon.tsx";
 import { Menu } from "../Menu.tsx";
+import { RemoteIcon } from "../RemoteIcon.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import { dateTime, formatDate } from "../../lib/format.ts";
 import type { Section } from "./labels.ts";
@@ -87,7 +87,7 @@ export function BranchesSection({
       </header>
       {!data.hasCommits && (
         <div className="git-current-summary">
-          <GitBranch size={22} />
+          <BranchIcon size={22} />
           <div>
             <small>Current branch</small>
             <strong>{branch}</strong>
@@ -123,18 +123,15 @@ export function BranchesSection({
             </h3>
             <span>On this computer</span>
           </div>
-          <div className="git-branch-list">
+          <div className="git-card-list">
             {localBranches
               .filter((entry) => match(entry.name))
               .sort((a, b) => Number(b.current) - Number(a.current))
               .map((entry) => (
                 <div className="git-branch-row" key={entry.name}>
-                  <GitBranch
-                    size={18}
-                    className={
-                      entry.current ? "git-accent" : "muted"
-                    }
-                  />
+                  <span className="git-row-mark" data-current={entry.current}>
+                    <BranchIcon size={16} />
+                  </span>
                   <div className="git-row-main">
                     <div>
                       <strong>{entry.name}</strong>
@@ -247,11 +244,14 @@ export function BranchesSection({
             </button>
           </div>
           {remoteBranches.length ? (
-            remoteBranches
+            <div className="git-card-list">
+            {remoteBranches
               .filter((entry) => match(entry.name))
               .map((entry) => (
                 <div className="git-branch-row" key={entry.name}>
-                  <Globe2 size={17} className="muted" />
+                  <span className="git-row-mark">
+                    <RemoteIcon size={16} />
+                  </span>
                   <div className="git-row-main">
                     <strong>{entry.name}</strong>
                     <p className="truncate">{entry.subject}</p>
@@ -260,10 +260,11 @@ export function BranchesSection({
                     {formatDate(entry.date, { month: "short", day: "numeric" })}
                   </time>
                 </div>
-              ))
+              ))}
+            </div>
           ) : (
             <div className="git-inline-empty">
-              <Globe2 size={22} />
+              <RemoteIcon size={22} />
               <div>
                 <strong>No remote branches yet</strong>
                 <p>

@@ -8,7 +8,7 @@ import { reportError } from "../../lib/api.ts";
 import { isRemote } from "../../lib/environment.ts";
 import { gitActionBusy } from "../../../../shared/assistance.ts";
 import type { Project, ThreadMeta } from "../../../../shared/protocol.ts";
-import { PixelLoader } from "../PixelLoader.tsx";
+import { Loader } from "../Loader.tsx";
 import { ActionError } from "../ActionError.tsx";
 import { TaskReview } from "../TaskReview.tsx";
 import { DetailRow } from "./DetailRow.tsx";
@@ -51,7 +51,7 @@ export function ThreadDetailsButton() {
   const busy = gitActionBusy(thread.gitAction);
   const failed = thread.gitAction?.status === "error";
   return <button type="button" className="icon-btn thread-details-toggle" aria-label="Conversation details" aria-pressed={open} data-active={open} data-error={failed || undefined} title="Conversation details" onClick={toggleDetails}>
-    {busy ? <PixelLoader size={15} /> : failed ? <CircleAlert size={16} /> : <SquareMenu size={16} />}
+    {busy ? <Loader size={15} /> : failed ? <CircleAlert size={16} /> : <SquareMenu size={16} />}
   </button>;
 }
 
@@ -104,7 +104,7 @@ function ThreadDetails({ thread, project }: { thread: ThreadMeta; project: Proje
         <GitSection thread={thread} git={git} branch={branch} onReview={() => setReviewing(true)} onSourceControl={openSourceControl} onChanges={() => showInChat(() => openWorkbenchPanel("changes"))} />
       </div>}
       {!isGit && <div className="details-section" aria-label="Version control">
-        <DetailRow icon={git.busy ? <PixelLoader size={14} /> : <GitBranchPlus size={16} />} label={git.busy ? git.activity : "Initialize Git"} title="Start tracking this folder's history with Git" disabled={!connected || git.busy} onClick={() => void git.manage("init")} />
+        <DetailRow icon={git.busy ? <Loader size={14} /> : <GitBranchPlus size={16} />} label={git.busy ? git.activity : "Initialize Git"} title="Start tracking this folder's history with Git" disabled={!connected || git.busy} onClick={() => void git.manage("init")} />
         <ActionError className="details-error" message={git.failed ? git.error : ""} onDismiss={git.dismissError} />
       </div>}
       <ShellsSection threadId={thread.id} disabled={!connected} />

@@ -470,47 +470,74 @@
 }
 
 .welcome-inner {
-  width: min(560px, 100%);
+  display: grid;
+  justify-items: center;
+  width: min(440px, 100%);
+  text-align: center;
   animation: citropy-rise var(--dur-base) var(--ease-out) both;
 }
 
+.welcome-mark {
+  margin-bottom: var(--space-16);
+  color: var(--text-3);
+}
+
 .welcome h1 {
-  margin-bottom: var(--space-10);
+  max-width: 100%;
+  margin-bottom: var(--space-6);
   font-size: var(--text-display);
 }
 
-.welcome p.lede {
-  color: var(--text-2);
+.welcome-path {
+  max-width: 100%;
   margin-bottom: var(--space-24);
-  max-width: 46ch;
+  color: var(--text-3);
+  font-size: var(--text-sm);
 }
 
 .recent-list {
   display: grid;
-  gap: var(--space-4);
-  margin-top: var(--space-20);
+  gap: var(--space-2);
+  width: 100%;
+  margin-top: var(--space-40);
+  text-align: left;
+}
+
+.recent-label {
+  padding: 0 var(--space-10) var(--space-6);
+  color: var(--text-3);
+  font-size: var(--text-sm);
 }
 
 .recent-item {
   display: flex;
   align-items: center;
   gap: var(--space-10);
-  padding: var(--space-10) var(--space-10);
-  border-radius: var(--r-sm);
-  color: var(--text-2);
+  height: 36px;
+  padding: 0 var(--space-10);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-size: var(--text-sm);
   text-align: left;
   transition:
     background var(--dur-instant),
     color var(--dur-instant);
 }
 
-.recent-item:hover {
-  background: var(--hover);
-  color: var(--text);
+.recent-item > svg {
+  flex: none;
+  color: var(--text-3);
 }
 
-.recent-item .muted {
-  font-size: var(--text-sm);
+.recent-item:hover {
+  background: var(--hover);
+}
+
+.recent-path {
+  flex: 1;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  text-align: right;
 }
 
 .panel-resize {
@@ -598,8 +625,6 @@
   .shell .navigation-strip .account-menu > .account-menu-items { visibility: visible; }
   .shell .account-menu-button { display: none; }
   .shell .navigation-strip-group > * { flex: 1; }
-  .shell .navigation-strip-group::before,
-  .shell .navigation-strip-end > .app-update-control + .account-menu::before { content: none; }
   .shell .navigation-strip .app-update-control { position: static; }
   .shell .strip-action,
   .shell .navigation-strip .rail-action.app-update-button {
