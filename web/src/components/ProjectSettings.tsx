@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
-import { ChevronDown, Globe2, Save } from "lucide-react";
-import { FolderIcon } from "./FolderIcon.tsx";
+import { ChevronDownIcon } from "./icons/chevrons.tsx";
+import { GlobeIcon } from "./GlobeIcon.tsx";
+import { SaveIcon } from "./icons/actions.tsx";
+import { FolderIcon } from "./icons/folders.tsx";
 import { api } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
 import { saveProjectDefaults } from "../lib/actions.ts";
@@ -45,7 +47,7 @@ export function ProjectSettings() {
             >
               <FolderIcon size={18} />
               <span><strong>{project.name}</strong><small>{project.path}</small></span>
-              <ChevronDown size={15} />
+              <ChevronDownIcon size={15} />
             </button>}
           />
           <ProjectForm key={project.id} project={project} />
@@ -76,7 +78,7 @@ function GlobalDefaultsForm() {
   };
   return <section className="settings-group project-scope" aria-labelledby="global-project-defaults-heading">
     <div className="project-scope-heading">
-      <Globe2 size={19} />
+      <GlobeIcon size={19} />
       <div>
         <h2 id="global-project-defaults-heading">Global defaults</h2>
         <p className="feature-note">Shared by Local and SSH folders, unless a folder overrides them.</p>
@@ -91,7 +93,7 @@ function GlobalDefaultsForm() {
     <div className="feature-save">
       <span role="status">{saved ? "Global defaults saved" : ""}</span>
       <button className="btn" data-variant="primary" onClick={save}>
-        <Save size={15} />Save global defaults
+        <SaveIcon size={15} />Save global defaults
       </button>
     </div>
   </section>;
@@ -216,7 +218,7 @@ function ProjectForm({ project }: { project: Project }) {
           data-variant="primary"
           onClick={save}
         >
-          <Save size={15} />
+          <SaveIcon size={15} />
           Save folder settings
         </button>
       </div>

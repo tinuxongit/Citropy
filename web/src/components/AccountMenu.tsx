@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { UserRound } from "lucide-react";
+import { UserIcon } from "./icons/people.tsx";
 import { useApp } from "../lib/store.ts";
 
 export function AccountMenu({ open, onOpenChange, children }: {
@@ -23,7 +23,7 @@ export function AccountMenu({ open, onOpenChange, children }: {
         onClick={() => onOpenChange(!open)}
       >
         <span className="strip-action-face">
-          {account ? <img className="account-menu-avatar" src={account.avatar_url} alt="" /> : <UserRound size={18} />}
+          {account ? <img className="account-menu-avatar" src={account.avatar_url} alt="" /> : <UserIcon size={18} />}
         </span>
       </button>
     </div>

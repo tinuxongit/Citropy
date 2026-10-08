@@ -1,14 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  RotateCw,
-  ArrowUpRight,
-  AlertCircle,
-  Check,
-  Link,
-  X,
-} from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, ArrowUpRightIcon } from "./icons/arrows.tsx";
+import { RotateCwIcon } from "./icons/rotation.tsx";
+import { CircleAlertIcon } from "./icons/status.tsx";
+import { CheckIcon, CloseIcon } from "./icons/marks.tsx";
+import { LinkIcon } from "./icons/editing.tsx";
 import { send } from "../lib/socket.ts";
 import { addressOrSearch } from "../lib/web-search.ts";
 import { useApp } from "../lib/store.ts";
@@ -176,7 +171,7 @@ export function BrowserPane({
             aria-label="Browser back"
             onClick={() => act({ action: "back" })}
           >
-            <ArrowLeft size={14} />
+            <ArrowLeftIcon size={14} />
           </button>
           <button
             className="icon-btn"
@@ -186,7 +181,7 @@ export function BrowserPane({
             aria-label="Browser forward"
             onClick={() => act({ action: "forward" })}
           >
-            <ArrowRight size={14} />
+            <ArrowRightIcon size={14} />
           </button>
           {state?.loading ? (
             <button
@@ -197,7 +192,7 @@ export function BrowserPane({
               aria-label="Stop loading"
               onClick={() => act({ action: "stop" })}
             >
-              <X size={14} />
+              <CloseIcon size={14} />
             </button>
           ) : (
             <button
@@ -208,7 +203,7 @@ export function BrowserPane({
               aria-label="Reload browser"
               onClick={() => act({ action: "reload" })}
             >
-              <RotateCw size={13} />
+              <RotateCwIcon size={13} />
             </button>
           )}
         </div>
@@ -235,7 +230,7 @@ export function BrowserPane({
               title={copied ? "Copied" : "Copy link"}
               onClick={() => copy(state.url)}
             >
-              {copied ? <Check size={14} /> : <Link size={14} />}
+              {copied ? <CheckIcon size={14} /> : <LinkIcon size={14} />}
             </button>
           )}
           {state && state.url !== "about:blank" && (
@@ -246,7 +241,7 @@ export function BrowserPane({
               aria-label="Open in your browser"
               title="Open in your browser"
             >
-              <ArrowUpRight size={14} />
+              <ArrowUpRightIcon size={14} />
             </a>
           )}
         </form>
@@ -259,7 +254,7 @@ export function BrowserPane({
       )}
       {state?.error && (
         <div className="browser-notice" role="alert">
-          <AlertCircle size={14} />
+          <CircleAlertIcon size={14} />
           {state.error}
         </div>
       )}
@@ -302,7 +297,7 @@ export function BrowserPane({
               className="btn primary"
               disabled={!connected}
               onClick={() => send({ t: "desktop.open" })}
-            >{" "}Open Citropy desktop{" "}<ArrowUpRight size={14} />
+            >{" "}Open Citropy desktop{" "}<ArrowUpRightIcon size={14} />
             </button>
           </div>
         ) : !state ? (

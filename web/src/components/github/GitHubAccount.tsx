@@ -1,4 +1,6 @@
-import { Check, Github, RefreshCw } from "lucide-react";
+import { CheckIcon } from "../icons/marks.tsx";
+import { GitHubIcon } from "../BrandIcon.tsx";
+import { RefreshIcon } from "../icons/rotation.tsx";
 import { github } from "../../lib/actions.ts";
 import { GitHubLink } from "./GitHubShared.tsx";
 import type { GitHubStatus, GitHubUser } from "../../../../shared/github.ts";
@@ -14,7 +16,7 @@ export function GitHubSignIn({
 }) {
   return (
     <div className="github-connect">
-      <Github size={38} />
+      <GitHubIcon size={38} />
       <h2>
         {status.installed
           ? "Connect your GitHub account"
@@ -41,7 +43,7 @@ export function GitHubSignIn({
         <GitHubLink href="https://cli.github.com/">{" "}Get GitHub CLI{" "}</GitHubLink>
       )}
       <button className="btn" onClick={onRefresh}>
-        <RefreshCw size={15} />{" "}Refresh connection{" "}</button>
+        <RefreshIcon size={15} />{" "}Refresh connection{" "}</button>
       <details>
         <summary>Connection details</summary>
         <pre>{status.error}</pre>
@@ -70,7 +72,7 @@ export function GitHubAccount({
           <p>@{account.login}</p>
         </div>
         <span className="github-state" data-tone="good">
-          <Check size={16} />{" "}Connected{" "}</span>
+          <CheckIcon size={16} />{" "}Connected{" "}</span>
       </div>
       <div className="github-account-details">
         <div>
@@ -89,7 +91,7 @@ export function GitHubAccount({
       <p className="github-meta">{" "}Citropy uses your existing GitHub permissions. Credentials stay on this computer and are never sent to the browser.{" "}</p>
       <div className="github-detail-actions">
         <button className="btn" onClick={onRefresh} disabled={loading}>
-          <RefreshCw size={14} />{" "}Refresh connection{" "}</button>
+          <RefreshIcon size={14} />{" "}Refresh connection{" "}</button>
         <GitHubLink href="https://github.com/settings/profile">{" "}Manage account{" "}</GitHubLink>
       </div>
     </div>

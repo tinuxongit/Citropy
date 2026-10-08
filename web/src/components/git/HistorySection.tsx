@@ -1,9 +1,6 @@
-import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { BranchIcon } from "../BranchIcon.tsx";
+import { ArrowLeftIcon } from "../icons/arrows.tsx";
+import { ChevronLeftIcon, ChevronRightIcon } from "../icons/chevrons.tsx";
+import { BranchIcon } from "../icons/git.tsx";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview } from "../GitReview.tsx";
 import type { GitSelection } from "./selection.ts";
@@ -118,7 +115,7 @@ export function HistorySection({
                 )
               }
             >
-              <ChevronLeft size={16} />
+              <ChevronLeftIcon size={16} />
             </button>
             <span>
               {data.commits.length
@@ -136,7 +133,7 @@ export function HistorySection({
                 void act("history", undefined, offset + 50)
               }
             >
-              <ChevronRight size={16} />
+              <ChevronRightIcon size={16} />
             </button>
           </footer>
         </div>
@@ -153,7 +150,7 @@ export function HistorySection({
                   aria-label="Back to history"
                   onClick={() => setSelection(null)}
                 >
-                  <ArrowLeft size={17} />
+                  <ArrowLeftIcon size={17} />
                 </button>
                 <div>
                   <h2>{selectedCommit.subject}</h2>

@@ -1,5 +1,5 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
-import { GitBranch } from "lucide-react";
+import { BranchIcon } from "../icons/git.tsx";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { FileIcon } from "../FileIcon.tsx";
 import { Prose } from "../parts/Prose.tsx";
@@ -71,7 +71,7 @@ export function GitHubItemDetail({
       </header>
       {pull && item.head && (
         <div className="github-branch-line">
-          <GitBranch size={15} />
+          <BranchIcon size={15} />
           <code>{item.head.label}</code>
           <span>into</span>
           <code>{item.base?.ref}</code>

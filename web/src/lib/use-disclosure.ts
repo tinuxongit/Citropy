@@ -6,14 +6,14 @@ export function useDisclosure(
   kind: string,
   initial = false,
 ) {
-  const [local, setLocal] = useState(initial);
+  const [local, setLocal] = useState<boolean>();
   const open = useApp((state) =>
-    id ? (state.disclosures[id]?.[kind] ?? local) : local,
+    (id ? state.disclosures[id]?.[kind] : local) ?? initial,
   );
   const setOpen = useCallback(
     (value: SetStateAction<boolean>) => {
       if (!id) {
-        setLocal(value);
+        setLocal((current) => typeof value === "function" ? value(current ?? initial) : value);
         return;
       }
       useApp.setState((state) => {
@@ -25,14 +25,14 @@ export function useDisclosure(
               ...previous,
               [kind]:
                 typeof value === "function"
-                  ? value(previous[kind] ?? local)
+                  ? value(previous[kind] ?? initial)
                   : value,
             },
           },
         };
       });
     },
-    [id, kind, local],
+    [id, kind, initial],
   );
   return [open, setOpen] as const;
 }

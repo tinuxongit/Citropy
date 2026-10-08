@@ -1,6 +1,12 @@
 import { useId, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { GitBranch, RotateCcw, FileDiff, MessagesSquare, Layers, Copy, Check } from "lucide-react";
+import { BranchIcon } from "./icons/git.tsx";
+import { RotateCcwIcon } from "./icons/rotation.tsx";
+import { FileDiffIcon } from "./icons/files.tsx";
+import { ConversationsIcon } from "./ConversationsIcon.tsx";
+import { LayersIcon } from "./LayersIcon.tsx";
+import { CopyIcon } from "./icons/actions.tsx";
+import { CheckIcon } from "./icons/marks.tsx";
 import { api, reportError } from "../lib/api.ts";
 import { selectThread, useApp } from "../lib/store.ts";
 import { useCopied } from "../lib/use-copied.ts";
@@ -41,9 +47,9 @@ export function MessageActions({ threadId, messageId, replyIds = [messageId], us
         : undefined;
   const restoreDisabled = busy || running || compacting || !connected || (mode !== "conversation" && Boolean(fileIssue));
   const choices = [
-    { value: "conversation", label: "Conversation only", description: "Rewind the chat and start a new provider session.", icon: MessagesSquare },
-    { value: "files", label: "Files only", description: "Restore file changes since this message. Keep the chat.", icon: FileDiff },
-    { value: "both", label: "Files and conversation", description: "Restore file changes and rewind the chat together.", icon: Layers },
+    { value: "conversation", label: "Conversation only", description: "Rewind the chat and start a new provider session.", icon: ConversationsIcon },
+    { value: "files", label: "Files only", description: "Restore file changes since this message. Keep the chat.", icon: FileDiffIcon },
+    { value: "both", label: "Files and conversation", description: "Restore file changes and rewind the chat together.", icon: LayersIcon },
   ] as const;
   const restore = async () => {
     if (restoreDisabled) return;
@@ -66,10 +72,10 @@ export function MessageActions({ threadId, messageId, replyIds = [messageId], us
     } catch (error) { reportError(error); } finally { setBusy(false); }
   };
   return <><span className="message-actions">
-    <button className="icon-btn" type="button" aria-label={copied ? "Copied" : "Copy message"} title={copied ? "Copied" : "Copy message"} onClick={() => copy(answerText(replyIds, user))}>{copied ? <Check size={13} /> : <Copy size={13} />}</button>
-    {!nativeAgent && <button className="icon-btn" type="button" aria-label="Branch from this message" title="Branch from this message" disabled={busy} onClick={() => void fork()}><GitBranch size={13} /></button>}
-    {user && !nativeAgent && <button className="icon-btn" type="button" aria-label="Restore before this message" title="Restore before this message" disabled={busy || running} onClick={() => { setMode("conversation"); setDialog("restore"); setError(""); }}><RotateCcw size={13} /></button>}
-    {checkpoint?.before && !nativeAgent && <button className="icon-btn" type="button" aria-label="Review this turn" title="Review this turn" onClick={() => setDialog("review")}><FileDiff size={13} /></button>}
+    <button className="icon-btn" type="button" aria-label={copied ? "Copied" : "Copy message"} title={copied ? "Copied" : "Copy message"} onClick={() => copy(answerText(replyIds, user))}>{copied ? <CheckIcon size={13} /> : <CopyIcon size={13} />}</button>
+    {!nativeAgent && <button className="icon-btn" type="button" aria-label="Branch from this message" title="Branch from this message" disabled={busy} onClick={() => void fork()}><BranchIcon size={13} /></button>}
+    {user && !nativeAgent && <button className="icon-btn" type="button" aria-label="Restore before this message" title="Restore before this message" disabled={busy || running} onClick={() => { setMode("conversation"); setDialog("restore"); setError(""); }}><RotateCcwIcon size={13} /></button>}
+    {checkpoint?.before && !nativeAgent && <button className="icon-btn" type="button" aria-label="Review this turn" title="Review this turn" onClick={() => setDialog("review")}><FileDiffIcon size={13} /></button>}
   </span>
     <AnimatePresence>
       {reviewThread && <TaskReview thread={reviewThread} messageId={messageId} onClose={() => setDialog(undefined)} />}

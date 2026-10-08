@@ -3,22 +3,15 @@ import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { isRemote } from "../lib/environment.ts";
 import { nextTabIndex } from "../lib/tab-strip.ts";
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-  Globe2,
-  TerminalSquare,
-  Files,
-  FileDiff,
-  Network,
-  Plug,
-  Plus,
-  X,
-  MoreHorizontal,
-  Minimize2,
-  Maximize2,
-  PenTool,
-  NotebookPen,
-} from "lucide-react";
+import { lazy, Suspense, type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { GlobeIcon } from "./GlobeIcon.tsx";
+import { TerminalIcon } from "./icons/squares.tsx";
+import { FileDiffIcon, FilesIcon } from "./icons/files.tsx";
+import { NetworkIcon, PlugIcon } from "./icons/hardware.tsx";
+import { CloseIcon, MoreIcon, PlusIcon } from "./icons/marks.tsx";
+import { CollapseIcon, ExpandIcon } from "./icons/media.tsx";
+import { PenNibIcon } from "./icons/drawing.tsx";
+import { NotebookPenIcon } from "./icons/pencil.tsx";
 import { Changes } from "./Changes.tsx";
 import { ResizeHandle } from "./ResizeHandle.tsx";
 import { FileTree } from "./FileTree.tsx";
@@ -33,6 +26,8 @@ import { openWorkbenchPanel } from "../lib/actions.ts";
 import { send } from "../lib/socket.ts";
 import type { PanelKind } from "../../../shared/workbench.ts";
 
+const TAB_MIN_WIDTH = 80;
+
 const DrawingPane = lazy(() => import("./drawing/DrawingPane.tsx").then(module => ({ default: module.DrawingPane })));
 const NotesPane = lazy(() => import("./notes/NotesPane.tsx").then(module => ({ default: module.NotesPane })));
 
@@ -41,55 +36,55 @@ const options = [
     kind: "browser",
     label: "Browser",
     hint: "Browse together with your provider",
-    icon: Globe2,
+    icon: GlobeIcon,
   },
   {
     kind: "terminal",
     label: "Terminal",
     hint: "Open another shell",
-    icon: TerminalSquare,
+    icon: TerminalIcon,
   },
   {
     kind: "files",
     label: "Files",
     hint: "Explore this workspace",
-    icon: Files,
+    icon: FilesIcon,
   },
   {
     kind: "changes",
     label: "Changes",
     hint: "Review the working tree",
-    icon: FileDiff,
+    icon: FileDiffIcon,
   },
   {
     kind: "subagents",
     label: "Subagents",
     hint: "Follow delegated work",
-    icon: Network,
+    icon: NetworkIcon,
   },
   {
     kind: "tools",
     label: "Tools",
     hint: "MCP connection and available tools",
-    icon: Plug,
+    icon: PlugIcon,
   },
   {
     kind: "drawing",
     label: "Drawing",
     hint: "Sketch an idea and attach it to a message",
-    icon: PenTool,
+    icon: PenNibIcon,
   },
   {
     kind: "notes",
     label: "Notes",
     hint: "Write notes and attach them to a message",
-    icon: NotebookPen,
+    icon: NotebookPenIcon,
   },
 ] satisfies Array<{
   kind: PanelKind;
   label: string;
   hint: string;
-  icon: typeof Plus;
+  icon: typeof PlusIcon;
 }>;
 
 export function Inspector({ visible }: { visible: boolean }) {
@@ -124,7 +119,7 @@ export function Inspector({ visible }: { visible: boolean }) {
       ? activePanels[projectId]
       : tabs[0]?.id;
   const tabGap = scaled(4);
-  const tabSpan = scaled(48) + tabGap;
+  const tabSpan = scaled(TAB_MIN_WIDTH) + tabGap;
   const overflowButton = scaled(30);
   const tabLimit = tabCapacity !== null && tabs.length > tabCapacity ? overflowCapacity : tabs.length;
   const visibleTabs = tabs.slice(0, tabLimit);
@@ -183,6 +178,7 @@ export function Inspector({ visible }: { visible: boolean }) {
           ref={tabStrip}
           role="tablist"
           aria-label="Open workspace panels"
+          style={{ "--workbench-tab-min": `${TAB_MIN_WIDTH}px` } as CSSProperties}
           onKeyDown={(event) => {
             if (!(event.target instanceof HTMLElement) || !event.target.closest('[role="tab"]')) return;
             const focused = event.target.closest('[role="tab"]')?.id;
@@ -204,7 +200,7 @@ export function Inspector({ visible }: { visible: boolean }) {
             const Icon = options.find(
               (option) => option.kind === panel.kind,
             )!.icon;
-            const title = panel.kind === "browser" || panel.kind === "terminal" ? panel.title : panel.title;
+            const title = panel.title;
             return (
               <div
                 className="workbench-tab"
@@ -239,7 +235,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                   title={`Close ${title}`}
                   onClick={() => send({ t: "panel.close", id: panel.id })}
                 >
-                  <X size={12} />
+                  <CloseIcon size={12} />
                 </button>
               </div>
             );
@@ -261,7 +257,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                 },
                 action: connected ? {
                   label: `Close ${title}`,
-                  icon: <X size={13} />,
+                  icon: <CloseIcon size={13} />,
                   onSelect: () => send({ t: "panel.close", id: panel.id }),
                 } : undefined,
               };
@@ -278,7 +274,7 @@ export function Inspector({ visible }: { visible: boolean }) {
                 onClick={toggle}
               >
                 <span className="unseen-anchor">
-                  <MoreHorizontal size={16} />
+                  <MoreIcon size={16} />
                   {hiddenTabs.some(panel => unseenPanels[panel.id]) && <span className="unseen-dot" aria-label="New activity" />}
                 </span>
               </button>
@@ -294,7 +290,7 @@ export function Inspector({ visible }: { visible: boolean }) {
           disabled={!projectId}
           onClick={toggleExpanded}
         >
-          {expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+          {expanded ? <CollapseIcon size={15} /> : <ExpandIcon size={15} />}
         </button>
         <Menu
           header="Open a panel"
@@ -322,7 +318,7 @@ export function Inspector({ visible }: { visible: boolean }) {
               aria-haspopup="menu"
               aria-expanded={open}
             >
-              <Plus size={17} />
+              <PlusIcon size={17} />
             </button>
           )}
         />
@@ -370,7 +366,7 @@ export function Inspector({ visible }: { visible: boolean }) {
               disabled={!connected}
               onClick={() => openWorkbenchPanel("files")}
             >
-              <Files size={15} />Open files
+              <FilesIcon size={15} />Open files
             </button>
           </div>
         )}

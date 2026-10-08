@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "./icons/chevrons.tsx";
+import { DownloadIcon } from "./icons/arrows.tsx";
 import { useCloseOnOutsideClick, useViewportBounds, ZOOM_STEP } from "../lib/use-viewer.ts";
 import { Modal } from "./Modal.tsx";
 import { ViewerZoom } from "./ViewerZoom.tsx";
@@ -104,11 +105,11 @@ export function ImageViewer({ images, index, onIndexChange, onClose }: {
     initialFocus=".dialog-heading button"
     actions={<>
       {images.length > 1 && <span className="image-position" role="status" aria-label={`Image ${index + 1} of ${images.length}`}>{index + 1} / {images.length}</span>}
-      {!error && download && <a className="icon-btn" aria-label="Download image" title="Download image" href={download} download={name}><Download size={18} /></a>}
+      {!error && download && <a className="icon-btn" aria-label="Download image" title="Download image" href={download} download={name}><DownloadIcon size={18} /></a>}
     </>}
     footer={ready && <ViewerZoom group="Image zoom" fit="Fit image" scale={scale} minimum={minimum} maximum={MAX_ZOOM} onZoom={zoomAtCenter} />}
   >
-    {images.length > 1 && <button className="icon-btn image-navigation" type="button" aria-label="Previous image" title="Previous image" aria-disabled={index === 0} onClick={() => { if (index > 0) onIndexChange(index - 1); }}><ChevronLeft size={24} /></button>}
+    {images.length > 1 && <button className="icon-btn image-navigation" type="button" aria-label="Previous image" title="Previous image" aria-disabled={index === 0} onClick={() => { if (index > 0) onIndexChange(index - 1); }}><ChevronLeftIcon size={24} /></button>}
     <div className="image-viewport scroll" ref={viewport} data-pannable={pannable || undefined}>
       {error ? <p className="image-viewer-error" role="alert">Unable to load this image.</p> : <div className="image-surface">
         <img
@@ -136,6 +137,6 @@ export function ImageViewer({ images, index, onIndexChange, onClose }: {
         />
       </div>}
     </div>
-    {images.length > 1 && <button className="icon-btn image-navigation" type="button" aria-label="Next image" title="Next image" aria-disabled={index === images.length - 1} onClick={() => { if (index < images.length - 1) onIndexChange(index + 1); }}><ChevronRight size={24} /></button>}
+    {images.length > 1 && <button className="icon-btn image-navigation" type="button" aria-label="Next image" title="Next image" aria-disabled={index === images.length - 1} onClick={() => { if (index < images.length - 1) onIndexChange(index + 1); }}><ChevronRightIcon size={24} /></button>}
   </Modal>;
 }

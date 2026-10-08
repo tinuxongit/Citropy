@@ -10,7 +10,7 @@ import { scaled, selectProject, useApp } from "../lib/store.ts";
 import { useVisibleInterval } from "../lib/use-visible-interval.ts";
 import { Collapsible } from "./Collapsible.tsx";
 import { ResizeHandle } from "./ResizeHandle.tsx";
-import { MessageSquarePlus } from "./icons.ts";
+import { NewMessageIcon } from "./icons/messages.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { ThreadPreview } from "./ThreadPreview.tsx";
 import { canConnectServers, WorkspaceDialogs, type WorkspaceDialog, type WorkspaceScope } from "./WorkspaceSelector.tsx";
@@ -178,7 +178,7 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
 
   const renderEmpty = (group: ThreadGroup) => (
     <button className="global-project-empty" type="button" disabled={!canCreateIn(group)} onClick={() => startThread(group)}>
-      <MessageSquarePlus size={14} aria-hidden="true" />
+      <NewMessageIcon size={14} aria-hidden="true" />
       Start a conversation
     </button>
   );

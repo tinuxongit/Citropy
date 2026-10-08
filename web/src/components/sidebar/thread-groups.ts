@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, type ComponentType } from "react";
-import { CircleCheck, Clock, Monitor, Pin } from "lucide-react";
+import { CircleCheckIcon, ClockIcon } from "../icons/status.tsx";
+import { MonitorIcon } from "../icons/hardware.tsx";
+import { PinIcon } from "../icons/actions.tsx";
+import { FolderIcon } from "../icons/folders.tsx";
 import type { Project, ThreadMeta } from "../../../../shared/protocol.ts";
 import type { CachedThread } from "../../lib/environment.ts";
 import { threadIsActive } from "../../lib/format.ts";
 import { setSidebarGroupOpen, useApp } from "../../lib/store.ts";
-import { FolderIcon } from "../FolderIcon.tsx";
 import { ServerIcon } from "../ServerIcon.tsx";
 import type { WorkspaceScope } from "../WorkspaceSelector.tsx";
 
@@ -37,9 +39,9 @@ export interface ThreadListRow {
 }
 
 const CATEGORIES: { id: Category; label: string; icon: ThreadGroup["icon"]; heading?: "section" }[] = [
-  { id: "pinned", label: "Pinned", icon: Pin, heading: "section" },
-  { id: "snoozed", label: "Snoozed", icon: Clock },
-  { id: "finished", label: "Finished", icon: CircleCheck },
+  { id: "pinned", label: "Pinned", icon: PinIcon, heading: "section" },
+  { id: "snoozed", label: "Snoozed", icon: ClockIcon },
+  { id: "finished", label: "Finished", icon: CircleCheckIcon },
 ];
 
 type Sortable = Pick<ThreadMeta, "position" | "updatedAt">;
@@ -121,7 +123,7 @@ export interface EnvironmentFolders {
 const DEFAULT_OPEN: Record<string, boolean> = { pinned: true, snoozed: false, finished: false };
 
 const SECTIONS: { id: WorkspaceScope; label: string; icon: ThreadGroup["icon"]; server: boolean }[] = [
-  { id: "local", label: "Local", icon: Monitor, server: false },
+  { id: "local", label: "Local", icon: MonitorIcon, server: false },
   { id: "servers", label: "Servers", icon: ServerIcon, server: true },
 ];
 

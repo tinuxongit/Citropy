@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDownIcon } from "./icons/chevrons.tsx";
 import { Menu } from "./Menu.tsx";
 
 interface SelectOption {
@@ -83,7 +83,7 @@ export function Select({
             <span className="select-label truncate" data-placeholder={!selected || undefined}>
               {selected?.label ?? placeholder}
             </span>
-            <ChevronDown size={15} className="select-chevron" aria-hidden="true" />
+            <ChevronDownIcon size={15} className="select-chevron" aria-hidden="true" />
           </button>
         )}
       />

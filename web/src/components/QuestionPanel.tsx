@@ -1,6 +1,8 @@
 import { applyFake, isDevFake } from "../lib/dev-triggers.ts";
 import { useRef, useState } from "react";
-import { ArrowRight, ChevronLeft, MessageCircleQuestion } from "lucide-react";
+import { ArrowRightIcon } from "./icons/arrows.tsx";
+import { ChevronLeftIcon } from "./icons/chevrons.tsx";
+import { QuestionMessageIcon } from "./icons/messages.tsx";
 import type { QuestionRequest } from "../../../shared/questions.ts";
 import { useApp, type AppState } from "../lib/store.ts";
 import { api } from "../lib/api.ts";
@@ -59,7 +61,7 @@ export function QuestionForm({ request }: { request: QuestionRequest }) {
   return <ComposerWideTab className="question-panel" aria-label="Your input">
     <form className="question-form" onSubmit={event => { event.preventDefault(); if (!ready) return; if (last) void submit(); else navigate(draft.index + 1); }}>
       <header className="question-heading">
-        <MessageCircleQuestion size={16} aria-hidden="true" />
+        <QuestionMessageIcon size={16} aria-hidden="true" />
         <span>Your input</span>
         {request.questions.length > 1 && <span className="question-progress">{draft.index + 1} of {request.questions.length}</span>}
       </header>
@@ -84,8 +86,8 @@ export function QuestionForm({ request }: { request: QuestionRequest }) {
       <footer className="question-footer">
         <button type="button" className="btn" data-variant="ghost" disabled={submitting || !connected} onClick={() => void submit(true)}>Skip</button>
         <div>
-          {draft.index > 0 && <button type="button" className="btn" data-variant="ghost" disabled={submitting} onClick={() => navigate(draft.index - 1)}><ChevronLeft size={14} />Back</button>}
-          <button type="submit" className="btn" data-variant="primary" disabled={!ready || submitting || !connected}>{submitting ? "Sending…" : last ? "Send answers" : "Next"}<ArrowRight size={14} /></button>
+          {draft.index > 0 && <button type="button" className="btn" data-variant="ghost" disabled={submitting} onClick={() => navigate(draft.index - 1)}><ChevronLeftIcon size={14} />Back</button>}
+          <button type="submit" className="btn" data-variant="primary" disabled={!ready || submitting || !connected}>{submitting ? "Sending…" : last ? "Send answers" : "Next"}<ArrowRightIcon size={14} /></button>
         </div>
       </footer>
     </form>

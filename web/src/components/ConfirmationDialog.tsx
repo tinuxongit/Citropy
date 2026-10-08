@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CircleHelp, Trash2 } from "lucide-react";
+import { CircleHelpIcon } from "./icons/status.tsx";
+import { TrashIcon } from "./icons/actions.tsx";
 import { AnimatePresence, motion } from "motion/react";
 import type { Confirmation } from "../lib/app-state.ts";
 import { answerConfirmation, useApp } from "../lib/store.ts";
@@ -75,7 +76,7 @@ function ConfirmationCard({ confirmation }: { confirmation: Confirmation }) {
     >
       <header className="dialog-heading">
         <span className="dialog-symbol" data-danger={confirmation.danger}>
-          {confirmation.danger ? <Trash2 size={17} /> : <CircleHelp size={17} />}
+          {confirmation.danger ? <TrashIcon size={17} /> : <CircleHelpIcon size={17} />}
         </span>
         <div>
           <h2 id={`${id}-title`}>{confirmation.title}</h2>

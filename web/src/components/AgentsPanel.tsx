@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
-import { Power } from "lucide-react";
+import { PowerIcon } from "./icons/hardware.tsx";
 import type { ProviderId } from "../../../shared/protocol.ts";
 import { api, reportError } from "../lib/api.ts";
 import { loadThread } from "../lib/actions.ts";
@@ -118,7 +118,7 @@ export function AgentsPanel() {
                     disabled={busy !== undefined}
                     onClick={() => turnOff(`agents/turn-off?threadId=${encodeURIComponent(agent.threadId)}`, agent.threadId)}
                   >
-                    <Power size={14} />
+                    <PowerIcon size={14} />
                   </button>
                 </li>
               ))}
@@ -126,7 +126,7 @@ export function AgentsPanel() {
           )}
           {idle > 0 && (
             <button type="button" className="btn" disabled={busy !== undefined} onClick={() => turnOff("agents/turn-off-idle", "idle")}>
-              <Power size={14} />Turn off idle agents ({idle})
+              <PowerIcon size={14} />Turn off idle agents ({idle})
             </button>
           )}
         </motion.div>

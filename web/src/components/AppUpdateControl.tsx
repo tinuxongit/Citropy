@@ -1,13 +1,10 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useEffect, useId, useRef, useState } from "react";
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw,
-  TriangleAlert,
-} from "lucide-react";
+import { CheckIcon } from "./icons/marks.tsx";
+import { ChevronLeftIcon, ChevronRightIcon } from "./icons/chevrons.tsx";
+import { RefreshIcon } from "./icons/rotation.tsx";
+import { WarningIcon } from "./icons/status.tsx";
 import type { ReleaseNotes } from "../../../shared/app-update.ts";
 import { useAppUpdate } from "../lib/use-app-update.ts";
 import { Loader } from "./Loader.tsx";
@@ -129,17 +126,17 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
   };
   const releaseArrows = (
     <>
-      <button ref={olderArrow} type="button" className="icon-btn" aria-label="Older release" title="Older release" disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeft size={15} /></button>
-      <button ref={newerArrow} type="button" className="icon-btn" aria-label="Newer release" title="Newer release" disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRight size={15} /></button>
+      <button ref={olderArrow} type="button" className="icon-btn" aria-label="Older release" title="Older release" disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeftIcon size={15} /></button>
+      <button ref={newerArrow} type="button" className="icon-btn" aria-label="Newer release" title="Newer release" disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRightIcon size={15} /></button>
     </>
   );
   const Icon =
     state.status === "error"
-      ? TriangleAlert
+      ? WarningIcon
       : ready
-        ? RefreshCw
+        ? RefreshIcon
         : state.status === "current" && confirming
-          ? Check
+          ? CheckIcon
           : UpdateIcon;
   const face = (
     <>
@@ -180,7 +177,7 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
       <AnimatePresence>{open && (
         <motion.div ref={popover} initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="dialog" aria-label={title}>
           <div className="app-update-heading">
-            {state.status === "current" ? <Check size={16} /> : <Icon size={16} />}
+            {state.status === "current" ? <CheckIcon size={16} /> : <Icon size={16} />}
             <strong>{title}</strong>
             {notes && variant !== "settings" && <span className="app-update-arrows">{releaseArrows}</span>}
           </div>

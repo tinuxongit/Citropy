@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ChevronRight, Folder, FolderOpen } from "../icons.ts";
+import { ChevronRightIcon } from "../icons/chevrons.tsx";
+import { FolderIcon, FolderOpenIcon } from "../icons/folders.tsx";
 import { VirtualList } from "../VirtualList.tsx";
 import { FileIcon } from "../FileIcon.tsx";
 import { api, assetQuery } from "../../lib/api.ts";
@@ -197,8 +198,8 @@ export function FileExplorer({
               >
                 {entry.dir ? (
                   <>
-                    <ChevronRight size={11} className="tree-chevron" data-open={expanded.has(entry.path)} />
-                    {expanded.has(entry.path) ? <FolderOpen size={12} className="tree-icon" /> : <Folder size={12} className="tree-icon" />}
+                    <ChevronRightIcon size={11} className="tree-chevron" data-open={expanded.has(entry.path)} />
+                    {expanded.has(entry.path) ? <FolderOpenIcon size={12} className="tree-icon" /> : <FolderIcon size={12} className="tree-icon" />}
                   </>
                 ) : (
                   <>

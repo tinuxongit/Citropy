@@ -8,6 +8,7 @@ import { createAppUpdater } from "./updates.mjs";
 import { stageScriptUpdate } from "./script-update.mjs";
 import { fetchReleaseHistory, fetchReleaseNotes } from "./release-notes.mjs";
 import { spawnAppImageRelaunch } from "./appimage-relaunch.mjs";
+import { refreshMenuIcon } from "./menu-icon.mjs";
 import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-reveal.mjs";
 import { packagedBackend } from "./backend.mjs";
 import { desktopDiagnostics } from "./diagnostics.mjs";
@@ -41,6 +42,8 @@ const { version } = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 );
 const appName = development ? "Citropy Dev" : "Citropy";
+const desktopId = development ? "citropy-dev" : "citropy";
+const appIcon = fileURLToPath(new URL(`./assets/${desktopId}.png`, import.meta.url));
 app.setName(appName);
 app.setPath(
   "userData",
@@ -68,7 +71,14 @@ process.on("SIGTERM", () => {
 let focusDesktopWindow;
 const secondInstance = createSecondInstanceFocus(() => focusDesktopWindow);
 app.on("second-instance", () => secondInstance.focus());
-if (process.platform === "linux") app.setDesktopName(development ? "citropy-dev.desktop" : "citropy.desktop");
+if (process.platform === "linux") {
+  app.setDesktopName(`${desktopId}.desktop`);
+  try {
+    if (refreshMenuIcon({ base: desktopId, picturePath: appIcon })) diagnose("menu-icon.refreshed", {});
+  } catch (error) {
+    diagnose("menu-icon.failed", { reason: error.message });
+  }
+}
 if (app.isPackaged) {
   process.env.CITROPY_DEVELOPMENT = "0";
   process.env.CITROPY_PORT ||= String(defaultPort());
@@ -289,7 +299,24 @@ async function behindCover(tab, work) {
   const id = tab.state.id;
   const still = (await capture(tab))?.toDataURL();
   if (!still) return work();
-  window.webContents.send("browser:cover", id, still);
+  await showCover(tab, still);
+  const shown = tab.view.getBounds();
+  tab.view.setBounds({ ...shown, x: window.getContentSize()[0] + 20 });
+  try {
+    return await work();
+  } finally {
+    if (tab.metricsParams) await cdp(tab, "Emulation.setDeviceMetricsOverride", tab.metricsParams).catch(logFailure("Restoring the browser viewport", id));
+    await waitForPaint(tab);
+    if (tab.visible) {
+      tab.view.setBounds(shown);
+      await new Promise((resolve) => setTimeout(resolve, 34));
+      if (tab.visible) window.webContents.send("browser:cover", id, undefined);
+    }
+  }
+}
+
+async function showCover(tab, still) {
+  window.webContents.send("browser:cover", tab.state.id, still);
   await window.webContents.executeJavaScript(`new Promise((resolve) => {
     const started = performance.now();
     const check = () => {
@@ -298,18 +325,30 @@ async function behindCover(tab, work) {
       else requestAnimationFrame(check);
     };
     check();
-  })`).catch(logFailure("Waiting for the browser cover", id));
-  const shown = tab.view.getBounds();
-  tab.view.setBounds({ ...shown, x: window.getContentSize()[0] + 20 });
+  })`).catch(logFailure("Waiting for the browser cover", tab.state.id));
+}
+
+async function waitForPaint(tab) {
+  await cdp(tab, "Runtime.evaluate", { expression: "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))", awaitPromise: true, timeout: 500 }).catch(logFailure("Waiting for the browser to paint", tab.state.id));
+}
+
+async function loadDetached(tab, load) {
+  const content = tab.view.webContents;
+  const focused = content.isFocused();
+  const visible = tab.visible && window.isVisible() && !window.isMinimized();
+  const still = visible ? (await capture(tab))?.toDataURL() : undefined;
+  if (still) await showCover(tab, still);
+  window.contentView.removeChildView(tab.view);
   try {
-    return await work();
+    await load();
   } finally {
-    if (tab.metricsParams) await cdp(tab, "Emulation.setDeviceMetricsOverride", tab.metricsParams).catch(logFailure("Restoring the browser viewport", id));
-    await cdp(tab, "Runtime.evaluate", { expression: "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))", awaitPromise: true, timeout: 500 }).catch(logFailure("Waiting for the browser to paint", id));
-    if (tab.visible) {
-      tab.view.setBounds(shown);
+    window.contentView.addChildView(tab.view);
+    tab.view.setVisible(true);
+    if (focused) content.focus();
+    if (still) {
+      await waitForPaint(tab);
       await new Promise((resolve) => setTimeout(resolve, 34));
-      if (tab.visible) window.webContents.send("browser:cover", id, undefined);
+      window.webContents.send("browser:cover", tab.state.id, undefined);
     }
   }
 }
@@ -799,21 +838,32 @@ async function performAction(tab, input) {
   try {
   switch (input.action) {
     case "navigate":
-      await content.loadURL(address(input.url)).catch((error) => {
-        if (error.code !== "ERR_ABORTED" && error.errno !== -3) throw error;
-      });
+      await loadDetached(tab, () =>
+        content.loadURL(address(input.url)).catch((error) => {
+          if (error.code !== "ERR_ABORTED" && error.errno !== -3) throw error;
+        }),
+      );
       break;
     case "back":
       if (tab.state.mobile && (await closeTopLayer(tab))) break;
       if (content.navigationHistory.canGoBack())
-        content.navigationHistory.goBack();
+        await loadDetached(tab, async () => {
+          content.navigationHistory.goBack();
+          await settle(tab, () => true);
+        });
       break;
     case "forward":
       if (content.navigationHistory.canGoForward())
-        content.navigationHistory.goForward();
+        await loadDetached(tab, async () => {
+          content.navigationHistory.goForward();
+          await settle(tab, () => true);
+        });
       break;
     case "reload":
-      content.reload();
+      await loadDetached(tab, async () => {
+        content.reload();
+        await settle(tab, () => true);
+      });
       break;
     case "stop":
       content.stop();
@@ -1205,9 +1255,8 @@ app
       minWidth,
       minHeight,
       title: appName,
-      icon: fileURLToPath(new URL(`./assets/${development ? "citropy-dev" : "citropy"}.png`, import.meta.url)),
+      icon: appIcon,
       frame: false,
-      roundedCorners: false,
       ...(process.platform === "darwin"
         ? { titleBarStyle: "hidden", trafficLightPosition: { x: 15, y: 14 } }
         : {}),

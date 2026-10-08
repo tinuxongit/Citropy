@@ -20,7 +20,6 @@ export function WindowControls() {
     const apply = (state: DesktopWindowState) => {
       setState(state);
       document.documentElement.dataset.platform = state.platform;
-      document.documentElement.toggleAttribute("data-window-filled", state.maximized || state.fullscreen);
     };
     void window.citropyDesktop?.windowState?.().then(apply);
     return window.citropyDesktop?.onWindowState?.(apply);

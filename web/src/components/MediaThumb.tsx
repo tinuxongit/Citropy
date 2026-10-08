@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ImageOff, Play } from "lucide-react";
+import { ImageOffIcon, PlayIcon } from "./icons/media.tsx";
 
 const ICON_SIZES = {
   tile: { unavailable: 20, play: 14 },
@@ -15,7 +15,7 @@ export function MediaThumb({ src, alt, video = false, size }: { src: string; alt
   if (failedSrc === src)
     return (
       <span className="image-unavailable" role="img" aria-label="Image unavailable">
-        <ImageOff size={icons.unavailable} aria-hidden="true" />
+        <ImageOffIcon size={icons.unavailable} aria-hidden="true" />
         <span>Image unavailable</span>
       </span>
     );
@@ -23,7 +23,7 @@ export function MediaThumb({ src, alt, video = false, size }: { src: string; alt
     return (
       <span className="video-thumbnail">
         <video src={`${src}${VIDEO_POSTER_FRAGMENT}`} preload="metadata" muted playsInline aria-hidden="true" onError={fail} />
-        <Play size={icons.play} fill="currentColor" aria-hidden="true" />
+        <PlayIcon size={icons.play} />
       </span>
     );
   return <img src={src} alt={alt} loading="lazy" decoding="async" onError={fail} />;

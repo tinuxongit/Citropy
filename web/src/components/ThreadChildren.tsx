@@ -1,11 +1,11 @@
-import { CornerDownRight } from "lucide-react";
+import { CornerDownRightIcon } from "./icons/arrows.tsx";
+import { CheckIcon } from "./icons/marks.tsx";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { loadThread, openOnEnvironment } from "../lib/actions.ts";
 import { reportError } from "../lib/api.ts";
 import { environmentId } from "../lib/environment.ts";
 import { selectThread } from "../lib/store.ts";
 import { groupSubagents } from "../lib/subagents.ts";
-import { Check } from "./icons.ts";
 import { Collapsible } from "./Collapsible.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ThreadPulse } from "./ThreadPulse.tsx";
@@ -61,7 +61,7 @@ export function ThreadChildren(props: Props) {
                 }
               }}
             >
-              <CornerDownRight size={12} />
+              <CornerDownRightIcon size={12} />
               <span className="subagent-icon">
                 <ProviderIcon provider={child.provider} />
                 <span className="subagent-parent-icon"><ProviderIcon provider={parent.provider} /></span>
@@ -70,7 +70,7 @@ export function ThreadChildren(props: Props) {
               {activePaths.has(child.id) ? (
                 <ThreadPulse status={child.status} />
               ) : (
-                <Check size={12} className="subagent-complete" />
+                <CheckIcon size={12} className="subagent-complete" />
               )}
             </button>
             <ThreadChildren {...props} parent={child} />

@@ -1,5 +1,4 @@
-import { AlertTriangle } from "../icons.ts";
-import { Info } from "lucide-react";
+import { InfoIcon, WarningIcon } from "../icons/status.tsx";
 import { Prose } from "./Prose.tsx";
 
 interface Props {
@@ -10,7 +9,7 @@ interface Props {
 export function Notice({ level, text }: Props) {
   return (
     <div className="notice" data-level={level}>
-      {level === "info" ? <Info size={15} /> : <AlertTriangle size={13} />}
+      {level === "info" ? <InfoIcon size={15} /> : <WarningIcon size={13} />}
       <Prose text={text} live={false} images={false} />
     </div>
   );

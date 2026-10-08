@@ -24,7 +24,8 @@ function tabPath({ left, top, width, height, radius, fillet }: Tab, inset: numbe
 }
 
 function svgMask(width: number, height: number, content: string) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${content}</svg>`;
+  const scale = window.devicePixelRatio;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * scale}" height="${height * scale}" viewBox="0 0 ${width} ${height}">${content}</svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
@@ -69,7 +70,7 @@ export function ComposerFrame() {
         return { ...tab, top: tab.top + shift + rise, height, radius: Math.min(tab.radius, height), fillet: Math.min(tab.fillet, height) };
       });
       const shellBox = { left: 0, top: rise, width: shell.offsetWidth, height: shell.offsetHeight, radius: parseFloat(getComputedStyle(shell).borderTopLeftRadius) };
-      const nextGeometry = JSON.stringify([shellBox, visible]);
+      const nextGeometry = JSON.stringify([shellBox, visible, window.devicePixelRatio]);
       if (nextGeometry === geometry) return;
       geometry = nextGeometry;
       const masks = frameMasks(shellBox.width, rise + shellBox.height, shellBox, visible);

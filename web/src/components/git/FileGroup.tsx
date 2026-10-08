@@ -1,4 +1,4 @@
-import { Minus, Plus } from "lucide-react";
+import { MinusIcon, PlusIcon } from "../icons/marks.tsx";
 import { FileIcon } from "../FileIcon.tsx";
 import { VirtualList } from "../VirtualList.tsx";
 import { fileLabel } from "./files.ts";
@@ -39,7 +39,7 @@ export function FileGroup({
           disabled={disabled || !list.length}
           onClick={() => void act(inIndex ? "unstageAll" : "stageAll")}
         >
-          {inIndex ? <Minus size={14} /> : <Plus size={14} />}
+          {inIndex ? <MinusIcon size={14} /> : <PlusIcon size={14} />}
           {inIndex ? "Unstage all" : "Stage all"}
         </button>
       </header>
@@ -97,7 +97,7 @@ export function FileGroup({
                     void act(inIndex ? "unstage" : "stage", file.path)
                   }
                 >
-                  {inIndex ? <Minus size={15} /> : <Plus size={15} />}
+                  {inIndex ? <MinusIcon size={15} /> : <PlusIcon size={15} />}
                 </button>
               </div>
             );

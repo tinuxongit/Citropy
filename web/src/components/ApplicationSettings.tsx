@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, Monitor, RefreshCw, RotateCcw } from "lucide-react";
+import { ExternalLinkIcon } from "./icons/arrows.tsx";
+import { MonitorIcon } from "./icons/hardware.tsx";
+import { RefreshIcon, RotateCcwIcon } from "./icons/rotation.tsx";
 import type { DesktopWindowState } from "../desktop.d.ts";
 import { isRemote } from "../lib/environment.ts";
 import { send } from "../lib/socket.ts";
@@ -65,7 +67,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
     <>
       <div className="application-identity">
         <span>
-          <Monitor size={20} />
+          <MonitorIcon size={20} />
         </span>
         <div>
           <h2>{development ? "Citropy development" : "Citropy desktop"}</h2>
@@ -112,7 +114,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
               disabled={!connected || updating || running}
               onClick={() => void restartServer()}
             >
-              <RotateCcw size={14} />
+              <RotateCcwIcon size={14} />
               Restart server
             </button>
           </div>
@@ -130,7 +132,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
                 disabled={updating}
                 onClick={() => void applicationAction("reload")}
               >
-                <RefreshCw size={14} />{" "}Reload{" "}</button>
+                <RefreshIcon size={14} />{" "}Reload{" "}</button>
             </div>
             <div className="setting-row">
               <span>
@@ -149,7 +151,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
                 disabled={!connected || updating || running || applyingUpdate}
                 onClick={() => void applicationAction("restart")}
               >
-                <RotateCcw size={14} />{" "}Restart{" "}</button>
+                <RotateCcwIcon size={14} />{" "}Restart{" "}</button>
             </div>
           </>
         ) : (
@@ -164,7 +166,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
               disabled={!connected}
               onClick={() => send({ t: "desktop.open" })}
             >
-              <ExternalLink size={14} />{" "}Open desktop{" "}</button>
+              <ExternalLinkIcon size={14} />{" "}Open desktop{" "}</button>
           </div>
         )}
       </div>

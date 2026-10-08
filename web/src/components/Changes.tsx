@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Collapsible } from "./Collapsible.tsx";
-import { ChevronRight, GitCommitVertical, RotateCcw } from "./icons.ts";
+import { ChevronRightIcon } from "./icons/chevrons.tsx";
+import { CommitVerticalIcon } from "./icons/git.tsx";
+import { RotateCcwIcon } from "./icons/rotation.tsx";
 import { DiffView } from "./DiffView.tsx";
 import { FileIcon } from "./FileIcon.tsx";
 import { LineCounts } from "./LineCounts.tsx";
@@ -50,7 +52,7 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
     <div className="change" data-open={open}>
       <div className="change-heading">
         <button className="change-head" type="button" title={`${file.path} · ${statusLabel(file)}`} aria-expanded={open} onClick={onToggle}>
-          <ChevronRight size={12} className="change-chevron" />
+          <ChevronRightIcon size={12} className="change-chevron" />
           <span className="change-file">
             <FileIcon path={file.path} />
             <span className="change-name truncate">{name}</span>
@@ -68,7 +70,7 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
           title="Discard changes"
           onClick={() => discardFile(projectId, file.path)}
         >
-          <RotateCcw size={12} />
+          <RotateCcwIcon size={12} />
         </button>
       </div>
 
@@ -154,7 +156,7 @@ export function Changes({ active = true }: { active?: boolean }) {
             onChange={(event) => setMessage(event.target.value)}
           />
           <button className="btn" type="submit" data-variant="primary" disabled={!message.trim()}>
-            <GitCommitVertical size={13} />
+            <CommitVerticalIcon size={13} />
             Commit
           </button>
           <details className="commit-description">

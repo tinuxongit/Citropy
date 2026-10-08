@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
-import { Pipette } from "lucide-react";
+import { PipetteIcon } from "./icons/drawing.tsx";
 import { reportError } from "../lib/api.ts";
 import { isHexColor } from "../lib/custom-theme.ts";
 import { ScreenColorPicker } from "./ScreenColorPicker.tsx";
@@ -62,7 +62,7 @@ export function ColorPicker({ color, onCommit, className = "", id }: {
             title="Pick a color from the app"
             onClick={() => desktop.captureWindow().then(setCapture, reportError)}
           >
-            <Pipette size={16} />
+            <PipetteIcon size={16} />
           </button>
         )}
       </div>

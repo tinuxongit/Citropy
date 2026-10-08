@@ -117,7 +117,7 @@ main() {
       say "Your conversations stay in $data_hint. The app profile is in $HOME/Library/Application Support/$name."
     else
       removed=0
-      for path in "$bin_path" "$bin_dir/$command_name" "$data_dir/applications/$command_name.desktop" "$data_dir/icons/hicolor/512x512/apps/$command_name.png"; do
+      for path in "$bin_path" "$bin_dir/$command_name" "$data_dir/applications/$command_name.desktop" "$data_dir/icons/hicolor/512x512/apps/$command_name.png" "$data_dir/icons/hicolor/512x512/apps/$command_name-icon-"*.png; do
         if [ -e "$path" ]; then
           rm -f "$path"
           removed=1
@@ -205,11 +205,14 @@ main() {
     mv -f "$bin_path.new" "$bin_path"
     icon=""
     chmod 755 "$tmp/$asset"
-    if (cd "$tmp" && "$tmp/$asset" --appimage-extract "usr/share/icons/hicolor/512x512/apps/$command_name.png" >/dev/null 2>&1) &&
-      [ -f "$tmp/squashfs-root/usr/share/icons/hicolor/512x512/apps/$command_name.png" ]; then
-      mkdir -p "$data_dir/icons/hicolor/512x512/apps"
-      cp "$tmp/squashfs-root/usr/share/icons/hicolor/512x512/apps/$command_name.png" "$data_dir/icons/hicolor/512x512/apps/$command_name.png"
-      icon="$command_name"
+    apps="$data_dir/icons/hicolor/512x512/apps"
+    bundled="usr/share/icons/hicolor/512x512/apps/$command_name.png"
+    if (cd "$tmp" && "$tmp/$asset" --appimage-extract "$bundled" >/dev/null 2>&1) &&
+      [ -f "$tmp/squashfs-root/$bundled" ]; then
+      # Desktops cache icons by name for the whole session, so each new picture gets a new name. The app's desktop/menu-icon.mjs uses the same name.
+      icon="$command_name-icon-$(hash_file "$tmp/squashfs-root/$bundled" | cut -c1-12)"
+      mkdir -p "$apps"
+      cp "$tmp/squashfs-root/$bundled" "$apps/$icon.png"
     fi
     if [ -n "$icon" ]; then
       mkdir -p "$data_dir/applications"
@@ -227,6 +230,7 @@ Categories=Development;IDE;
 StartupWMClass=$command_name
 EOF
       chmod 644 "$data_dir/applications/$command_name.desktop"
+      find "$apps" -maxdepth 1 \( -name "$command_name.png" -o -name "$command_name-icon-*.png" \) ! -name "$icon.png" -exec rm -f {} +
       if command -v update-desktop-database >/dev/null 2>&1; then
         update-desktop-database "$data_dir/applications" >/dev/null 2>&1 || true
       fi

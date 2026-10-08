@@ -1,37 +1,23 @@
 import { useEffect, useState } from "react";
-import {
-  ChevronDown,
-  Monitor,
-  Smartphone,
-  Tablet,
-  SlidersHorizontal,
-} from "lucide-react";
+import { ChevronDownIcon } from "./icons/chevrons.tsx";
+import { MonitorIcon, TabletIcon } from "./icons/hardware.tsx";
+import { RotatePhoneIcon } from "./icons/rotation.tsx";
+import { PhoneIcon } from "./PhoneIcon.tsx";
+import { SlidersIcon } from "./SlidersIcon.tsx";
 import { Menu } from "./Menu.tsx";
 import type { BrowserAction, BrowserState } from "../../../shared/workbench.ts";
 
 const presets = [
-  { id: "desktop", label: "Desktop", width: 1920, height: 1080, mobile: false, Icon: Monitor },
-  { id: "laptop", label: "Laptop", width: 1440, height: 900, mobile: false, Icon: Monitor },
-  { id: "tablet", label: "Tablet", width: 768, height: 1024, mobile: true, Icon: Tablet },
-  { id: "phone", label: "Phone", width: 390, height: 844, mobile: true, Icon: Smartphone },
+  { id: "desktop", label: "Desktop", width: 1920, height: 1080, mobile: false, Icon: MonitorIcon },
+  { id: "laptop", label: "Laptop", width: 1440, height: 900, mobile: false, Icon: MonitorIcon },
+  { id: "tablet", label: "Tablet", width: 768, height: 1024, mobile: true, Icon: TabletIcon },
+  { id: "phone", label: "Phone", width: 390, height: 844, mobile: true, Icon: PhoneIcon },
 ];
 
 interface Props {
   state: BrowserState;
   disabled: boolean;
   onResize: (action: Extract<BrowserAction, { action: "resize" }>) => void;
-}
-
-function RotatePhone() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="8" y="4" width="8" height="16" rx="2" transform="rotate(45 12 12)" />
-      <path d="M3.31 9.67A9 9 0 0 1 9.67 3.31" />
-      <path d="M7.25 1.91 9.67 3.31 8.27 5.73" />
-      <path d="M20.69 14.33A9 9 0 0 1 14.33 20.69" />
-      <path d="M16.75 22.09 14.33 20.69 15.73 18.27" />
-    </svg>
-  );
 }
 
 export function BrowserViewport({ state, disabled, onResize }: Props) {
@@ -44,7 +30,7 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
       preset.height === state.height &&
       preset.mobile === Boolean(state.mobile),
   );
-  const Icon = selected?.Icon ?? (state.mobile ? Smartphone : Monitor);
+  const Icon = selected?.Icon ?? (state.mobile ? PhoneIcon : MonitorIcon);
   const valid =
     Number.isInteger(Number(width)) && Number(width) >= 320 && Number(width) <= 3840 &&
     Number.isInteger(Number(height)) && Number(height) >= 240 && Number(height) <= 2160;
@@ -74,7 +60,7 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
               <Icon size={14} />
               <span>{selected ? selected.label : "Custom"}</span>
               <span className="browser-viewport-size">{state.width} × {state.height}</span>
-              <ChevronDown size={12} />
+              <ChevronDownIcon size={12} />
             </button>
           )}
           items={[
@@ -93,7 +79,7 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
               id: "custom",
               label: "Custom size",
               hint: "Set the page width and height",
-              icon: <SlidersHorizontal size={16} />,
+              icon: <SlidersIcon size={16} />,
               selected: !selected,
               onSelect: () => {
                 setWidth(String(state.width));
@@ -132,7 +118,7 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
             mobile: state.mobile,
           })}
         >
-          <RotatePhone />
+          <RotatePhoneIcon size={21} />
         </button>
       </div>
       {custom && (

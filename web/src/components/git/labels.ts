@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
-import { BranchIcon } from "../BranchIcon.tsx";
+import { BranchIcon } from "../icons/git.tsx";
+import { HistoryIcon } from "../icons/rotation.tsx";
 import { ChangesIcon } from "../ChangesIcon.tsx";
-import { HistoryIcon } from "../HistoryIcon.tsx";
 import { RemoteIcon } from "../RemoteIcon.tsx";
 import { StashIcon } from "../StashIcon.tsx";
 import type { GitOperation } from "../../../../shared/protocol.ts";

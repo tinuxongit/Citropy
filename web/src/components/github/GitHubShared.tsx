@@ -1,16 +1,9 @@
 import { Modal } from "../Modal.tsx";
 import { useRef, useState, type ReactNode, type FormEvent } from "react";
-import {
-  AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Circle,
-  ExternalLink,
-  GitMerge,
-  GitPullRequest,
-  X,
-} from "lucide-react";
+import { CircleAlertIcon, CircleIcon } from "../icons/status.tsx";
+import { ArrowLeftIcon, ArrowRightIcon, ExternalLinkIcon } from "../icons/arrows.tsx";
+import { CheckIcon, CloseIcon } from "../icons/marks.tsx";
+import { MergeIcon, PullRequestIcon } from "../icons/git.tsx";
 import { useApp } from "../../lib/store.ts";
 import { formatDate } from "../../lib/format.ts";
 import { Loader } from "../Loader.tsx";
@@ -33,7 +26,7 @@ export function GitHubLink({
       rel="noreferrer noopener"
     >
       {children}
-      <ExternalLink size={13} />
+      <ExternalLinkIcon size={13} />
     </a>
   );
 }
@@ -50,7 +43,7 @@ export function GitHubFeedback({
   if (error)
     return (
       <div className="github-feedback" data-error role="alert">
-        <AlertCircle size={18} />
+        <CircleAlertIcon size={18} />
         <p>{error}</p>
       </div>
     );
@@ -64,7 +57,7 @@ export function GitHubFeedback({
   if (empty)
     return (
       <div className="github-empty">
-        <Circle size={28} strokeWidth={1.3} />
+        <CircleIcon size={28} />
         <h2>{empty}</h2>
         <p>Try another filter or refresh for updates.</p>
       </div>
@@ -95,14 +88,14 @@ export function GitHubState({
         : "pending";
   const Icon =
     value === "merged"
-      ? GitMerge
+      ? MergeIcon
       : pull
-        ? GitPullRequest
+        ? PullRequestIcon
         : tone === "good" && value !== "open"
-          ? Check
+          ? CheckIcon
           : tone === "bad"
-            ? X
-            : Circle;
+            ? CloseIcon
+            : CircleIcon;
   return (
     <span className="github-state" data-tone={tone}>
       <Icon size={15} />
@@ -128,7 +121,7 @@ export function GitHubPagination({
         disabled={page === 1}
         onClick={() => onChange(page - 1)}
       >
-        <ArrowLeft size={14} />
+        <ArrowLeftIcon size={14} />
         Previous
       </button>
       <span>Page {page}</span>
@@ -138,7 +131,7 @@ export function GitHubPagination({
         onClick={() => onChange(page + 1)}
       >
         Next
-        <ArrowRight size={14} />
+        <ArrowRightIcon size={14} />
       </button>
     </div>
   );

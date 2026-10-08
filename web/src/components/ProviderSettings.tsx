@@ -1,14 +1,11 @@
 import { RuntimeDownloads } from "./RuntimeDownloads.tsx";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ArrowUpToLine,
-  Check,
-  FileText,
-  RefreshCw,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ArrowUpToLineIcon } from "./icons/arrows.tsx";
+import { CheckIcon, PlusIcon } from "./icons/marks.tsx";
+import { FileTextIcon } from "./icons/files.tsx";
+import { RefreshIcon } from "./icons/rotation.tsx";
+import { TrashIcon } from "./icons/actions.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ProviderInstructions } from "./ProviderInstructions.tsx";
 import { api, reportError } from "../lib/api.ts";
@@ -196,13 +193,13 @@ export function ProviderSettings() {
       <h2 className="settings-group-heading">Installed providers</h2>
         <button className="btn" disabled={!connected || switching || updating || checking || !eligible}
           title="Update installed providers in this environment. Providers with active conversations are skipped."
-          onClick={() => void updateAll()}><ArrowUpToLine size={14} />Update all</button>
+          onClick={() => void updateAll()}><ArrowUpToLineIcon size={14} />Update all</button>
         <button
           className="btn"
           disabled={!connected || switching || updating || checking}
           onClick={() => setRefresh((value) => value + 1)}
         >
-          {checking ? <Loader size={14} /> : <RefreshCw size={14} />}{" "}Check for updates{" "}</button>
+          {checking ? <Loader size={14} /> : <RefreshIcon size={14} />}{" "}Check for updates{" "}</button>
       </div>
       <div className="provider-settings-group">
         {providers.map((provider) => {
@@ -330,11 +327,11 @@ export function ProviderSettings() {
                   </div>
                   <button type="button" className="btn"
                     disabled={!connected || switching} onClick={() => setEditor(provider)}>
-                    <FileText size={14} />Global instructions
+                    <FileTextIcon size={14} />Global instructions
                   </button>
                   {!installing && state?.updateStatus === "current" && !isUpdating ? (
                     <span className="provider-up-to-date" role="status">
-                      <Check size={14} />{" "}Up to date{" "}</span>
+                      <CheckIcon size={14} />{" "}Up to date{" "}</span>
                   ) : (
                     <button
                       type="button"
@@ -357,7 +354,7 @@ export function ProviderSettings() {
                       {isUpdating ? (
                         <Loader size={14} />
                       ) : (
-                        <ArrowUpToLine size={14} />
+                        <ArrowUpToLineIcon size={14} />
                       )}
                       {isUpdating
                         ? (installing ? "Installing…" : "Updating…")
@@ -381,7 +378,7 @@ export function ProviderSettings() {
                     data-status={state.status}
                     role={state.status === "error" ? "alert" : "status"}
                   >
-                    {state.status === "success" && <Check size={14} />}
+                    {state.status === "success" && <CheckIcon size={14} />}
                     {state.message}
                   </p>
                 )}
@@ -395,7 +392,7 @@ export function ProviderSettings() {
               </div>
 
               <div className="provider-instances">
-                <div className="provider-instances-heading"><strong>Accounts</strong><button type="button" className="btn" disabled={!connected || switching} onClick={() => setInstanceEditor({ provider })}><Plus size={14} />Add account</button></div>
+                <div className="provider-instances-heading"><strong>Accounts</strong><button type="button" className="btn" disabled={!connected || switching} onClick={() => setInstanceEditor({ provider })}><PlusIcon size={14} />Add account</button></div>
                 {provider.instances?.map(entry => <div className="provider-instance-row" key={entry.id}>
                   <span><strong>{entry.name}</strong><small>{entry.available ? (entry.models.length === 1 ? `${entry.models.length} model` : `${entry.models.length} models`) : "CLI unavailable"}</small></span>
                   <button type="button" className="btn" disabled={!connected || switching || !instances.some(value => value.id === entry.id)} onClick={() => setInstanceEditor({ provider, instance: instances.find(value => value.id === entry.id) })}>Edit</button>
@@ -403,7 +400,7 @@ export function ProviderSettings() {
                     if (!await confirmAction({ title: `Remove ${entry.name}?`, description: "Conversations and writing settings using this account must be removed first.", label: "Remove", danger: true })) return;
                     try { await api("providers/instances", { method: "DELETE", body: JSON.stringify({ id: entry.id }) }); setInstances(previous => previous.filter(value => value.id !== entry.id)); }
                     catch (cause) { reportError(cause); }
-                  })()}><Trash2 size={14} /></button>
+                  })()}><TrashIcon size={14} /></button>
                 </div>)}
               </div>
 

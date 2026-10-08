@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import { AnimatePresence } from "motion/react";
-import { ListTodo } from "lucide-react";
+import { PlanIcon } from "../PlanIcon.tsx";
 import { send } from "../../lib/socket.ts";
 import { normalizeTodos } from "../../../../shared/todos.ts";
 import type { TodoItem } from "../../../../shared/protocol.ts";
@@ -53,7 +53,7 @@ export function PlanTab({ threadId }: { threadId: string }) {
   };
   return <>
     <AnimatePresence>{unfinished && <ComposerTab key="plan" ref={trigger} title="Plan" aria-label={`Plan, ${done} of ${steps.length} done`} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
-      <ListTodo size={13} /><span>{done}/{steps.length}</span>
+      <PlanIcon size={13} /><span>{done}/{steps.length}</span>
     </ComposerTab>}</AnimatePresence>
     <AnimatePresence>{open && unfinished && <PlanPanel id={id} threadId={threadId} trigger={trigger} steps={steps} done={done} onClose={close} />}</AnimatePresence>
   </>;
@@ -62,7 +62,7 @@ export function PlanTab({ threadId }: { threadId: string }) {
 function PlanPanel({ id, threadId, trigger, steps, done, onClose }: { id: string; threadId: string; trigger: RefObject<HTMLButtonElement | null>; steps: TodoItem[]; done: number; onClose: () => void }) {
   const connected = useApp((state) => state.connected);
   return <ComposerPopover id={id} label="Plan" className="plan-panel scroll" anchor={trigger} width={360} onClose={onClose}>
-    <header className="plan-panel-heading"><ListTodo size={15} aria-hidden="true" /><strong>Plan</strong><span>{done}/{steps.length}</span></header>
+    <header className="plan-panel-heading"><PlanIcon size={15} aria-hidden="true" /><strong>Plan</strong><span>{done}/{steps.length}</span></header>
     <TodoSteps steps={steps} />
     <button type="button" className="btn plan-discard" disabled={!connected} title="Hide this plan and mark its open steps as cancelled" onClick={() => send({ t: "thread.discardPlan", id: threadId })}>Discard plan</button>
   </ComposerPopover>;

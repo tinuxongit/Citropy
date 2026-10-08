@@ -5,14 +5,16 @@ import { reportError } from "../../lib/api.ts";
 import { opensContextMenu } from "../../lib/context-menu-key.ts";
 import { connectionName, environmentId, useEnvironments } from "../../lib/environment.ts";
 import { confirmAction, selectProject, useApp } from "../../lib/store.ts";
-import { FolderIcon, FolderOpenIcon } from "../FolderIcon.tsx";
-import { FolderOpen, MessageSquarePlus, Pencil, Trash2 } from "../icons.ts";
-import { GitFork } from "lucide-react";
+import { FolderIcon, FolderOpenIcon } from "../icons/folders.tsx";
+import { NewMessageIcon } from "../icons/messages.tsx";
+import { EditIcon } from "../icons/pencil.tsx";
+import { TrashIcon } from "../icons/actions.tsx";
+import { ForkIcon } from "../icons/git.tsx";
 import { Menu } from "../Menu.tsx";
 import { Loader } from "../Loader.tsx";
 import { RenameProjectModal } from "./RenameProjectModal.tsx";
 import type { Project } from "../../../../shared/protocol.ts";
-import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
+import { DisconnectedIcon } from "../icons/hardware.tsx";
 import type { ThreadGroup } from "./thread-groups.ts";
 import { WorkspaceMenu, type WorkspaceDialog } from "../WorkspaceSelector.tsx";
 
@@ -97,16 +99,16 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         {group.offline && <span className="global-project-offline" title="Disconnected"><DisconnectedIcon size={14} /></span>}
       </button>
       <Menu align="end" span=".global-project-heading" items={[
-        { id: "open", label: "Open workspace", icon: <FolderOpen size={15} />, disabled, onSelect: () => void run(() => { selectProject(project.id); onConversation(); }) },
-        ...(project.isGit ? [{ id: "new-worktree", label: "New thread with workspace options…", icon: <GitFork size={15} />, disabled: disabled || !canCreateThread, onSelect: () => void run(() => { selectProject(project.id); onConversation(); void createThread(undefined, true); }) }] : []),
-        { id: "rename", label: "Rename project", icon: <Pencil size={15} />, disabled, onSelect: () => void run(() => setRenaming(true)) },
+        { id: "open", label: "Open workspace", icon: <FolderOpenIcon size={15} />, disabled, onSelect: () => void run(() => { selectProject(project.id); onConversation(); }) },
+        ...(project.isGit ? [{ id: "new-worktree", label: "New thread with workspace options…", icon: <ForkIcon size={15} />, disabled: disabled || !canCreateThread, onSelect: () => void run(() => { selectProject(project.id); onConversation(); void createThread(undefined, true); }) }] : []),
+        { id: "rename", label: "Rename project", icon: <EditIcon size={15} />, disabled, onSelect: () => void run(() => setRenaming(true)) },
         { id: "up", label: "Move up", disabled: isFirst, onSelect: () => onMove(-1) },
         { id: "down", label: "Move down", disabled: isLast, onSelect: () => onMove(1) },
-        { id: "remove", label: "Remove project", icon: <Trash2 size={15} />, danger: true, disabled, onSelect: () => void remove() },
+        { id: "remove", label: "Remove project", icon: <TrashIcon size={15} />, danger: true, disabled, onSelect: () => void remove() },
       ]} trigger={({ id, open, toggle }) => (
-        <button id={id} className="global-project-edit" type="button" aria-label={editLabel} title={editLabel} aria-haspopup="menu" aria-expanded={open} onClick={toggle}><Pencil size={13} /></button>
+        <button id={id} className="global-project-edit" type="button" aria-label={editLabel} title={editLabel} aria-haspopup="menu" aria-expanded={open} onClick={toggle}><EditIcon size={13} /></button>
       )} />
-      <button className="global-project-new" type="button" aria-label={newThreadLabel} title={newThreadLabel} disabled={disabled || !canCreateThread} onClick={onNewThread}><MessageSquarePlus size={14} /></button>
+      <button className="global-project-new" type="button" aria-label={newThreadLabel} title={newThreadLabel} disabled={disabled || !canCreateThread} onClick={onNewThread}><NewMessageIcon size={14} /></button>
     </div>
     <AnimatePresence>{renaming && current && <RenameProjectModal project={project} onClose={() => setRenaming(false)} />}</AnimatePresence>
   </>;

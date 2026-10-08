@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import { useDisclosure } from "../../lib/use-disclosure.ts";
 import { Collapsible } from "../Collapsible.tsx";
-import { AlertTriangle, Ban, ChevronRight, ExternalLink, Square, shapeIcon } from "../icons.ts";
+import { BanIcon, WarningIcon } from "../icons/status.tsx";
+import { ChevronRightIcon } from "../icons/chevrons.tsx";
+import { ExternalLinkIcon } from "../icons/arrows.tsx";
+import { StopIcon } from "../icons/squares.tsx";
+import { shapeIcon } from "../icons/tool-shapes.ts";
 import { toolLabel } from "../../lib/group.ts";
 import { DiffView } from "../DiffView.tsx";
 import { ansiToHtml } from "../../lib/ansi.ts";
@@ -35,7 +39,7 @@ export function ToolCard({ part }: { part: ToolPart }) {
   return (
     <div id={`tool-${part.id}`} className="tool" data-shape={part.shape} data-status={part.status} data-open={expanded} data-images={hasImages || undefined}>
       <button className="tool-head" type="button" disabled={empty} aria-expanded={expanded} onClick={() => setOpen((value) => !value)}>
-        <ChevronRight size={12} className="tool-chevron" aria-hidden="true" />
+        <ChevronRightIcon size={12} className="tool-chevron" aria-hidden="true" />
         <span className="tool-icon">
           <Icon size={12} aria-hidden="true" />
         </span>
@@ -59,7 +63,7 @@ export function ToolCard({ part }: { part: ToolPart }) {
           {url && (
             <a className="tool-url truncate" href={url} target="_blank" rel="noreferrer noopener">
               {url}
-              <ExternalLink size={11} />
+              <ExternalLinkIcon size={11} />
             </a>
           )}
           {part.patch && <DiffView patch={part.patch} showHeader={false} partId={part.id} />}
@@ -80,9 +84,9 @@ export function ToolCard({ part }: { part: ToolPart }) {
 function StatusMark({ status }: { status: ToolPart["status"] }) {
   if (status === "running") return <Loader size={12} className="tool-spin" role="img" aria-label="running" />;
   if (status === "ok") return null;
-  if (status === "denied") return <Ban size={12} className="tool-bad" aria-label="denied" />;
-  if (status === "stopped") return <Square size={10} className="tool-stopped" aria-label="stopped" />;
-  return <AlertTriangle size={12} className="tool-bad" aria-label="failed" />;
+  if (status === "denied") return <BanIcon size={12} className="tool-bad" aria-label="denied" />;
+  if (status === "stopped") return <StopIcon size={10} className="tool-stopped" aria-label="stopped" />;
+  return <WarningIcon size={12} className="tool-bad" aria-label="failed" />;
 }
 
 function isJson(text: string): boolean {

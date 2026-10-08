@@ -3,7 +3,7 @@ import { ago, cost, tokens } from "../../lib/format.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { Select } from "../Select.tsx";
-import { FolderIcon } from "../FolderIcon.tsx";
+import { FolderIcon } from "../icons/folders.tsx";
 import { useApp } from "../../lib/store.ts";
 import { measureOf } from "./usage-series.ts";
 import { uncachedInput } from "../../../../shared/usage-metrics.ts";

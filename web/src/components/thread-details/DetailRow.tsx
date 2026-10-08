@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDownIcon } from "../icons/chevrons.tsx";
 import { Menu, type MenuItem } from "../Menu.tsx";
 
 interface RowProps {
@@ -29,7 +29,7 @@ export function DetailSplitRow({ menu, menuLabel, extra, onMenuOpen, ...primary 
       {extra}
       <span className="details-separator" aria-hidden="true" />
       <Menu items={menu} span=".details-split" align="end" trigger={({ toggle, id, open }) => (
-        <button id={id} type="button" className="details-chevron" aria-label={menuLabel} title={menuLabel} aria-haspopup="menu" aria-expanded={open} onClick={() => { if (!open) onMenuOpen?.(); toggle(); }}><ChevronDown size={14} /></button>
+        <button id={id} type="button" className="details-chevron" aria-label={menuLabel} title={menuLabel} aria-haspopup="menu" aria-expanded={open} onClick={() => { if (!open) onMenuOpen?.(); toggle(); }}><ChevronDownIcon size={14} /></button>
       )} />
     </div>
   );

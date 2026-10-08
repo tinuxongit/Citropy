@@ -1,4 +1,4 @@
-import type { ServerEvent, ThreadMeta } from "../../../shared/protocol.ts";
+import type { AppNotification, ServerEvent, ThreadMeta } from "../../../shared/protocol.ts";
 import { applyEvents } from "./server-events.ts";
 import { useApp } from "./store.ts";
 
@@ -6,7 +6,23 @@ const PREFIX = "dev_";
 
 export const isDevFake = (id: string) => id.startsWith(PREFIX);
 
-const fakeId = (kind: string) => `${PREFIX}${kind}_${Date.now().toString(36)}`;
+const fakeId = (kind: string) => `${PREFIX}${kind}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+
+type FakeNotification = Pick<AppNotification, "title" | "text" | "level" | "kind"> & { view: AppNotification["target"]["view"]; section?: AppNotification["target"]["section"] };
+
+export const FAKE_NOTIFICATIONS = {
+  finished: { title: "Task finished", text: "Fix the login redirect finished after 4 minutes.", level: "success", kind: "chat", view: "chat" },
+  failed: { title: "Push failed", text: "The remote rejected the update because the branch is behind.", level: "error", kind: "git", view: "git" },
+  merged: { title: "Pull request merged", text: "#42 Redraw icons was merged into main.", level: "success", kind: "github", view: "github" },
+  update: { title: "Update ready", text: "Citropy 0.8.0 is ready to install.", level: "info", kind: "update", view: "settings", section: "Application" },
+} satisfies Record<string, FakeNotification>;
+
+const THREAD_VIEWS: AppNotification["target"]["view"][] = ["chat", "git"];
+
+export const needsThread = (fake: FakeNotification) => THREAD_VIEWS.includes(fake.view);
+
+const FAKE_CHAT_ERROR = "The provider is overloaded. Try again in a moment.";
+const FAKE_TOAST = "Copied to clipboard";
 
 export function applyFake(...events: ServerEvent[]): void {
   useApp.setState((state) => applyEvents(state, events));
@@ -101,10 +117,48 @@ const limitedThreads = new Map<string, Pick<ThreadMeta, "error" | "snoozedUntil"
 
 export const isFakeUsageLimit = (threadId: string) => limitedThreads.has(threadId);
 
+function rememberThread(thread: ThreadMeta): void {
+  if (!limitedThreads.has(thread.id)) limitedThreads.set(thread.id, { error: thread.error, snoozedUntil: thread.snoozedUntil });
+}
+
+export function fakeChatError(): void {
+  const thread = activeThread();
+  rememberThread(thread);
+  applyFake(
+    { t: "thread.upsert", thread: { ...thread, running: false, error: FAKE_CHAT_ERROR } },
+    { t: "message.add", threadId: thread.id, message: { id: fakeId("message"), role: "assistant", ts: Date.now(), provider: thread.provider, parts: [{ id: fakeId("notice"), kind: "notice", level: "error", text: FAKE_CHAT_ERROR }] } },
+  );
+}
+
+export function fakeNotification(fake: FakeNotification): void {
+  const { view, section, ...content } = fake;
+  const { activeProjectId, threads, activeThreadId } = useApp.getState();
+  const thread = threads[activeThreadId ?? ""];
+  if (needsThread(fake) && !thread) throw new Error("Open a conversation before triggering this notification.");
+  applyFake({
+    t: "notification.add",
+    notification: {
+      ...content,
+      id: fakeId("notification"),
+      createdAt: Date.now(),
+      read: false,
+      target: { view, section, projectId: thread?.projectId ?? activeProjectId ?? undefined, threadId: view === "chat" ? thread?.id : undefined },
+    },
+  });
+}
+
+export function fakeNotificationBurst(): void {
+  Object.values(FAKE_NOTIFICATIONS).forEach(fakeNotification);
+}
+
+export function fakeToast(): void {
+  applyFake({ t: "toast", level: "info", text: FAKE_TOAST });
+}
+
 export function fakeUsageLimit(): void {
   const thread = activeThread();
   const now = Date.now();
-  if (!limitedThreads.has(thread.id)) limitedThreads.set(thread.id, { error: thread.error, snoozedUntil: thread.snoozedUntil });
+  rememberThread(thread);
   applyFake({
     t: "thread.upsert",
     thread: {
@@ -139,8 +193,13 @@ function withoutFakes(thread: ThreadMeta): ThreadMeta {
 }
 
 export function clearFakes(): void {
-  const { questions, permissions, shells, threads } = useApp.getState();
+  const { questions, permissions, shells, threads, notifications } = useApp.getState();
+  useApp.setState((state) => ({
+    toasts: state.toasts.filter((toast) => !isDevFake(toast.id)),
+    order: Object.fromEntries(Object.entries(state.order).map(([threadId, ids]) => [threadId, ids.filter((id) => !isDevFake(id))])),
+  }));
   applyFake(
+    { t: "notifications.update", notifications: notifications.filter((notification) => !isDevFake(notification.id)) },
     ...Object.values(threads)
       .filter((thread) => limitedThreads.has(thread.id) || thread.queue?.some((item) => isDevFake(item.id)))
       .map((thread): ServerEvent => ({ t: "thread.upsert", thread: withoutFakes(thread) })),

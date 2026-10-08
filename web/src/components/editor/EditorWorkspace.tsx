@@ -1,14 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-  FilePlus2,
-  FolderTree,
-  RefreshCw,
-  Save,
-  TerminalSquare,
-  WrapText,
-  X,
-  Download,
-} from "lucide-react";
+import { FilePlusIcon } from "../icons/files.tsx";
+import { FolderTreeIcon } from "../icons/folders.tsx";
+import { RefreshIcon } from "../icons/rotation.tsx";
+import { SaveIcon } from "../icons/actions.tsx";
+import { TerminalIcon } from "../icons/squares.tsx";
+import { WrapTextIcon } from "../icons/editing.tsx";
+import { CloseIcon } from "../icons/marks.tsx";
+import { DownloadIcon } from "../icons/arrows.tsx";
 import { useApp, confirmAction, setEditorTerminal } from "../../lib/store.ts";
 import { useEnvironments, serverUrl } from "../../lib/environment.ts";
 import { openEditorTerminal } from "../../lib/actions.ts";
@@ -185,7 +183,7 @@ function Workspace({
               disabled={!connected}
               onClick={() => setCreating((value) => !value)}
             >
-              <FilePlus2 size={13} />
+              <FilePlusIcon size={13} />
             </button>
             <button
               className="icon-btn"
@@ -194,7 +192,7 @@ function Workspace({
               disabled={!connected}
               onClick={() => setRefresh((value) => value + 1)}
             >
-              <RefreshCw size={13} />
+              <RefreshIcon size={13} />
             </button>
           </div>
           {creating && (
@@ -288,7 +286,7 @@ function Workspace({
                     disabled={document.kind === "text" && document.saving}
                     onClick={() => void discard(document)}
                   >
-                    <X size={12} />
+                    <CloseIcon size={12} />
                   </button>
                 </div>
               ))}
@@ -304,7 +302,7 @@ function Workspace({
                 disabled={!textDocument}
                 onClick={() => setWrap((value) => !value)}
               >
-                <WrapText size={15} />
+                <WrapTextIcon size={15} />
               </button>
               <button
                 className="icon-btn"
@@ -322,7 +320,7 @@ function Workspace({
                   openEditorTerminal(panelId);
                 }}
               >
-                <TerminalSquare size={15} />
+                <TerminalIcon size={15} />
               </button>
               <button
                 className="icon-btn"
@@ -333,7 +331,7 @@ function Workspace({
                 disabled={!current}
                 onClick={() => setExplorer((value) => !value)}
               >
-                <FolderTree size={16} />
+                <FolderTreeIcon size={16} />
               </button>
             </div>
           </div>
@@ -355,7 +353,7 @@ function Workspace({
                       disabled={!connected || textDocument.saving}
                       onClick={() => void discard(textDocument, true)}
                     >
-                      <RefreshCw size={13} />
+                      <RefreshIcon size={13} />
                     </button>
                     {(textDocument.dirty || textDocument.saving) && <button
                       className="btn"
@@ -363,7 +361,7 @@ function Workspace({
                       disabled={!connected || textDocument.saving}
                       onClick={() => void saveDocument(textDocument)}
                     >
-                      <Save size={13} />
+                      <SaveIcon size={13} />
                       {textDocument.saving ? "Saving…" : "Save"}
                     </button>}
                   </>
@@ -374,7 +372,7 @@ function Workspace({
                     href={serverUrl(`/api/assets?${current.query}&download=1`)}
                     download
                   >
-                    <Download size={15} />
+                    <DownloadIcon size={15} />
                   </a>
                 )}
               </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ArrowRight, GitBranch } from "lucide-react";
+import { ArrowRightIcon } from "./icons/arrows.tsx";
+import { BranchIcon } from "./icons/git.tsx";
 import { Modal } from "./Modal.tsx";
 import type { GitOperation } from "../../../shared/protocol.ts";
 import { Loader } from "./Loader.tsx";
@@ -45,7 +46,7 @@ export function GitDialog({
     <Modal
       title={action.title}
       description={action.description}
-      icon={<GitBranch size={21} />}
+      icon={<BranchIcon size={21} />}
       busy={busy}
       danger={action.danger}
       returnFocus={returnFocus}
@@ -74,7 +75,7 @@ export function GitDialog({
             {busy ? (
               <Loader size={15} />
             ) : (
-              !action.danger && <ArrowRight size={15} />
+              !action.danger && <ArrowRightIcon size={15} />
             )}
             {busy ? "Working…" : action.label}
           </button>

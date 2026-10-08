@@ -3,7 +3,7 @@ import { reportError } from "../../lib/api.ts";
 import type { CachedThread } from "../../lib/environment.ts";
 import { dateTime, since } from "../../lib/format.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
-import { DisconnectedIcon } from "../DisconnectedIcon.tsx";
+import { DisconnectedIcon } from "../icons/hardware.tsx";
 
 export function CachedThreadRow({ thread, now, environment, showDisconnected, onConversation }: {
   thread: CachedThread;

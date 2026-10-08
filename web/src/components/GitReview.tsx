@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ChevronRight, FileCode2, RotateCcw } from "lucide-react";
+import { ChevronRightIcon } from "./icons/chevrons.tsx";
+import { FileCodeIcon } from "./icons/files.tsx";
+import { RotateCcwIcon } from "./icons/rotation.tsx";
 import { FileIcon } from "./FileIcon.tsx";
 import { fetchDiff, manageGit } from "../lib/actions.ts";
 import { DiffView } from "./DiffView.tsx";
@@ -88,11 +90,11 @@ export function GitReview({
         </div>
       ) : error ? (
         <div className="git-preview-placeholder" role="alert">
-          <FileCode2 size={28} />
+          <FileCodeIcon size={28} />
           <h3>Couldn't load this preview</h3>
           <p>{error}</p>
           <button className="btn" onClick={() => setRetry((value) => value + 1)}>
-            <RotateCcw size={14} /> Try again
+            <RotateCcwIcon size={14} /> Try again
           </button>
         </div>
       ) : selection.kind === "file" ? (
@@ -103,7 +105,7 @@ export function GitReview({
         <div className="git-patches">
           {!patches.length && !body && (
             <div className="git-preview-placeholder">
-              <FileCode2 size={28} />
+              <FileCodeIcon size={28} />
               <h3>No text changes to display</h3>
               <p>The file is empty, binary, or only its metadata changed.</p>
             </div>
@@ -122,7 +124,7 @@ export function GitReview({
                           else next.add(patch.path);
                           return next;
                         })}>
-                          <ChevronRight size={13} className="git-patch-chevron" />
+                          <ChevronRightIcon size={13} className="git-patch-chevron" />
                           <FileIcon path={patch.path} />
                           <span>{patch.path}</span>
                           <LineCounts added={patch.added} removed={patch.removed} />

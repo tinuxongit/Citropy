@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Import, RefreshCw } from "lucide-react";
+import { DownloadIcon } from "./icons/arrows.tsx";
+import { RefreshIcon } from "./icons/rotation.tsx";
 import { IMPORT_LIST_LIMIT, type ImportableSession, type ImportProvider } from "../../../shared/session-import.ts";
 import { api } from "../lib/api.ts";
 import { environmentName } from "../lib/environment.ts";
@@ -44,13 +45,13 @@ export function ImportSessions({ onClose }: { onClose: () => void }) {
   };
   const filtered = sessions.filter(session => `${session.title} ${session.cwd}`.toLowerCase().includes(query.toLowerCase()));
   return <Modal title="Import conversations" description={`Continue a provider session from ${environmentName()}.`}
-    icon={<Import size={20} />} onClose={onClose} busy={Boolean(busy)} className="session-import-dialog"
+    icon={<DownloadIcon size={20} />} onClose={onClose} busy={Boolean(busy)} className="session-import-dialog"
     footer={<button type="button" className="btn" disabled={Boolean(busy)} onClick={onClose}>Close</button>}>
     <div className="feature-field feature-inline session-import-controls">
       <Select aria-label="Provider" value={provider} disabled={Boolean(busy)} onChange={value => setProvider(value as ImportProvider)}
         options={PROVIDER_IDS.map(id => ({ value: id, label: providerLabels[id] }))} />
       <input aria-label="Find a conversation" placeholder="Find a conversation" value={query} onChange={event => setQuery(event.target.value)} />
-      <button type="button" className="icon-btn" aria-label="Refresh" disabled={loading || Boolean(busy)} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={16} /></button>
+      <button type="button" className="icon-btn" aria-label="Refresh" disabled={loading || Boolean(busy)} onClick={() => setRefresh(value => value + 1)}><RefreshIcon size={16} /></button>
     </div>
     <p className="settings-note">{`Choose from the ${IMPORT_LIST_LIMIT} most recent conversations on this machine.`}</p>
     <p className="settings-note">Import messages and tool history, then continue in the original workspace. Attachments are not copied.</p>

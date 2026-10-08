@@ -1,5 +1,6 @@
 import { useState, type MouseEvent } from "react";
-import { Eye, EyeOff, Image } from "lucide-react";
+import { EyeIcon, EyeOffIcon } from "../icons/actions.tsx";
+import { ImageIcon } from "../icons/media.tsx";
 import { TOOL_ICONS, TOOL_LABELS } from "./DrawingToolbar.tsx";
 import { INK, type Mark } from "./marks.ts";
 
@@ -14,7 +15,7 @@ export function DrawingLayers({ marks, selection, ink, onSelect, onToggleHidden,
   const [dragging, setDragging] = useState<number | null>(null);
   const [target, setTarget] = useState<number | null>(null);
   const look = (mark: Mark) => {
-    if (mark.kind === "image") return { Icon: Image, label: "Image", swatch: undefined };
+    if (mark.kind === "image") return { Icon: ImageIcon, label: "Image", swatch: undefined };
     const tool = mark.kind === "text" ? "text" : mark.tool;
     return {
       Icon: TOOL_ICONS[tool],
@@ -75,7 +76,7 @@ export function DrawingLayers({ marks, selection, ink, onSelect, onToggleHidden,
               title={mark.hidden ? "Show" : "Hide"}
               onClick={() => onToggleHidden(mark)}
             >
-              {mark.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+              {mark.hidden ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
             </button>
           </div>
         );

@@ -1,5 +1,7 @@
 import { useEffect, useId, useState } from "react";
-import { FileText, RotateCcw, Save } from "lucide-react";
+import { FileTextIcon } from "./icons/files.tsx";
+import { RotateCcwIcon } from "./icons/rotation.tsx";
+import { SaveIcon } from "./icons/actions.tsx";
 import { Modal } from "./Modal.tsx";
 import { api } from "../lib/api.ts";
 import { confirmAction } from "../lib/store.ts";
@@ -84,7 +86,7 @@ export function ProviderInstructions({
     <Modal
       title={`${provider.label} instructions`}
       description="Global guidance for every project using this provider, including its CLI. Changes apply when you next start a conversation."
-      icon={<FileText size={21} />}
+      icon={<FileTextIcon size={21} />}
       className="provider-instructions-dialog"
       initialFocus="textarea"
       busy={busy}
@@ -106,7 +108,7 @@ export function ProviderInstructions({
               })
             }
           >
-            <RotateCcw size={14} />{" "}Reload file{" "}</button>
+            <RotateCcwIcon size={14} />{" "}Reload file{" "}</button>
           <span className="instruction-save-state" role="status">
             {busy
               ? "Working…"
@@ -138,7 +140,7 @@ export function ProviderInstructions({
               (!file?.exists && !draft.trim())
             }
           >
-            <Save size={14} />{" "}Save instructions{" "}</button>
+            <SaveIcon size={14} />{" "}Save instructions{" "}</button>
         </>
       }
     >

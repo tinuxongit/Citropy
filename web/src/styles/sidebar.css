@@ -9,9 +9,10 @@
   --rail-section-gap: var(--space-4);
   --rail-heading-action: 32px;
   --rail-tab-shape: var(--r-md);
-  --tree-icon: 16px;
   --tree-gap: var(--space-8);
-  --tree-indent: calc(var(--rail-pad) + var(--tree-icon) + var(--tree-gap) - var(--rail-tab-pad));
+  --tree-nest: 12px;
+  --tree-row-pad: calc(var(--rail-pad) + var(--tree-nest) - var(--rail-tab-gap));
+  --tree-indent: calc(var(--tree-row-pad) - var(--rail-tab-pad));
   position: relative;
   isolation: isolate;
   z-index: 5;
@@ -38,18 +39,33 @@
 }
 .navigation-strip-brand {
   --brand-size: 20px;
+  --brand-highlight: 0.06;
+  --brand-shade: 0.2;
+  --brand-bevel: 1px;
   display: grid;
   flex: none;
   place-items: center;
   height: var(--topbar);
+  filter: drop-shadow(0 1.5px 2px var(--brand-shadow));
   -webkit-app-region: drag;
 }
-.navigation-strip-brand::before {
+.navigation-strip-brand::before,
+.navigation-strip-brand::after {
   content: "";
+  grid-area: 1 / 1;
   width: var(--brand-size);
   height: var(--brand-size);
-  background: var(--text);
   mask: url("../assets/citropy-mark.svg") center / contain no-repeat;
+}
+.navigation-strip-brand::before {
+  background: linear-gradient(oklch(from var(--text) calc(l + var(--brand-highlight)) c h), oklch(from var(--text) calc(l - var(--brand-shade)) c h));
+}
+.navigation-strip-brand::after {
+  background: var(--brand-rim);
+  mask:
+    url("../assets/citropy-mark.svg") center / contain no-repeat,
+    url("../assets/citropy-mark.svg") center calc(50% + var(--brand-bevel)) / contain no-repeat;
+  mask-composite: subtract;
 }
 .navigation-strip-end {
   display: flex;
@@ -127,7 +143,7 @@
   border-radius: var(--r-sm);
   transition: background var(--dur-instant);
 }
-.navigation-strip :is(.strip-action-face, .unseen-anchor, .app-update-button) > svg:is(.lucide, .solid-icon) {
+.navigation-strip :is(.strip-action-face, .unseen-anchor, .app-update-button) > svg.solid-icon {
   width: var(--strip-icon);
   height: var(--strip-icon);
 }
@@ -458,7 +474,7 @@
 }
 
 .thread-entry { position: relative; }
-.thread-category[data-tree] .thread-card { margin-left: var(--tree-indent); }
+.thread-category[data-tree] .thread-row { padding-left: var(--tree-row-pad); }
 .thread-category[data-tree] .thread-children-list { margin-left: var(--tree-indent); }
 .thread-card {
   position: relative;
@@ -664,10 +680,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-10);
-  width: calc(100% - var(--tree-indent) - var(--rail-tab-gap));
+  width: calc(100% - 2 * var(--rail-tab-gap));
   height: var(--rail-row);
-  margin: 0 var(--rail-tab-gap) 0 var(--tree-indent);
-  padding: 0 var(--rail-tab-pad);
+  margin: 0 var(--rail-tab-gap);
+  padding: 0 var(--rail-tab-pad) 0 var(--tree-row-pad);
   border-radius: var(--rail-tab-shape);
   color: var(--text-4);
   font-size: var(--text-sm);

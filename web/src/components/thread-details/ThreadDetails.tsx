@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { CircleAlert, FolderOpen, GitBranchPlus, SquareMenu, SquarePen } from "lucide-react";
+import { CircleAlertIcon } from "../icons/status.tsx";
+import { FolderOpenIcon } from "../icons/folders.tsx";
+import { NewBranchIcon } from "../icons/git.tsx";
+import { SquareMenuIcon } from "../icons/squares.tsx";
+import { ComposeIcon } from "../icons/pencil.tsx";
 import { selectThread, toggleInspector, toggleThreadDetails, useApp } from "../../lib/store.ts";
 import { send } from "../../lib/socket.ts";
 import { openWorkbenchPanel } from "../../lib/actions.ts";
@@ -51,7 +55,7 @@ export function ThreadDetailsButton() {
   const busy = gitActionBusy(thread.gitAction);
   const failed = thread.gitAction?.status === "error";
   return <button type="button" className="icon-btn thread-details-toggle" aria-label="Conversation details" aria-pressed={open} data-active={open} data-error={failed || undefined} title="Conversation details" onClick={toggleDetails}>
-    {busy ? <Loader size={15} /> : failed ? <CircleAlert size={16} /> : <SquareMenu size={16} />}
+    {busy ? <Loader size={15} /> : failed ? <CircleAlertIcon size={16} /> : <SquareMenuIcon size={16} />}
   </button>;
 }
 
@@ -96,15 +100,15 @@ function ThreadDetails({ thread, project }: { thread: ThreadMeta; project: Proje
   return <>
     <section className="details-card">
       <div className="details-section" aria-label="Workspace">
-        <DetailRow icon={<SquarePen size={16} />} label="Open in editor" disabled={!connected} onClick={() => showInChat(() => openWorkbenchPanel("files"))} />
-        {openFolder && <DetailRow icon={<FolderOpen size={16} />} label="Open folder" title={folder} onClick={() => void openFolder(folder).catch(reportError)} />}
+        <DetailRow icon={<ComposeIcon size={16} />} label="Open in editor" disabled={!connected} onClick={() => showInChat(() => openWorkbenchPanel("files"))} />
+        {openFolder && <DetailRow icon={<FolderOpenIcon size={16} />} label="Open folder" title={folder} onClick={() => void openFolder(folder).catch(reportError)} />}
         <ProjectScripts project={project} threadId={thread.id} disabled={!connected} />
       </div>
       {isGit && <div className="details-section" aria-label="Version control">
         <GitSection thread={thread} git={git} branch={branch} onReview={() => setReviewing(true)} onSourceControl={openSourceControl} onChanges={() => showInChat(() => openWorkbenchPanel("changes"))} />
       </div>}
       {!isGit && <div className="details-section" aria-label="Version control">
-        <DetailRow icon={git.busy ? <Loader size={14} /> : <GitBranchPlus size={16} />} label={git.busy ? git.activity : "Initialize Git"} title="Start tracking this folder's history with Git" disabled={!connected || git.busy} onClick={() => void git.manage("init")} />
+        <DetailRow icon={git.busy ? <Loader size={14} /> : <NewBranchIcon size={16} />} label={git.busy ? git.activity : "Initialize Git"} title="Start tracking this folder's history with Git" disabled={!connected || git.busy} onClick={() => void git.manage("init")} />
         <ActionError className="details-error" message={git.failed ? git.error : ""} onDismiss={git.dismissError} />
       </div>}
       <ShellsSection threadId={thread.id} disabled={!connected} />

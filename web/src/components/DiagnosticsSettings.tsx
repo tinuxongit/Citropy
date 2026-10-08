@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { Activity, Copy, Cpu, MemoryStick, RefreshCw } from "lucide-react";
+import { PulseIcon } from "./PulseIcon.tsx";
+import { CopyIcon } from "./icons/actions.tsx";
+import { CpuIcon, MemoryIcon } from "./icons/hardware.tsx";
+import { RefreshIcon } from "./icons/rotation.tsx";
 import { api, reportError } from "../lib/api.ts";
 import { send } from "../lib/socket.ts";
 import type { DiagnosticReport } from "../../../shared/features.ts";
@@ -78,7 +81,7 @@ export function DiagnosticsSettings() {
               className="btn"
               onClick={() => void copyText(logging.file).catch(reportError)}
             >
-              <Copy size={14} />Copy path
+              <CopyIcon size={14} />Copy path
             </button>
           </div>
         )}
@@ -96,7 +99,7 @@ export function DiagnosticsSettings() {
           className="btn"
           onClick={() => setRevision((value) => value + 1)}
         >
-          <RefreshCw size={15} />
+          <RefreshIcon size={15} />
           Refresh
         </button>
       </div>
@@ -115,13 +118,13 @@ export function DiagnosticsSettings() {
           </details>}
           <div className="metric-grid">
             <div>
-              <MemoryStick size={20} />
+              <MemoryIcon size={20} />
               <span>Server memory</span>
               <strong>{memory(data.server.rss)}</strong>
               <small>{memory(data.server.heapUsed)}{" "}JavaScript heap</small>
             </div>
             <div>
-              <Cpu size={20} />
+              <CpuIcon size={20} />
               <span>System memory</span>
               <strong>
                 {memory(data.system.memoryTotal - data.system.memoryFree)}
@@ -129,7 +132,7 @@ export function DiagnosticsSettings() {
               <small>{" "}of{" "}{memory(data.system.memoryTotal)} · {data.system.cores}{" "}CPU cores{" "}</small>
             </div>
             <div>
-              <Activity size={20} />
+              <PulseIcon size={20} />
               <span>Active work</span>
               <strong>{data.running}{" "}conversations</strong>
               <small>

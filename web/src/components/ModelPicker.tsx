@@ -1,16 +1,24 @@
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useEffect, useState, type ReactNode, type Ref } from "react";
-import { ArrowRightLeft, Check, ChevronDown, LockKeyhole, Star } from "lucide-react";
+import { SwapIcon } from "./icons/arrows.tsx";
+import { CheckIcon } from "./icons/marks.tsx";
+import { ChevronDownIcon } from "./icons/chevrons.tsx";
+import { LockIcon } from "./LockIcon.tsx";
+import { StarIcon } from "./icons/actions.tsx";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../../shared/protocol.ts";
 import { effectiveEffort, selectedModel } from "../../../shared/model-options.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { toggleFavoriteModel, useApp, viewportWidth } from "../lib/store.ts";
 import { effortLabel, modelLabel, modelSource } from "../lib/format.ts";
+import { byFamily } from "../lib/model-order.ts";
 import { send } from "../lib/socket.ts";
 import { Menu } from "./Menu.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ModelTuning, type TuningSettings, type TuningTab } from "./composer/ComposerOptions.tsx";
+
+const MENU_WIDTH = 480;
+const TUNING_GUTTER = 50;
 
 export function ModelPicker({ value, fallback, label, onChange, onTransfer, transferDisabled = false, disabled = false, allowConversation = false, automaticLabel, lockedProvider, instanceId, defaultOnly = false, className = "model-picker-trigger", buttonRef, tuning: customTuning, tune, menuClearOf }: {
   value: WritingModel | null;
@@ -54,30 +62,31 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const tuning = customTuning ?? (tune && (() => <ModelTuning key={`${choice?.provider}:${model?.id}`} settings={tune.settings} model={value ? model : undefined} onChange={tune.onChange} only={tune.only} />));
   const automatic = automaticLabel ?? (allowConversation ? "Use the conversation model" : undefined);
   const narrow = viewportWidth() <= 600;
-  const rails = Boolean(tuning) && !narrow;
   const name = !choice && automatic ? automatic : modelLabel(choiceModels, choice?.model);
   const favoritesView = browsing === "favorites";
   const catalogs = favoritesView ? available.filter((entry) => !locked || entry.id === locked) : catalog ? [catalog] : [];
-  const accounts = (source: ProviderInfo, restrict: boolean): Array<{ id?: string; name: string; models: ModelOption[] }> => [
-    ...(source.available ? [{ id: undefined, name: source.label, models: source.models }] : []),
-    ...(!defaultOnly ? (source.instances ?? []).filter(instance => instance.available).map(instance => ({ id: instance.id, name: `${source.label} · ${instance.name}`, models: instance.models })) : []),
+  const columnProviders = locked ? (catalog ? [catalog] : []) : available;
+  const accounts = (source: ProviderInfo, restrict: boolean): Array<{ id?: string; instance?: string; models: ModelOption[] }> => [
+    ...(source.available ? [{ id: undefined, instance: undefined, models: byFamily(source.models) }] : []),
+    ...(!defaultOnly ? (source.instances ?? []).filter(instance => instance.available).map(instance => ({ id: instance.id, instance: instance.name, models: byFamily(instance.models) })) : []),
   ].filter(account => !restrict || account.id === currentInstanceId);
-  const accountHint = (source: ProviderInfo, name: string, entry: ModelOption) => {
+  const modelHint = (source: ProviderInfo, instance: string | undefined, entry: ModelOption) => {
     const origin = modelSource(source, entry);
-    return origin === name ? name : `${name} · ${origin}`;
+    return [instance, origin !== source.label && origin].filter(Boolean).join(" · ") || undefined;
   };
+  const providerMark = (source: ProviderInfo) => favoritesView ? <ProviderIcon provider={source.id} /> : undefined;
   const transferItems = catalogs.flatMap(source => accounts(source, false).flatMap(account => account.models.filter(entry => !favoritesView || favorites.some(favorite => favorite.provider === source.id && favorite.providerInstanceId === account.id && favorite.model === entry.id)).map(entry => ({
     id: `${source.id}:${account.id ?? "default"}:${entry.id}`,
     label: entry.label,
-    hint: accountHint(source, account.name, entry),
-    hintIcon: <ProviderIcon provider={source.id} />,
+    hint: modelHint(source, account.instance, entry),
+    icon: providerMark(source),
     disabled: transferDisabled || (source.id === choice?.provider && account.id === choice?.providerInstanceId && entry.id === model?.id),
     selected: Boolean(target && target.provider === source.id && target.providerInstanceId === account.id && target.model === entry.id),
     keepOpen: Boolean(tuning),
     onSelect: () => tuning ? setTarget({ provider: source.id, providerInstanceId: account.id, model: entry.id }) : onTransfer?.({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
     action: {
       label: `Favorite ${entry.label}`,
-      icon: <Star size={14} />,
+      icon: <StarIcon size={14} />,
       pressed: favorites.some(favorite => favorite.provider === source.id && favorite.providerInstanceId === account.id && favorite.model === entry.id),
       onSelect: () => toggleFavoriteModel({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
     },
@@ -87,10 +96,9 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const targetName = target && selectedModel(targetModels, target.model)?.label;
   const transferLabel = transferring && target ? `Transfer to ${targetName ?? target.model}` : "Transfer to another agent";
   const transferButton = onTransfer && <button
-    className="model-picker-transfer"
+    className="model-picker-row model-picker-transfer"
     type="button"
     title={transferLabel}
-    aria-label={transferLabel}
     aria-pressed={transferring}
     data-ready={Boolean(transferring && target) || undefined}
     disabled={transferDisabled}
@@ -101,11 +109,12 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
       setBrowsing(choice?.provider);
     }}
   >
-    {transferring && target ? <Check size={16} /> : <ArrowRightLeft size={16} />}
+    {transferring && target ? <CheckIcon size={16} /> : <SwapIcon size={16} />}
+    <span className="truncate">{!transferring ? "Transfer" : target ? "Confirm" : "Cancel"}</span>
   </button>;
   return <Menu
-    width={340}
-    gutter={rails ? 50 : 0}
+    width={MENU_WIDTH}
+    gutter={tuning && !narrow ? TUNING_GUTTER : 0}
     className="model-picker-menu"
     searchable
     onClose={() => { setTransferring(false); setTarget(undefined); }}
@@ -115,37 +124,34 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     emptyMessage={favoritesView ? "Star models to find them here." : undefined}
     controls={<>
       {onTransfer && transferring && <p className="model-picker-note" role="status">Choose a model for a new agent in this chat. Reading the conversation again uses extra usage.</p>}
-      <div className="model-picker-toolbar sliding-selection" data-rail={rails || undefined}>
-        <SelectionHighlight value={favoritesView ? "favorites" : catalog?.id} />
-        {locked && catalog ? <button className="model-picker-locked" type="button" aria-label={`${catalog.label} · Provider locked`} title={`${catalog.label} · Provider locked`} aria-pressed={!favoritesView} onClick={() => setBrowsing(catalog.id)}>
-          <ProviderIcon provider={catalog.id} /><LockKeyhole size={11} />
-        </button> : <div className="model-picker-providers sliding-selection" role="group" aria-label={`${label} · Provider`}>
-          <SelectionHighlight value={favoritesView ? undefined : catalog?.id} />
-          {available.map((entry) => <button key={entry.id} type="button" aria-label={entry.label} title={entry.label} aria-pressed={!favoritesView && catalog?.id === entry.id} onClick={() => setBrowsing(entry.id)}>
-            <ProviderIcon provider={entry.id} />
-          </button>)}
-        </div>}
-        <div className="model-picker-actions">
-          {!rails && transferButton}
-          <button className="model-picker-favorites" type="button" aria-label="Favorite models" title="Favorite models" aria-pressed={favoritesView} onClick={() => setBrowsing(favoritesView ? choice?.provider : "favorites")}><Star size={17} fill={favoritesView ? "currentColor" : "none"} /></button>
-        </div>
-      </div>
-      {rails && transferButton && <div className="model-picker-side-end">{transferButton}</div>}
       {catalog?.modelsError && <p className="model-picker-note" role="status">Models · refresh unavailable</p>}
     </>}
+    aside={<nav className="model-picker-providers sliding-selection" aria-label={`${label} · Provider`}>
+      <SelectionHighlight value={favoritesView ? "favorites" : catalog?.id} selector='.model-picker-provider[aria-pressed="true"]' />
+      <button className="model-picker-row model-picker-provider model-picker-favorites" type="button" aria-pressed={favoritesView} onClick={() => setBrowsing("favorites")}>
+        <StarIcon size={16} fill={favoritesView ? "currentColor" : "none"} />
+        <span className="truncate">Favorites</span>
+      </button>
+      {columnProviders.map((entry) => <button key={entry.id} className="model-picker-row model-picker-provider" type="button" title={locked ? `${entry.label} · Provider locked` : entry.label} aria-pressed={!favoritesView && catalog?.id === entry.id} onClick={() => setBrowsing(entry.id)}>
+        <ProviderIcon provider={entry.id} />
+        <span className="truncate">{entry.label}</span>
+        {locked && <LockIcon size={11} />}
+      </button>)}
+      {transferButton}
+    </nav>}
     items={[
       ...(automatic && !favoritesView && !transferring ? [{ id: "conversation", label: automatic, selected: !value, onSelect: () => onChange(null) }] : []),
       ...(transferring ? transferItems : catalogs.flatMap(source => accounts(source, Boolean(locked)).flatMap(account => account.models.filter(entry => !favoritesView || favorites.some(favorite => favorite.provider === source.id && favorite.model === entry.id && favorite.providerInstanceId === account.id)).map(entry => ({
         id: `${source.id}:${account.id ?? "default"}:${entry.id}`,
         label: entry.label,
-        hint: accountHint(source, account.name, entry),
-        hintIcon: <ProviderIcon provider={source.id} />,
+        hint: modelHint(source, account.instance, entry),
+        icon: providerMark(source),
         selected: Boolean(value && source.id === choice?.provider && account.id === choice?.providerInstanceId && entry.id === model?.id),
         keepOpen: Boolean(tuning),
         onSelect: () => onChange({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
         action: {
           label: `Favorite ${entry.label}`,
-          icon: <Star size={14} />,
+          icon: <StarIcon size={14} />,
           pressed: favorites.some(favorite => favorite.provider === source.id && favorite.model === entry.id && favorite.providerInstanceId === account.id),
           onSelect: () => toggleFavoriteModel({ provider: source.id, providerInstanceId: account.id, model: entry.id }),
         },
@@ -165,7 +171,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
       {choice && <ProviderIcon provider={choice.provider} />}
       <span className="truncate">{name}</span>
       {tunedEffort && <span className="model-picker-effort">{effortLabel(tunedEffort)}</span>}
-      <ChevronDown size={12} />
+      <ChevronDownIcon size={12} className="model-picker-chevron" />
     </button>}
   />;
 }

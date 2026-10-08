@@ -2,8 +2,8 @@ import { memo, useState, type CSSProperties } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { ToolPart } from "../../../shared/protocol.ts";
 import { PartView } from "./PartView.tsx";
-import { ChevronRight } from "lucide-react";
-import { shapeIcon } from "./icons.ts";
+import { ChevronRightIcon } from "./icons/chevrons.tsx";
+import { shapeIcon } from "./icons/tool-shapes.ts";
 import { FileIcon } from "./FileIcon.tsx";
 import { useApp } from "../lib/store.ts";
 import { useDisclosure } from "../lib/use-disclosure.ts";
@@ -65,7 +65,7 @@ export const WorkGroup = memo(function WorkGroup({ ids, live, latestStep }: { id
   return (
     <div className="group-body" data-open={open || undefined}>
       <button className="group-summary" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <ChevronRight size={13} className="group-chevron" aria-hidden="true" />
+        <ChevronRightIcon size={13} className="group-chevron" aria-hidden="true" />
         <span className="truncate">{summarize(tools)}</span>
         {tools.length > 0 && <ToolStack tools={tools} />}
         {showFailedTools && stats.failed > 0 && <span className="group-failed">{stats.failed === 1 ? `${stats.failed} failed tool` : `${stats.failed} failed tools`}</span>}

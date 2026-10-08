@@ -1,6 +1,9 @@
 import { AnimatePresence } from "motion/react";
 import { useState } from "react";
-import { Download, Plus, RefreshCw, Tag } from "lucide-react";
+import { DownloadIcon } from "../icons/arrows.tsx";
+import { PlusIcon } from "../icons/marks.tsx";
+import { RefreshIcon } from "../icons/rotation.tsx";
+import { TagIcon } from "../TagIcon.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
 import { Prose } from "../parts/Prose.tsx";
@@ -33,7 +36,7 @@ export function GitHubReleases({
           disabled={releases.loading}
           onClick={releases.refresh}
         >
-          <RefreshCw size={16} />
+          <RefreshIcon size={16} />
         </button>
         <button
           className="btn"
@@ -41,7 +44,7 @@ export function GitHubReleases({
           disabled={!repository.permissions?.push || repository.archived}
           onClick={() => setCreating(true)}
         >
-          <Plus size={15} />
+          <PlusIcon size={15} />
           New release
         </button>
       </div>
@@ -61,7 +64,7 @@ export function GitHubReleases({
         {releases.data?.items.map((release) => (
           <article key={release.id}>
             <header>
-              <Tag size={19} />
+              <TagIcon size={19} />
               <h2>{release.name || release.tag_name}</h2>
               {release.draft && <span className="pill">Draft</span>}
               {release.prerelease && <span className="pill">Pre-release</span>}
@@ -81,7 +84,7 @@ export function GitHubReleases({
                     href={asset.browser_download_url}
                     className="github-asset"
                   >
-                    <Download size={14} />
+                    <DownloadIcon size={14} />
                     {asset.name}
                     <span>{(asset.size / 1024 / 1024).toFixed(1)} MB</span>
                   </GitHubLink>

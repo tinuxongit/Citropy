@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Pin, Plus } from "lucide-react";
+import { PinIcon } from "./icons/actions.tsx";
+import { CloseIcon, PlusIcon } from "./icons/marks.tsx";
 import { useApp } from "../lib/store.ts";
 import { closeTab, createThread, keepTab, showThread } from "../lib/actions.ts";
-import { X } from "./icons.ts";
 import { Menu } from "./Menu.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 
@@ -43,20 +43,20 @@ export function ThreadTabs() {
             <span className="truncate">{thread.title}</span>
           </button>
           <button type="button" className="thread-tab-close" aria-label={`Close ${thread.title}`} onClick={() => closeTab(thread.id)}>
-            <X size={13} />
+            <CloseIcon size={13} />
           </button>
         </div>
       ))}
       <button type="button" className="thread-tabs-new" disabled={!canCreate} aria-label="New thread" title="New thread" onClick={() => void createThread()}>
-        <Plus size={15} />
+        <PlusIcon size={15} />
       </button>
       {menu && <Menu
         key={menu.id}
         anchor={menu.anchor}
         onClose={() => setMenu(undefined)}
         items={[
-          ...(menu.id === previewThreadId ? [{ id: "keep", label: "Keep tab open", icon: <Pin size={15} />, onSelect: () => keepTab(menu.id) }] : []),
-          { id: "close", label: "Close tab", icon: <X size={15} />, onSelect: () => closeTab(menu.id) },
+          ...(menu.id === previewThreadId ? [{ id: "keep", label: "Keep tab open", icon: <PinIcon size={15} />, onSelect: () => keepTab(menu.id) }] : []),
+          { id: "close", label: "Close tab", icon: <CloseIcon size={15} />, onSelect: () => closeTab(menu.id) },
         ]}
       />}
     </div>

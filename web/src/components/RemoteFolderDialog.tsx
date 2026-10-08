@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { ArrowUp, FolderOpen } from "lucide-react";
+import { ArrowUpIcon } from "./icons/arrows.tsx";
+import { FolderIcon, FolderOpenIcon } from "./icons/folders.tsx";
 import { Loader } from "./Loader.tsx";
-import { FolderIcon } from "./FolderIcon.tsx";
 import { ServerIcon } from "./ServerIcon.tsx";
 import { Modal } from "./Modal.tsx";
 import { VirtualList } from "./VirtualList.tsx";
@@ -60,11 +60,11 @@ function RemoteFolderBrowser({ request }: { request: Request }) {
       }}
       footer={<>
         <button type="button" className="btn" data-cancel onClick={() => finish(null)}>Cancel</button>
-        <button type="submit" className="btn" data-variant="primary" disabled={!typed.trim() || loading}><FolderOpen size={15} />Open this folder</button>
+        <button type="submit" className="btn" data-variant="primary" disabled={!typed.trim() || loading}><FolderOpenIcon size={15} />Open this folder</button>
       </>}
     >
       <div className="remote-folder-path feature-inline">
-        <button type="button" className="icon-btn" aria-label="Parent folder" title="Parent folder" disabled={!listing?.parent || loading} onClick={() => listing?.parent && void open(listing.parent)}><ArrowUp size={16} /></button>
+        <button type="button" className="icon-btn" aria-label="Parent folder" title="Parent folder" disabled={!listing?.parent || loading} onClick={() => listing?.parent && void open(listing.parent)}><ArrowUpIcon size={16} /></button>
         <input aria-label="Folder path" value={typed} readOnly={loading} spellCheck={false} autoComplete="off" placeholder="~/projects" onChange={(event) => setTyped(event.target.value)} />
         <label><input type="checkbox" checked={hidden} onChange={(event) => setHidden(event.target.checked)} />Hidden</label>
       </div>

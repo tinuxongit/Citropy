@@ -170,4 +170,4 @@ Packaging and publishing are in [docs/release.md](docs/release.md).
 
 The [guide](docs/guide.md) covers every part of the app in detail. Issues and pull requests are welcome.
 
-MIT licensed. See [LICENSE](LICENSE). The Geist font is bundled under the SIL Open Font License.
+MIT licensed. See [LICENSE](LICENSE). The Citropy Sans font, a modified Google Sans Flex, is bundled under the SIL Open Font License.

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { MOD } from "../../lib/modifier-key.ts";
 import { useApp } from "../../lib/store.ts";
-import { X } from "../icons.ts";
-import { SearchIcon } from "../SearchIcon.tsx";
+import { CloseIcon } from "../icons/marks.tsx";
+import { SearchIcon } from "../icons/actions.tsx";
 
 export function ThreadSearch() {
   const query = useApp((state) => state.threadQuery);
@@ -38,7 +38,7 @@ export function ThreadSearch() {
             input.current!.focus();
           }}
         >
-          <X size={12} aria-hidden="true" />
+          <CloseIcon size={12} aria-hidden="true" />
         </button>
       )}
     </label>

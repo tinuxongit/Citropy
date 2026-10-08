@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import {
-  Globe,
-  Plus,
-  Download,
-  Trash2,
-  RefreshCw,
-  Check,
-  Cookie,
-} from "lucide-react";
+import { GlobeIcon } from "./GlobeIcon.tsx";
+import { CheckIcon, PlusIcon } from "./icons/marks.tsx";
+import { DownloadIcon } from "./icons/arrows.tsx";
+import { TrashIcon } from "./icons/actions.tsx";
+import { RefreshIcon } from "./icons/rotation.tsx";
+import { CookieIcon } from "./icons/objects.tsx";
 import { api } from "../lib/api.ts";
 import { confirmAction, useApp } from "../lib/store.ts";
 import { saveProjectDefaults } from "../lib/actions.ts";
@@ -202,7 +199,7 @@ export function BrowserProfiles() {
             aria-label="Refresh browser profiles"
             onClick={() => setRevision((value) => value + 1)}
           >
-            <RefreshCw size={16} />
+            <RefreshIcon size={16} />
           </button>
         </div>
         <p className="feature-note">
@@ -210,7 +207,7 @@ export function BrowserProfiles() {
         </p>
         {data?.profiles.map((profile) => (
           <div className="profile-row" key={profile.id}>
-            <Globe size={21} />
+            <GlobeIcon size={21} />
             <span>
               <strong>{profile.id === "workspace" ? "Workspace" : profile.name}</strong>
               <small>
@@ -223,7 +220,7 @@ export function BrowserProfiles() {
             >
               {data.selected === profile.id ? (
                 <>
-                  <Check size={14} />
+                  <CheckIcon size={14} />
                   Selected
                 </>
               ) : (
@@ -253,7 +250,7 @@ export function BrowserProfiles() {
                     await deleteProfile(profile.id);
                 }}
               >
-                <Trash2 size={15} />
+                <TrashIcon size={15} />
               </button>
             )}
           </div>
@@ -273,7 +270,7 @@ export function BrowserProfiles() {
             maxLength={60}
           />
           <button className="btn" disabled={busy || !name.trim() || !data}>
-            <Plus size={15} />
+            <PlusIcon size={15} />
             Add profile
           </button>
         </form>
@@ -314,7 +311,7 @@ export function BrowserProfiles() {
           disabled={busy || !sourceId || !data}
           onClick={() => void importCookies()}
         >
-          <Download size={15} />
+          <DownloadIcon size={15} />
           {busy ? "Working…" : "Import cookies"}
         </button>
       </section>
@@ -331,7 +328,7 @@ export function BrowserProfiles() {
             disabled={busy || !data}
             onClick={() => clearData("cookies")}
           >
-            <Cookie size={15} />{" "}Clear cookies{" "}</button>
+            <CookieIcon size={15} />{" "}Clear cookies{" "}</button>
           <button
             className="btn"
             disabled={busy || !data}

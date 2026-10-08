@@ -1,14 +1,11 @@
 import { AnimatePresence } from "motion/react";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { useState } from "react";
-import {
-  ArrowLeft,
-  Check,
-  MessageSquare,
-  Plus,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+import { ArrowLeftIcon } from "../icons/arrows.tsx";
+import { CheckIcon, PlusIcon } from "../icons/marks.tsx";
+import { MessageIcon } from "../icons/messages.tsx";
+import { RefreshIcon } from "../icons/rotation.tsx";
+import { SearchIcon } from "../icons/actions.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { Select } from "../Select.tsx";
 import {
@@ -63,7 +60,7 @@ export function GitHubItems({
             setPage(1);
           }}
         >
-          <Search size={16} />
+          <SearchIcon size={16} />
           <input
             aria-label={pull ? "Search pull requests" : "Search issues"}
             placeholder={pull ? "Search pull requests…" : "Search issues…"}
@@ -94,7 +91,7 @@ export function GitHubItems({
           aria-label="Refresh items"
           disabled={list.loading}
         >
-          <RefreshCw size={16} />
+          <RefreshIcon size={16} />
         </button>
         <button
           className="btn"
@@ -102,13 +99,13 @@ export function GitHubItems({
           onClick={() => setAction("new")}
           disabled={repository.archived}
         >
-          <Plus size={15} />
+          <PlusIcon size={15} />
           {pull ? "New pull request" : "New issue"}
         </button>
       </div>
       {feedback && (
         <div className="github-notice" role="status">
-          <Check size={16} />
+          <CheckIcon size={16} />
           {feedback}
         </div>
       )}
@@ -162,7 +159,7 @@ export function GitHubItems({
         <div className="github-detail scroll">
           {!selected ? (
             <div className="github-empty">
-              <MessageSquare size={30} />
+              <MessageIcon size={30} />
           <h2>Select {pull ? "a pull request" : "an issue"}</h2>
               <p>
                 Read the conversation, review changes, and follow its progress here.
@@ -174,7 +171,7 @@ export function GitHubItems({
                 className="btn github-detail-back"
                 onClick={() => setSelected(null)}
               >
-                <ArrowLeft size={15} />
+                <ArrowLeftIcon size={15} />
                 Back to {pull ? "pull requests" : "issues"}
               </button>
               <GitHubFeedback

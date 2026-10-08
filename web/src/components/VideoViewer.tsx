@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download } from "lucide-react";
+import { DownloadIcon } from "./icons/arrows.tsx";
 import { useCloseOnOutsideClick, useViewportBounds } from "../lib/use-viewer.ts";
 import { Modal } from "./Modal.tsx";
 import { VideoPlayer } from "./VideoPlayer.tsx";
@@ -23,7 +23,7 @@ export function VideoViewer({ src, download, name, onClose }: { src: string; dow
     className="image-viewer video-viewer"
     onClose={onClose}
     initialFocus=".video-player"
-    actions={<a className="icon-btn" aria-label="Download video" title="Download video" href={download} download={name}><Download size={18} /></a>}
+    actions={<a className="icon-btn" aria-label="Download video" title="Download video" href={download} download={name}><DownloadIcon size={18} /></a>}
     footer={ready && <ViewerZoom group="Video zoom" fit="Fit video" scale={scale} minimum={minimum} maximum={maximum} onZoom={next => setZoom(next === null ? null : Math.min(maximum, Math.max(minimum, next)))} />}
   >
     <div className="image-viewport scroll" ref={viewport}>

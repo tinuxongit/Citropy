@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Check, Paperclip } from "lucide-react";
+import { CheckIcon } from "./icons/marks.tsx";
+import { AttachIcon } from "./AttachIcon.tsx";
 import { useApp } from "../lib/store.ts";
 import { reportError } from "../lib/api.ts";
 import { attachToComposer } from "../lib/composer-inbox.ts";
@@ -36,7 +37,7 @@ export function AttachToChatButton({ disabled, file }: { disabled: boolean; file
       title={threadId ? "Add as an attachment to your next message" : "Open a conversation first"}
       onClick={() => void attach()}
     >
-      {state === "attached" ? <Check size={15} /> : <Paperclip size={15} />}
+      {state === "attached" ? <CheckIcon size={15} /> : <AttachIcon size={15} />}
       <span className="attach-to-chat-label">
         <span data-shown={state !== "attached"}>Attach to chat</span>
         <span data-shown={state === "attached"} aria-live="polite">{state === "attached" ? "Attached" : ""}</span>

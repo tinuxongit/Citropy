@@ -1,10 +1,17 @@
 import {
   useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type CSSProperties, type KeyboardEvent, type PointerEvent,
 } from "react";
-import {
-  AlignJustify, AppWindow, ChevronDown, Download, Grid3x3, Grip, Layers, Moon, MoreHorizontal, Smartphone, Square, SquareDashed,
-  Sun, Trash2, Wallpaper,
-} from "lucide-react";
+import { JustifyIcon } from "../icons/editing.tsx";
+import { WindowIcon } from "../WindowIcon.tsx";
+import { ChevronDownIcon } from "../icons/chevrons.tsx";
+import { DownloadIcon } from "../icons/arrows.tsx";
+import { GridIcon, SquareDashedIcon, SquareIcon } from "../icons/squares.tsx";
+import { GripIcon, MoreIcon } from "../icons/marks.tsx";
+import { LayersIcon } from "../LayersIcon.tsx";
+import { MoonIcon, SunIcon } from "../icons/nature.tsx";
+import { PhoneIcon } from "../PhoneIcon.tsx";
+import { TrashIcon } from "../icons/actions.tsx";
+import { ImageIcon } from "../icons/media.tsx";
 import { reportError } from "../../lib/api.ts";
 import { Menu, type MenuItem } from "../Menu.tsx";
 import { AttachToChatButton } from "../AttachToChatButton.tsx";
@@ -19,20 +26,20 @@ import {
 } from "./marks.ts";
 import "../../styles/drawing.css";
 
-const PATTERNS: Array<{ value: Pattern; label: string; icon: typeof Square }> = [
-  { value: "blank", label: "Blank", icon: Square },
-  { value: "grid", label: "Grid", icon: Grid3x3 },
-  { value: "dots", label: "Dots", icon: Grip },
-  { value: "lines", label: "Lined", icon: AlignJustify },
+const PATTERNS: Array<{ value: Pattern; label: string; icon: typeof SquareIcon }> = [
+  { value: "blank", label: "Blank", icon: SquareIcon },
+  { value: "grid", label: "Grid", icon: GridIcon },
+  { value: "dots", label: "Dots", icon: GripIcon },
+  { value: "lines", label: "Lined", icon: JustifyIcon },
 ];
-const TONES: Array<{ value: Tone; label: string; icon: typeof Square }> = [
-  { value: "light", label: "Light paper", icon: Sun },
-  { value: "dark", label: "Dark paper", icon: Moon },
+const TONES: Array<{ value: Tone; label: string; icon: typeof SquareIcon }> = [
+  { value: "light", label: "Light paper", icon: SunIcon },
+  { value: "dark", label: "Dark paper", icon: MoonIcon },
 ];
-const FRAMES: Array<{ value: FrameKind | undefined; label: string; icon: typeof Square }> = [
-  { value: undefined, label: "No frame", icon: SquareDashed },
-  { value: "browser", label: "Web page", icon: AppWindow },
-  { value: "phone", label: "Phone screen", icon: Smartphone },
+const FRAMES: Array<{ value: FrameKind | undefined; label: string; icon: typeof SquareIcon }> = [
+  { value: undefined, label: "No frame", icon: SquareDashedIcon },
+  { value: "browser", label: "Web page", icon: WindowIcon },
+  { value: "phone", label: "Phone screen", icon: PhoneIcon },
 ];
 
 interface Bounds { width: number; height: number }
@@ -409,8 +416,8 @@ export function DrawingPane({ projectId }: { projectId: string }) {
   ];
 
   const moreItems: MenuItem[] = [
-    { id: "save", label: "Save as image", icon: <Download size={16} />, disabled: !bounds, onSelect: () => void saveImage() },
-    { id: "clear", label: "Clear drawing", icon: <Trash2 size={16} />, danger: true, disabled: !marks.length, onSelect: drawing.clear },
+    { id: "save", label: "Save as image", icon: <DownloadIcon size={16} />, disabled: !bounds, onSelect: () => void saveImage() },
+    { id: "clear", label: "Clear drawing", icon: <TrashIcon size={16} />, danger: true, disabled: !marks.length, onSelect: drawing.clear },
   ];
 
   const brush = brushWidth(tool, size);
@@ -500,9 +507,9 @@ export function DrawingPane({ projectId }: { projectId: string }) {
           items={paperItems}
           trigger={({ id, open, toggle }) => (
             <button id={id} type="button" className="btn" data-variant="ghost" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
-              <Wallpaper size={15} />
+              <ImageIcon size={15} />
               Paper
-              <ChevronDown size={14} />
+              <ChevronDownIcon size={14} />
             </button>
           )}
         />
@@ -513,7 +520,7 @@ export function DrawingPane({ projectId }: { projectId: string }) {
           aria-pressed={layersOpen}
           onClick={() => setLayersOpen(!layersOpen)}
         >
-          <Layers size={15} />
+          <LayersIcon size={15} />
           Layers
         </button>
         <Menu
@@ -521,7 +528,7 @@ export function DrawingPane({ projectId }: { projectId: string }) {
           items={moreItems}
           trigger={({ id, open, toggle }) => (
             <button id={id} type="button" className="icon-btn" aria-label="More drawing options" title="More drawing options" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
-              <MoreHorizontal size={16} />
+              <MoreIcon size={16} />
             </button>
           )}
         />

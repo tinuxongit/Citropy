@@ -32,7 +32,7 @@ Every theme shares one lightness ramp in `web/src/styles/tokens.css`. A theme on
 
 ## Type
 
-Geist Variable by Vercel is the UI font, and Droid Sans Mono is the code font. Every font size is a token. Use `--text-2xs` (11px) for badges and tiny labels, `--text-xs` to `--text-body` (12 to 15px) for UI, `--text-lg` (17px) for section headings, `--text-title` (20px) for page titles and `--text-display` (28px) for large numbers. Labels are 500 weight, and secondary detail uses `--text-3` rather than a smaller size.
+Citropy Sans, our modified Google Sans Flex built by `scripts/font/build-citropy-sans.py`, is the UI font, and Droid Sans Mono is the code font. Every font size is a token. Use `--text-2xs` (11px) for badges and tiny labels, `--text-xs` to `--text-body` (12 to 15px) for UI, `--text-lg` (17px) for section headings, `--text-title` (20px) for page titles and `--text-display` (28px) for large numbers. Labels are 500 weight, and secondary detail uses `--text-3` rather than a smaller size.
 
 ## Line counts
 

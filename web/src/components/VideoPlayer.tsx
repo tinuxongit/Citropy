@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Maximize, Minimize, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { ExitFullscreenIcon, FullscreenIcon, MutedIcon, PauseIcon, PlayIcon, VolumeIcon } from "./icons/media.tsx";
 
 const clock = (seconds: number) => {
   const total = Number.isFinite(seconds) ? Math.floor(seconds) : 0;
@@ -153,7 +153,7 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
       />
       {!playing && (
         <button className="video-player-start" type="button" aria-label="Play" onClick={toggle}>
-          <Play size={24} fill="currentColor" />
+          <PlayIcon size={24} />
         </button>
       )}
       <div className="video-player-controls">
@@ -185,7 +185,7 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
         </div>
         <div className="video-player-bar">
           <button className="icon-btn" type="button" aria-label={playing ? "Pause" : "Play"} title={playing ? "Pause" : "Play"} onClick={toggle}>
-            {playing ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" />}
+            {playing ? <PauseIcon size={17} /> : <PlayIcon size={17} />}
           </button>
           <div className="video-player-volume">
             <div className="video-player-volume-popup">
@@ -202,13 +202,13 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
               />
             </div>
             <button className="icon-btn" type="button" aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"} onClick={toggleMuted}>
-              {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+              {muted ? <MutedIcon size={17} /> : <VolumeIcon size={17} />}
             </button>
           </div>
           <span className="video-player-time">{clock(time)} <span>/ {clock(duration)}</span></span>
           <span className="video-player-spacer" />
           <button className="icon-btn" type="button" aria-label={fullscreen ? "Exit full screen" : "Full screen"} title={fullscreen ? "Exit full screen" : "Full screen"} onClick={toggleFullscreen}>
-            {fullscreen ? <Minimize size={17} /> : <Maximize size={17} />}
+            {fullscreen ? <ExitFullscreenIcon size={17} /> : <FullscreenIcon size={17} />}
           </button>
         </div>
       </div>

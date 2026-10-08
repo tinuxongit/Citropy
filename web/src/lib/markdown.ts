@@ -3,6 +3,7 @@ import { escapeHtml } from "./escape-html.ts";
 import { highlight } from "./highlight.ts";
 import { rawCode } from "./raw-code.ts";
 import { serverUrl } from "./environment.ts";
+import { COPIED_ICON, COPY_ICON, RUN_ICON, SITE_ICON } from "./markdown-icons.ts";
 
 interface CodeToken extends Tokens.Code {
   rendered?: string;
@@ -53,8 +54,8 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
         const body = code.rendered ?? rawCode(code.text);
         const copy = escapeHtml("Copy code");
         const runLabel = escapeHtml("Run in terminal");
-        const run = commands && runnable(code, label) ? `<button type="button" class="code-run" aria-label="${runLabel}" title="${runLabel}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16l14-8z"/></svg></button>` : "";
-        return `<figure class="code-block" data-lang="${escapeHtml(label)}"><figcaption><span>${escapeHtml(label || "text")}</span>${run}<button type="button" class="code-copy" aria-label="${copy}" title="${copy}"><svg class="code-copy-idle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><svg class="code-copy-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button></figcaption>${body}</figure>`;
+        const run = commands && runnable(code, label) ? `<button type="button" class="code-run" aria-label="${runLabel}" title="${runLabel}">${RUN_ICON}</button>` : "";
+        return `<figure class="code-block" data-lang="${escapeHtml(label)}"><figcaption><span>${escapeHtml(label || "text")}</span>${run}<button type="button" class="code-copy" aria-label="${copy}" title="${copy}">${COPY_ICON}${COPIED_ICON}</button></figcaption>${body}</figure>`;
       },
       html(token) {
         return escapeHtml((token as Tokens.HTML).raw);
@@ -86,7 +87,7 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
           const url = new URL(link.href);
           if (images && ["http:", "https:"].includes(url.protocol)) {
             const favicon = escapeHtml(serverUrl(`/api/favicon?url=${encodeURIComponent(link.href)}`));
-            icon = `<span class="link-site-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18"/></svg><img class="link-favicon" src="${favicon}" width="16" height="16" alt="" decoding="async" referrerpolicy="no-referrer"/></span>`;
+            icon = `<span class="link-site-icon" aria-hidden="true">${SITE_ICON}<img class="link-favicon" src="${favicon}" width="16" height="16" alt="" decoding="async" referrerpolicy="no-referrer"/></span>`;
           }
         } catch {}
         const previous = linkedImage;

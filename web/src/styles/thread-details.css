@@ -54,7 +54,6 @@
 .thread-details-toggle[data-error] { color: var(--bad); }
 
 .details-card {
-  border: 1px solid var(--line);
   border-radius: var(--details-card-radius);
   background: var(--overlay);
   text-align: left;

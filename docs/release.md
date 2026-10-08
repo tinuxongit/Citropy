@@ -60,7 +60,7 @@ Releases start from the Actions tab with the **Release** workflow. Enter the ver
 
 Inspect the draft, then publish it. Publishing is a separate action; ordinary commits and tags do not publish releases.
 
-Keep the AppImage and `latest-linux.yml` together in the published release so the in-app updater can find and verify the download, and keep the zips plus `SHA256SUMS` together so `scripts/install.sh` can find and verify its download. The Linux installer extracts the menu icon from the AppImage it just downloaded. Neither build is signed by a certificate authority. The checksum detects changed downloads but does not replace release signing.
+Keep the AppImage and `latest-linux.yml` together in the published release so the in-app updater can find and verify the download, and keep the zips plus `SHA256SUMS` together so `scripts/install.sh` can find and verify its download. The Linux installer extracts the menu icon from the AppImage it just downloaded. The icon file name includes a hash of the picture, and the app renames it at startup when the picture changes, because desktops keep icons cached by name until the next login. Neither build is signed by a certificate authority. The checksum detects changed downloads but does not replace release signing.
 
 ## Context size
 

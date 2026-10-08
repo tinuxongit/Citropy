@@ -1,11 +1,8 @@
 import { AnimatePresence } from "motion/react";
 import { useRef, useState } from "react";
-import {
-  ArrowRight,
-  CircleAlert,
-  Plus,
-  X,
-} from "lucide-react";
+import { ArrowRightIcon } from "./icons/arrows.tsx";
+import { CircleAlertIcon } from "./icons/status.tsx";
+import { CloseIcon, PlusIcon } from "./icons/marks.tsx";
 import { chooseWorkspace } from "../lib/actions.ts";
 import { useApp } from "../lib/store.ts";
 import { SectionLink, SectionSidebar } from "./SectionSidebar.tsx";
@@ -158,7 +155,7 @@ export function GitManager({
       onClick={() => changeSection("Changes")}
     >
       Review changes
-      <ArrowRight size={15} />
+      <ArrowRightIcon size={15} />
     </button>
   );
 
@@ -195,7 +192,7 @@ export function GitManager({
 
         {!connected && (
           <div className="git-alert" role="status">
-            <CircleAlert size={17} />
+            <CircleAlertIcon size={17} />
             <p>
               Connection lost. Your repository will be available when Citropy reconnects.
             </p>
@@ -203,7 +200,7 @@ export function GitManager({
         )}
         {feedback?.error && !dialog && (
           <ActionError as="div" className="git-alert" message={feedback.text} onDismiss={() => setFeedback(null)}>
-            <CircleAlert size={17} />
+            <CircleAlertIcon size={17} />
             <div>
               <strong>{feedback.text}</strong>
               {feedback.detail && (
@@ -218,7 +215,7 @@ export function GitManager({
               aria-label="Dismiss error"
               onClick={() => setFeedback(null)}
             >
-              <X size={15} />
+              <CloseIcon size={15} />
             </button>
           </ActionError>
         )}
@@ -269,7 +266,7 @@ export function GitManager({
                   disabled={disabled}
                   onClick={() => void act("init")}
                 >
-                  <Plus size={16} />
+                  <PlusIcon size={16} />
                   Initialize repository
                 </button>
               }

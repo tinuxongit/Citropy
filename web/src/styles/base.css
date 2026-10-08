@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Citropy Sans";
+  src: url("/fonts/CitropySans.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: oblique 0deg 10deg;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
@@ -19,15 +27,6 @@ html {
 #root {
   height: var(--viewport-height);
   container: application / inline-size;
-}
-
-html[data-platform]:not([data-platform="darwin"], [data-window-filled]) body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  border: 1px solid var(--line);
-  pointer-events: none;
 }
 
 body {
@@ -70,8 +69,6 @@ body {
 :where(svg, img)[width="34"] { width: 34px; height: 34px; }
 :where(svg, img)[width="36"] { width: 36px; height: 36px; }
 :where(svg, img)[width="38"] { width: 38px; height: 38px; }
-.lucide[stroke-width="2"]:not(:is(.canvas, .composer) *) { stroke-width: var(--icon-stroke); }
-.lucide[stroke-width="2"]:not(:is(.canvas, .composer) *) path[d$="h.01"] { stroke-width: var(--icon-dot-stroke); }
 
 :where(.sliding-selection) { position: relative; }
 .sliding-selection { isolation: isolate; }

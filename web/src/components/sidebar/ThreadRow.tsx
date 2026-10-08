@@ -1,5 +1,8 @@
 import { memo, type CSSProperties } from "react";
-import { GitPullRequest } from "lucide-react";
+import { PullRequestIcon } from "../icons/git.tsx";
+import { CheckIcon } from "../icons/marks.tsx";
+import { RotateCcwIcon } from "../icons/rotation.tsx";
+import { TrashIcon } from "../icons/actions.tsx";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
 import { finishThread, loadThread, openOnEnvironment, removeThread } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
@@ -11,7 +14,6 @@ import { selectProject, selectThread, useApp } from "../../lib/store.ts";
 import { useTouchInput } from "../../lib/use-touch-input.ts";
 import { ConversationMenu } from "../ConversationMenu.tsx";
 import type { MenuItem } from "../Menu.tsx";
-import { Check, RotateCcw, Trash2 } from "../icons.ts";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { ThreadChildren } from "../ThreadChildren.tsx";
 import { ThreadPulse } from "../ThreadPulse.tsx";
@@ -57,8 +59,8 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
   };
   const remove = () => void removeThread(thread.id, environment).catch(reportError);
   const rowActions: MenuItem[] = touch ? [
-    { id: "finish", label: thread.finished ? "Reopen" : "Finish", icon: thread.finished ? <RotateCcw size={15} /> : <Check size={15} />, disabled: !connected || busy || childRunning, onSelect: finish },
-    { id: "delete", label: "Delete", icon: <Trash2 size={15} />, danger: true, onSelect: remove },
+    { id: "finish", label: thread.finished ? "Reopen" : "Finish", icon: thread.finished ? <RotateCcwIcon size={15} /> : <CheckIcon size={15} />, disabled: !connected || busy || childRunning, onSelect: finish },
+    { id: "delete", label: "Delete", icon: <TrashIcon size={15} />, danger: true, onSelect: remove },
   ] : [];
 
   const openMenu = (card: HTMLElement) => {
@@ -145,7 +147,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
             rel="noreferrer noopener"
             aria-label={`Pull request #${pullRequestNumber(thread.pullRequest)}`}
             title={`Pull request #${pullRequestNumber(thread.pullRequest)}`}
-          ><GitPullRequest size={13} /></a>}
+          ><PullRequestIcon size={13} /></a>}
           {!touch && <>
             <button
               className="thread-row-finish"
@@ -155,7 +157,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
               disabled={!connected || busy || childRunning}
               onClick={finish}
             >
-              {thread.finished ? <RotateCcw size={14} /> : <Check size={15} />}
+              {thread.finished ? <RotateCcwIcon size={14} /> : <CheckIcon size={15} />}
             </button>
             <button
               className="thread-row-kill"
@@ -164,7 +166,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
               title={`Delete ${thread.title}`}
               onClick={remove}
             >
-              <Trash2 size={13} />
+              <TrashIcon size={13} />
             </button>
           </>}
         </div>

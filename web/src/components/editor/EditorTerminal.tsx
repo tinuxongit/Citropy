@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
-import { Plus, TerminalSquare, X } from "lucide-react";
+import { CloseIcon, PlusIcon } from "../icons/marks.tsx";
+import { TerminalIcon } from "../icons/squares.tsx";
 import { openEditorTerminal } from "../../lib/actions.ts";
 import { setEditorTerminal, useApp } from "../../lib/store.ts";
 import { send } from "../../lib/socket.ts";
@@ -72,7 +73,7 @@ export function EditorTerminal({
                 title={panel.title}
                 onClick={() => setEditorTerminal(panelId, panel.id)}
               >
-                <TerminalSquare size={13} />
+                <TerminalIcon size={13} />
                 <span className="truncate">{panel.title}</span>
               </button>
               <button
@@ -86,7 +87,7 @@ export function EditorTerminal({
                   send({ t: "panel.close", id: panel.id });
                 }}
               >
-                <X size={12} />
+                <CloseIcon size={12} />
               </button>
             </div>
           ))}
@@ -99,7 +100,7 @@ export function EditorTerminal({
           title="New terminal"
           onClick={() => openEditorTerminal(panelId, true)}
         >
-          <Plus size={15} />
+          <PlusIcon size={15} />
         </button>
         <button
           type="button"
@@ -108,7 +109,7 @@ export function EditorTerminal({
           title="Hide terminal dock"
           onClick={onHide}
         >
-          <X size={14} />
+          <CloseIcon size={14} />
         </button>
       </div>
       {panels.toSorted((a, b) => a.id.localeCompare(b.id)).map((panel) => (

@@ -1,5 +1,5 @@
-import { RefreshCw } from "lucide-react";
-import { BranchIcon } from "../BranchIcon.tsx";
+import { RefreshIcon } from "../icons/rotation.tsx";
+import { BranchIcon } from "../icons/git.tsx";
 import { shortPath } from "../../lib/format.ts";
 import { workingLabels, type Section } from "./labels.ts";
 import { Loader } from "../Loader.tsx";
@@ -71,7 +71,7 @@ export function GitHeader({
           disabled={refreshDisabled}
           onClick={onRefresh}
         >
-          {busy === "overview" ? <Loader size={17} /> : <RefreshCw size={17} />}
+          {busy === "overview" ? <Loader size={17} /> : <RefreshIcon size={17} />}
         </button>
       </div>
     </header>

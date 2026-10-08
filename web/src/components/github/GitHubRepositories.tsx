@@ -1,13 +1,11 @@
 import { AnimatePresence } from "motion/react";
 import { useState } from "react";
-import {
-  Download,
-  FolderGit2,
-  LockKeyhole,
-  Plus,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+import { DownloadIcon } from "../icons/arrows.tsx";
+import { FolderGitIcon } from "../icons/folders.tsx";
+import { LockIcon } from "../LockIcon.tsx";
+import { PlusIcon } from "../icons/marks.tsx";
+import { RefreshIcon } from "../icons/rotation.tsx";
+import { SearchIcon } from "../icons/actions.tsx";
 import { Select } from "../Select.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
@@ -48,7 +46,7 @@ export function GitHubRepositories({
     <div className="github-workspace scroll">
       {projectId && !workspace.length && (
         <div className="github-local-workspace">
-          <FolderGit2 size={21} />
+          <FolderGitIcon size={21} />
           <div>
             <strong>{workspaceName}</strong>
             <p>
@@ -73,7 +71,7 @@ export function GitHubRepositories({
           <span>{workspaceName}{" "}workspace</span>
           {workspace.map((repo) => (
             <button className="btn" key={repo} onClick={() => onSelect(repo)}>
-              <FolderGit2 size={15} />
+              <FolderGitIcon size={15} />
               {repo}
             </button>
           ))}
@@ -88,7 +86,7 @@ export function GitHubRepositories({
             setPage(1);
           }}
         >
-          <Search size={16} />
+          <SearchIcon size={16} />
           <input
             aria-label="Search repositories"
             placeholder={
@@ -117,7 +115,7 @@ export function GitHubRepositories({
           disabled={list.loading}
           onClick={list.refresh}
         >
-          <RefreshCw size={16} />
+          <RefreshIcon size={16} />
         </button>
         <button
           className="btn"
@@ -127,7 +125,7 @@ export function GitHubRepositories({
             setCreating(true);
           }}
         >
-          <Plus size={15} />{" "}New repository{" "}</button>
+          <PlusIcon size={15} />{" "}New repository{" "}</button>
       </div>
       <GitHubFeedback
         error={list.error}
@@ -156,7 +154,7 @@ export function GitHubRepositories({
               <div className="github-meta">
                 {repo.private ? (
                   <span>
-                    <LockKeyhole size={12} />{" "}Private{" "}</span>
+                    <LockIcon size={12} />{" "}Private{" "}</span>
                 ) : (
                   <span>Public</span>
                 )}
@@ -167,7 +165,7 @@ export function GitHubRepositories({
               </div>
             </button>
             <button className="btn" onClick={() => onClone(repo.full_name)}>
-              <Download size={14} />{" "}Clone{" "}</button>
+              <DownloadIcon size={14} />{" "}Clone{" "}</button>
           </article>
         ))}
       </div>

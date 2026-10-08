@@ -1,20 +1,15 @@
 import { AnimatePresence } from "motion/react";
 import { useEffect, useState } from "react";
-import {
-  BookOpen,
-  Check,
-  Download,
-  GitBranch,
-  GitFork,
-  Star,
-  UserRound,
-} from "lucide-react";
+import { BookIcon } from "../BookIcon.tsx";
+import { CheckIcon } from "../icons/marks.tsx";
+import { DownloadIcon } from "../icons/arrows.tsx";
+import { BranchIcon, ForkIcon, PullRequestIcon } from "../icons/git.tsx";
+import { StarIcon } from "../icons/actions.tsx";
+import { UserIcon } from "../icons/people.tsx";
+import { CircleDotIcon } from "../icons/status.tsx";
+import { PlayCircleIcon } from "../icons/media.tsx";
 import { SectionLink, SectionSidebar } from "../SectionSidebar.tsx";
 import { BellIcon } from "../BellIcon.tsx";
-import { BookIcon } from "../BookIcon.tsx";
-import { IssueIcon } from "../IssueIcon.tsx";
-import { PlayIcon } from "../PlayIcon.tsx";
-import { PullRequestIcon } from "../PullRequestIcon.tsx";
 import { TagIcon } from "../TagIcon.tsx";
 import { useApp, selectProject } from "../../lib/store.ts";
 import { useGitHub } from "../../lib/use-github.ts";
@@ -36,8 +31,8 @@ import { Loader } from "../Loader.tsx";
 const sections = [
   { name: "Repositories", icon: BookIcon, global: true },
   { name: "Pull requests", icon: PullRequestIcon, global: false },
-  { name: "Issues", icon: IssueIcon, global: false },
-  { name: "Actions", icon: PlayIcon, global: false },
+  { name: "Issues", icon: CircleDotIcon, global: false },
+  { name: "Actions", icon: PlayCircleIcon, global: false },
   { name: "Releases", icon: TagIcon, global: false },
   { name: "Notifications", icon: BellIcon, global: true },
 ] as const;
@@ -126,10 +121,10 @@ export function GitHub({
             {status.data?.account ? (
               <img src={status.data.account.avatar_url} alt="" />
             ) : (
-              <UserRound size={21} />
+              <UserIcon size={21} />
             )}
             <span>{status.data?.account?.login ?? "Connect GitHub"}</span>
-            {status.data?.account && <Check size={14} />}
+            {status.data?.account && <CheckIcon size={14} />}
           </button>
       </SectionSidebar>
       <div className="github-main">
@@ -144,9 +139,9 @@ export function GitHub({
                 className="btn"
                 onClick={() => setSection("Repositories")}
               >
-                <BookOpen size={15} />{" "}Browse{" "}</button>
+                <BookIcon size={15} />{" "}Browse{" "}</button>
               <button className="btn" onClick={() => setClone(repo)}>
-                <Download size={15} />{" "}Clone{" "}</button>
+                <DownloadIcon size={15} />{" "}Clone{" "}</button>
               <GitHubLink href={repository.data.html_url}>GitHub</GitHubLink>
             </div>
           )}
@@ -214,15 +209,15 @@ export function GitHub({
                   <>
                     <div className="github-repo-metadata">
                       <span>
-                        <GitBranch size={14} />
+                        <BranchIcon size={14} />
                         {repository.data.default_branch}
                       </span>
                       <span>
-                        <Star size={14} />
+                        <StarIcon size={14} />
                         {repository.data.stargazers_count}
                       </span>
                       <span>
-                        <GitFork size={14} />
+                        <ForkIcon size={14} />
                         {repository.data.forks_count}
                       </span>
                       <span>

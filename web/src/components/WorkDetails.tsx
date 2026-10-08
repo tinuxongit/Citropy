@@ -5,7 +5,9 @@ import { useDisclosure } from "../lib/use-disclosure.ts";
 import { groupStats } from "../lib/group.ts";
 import { duration } from "../lib/format.ts";
 import type { FoldRow } from "../lib/timeline.ts";
-import { AlertTriangle, ChevronRight } from "./icons.ts";
+import { WarningIcon } from "./icons/status.tsx";
+import { ChevronRightIcon } from "./icons/chevrons.tsx";
+import { CheckIcon } from "./icons/marks.tsx";
 
 export function WorkDetails({ id, ids, messageIds, open, active, since, transitionActivity }: Omit<FoldRow, "kind"> & { transitionActivity?: (id: string, update: () => void) => void }) {
   const showFailedTools = useApp(state => state.showFailedTools);
@@ -20,9 +22,10 @@ export function WorkDetails({ id, ids, messageIds, open, active, since, transiti
       if (transitionActivity) transitionActivity(id, update);
       else update();
     }}>
+      {!active && <CheckIcon size={12} aria-hidden="true" />}
       <span>{active ? `${ids.length} ${ids.length === 1 ? "step" : "steps"}` : `Worked for ${duration(Math.max(0, endedAt - since))}`}</span>
-      {showFailedTools && failed > 0 && <span className="group-failed"><AlertTriangle size={11} aria-hidden="true" />{failed === 1 ? "1 failed tool" : `${failed} failed tools`}</span>}
-      <ChevronRight size={12} className="group-chevron" aria-hidden="true" />
+      {showFailedTools && failed > 0 && <span className="group-failed"><WarningIcon size={11} aria-hidden="true" />{failed === 1 ? "1 failed tool" : `${failed} failed tools`}</span>}
+      <ChevronRightIcon size={12} className="group-chevron" aria-hidden="true" />
     </button>
   );
 }

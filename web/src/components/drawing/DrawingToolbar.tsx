@@ -1,5 +1,11 @@
 import type { CSSProperties } from "react";
-import { Circle, Eraser, Highlighter, MousePointer2, MoveUpRight, PaintBucket, Pen, Redo2, Slash, Square, Type, Undo2 } from "lucide-react";
+import { CircleIcon } from "../icons/status.tsx";
+import { EraserIcon, HighlighterIcon, LineIcon, PaintBucketIcon, PointerIcon } from "../icons/drawing.tsx";
+import { ArrowUpRightIcon } from "../icons/arrows.tsx";
+import { EditIcon } from "../icons/pencil.tsx";
+import { RedoIcon, UndoIcon } from "../icons/rotation.tsx";
+import { SquareIcon } from "../icons/squares.tsx";
+import { TypeIcon } from "../icons/editing.tsx";
 import { ColorPicker } from "../ColorPicker.tsx";
 import { Menu } from "../Menu.tsx";
 import { Range } from "../Range.tsx";
@@ -7,18 +13,18 @@ import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { INK, brushWidth, type Tool } from "./marks.ts";
 
 const TOOLS = [
-  { tool: "select", label: "Select", key: "V", icon: MousePointer2, hint: "Click or drag a box to select, then drag to move. Ctrl+C copies, Ctrl+V pastes marks or screenshots, Delete removes." },
-  { tool: "pen", label: "Pen", key: "P", icon: Pen, hint: "Drag to draw." },
-  { tool: "highlighter", label: "Highlighter", key: "H", icon: Highlighter, hint: "Drag to highlight. It stays see-through." },
-  { tool: "eraser", label: "Eraser", key: "E", icon: Eraser, hint: "Drag over anything to erase it." },
-  { tool: "line", label: "Line", key: "L", icon: Slash, hint: "Drag to draw. Hold Shift to snap the angle." },
-  { tool: "arrow", label: "Arrow", key: "A", icon: MoveUpRight, hint: "Drag from the tail to the tip. Hold Shift to snap the angle." },
-  { tool: "rectangle", label: "Rectangle", key: "R", icon: Square, hint: "Drag to draw. Hold Shift for a square." },
-  { tool: "ellipse", label: "Ellipse", key: "O", icon: Circle, hint: "Drag to draw. Hold Shift for a circle." },
-  { tool: "text", label: "Text", key: "T", icon: Type, hint: "Click to place text. Enter finishes, Shift+Enter adds a line." },
-] satisfies Array<{ tool: Tool; label: string; key: string; icon: typeof Pen; hint: string }>;
+  { tool: "select", label: "Select", key: "V", icon: PointerIcon, hint: "Click or drag a box to select, then drag to move. Ctrl+C copies, Ctrl+V pastes marks or screenshots, Delete removes." },
+  { tool: "pen", label: "Pen", key: "P", icon: EditIcon, hint: "Drag to draw." },
+  { tool: "highlighter", label: "Highlighter", key: "H", icon: HighlighterIcon, hint: "Drag to highlight. It stays see-through." },
+  { tool: "eraser", label: "Eraser", key: "E", icon: EraserIcon, hint: "Drag over anything to erase it." },
+  { tool: "line", label: "Line", key: "L", icon: LineIcon, hint: "Drag to draw. Hold Shift to snap the angle." },
+  { tool: "arrow", label: "Arrow", key: "A", icon: ArrowUpRightIcon, hint: "Drag from the tail to the tip. Hold Shift to snap the angle." },
+  { tool: "rectangle", label: "Rectangle", key: "R", icon: SquareIcon, hint: "Drag to draw. Hold Shift for a square." },
+  { tool: "ellipse", label: "Ellipse", key: "O", icon: CircleIcon, hint: "Drag to draw. Hold Shift for a circle." },
+  { tool: "text", label: "Text", key: "T", icon: TypeIcon, hint: "Click to place text. Enter finishes, Shift+Enter adds a line." },
+] satisfies Array<{ tool: Tool; label: string; key: string; icon: typeof EditIcon; hint: string }>;
 
-export const TOOL_ICONS = Object.fromEntries(TOOLS.map((entry) => [entry.tool, entry.icon])) as Record<Tool, typeof Pen>;
+export const TOOL_ICONS = Object.fromEntries(TOOLS.map((entry) => [entry.tool, entry.icon])) as Record<Tool, typeof EditIcon>;
 export const TOOL_LABELS = Object.fromEntries(TOOLS.map((entry) => [entry.tool, entry.label])) as Record<Tool, string>;
 
 export const TOOL_KEYS: Record<string, Tool> = Object.fromEntries(TOOLS.map((entry) => [entry.key.toLowerCase(), entry.tool]));
@@ -82,14 +88,14 @@ export function DrawingTools({
         title="Fill shapes"
         onClick={onToggleFill}
       >
-        <PaintBucket size={16} />
+        <PaintBucketIcon size={16} />
       </button>
       <div className="drawing-history">
         <button type="button" className="icon-btn" disabled={!canUndo} aria-label="Undo" title={`Undo (Ctrl+Z)`} onClick={onUndo}>
-          <Undo2 size={16} />
+          <UndoIcon size={16} />
         </button>
         <button type="button" className="icon-btn" disabled={!canRedo} aria-label="Redo" title={`Redo (Ctrl+Shift+Z)`} onClick={onRedo}>
-          <Redo2 size={16} />
+          <RedoIcon size={16} />
         </button>
       </div>
     </div>

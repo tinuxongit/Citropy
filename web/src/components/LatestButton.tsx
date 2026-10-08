@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowDown } from "lucide-react";
+import { ArrowDownIcon } from "./icons/arrows.tsx";
 
 const SHOW_DELAY_MS = 150;
 
@@ -17,7 +17,7 @@ export function LatestButton({ away, onJump }: { away: boolean; onJump: () => vo
   return (
     <div className="conversation-jump">
       <button type="button" className="jump" data-visible={visible || undefined} tabIndex={visible ? undefined : -1} aria-hidden={!visible || undefined} onClick={onJump}>
-        <ArrowDown size={13} strokeWidth={2.25} aria-hidden="true" />
+        <ArrowDownIcon size={13} />
         Latest
       </button>
     </div>

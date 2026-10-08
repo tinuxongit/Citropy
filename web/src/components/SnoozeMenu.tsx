@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Hourglass } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon } from "./icons/chevrons.tsx";
+import { HourglassIcon } from "./icons/status.tsx";
 import { Menu } from "./Menu.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { organizeConversation } from "./ConversationMenu.tsx";
@@ -52,7 +53,7 @@ export function SnoozeMenu({ thread, environment, anchor, onClose }: { thread: T
       controls={<div className="snooze-menu">
         {resetsAt && <>
           <button type="button" className="menu-item" disabled={busy} onClick={() => void snooze(resetsAt)}>
-            <span className="menu-icon"><Hourglass size={15} /></span>
+            <span className="menu-icon"><HourglassIcon size={15} /></span>
             <span className="menu-copy">
               <span className="menu-label truncate">Until usage resets</span>
               <span className="menu-hint"><span className="truncate">{clock(resetsAt)}</span></span>
@@ -67,7 +68,7 @@ export function SnoozeMenu({ thread, environment, anchor, onClose }: { thread: T
           ))}
         </div>
         <form className="snooze-stepper" onSubmit={(event) => { event.preventDefault(); if (valid) void snooze(Date.now() + amount * ms); }}>
-          <button type="button" className="snooze-step" aria-label="More" disabled={amount >= max} onClick={() => step(1)}><ChevronUp size={18} /></button>
+          <button type="button" className="snooze-step" aria-label="More" disabled={amount >= max} onClick={() => step(1)}><ChevronUpIcon size={18} /></button>
           <label className="snooze-amount">
             <input
               type="number"
@@ -82,7 +83,7 @@ export function SnoozeMenu({ thread, environment, anchor, onClose }: { thread: T
             />
             <span>{UNITS[unit].label}</span>
           </label>
-          <button type="button" className="snooze-step" aria-label="Fewer" disabled={amount <= 1} onClick={() => step(-1)}><ChevronDown size={18} /></button>
+          <button type="button" className="snooze-step" aria-label="Fewer" disabled={amount <= 1} onClick={() => step(-1)}><ChevronDownIcon size={18} /></button>
           <p className="snooze-wake" aria-live="polite">{valid ? `Wakes ${wakeLabel(Date.now() + amount * ms)}` : `Enter a whole number from 1 to ${max}.`}</p>
           <button className="btn snooze-submit" data-variant="primary" disabled={busy || !valid}>Snooze</button>
         </form>

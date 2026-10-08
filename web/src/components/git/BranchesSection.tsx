@@ -1,13 +1,7 @@
-import {
-  ArrowRight,
-  Check,
-  GitMerge,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Trash2,
-} from "lucide-react";
-import { BranchIcon } from "../BranchIcon.tsx";
+import { ArrowRightIcon } from "../icons/arrows.tsx";
+import { CheckIcon, MoreIcon, PlusIcon } from "../icons/marks.tsx";
+import { BranchIcon, MergeIcon } from "../icons/git.tsx";
+import { SearchIcon, TrashIcon } from "../icons/actions.tsx";
 import { Menu } from "../Menu.tsx";
 import { RemoteIcon } from "../RemoteIcon.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
@@ -80,7 +74,7 @@ export function BranchesSection({
             disabled={disabled}
             onClick={createBranch}
           >
-            <Plus size={15} />
+            <PlusIcon size={15} />
             New branch
           </button>
         )}
@@ -106,7 +100,7 @@ export function BranchesSection({
       ) : (
         <>
           <label className="git-filter git-branch-filter">
-            <Search size={15} />
+            <SearchIcon size={15} />
             <input
               aria-label="Filter branches"
               placeholder="Find a branch…"
@@ -137,7 +131,7 @@ export function BranchesSection({
                       <strong>{entry.name}</strong>
                       {entry.current && (
                         <span className="git-tag">
-                          <Check size={11} />
+                          <CheckIcon size={11} />
                           Current
                         </span>
                       )}
@@ -165,7 +159,7 @@ export function BranchesSection({
                         }
                       >
                         Switch
-                        <ArrowRight size={13} />
+                        <ArrowRightIcon size={13} />
                       </button>
                       <Menu
                         align="end"
@@ -182,14 +176,14 @@ export function BranchesSection({
                             }
                             onClick={toggle}
                           >
-                            <MoreHorizontal size={17} />
+                            <MoreIcon size={17} />
                           </button>
                         )}
                         items={[
                           {
                             id: "merge",
                             label: `Merge into ${branch}`,
-                            icon: <GitMerge size={14} />,
+                            icon: <MergeIcon size={14} />,
                             onSelect: () =>
                               showDialog({
                                 operation: "merge",
@@ -202,7 +196,7 @@ export function BranchesSection({
                           {
                             id: "delete",
                             label: "Delete branch",
-                            icon: <Trash2 size={14} />,
+                            icon: <TrashIcon size={14} />,
                             danger: true,
                             onSelect: () =>
                               showDialog({
@@ -240,7 +234,7 @@ export function BranchesSection({
               onClick={() => changeSection("Remotes")}
             >
                 Manage remotes
-              <ArrowRight size={13} />
+              <ArrowRightIcon size={13} />
             </button>
           </div>
           {remoteBranches.length ? (

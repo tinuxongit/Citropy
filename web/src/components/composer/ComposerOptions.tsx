@@ -1,13 +1,10 @@
-import { useEffect, useState, type PointerEvent, type ReactNode, type Ref } from "react";
-import { LockKeyhole, UnlockKeyhole } from "lucide-react";
-import {
-  Brain,
-  Layers,
-  ListChecks,
-  Pencil,
-  ShieldCheck,
-  Zap,
-} from "../icons.ts";
+import { useEffect, useState, type ComponentType, type PointerEvent, type ReactNode, type Ref } from "react";
+import { BoltIcon } from "../BoltIcon.tsx";
+import { EditIcon } from "../icons/pencil.tsx";
+import { EffortIcon } from "../EffortIcon.tsx";
+import { LayersIcon } from "../LayersIcon.tsx";
+import { LockIcon, UnlockIcon } from "../LockIcon.tsx";
+import { PlanIcon } from "../PlanIcon.tsx";
 import { Menu } from "../Menu.tsx";
 import { configureThread } from "../../lib/actions.ts";
 import { effortLabel as formatEffort, tokens } from "../../lib/format.ts";
@@ -22,35 +19,38 @@ import type {
   ThreadMeta,
 } from "../../../../shared/protocol.ts";
 
+const BAR_ICON_SIZE = 18;
+const FAST_BADGE_SIZE = 14;
+
 const MODES: Array<{
   id: PermissionMode;
   label: string;
   hint: string;
-  icon: typeof ShieldCheck;
+  icon: ComponentType<{ size?: number }>;
 }> = [
   {
     id: "manual",
     label: "Ask before changes",
     hint: "Review tools before they run",
-    icon: LockKeyhole,
+    icon: LockIcon,
   },
   {
     id: "acceptEdits",
     label: "Auto edits",
     hint: "Allow file edits; ask for other actions",
-    icon: Pencil,
+    icon: EditIcon,
   },
   {
     id: "plan",
     label: "Plan only",
     hint: "Explore and plan without editing files",
-    icon: ListChecks,
+    icon: PlanIcon,
   },
   {
     id: "bypass",
     label: "Full access",
     hint: "Allow tools without approval prompts",
-    icon: UnlockKeyhole,
+    icon: UnlockIcon,
   },
 ];
 
@@ -76,10 +76,10 @@ export function ModelTuning({
   const effort = effectiveEffort(model, settings.effort);
   const level = effort ? efforts.indexOf(effort) : 0;
   const contextWindow = settings.contextWindow ?? model?.contextMax;
-  const tabs: Array<{ id: TuningTab; label: string; icon: typeof Brain }> = [
-    ...(efforts.length ? [{ id: "effort" as const, label: "Effort", icon: Brain }] : []),
-    ...(model?.contextWindows?.length ? [{ id: "context" as const, label: "Context", icon: Layers }] : []),
-    ...(model?.fastMode ? [{ id: "speed" as const, label: "Speed", icon: Zap }] : []),
+  const tabs: Array<{ id: TuningTab; label: string; icon: ComponentType<{ size?: number }> }> = [
+    ...(efforts.length ? [{ id: "effort" as const, label: "Effort", icon: EffortIcon }] : []),
+    ...(model?.contextWindows?.length ? [{ id: "context" as const, label: "Context", icon: LayersIcon }] : []),
+    ...(model?.fastMode ? [{ id: "speed" as const, label: "Speed", icon: BoltIcon }] : []),
   ].filter((entry) => !only || only.includes(entry.id));
   const [chosen, setChosen] = useState<TuningTab>();
   const tab = tabs.find((entry) => entry.id === chosen)?.id ?? tabs[0]?.id;
@@ -265,8 +265,7 @@ export function PermissionMenu({
   buttonRef: Ref<HTMLButtonElement>;
 }) {
   const mode =
-    MODES.find((entry) => entry.id === thread.permissionMode) ?? MODES[0];
-  const ModeIcon = mode?.icon ?? ShieldCheck;
+    MODES.find((entry) => entry.id === thread.permissionMode) ?? MODES[0]!;
   return (
     <Menu
       width={290}
@@ -290,10 +289,10 @@ export function PermissionMenu({
           onClick={toggle}
           ref={buttonRef}
           data-tone={thread.permissionMode}
-          aria-label={`Permissions: ${mode ? mode.label : ""}`}
+          aria-label={`Permissions: ${mode.label}`}
         >
-          <ModeIcon size={14} />
-          {mode && <span className="composer-label">{mode.label}</span>}
+          <mode.icon size={BAR_ICON_SIZE} />
+          <span className="composer-label">{mode.label}</span>
         </button>
       )}
     />
@@ -311,14 +310,18 @@ export function EffortMenu({
   disabled: boolean;
   buttonRef: Ref<HTMLButtonElement>;
 }) {
+  const efforts = model?.efforts ?? [];
   const effort = effectiveEffort(model, thread.effort);
   if (!effort && !model?.fastMode) return null;
   const label = effort ? formatEffort(effort) : thread.fastMode ? "Fast" : "Standard";
+  const choices = effort ? efforts.map(formatEffort) : ["Standard", "Fast"];
   return (
-    <TuningMenu thread={thread} model={model} tabs={["effort", "speed"]} disabled={disabled} buttonRef={buttonRef} className="composer-effort" label={`Effort and speed: ${label}`}>
-      {effort ? <Brain size={14} /> : <Zap size={14} />}
-      <span className="composer-label">{label}</span>
-      {effort && thread.fastMode && <Zap size={12} aria-label="Fast mode on" />}
+    <TuningMenu thread={thread} model={model} tabs={["effort", "speed"]} disabled={disabled} buttonRef={buttonRef} className="composer-effort" label={`Effort and speed: ${label}${effort && thread.fastMode ? ", fast mode on" : ""}`}>
+      {effort ? <EffortIcon size={BAR_ICON_SIZE} filled={(efforts.indexOf(effort) + 1) / efforts.length} /> : <BoltIcon size={BAR_ICON_SIZE} />}
+      <span className="composer-label composer-label-stack">
+        {choices.map((choice) => <span key={choice} data-current={choice === label || undefined}>{choice}</span>)}
+      </span>
+      {effort && thread.fastMode && <BoltIcon size={FAST_BADGE_SIZE} />}
     </TuningMenu>
   );
 }
@@ -336,7 +339,7 @@ export function ContextMenu({
   if (!contextWindow || !model?.contextWindows?.length) return null;
   return (
     <TuningMenu thread={thread} model={model} tabs={["context"]} disabled={disabled} className="composer-context" label={`Context window: ${contextWindow.toLocaleString(LOCALE)} tokens`}>
-      <Layers size={14} />
+      <LayersIcon size={BAR_ICON_SIZE} />
       <span className="composer-label">{contextLabel(contextWindow)}</span>
     </TuningMenu>
   );

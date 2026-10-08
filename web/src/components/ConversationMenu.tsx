@@ -1,21 +1,13 @@
 import { AnimatePresence } from "motion/react";
 import { useId, useState } from "react";
-import {
-  GitFork,
-  Trash2,
-  Archive,
-  ArchiveRestore,
-  Clock,
-  GitPullRequest,
-  MoreHorizontal,
-  Pencil,
-  Pin,
-  PinOff,
-  ArrowUp,
-  ArrowDown,
-  RefreshCw,
-  SquarePlus,
-} from "lucide-react";
+import { ForkIcon, PullRequestIcon } from "./icons/git.tsx";
+import { ArchiveIcon, ArchiveRestoreIcon, PinIcon, PinOffIcon, TrashIcon } from "./icons/actions.tsx";
+import { ClockIcon } from "./icons/status.tsx";
+import { MoreIcon } from "./icons/marks.tsx";
+import { EditIcon } from "./icons/pencil.tsx";
+import { ArrowDownIcon, ArrowUpIcon } from "./icons/arrows.tsx";
+import { RefreshIcon } from "./icons/rotation.tsx";
+import { SquarePlusIcon } from "./icons/squares.tsx";
 import { Menu, type MenuItem } from "./Menu.tsx";
 import { Modal } from "./Modal.tsx";
 import { SnoozeMenu } from "./SnoozeMenu.tsx";
@@ -99,26 +91,26 @@ export function ConversationMenu({
         sheet={viewportWidth() <= 600}
         triggerId={menuId}
         items={[
-          ...(tabbable ? [{ id: "open-tab", label: "Open in new tab", icon: <SquarePlus size={15} />, onSelect: () => openInNewTab(thread.id) }] : []),
-          ...(project?.isGit ? [{ id: "worktree", label: "Continue in new worktree…", icon: <GitFork size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
-          ...(thread.archived && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: "Remove worktree…", icon: <Trash2 size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
-          ...(thread.canRedo ? [{ id: "redo", label: "Redo restored turn", icon: <RefreshCw size={15} />, disabled: thread.running, onSelect: () => { void api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ redo: true }) }, environment).catch(reportError); } }] : []),
+          ...(tabbable ? [{ id: "open-tab", label: "Open in new tab", icon: <SquarePlusIcon size={15} />, onSelect: () => openInNewTab(thread.id) }] : []),
+          ...(project?.isGit ? [{ id: "worktree", label: "Continue in new worktree…", icon: <ForkIcon size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
+          ...(thread.archived && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: "Remove worktree…", icon: <TrashIcon size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
+          ...(thread.canRedo ? [{ id: "redo", label: "Redo restored turn", icon: <RefreshIcon size={15} />, disabled: thread.running, onSelect: () => { void api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ redo: true }) }, environment).catch(reportError); } }] : []),
           {
             id: "pin",
             label: thread.pinned ? "Unpin conversation" : "Pin conversation",
-            icon: thread.pinned ? <PinOff size={15} /> : <Pin size={15} />,
+            icon: thread.pinned ? <PinOffIcon size={15} /> : <PinIcon size={15} />,
             onSelect: () => update({ pinned: !thread.pinned }),
           },
           {
             id: "rename",
             label: "Rename…",
-            icon: <Pencil size={15} />,
+            icon: <EditIcon size={15} />,
             onSelect: () => edit("title"),
           },
           ...(!thread.parentThreadId ? [{
             id: "generate-title",
             label: generatingTitle ? "Naming conversation…" : "Generate title",
-            icon: <RefreshCw size={15} />,
+            icon: <RefreshIcon size={15} />,
             disabled: generatingTitle,
             onSelect: () => void regenerateTitle(),
           }] : []),
@@ -126,13 +118,13 @@ export function ConversationMenu({
             {
               id: "up",
               label: "Move up",
-              icon: <ArrowUp size={15} />,
+              icon: <ArrowUpIcon size={15} />,
               onSelect: () => onMove(-1),
             },
             {
               id: "down",
               label: "Move down",
-              icon: <ArrowDown size={15} />,
+              icon: <ArrowDownIcon size={15} />,
               onSelect: () => onMove(1),
             },
           ] : []),
@@ -141,7 +133,7 @@ export function ConversationMenu({
             label: thread.pullRequest
               ? "Edit pull request link…"
               : "Link pull request…",
-            icon: <GitPullRequest size={15} />,
+            icon: <PullRequestIcon size={15} />,
             onSelect: () => edit("pullRequest"),
           },
           ...(!thread.running
@@ -151,7 +143,7 @@ export function ConversationMenu({
                   label: thread.snoozedUntil
                     ? "Wake conversation"
                     : "Snooze…",
-                  icon: <Clock size={15} />,
+                  icon: <ClockIcon size={15} />,
                   onSelect: () =>
                     thread.snoozedUntil
                       ? update({ snoozedUntil: null })
@@ -163,9 +155,9 @@ export function ConversationMenu({
                     ? "Restore conversation"
                     : "Archive conversation",
                   icon: thread.archived ? (
-                    <ArchiveRestore size={15} />
+                    <ArchiveRestoreIcon size={15} />
                   ) : (
-                    <Archive size={15} />
+                    <ArchiveIcon size={15} />
                   ),
                   onSelect: () => update({ archived: !thread.archived }),
                 },
@@ -183,7 +175,7 @@ export function ConversationMenu({
             aria-expanded={open || Boolean(snoozeAnchor)}
             onClick={toggle}
           >
-            <MoreHorizontal size={16} />
+            <MoreIcon size={16} />
           </button>
         )}
       />

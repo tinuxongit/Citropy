@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { ChevronDown, ChevronUp, History } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon } from "./icons/chevrons.tsx";
+import { HistoryIcon } from "./icons/rotation.tsx";
+import { NetworkIcon } from "./icons/hardware.tsx";
+import { ArrowUpRightIcon } from "./icons/arrows.tsx";
+import { StopIcon } from "./icons/squares.tsx";
 import { groupSubagents } from "../lib/subagents.ts";
 import { Collapsible } from "./Collapsible.tsx";
 import { VirtualList } from "./VirtualList.tsx";
-import { Network, ArrowUpRight, Square } from "lucide-react";
 import { loadThread } from "../lib/actions.ts";
 import { selectThread, useApp, type AppState } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
@@ -68,7 +71,7 @@ export function SubagentsPane() {
               aria-label={`Stop ${child.title}`}
               onClick={() => send({ t: "thread.stop", threadId: child.id })}
             >
-              <Square size={13} />
+              <StopIcon size={13} />
             </button>
           )}
           <button
@@ -78,7 +81,7 @@ export function SubagentsPane() {
               selectThread(child.id);
               loadThread(child.id);
             }}
-          >View work<ArrowUpRight size={13} />
+          >View work<ArrowUpRightIcon size={13} />
           </button>
         </div>
       </div>
@@ -87,7 +90,7 @@ export function SubagentsPane() {
   return (
     <div className="subagents-pane scroll">
       <div className="panel-section-heading">
-        <Network size={19} className="panel-icon-subagents" />
+        <NetworkIcon size={19} className="panel-icon-subagents" />
         <div>
           <h3>Delegated work</h3>
           <p>
@@ -113,10 +116,10 @@ export function SubagentsPane() {
             aria-expanded={historyOpen}
             onClick={() => setHistoryOpen(!historyOpen)}
           >
-            <History size={15} />
+            <HistoryIcon size={15} />
             <span>Earlier subagents</span>
             <span>{earlier.length}</span>
-            {historyOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {historyOpen ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}
           </button>
           <Collapsible open={historyOpen} className="subagent-history-list">
             <VirtualList items={earlier} itemKey="id" estimateSize={116}>{renderChild}</VirtualList>

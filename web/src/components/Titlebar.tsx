@@ -1,7 +1,9 @@
 import { ServerIcon } from "./ServerIcon.tsx";
 import { useEffect, useRef } from "react";
 import { environmentName, isRemote } from "../lib/environment.ts";
-import { GitBranch, PanelLeft, PanelRight, SquarePen } from "./icons.ts";
+import { BranchIcon } from "./icons/git.tsx";
+import { PanelLeftIcon, PanelRightIcon } from "./icons/squares.tsx";
+import { ComposeIcon } from "./icons/pencil.tsx";
 import { toggleInspector, useApp } from "../lib/store.ts";
 import { createThread } from "../lib/actions.ts";
 import { WindowControls } from "./WindowControls.tsx";
@@ -67,7 +69,7 @@ export function Titlebar({
             aria-label="Toggle sidebar"
             title="Toggle sidebar"
           >
-            <PanelLeft size={15} />
+            <PanelLeftIcon size={15} />
           </button>}
         </div>
       </div>
@@ -88,7 +90,7 @@ export function Titlebar({
         )}
         {view === "chat" && project && <span className="topbar-subtitle">
           <span className="truncate">{project.name}</span>
-          {branch && <><GitBranch size={11} /><span className="truncate">{branch}</span></>}
+          {branch && <><BranchIcon size={11} /><span className="truncate">{branch}</span></>}
         </span>}
       </nav>
 
@@ -103,7 +105,7 @@ export function Titlebar({
             aria-label="New thread"
             title="New thread"
           >
-            <SquarePen size={17} />
+            <ComposeIcon size={17} />
           </button>
         )}
         {view === "chat" && (
@@ -117,7 +119,7 @@ export function Titlebar({
             title="Toggle inspector"
           >
             <span className="unseen-anchor">
-              <PanelRight size={16} />
+              <PanelRightIcon size={16} />
               {panelActivity && <span className="unseen-dot" aria-label="New panel activity" />}
             </span>
           </button>

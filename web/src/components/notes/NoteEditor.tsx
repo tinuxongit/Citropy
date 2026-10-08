@@ -1,8 +1,10 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import {
-  Bold, ChevronLeft, Code, Copy, CopyPlus, Download, Heading2, Italic, Link, List, ListChecks, ListOrdered,
-  Minus, MoreHorizontal, Quote, Strikethrough, Trash2,
-} from "lucide-react";
+import { BoldIcon, CodeIcon, HeadingTwoIcon, ItalicIcon, LinkIcon, ListIcon, ListOrderedIcon, QuoteIcon, StrikethroughIcon } from "../icons/editing.tsx";
+import { ChevronLeftIcon } from "../icons/chevrons.tsx";
+import { CopyIcon, CopyPlusIcon, TrashIcon } from "../icons/actions.tsx";
+import { DownloadIcon } from "../icons/arrows.tsx";
+import { PlanIcon } from "../PlanIcon.tsx";
+import { MinusIcon, MoreIcon } from "../icons/marks.tsx";
 import { confirmAction } from "../../lib/store.ts";
 import { reportError } from "../../lib/api.ts";
 import { Menu, type MenuItem } from "../Menu.tsx";
@@ -17,18 +19,18 @@ import { copyText } from "../../lib/copy-text.ts";
 
 type Format = (value: string, start: number, end: number) => TextEdit;
 
-const FORMATS: Array<{ id: string; label: string; shortcut?: string; icon: typeof Bold; format: Format }> = [
-  { id: "heading", label: "Heading", icon: Heading2, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "## ") },
-  { id: "bold", label: "Bold", shortcut: "b", icon: Bold, format: (value, start, end) => wrapSelection(value, start, end, "**", "bold text") },
-  { id: "italic", label: "Italic", shortcut: "i", icon: Italic, format: (value, start, end) => wrapSelection(value, start, end, "_", "italic text") },
-  { id: "strike", label: "Strikethrough", icon: Strikethrough, format: (value, start, end) => wrapSelection(value, start, end, "~~", "crossed out") },
-  { id: "bullets", label: "Bulleted list", icon: List, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "- ") },
-  { id: "numbers", label: "Numbered list", icon: ListOrdered, format: (value, start, end) => toggleLinePrefix(value, start, end, (index) => `${index + 1}. `) },
-  { id: "tasks", label: "Checklist", icon: ListChecks, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "- [ ] ") },
-  { id: "quote", label: "Quote", icon: Quote, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "> ") },
-  { id: "code", label: "Code", icon: Code, format: (value, start, end) => insertCode(value, start, end, "code") },
-  { id: "link", label: "Link", shortcut: "k", icon: Link, format: (value, start, end) => insertLink(value, start, end, "link text") },
-  { id: "divider", label: "Divider", icon: Minus, format: (value, start) => insertDivider(value, start) },
+const FORMATS: Array<{ id: string; label: string; shortcut?: string; icon: typeof BoldIcon; format: Format }> = [
+  { id: "heading", label: "Heading", icon: HeadingTwoIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "## ") },
+  { id: "bold", label: "Bold", shortcut: "b", icon: BoldIcon, format: (value, start, end) => wrapSelection(value, start, end, "**", "bold text") },
+  { id: "italic", label: "Italic", shortcut: "i", icon: ItalicIcon, format: (value, start, end) => wrapSelection(value, start, end, "_", "italic text") },
+  { id: "strike", label: "Strikethrough", icon: StrikethroughIcon, format: (value, start, end) => wrapSelection(value, start, end, "~~", "crossed out") },
+  { id: "bullets", label: "Bulleted list", icon: ListIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "- ") },
+  { id: "numbers", label: "Numbered list", icon: ListOrderedIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, (index) => `${index + 1}. `) },
+  { id: "tasks", label: "Checklist", icon: PlanIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "- [ ] ") },
+  { id: "quote", label: "Quote", icon: QuoteIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "> ") },
+  { id: "code", label: "Code", icon: CodeIcon, format: (value, start, end) => insertCode(value, start, end, "code") },
+  { id: "link", label: "Link", shortcut: "k", icon: LinkIcon, format: (value, start, end) => insertLink(value, start, end, "link text") },
+  { id: "divider", label: "Divider", icon: MinusIcon, format: (value, start) => insertDivider(value, start) },
 ];
 
 function firstWritingSpot(body: string): number {
@@ -120,10 +122,10 @@ export function NoteEditor({
   };
 
   const moreItems: MenuItem[] = [
-    { id: "copy", label: "Copy as Markdown", icon: <Copy size={16} />, onSelect: () => void copyText(noteMarkdown(note)).catch(reportError) },
-    { id: "download", label: "Download as Markdown", icon: <Download size={16} />, onSelect: download },
-    { id: "duplicate", label: "Duplicate note", icon: <CopyPlus size={16} />, onSelect: onDuplicate },
-    { id: "delete", label: "Delete note…", icon: <Trash2 size={16} />, danger: true, onSelect: () => void remove() },
+    { id: "copy", label: "Copy as Markdown", icon: <CopyIcon size={16} />, onSelect: () => void copyText(noteMarkdown(note)).catch(reportError) },
+    { id: "download", label: "Download as Markdown", icon: <DownloadIcon size={16} />, onSelect: download },
+    { id: "duplicate", label: "Duplicate note", icon: <CopyPlusIcon size={16} />, onSelect: onDuplicate },
+    { id: "delete", label: "Delete note…", icon: <TrashIcon size={16} />, danger: true, onSelect: () => void remove() },
   ];
 
   const words = countWords(note.body);
@@ -131,7 +133,7 @@ export function NoteEditor({
     <div className="notes-pane note-editor">
       <div className="note-editor-heading">
         <button type="button" className="icon-btn" aria-label="All notes" title="All notes" onClick={onBack}>
-          <ChevronLeft size={17} />
+          <ChevronLeftIcon size={17} />
         </button>
         <input
           ref={title}
@@ -152,7 +154,7 @@ export function NoteEditor({
           items={moreItems}
           trigger={({ id, open, toggle }) => (
             <button id={id} type="button" className="icon-btn" aria-label="More note options" title="More note options" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
-              <MoreHorizontal size={16} />
+              <MoreIcon size={16} />
             </button>
           )}
         />

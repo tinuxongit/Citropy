@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshIcon } from "./icons/rotation.tsx";
 import { api } from "../lib/api.ts";
 import { clock, cost, decimal, providerLabels, tokens } from "../lib/format.ts";
 import { SectionLink, SectionSidebar } from "./SectionSidebar.tsx";
@@ -183,7 +183,7 @@ export function UsageView({
               </h1>
             </div>
             <button className="btn" disabled={busy} onClick={() => setRevision((value) => value + 1)}>
-              {busy ? <Loader size={15} /> : <RefreshCw size={15} />}
+              {busy ? <Loader size={15} /> : <RefreshIcon size={15} />}
               Refresh
             </button>
           </header>

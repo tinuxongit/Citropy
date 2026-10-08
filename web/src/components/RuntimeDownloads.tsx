@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Check, Download } from "lucide-react";
+import { CheckIcon } from "./icons/marks.tsx";
+import { DownloadIcon } from "./icons/arrows.tsx";
 import type { NodeRuntimeStatus } from "../../../shared/runtime-downloads.ts";
 import { api } from "../lib/api.ts";
 import { useApp } from "../lib/store.ts";
@@ -62,9 +63,9 @@ export function RuntimeDownloads({ onInstalled }: { onInstalled: () => void }) {
             ? `Node ${runtime.version ?? ""} · npm ${runtime.npmVersion ?? ""}`
             : "Node.js and npm for provider installation and development."}</small>
         </span>
-        {runtime?.ready && runtime.shellReady !== false && runtime.status !== "error" && !busy ? <span className="provider-up-to-date"><Check size={14} />Installed</span>
+        {runtime?.ready && runtime.shellReady !== false && runtime.status !== "error" && !busy ? <span className="provider-up-to-date"><CheckIcon size={14} />Installed</span>
           : <button className="btn" type="button" disabled={!connected || !runtime?.supported || busy}
-            onClick={() => void install()}>{busy ? <Loader size={14} /> : <Download size={14} />}
+            onClick={() => void install()}>{busy ? <Loader size={14} /> : <DownloadIcon size={14} />}
             {busy ? "Installing…" : runtime?.ready ? "Set up terminals" : "Install Node.js"}</button>}
       </div>
     </div>

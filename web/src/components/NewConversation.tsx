@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Select } from "./Select.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import type { TuningSettings } from "./composer/ComposerOptions.tsx";
-import { Folder, GitBranch, GitFork } from "lucide-react";
+import { FolderIcon } from "./icons/folders.tsx";
+import { BranchIcon, ForkIcon } from "./icons/git.tsx";
 import { Modal } from "./Modal.tsx";
 import { api } from "../lib/api.ts";
 import { loadThread, refreshGit, rememberThreadSettings } from "../lib/actions.ts";
@@ -92,7 +93,7 @@ export function NewConversation() {
     <Modal
       title="New conversation"
       description={`Choose where to work in ${project.name}.`}
-      icon={<GitFork size={22} />}
+      icon={<ForkIcon size={22} />}
       busy={busy}
       onClose={close}
       onSubmit={create}
@@ -153,19 +154,19 @@ export function NewConversation() {
             id: "current",
             label: "Current folder",
             detail: "Use the project's existing checkout.",
-            icon: Folder,
+            icon: FolderIcon,
           },
           {
             id: "new",
             label: "New worktree",
             detail: "A separate branch and folder for this conversation.",
-            icon: GitFork,
+            icon: ForkIcon,
           },
           {
             id: "existing",
             label: "Existing worktree",
             detail: "Continue in a worktree you already have.",
-            icon: GitBranch,
+            icon: BranchIcon,
           },
         ].map(({ id, label, detail, icon: Icon }) => (
           <button

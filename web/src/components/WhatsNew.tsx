@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Sparkles } from "lucide-react";
+import { SparkleIcon } from "./SparkleIcon.tsx";
 import type { ReleaseNotes } from "../../../shared/app-update.ts";
 import { useApp } from "../lib/store.ts";
 import { useAppUpdate } from "../lib/use-app-update.ts";
@@ -35,7 +35,7 @@ export function WhatsNew() {
       <Modal
         className="whats-new-dialog"
         title={`What's new in Citropy ${notes.version}`}
-        icon={<Sparkles size={20} />}
+        icon={<SparkleIcon size={20} />}
         initialFocus="[data-primary]"
         onClose={close}
         footer={<button className="btn" data-variant="primary" data-primary type="button" onClick={close}>Got it</button>}

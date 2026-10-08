@@ -1,6 +1,9 @@
 import { serverUrl } from "../lib/environment.ts";
 import { useEffect, useState } from "react";
-import { X, Download, Code, Eye } from "lucide-react";
+import { CloseIcon } from "./icons/marks.tsx";
+import { DownloadIcon } from "./icons/arrows.tsx";
+import { CodeIcon } from "./icons/editing.tsx";
+import { EyeIcon } from "./icons/actions.tsx";
 import { FileIcon } from "./FileIcon.tsx";
 import { VideoPlayer } from "./VideoPlayer.tsx";
 import { SourceView } from "./SourceView.tsx";
@@ -63,7 +66,7 @@ export function FilePreview({
             href={`${url}&download=1`}
             download
           >
-            <Download size={15} />
+            <DownloadIcon size={15} />
           </a>
           <button
             className="icon-btn"
@@ -71,7 +74,7 @@ export function FilePreview({
             onClick={onClose}
             aria-label="Close preview"
           >
-            <X size={15} />
+            <CloseIcon size={15} />
           </button>
         </div>
       )}
@@ -92,7 +95,7 @@ export function FilePreview({
               type="button"
               onClick={() => setSource((value) => !value)}
             >
-              {source ? <Eye size={14} /> : <Code size={14} />}
+              {source ? <EyeIcon size={14} /> : <CodeIcon size={14} />}
               {source ? "Preview" : "Source"}
             </button>
           )}

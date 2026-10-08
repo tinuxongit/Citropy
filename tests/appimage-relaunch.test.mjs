@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
-import { execFile, spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile, chmod, readdir } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
-import { promisify } from "node:util";
-import { fileURLToPath } from "node:url";
 import { spawnAppImageRelaunch } from "../desktop/appimage-relaunch.mjs";
 
 const until = async (probe, message) => {
@@ -97,66 +95,6 @@ test(
     assert.match(await readFile(logFile, "utf8"), /Replaced .* and relaunched/);
   },
 );
-
-test("AppImage updates refresh the installed icon without blocking relaunch on icon failures", async (t) => {
-  for (const scenario of ["success", "extraction-failure", "cache-failure"]) {
-    await t.test(scenario, async (t) => {
-      const directory = await mkdtemp(join(tmpdir(), "citropy-appimage-icon-"));
-      t.after(() => rm(directory, { recursive: true, force: true }));
-      const data = join(directory, "data");
-      const icons = join(data, "icons/hicolor/512x512/apps");
-      const commands = join(directory, "commands");
-      const temporary = join(directory, "temporary");
-      await Promise.all([mkdir(icons, { recursive: true }), mkdir(commands), mkdir(temporary)]);
-      const icon = join(icons, "citropy.png");
-      await writeFile(icon, "old-icon");
-      const appImage = join(directory, "Citropy.AppImage");
-      const downloaded = join(directory, "Citropy-next.AppImage");
-      const launched = join(directory, "launched");
-      const cacheLog = join(directory, "cache.log");
-      await writeFile(appImage, "old-install");
-      await writeFile(downloaded, `#!/bin/sh
-if [ "\${1:-}" = --appimage-extract ]; then
-  [ "$TEST_SCENARIO" != extraction-failure ] || exit 1
-  mkdir -p "squashfs-root/$(dirname "$2")"
-  printf new-icon > "squashfs-root/$2"
-  exit 0
-fi
-printf relaunched > "$TEST_LAUNCHED"
-`, { mode: 0o755 });
-      for (const command of ["gtk-update-icon-cache", "kbuildsycoca6"]) {
-        await writeFile(join(commands, command), `#!/bin/sh
-printf '%s %s\\n' "$(basename "$0")" "$*" >> "$TEST_CACHE_LOG"
-[ "$TEST_SCENARIO" != cache-failure ]
-`, { mode: 0o755 });
-      }
-      const script = fileURLToPath(new URL("../desktop/apply-appimage-update.sh", import.meta.url));
-      await promisify(execFile)("sh", [script], {
-        env: {
-          ...process.env,
-          PATH: `${commands}:${process.env.PATH}`,
-          TMPDIR: temporary,
-          XDG_DATA_HOME: data,
-          CITROPY_APPIMAGE: appImage,
-          CITROPY_UPDATE_FILE: downloaded,
-          CITROPY_PARENT_PID: "",
-          TEST_LAUNCHED: launched,
-          TEST_CACHE_LOG: cacheLog,
-          TEST_SCENARIO: scenario,
-        },
-      });
-      await until(() => readFile(launched, "utf8"), "Citropy should relaunch after refreshing the icon");
-      assert.deepEqual(await readFile(appImage), await readFile(downloaded));
-      assert.equal(await readFile(icon, "utf8"), scenario === "extraction-failure" ? "old-icon" : "new-icon");
-      if (scenario !== "extraction-failure") {
-        const cache = await readFile(cacheLog, "utf8");
-        assert.ok(cache.includes(`gtk-update-icon-cache -f ${join(data, "icons/hicolor")}`));
-        assert.match(cache, /kbuildsycoca6 --noincremental/);
-      }
-      assert.deepEqual(await readdir(temporary), []);
-    });
-  }
-});
 
 test(
   "AppImage restart waits for the running process then launches the current file",

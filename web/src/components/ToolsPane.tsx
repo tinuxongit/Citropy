@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { VirtualList } from "./VirtualList.tsx";
-import { Plug, Search, Check, Circle } from "lucide-react";
+import { PlugIcon } from "./icons/hardware.tsx";
+import { SearchIcon } from "./icons/actions.tsx";
+import { CheckIcon } from "./icons/marks.tsx";
+import { CircleIcon } from "./icons/status.tsx";
 import { useApp } from "../lib/store.ts";
 
 export function ToolsPane() {
@@ -19,13 +22,13 @@ export function ToolsPane() {
   return (
     <div className="tools-pane scroll">
       <div className="panel-section-heading">
-        <Plug size={19} className="panel-icon-tools" />
+        <PlugIcon size={19} className="panel-icon-tools" />
         <div>
           <h3>Citropy tools</h3>
           <p>Model Context Protocol</p>
         </div>
         <span className="tools-status" data-ready={ready}>
-          {ready ? <Check size={13} /> : <Circle size={11} />}
+          {ready ? <CheckIcon size={13} /> : <CircleIcon size={11} />}
           {ready ? "Connected" : "Ready to connect"}
         </span>
       </div>
@@ -35,7 +38,7 @@ export function ToolsPane() {
           : "Tools connect when a provider starts its next turn. Browser and terminal tabs are shared with you."}
       </p>
       <label className="tools-search">
-        <Search size={14} />
+        <SearchIcon size={14} />
         <input
           aria-label="Find a tool"
           placeholder="Find a tool…"

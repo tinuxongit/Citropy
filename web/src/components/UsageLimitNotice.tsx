@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Check, Hourglass } from "lucide-react";
+import { CheckIcon } from "./icons/marks.tsx";
+import { HourglassIcon } from "./icons/status.tsx";
 import { organizeConversation } from "./ConversationMenu.tsx";
 import { reportError } from "../lib/api.ts";
 import { isFakeUsageLimit, patchFakeUsageLimit } from "../lib/dev-triggers.ts";
@@ -28,7 +29,7 @@ export function UsageLimitLine({ threadId }: { threadId: string }) {
   const time = upcoming(limit.resetsAt);
   return (
     <p className="thread-limit" role="status" title={error}>
-      <Hourglass size={15} aria-hidden="true" />
+      <HourglassIcon size={15} aria-hidden="true" />
       <span>{time ? `Usage limit reached. Resets at ${time}.` : "Usage limit reached."}</span>
     </p>
   );
@@ -78,12 +79,12 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
         title={thread.error}
         onClick={() => setOpen((value) => !value)}
       >
-        {limit.resume ? <Check size={13} aria-hidden="true" /> : <Hourglass size={13} aria-hidden="true" />}
+        {limit.resume ? <CheckIcon size={13} aria-hidden="true" /> : <HourglassIcon size={13} aria-hidden="true" />}
         {time ?? "Usage limit"}
       </ComposerTab>
       <AnimatePresence>{open && <ComposerPopover id={id} label="Usage limit reached" className="usage-limit-panel" anchor={trigger} width={300} onClose={close}>
         <header>
-          <Hourglass size={15} aria-hidden="true" />
+          <HourglassIcon size={15} aria-hidden="true" />
           <h2>Usage limit reached</h2>
         </header>
         <p>{status}</p>

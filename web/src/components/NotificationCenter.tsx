@@ -2,7 +2,10 @@ import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useEffect, useId, useRef, useState, type ComponentType } from "react";
-import { CheckCheck, Check, Trash2, X, CircleAlert, Download } from "lucide-react";
+import { CheckCheckIcon, CheckIcon, CloseIcon } from "./icons/marks.tsx";
+import { TrashIcon } from "./icons/actions.tsx";
+import { CircleAlertIcon } from "./icons/status.tsx";
+import { DownloadIcon } from "./icons/arrows.tsx";
 import { useApp } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
 import { ago, dateTime, day } from "../lib/format.ts";
@@ -31,7 +34,7 @@ const KIND_ICONS: Record<Kind, ComponentType<{ size?: number }>> = {
   chat: ConversationsIcon,
   git: GitIcon,
   github: GitHubIcon,
-  update: Download,
+  update: DownloadIcon,
 };
 
 function inTab(tab: InboxTab, entry: AppNotification) {
@@ -145,7 +148,7 @@ export function NotificationCenter({
               disabled={!tabUnread.length || !connected}
               onClick={() => send({ t: "notifications.read", ids: tabUnread.map((entry) => entry.id) })}
             >
-              <CheckCheck size={16} />
+              <CheckCheckIcon size={16} />
             </button>
             <button
               className="icon-btn"
@@ -154,7 +157,7 @@ export function NotificationCenter({
               title="Close notifications"
               onClick={close}
             >
-              <X size={16} />
+              <CloseIcon size={16} />
             </button>
           </header>
           <div className="notification-tabs sliding-selection" role="tablist" aria-label="Notification types">
@@ -182,7 +185,7 @@ export function NotificationCenter({
               <section className="notification-day" key={label} aria-label={label}>
                 <h3>{label}</h3>
                 {entries.map((entry) => {
-                  const Icon = entry.level === "error" ? CircleAlert : KIND_ICONS[entry.kind];
+                  const Icon = entry.level === "error" ? CircleAlertIcon : KIND_ICONS[entry.kind];
                   return (
                     <article
                       key={entry.id}
@@ -221,7 +224,7 @@ export function NotificationCenter({
                             send({ t: "notifications.read", ids: [entry.id] })
                           }
                         >
-                          <Check size={14} />
+                          <CheckIcon size={14} />
                         </button>
                       )}
                     </article>
@@ -246,7 +249,7 @@ export function NotificationCenter({
               }
               onClick={() => send({ t: "notifications.clear" })}
             >
-              <Trash2 size={13} />Clear read</button>
+              <TrashIcon size={13} />Clear read</button>
           </footer>
         </motion.section>
       )}</AnimatePresence>

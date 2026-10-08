@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, type ComponentType } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshIcon } from "./icons/rotation.tsx";
+import { FolderIcon } from "./icons/folders.tsx";
 import { BookIcon } from "./BookIcon.tsx";
-import { FolderIcon } from "./FolderIcon.tsx";
 import { GlobeIcon } from "./GlobeIcon.tsx";
 import { InboxIcon } from "./InboxIcon.tsx";
 import { PaletteIcon } from "./PaletteIcon.tsx";
@@ -106,7 +106,7 @@ export function Settings({
                   disabled={!connected}
                   onClick={() => send({ t: "providers.refresh", force: true })}
                 >
-                  <RefreshCw size={14} />
+                  <RefreshIcon size={14} />
                   Refresh models
                 </button>
               )}

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type HTMLAttributes, type RefObject } from "react";
-import { ArrowLeft, ArrowRight, Pencil, X } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon } from "./icons/arrows.tsx";
+import { EditIcon } from "./icons/pencil.tsx";
+import { CloseIcon } from "./icons/marks.tsx";
 import type { PanelTab } from "../../../shared/workbench.ts";
 import { moveWorkbenchPanel } from "../lib/actions.ts";
 import { opensContextMenu } from "../lib/context-menu-key.ts";
@@ -139,18 +141,18 @@ export function usePanelTabActions(panels: PanelTab[], strip: RefObject<HTMLDivE
       onClose={() => setMenu(undefined)}
       items={[
         ...(menuPanel.kind === "terminal" ? [{
-          id: "rename", label: "Rename terminal", hint: "F2", icon: <Pencil size={15} />, disabled: !connected,
+          id: "rename", label: "Rename terminal", hint: "F2", icon: <EditIcon size={15} />, disabled: !connected,
           onSelect: () => { setMenu(undefined); beginRename(menuPanel, menu.anchor); },
         }] : []),
         {
-          id: "left", label: "Move tab left", hint: "Alt+←", icon: <ArrowLeft size={15} />, disabled: !connected || menuIndex === 0,
+          id: "left", label: "Move tab left", hint: "Alt+←", icon: <ArrowLeftIcon size={15} />, disabled: !connected || menuIndex === 0,
           onSelect: () => { move(menuPanel.id, -1); menu.anchor.focus({ preventScroll: true }); },
         },
         {
-          id: "right", label: "Move tab right", hint: "Alt+→", icon: <ArrowRight size={15} />, disabled: !connected || menuIndex === panels.length - 1,
+          id: "right", label: "Move tab right", hint: "Alt+→", icon: <ArrowRightIcon size={15} />, disabled: !connected || menuIndex === panels.length - 1,
           onSelect: () => { move(menuPanel.id, 1); menu.anchor.focus({ preventScroll: true }); },
         },
-        { id: "close", label: `Close ${menuPanel.title}`, icon: <X size={15} />, disabled: !connected, onSelect: () => send({ t: "panel.close", id: menuPanel.id }) },
+        { id: "close", label: `Close ${menuPanel.title}`, icon: <CloseIcon size={15} />, disabled: !connected, onSelect: () => send({ t: "panel.close", id: menuPanel.id }) },
       ]}
     />}
     {rename && panels.some((panel) => panel.id === rename.id) && <Modal

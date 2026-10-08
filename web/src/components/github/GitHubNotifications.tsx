@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Bell, Check, RefreshCw } from "lucide-react";
+import { BellIcon } from "../BellIcon.tsx";
+import { CheckIcon } from "../icons/marks.tsx";
+import { RefreshIcon } from "../icons/rotation.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
 import {
@@ -33,7 +35,7 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
           disabled={list.loading}
           onClick={list.refresh}
         >
-          <RefreshCw size={16} />
+          <RefreshIcon size={16} />
         </button>
       </div>
       <GitHubFeedback
@@ -46,7 +48,7 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
       <div className="github-notifications">
         {list.data?.items.map((notification) => (
           <article key={notification.id} data-unread={notification.unread}>
-            <Bell size={17} />
+            <BellIcon size={17} />
             <div>
               <strong>{notification.subject.title}</strong>
               <p className="github-meta">
@@ -84,7 +86,7 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
                   }
                 }}
               >
-                <Check size={16} />
+                <CheckIcon size={16} />
               </button>
             )}
           </article>

@@ -11,8 +11,10 @@ import { api, reportError } from "../lib/api.ts";
 import type { QueuedMessage } from "../../../shared/protocol.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Square } from "./icons.ts";
-import { Paperclip, CheckCircle2 } from "lucide-react";
+import { StopIcon } from "./icons/squares.tsx";
+import { CircleCheckIcon } from "./icons/status.tsx";
+import { ArrowUpIcon } from "./icons/arrows.tsx";
+import { AttachIcon } from "./AttachIcon.tsx";
 import { nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { ContextUsage } from "./ContextUsage.tsx";
@@ -199,12 +201,6 @@ export function Composer({
         ...provider.available ? [{ value: "", label: "Default" }] : [],
         ...provider.instances.map(entry => ({ value: entry.id, label: entry.name, disabled: !entry.available })),
       ]} /> : null}
-
-    <PermissionMenu
-      thread={configuredThread!}
-      disabled={!connected || sending || transferring}
-      buttonRef={permissionButton}
-    />
   </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal]);
 
   const submit = async () => {
@@ -298,7 +294,7 @@ export function Composer({
         <div className="composer-dock">
           {thread.finished && !running && (
             <div className="composer-finished" role="status">
-              <CheckCircle2 size={14} aria-hidden="true" />
+              <CircleCheckIcon size={14} aria-hidden="true" />
               <div className="composer-finished-copy">
                 <strong>Conversation finished</strong>
                 <span>Send a message to reopen it.</span>
@@ -358,18 +354,6 @@ export function Composer({
           commands={commands}
         />
           <div className="composer-actions">
-            <ContextUsage onCompact={compact} draft={value} />
-            <button
-              className="icon-btn"
-              type="button"
-              title="Attach images or files"
-              aria-label="Attach images or files"
-              disabled={!connected || Boolean(uploading)}
-              onClick={() => fileInput.current?.click()}
-            >
-              <Paperclip size={17} />
-            </button>
-
             {running ? (
               <>
                 <button
@@ -380,7 +364,7 @@ export function Composer({
                   onClick={submit}
                   disabled={(!value.trim() && !attachments.length) || !canSend}
                 >
-                  <ArrowUp size={13} />
+                  <ArrowUpIcon size={13} />
                   Queue
                 </button>
                 <button
@@ -391,7 +375,7 @@ export function Composer({
                   title="Stop"
                   onClick={stopThread}
                 >
-                  <Square size={11} fill="currentColor" aria-hidden="true" />
+                  <StopIcon size={11} />
                 </button>
               </>
             ) : (
@@ -405,13 +389,35 @@ export function Composer({
                 onClick={submit}
                 disabled={(!value.trim() && !attachments.length) || !canSend}
               >
-                <ArrowUp size={17} aria-hidden="true" />
+                <ArrowUpIcon size={17} />
               </button>
             )}
           </div>
         </div>
       </div>
-      <div className="composer-bar">{settingsBar}</div>
+      <div className="composer-bar">
+        <div className="composer-bar-group">
+          <button
+            className="icon-btn"
+            type="button"
+            title="Attach images or files"
+            aria-label="Attach images or files"
+            disabled={!connected || Boolean(uploading)}
+            onClick={() => fileInput.current?.click()}
+          >
+            <AttachIcon size={18} />
+          </button>
+          <PermissionMenu
+            thread={configuredThread!}
+            disabled={!connected || sending || transferring}
+            buttonRef={permissionButton}
+          />
+        </div>
+        <div className="composer-bar-group">
+          {settingsBar}
+          <ContextUsage onCompact={compact} draft={value} />
+        </div>
+      </div>
       </div>
     </div>
   );

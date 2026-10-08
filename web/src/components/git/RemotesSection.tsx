@@ -1,11 +1,8 @@
-import {
-  ArrowDown,
-  ArrowUp,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
-import { BranchIcon } from "../BranchIcon.tsx";
+import { ArrowDownIcon, ArrowUpIcon } from "../icons/arrows.tsx";
+import { PlusIcon } from "../icons/marks.tsx";
+import { RefreshIcon } from "../icons/rotation.tsx";
+import { TrashIcon } from "../icons/actions.tsx";
+import { BranchIcon } from "../icons/git.tsx";
 import { RemoteIcon } from "../RemoteIcon.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import type { GitDialogAction } from "../GitDialog.tsx";
@@ -45,7 +42,7 @@ export function RemotesSection({
             disabled={disabled}
             onClick={addRemote}
           >
-            <Plus size={15} />
+            <PlusIcon size={15} />
             Add remote
           </button>
         )}
@@ -60,7 +57,7 @@ export function RemotesSection({
               disabled={disabled}
               onClick={addRemote}
             >
-              <Plus size={15} />
+              <PlusIcon size={15} />
               Connect a remote
             </button>
           }
@@ -90,10 +87,10 @@ export function RemotesSection({
             {upstream && (
               <div className="git-sync-counts">
                 <span>
-                  <ArrowUp size={15} />
+                  <ArrowUpIcon size={15} />
                   <strong>{data.status?.ahead ?? 0}</strong>to push{" "}</span>
                 <span>
-                  <ArrowDown size={15} />
+                  <ArrowDownIcon size={15} />
                   <strong>{data.status?.behind ?? 0}</strong>to pull{" "}</span>
               </div>
             )}
@@ -103,7 +100,7 @@ export function RemotesSection({
                 disabled={disabled}
                 onClick={() => void act("fetch")}
               >
-                <RefreshCw size={14} />
+                <RefreshIcon size={14} />
                 Fetch
               </button>
               {upstream && (
@@ -114,7 +111,7 @@ export function RemotesSection({
                     title="Pull with fast-forward only"
                     onClick={() => void act("pull")}
                   >
-                    <ArrowDown size={14} />
+                    <ArrowDownIcon size={14} />
                     Pull
                   </button>
                   <button
@@ -130,7 +127,7 @@ export function RemotesSection({
                       })
                     }
                   >
-                    <ArrowUp size={14} />
+                    <ArrowUpIcon size={14} />
                     Push
                   </button>
                 </>
@@ -175,7 +172,7 @@ export function RemotesSection({
                         })
                       }
                     >
-                      <ArrowUp size={14} />
+                      <ArrowUpIcon size={14} />
                       Publish branch
                     </button>
                   )}
@@ -194,7 +191,7 @@ export function RemotesSection({
                     })
                   }
                 >
-                  <Trash2 size={15} />
+                  <TrashIcon size={15} />
                 </button>
               </div>
             </div>

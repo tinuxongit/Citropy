@@ -23,6 +23,7 @@ export const MessageBlock = memo(function MessageBlock({
   last,
   replyIds,
   latestStep,
+  step,
   transitionActivity,
 }: Props) {
   const shell = useApp((state) => messageId ? state.messages[messageId] : undefined);
@@ -68,6 +69,7 @@ export const MessageBlock = memo(function MessageBlock({
       data-continuation={!first || undefined}
       data-last={last}
       data-activity={activity || undefined}
+      data-step={step || undefined}
     >
       <div className="message-content">
         {row && (

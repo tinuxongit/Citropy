@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, Globe2 } from "lucide-react";
+import { ExternalLinkIcon } from "./icons/arrows.tsx";
+import { GlobeIcon } from "./GlobeIcon.tsx";
 import { Menu } from "./Menu.tsx";
 import { openWorkbenchPanel } from "../lib/actions.ts";
 import { isRemote } from "../lib/environment.ts";
@@ -40,11 +41,11 @@ export function LinkActions() {
     controls={<div className="link-destination">{link.url.href}</div>}
     onClose={() => setLink(current => current?.id === link.id ? undefined : current)}
     items={[
-      { id: "in-app", label: "Open in Citropy", hint: browserHint, disabled: Boolean(browserHint), icon: <Globe2 size={17} />, onSelect: () => {
+      { id: "in-app", label: "Open in Citropy", hint: browserHint, disabled: Boolean(browserHint), icon: <GlobeIcon size={17} />, onSelect: () => {
         useApp.setState({ activeView: "chat", readingThreadId: null });
         openWorkbenchPanel("browser", link.url.href);
       } },
-      { id: "external", label: "Open in external browser", icon: <ExternalLink size={17} />, onSelect: () => window.open(link.url.href, "_blank", "noopener,noreferrer") },
+      { id: "external", label: "Open in external browser", icon: <ExternalLinkIcon size={17} />, onSelect: () => window.open(link.url.href, "_blank", "noopener,noreferrer") },
     ]}
   />;
 }

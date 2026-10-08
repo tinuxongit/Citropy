@@ -5,7 +5,7 @@ import { langFor } from "../lib/format.ts";
 import { useHighlightedLines } from "../lib/use-highlighted-lines.ts";
 import { useDisclosure } from "../lib/use-disclosure.ts";
 import { FileIcon } from "./FileIcon.tsx";
-import { MessageSquarePlus } from "lucide-react";
+import { NewMessageIcon } from "./icons/messages.tsx";
 import type { FilePatch, PatchLine } from "../../../shared/protocol.ts";
 import { scaled } from "../lib/store.ts";
 import { LineCounts } from "./LineCounts.tsx";
@@ -111,7 +111,7 @@ export function DiffView({ patch, limit = 26, showHeader = true, showHunkHeaders
                 <span className="diff-no">{row.newNo ?? ""}</span>
                 <span className="diff-sign">{row.type === "add" ? "+" : row.type === "del" ? "-" : " "}</span>
                 <span className="diff-code" dangerouslySetInnerHTML={{ __html: render(row) }} />
-                {onComment && (row.newNo ?? row.oldNo) !== undefined && <button className="diff-comment" type="button" aria-label={`Comment on line ${row.newNo ?? row.oldNo!}`} onClick={() => onComment(row.type === "del" ? row.oldNo! : row.newNo!, row.type === "del" ? "old" : "new")}><MessageSquarePlus size={13} /></button>}
+                {onComment && (row.newNo ?? row.oldNo) !== undefined && <button className="diff-comment" type="button" aria-label={`Comment on line ${row.newNo ?? row.oldNo!}`} onClick={() => onComment(row.type === "del" ? row.oldNo! : row.newNo!, row.type === "del" ? "old" : "new")}><NewMessageIcon size={13} /></button>}
               </div>
             );
           })}

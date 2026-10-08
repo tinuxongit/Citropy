@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { ChevronRight, FileDiff } from "lucide-react";
+import { ChevronRightIcon } from "../icons/chevrons.tsx";
+import { FileDiffIcon } from "../icons/files.tsx";
 import { useApp } from "../../lib/store.ts";
 import type { ChangesPart } from "../../../../shared/protocol.ts";
 import { FileIcon } from "../FileIcon.tsx";
@@ -25,12 +26,12 @@ export function TurnChanges({ part }: { part: ChangesPart }) {
     <section className="turn-changes" aria-label="Changed files">
       <div className="turn-changes-head">
         <button type="button" className="turn-changes-title" onClick={() => setReviewing(true)}>
-          <FileDiff size={14} aria-hidden="true" />
+          <FileDiffIcon size={14} aria-hidden="true" />
           <span>{part.files.length === 1 ? "Edited 1 file" : `Edited ${part.files.length} files`}</span>
         </button>
         <button type="button" className="turn-changes-total" aria-label="Review changes" onClick={() => setReviewing(true)}>
           <LineCounts added={added} removed={removed} />
-          <ChevronRight size={14} aria-hidden="true" />
+          <ChevronRightIcon size={14} aria-hidden="true" />
         </button>
       </div>
       {files.map((file) => (
@@ -38,13 +39,13 @@ export function TurnChanges({ part }: { part: ChangesPart }) {
           <FileIcon path={file.path} size={14} />
           <span className="truncate">{file.path.split("/").at(-1)}</span>
           <LineCounts added={file.added} removed={file.removed} />
-          <ChevronRight size={14} aria-hidden="true" />
+          <ChevronRightIcon size={14} aria-hidden="true" />
         </button>
       ))}
       {part.files.length > SHOWN_FILES && (
         <button type="button" className="turn-changes-file turn-changes-more" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
           <span>{expanded ? "Show less" : `Show ${hidden} more`}</span>
-          <ChevronRight size={14} aria-hidden="true" />
+          <ChevronRightIcon size={14} aria-hidden="true" />
         </button>
       )}
       <AnimatePresence>

@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { ChevronDown, Minimize2 } from "lucide-react";
+import { ChevronDownIcon } from "./icons/chevrons.tsx";
+import { CollapseIcon } from "./icons/media.tsx";
 import { cost, decimal, tokenRate, tokens } from "../lib/format.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
@@ -250,7 +251,7 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
               <summary>
                 <span>Total processed</span>
                 <strong title={exactTokens(totalProcessed)}>{tokens(totalProcessed)}</strong>
-                <ChevronDown size={13} aria-hidden="true" />
+                <ChevronDownIcon size={13} aria-hidden="true" />
               </summary>
               <p>Across all requests, including reused context.</p>
               <dl>
@@ -281,14 +282,14 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
           )}
           {thread?.compacting ? (
             <div className="context-compacting" role="status">
-              <Minimize2 size={15} aria-hidden="true" />Compacting context…
+              <CollapseIcon size={15} aria-hidden="true" />Compacting context…
             </div>
           ) : null}
           {!connected && <div className="context-connection" role="status">Reconnecting…</div>}
           {!thread?.compacting && thread?.externalId && canCompact && onCompact && (
             <div className="context-actions">
               <button className="btn" type="button" disabled={thread.running || !connected} onClick={onCompact}>
-                <Minimize2 size={15} aria-hidden="true" />Compact context
+                <CollapseIcon size={15} aria-hidden="true" />Compact context
               </button>
             </div>
           )}

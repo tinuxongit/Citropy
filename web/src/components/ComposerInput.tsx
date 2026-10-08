@@ -5,7 +5,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { BookOpen, TerminalSquare, Folder, FileText } from "lucide-react";
+import { BookIcon } from "./BookIcon.tsx";
+import { TerminalIcon } from "./icons/squares.tsx";
+import { FolderIcon } from "./icons/folders.tsx";
+import { FileTextIcon } from "./icons/files.tsx";
 import { contextReference } from "../../../shared/context.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { providerLabels } from "../lib/format.ts";
@@ -103,7 +106,7 @@ export function ComposerInput({
   highlighted.push(value.slice(end));
   const options =
     mode === "skills"
-      ? [...paths.map(entry => ({ id: `context:${entry.path}`, label: `${contextReference(entry.path)}${(mention?.[1] ?? "").match(/#L\d+(?:-L?\d+)?$/)?.[0] ?? ""}`, hint: entry.dir ? "Folder listing" : "File context · add #L10-L20 for specific lines", icon: entry.dir ? <Folder size={16} /> : <FileText size={16} /> })), ...enabled
+      ? [...paths.map(entry => ({ id: `context:${entry.path}`, label: `${contextReference(entry.path)}${(mention?.[1] ?? "").match(/#L\d+(?:-L?\d+)?$/)?.[0] ?? ""}`, hint: entry.dir ? "Folder listing" : "File context · add #L10-L20 for specific lines", icon: entry.dir ? <FolderIcon size={16} /> : <FileTextIcon size={16} /> })), ...enabled
           .filter((skill) =>
             skill.name
               .toLowerCase()
@@ -113,7 +116,7 @@ export function ComposerInput({
             id: skill.id,
             label: `@${skill.name}`,
             hint: `${skill.scope} · ${skill.description || "Use this skill"}`,
-            icon: <BookOpen size={16} />,
+            icon: <BookIcon size={16} />,
           }))]
       : [
           ...commands,
@@ -132,7 +135,7 @@ export function ComposerInput({
               id: `provider:${command.name}`,
               label: `/${command.name}`,
               hint: `${providerLabels[thread.provider]} · ${command.description}${command.argumentHint ? ` · ${command.argumentHint}` : ""}`,
-              icon: <TerminalSquare size={16} />,
+              icon: <TerminalIcon size={16} />,
             })),
         ].filter((command) =>
           command.label.toLowerCase().startsWith((slash ?? "").toLowerCase()),

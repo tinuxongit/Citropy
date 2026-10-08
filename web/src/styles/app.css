@@ -164,35 +164,8 @@
 .model-picker-trigger > .truncate { flex: 1; }
 .model-picker-trigger > svg { flex: none; }
 .model-picker-effort { flex: none; color: var(--text-3); font-size: var(--text-xs); }
-.model-picker-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex: none;
-  min-height: 44px;
-  margin: 0 var(--space-6) var(--space-6);
-  padding: var(--space-4) 0 var(--space-8);
-}
-.model-picker-providers { display: flex; gap: var(--space-6); }
-.model-picker-toolbar button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 32px;
-  border-radius: var(--r-sm);
-  color: var(--text-3);
-}
-.model-picker-toolbar button:hover { background: var(--hover); color: var(--text); }
-.model-picker-toolbar button[aria-pressed="true"] { background: transparent; color: var(--text); }
-.model-picker-toolbar .provider-icon { width: 20px; height: 20px; }
-.model-picker-toolbar .model-picker-locked { width: 51px; gap: var(--space-8); }
-.model-picker-actions { display: flex; align-items: center; gap: var(--space-6); }
-.model-picker-toolbar .model-picker-transfer[aria-pressed="true"] { background: var(--highlight); color: var(--accent-text); }
-.model-picker-favorites[aria-pressed="true"] svg { color: var(--warn); }
 .menu.model-picker-menu { height: 360px; }
 .model-picker-menu .menu-list { align-content: start; max-height: none; }
-.model-picker-menu .menu-item { min-height: 38px; }
 .model-picker-note { margin: 0 var(--space-10) var(--space-10); color: var(--text-3); font-size: var(--text-xs); }
 
 .topbar-center {
@@ -414,10 +387,10 @@
   --text-2: var(--text);
   --text-3: var(--text);
 }
-.shell[data-backdrop="image"] :is(.inspector, .composer-glass, .question-form, .permission-card, .toast) {
+.shell[data-backdrop="image"] :is(.inspector, .composer-glass, .question-form, .permission-card) {
   backdrop-filter: blur(18px);
 }
-.shell[data-backdrop] :is([popover], dialog, .notification-center, .details-card, .context-details, .composer-suggestions, .message-nav-preview, .remote-connection-banner, .app-update-popover) {
+.shell[data-backdrop] :is([popover], dialog, .notification-center, .details-card, .toast, .context-details, .composer-suggestions, .message-nav-preview, .remote-connection-banner, .app-update-popover) {
   backdrop-filter: blur(28px) saturate(1.1);
 }
 .shell[data-backdrop] .composer-shell::before { background: none; }
@@ -440,11 +413,8 @@
 }
 :root[data-resizing] .backdrop-layers { transition: none; }
 
-.shell[data-backdrop] :is(.composer, .git-manager) { background: transparent; }
+.shell[data-backdrop] .git-manager { background: transparent; }
 .shell[data-backdrop][data-section] .rail { background: var(--canvas-deep); }
-.shell[data-backdrop] .conversation-viewport::before,
-.shell[data-backdrop] .conversation-viewport::after { content: none; }
-.shell[data-backdrop] .canvas { mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); }
 
 .section-view {
   display: flex;

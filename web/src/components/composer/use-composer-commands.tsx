@@ -1,6 +1,11 @@
 import type { RefObject } from "react";
-import { BarChart3, BookOpen, Minimize2 } from "lucide-react";
-import { Brain, ListChecks, ShieldCheck, Zap } from "../icons.ts";
+import { ChartIcon } from "../ChartIcon.tsx";
+import { BookIcon } from "../BookIcon.tsx";
+import { CollapseIcon } from "../icons/media.tsx";
+import { BrainIcon } from "../icons/objects.tsx";
+import { PlanIcon } from "../PlanIcon.tsx";
+import { ShieldCheckIcon } from "../icons/status.tsx";
+import { BoltIcon } from "../BoltIcon.tsx";
 import { configureThread } from "../../lib/actions.ts";
 import type {
   ModelOption,
@@ -37,7 +42,7 @@ export function useComposerCommands({
             id: "compact",
             label: "/compact",
             hint: "Compact context and keep the visible history",
-            icon: <Minimize2 size={16} />,
+            icon: <CollapseIcon size={16} />,
             idleOnly: true,
             run: onCompact,
           },
@@ -47,7 +52,7 @@ export function useComposerCommands({
       id: "usage",
       label: "/usage",
       hint: "See usage and remaining allowance",
-      icon: <BarChart3 size={16} />,
+      icon: <ChartIcon size={16} />,
       idleOnly: false,
       run: () => onUsage?.(),
     },
@@ -55,7 +60,7 @@ export function useComposerCommands({
       id: "skills",
       label: "/skills",
       hint: "Manage installed skills",
-      icon: <BookOpen size={16} />,
+      icon: <BookIcon size={16} />,
       idleOnly: false,
       run: () => onSkills?.(),
     },
@@ -63,7 +68,7 @@ export function useComposerCommands({
       id: "model",
       label: "/model",
       hint: "Choose a model",
-      icon: <Brain size={16} />,
+      icon: <BrainIcon size={16} />,
       idleOnly: false,
       run: () => modelButton.current?.click(),
     },
@@ -71,7 +76,7 @@ export function useComposerCommands({
       id: "plan",
       label: "/plan",
       hint: "Switch to Plan only permissions",
-      icon: <ListChecks size={16} />,
+      icon: <PlanIcon size={16} />,
       idleOnly: false,
       run: () => {
         if (threadId) configureThread(threadId, { permissionMode: "plan" });
@@ -83,7 +88,7 @@ export function useComposerCommands({
             id: "effort",
             label: "/effort",
             hint: "Choose reasoning effort and speed",
-            icon: <Brain size={16} />,
+            icon: <BrainIcon size={16} />,
             idleOnly: false,
             run: () => effortButton.current?.click(),
           },
@@ -95,7 +100,7 @@ export function useComposerCommands({
             id: "fast",
             label: "/fast",
             hint: thread?.fastMode ? "Turn fast mode off" : "Turn fast mode on",
-            icon: <Zap size={16} />,
+            icon: <BoltIcon size={16} />,
             idleOnly: false,
             run: () => {
               if (threadId)
@@ -108,7 +113,7 @@ export function useComposerCommands({
       id: "permissions",
       label: "/permissions",
       hint: "Choose tool permissions",
-      icon: <ShieldCheck size={16} />,
+      icon: <ShieldCheckIcon size={16} />,
       idleOnly: false,
       run: () => permissionButton.current?.click(),
     },

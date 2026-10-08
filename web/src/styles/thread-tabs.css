@@ -139,14 +139,34 @@
   color: var(--text);
 }
 
-@container thread-tab (width < 80px) {
+:is(.thread-tab-open, .workbench-tab > [role="tab"]) > .truncate {
+  flex: 1;
+  text-overflow: clip;
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--tab-title-fade)), transparent);
+}
+
+@container thread-tab (width < 100px) {
   .thread-tab-open {
-    justify-content: center;
-    padding-left: 0;
+    gap: var(--space-6);
+    padding-left: var(--space-8);
   }
 
-  .thread-tab-open .truncate,
+  .thread-tab:not([data-active]) .thread-tab-open {
+    padding-right: var(--space-6);
+  }
+
   .thread-tab:not([data-active]) .thread-tab-close {
+    display: none;
+  }
+}
+
+@container thread-tab (width < 44px) {
+  .thread-tab-open {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .thread-tab-open .truncate {
     display: none;
   }
 }

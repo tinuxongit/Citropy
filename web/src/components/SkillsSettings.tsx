@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { VirtualList } from "./VirtualList.tsx";
-import { BookOpen, RefreshCw, Search, Trash2, ChevronDown } from "lucide-react";
+import { BookIcon } from "./BookIcon.tsx";
+import { RefreshIcon } from "./icons/rotation.tsx";
+import { SearchIcon, TrashIcon } from "./icons/actions.tsx";
+import { ChevronDownIcon } from "./icons/chevrons.tsx";
 import { api } from "../lib/api.ts";
 import { confirmAction, useApp } from "../lib/store.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
@@ -90,7 +93,7 @@ export function SkillsSettings() {
     <div className="feature-stack">
       <div className="feature-filters">
         <label className="feature-search">
-          <Search size={16} />
+          <SearchIcon size={16} />
           <input
             aria-label="Search skills"
             placeholder="Find a skill…"
@@ -113,7 +116,7 @@ export function SkillsSettings() {
           disabled={Boolean(busy)}
           onClick={() => setRevision((value) => value + 1)}
         >
-          <RefreshCw size={17} />
+          <RefreshIcon size={17} />
         </button>
       </div>
       <label className="feature-field">{" "}Include project skills{" "}<Select
@@ -155,7 +158,7 @@ export function SkillsSettings() {
               >
                 <strong>
                   {skill.name}
-                  <ChevronDown size={14} />
+                  <ChevronDownIcon size={14} />
                 </strong>
                 <span>{skill.description || "No description provided."}</span>
                 <small>
@@ -180,7 +183,7 @@ export function SkillsSettings() {
                 disabled={Boolean(busy)}
                 onClick={() => change(skill, "delete")}
               >
-                <Trash2 size={15} />
+                <TrashIcon size={15} />
               </button>
             </div>
             {expanded === skill.id && (
@@ -193,7 +196,7 @@ export function SkillsSettings() {
       </VirtualList>
       {!filtered.length && (
         <div className="pane-empty">
-          <BookOpen size={28} />
+          <BookIcon size={28} />
           <p>
             {busy === "loading"
               ? "Reading installed skills…"

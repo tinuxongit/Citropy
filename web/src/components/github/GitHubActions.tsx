@@ -1,7 +1,10 @@
 import { AnimatePresence } from "motion/react";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { useState } from "react";
-import { ArrowLeft, Play, RefreshCw, Terminal } from "lucide-react";
+import { ArrowLeftIcon } from "../icons/arrows.tsx";
+import { PlayIcon } from "../icons/media.tsx";
+import { RefreshIcon } from "../icons/rotation.tsx";
+import { TerminalIcon } from "../icons/squares.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { Select } from "../Select.tsx";
 import { github } from "../../lib/actions.ts";
@@ -74,7 +77,7 @@ export function GitHubActions({
           onClick={refresh}
           disabled={list.loading}
         >
-          <RefreshCw size={16} />
+          <RefreshIcon size={16} />
         </button>
         <button
           className="btn"
@@ -82,7 +85,7 @@ export function GitHubActions({
           disabled={!repository.permissions?.push || repository.archived}
           onClick={() => setAction("dispatch")}
         >
-          <Play size={14} />
+          <PlayIcon size={14} />
         Run workflow
         </button>
       </div>
@@ -133,7 +136,7 @@ export function GitHubActions({
         <div className="github-detail scroll">
           {!selected ? (
             <div className="github-empty">
-              <Play size={30} />
+              <PlayIcon size={30} />
               <h2>Select a workflow run</h2>
               <p>{" "}Inspect jobs, steps, and logs. Active runs refresh automatically.{" "}</p>
             </div>
@@ -143,7 +146,7 @@ export function GitHubActions({
                 className="btn github-detail-back"
                 onClick={() => setSelected(null)}
               >
-                <ArrowLeft size={15} />
+                <ArrowLeftIcon size={15} />
                   Back to runs
               </button>
               <GitHubFeedback
@@ -197,7 +200,7 @@ export function GitHubActions({
                           className="btn"
                           onClick={() => setJobId(job.id)}
                         >
-                          <Terminal size={14} />
+                          <TerminalIcon size={14} />
                           View logs
                         </button>
                       </details>

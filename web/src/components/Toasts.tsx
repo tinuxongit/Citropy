@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, CircleAlert, Info, X } from "lucide-react";
+import { CloseIcon } from "./icons/marks.tsx";
+import { CircleAlertIcon, CircleCheckIcon, InfoIcon } from "./icons/status.tsx";
 import { dismissToast, useApp, type Toast } from "../lib/store.ts";
 import { readNotifications } from "../lib/actions.ts";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
@@ -23,10 +24,10 @@ function ToastItem({
   }, [toast.id, toast.level, paused]);
   const Icon =
     toast.level === "success"
-      ? Check
+      ? CircleCheckIcon
       : toast.level === "info"
-        ? Info
-        : CircleAlert;
+        ? InfoIcon
+        : CircleAlertIcon;
   return (
     <motion.div
       className="toast"
@@ -43,7 +44,7 @@ function ToastItem({
       role={toast.level === "error" ? "alert" : "status"}
     >
       <span className="toast-symbol">
-        <Icon size={17} />
+        <Icon size={18} />
       </span>
       <div className="toast-copy">
         {toast.title && <strong>{toast.title}</strong>}
@@ -72,7 +73,7 @@ function ToastItem({
         aria-label="Dismiss notification"
         title="Dismiss notification"
       >
-        <X size={15} />
+        <CloseIcon size={15} />
       </button>
     </motion.div>
   );

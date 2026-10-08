@@ -1,14 +1,7 @@
-import {
-  ArrowLeft,
-  GitCommitHorizontal,
-  GitMerge,
-  Minus,
-  Plus,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react";
-import { BranchIcon } from "../BranchIcon.tsx";
+import { ArrowLeftIcon } from "../icons/arrows.tsx";
+import { BranchIcon, CommitIcon, MergeIcon } from "../icons/git.tsx";
+import { CloseIcon, MinusIcon, PlusIcon } from "../icons/marks.tsx";
+import { SearchIcon, TrashIcon } from "../icons/actions.tsx";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview } from "../GitReview.tsx";
 import type { GitSelection } from "./selection.ts";
@@ -82,7 +75,7 @@ export function ChangesSection({
     <div className="git-changes-layout">
       {(data.mergeInProgress || conflicts.length > 0) && (
         <div className="git-merge-banner">
-          <GitMerge size={19} />
+          <MergeIcon size={19} />
           <div>
             <strong>
               {conflicts.length
@@ -117,7 +110,7 @@ export function ChangesSection({
       )}
       {!data.hasCommits && (
         <div className="git-first-commit">
-          <GitCommitHorizontal size={18} />
+          <CommitIcon size={18} />
           <span>
             <strong>Make your first commit.</strong> Review your files, stage the ones to track, then write a commit message.
           </span>
@@ -130,7 +123,7 @@ export function ChangesSection({
         <div className="git-change-list">
           <div className="git-change-files">
           <label className="git-filter">
-            <Search size={15} />
+            <SearchIcon size={15} />
             <input
               aria-label="Filter changed files"
               placeholder="Filter files…"
@@ -143,7 +136,7 @@ export function ChangesSection({
                 aria-label="Clear file filter"
                 onClick={() => setFilter("")}
               >
-                <X size={13} />
+                <CloseIcon size={13} />
               </button>
             )}
           </label>
@@ -198,7 +191,7 @@ export function ChangesSection({
               {busy === "commit" ? (
                 <Loader size={15} />
               ) : (
-                <GitCommitHorizontal size={17} />
+                <CommitIcon size={17} />
               )}
               {data.mergeInProgress
                 ? "Complete merge"
@@ -221,7 +214,7 @@ export function ChangesSection({
                   aria-label="Back to changed files"
                   onClick={() => setSelection(null)}
                 >
-                  <ArrowLeft size={17} />
+                  <ArrowLeftIcon size={17} />
                 </button>
                 <div>
                   <h2>{selection.path}</h2>
@@ -254,7 +247,7 @@ export function ChangesSection({
                         })
                       }
                     >
-                      <Trash2 size={15} />
+                      <TrashIcon size={15} />
                     </button>
                   )}
                   <button
@@ -268,9 +261,9 @@ export function ChangesSection({
                     }
                   >
                     {selection.staged ? (
-                      <Minus size={14} />
+                      <MinusIcon size={14} />
                     ) : (
-                      <Plus size={14} />
+                      <PlusIcon size={14} />
                     )}
                     {selection.staged ? "Unstage" : "Stage file"}
                   </button>

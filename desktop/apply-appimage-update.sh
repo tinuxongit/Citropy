@@ -47,27 +47,6 @@ unset APPDIR APPIMAGE ARGV0 OWD APPIMAGE_SILENT_INSTALL APPIMAGE_EXIT_AFTER_INST
 unset CITROPY_DESKTOP_TOKEN CITROPY_URL CITROPY_UI_URL CITROPY_HOST
 unset CITROPY_PARENT_PID CITROPY_UPDATE_FILE CITROPY_RELAUNCH CITROPY_APPIMAGE
 
-if [ -n "${src:-}" ]; then
-  data_dir="${XDG_DATA_HOME:-$HOME/.local/share}"
-  icon="$data_dir/icons/hicolor/512x512/apps/citropy.png"
-  if [ -f "$icon" ] && icon_tmp=$(mktemp -d "${TMPDIR:-/tmp}/citropy-update-icon.XXXXXX"); then
-    if (cd "$icon_tmp" && "$dest" --appimage-extract "usr/share/icons/hicolor/512x512/apps/citropy.png" >/dev/null 2>&1) &&
-      cp "$icon_tmp/squashfs-root/usr/share/icons/hicolor/512x512/apps/citropy.png" "$icon"; then
-      if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-        gtk-update-icon-cache -f "$data_dir/icons/hicolor" >/dev/null 2>&1 || true
-      fi
-      if command -v kbuildsycoca6 >/dev/null 2>&1; then
-        kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
-      elif command -v kbuildsycoca5 >/dev/null 2>&1; then
-        kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
-      fi
-    else
-      say "The update was applied, but the application icon could not be refreshed."
-    fi
-    rm -rf "$icon_tmp" || true
-  fi
-fi
-
 if command -v setsid >/dev/null 2>&1; then
   setsid "$dest" </dev/null >/dev/null 2>&1 &
 else

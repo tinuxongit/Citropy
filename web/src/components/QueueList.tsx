@@ -1,7 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { ChevronUp, Clock3, Paperclip } from "lucide-react";
-import { Pencil, X } from "./icons.ts";
+import { ChevronUpIcon } from "./icons/chevrons.tsx";
+import { ClockIcon } from "./icons/status.tsx";
+import { AttachIcon } from "./AttachIcon.tsx";
+import { EditIcon } from "./icons/pencil.tsx";
+import { CloseIcon } from "./icons/marks.tsx";
 import { editQueued } from "../lib/actions.ts";
 import { isDevFake, moveFakeQueued } from "../lib/dev-triggers.ts";
 import { reportError } from "../lib/api.ts";
@@ -87,7 +90,7 @@ export function QueueList({
         title={state}
         onClick={() => setExpanded((value) => !value)}
       >
-        <Clock3 size={13} />
+        <ClockIcon size={13} />
         Queued
         <span>{count}</span>
       </ComposerTab>}</AnimatePresence>
@@ -132,7 +135,7 @@ export function QueueList({
                       })
                     }
                   >
-                    <ChevronUp size={15} />
+                    <ChevronUpIcon size={15} />
                   </button>
                 )}
                 <button
@@ -143,7 +146,7 @@ export function QueueList({
                   disabled={!connected}
                   onClick={() => void edit(item)}
                 >
-                  <Pencil size={14} />
+                  <EditIcon size={14} />
                 </button>
                 <button
                   type="button"
@@ -159,7 +162,7 @@ export function QueueList({
                     })
                   }
                 >
-                  <X size={15} />
+                  <CloseIcon size={15} />
                 </button>
               </div>
             </li>
@@ -191,7 +194,7 @@ export function QueueList({
                   title="Edit"
                   onClick={() => editHeld(item.id)}
                 >
-                  <Pencil size={14} />
+                  <EditIcon size={14} />
                 </button>
                 <button
                   type="button"
@@ -200,7 +203,7 @@ export function QueueList({
                   title="Remove"
                   onClick={() => removeHeld(item.id)}
                 >
-                  <X size={15} />
+                  <CloseIcon size={15} />
                 </button>
               </div>
             </li>
@@ -221,7 +224,7 @@ function QueuedText({ item }: { item: QueuedMessage }) {
       </span>
       {files.length > 0 && (
         <span className="composer-queue-files" title={names}>
-          <Paperclip size={12} />
+          <AttachIcon size={12} />
           {files.length}
         </span>
       )}

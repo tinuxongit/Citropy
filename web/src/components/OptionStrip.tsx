@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "./icons/chevrons.tsx";
 
 const WHEEL_STEP = 50;
 
@@ -80,10 +80,10 @@ export function OptionStrip({ label, selected, children }: { label: string; sele
         {scrolls && (
           <>
             <button className="option-strip-arrow" data-side="start" type="button" aria-label="Previous" disabled={ends.start} onClick={() => step(-1)}>
-              <ChevronLeft size={18} />
+              <ChevronLeftIcon size={18} />
             </button>
             <button className="option-strip-arrow" data-side="end" type="button" aria-label="Next" disabled={ends.end} onClick={() => step(1)}>
-              <ChevronRight size={18} />
+              <ChevronRightIcon size={18} />
             </button>
           </>
         )}

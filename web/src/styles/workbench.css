@@ -60,7 +60,7 @@
   display: flex;
   align-items: center;
   flex: 0 1 160px;
-  min-width: 48px;
+  min-width: var(--workbench-tab-min);
   max-width: 205px;
   padding: 0 var(--space-4);
   container: workspace-tab / inline-size;
@@ -158,6 +158,11 @@
   background: var(--highlight);
 }
 @container workspace-tab (max-width: 100px) {
+  .workbench-tab:not([data-active="true"]) .workbench-close {
+    display: none;
+  }
+}
+@container workspace-tab (max-width: 44px) {
   .workbench-tab > [role="tab"] {
     justify-content: center;
     gap: 0;

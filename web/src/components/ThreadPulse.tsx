@@ -1,9 +1,6 @@
-import {
-  CircleAlert,
-  Clock3,
-  Pause,
-  MessageCircleQuestion,
-} from "lucide-react";
+import { CircleAlertIcon, ClockIcon } from "./icons/status.tsx";
+import { PauseIcon } from "./icons/media.tsx";
+import { QuestionMessageIcon } from "./icons/messages.tsx";
 import type { ThreadStatus } from "../../../shared/protocol.ts";
 import { Loader } from "./Loader.tsx";
 
@@ -17,12 +14,12 @@ export function ThreadPulse({
   if (status === "idle") return null;
   if (status === "working" || status === "thinking") return <Loader size={size} />;
   const Icon = status === "queued"
-      ? Clock3
+      ? ClockIcon
       : status === "error"
-        ? CircleAlert
+        ? CircleAlertIcon
         : status === "awaiting"
-          ? MessageCircleQuestion
-          : Pause;
+          ? QuestionMessageIcon
+          : PauseIcon;
   return (
     <Icon
       size={size}

@@ -1,9 +1,6 @@
-import {
-  Archive,
-  ArrowLeft,
-  ChevronRight,
-  Trash2,
-} from "lucide-react";
+import { ArchiveIcon, TrashIcon } from "../icons/actions.tsx";
+import { ArrowLeftIcon } from "../icons/arrows.tsx";
+import { ChevronRightIcon } from "../icons/chevrons.tsx";
 import { StashIcon } from "../StashIcon.tsx";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview } from "../GitReview.tsx";
@@ -70,7 +67,7 @@ export function StashesSection({
             }
             onClick={saveStash}
           >
-            <Archive size={15} />
+            <ArchiveIcon size={15} />
             Save changes
           </button>
         )}
@@ -124,7 +121,7 @@ export function StashesSection({
                   <strong>{entry.subject}</strong>
                   <small>{entry.ref}</small>
                 </span>
-                <ChevronRight size={14} />
+                <ChevronRightIcon size={14} />
               </button>
             ))}
           </div>
@@ -141,7 +138,7 @@ export function StashesSection({
                     aria-label="Back to stashes"
                     onClick={() => setSelection(null)}
                   >
-                    <ArrowLeft size={17} />
+                    <ArrowLeftIcon size={17} />
                   </button>
                   <div>
                     <h2>{selectedStash.subject}</h2>
@@ -164,7 +161,7 @@ export function StashesSection({
                         })
                       }
                     >
-                      <Trash2 size={15} />
+                      <TrashIcon size={15} />
                     </button>
                     <button
                       className="btn"
@@ -174,7 +171,7 @@ export function StashesSection({
                         void act("applyStash", selectedStash.ref)
                       }
                     >
-                      <Archive size={14} />
+                      <ArchiveIcon size={14} />
                       Apply stash
                     </button>
                   </div>

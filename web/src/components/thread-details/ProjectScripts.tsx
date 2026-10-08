@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { AnimatePresence } from "motion/react";
-import { Pencil, Play, Plus, Trash2 } from "lucide-react";
+import { EditIcon } from "../icons/pencil.tsx";
+import { PlayIcon } from "../icons/media.tsx";
+import { PlusIcon } from "../icons/marks.tsx";
+import { TrashIcon } from "../icons/actions.tsx";
 import { Modal } from "../Modal.tsx";
 import type { MenuItem } from "../Menu.tsx";
 import { DetailRow, DetailSplitRow } from "./DetailRow.tsx";
@@ -28,17 +31,17 @@ export function ProjectScripts({ project, threadId, disabled }: { project: Proje
       id: script.id,
       label: script.name,
       hint: script.command,
-      icon: <Play size={14} />,
+      icon: <PlayIcon size={14} />,
       disabled,
       onSelect: () => run(script),
-      action: { label: `Edit ${script.name}`, icon: <Pencil size={13} />, onSelect: () => setEditing(script) },
+      action: { label: `Edit ${script.name}`, icon: <EditIcon size={13} />, onSelect: () => setEditing(script) },
     })),
-    { id: "add", label: "Add script", icon: <Plus size={14} />, section: "Manage", disabled: full, onSelect: add },
+    { id: "add", label: "Add script", icon: <PlusIcon size={14} />, section: "Manage", disabled: full, onSelect: add },
   ];
   return <>
     {primary
-      ? <DetailSplitRow icon={<Play size={16} />} label={`Run ${primary.name}`} title={primary.command} disabled={disabled} onClick={() => run(primary)} menu={menu} menuLabel="Project scripts" />
-      : <DetailRow icon={<Plus size={16} />} label="Add project script" onClick={add} />}
+      ? <DetailSplitRow icon={<PlayIcon size={16} />} label={`Run ${primary.name}`} title={primary.command} disabled={disabled} onClick={() => run(primary)} menu={menu} menuLabel="Project scripts" />
+      : <DetailRow icon={<PlusIcon size={16} />} label="Add project script" onClick={add} />}
     <AnimatePresence>{editing && <ScriptEditor script={editing} scripts={scripts} onClose={() => setEditing(undefined)} onSave={(next) => { saveProjectScripts(project.id, next); setEditing(undefined); }} />}</AnimatePresence>
   </>;
 }
@@ -55,7 +58,7 @@ function ScriptEditor({ script, scripts, onClose, onSave }: { script: ProjectScr
   return (
     <Modal className="script-editor" title={existing ? "Edit project script" : "Add project script"} description="Runs in a new terminal in this conversation's workspace." initialFocus="input" onClose={onClose} onSubmit={submit}
       footer={<>
-        {existing && <button type="button" className="btn" data-variant="danger" onClick={() => onSave(scripts.filter((entry) => entry.id !== script.id))}><Trash2 size={14} />Delete</button>}
+        {existing && <button type="button" className="btn" data-variant="danger" onClick={() => onSave(scripts.filter((entry) => entry.id !== script.id))}><TrashIcon size={14} />Delete</button>}
         <button type="button" className="btn" data-cancel onClick={onClose}>Cancel</button>
         <button className="btn" data-variant="primary" disabled={!name.trim() || !command.trim()}>Save</button>
       </>}>

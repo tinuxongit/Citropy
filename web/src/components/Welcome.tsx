@@ -1,5 +1,5 @@
-import { MessageSquarePlus } from "./icons.ts";
-import { FolderIcon, FolderOpenIcon } from "./FolderIcon.tsx";
+import { NewMessageIcon } from "./icons/messages.tsx";
+import { FolderIcon, FolderOpenIcon } from "./icons/folders.tsx";
 import { createThread, openProject, chooseWorkspace } from "../lib/actions.ts";
 import { shortPath } from "../lib/format.ts";
 import { useApp } from "../lib/store.ts";
@@ -29,7 +29,7 @@ export function Welcome() {
 
         {project ? (
           <button className="btn" type="button" data-variant="primary" onClick={() => createThread()} disabled={!connected || creating || !canStart}>
-            <MessageSquarePlus size={14} />New thread</button>
+            <NewMessageIcon size={14} />New thread</button>
         ) : (
           <button className="btn" type="button" data-variant="primary" onClick={chooseWorkspace} disabled={choosing}>
             <FolderIcon size={16} />

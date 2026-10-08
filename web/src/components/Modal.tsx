@@ -5,7 +5,7 @@ import {
   type ReactNode,
   type FormEvent,
 } from "react";
-import { X } from "lucide-react";
+import { CloseIcon } from "./icons/marks.tsx";
 import { motion, useIsPresent } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 
@@ -96,7 +96,7 @@ export function Modal({
             disabled={busy}
             onClick={onClose}
           >
-            <X size={17} />
+            <CloseIcon size={17} />
           </button>
         </header>
         {children && <div className="dialog-content">{children}</div>}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Trash2 } from "lucide-react";
+import { CopyIcon, TrashIcon } from "./icons/actions.tsx";
 import { renderSVG } from "uqr";
 import { api, reportError } from "../lib/api.ts";
 import { isRemote } from "../lib/environment.ts";
@@ -81,7 +81,7 @@ export function LocalSharing() {
           {state.firewall.canFix && <button type="button" className="btn" data-variant="primary" disabled={unblocking} onClick={unblock}>{unblocking ? "Waiting for your password…" : "Allow through firewall"}</button>}
           <div className="sharing-address">
             <code className="truncate" title={state.firewall.command}>{state.firewall.command}</code>
-            <button type="button" className="icon-btn" aria-label="Copy firewall command" title={firewallCopied ? "Copied" : "Copy firewall command"} onClick={() => copyFirewall(state.firewall!.command)}><Copy size={14} /></button>
+            <button type="button" className="icon-btn" aria-label="Copy firewall command" title={firewallCopied ? "Copied" : "Copy firewall command"} onClick={() => copyFirewall(state.firewall!.command)}><CopyIcon size={14} /></button>
           </div>
         </div>
       )}
@@ -92,7 +92,7 @@ export function LocalSharing() {
             <p>Scan with your phone's camera. Each code works once and changes every 5 minutes.</p>
             <div className="sharing-address">
               <span className="truncate" title={state?.addresses[0]}>{state?.addresses[0]}</span>
-              <button type="button" className="icon-btn" aria-label="Copy pairing link" title={pairingCopied ? "Copied" : "Copy pairing link"} onClick={() => copyPairing(pairing.url)}><Copy size={14} /></button>
+              <button type="button" className="icon-btn" aria-label="Copy pairing link" title={pairingCopied ? "Copied" : "Copy pairing link"} onClick={() => copyPairing(pairing.url)}><CopyIcon size={14} /></button>
             </div>
           </div>
         </div>
@@ -107,7 +107,7 @@ export function LocalSharing() {
                   <strong>{device.name}</strong>
                   <small>Last used {ago(device.lastSeen)}</small>
                 </span>
-                <button type="button" className="icon-btn" aria-label={`Remove ${device.name}`} title="Remove device" onClick={() => void remove(device.id)}><Trash2 size={14} /></button>
+                <button type="button" className="icon-btn" aria-label={`Remove ${device.name}`} title="Remove device" onClick={() => void remove(device.id)}><TrashIcon size={14} /></button>
               </div>
             ))}
           </div>

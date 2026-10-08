@@ -1,7 +1,8 @@
 import { serverUrl } from "../lib/environment.ts";
 import { AnimatePresence } from "motion/react";
 import { useState } from "react";
-import { X, Download } from "lucide-react";
+import { CloseIcon } from "./icons/marks.tsx";
+import { DownloadIcon } from "./icons/arrows.tsx";
 import { FileIcon } from "./FileIcon.tsx";
 import { MediaThumb } from "./MediaThumb.tsx";
 import { Modal } from "./Modal.tsx";
@@ -65,7 +66,7 @@ export function Attachments({
                 aria-label={`Remove ${file.label}`}
                 onClick={() => onRemove(file.id!)}
               >
-                <X size={14} />
+                <CloseIcon size={14} />
               </button>
             )}
           </div>
@@ -96,7 +97,7 @@ export function Attachments({
                 href={serverUrl(`/api/assets?${assetQuery(projectId, preview.path, threadId, preview.id)}&download=1`)}
                 download={preview.label}
               >
-                <Download size={15} />
+                <DownloadIcon size={15} />
                 Download
               </a>
               <button

@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, Plus, Search } from "lucide-react";
+import { ChevronDownIcon } from "../icons/chevrons.tsx";
+import { PlusIcon } from "../icons/marks.tsx";
+import { SearchIcon } from "../icons/actions.tsx";
 import { ago } from "../../lib/format.ts";
 import { Menu } from "../Menu.tsx";
 import { noteTemplates, type NoteTemplate } from "./templates.ts";
@@ -52,7 +54,7 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
     <div className="notes-pane">
       <div className="note-list-heading">
         <label className="note-search">
-          <Search size={14} />
+          <SearchIcon size={14} />
           <input aria-label="Find a note" placeholder="Find a note…" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
         <Menu
@@ -68,9 +70,9 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
           }))}
           trigger={({ id, open, toggle }) => (
             <button id={id} type="button" className="btn" data-variant="primary" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
-              <Plus size={15} />
+              <PlusIcon size={15} />
               New note
-              <ChevronDown size={14} />
+              <ChevronDownIcon size={14} />
             </button>
           )}
         />

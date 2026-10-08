@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from "react";
-import { Quote } from "lucide-react";
+import { QuoteIcon } from "./icons/editing.tsx";
 import { sendToComposer } from "../lib/composer-inbox.ts";
 
 const GAP = 8;
@@ -77,7 +77,7 @@ export function SelectionQuote({ viewport, threadId }: { viewport: RefObject<HTM
         setSpot(undefined);
       }}
     >
-      <Quote size={13} aria-hidden="true" />
+      <QuoteIcon size={13} aria-hidden="true" />
       Quote
     </button>
   );

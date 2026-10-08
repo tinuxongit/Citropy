@@ -1,7 +1,11 @@
 import type { SshConnection } from "../../../shared/environments.ts";
 import { useEffect, useId, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Box, Square, Pencil, Check, Monitor, Plus, Trash2 } from "lucide-react";
+import { BoxIcon, MonitorIcon } from "./icons/hardware.tsx";
+import { StopIcon } from "./icons/squares.tsx";
+import { EditIcon } from "./icons/pencil.tsx";
+import { CheckIcon, PlusIcon } from "./icons/marks.tsx";
+import { TrashIcon } from "./icons/actions.tsx";
 import { ServerIcon } from "./ServerIcon.tsx";
 import { ContainerEnvironment } from "./ContainerEnvironment.tsx";
 import { Modal } from "./Modal.tsx";
@@ -67,15 +71,15 @@ export function EnvironmentSettings() {
   const desktop = window.citropyDesktop;
   const run = async (operation: () => Promise<unknown>) => { setError(""); try { await operation(); } catch (error) { setError((error as Error).message); } };
   return <div className="environment-settings">
-    <div className="environment-row"><Monitor size={20} /><div><strong>Local</strong><small>Work on this computer</small></div>{state.activeId === "local" ? <Check size={16} aria-label="Selected" /> : <button className="btn" onClick={() => void run(() => selectEnvironment("local"))}>Switch to Local</button>}</div>
-    <div className="environment-heading"><h2>Environments</h2><div className="feature-inline"><button className="btn" onClick={() => setContainer(true)} disabled={!desktop?.saveEnvironment}><Box size={14} />Add container</button><button className="btn" onClick={() => setAdding(true)} disabled={!desktop?.saveEnvironment}><Plus size={14} />Add connection</button></div></div>
+    <div className="environment-row"><MonitorIcon size={20} /><div><strong>Local</strong><small>Work on this computer</small></div>{state.activeId === "local" ? <CheckIcon size={16} aria-label="Selected" /> : <button className="btn" onClick={() => void run(() => selectEnvironment("local"))}>Switch to Local</button>}</div>
+    <div className="environment-heading"><h2>Environments</h2><div className="feature-inline"><button className="btn" onClick={() => setContainer(true)} disabled={!desktop?.saveEnvironment}><BoxIcon size={14} />Add container</button><button className="btn" onClick={() => setAdding(true)} disabled={!desktop?.saveEnvironment}><PlusIcon size={14} />Add connection</button></div></div>
     {state.connections.map(connection => <div className="environment-row" key={connection.id} data-active={state.activeId === connection.id}>
-      {connection.kind === "container" ? <Box size={20} /> : <ServerIcon size={20} />}<div><strong>{connection.name}</strong><small>{connection.target}{connection.port ? `:${connection.port}` : ""}</small><small className={connection.status === "error" ? "ssh-error" : undefined}>{connection.message || connection.status}</small></div>
+      {connection.kind === "container" ? <BoxIcon size={20} /> : <ServerIcon size={20} />}<div><strong>{connection.name}</strong><small>{connection.target}{connection.port ? `:${connection.port}` : ""}</small><small className={connection.status === "error" ? "ssh-error" : undefined}>{connection.message || connection.status}</small></div>
       <div className="environment-actions">
-        {connection.kind === "container" && <button className="icon-btn" aria-label="Stop container" disabled={connection.status === "connecting"} onClick={() => void run(async () => { if (await confirmAction({ title: "Stop container?", description: "Running tasks and shells in this container will stop. Files and task history are preserved.", label: "Stop container", danger: true })) await desktop!.stopEnvironment(connection.id); })}><Square size={14} /></button>}
+        {connection.kind === "container" && <button className="icon-btn" aria-label="Stop container" disabled={connection.status === "connecting"} onClick={() => void run(async () => { if (await confirmAction({ title: "Stop container?", description: "Running tasks and shells in this container will stop. Files and task history are preserved.", label: "Stop container", danger: true })) await desktop!.stopEnvironment(connection.id); })}><StopIcon size={14} /></button>}
         {connection.status === "connecting" || connection.status === "connected" ? <button className="btn" onClick={() => void run(() => desktop!.disconnectEnvironment(connection.id))}>{connection.status === "connecting" ? "Cancel connection" : "Disconnect"}</button> : <button className="btn" disabled={state.connections.some(entry => entry.status === "connecting")} onClick={() => void run(() => selectEnvironment(connection.id))}>{state.activeId === connection.id ? "Reconnect" : "Connect"}</button>}
-        <button className="icon-btn" disabled={connection.status === "connecting" || connection.status === "connected"} aria-label={`Edit ${connection.name}`} onClick={() => setEditing(connection)}><Pencil size={15} /></button>
-        <button className="icon-btn" disabled={state.activeId === connection.id || connection.status === "connecting"} aria-label={`Remove ${connection.name}`} onClick={() => void run(async () => { if (await confirmAction({ title: "Remove connection?", description: connection.kind === "container" ? "This stops the container and removes the connection. Your mounted folder and saved history stay on disk." : "This removes the saved connection. Remote files and tasks stay on the host.", label: "Remove", danger: true })) await desktop!.removeEnvironment(connection.id); })}><Trash2 size={15} /></button>
+        <button className="icon-btn" disabled={connection.status === "connecting" || connection.status === "connected"} aria-label={`Edit ${connection.name}`} onClick={() => setEditing(connection)}><EditIcon size={15} /></button>
+        <button className="icon-btn" disabled={state.activeId === connection.id || connection.status === "connecting"} aria-label={`Remove ${connection.name}`} onClick={() => void run(async () => { if (await confirmAction({ title: "Remove connection?", description: connection.kind === "container" ? "This stops the container and removes the connection. Your mounted folder and saved history stay on disk." : "This removes the saved connection. Remote files and tasks stay on the host.", label: "Remove", danger: true })) await desktop!.removeEnvironment(connection.id); })}><TrashIcon size={15} /></button>
       </div>
     </div>)}
     {!state.connections.length && <p className="settings-note">Add an SSH host to work remotely. Each environment keeps its own workspaces and tasks.</p>}

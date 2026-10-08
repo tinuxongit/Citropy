@@ -11,6 +11,7 @@ export interface TimelineRow {
   last: boolean;
   replyIds?: string[];
   latestStep?: boolean;
+  step?: boolean;
 }
 
 export type FoldRow = { kind: "fold"; id: string; ids: string[]; messageIds: string[]; open: boolean; active: boolean; since: number };
@@ -141,6 +142,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     if (!rows.length && !active) return [];
     let visible: NonNullable<TimelineRow["row"]>[] = rows;
     let latestStep: Row | undefined;
+    let steps: Row[] = [];
     if (rows.some(row => isActionRow(row, state.parts) || row.kind === "part" && state.parts.get(row.id)?.kind === "reasoning")) {
       const finalAnswer = active ? undefined : finalAnswerRange(rows, state.parts);
       const work = rows.filter((row, index) => {
@@ -154,6 +156,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       const id = partIds[0]!;
       const open = state.disclosures[id]?.activity ?? false;
       if (active && !open) latestStep = work.at(-1);
+      steps = work.filter(row => open || !(row.kind === "part" && state.parts.get(row.id)?.kind === "text"));
       if (hidden.length) {
         const since = state.messages[before ?? ""]?.ts ?? message.ts;
         const ids = work.flatMap(row => row.kind === "part" ? [row.id] : row.ids);
@@ -169,6 +172,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       last: index === visible.length - 1,
       replyIds: index === visible.length - 1 ? messageIds : undefined,
       latestStep: row === latestStep || undefined,
+      step: (row.kind !== "fold" && row.kind !== "live" && steps.includes(row)) || undefined,
     }));
   });
   if (busy && !timeline.some(row => row.row?.kind === "live")) {
@@ -183,7 +187,7 @@ function sameIds(ids: string[] | undefined, other: string[] | undefined): boolea
 
 function sameTimelineRow(item: TimelineRow, other: TimelineRow): boolean {
   if (item.key !== other.key || item.messageId !== other.messageId ||
-    item.first !== other.first || item.last !== other.last || item.latestStep !== other.latestStep || !sameIds(item.replyIds, other.replyIds) || item.row?.kind !== other.row?.kind) return false;
+    item.first !== other.first || item.last !== other.last || item.latestStep !== other.latestStep || item.step !== other.step || !sameIds(item.replyIds, other.replyIds) || item.row?.kind !== other.row?.kind) return false;
   const row = item.row;
   const next = other.row;
   if (!row || !next || row.kind === "part") return true;

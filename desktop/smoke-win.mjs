@@ -27,12 +27,12 @@ try {
   await access(join(app, "Citropy.exe"));
   await access(join(appRoot, "LICENSE"));
   await access(join(appRoot, "dist/index.html"));
-  await access(join(appRoot, "node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2"));
+  await access(join(appRoot, "dist/fonts/CitropySans.woff2"));
   const notices = await readFile(join(appRoot, "dist/THIRD_PARTY_NOTICES.txt"), "utf8");
-  for (const path of ["react/LICENSE", "lucide-react/LICENSE", "monaco-editor/LICENSE", "tslib/CopyrightNotice.txt"]) {
+  for (const path of ["react/LICENSE", "monaco-editor/LICENSE", "tslib/CopyrightNotice.txt"]) {
     assert.ok(notices.includes(await readFile(new URL(`../node_modules/${path}`, import.meta.url), "utf8")), `Missing bundled dependency notice: ${path}`);
   }
-  for (const path of [".env", "tests", ".git", "web", "desktop/start.mjs", "desktop/install.mjs", "desktop/smoke.mjs", "desktop/smoke-mac.mjs", "desktop/smoke-win.mjs", "desktop/smoke-terminal.mjs", "node_modules/vite", "node_modules/playwright", "node_modules/lucide-react", "node_modules/shiki", "node_modules/motion"]) {
+  for (const path of [".env", "tests", ".git", "web", "desktop/start.mjs", "desktop/install.mjs", "desktop/smoke.mjs", "desktop/smoke-mac.mjs", "desktop/smoke-win.mjs", "desktop/smoke-terminal.mjs", "node_modules/vite", "node_modules/playwright", "node_modules/shiki", "node_modules/motion"]) {
     assert.equal(await exists(join(appRoot, path)), false, `Development file in release: ${path}`);
   }
   assert.equal(JSON.parse(await readFile(join(appRoot, "package.json"), "utf8")).version, version);

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type ComponentProps } from "react";
-import { FileDiff, RefreshCw, ScanSearch, X } from "lucide-react";
+import { FileDiffIcon } from "./icons/files.tsx";
+import { RefreshIcon } from "./icons/rotation.tsx";
+import { ScanSearchIcon } from "./icons/actions.tsx";
+import { CloseIcon } from "./icons/marks.tsx";
 import { Modal } from "./Modal.tsx";
 import { DiffView } from "./DiffView.tsx";
 import { FileIcon } from "./FileIcon.tsx";
@@ -74,14 +77,14 @@ export function TaskReview({ thread, messageId, onClose }: { thread: ThreadMeta;
     await sendMessage(`Address this code review feedback. Recheck the current files before editing.\n\n${entries.join("\n\n")}`, []);
     onClose();
   });
-  return <Modal title="Review changes" icon={<FileDiff size={18} />} className="task-review-dialog" onClose={onClose} busy={busy}
+  return <Modal title="Review changes" icon={<FileDiffIcon size={18} />} className="task-review-dialog" onClose={onClose} busy={busy}
     footer={<><button className="btn" type="button" data-cancel onClick={onClose} disabled={busy}>Close</button><button className="btn" type="button" data-variant="primary" disabled={busy || !connected || (!comments.length && !feedback.trim())} onClick={sendFeedback}>{active ? "Queue feedback" : "Send feedback"}</button></>}>
     <div className="review-toolbar">
       <Select aria-label="Review scope" value={scope} disabled={busy} onChange={value => setScope(value as ReviewScope)} options={(["lastTurn", "task", "unstaged", "staged"] as const).map((value, index) => ({ value, label: ["Last turn", "Whole task", "Unstaged", "Staged"][index]! }))} />
-      <button className="icon-btn" type="button" aria-label="Refresh review" disabled={busy || loading} onClick={() => setRevision(value => value + 1)}><RefreshCw size={15} /></button>
+      <button className="icon-btn" type="button" aria-label="Refresh review" disabled={busy || loading} onClick={() => setRevision(value => value + 1)}><RefreshIcon size={15} /></button>
       <ModelPicker label="Review model" value={selection} fallback={{ provider: thread.provider, providerInstanceId: thread.providerInstanceId, model: thread.model ?? "default" }} allowConversation disabled={busy} onChange={value => void saveModel(value)}
         tune={{ settings: { effort: selection?.effort }, only: ["effort"], onChange: patch => { if (selection) void saveModel({ ...selection, effort: patch.effort }); } }} />
-      <button className="btn" type="button" disabled={busy || loading || !review?.files.length || !connected} onClick={() => void action(async () => { setResult(await api(`threads/review-model?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ scope, messageId: scope === "lastTurn" ? messageId : undefined }) })); })}><ScanSearch size={15} />{busy ? "Working…" : "AI review"}</button>
+      <button className="btn" type="button" disabled={busy || loading || !review?.files.length || !connected} onClick={() => void action(async () => { setResult(await api(`threads/review-model?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ scope, messageId: scope === "lastTurn" ? messageId : undefined }) })); })}><ScanSearchIcon size={15} />{busy ? "Working…" : "AI review"}</button>
     </div>
     <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
     {loading && <p role="status">Loading changes…</p>}
@@ -90,7 +93,7 @@ export function TaskReview({ thread, messageId, onClose }: { thread: ThreadMeta;
     <div className="review-files">{review?.files.slice(0, limit).map(file => <section key={file.path} className="review-file"><button className="review-file-heading" type="button" aria-expanded={open.has(file.path)} onClick={() => setOpen(previous => { const next = new Set(previous); if (next.has(file.path)) next.delete(file.path); else next.add(file.path); return next; })}><FileIcon path={file.path} /><span className="truncate">{file.path}</span><LineCounts added={file.added} removed={file.removed} /></button>{open.has(file.path) && <ReviewPatch key={`${params}:${review.revision}:${file.path}`} params={params} path={file.path} revision={review.revision} staged={scope === "staged"} busy={busy || active} onComment={(line, side) => { setTarget(`${file.path}:${line} (${side})`); feedbackInput.current?.focus(); }} onHunk={scope === "staged" || scope === "unstaged" ? (index, operation) => hunk(file.path, index, operation) : undefined} />}</section>)}</div>
     {review && review.files.length > limit && <button className="btn" type="button" onClick={() => setLimit(value => value + 30)}>Show more files</button>}
     {!loading && review && !review.files.length && <p className="pane-empty">No changes in this scope.</p>}
-    <div className="review-feedback"><label className="feature-field">{target || "Feedback for the agent"}<textarea ref={feedbackInput} maxLength={16000} value={feedback} rows={3} onChange={event => setFeedback(event.target.value)} placeholder="Select a line to attach a comment, or describe a change here." /></label><button className="btn" type="button" disabled={!feedback.trim()} onClick={addFeedback}>Add comment</button>{comments.map((comment, index) => <div className="review-comment" key={index}><span>{comment}</span><button className="icon-btn" type="button" aria-label="Remove comment" onClick={() => setComments(previous => previous.filter((_, position) => position !== index))}><X size={14} /></button></div>)}</div>
+    <div className="review-feedback"><label className="feature-field">{target || "Feedback for the agent"}<textarea ref={feedbackInput} maxLength={16000} value={feedback} rows={3} onChange={event => setFeedback(event.target.value)} placeholder="Select a line to attach a comment, or describe a change here." /></label><button className="btn" type="button" disabled={!feedback.trim()} onClick={addFeedback}>Add comment</button>{comments.map((comment, index) => <div className="review-comment" key={index}><span>{comment}</span><button className="icon-btn" type="button" aria-label="Remove comment" onClick={() => setComments(previous => previous.filter((_, position) => position !== index))}><CloseIcon size={14} /></button></div>)}</div>
   </Modal>;
 }
 

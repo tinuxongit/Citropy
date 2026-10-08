@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Cherry, Circle, Citrus, Droplet, Flame, Flower2, ImagePlus, Leaf, Moon, Palette, Pipette, Sparkles, Sun, Waves } from "lucide-react";
+import { CheckIcon } from "./icons/marks.tsx";
+import { CherryIcon, CitrusIcon, DropletIcon, FlameIcon, FlowerIcon, LeafIcon, MoonIcon, SunIcon, WavesIcon } from "./icons/nature.tsx";
+import { CircleIcon } from "./icons/status.tsx";
+import { ImagePlusIcon } from "./icons/media.tsx";
+import { PaletteIcon } from "./PaletteIcon.tsx";
+import { PipetteIcon } from "./icons/drawing.tsx";
+import { SparkleIcon } from "./SparkleIcon.tsx";
 import { reportError } from "../lib/api.ts";
 import { saveBackgroundFile, useBackgroundFile, type BackgroundFileKind } from "../lib/background-files.ts";
 import { setAsciiLook, setBackgroundBlur, setBackgroundEverywhere, setBackgroundDim, setBackgroundFocus, setBackgroundFocusSpread, setOpaquePopups, setStageBackground, setUiTransparency } from "../lib/preferences.ts";
@@ -23,22 +29,22 @@ import { Range } from "./Range.tsx";
 import { Collapsible } from "./Collapsible.tsx";
 import { ColorPicker } from "./ColorPicker.tsx";
 
-const THEME_DETAILS: Record<Theme, { label: string; icon: typeof Moon }> = {
-  neutral: { label: "Neutral", icon: Circle },
-  orange: { label: "Orange", icon: Flame },
-  purple: { label: "Purple", icon: Sparkles },
-  blue: { label: "Blue", icon: Droplet },
-  green: { label: "Green", icon: Leaf },
-  teal: { label: "Teal", icon: Waves },
-  pink: { label: "Pink", icon: Flower2 },
-  red: { label: "Red", icon: Cherry },
-  yellow: { label: "Yellow", icon: Citrus },
-  custom: { label: "Custom color", icon: Palette },
+const THEME_DETAILS: Record<Theme, { label: string; icon: typeof MoonIcon }> = {
+  neutral: { label: "Neutral", icon: CircleIcon },
+  orange: { label: "Orange", icon: FlameIcon },
+  purple: { label: "Purple", icon: SparkleIcon },
+  blue: { label: "Blue", icon: DropletIcon },
+  green: { label: "Green", icon: LeafIcon },
+  teal: { label: "Teal", icon: WavesIcon },
+  pink: { label: "Pink", icon: FlowerIcon },
+  red: { label: "Red", icon: CherryIcon },
+  yellow: { label: "Yellow", icon: CitrusIcon },
+  custom: { label: "Custom color", icon: PaletteIcon },
 };
 
-const SCHEME_DETAILS: Record<Scheme, { label: string; icon: typeof Moon }> = {
-  dark: { label: "Dark", icon: Moon },
-  light: { label: "Light", icon: Sun },
+const SCHEME_DETAILS: Record<Scheme, { label: string; icon: typeof MoonIcon }> = {
+  dark: { label: "Dark", icon: MoonIcon },
+  light: { label: "Light", icon: SunIcon },
 };
 
 const BACKGROUNDS: { id: StageBackground; label: string }[] = [
@@ -75,11 +81,11 @@ function CustomImageOption({ selected }: { selected: boolean }) {
           style={url ? { backgroundImage: `url("${url}")` } : undefined}
           aria-hidden="true"
         >
-          {!url && <><ImagePlus size={18} />Upload an image or GIF</>}
+          {!url && <><ImagePlusIcon size={18} />Upload an image or GIF</>}
         </span>
         <span className="theme-option-label">
           <span>Custom image</span>
-          {selected && <Check size={16} />}
+          {selected && <CheckIcon size={16} />}
         </span>
       </button>
       {file && <button className="custom-background-replace" type="button" onClick={() => input.current?.click()}>Replace file…</button>}
@@ -203,7 +209,7 @@ export function AppearanceSettings() {
               <span className="theme-option-label">
                 <Icon size={16} />
                 <span>{label}</span>
-                {theme === value && <Check size={16} />}
+                {theme === value && <CheckIcon size={16} />}
               </span>
             </button>
           );
@@ -223,7 +229,7 @@ export function AppearanceSettings() {
                   setColorPickerOpen(!pickerShown);
                 }}
               >
-                <Pipette size={14} />
+                <PipetteIcon size={14} />
               </button>
             </div>
           );
@@ -248,7 +254,7 @@ export function AppearanceSettings() {
             </span>
             <span className="theme-option-label">
               <span>{label}</span>
-              {stageBackground === id && <Check size={16} />}
+              {stageBackground === id && <CheckIcon size={16} />}
             </span>
           </button>
         ))}

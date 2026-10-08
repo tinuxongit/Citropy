@@ -2,7 +2,10 @@ import { useId, useState } from "react";
 import type { PermissionRequest } from "../../../shared/protocol.ts";
 import { answerPermission } from "../lib/actions.ts";
 import { useApp } from "../lib/store.ts";
-import { Ban, Check, CheckCheck, ChevronDown, shapeIcon } from "./icons.ts";
+import { BanIcon } from "./icons/status.tsx";
+import { CheckCheckIcon, CheckIcon } from "./icons/marks.tsx";
+import { ChevronDownIcon } from "./icons/chevrons.tsx";
+import { shapeIcon } from "./icons/tool-shapes.ts";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { ComposerWideTab } from "./composer/ComposerWideTab.tsx";
 
@@ -107,7 +110,7 @@ export function PermissionRow({ request }: { request: PermissionRequest }) {
               <span className="permission-count">{waiting} waiting</span>
             )}
             <span className="permission-text truncate" title={summary}>{summary}</span>
-            <ChevronDown size={14} className="permission-chevron" aria-hidden="true" />
+            <ChevronDownIcon size={14} className="permission-chevron" aria-hidden="true" />
           </button>
           <div className="permission-actions">
             <button
@@ -116,7 +119,7 @@ export function PermissionRow({ request }: { request: PermissionRequest }) {
               disabled={!connected}
               onClick={() => answer("deny")}
             >
-              <Ban size={14} />
+              <BanIcon size={14} />
               Deny
             </button>
             <button
@@ -126,7 +129,7 @@ export function PermissionRow({ request }: { request: PermissionRequest }) {
               disabled={!connected}
               onClick={() => answer("allow_always")}
             >
-              <CheckCheck size={14} />
+              <CheckCheckIcon size={14} />
               Always allow
             </button>
             <button
@@ -136,7 +139,7 @@ export function PermissionRow({ request }: { request: PermissionRequest }) {
               disabled={!connected}
               onClick={() => answer("allow")}
             >
-              <Check size={14} />
+              <CheckIcon size={14} />
               Allow once
             </button>
           </div>
