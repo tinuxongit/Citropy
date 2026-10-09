@@ -595,7 +595,7 @@
   .shell .navigation-strip .account-menu > .account-menu-items { visibility: visible; }
   .shell .account-menu-button { display: none; }
   .shell .navigation-strip-group > * { flex: 1; }
-  .shell .navigation-strip .app-update-control { position: static; }
+  .shell .navigation-strip :is(.app-update-control, .agents-control) { position: static; }
   .shell .strip-action,
   .shell .navigation-strip .rail-action.app-update-button {
     flex: 1;
@@ -668,7 +668,7 @@
     background: var(--canvas);
   }
   .topbar .sidebar-toggle { order: -2; }
-  .topbar .icon-btn { width: 38px; }
+  .topbar .icon-btn { width: 38px; height: 40px; }
   .topbar-left,
   .topbar-start,
   .topbar-right { display: contents; }

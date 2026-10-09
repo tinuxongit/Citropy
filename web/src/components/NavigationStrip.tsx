@@ -37,7 +37,7 @@ export function NavigationStrip({
   onNotification: (target: NotificationTarget) => void;
   activeView: string;
 }) {
-  const usagePeek = useUsagePeek("right");
+  const usagePeek = useUsagePeek();
   const { activeId: environment } = useEnvironments();
   const [accountOpen, setAccountOpen] = useState(false);
   const conversations: StripButton = { name: "Conversations", icon: ConversationsIcon, run: onChat, view: "chat" };

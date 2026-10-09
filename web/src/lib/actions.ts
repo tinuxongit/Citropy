@@ -350,20 +350,42 @@ export function stopThread(): void {
   send({ t: "thread.stop", threadId });
 }
 
-export async function removeThread(id: string, environment = environmentId()): Promise<void> {
-  const slice = environmentSlice(environment);
-  const thread = slice?.threads[id];
-  if (!thread || !slice.connected) return;
+export function removeThread(id: string, environment = environmentId()): Promise<boolean> {
+  return removeThreads([{ id, environment }]);
+}
+
+export async function removeThreads(items: { id: string; environment: string }[]): Promise<boolean> {
+  const live = items.filter(({ id, environment }) => {
+    const slice = environmentSlice(environment);
+    return slice?.connected && slice.threads[id];
+  });
+  if (!live.length) return false;
+  const single = live.length === 1 ? environmentSlice(live[0]!.environment)!.threads[live[0]!.id]! : undefined;
   const confirmed = await confirmAction({
-    title: "Delete this conversation?",
-    context: thread.title,
-    description:
-      "This permanently deletes the conversation and its subagents. Files in your workspace stay on disk.",
-    label: "Delete conversation",
+    title: single ? "Delete this conversation?" : `Delete ${live.length} conversations?`,
+    context: single?.title,
+    description: single
+      ? "This permanently deletes the conversation and its subagents. Files in your workspace stay on disk."
+      : "This permanently deletes these conversations and their subagents. Files in your workspace stay on disk.",
+    label: single ? "Delete conversation" : `Delete ${live.length} conversations`,
     danger: true,
   });
-  if (confirmed && environmentSlice(environment)?.connected)
-    sendTo(environment, { t: "thread.remove", id });
+  if (!confirmed) return false;
+  for (const { id, environment } of live)
+    if (environmentSlice(environment)?.connected) sendTo(environment, { t: "thread.remove", id });
+  return true;
+}
+
+export function confirmRemoveProjects(names: string[]): Promise<boolean> {
+  const single = names.length === 1 ? names[0] : undefined;
+  return confirmAction({
+    title: single ? "Remove project?" : `Remove ${names.length} projects?`,
+    description: single
+      ? `Remove ${single} and its conversations from Citropy? Files stay on disk.`
+      : "Remove these projects and their conversations from Citropy? Files stay on disk.",
+    label: single ? "Remove project" : `Remove ${names.length} projects`,
+    danger: true,
+  });
 }
 
 export function finishThread(id: string, finished: boolean, environment = environmentId()): void {

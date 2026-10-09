@@ -593,7 +593,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     }
     await settled(page);
     assert.ok(await canvas.evaluate((node) => node.scrollHeight - node.scrollTop - node.clientHeight < 2));
-    assert.equal(await page.getByRole("button", { name: "Latest", exact: true }).count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Jump to latest", exact: true }).count(), 0);
   });
 
   check("text folding into the steps fold while working keeps the chat height steady", async (t) => {

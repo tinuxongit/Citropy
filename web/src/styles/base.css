@@ -279,7 +279,7 @@ kbd {
   transition:
     background var(--dur-instant) var(--ease-out),
     color var(--dur-instant) var(--ease-out),
-    transform var(--dur-instant) var(--ease-out);
+    scale var(--dur-fast) var(--ease-out);
 }
 
 .btn:hover {
@@ -363,6 +363,30 @@ kbd {
 .icon-btn[data-active="true"] {
   background: var(--highlight);
   color: var(--accent-text);
+}
+
+:where(button:not(:disabled, .thread-row, .thread-tab-open, .global-project-toggle, .model-picker-row)) {
+  & > :where(svg, .provider-icon):first-child {
+    transition: scale var(--dur-fast) var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    &:hover > :where(svg, .provider-icon):first-child { scale: var(--icon-hover-grow); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    &:active > :where(svg, .provider-icon):first-child { scale: var(--icon-press-shrink); transition-duration: var(--dur-instant); }
+  }
+}
+
+:where(.btn, .composer-select, .selection-quote, button.details-row):not(:disabled) {
+  will-change: scale;
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    &:hover { scale: var(--hover-grow); }
+    &:hover > :where(svg, .provider-icon):first-child { scale: calc(var(--icon-hover-grow) / var(--hover-grow)); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    &:active { scale: var(--press-shrink); transition-duration: var(--dur-instant); }
+    &:active > :where(svg, .provider-icon):first-child { scale: calc(var(--icon-press-shrink) / var(--press-shrink)); }
+  }
 }
 
 .pill {

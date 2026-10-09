@@ -5,7 +5,6 @@ import { ArchiveIcon, ArchiveRestoreIcon, PinIcon, PinOffIcon, TrashIcon } from 
 import { ClockIcon } from "./icons/status.tsx";
 import { MoreIcon } from "./icons/marks.tsx";
 import { EditIcon } from "./icons/pencil.tsx";
-import { ArrowDownIcon, ArrowUpIcon } from "./icons/arrows.tsx";
 import { RefreshIcon } from "./icons/rotation.tsx";
 import { SquarePlusIcon } from "./icons/squares.tsx";
 import { Menu, type MenuItem } from "./Menu.tsx";
@@ -29,12 +28,10 @@ export async function organizeConversation(id: string, patch: object, environmen
 export function ConversationMenu({
   thread,
   environment,
-  onMove,
   rowActions = [],
 }: {
   thread: ThreadMeta;
   environment?: string;
-  onMove?: (direction: number) => void;
   rowActions?: MenuItem[];
 }) {
   const projects = useApp(state => state.projects);
@@ -53,12 +50,17 @@ export function ConversationMenu({
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [generatingTitle, setGeneratingTitle] = useState(false);
-  const regenerateTitle = async () => {
-    setGeneratingTitle(true);
-    try { await api(`threads/title?threadId=${encodeURIComponent(thread.id)}`, { method: "POST" }, environment); }
-    catch (error) { reportError(error); }
-    finally { setGeneratingTitle(false); }
+  const generateTitle = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await api(`threads/title?threadId=${encodeURIComponent(thread.id)}`, { method: "POST" }, environment);
+      setEditing(undefined);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
   const edit = (field: typeof editing) => {
     setEditing(field);
@@ -88,6 +90,7 @@ export function ConversationMenu({
         align="end"
         width={230}
         span=".thread-card"
+        edge=".rail"
         sheet={viewportWidth() <= 600}
         triggerId={menuId}
         items={[
@@ -107,27 +110,6 @@ export function ConversationMenu({
             icon: <EditIcon size={15} />,
             onSelect: () => edit("title"),
           },
-          ...(!thread.parentThreadId ? [{
-            id: "generate-title",
-            label: generatingTitle ? "Naming conversation…" : "Generate title",
-            icon: <RefreshIcon size={15} />,
-            disabled: generatingTitle,
-            onSelect: () => void regenerateTitle(),
-          }] : []),
-          ...(onMove ? [
-            {
-              id: "up",
-              label: "Move up",
-              icon: <ArrowUpIcon size={15} />,
-              onSelect: () => onMove(-1),
-            },
-            {
-              id: "down",
-              label: "Move down",
-              icon: <ArrowDownIcon size={15} />,
-              onSelect: () => onMove(1),
-            },
-          ] : []),
           {
             id: "pr",
             label: thread.pullRequest
@@ -188,6 +170,17 @@ export function ConversationMenu({
           initialFocus="input"
           footer={
             <>
+              {editing === "title" && !thread.parentThreadId && (
+                <button
+                  className="btn dialog-footer-start"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void generateTitle()}
+                >
+                  <RefreshIcon size={15} />
+                  Generate
+                </button>
+              )}
               <button
                 className="btn"
                 data-cancel

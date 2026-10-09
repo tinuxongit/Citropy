@@ -11,8 +11,8 @@
   --dur-panel: 280ms;
   --icon-hover-grow: 1.08;
   --icon-press-shrink: 0.92;
-  --tab-hover-grow: 1.03;
-  --tab-press-shrink: 0.97;
+  --hover-grow: 1.03;
+  --press-shrink: 0.97;
   --field-focus-color: color-mix(in srgb, var(--text-3) 30%, transparent);
   --field-focus-ring: inset 0 0 0 2px var(--field-focus-color);
   --backdrop-card-bg: color-mix(in srgb, var(--canvas) 72%, transparent);
@@ -53,7 +53,6 @@
   --r-full: 999px;
   --r-popup: var(--r-lg);
   --scrollbar-size: 6px;
-  --popup-edge: 0 0 0 1px var(--line);
 
   --rail: 264px;
   --inspector: clamp(340px, calc(var(--viewport-width) * 0.29), 760px);

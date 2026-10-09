@@ -20,24 +20,24 @@ import { ThreadPulse } from "../ThreadPulse.tsx";
 import type { ThreadDrag } from "./use-thread-drag.ts";
 import type { ThreadPreviewControls } from "./use-thread-preview.ts";
 import type { SearchMatch } from "./use-thread-search.ts";
-import type { ThreadTree } from "./use-thread-tree.ts";
+import { finishBlocked, type ThreadTree } from "./use-thread-tree.ts";
 import { threadKey } from "./thread-groups.ts";
 
 function pullRequestNumber(url: string): string | undefined {
   return url.split("/").at(-1);
 }
 
-export const ThreadRow = memo(function ThreadRow({ thread, environment, now, query, match, drag, preview, describedBy, tree, onMove, onFinished, onConversation }: {
+export const ThreadRow = memo(function ThreadRow({ thread, environment, now, query, match, picked, drag, preview, describedBy, tree, onFinished, onConversation }: {
   thread: ThreadMeta;
   environment: string;
   now: number;
   query: string;
   match?: SearchMatch;
+  picked: boolean;
   drag: ThreadDrag;
   preview: ThreadPreviewControls;
   describedBy?: string;
   tree: ThreadTree;
-  onMove: (item: { thread: ThreadMeta; environment: string }, direction: number) => void;
   onFinished: () => void;
   onConversation: () => void;
 }) {
@@ -50,7 +50,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
   const key = threadKey(environment, thread.id);
   const { status, label } = threadActivity(thread);
   const busy = thread.running || thread.status === "awaiting";
-  const childRunning = (tree.childrenByParent.get(thread.id) ?? []).some((child) => child.running);
+  const blocked = finishBlocked(thread, tree);
   const finishLabel = `${thread.finished ? "Reopen" : "Finish"} ${thread.title}`;
   const touch = useTouchInput();
   const finish = () => {
@@ -59,7 +59,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
   };
   const remove = () => void removeThread(thread.id, environment).catch(reportError);
   const rowActions: MenuItem[] = touch ? [
-    { id: "finish", label: thread.finished ? "Reopen" : "Finish", icon: thread.finished ? <RotateCcwIcon size={15} /> : <CheckIcon size={15} />, disabled: !connected || busy || childRunning, onSelect: finish },
+    { id: "finish", label: thread.finished ? "Reopen" : "Finish", icon: thread.finished ? <RotateCcwIcon size={15} /> : <CheckIcon size={15} />, disabled: !connected || blocked, onSelect: finish },
     { id: "delete", label: "Delete", icon: <TrashIcon size={15} />, danger: true, onSelect: remove },
   ] : [];
 
@@ -98,6 +98,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
       <div
         className="thread-card"
         data-active={active}
+        data-picked={picked}
         onPointerDownCapture={preview.hide}
         onContextMenu={(event) => {
           if ((event.target as HTMLElement).closest('[role="menu"], dialog, a')) return;
@@ -139,7 +140,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
           ) : <time className="thread-row-time" dateTime={new Date(thread.updatedAt).toISOString()}>{since(thread.updatedAt, now)}</time>}
         </button>
         <div className="thread-row-actions" onPointerEnter={preview.hide}>
-          <ConversationMenu thread={thread} environment={environment} onMove={(direction) => onMove({ thread, environment }, direction)} rowActions={rowActions} />
+          <ConversationMenu thread={thread} environment={environment} rowActions={rowActions} />
           {thread.pullRequest && <a
             className="thread-row-pr"
             href={thread.pullRequest}
@@ -154,7 +155,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
               type="button"
               title={busy ? "Stop this conversation before finishing" : finishLabel}
               aria-label={finishLabel}
-              disabled={!connected || busy || childRunning}
+              disabled={!connected || blocked}
               onClick={finish}
             >
               {thread.finished ? <RotateCcwIcon size={14} /> : <CheckIcon size={15} />}

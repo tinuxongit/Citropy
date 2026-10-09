@@ -28,11 +28,5 @@ export function useProjectOrder(projectsByEnvironment: Record<string, Project[]>
     localStorage.setItem(storageKey(environment), JSON.stringify(ids));
     setOrders((current) => ({ ...current, [environment]: ids }));
   };
-  const moveProjectBy = (environment: string, projectId: string, direction: -1 | 1) => {
-    const projects = orderedProjects[environment] ?? [];
-    const index = projects.findIndex((project) => project.id === projectId);
-    const adjacent = projects[index + direction];
-    if (index >= 0 && adjacent) moveProject(environment, projectId, adjacent.id, direction < 0 ? "before" : "after");
-  };
-  return { orderedProjects, moveProject, moveProjectBy };
+  return { orderedProjects, moveProject };
 }

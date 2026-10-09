@@ -5,7 +5,7 @@
   --details-min-chat: 640px;
   --details-slide: var(--dur-panel);
 }
-@property --details-push {
+@property --details-shown {
   syntax: "<number>";
   inherits: false;
   initial-value: 0;
@@ -17,7 +17,7 @@
   --details-lane-fits: max(0, sign(var(--settled-stage-width) - var(--details-card-room) - var(--chat-gutter) - var(--details-min-chat)));
   --details-shown: 0;
   --details-push: calc(var(--details-lane-fits) * var(--details-shown));
-  transition: --details-push var(--details-slide) var(--ease-drawer);
+  transition: --details-shown var(--details-slide) var(--ease-drawer);
 }
 .stage:has(> .thread-details-panel[data-open="true"]) :is(.canvas, .composer, .conversation-jump),
 .thread-details-panel[data-open="true"] {
@@ -41,15 +41,18 @@
   max-height: calc(100% - 2 * var(--details-panel-inset));
   overflow-y: auto;
   border-radius: var(--details-card-radius);
-  translate: 0 calc((1 - var(--details-push)) * (-100% - var(--details-panel-inset)));
+  translate: 0 calc((1 - var(--details-shown)) * (-100% - var(--details-panel-inset)));
 }
 @starting-style {
   .thread-details-panel[data-open] {
-    --details-push: 0;
+    --details-shown: 0;
   }
 }
-@container style(--details-push: 0) {
+@container style(--details-shown: 0) {
   .details-card { display: none; }
+}
+@media (hover: none) {
+  .thread-details-panel { --details-row-height: 40px; }
 }
 .thread-details-toggle[data-error] { color: var(--bad); }
 
@@ -75,7 +78,9 @@
   font-size: var(--text-sm);
   font-weight: 500;
   text-align: left;
-  transition: background var(--dur-instant) var(--ease-out);
+  transition:
+    background var(--dur-instant) var(--ease-out),
+    scale var(--dur-fast) var(--ease-out);
 }
 .details-row > svg,
 .details-row > .loader { flex: none; color: var(--text-2); }

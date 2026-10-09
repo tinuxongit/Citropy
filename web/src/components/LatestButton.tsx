@@ -16,9 +16,8 @@ export function LatestButton({ away, onJump }: { away: boolean; onJump: () => vo
   const visible = away && settled;
   return (
     <div className="conversation-jump">
-      <button type="button" className="jump" data-visible={visible || undefined} tabIndex={visible ? undefined : -1} aria-hidden={!visible || undefined} onClick={onJump}>
-        <ArrowDownIcon size={13} />
-        Latest
+      <button type="button" className="jump" data-visible={visible || undefined} tabIndex={visible ? undefined : -1} aria-hidden={!visible || undefined} aria-label="Jump to latest" title="Jump to latest" onClick={onJump}>
+        <ArrowDownIcon size={15} />
       </button>
     </div>
   );

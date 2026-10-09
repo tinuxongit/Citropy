@@ -26,7 +26,7 @@ function redirectsToComposer(event: Event): boolean {
 }
 
 function returnsToComposer(active: Element | null): boolean {
-  return active?.closest(TEXT_FIELDS) == null && document.querySelector(OPEN_OVERLAYS) === null;
+  return active?.closest(TEXT_FIELDS) == null && !document.getSelection()?.toString() && document.querySelector(OPEN_OVERLAYS) === null;
 }
 
 function pastedFiles(data: DataTransfer, inline: boolean): File[] {

@@ -2,6 +2,27 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.9.0
+
+### Added
+- Shift-click or Shift-drag in the sidebar to select several conversations or projects, then finish, archive, delete, or remove them together.
+
+### Changed
+- On phones, the top bar buttons, sidebar rows, message buttons, and code block buttons are larger and easier to tap.
+- On phones, the Running agents pop-up spans the screen above the bottom tab bar.
+- Wide tables in replies scroll sideways instead of splitting words like "00:00" across lines.
+- The conversation and project menus, the snooze menu, and the usage limits card slide out from the edge of the sidebar.
+- "Generate title" moved into the Rename dialog as a Generate button.
+- The project menu button shows three dots instead of a pencil.
+- The Move up and Move down menu items are gone. Drag conversations and projects to reorder them.
+- The jump to latest button is a small round arrow.
+- Buttons grow slightly on hover and shrink when pressed.
+- Pop-ups no longer have an outline.
+
+### Fixed
+- The Conversation details button works on phones and narrow windows. Before, the card never appeared there.
+- Switching back to Citropy while text in a chat is selected keeps the selection instead of moving focus to the message box.
+
 ## 0.8.0
 
 ### Added

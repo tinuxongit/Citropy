@@ -15,6 +15,10 @@ function ancestry(threads: Record<string, ThreadMeta>, start: ThreadMeta | undef
   }
 }
 
+export function finishBlocked(thread: ThreadMeta, tree: ThreadTree): boolean {
+  return thread.running || thread.status === "awaiting" || (tree.childrenByParent.get(thread.id) ?? []).some((child) => child.running);
+}
+
 export function rootThread(threads: Record<string, ThreadMeta>, id: string | null): ThreadMeta | undefined {
   let thread = id ? threads[id] : undefined;
   while (thread?.parentThreadId) thread = threads[thread.parentThreadId];

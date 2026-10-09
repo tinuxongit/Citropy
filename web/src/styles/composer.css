@@ -276,7 +276,8 @@
   white-space: nowrap;
   transition:
     background var(--dur-instant) var(--ease-out),
-    color var(--dur-instant) var(--ease-out);
+    color var(--dur-instant) var(--ease-out),
+    scale var(--dur-fast) var(--ease-out);
 }
 
 .composer-select:hover {
@@ -313,7 +314,6 @@
   border-radius: var(--r-popup);
   border: 0;
   background: var(--overlay);
-  box-shadow: var(--popup-edge);
   transform-origin: top left;
 }
 .menu[data-sheet] {
@@ -339,6 +339,24 @@
 .menu[data-align="end"] {
   transform-origin: top right;
 }
+
+.menu[data-side="edge"] {
+  --menu-edge-fillet: var(--r-lg);
+  overflow: visible;
+  border-radius: 0 var(--r-popup) var(--r-popup) 0;
+  background: var(--panel);
+}
+.menu[data-side="edge"]::before,
+.menu[data-side="edge"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: var(--menu-edge-fillet);
+  height: var(--menu-edge-fillet);
+  background: radial-gradient(circle at 100% var(--menu-edge-fillet-y), transparent calc(var(--menu-edge-fillet) - 0.5px), var(--panel) var(--menu-edge-fillet));
+}
+.menu[data-side="edge"]::before { bottom: 100%; --menu-edge-fillet-y: 0%; }
+.menu[data-side="edge"]::after { top: 100%; --menu-edge-fillet-y: 100%; }
 
 .menu[data-side="top"] {
   transform-origin: bottom left;
@@ -478,17 +496,18 @@
 }
 
 .context-usage {
+  --context-panel-width: 304px;
   position: relative;
   display: flex;
   flex: none;
   align-items: center;
 }
-.context-usage:has(.context-details)::before {
+.context-usage:has(.context-details)::after {
   content: "";
   position: absolute;
   bottom: 100%;
-  left: 0;
   right: 0;
+  width: var(--context-panel-width);
   height: 10px;
 }
 
@@ -520,12 +539,11 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   color: var(--text);
-  width: 304px;
+  width: var(--context-panel-width);
   padding: 0;
   border: 0;
   border-radius: var(--r-popup);
   background: var(--overlay);
-  box-shadow: var(--popup-edge);
   font-size: var(--text-sm);
 }
 
@@ -736,9 +754,9 @@
 .menu .menu-search {
   display: block;
   width: 100%;
-  min-height: 38px;
+  min-height: 32px;
   margin: 0;
-  padding: var(--space-10) var(--space-16) var(--space-10) var(--space-40);
+  padding: var(--space-6) var(--space-16) var(--space-6) var(--space-40);
   background: none;
   color: var(--text);
   border: 0;
@@ -804,7 +822,6 @@
   padding: var(--space-4);
   border-radius: var(--r-popup);
   background: var(--overlay);
-  box-shadow: var(--popup-edge);
 }
 .model-picker-footer {
   display: contents;
@@ -1054,7 +1071,6 @@
   background: var(--overlay);
   border: 0;
   border-radius: var(--r-popup);
-  box-shadow: var(--popup-edge);
   overflow: hidden;
 }
 .composer-suggestions-heading {
@@ -1382,4 +1398,4 @@
 .usage-limit-action strong { display: block; color: var(--text); font-weight: 500; }
 .usage-limit-action small { display: block; margin-top: var(--space-2); color: var(--text-3); font-size: var(--text-xs); line-height: 1.45; }
 .composer-tab > span { color: var(--text-2); font-variant-numeric: tabular-nums; }
-.tab-panel { position: fixed; inset: auto; margin: 0; padding: 0; overflow: auto; border: 0; border-radius: var(--r-popup); background: var(--overlay); color: var(--text); font-size: var(--text-sm); box-shadow: var(--popup-edge); transform-origin: bottom right; }
+.tab-panel { position: fixed; inset: auto; margin: 0; padding: 0; overflow: auto; border: 0; border-radius: var(--r-popup); background: var(--overlay); color: var(--text); font-size: var(--text-sm); transform-origin: bottom right; }

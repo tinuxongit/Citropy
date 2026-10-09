@@ -47,7 +47,7 @@ export function SnoozeMenu({ thread, environment, anchor, onClose }: { thread: T
       align="end"
       width={240}
       span=".thread-card"
-      header="Snooze"
+      edge=".rail"
       items={[]}
       onClose={onClose}
       controls={<div className="snooze-menu">

@@ -48,6 +48,7 @@ interface Props {
   clearOf?: string;
   sheet?: boolean;
   span?: string;
+  edge?: string;
   width?: number;
   gutter?: number;
   searchable?: boolean;
@@ -60,7 +61,10 @@ interface Props {
   onClose?: () => void;
 }
 
+const EDGE_SLIDE_SECONDS = 0.24;
+const EDGE_OVERHANG = "32px";
 const CONFIRMATION = ".confirmation-card";
+const edgeClip = (left: string) => `inset(-${EDGE_OVERHANG} -${EDGE_OVERHANG} -${EDGE_OVERHANG} ${left})`;
 const inConfirmation = (target: EventTarget | null) => target instanceof Element && Boolean(target.closest(CONFIRMATION));
 
 export function Menu({
@@ -75,6 +79,7 @@ export function Menu({
   clearOf,
   sheet = false,
   span,
+  edge,
   width = 232,
   gutter = 0,
   searchable = false,
@@ -143,6 +148,17 @@ export function Menu({
         element.style.top = `${scaled(viewport - element.offsetHeight / scale)}px`;
         return;
       }
+      const attachedTo = edge ? wrap.current?.closest(edge)?.getBoundingClientRect() : undefined;
+      if (attachedTo) {
+        const viewport = innerHeight / scale;
+        element.dataset.side = "edge";
+        element.style.width = `${scaled(width)}px`;
+        element.style.maxHeight = `${scaled(viewport - 24)}px`;
+        const height = element.offsetHeight / scale;
+        element.style.left = `${scaled(attachedTo.right / scale)}px`;
+        element.style.top = `${scaled(Math.max(12, Math.min(bounds.top / scale, viewport - height - 12)))}px`;
+        return;
+      }
       const clearance = clearOf ? wrap.current?.closest(clearOf)?.getBoundingClientRect() : undefined;
       const anchorLeft = (clearance?.left ?? bounds.left) / scale;
       const menuWidth = Math.min(spanned ? spanned.width / scale : inline ? Math.max(width, bounds.width / scale) : width, viewportWidth() - 24 - 2 * gutter);
@@ -203,7 +219,7 @@ export function Menu({
       window.removeEventListener("resize", position);
       window.removeEventListener("scroll", scroll, true);
     };
-  }, [open, width, gutter, align, side, searchable, touch, uiScale, anchor, clearOf, sheet, span, inline]);
+  }, [open, width, gutter, align, side, searchable, touch, uiScale, anchor, clearOf, sheet, span, edge, inline]);
 
   useEffect(() => {
     if (!open) return;
@@ -230,6 +246,11 @@ export function Menu({
     if (open && document.activeElement === document.body)
       menu.current?.querySelector<HTMLElement>(focusTarget)?.focus({ preventScroll: true });
   }, [open, items, focusTarget]);
+
+  const slidesFromEdge = Boolean(edge) && !sheet && !reducedMotion;
+  const hidden = slidesFromEdge
+    ? { x: "-100%", clipPath: edgeClip("100%") }
+    : { opacity: 0, scale: reducedMotion || sheet ? 1 : 0.985, y: sheet && !reducedMotion ? 48 : 0 };
 
   const list = <div className="menu-list scroll sliding-selection" data-large={visibleItems.length > 40} data-sliding={soleSelection ? true : undefined}>
     {soleSelection && <SelectionHighlight value={soleSelection} selector=".menu-option[data-selected]" />}
@@ -320,10 +341,10 @@ export function Menu({
             tabIndex={-1}
             aria-labelledby={anchor ? undefined : id}
             aria-label={anchor ? header : undefined}
-            initial={{ opacity: 0, scale: reducedMotion || sheet ? 1 : 0.985, y: sheet && !reducedMotion ? 48 : 0 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: reducedMotion || sheet ? 1 : 0.985, y: sheet && !reducedMotion ? 48 : 0, pointerEvents: "none" }}
-            transition={{ duration: reducedMotion ? 0 : 0.16, ease: [0.16, 1, 0.3, 1] }}
+            initial={hidden}
+            animate={slidesFromEdge ? { x: "0%", clipPath: edgeClip("0%") } : { opacity: 1, scale: 1, y: 0 }}
+            exit={{ ...hidden, pointerEvents: "none" }}
+            transition={{ duration: reducedMotion ? 0 : slidesFromEdge ? EDGE_SLIDE_SECONDS : 0.16, ease: [0.16, 1, 0.3, 1] }}
             onKeyDown={(event) => {
               if (event.target instanceof HTMLSelectElement) return;
               const option = (event.target as HTMLElement).closest(".menu-option");

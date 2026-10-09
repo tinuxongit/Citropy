@@ -87,7 +87,6 @@
   padding: var(--space-6);
   border-radius: var(--r-popup);
   background: var(--overlay);
-  box-shadow: var(--popup-edge);
   pointer-events: none;
 }
 .screen-color-loupe[hidden] {

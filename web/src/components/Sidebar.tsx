@@ -15,16 +15,18 @@ import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { ThreadPreview } from "./ThreadPreview.tsx";
 import { canConnectServers, WorkspaceDialogs, type WorkspaceDialog, type WorkspaceScope } from "./WorkspaceSelector.tsx";
 import { CachedThreadRow } from "./sidebar/CachedThreadRow.tsx";
+import { PickedActions } from "./sidebar/PickedActions.tsx";
 import { ProjectHeading, SectionHeading, StatusHeading } from "./sidebar/GroupHeadings.tsx";
-import { movableSiblings, shownThreads, threadKey, threadOrderAfterMove, useThreadGroups, type EnvironmentFolders, type SidebarThread, type ThreadGroup } from "./sidebar/thread-groups.ts";
+import { shownThreads, threadKey, threadOrderAfterMove, useThreadGroups, type EnvironmentFolders, type SidebarThread, type ThreadGroup } from "./sidebar/thread-groups.ts";
 import { ThreadRow } from "./sidebar/ThreadRow.tsx";
 import { useProjectDrag } from "./sidebar/use-project-drag.ts";
+import { useRowPicking } from "./sidebar/use-row-picking.ts";
 import { useProjectOrder, type DropEdge } from "./sidebar/use-project-order.ts";
 import { useThreadDrag } from "./sidebar/use-thread-drag.ts";
 import { useThreadPreview } from "./sidebar/use-thread-preview.ts";
 import { useThreadSearch } from "./sidebar/use-thread-search.ts";
 import { ThreadSearch } from "./sidebar/ThreadSearch.tsx";
-import { rootThread, useThreadTree, type ThreadTree } from "./sidebar/use-thread-tree.ts";
+import { finishBlocked, rootThread, useThreadTree, type ThreadTree } from "./sidebar/use-thread-tree.ts";
 
 const VIRTUALIZE_AFTER_THREADS = 150;
 const ROW_TIME_REFRESH_MS = 60_000;
@@ -79,7 +81,7 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
   const projectSets = useMemo(() => Object.fromEntries(["local", ...connections.map(connection => connection.id)].map(id =>
     [id, id === environment && connected ? projects : background[id]?.connected ? background[id].projects : catalog[id]?.projects ?? []],
   )), [environment, connections, connected, projects, background, catalog]);
-  const { orderedProjects, moveProject, moveProjectBy } = useProjectOrder(projectSets);
+  const { orderedProjects, moveProject } = useProjectOrder(projectSets);
   const environments = useMemo(() => ["local", ...connections.map((connection) => connection.id)].flatMap((id): EnvironmentFolders[] => {
     const live = id === environment ? connected : background[id]?.connected;
     if (!live && !catalog[id]?.projects.length) return [];
@@ -98,11 +100,6 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
     const ids = threadOrderAfterMove(groups, targetEnvironment, projectId, source, target, edge);
     if (ids) void reorderThreads(projectId, ids, targetEnvironment).catch(reportError);
   };
-  const moveThread = (item: SidebarThread, direction: number) => {
-    const siblings = movableSiblings(groups, item);
-    const next = siblings[siblings.findIndex((sibling) => sibling.thread.id === item.thread.id) + direction];
-    if (next) reorder(item.environment, item.thread.id, next.thread.id);
-  };
 
   const dragResetKey = [environment, activeProjectId, query, connected, uiScale, rowOrder].join("\n");
   const threadDrag = useThreadDrag({ viewport, groups, disabled: Boolean(query), resetKey: dragResetKey, onDrop: reorder });
@@ -112,14 +109,22 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
     const to = folderGroups.find(group => group.id === target);
     if (from?.project && to?.project && from.environment === to.environment) moveProject(from.environment!, from.project.id, to.project.id, edge);
   } });
+  const picking = useRowPicking({ viewport, list: threadList, resetKey: [environment, query].join("\n") });
+  const pickedThreads = picking.picked.flatMap((row) => {
+    const thread = row.kind === "thread" ? threadsByEnvironment[row.environment]?.[row.id] : undefined;
+    return thread ? [{ thread, environment: row.environment, blocked: finishBlocked(thread, trees[row.environment]!) }] : [];
+  });
+  const pickedProjects = picking.picked.flatMap((row) => {
+    const project = row.kind === "project" ? projectSets[row.environment]?.find((entry) => entry.id === row.id) : undefined;
+    return project ? [{ project, environment: row.environment }] : [];
+  });
   const preview = useThreadPreview({
     disabled: Boolean(threadDrag.draggingId),
     resetKey: [environment, activeProjectId, activeThreadId, query, rowOrder, uiScale].join("\n"),
   });
-  const handlers = useRef({ moveThread, revealFinished, onConversation });
-  handlers.current = { moveThread, revealFinished, onConversation };
+  const handlers = useRef({ revealFinished, onConversation });
+  handlers.current = { revealFinished, onConversation };
   const rowHandlers = useMemo(() => ({
-    move: (item: SidebarThread, direction: number) => handlers.current.moveThread(item, direction),
     finished: () => handlers.current.revealFinished(),
     conversation: () => handlers.current.onConversation(),
   }), []);
@@ -191,13 +196,11 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
       group={group}
       project={project}
       searching={searching}
+      picked={picking.isPicked({ kind: "project", environment: group.environment!, id: project.id })}
       dragging={projectDrag.dragging === group.id}
-      isFirst={orderedProjects[group.environment!]?.[0]?.id === project.id}
-      isLast={orderedProjects[group.environment!]?.at(-1)?.id === project.id}
       canCreateThread={canCreateIn(group)}
       onDragStart={(event) => projectDrag.start(event, group.id)}
       consumeDrag={projectDrag.consumeDrag}
-      onMove={(direction) => moveProjectBy(group.environment!, project.id, direction)}
       onNewThread={() => startThread(group)}
       onConversation={onConversation}
     />;
@@ -211,11 +214,11 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
     now={now}
     query={query}
     match={matches?.find((result) => result.environment === item.environment && result.threadId === item.thread.id)}
+    picked={picking.isPicked({ kind: "thread", environment: item.environment, id: item.thread.id })}
     drag={threadDrag}
     preview={preview.controls}
     describedBy={preview.describedBy(item.environment, item.thread.id)}
     tree={trees[item.environment]!.childrenByParent.has(item.thread.id) ? trees[item.environment]! : EMPTY_TREE}
-    onMove={rowHandlers.move}
     onFinished={rowHandlers.finished}
     onConversation={rowHandlers.conversation}
   />;
@@ -259,6 +262,7 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
       <div className="thread-toolbar"><ThreadSearch /></div>
       <div className="rail-scroll">
         <div className="rail-list scroll" ref={viewport}
+          {...picking.bind}
           onScroll={(event) => {
             preview.controls.hide();
             event.currentTarget.parentElement?.toggleAttribute("data-scrolled", event.currentTarget.scrollTop > 0);
@@ -282,6 +286,7 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
           {threads.length === 0 && (query || groups.length === 0) && <div className="rail-empty">{emptyMessage}</div>}
         </div>
       </div>
+      {pickedThreads.length + pickedProjects.length > 0 && <PickedActions threads={pickedThreads} projects={pickedProjects} onFinished={revealFinished} onClear={picking.clear} />}
       {preview.shown && threadsByEnvironment[preview.shown.environment]?.[preview.shown.threadId] && <ThreadPreview
         id={preview.id}
         thread={threadsByEnvironment[preview.shown.environment]![preview.shown.threadId]!}

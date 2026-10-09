@@ -1,13 +1,14 @@
 import { useEffect, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { AnimatePresence } from "motion/react";
-import { closeProject, createThread, openOnEnvironment } from "../../lib/actions.ts";
+import { closeProject, confirmRemoveProjects, createThread, openOnEnvironment } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { opensContextMenu } from "../../lib/context-menu-key.ts";
 import { connectionName, environmentId, useEnvironments } from "../../lib/environment.ts";
-import { confirmAction, selectProject, useApp } from "../../lib/store.ts";
+import { selectProject, useApp } from "../../lib/store.ts";
 import { FolderIcon, FolderOpenIcon } from "../icons/folders.tsx";
 import { NewMessageIcon } from "../icons/messages.tsx";
 import { EditIcon } from "../icons/pencil.tsx";
+import { MoreIcon } from "../icons/marks.tsx";
 import { TrashIcon } from "../icons/actions.tsx";
 import { ForkIcon } from "../icons/git.tsx";
 import { Menu } from "../Menu.tsx";
@@ -18,17 +19,15 @@ import { DisconnectedIcon } from "../icons/hardware.tsx";
 import type { ThreadGroup } from "./thread-groups.ts";
 import { WorkspaceMenu, type WorkspaceDialog } from "../WorkspaceSelector.tsx";
 
-export function ProjectHeading({ group, project, searching, dragging, isFirst, isLast, canCreateThread, onDragStart, consumeDrag, onMove, onNewThread, onConversation }: {
+export function ProjectHeading({ group, project, searching, picked, dragging, canCreateThread, onDragStart, consumeDrag, onNewThread, onConversation }: {
   group: ThreadGroup;
   project: Project;
   searching: boolean;
+  picked: boolean;
   dragging: boolean;
-  isFirst: boolean;
-  isLast: boolean;
   canCreateThread: boolean;
   onDragStart: (event: ReactPointerEvent<HTMLElement>) => void;
   consumeDrag: (event: MouseEvent) => boolean;
-  onMove: (direction: -1 | 1) => void;
   onNewThread: () => void;
   onConversation: () => void;
 }) {
@@ -54,29 +53,23 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
     finally { setPending(false); }
   };
   const remove = async () => {
-    const confirmed = await confirmAction({
-      title: "Remove project?",
-      description: `Remove ${project.name} and its conversations from Citropy? Files stay on disk.`,
-      label: "Remove project",
-      danger: true,
-    });
-    if (!confirmed) return;
+    if (!await confirmRemoveProjects([project.name])) return;
     setPending(true);
     try { await closeProject(project.id, environment); }
     catch (error) { reportError(error); }
     finally { setPending(false); }
   };
   const openMenu = (element: HTMLElement) => {
-    const button = element.querySelector<HTMLButtonElement>(".global-project-edit");
+    const button = element.querySelector<HTMLButtonElement>(".global-project-more");
     if (button?.getAttribute("aria-expanded") !== "true") button?.click();
   };
-  const editLabel = `Edit project ${group.label}`;
+  const moreLabel = `Organize ${group.label}`;
   const Icon = group.icon === FolderIcon && expanded ? FolderOpenIcon : group.icon;
   const newThreadLabel = `New thread · ${group.label}`;
   const disabled = pending || connecting || (current && !connected && !window.citropyDesktop?.connectEnvironment);
 
   return <>
-    <div className="global-project-heading" data-project-id={project.id} data-environment={environment} data-drag-id={group.id} data-active={current && project.id === activeProjectId} data-dragging={dragging}
+    <div className="global-project-heading" data-project-id={project.id} data-environment={environment} data-drag-id={group.id} data-active={current && project.id === activeProjectId} data-dragging={dragging} data-picked={picked}
       onContextMenu={event => {
         if ((event.target as HTMLElement).closest('[role="menu"], dialog')) return;
         event.preventDefault();
@@ -98,15 +91,13 @@ export function ProjectHeading({ group, project, searching, dragging, isFirst, i
         <span className="truncate">{group.label}</span>
         {group.offline && <span className="global-project-offline" title="Disconnected"><DisconnectedIcon size={14} /></span>}
       </button>
-      <Menu align="end" span=".global-project-heading" items={[
+      <Menu align="end" span=".global-project-heading" edge=".rail" items={[
         { id: "open", label: "Open workspace", icon: <FolderOpenIcon size={15} />, disabled, onSelect: () => void run(() => { selectProject(project.id); onConversation(); }) },
         ...(project.isGit ? [{ id: "new-worktree", label: "New thread with workspace options…", icon: <ForkIcon size={15} />, disabled: disabled || !canCreateThread, onSelect: () => void run(() => { selectProject(project.id); onConversation(); void createThread(undefined, true); }) }] : []),
         { id: "rename", label: "Rename project", icon: <EditIcon size={15} />, disabled, onSelect: () => void run(() => setRenaming(true)) },
-        { id: "up", label: "Move up", disabled: isFirst, onSelect: () => onMove(-1) },
-        { id: "down", label: "Move down", disabled: isLast, onSelect: () => onMove(1) },
         { id: "remove", label: "Remove project", icon: <TrashIcon size={15} />, danger: true, disabled, onSelect: () => void remove() },
       ]} trigger={({ id, open, toggle }) => (
-        <button id={id} className="global-project-edit" type="button" aria-label={editLabel} title={editLabel} aria-haspopup="menu" aria-expanded={open} onClick={toggle}><EditIcon size={13} /></button>
+        <button id={id} className="global-project-more" type="button" aria-label={moreLabel} title={moreLabel} aria-haspopup="menu" aria-expanded={open} onClick={toggle}><MoreIcon size={16} /></button>
       )} />
       <button className="global-project-new" type="button" aria-label={newThreadLabel} title={newThreadLabel} disabled={disabled || !canCreateThread} onClick={onNewThread}><NewMessageIcon size={14} /></button>
     </div>

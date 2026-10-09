@@ -25,48 +25,52 @@ function loadUsage(): Promise<UsageLimits> {
   return pending;
 }
 
-function UsageCard({ id, anchor, side }: { id: string; anchor: HTMLElement; side: "right" | "top" }) {
+function UsageCard({ id, anchor, open }: { id: string; anchor: HTMLElement; open: boolean }) {
   const card = useRef<HTMLDivElement>(null);
   const [report, setReport] = useState(cached?.report);
   const [error, setError] = useState("");
   useEffect(() => {
+    if (!open) return;
     let live = true;
-    loadUsage().then((next) => live && setReport(next)).catch((reason: Error) => live && setError(reason.message));
+    loadUsage().then((next) => {
+      if (!live) return;
+      setReport(next);
+      setError("");
+    }).catch((reason: Error) => live && setError(reason.message));
     return () => { live = false; };
-  }, []);
+  }, [open]);
   useLayoutEffect(() => {
     const element = card.current!;
     if (!element.matches(":popover-open")) element.showPopover();
+    if (!open) return;
+    const strip = anchor.closest(".navigation-strip")!.getBoundingClientRect();
     const target = anchor.getBoundingClientRect();
-    const height = element.offsetHeight;
-    const width = element.offsetWidth;
-    const left = side === "right" ? target.right + 8 : target.left;
-    const top = side === "right" ? target.bottom - height : target.top - height - 8;
-    element.style.left = `${Math.max(8, Math.min(left, window.innerWidth - width - 8))}px`;
-    element.style.top = `${Math.max(8, top)}px`;
-  }, [anchor, side, report, error]);
+    element.style.left = `${strip.right}px`;
+    element.style.top = `${Math.max(8, target.bottom - element.offsetHeight)}px`;
+  }, [anchor, open, report, error]);
 
   const providers = report?.providers.filter((entry) => entry.windows.length) ?? [];
   const updated = report ? Math.max(0, ...report.providers.map((entry) => entry.updatedAt)) : 0;
 
   return (
-    <div ref={card} id={id} className="usage-peek" popover="manual" role="tooltip">
-      <header className="usage-peek-header">
-        <strong>Usage limits</strong>
-        {updated > 0 && <span>Updated {clock(updated)}</span>}
-      </header>
-      {error ? <p className="usage-peek-note">{error}</p>
-        : !report ? <p className="usage-peek-note">Reading provider usage…</p>
-        : !providers.length ? <p className="usage-peek-note">No provider limits reported</p>
-        : providers.map((entry) => <ProviderLimits key={entry.provider} entry={entry} />)}
-      <footer className="usage-peek-footer">Click for token totals and history</footer>
+    <div ref={card} className="usage-peek" popover="manual" data-open={open || undefined}>
+      <div id={id} className="usage-peek-card" role="tooltip">
+        <header className="usage-peek-header">
+          <strong>Usage limits</strong>
+          {updated > 0 && <span>Updated {clock(updated)}</span>}
+        </header>
+        {error ? <p className="usage-peek-note">{error}</p>
+          : !report ? <p className="usage-peek-note">Reading provider usage…</p>
+          : !providers.length ? <p className="usage-peek-note">No provider limits reported</p>
+          : providers.map((entry) => <ProviderLimits key={entry.provider} entry={entry} />)}
+      </div>
     </div>
   );
 }
 
 type PeekHandler = (event: { currentTarget: HTMLElement }) => void;
 
-export function useUsagePeek(side: "right" | "top"): {
+export function useUsagePeek(): {
   bind: { onPointerEnter: PeekHandler; onPointerLeave: () => void; onFocus: PeekHandler; onBlur: () => void };
   hide: () => void;
   describedBy?: string;
@@ -74,16 +78,20 @@ export function useUsagePeek(side: "right" | "top"): {
 } {
   const id = useId();
   const [anchor, setAnchor] = useState<HTMLElement>();
+  const [open, setOpen] = useState(false);
   const timer = useRef<number>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const hide = () => {
     clearTimeout(timer.current);
-    setAnchor(undefined);
+    setOpen(false);
   };
   const show = (element: HTMLElement, delay: number) => {
     clearTimeout(timer.current);
     loadUsage().catch(() => undefined);
-    timer.current = window.setTimeout(() => setAnchor(element), delay);
+    timer.current = window.setTimeout(() => {
+      setAnchor(element);
+      setOpen(true);
+    }, delay);
   };
   return {
     bind: {
@@ -93,7 +101,7 @@ export function useUsagePeek(side: "right" | "top"): {
       onBlur: hide,
     },
     hide,
-    describedBy: anchor ? id : undefined,
-    card: anchor && <UsageCard id={id} anchor={anchor} side={side} />,
+    describedBy: open ? id : undefined,
+    card: anchor && <UsageCard id={id} anchor={anchor} open={open} />,
   };
 }
