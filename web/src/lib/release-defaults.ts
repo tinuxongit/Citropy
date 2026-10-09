@@ -5,6 +5,5 @@ export function applyReleaseDefaults(storage: Storage = localStorage): void {
   if (!(window.citropyDesktop ?? window.loomDesktop) || storage.getItem(APPLIED_KEY) === RELEASE_DEFAULTS_VERSION) return;
   storage.setItem("citropy.theme", "neutral");
   storage.setItem("citropy.scheme", "dark");
-  storage.setItem("citropy.stageBackground", "ascii");
   storage.setItem(APPLIED_KEY, RELEASE_DEFAULTS_VERSION);
 }

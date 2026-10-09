@@ -2,7 +2,7 @@ import "./fixtures/isolated-data.mjs";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, writeFile, readFile, rm, rename, symlink, readlink, truncate } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, readlink, truncate } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -12,6 +12,7 @@ import { dataRoot } from "../server/paths.ts";
 import { store } from "../server/store.ts";
 import { beginCheckpoint, finishCheckpoint, restoreCheckpoint, redoCheckpoint, checkpointLock, forkConversation } from "../server/checkpoints.ts";
 import { uploadAttachment } from "../server/assets.ts";
+import { saveToolImages } from "../server/tool-images.ts";
 import { providers } from "../server/providers/index.ts";
 import { runtimeFor } from "../server/runtime.ts";
 import { removeThread } from "../server/routes/threads.ts";
@@ -59,6 +60,19 @@ test("branched and restored conversations send historical attachment references 
       assert.ok(sent[0].includes(JSON.stringify(saved.path)));
     });
   }
+});
+
+test("branched conversations copy only the screenshots their messages show", async t => {
+  const { thread, message } = await fixture(t);
+  const [shown, embedded, later] = await saveToolImages(thread.id, [1, 2, 3].map(() => ({ mime: "image/png", data: Buffer.from("png").toString("base64") })));
+  store.replaceMessages(thread.id, [
+    { ...message, parts: [...message.parts, { id: "tool", kind: "tool", callId: "call", name: "Screenshot", shape: "generic", headline: "Screenshot", input: {}, status: "done", images: [shown] }] },
+    { id: "answer", role: "assistant", ts: 2, parts: [{ id: "answer-text", kind: "text", text: `![page](citropy-image:${embedded.id})` }] },
+    { id: "later", role: "assistant", ts: 3, parts: [{ id: "later-tool", kind: "tool", callId: "later-call", name: "Screenshot", shape: "generic", headline: "Screenshot", input: {}, status: "done", images: [later] }] },
+  ]);
+  const fork = await forkConversation(thread, "answer");
+  t.after(() => removeThread(fork.id));
+  assert.deepEqual((await readdir(join(dataRoot, "tool-images", fork.id))).sort(), [`${embedded.id}.png`, `${shown.id}.png`].sort());
 });
 
 test("reused checkpoint index handles deleted and newly ignored files without changing the user index", async t => {

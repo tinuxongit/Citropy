@@ -211,6 +211,11 @@
   background: var(--raised);
   white-space: nowrap;
 }
+.feature-table-total {
+  margin-left: var(--space-6);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
 .feature-table td {
   padding: var(--space-16) var(--space-16);
   white-space: nowrap;

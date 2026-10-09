@@ -56,7 +56,7 @@
   --popup-edge: 0 0 0 1px var(--line);
 
   --rail: 264px;
-  --inspector: clamp(340px, calc(var(--viewport-width) * 0.29), 500px);
+  --inspector: clamp(340px, calc(var(--viewport-width) * 0.29), 760px);
   --topbar: 45px;
   --tab-height: 30px;
   --tab-gap: var(--space-4);

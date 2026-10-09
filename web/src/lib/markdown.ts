@@ -86,7 +86,7 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
         try {
           const url = new URL(link.href);
           if (images && ["http:", "https:"].includes(url.protocol)) {
-            const favicon = escapeHtml(serverUrl(`/api/favicon?url=${encodeURIComponent(link.href)}`));
+            const favicon = escapeHtml(serverUrl(`/api/favicon?url=${encodeURIComponent(url.origin)}`));
             icon = `<span class="link-site-icon" aria-hidden="true">${SITE_ICON}<img class="link-favicon" src="${favicon}" width="16" height="16" alt="" decoding="async" referrerpolicy="no-referrer"/></span>`;
           }
         } catch {}

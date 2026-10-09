@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { reportError } from "../../lib/api.ts";
-import { removeImagesExcept } from "./drawing-images.ts";
+import { holdImages, removeImagesExcept } from "./drawing-images.ts";
 import { BLANK_PAPER, type Mark, type Paper } from "./marks.ts";
 
 const HISTORY_LIMIT = 100;
@@ -28,12 +28,22 @@ export function useDrawing(projectId: string) {
   const [history, setHistory] = useState(() => fresh(saved.marks));
 
   const unsaved = useRef<(() => void) | null>(null);
+  const imageHolder = useRef({});
 
   useEffect(() => {
     if (imagesSwept) return;
     imagesSwept = true;
     sweepUnusedImages();
   }, []);
+
+  useEffect(() => {
+    const ids = new Set<string>();
+    for (const marks of [...history.past, history.present, ...history.future])
+      for (const mark of marks) if (mark.kind === "image") ids.add(mark.image);
+    holdImages(imageHolder.current, ids);
+  }, [history]);
+
+  useEffect(() => () => holdImages(imageHolder.current, new Set()), []);
 
   useEffect(() => {
     const save = () => {

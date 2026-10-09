@@ -47,6 +47,7 @@ export async function closeProject(id: string): Promise<void> {
   }
   store.closeProject(id);
   forgetGit(id);
+  await browser.forgetBrowserData(id);
 }
 
 export const projectRoutes: Routes = {

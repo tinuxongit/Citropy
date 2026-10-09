@@ -1,4 +1,4 @@
-import { mkdir, open, readFile, readlink, realpath, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, open, readFile, readdir, readlink, realpath, stat, writeFile } from "node:fs/promises";
 import { ifMissing } from "../shared/expected-errors.mjs";
 import { constants, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -20,6 +20,13 @@ const types: Record<string, string> = {
 
 export function removeToolImages(threadId: string): void {
   rmSync(join(root, threadId), { recursive: true, force: true });
+}
+
+export async function copyToolImages(fromThreadId: string, toThreadId: string, keep: (id: string) => boolean): Promise<void> {
+  const names = (await readdir(join(root, fromThreadId)).catch(ifMissing([]))).filter(name => keep(parse(name).name));
+  if (!names.length) return;
+  await mkdir(join(root, toThreadId), { recursive: true, mode: 0o700 });
+  for (const name of names) await copyFile(join(root, fromThreadId, name), join(root, toThreadId, name));
 }
 
 export async function saveToolImages(

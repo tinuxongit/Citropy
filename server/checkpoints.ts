@@ -11,6 +11,7 @@ import { inside } from "./files.ts";
 import { git as runGit, isRepo, workingDiff } from "./git.ts";
 import { parseUnifiedDiff, summarizeUnifiedDiff } from "./diff.ts";
 import { uid } from "./ids.ts";
+import { copyToolImages } from "./tool-images.ts";
 import { emptyUsage } from "../shared/protocol.ts";
 import type { ChangedFile, FilePatch, Thread, Message } from "../shared/protocol.ts";
 import type { ChangeReview, ChangeReviewSummary, ReviewScope } from "../shared/review.ts";
@@ -315,7 +316,8 @@ export async function forkConversation(thread: Thread, messageId: string): Promi
         await writeFile(join(dir, "metadata.json"), JSON.stringify(attachment), { mode: 0o600 });
       }
     }
-    await cp(join(dataRoot, "tool-images", thread.id), join(dataRoot, "tool-images", fork.id), { recursive: true }).catch(ifMissing(undefined));
+    const kept = JSON.stringify(messages);
+    await copyToolImages(thread.id, fork.id, id => kept.includes(id));
     store.replaceMessages(fork.id, messages);
     return fork;
   } catch (error) { store.removeThread(fork.id); throw error; }

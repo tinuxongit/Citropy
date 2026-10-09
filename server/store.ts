@@ -169,12 +169,20 @@ export class Store {
     return messages;
   }
 
+  releaseMessages(threadId: string): void {
+    this.#loaded.delete(threadId);
+  }
+
   readMessages(threadId: string): Message[] {
     return this.#loaded.get(threadId) ?? eventJournal.messages(threadId);
   }
 
   readMessagePage(threadId: string, page: { before?: string; revision?: number }) {
     return eventJournal.messagePage(threadId, page);
+  }
+
+  hasToolImageFile(threadId: string, path: string): boolean {
+    return this.threads.has(threadId) && eventJournal.hasToolImageFile(threadId, path);
   }
 
   search(query: string, signal?: AbortSignal) {
@@ -465,7 +473,7 @@ export class Store {
       if (child.parentThreadId === id) this.removeThread(child.id);
     }
     this.threads.delete(id);
-    this.#loaded.delete(id);
+    this.releaseMessages(id);
     const remaining = this.notifications.filter((entry) => entry.target.threadId !== id);
     if (remaining.length !== this.notifications.length) {
       this.notifications = remaining;

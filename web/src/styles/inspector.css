@@ -349,3 +349,6 @@
 .term .xterm-viewport {
   background: transparent !important;
 }
+.term .xterm-scrollable-element > :is(.scrollbar, .shadow) {
+  display: none;
+}

@@ -2,6 +2,11 @@ import type { AppState } from "./app-state.ts";
 import type { HistoryPage, Message, Part, ServerEvent } from "../../../shared/protocol.ts";
 import { partFingerprint } from "./timeline.ts";
 
+const OPEN_HISTORY = {
+  trimAboveBytes: 8 * 1024 * 1024,
+  keepBytes: 2 * 1024 * 1024,
+};
+
 const requestedHistories = new Set<string>();
 
 export function claimHistoryRequest(threadId: string): boolean {
@@ -128,6 +133,42 @@ export function trimHistories(state: AppState, previous?: AppState): void {
     else Object.assign(state, { [key]: { ...state[key] } });
   }
   for (const id of evict) removeMessages(state, id);
+}
+
+function messageBytes(state: AppState, id: string): number {
+  const { partIds, ...shell } = state.messages[id]!;
+  return contentBytes({ ...shell, parts: partIds.map((partId) => state.parts.get(partId)) });
+}
+
+export function trimOlderMessages(state: AppState, threadId: string): AppState {
+  const page = state.historyPages[threadId];
+  const ids = state.order[threadId];
+  if (!state.historyPaging || !page || !ids || (state.historyBytes[threadId] ?? 0) <= OPEN_HISTORY.trimAboveBytes) return state;
+  let cut = ids.length;
+  let kept = 0;
+  while (cut > 0 && (kept < OPEN_HISTORY.keepBytes || state.messages[ids[cut]!]?.role !== "user")) {
+    cut -= 1;
+    kept += messageBytes(state, ids[cut]!);
+  }
+  if (cut === 0) return state;
+  const next = { ...state };
+  for (const key of allHistory) {
+    if (key === "parts") next.parts = new Map(state.parts);
+    else Object.assign(next, { [key]: { ...state[key] } });
+  }
+  for (const id of ids.slice(0, cut)) {
+    for (const partId of state.messages[id]!.partIds) {
+      next.parts.delete(partId);
+      delete next.reveals[partId];
+      delete next.disclosures[partId];
+    }
+    delete next.messages[id];
+  }
+  next.order[threadId] = ids.slice(cut);
+  next.historyBytes[threadId] = kept;
+  next.historyPages[threadId] = { ...page, next: ids[cut]! };
+  next.timelineVersions[threadId] = (state.timelineVersions[threadId] ?? 0) + 1;
+  return next;
 }
 
 export function unloadedDelta(state: AppState, event: ServerEvent): boolean {

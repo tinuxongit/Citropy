@@ -42,20 +42,17 @@ async function start() {
   followVisualViewport();
   await initializeEnvironment();
   applyReleaseDefaults();
-  const [{ App }, { connect, logClientError }, { useApp, applyChatWidth }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts")]);
+  const [{ App }, { connect, logClientError }, { useApp, applyUiScale, followWindowSize }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts")]);
 
   if (!window.citropyDesktop && window.loomDesktop)
     window.citropyDesktop = window.loomDesktop;
 
-  const { theme, scheme, customColor, chatWidth } = useApp.getState();
-  applyChatWidth(chatWidth);
+  const { theme, scheme, customColor } = useApp.getState();
   document.documentElement.dataset.theme = theme;
   document.documentElement.dataset.scheme = scheme;
   applyCustomColor(customColor, scheme);
-  document.documentElement.style.setProperty(
-    "--ui-scale",
-    String(useApp.getState().uiScale / 100),
-  );
+  applyUiScale();
+  followWindowSize();
   connect();
   window.addEventListener("error", (event) => logClientError(event.error ?? event.message));
   window.addEventListener("unhandledrejection", (event) => logClientError(event.reason));

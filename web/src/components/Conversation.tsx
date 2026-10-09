@@ -7,6 +7,7 @@ import { MessageNavigator } from "./MessageNavigator.tsx";
 import { scaled, useApp } from "../lib/store.ts";
 import { loadOlderThread, loadThread, readThreadNotifications, refreshGit } from "../lib/actions.ts";
 import { reportError } from "../lib/api.ts";
+import { trimOlderMessages } from "../lib/history-cache.ts";
 import { useStickToBottom } from "../lib/use-stick.ts";
 import {
   timelineRows,
@@ -177,6 +178,10 @@ export function Conversation() {
       if (thread) refreshGit(thread.projectId);
     }
   }, [threadId, connected]);
+
+  useEffect(() => {
+    if (threadId && atBottom && following()) useApp.setState((state) => trimOlderMessages(state, threadId));
+  }, [ids, threadId, atBottom, following]);
 
   const mountFollowRequest = useRef(followRequest);
   useLayoutEffect(() => {

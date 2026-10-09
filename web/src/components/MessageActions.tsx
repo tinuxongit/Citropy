@@ -94,7 +94,7 @@ export function MessageActions({ threadId, messageId, replyIds = [messageId], us
         <fieldset className="restore-options" aria-label="What to restore" disabled={busy}>
           {choices.map(({ value, label, description, icon: Icon }) => {
             const disabled = value !== "conversation" && Boolean(fileIssue);
-            return <label className="restore-choice" key={value}>
+            return <label className="restore-choice" data-disabled={busy || disabled} key={value}>
               <Icon size={18} aria-hidden="true" />
               <span className="restore-choice-text">
                 <strong id={`${id}-${value}-label`}>{label}</strong>

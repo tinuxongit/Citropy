@@ -35,6 +35,7 @@ test("browser profiles isolate imported cookies and preserve source databases", 
             saved.length = 0;
           },
           clearCache: async () => {},
+          clearCodeCaches: async () => {},
         });
       }
       return partitions.get(id);
@@ -136,6 +137,20 @@ test("browser profiles isolate imported cookies and preserve source databases", 
   await action("clear", { profileId, kind: "cookies" });
   await action("profiles", { method: "DELETE", id: profileId });
   assert.equal(browserProfile("fixture").id, "workspace");
+  await action("import", { sourceId: sources[0].id });
+  assert.equal(
+    (await session.fromPartition(browserProfile("fixture").partition).cookies.get({})).length,
+    1,
+  );
+  await action("forget");
+  assert.equal(
+    (await session.fromPartition("persist:citropy-fixture").cookies.get({})).length,
+    0,
+  );
+  assert.equal(
+    Object.hasOwn(JSON.parse(fs.readFileSync(join(directory, "browser-profiles.json"), "utf8")), "fixture"),
+    false,
+  );
   const key = pbkdf2Sync("peanuts", "saltysalt", 1, 16, "sha1");
   const host = ".example.test";
   const cipher = createCipheriv("aes-128-cbc", key, Buffer.alloc(16, 32));

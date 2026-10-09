@@ -275,10 +275,23 @@ export function handleProfiles(operation, input, session, tabs) {
   return result;
 }
 
+async function clearProfileData(target) {
+  await target.clearStorageData();
+  await target.clearCache();
+  await target.clearCodeCaches({});
+}
+
 async function applyProfiles(operation, input, session, tabs) {
   const settings = projectProfiles(input.projectId);
   const getSession = (id) =>
     session.fromPartition(browserProfile(input.projectId, id).partition);
+  if (operation === "forget") {
+    for (const profile of settings.profiles)
+      await clearProfileData(getSession(profile.id));
+    delete preferences[input.projectId];
+    await save();
+    return { ok: true };
+  }
   if (operation === "sources")
     return (await sources()).map(({ id, name, browser }) => ({
       id,
@@ -314,8 +327,7 @@ async function applyProfiles(operation, input, session, tabs) {
         )
       )
         throw new Error("Close this profile's browser tabs first.");
-      await getSession(input.id).clearStorageData();
-      await getSession(input.id).clearCache();
+      await clearProfileData(getSession(input.id));
       settings.profiles = settings.profiles.filter(
         (entry) => entry.id !== input.id,
       );

@@ -1,6 +1,8 @@
 import { useId, useState, type CSSProperties, type SVGProps } from "react";
 
-const CENTER = 12;
+const VIEW_BOX = 24;
+const CENTER = VIEW_BOX / 2;
+const FILTER_MARGIN = 4;
 const DROPS = 3;
 const DROP_RADIUS = 4.75;
 const SPREAD = 6.75;
@@ -35,22 +37,28 @@ export function Loader({ size = 16, className, style, ...rest }: { size?: number
       aria-hidden={rest["aria-label"] ? undefined : true}
       {...rest}
       className={className ? `loader ${className}` : "loader"}
-      style={{ ...phase, ...style }}
+      style={{ ...phase, filter: `url(#${id})`, ...style }}
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox={`0 0 ${VIEW_BOX} ${VIEW_BOX}`}
       fill="currentColor"
     >
       <defs>
-        <filter id={id} filterUnits="userSpaceOnUse" x={-4} y={-4} width={32} height={32}>
-          <feGaussianBlur stdDeviation={BLUR} />
+        <filter
+          id={id}
+          filterUnits="objectBoundingBox"
+          primitiveUnits="objectBoundingBox"
+          x={-FILTER_MARGIN / VIEW_BOX}
+          y={-FILTER_MARGIN / VIEW_BOX}
+          width={1 + (2 * FILTER_MARGIN) / VIEW_BOX}
+          height={1 + (2 * FILTER_MARGIN) / VIEW_BOX}
+        >
+          <feGaussianBlur stdDeviation={BLUR / VIEW_BOX} />
           <feColorMatrix values={`1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 ${sharpness} ${(1 - sharpness) / 2}`} />
         </filter>
       </defs>
-      <g filter={`url(#${id})`}>
-        <g className="loader-turn">
-          {PUSHES.map((push, drop) => <circle key={drop} className="loader-drop" cx={CENTER} cy={CENTER} r={DROP_RADIUS} style={push} />)}
-        </g>
+      <g className="loader-turn">
+        {PUSHES.map((push, drop) => <circle key={drop} className="loader-drop" cx={CENTER} cy={CENTER} r={DROP_RADIUS} style={push} />)}
       </g>
     </svg>
   );

@@ -184,6 +184,10 @@ export async function usageReport(
     }),
     pricing: prices.pricing,
     conversations,
-    providers: await Promise.all(providers.map(provider => providerLimits(provider))),
+    providers: await usageLimits(providers),
   };
+}
+
+export function usageLimits(providers: ProviderId[]): Promise<ProviderUsage[]> {
+  return Promise.all(providers.map(provider => providerLimits(provider)));
 }

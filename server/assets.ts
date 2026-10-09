@@ -163,15 +163,7 @@ export async function removeAttachment(
 
 function readImagePath(threadId: string, path: string): string | null {
   if (!threadId || !path) return null;
-  const thread = store.threads.get(threadId);
-  const found = thread?.messages.some((message) =>
-    message.parts.some(
-      (part) =>
-        part.kind === "tool" &&
-        part.imageFiles?.some((file) => file.path === path),
-    ),
-  );
-  return found ? path : null;
+  return store.hasToolImageFile(threadId, path) ? path : null;
 }
 
 async function assetPath(params: URLSearchParams): Promise<string> {

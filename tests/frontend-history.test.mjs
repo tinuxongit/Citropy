@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { applyEvents } from "../web/src/lib/server-events.ts";
-import { claimHistoryRequest, trimHistories } from "../web/src/lib/history-cache.ts";
+import { claimHistoryRequest, trimHistories, trimOlderMessages } from "../web/src/lib/history-cache.ts";
 import { createTimelineSelector, timelineRows } from "../web/src/lib/timeline.ts";
 import { useApp } from "../web/src/lib/app-state.ts";
 
@@ -268,4 +268,26 @@ test("late cursor pages are rejected and revision resets replace obsolete histor
   assert.deepEqual(complete.order.chat, ["legacy"]);
   assert.equal(complete.historyPages.chat, undefined);
   assert.deepEqual(reset.historyPages.chat, { revision: 3, next: "restart" });
+});
+
+test("a long open conversation drops its oldest turns and can page them back", () => {
+  const turn = (index) => [
+    { id: `ask${index}`, role: "user", ts: 1, parts: [text(`ask${index}-text`, "Question")] },
+    message(`answer${index}`, [text(`answer${index}-text`, "x".repeat(512 * 1024))]),
+  ];
+  const turns = Array.from({ length: 12 }, (_, index) => turn(index)).flat();
+  const state = { ...applyEvents(initial(), [{ ...history("chat", turns), page: { revision: 4 } }]), historyPaging: true };
+  const trimmed = trimOlderMessages(state, "chat");
+  assert.deepEqual(trimmed.order.chat, ["ask10", "answer10", "ask11", "answer11"]);
+  assert.deepEqual(trimmed.historyPages.chat, { revision: 4, next: "ask10" });
+  assert.equal(trimmed.parts.has("answer9-text"), false);
+  assert.equal(trimmed.messages.ask9, undefined);
+  assert.ok(trimmed.historyBytes.chat < state.historyBytes.chat / 4);
+  assert.equal(state.order.chat.length, 24);
+  assert.equal(state.parts.has("answer9-text"), true);
+  assert.strictEqual(trimOlderMessages(trimmed, "chat"), trimmed);
+  assert.strictEqual(trimOlderMessages({ ...state, historyPaging: false }, "chat").order.chat, state.order.chat);
+  const older = applyEvents(trimmed, [{ ...history("chat", turns.slice(0, 20)), page: { before: "ask10", revision: 4 } }]);
+  assert.equal(older.order.chat.length, 24);
+  assert.equal(older.historyPages.chat.next, undefined);
 });

@@ -248,7 +248,7 @@ export function DrawingPane({ projectId }: { projectId: string }) {
     const mark = current.current;
     if (!mark) return;
     if (mark.kind === "freehand") {
-      const events = event.nativeEvent.getCoalescedEvents();
+      const events = event.nativeEvent.getCoalescedEvents?.() ?? [];
       for (const entry of events.length ? events : [event.nativeEvent]) mark.points.push(strokePoint(entry));
     } else if (mark.kind === "shape") {
       const to = pointFrom(event);

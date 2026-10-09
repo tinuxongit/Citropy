@@ -57,7 +57,7 @@ test("idle terminals release GPU contexts and preserve buffer, selection and res
   </script></body></html>`);
   await page.route("**/terminal-renderer.html", route => route.fulfill({ contentType: "text/html", body: html }));
   await page.goto(new URL("/terminal-renderer.html", server.resolvedUrls.local[0]).href);
-  await page.waitForFunction(() => document.querySelectorAll(".term canvas").length === 2 && window.terminal.buffer.active.length >= 500);
+  await page.waitForFunction(() => document.querySelectorAll(".term .xterm-screen canvas").length === 2 && window.terminal.buffer.active.length >= 500);
   const initialContexts = await page.evaluate(() => window.contexts.size);
   await page.evaluate(() => { window.terminal.scrollToLine(40); window.terminal.select(0, 42, 6); });
   const state = () => page.evaluate(() => {
@@ -72,7 +72,7 @@ test("idle terminals release GPU contexts and preserve buffer, selection and res
   await page.waitForTimeout(100);
   assert.equal(await page.evaluate(() => window.contexts.size), initialContexts);
   await page.evaluate(() => window.setActive(false));
-  await page.waitForFunction(() => document.querySelectorAll(".term canvas").length === 0, undefined, { timeout: 10_000 });
+  await page.waitForFunction(() => document.querySelectorAll(".term .xterm-screen canvas").length === 0, undefined, { timeout: 10_000 });
   assert.equal(await page.evaluate(() => [...window.contexts].every(context => context.isContextLost())), true);
   assert.deepEqual(await state(), before);
   for (let index = 0; index < 5; index++) {
@@ -82,7 +82,7 @@ test("idle terminals release GPU contexts and preserve buffer, selection and res
   }
   assert.equal(await page.evaluate(() => window.contexts.size), initialContexts);
   await page.evaluate(() => window.setActive(true));
-  await page.waitForFunction(() => document.querySelectorAll(".term canvas").length === 2);
+  await page.waitForFunction(() => document.querySelectorAll(".term .xterm-screen canvas").length === 2);
   assert.deepEqual(await state(), before);
   assert.equal(opens.at(-1).offset, output.length);
   await page.evaluate(() => window.setConnected(false));
@@ -111,7 +111,7 @@ test("idle terminals release GPU contexts and preserve buffer, selection and res
     await page.waitForTimeout(600);
   }
   assert.equal(await page.evaluate(() => window.webglAttempts), 1);
-  assert.equal(await page.locator(".term canvas").count(), 0);
+  assert.equal(await page.locator(".term .xterm-screen canvas").count(), 0);
   assert.ok(await page.locator(".xterm-rows").textContent());
   assert.deepEqual(errors, []);
 });
@@ -181,10 +181,10 @@ test("terminal panes reuse successful WebGL detection while preserving per-pane 
     await page.route("**/terminal-capability.html", route => route.fulfill({ contentType: "text/html", body: html }));
     await page.goto(new URL("/terminal-capability.html", server.resolvedUrls.local[0]).href);
     await page.waitForFunction(() => window.probes === 1 && window.terminals[0].buffer.active.getLine(0).translateToString().includes("colored"));
-    assert.equal(await page.locator(".term canvas").count(), 0);
+    assert.equal(await page.locator(".term .xterm-screen canvas").count(), 0);
     for (const index of [1, 2]) {
       await page.evaluate(index => window.setActive(index), index);
-      await page.waitForFunction(index => window.terminals.length === index + 1 && document.querySelectorAll(".term canvas").length === index * 2, index);
+      await page.waitForFunction(index => window.terminals.length === index + 1 && document.querySelectorAll(".term .xterm-screen canvas").length === index * 2, index);
     }
     assert.equal(await page.evaluate(() => window.probes), 2);
     assert.deepEqual(await page.evaluate(() => window.terminals.map(terminal => ({ text: terminal.buffer.active.getLine(0).translateToString(true), color: terminal.buffer.active.getLine(0).getCell(0).getFgColor(), fontSize: terminal.options.fontSize, fontFamily: terminal.options.fontFamily, green: terminal.options.theme.green, scrollback: terminal.options.scrollback }))), Array.from({ length: 3 }, () => ({ text: "colored █▓▒░ ┌─┐ text", color: 2, fontSize: 13, fontFamily: "monospace", green: "#3ecf8e", scrollback: 8000 })));
@@ -199,7 +199,7 @@ test("terminal panes reuse successful WebGL detection while preserving per-pane 
     await page.waitForFunction(cols => window.terminals[2].cols < cols, before.cols);
     assert.ok(resizes.some(event => event.termId === "terminal-2" && event.cols < before.cols));
     await page.evaluate(() => window.setActive(1));
-    await page.waitForFunction(() => window.terminals[1].element.offsetParent !== null && window.terminals[2].element.offsetParent === null && window.terminals[1].element.querySelectorAll("canvas").length === 2);
+    await page.waitForFunction(() => window.terminals[1].element.offsetParent !== null && window.terminals[2].element.offsetParent === null && window.terminals[1].element.querySelectorAll(".xterm-screen canvas").length === 2);
     await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth);
     assert.equal(opens.at(-1).offset, output.length);
     assert.equal(await page.evaluate(() => window.probes), 2);

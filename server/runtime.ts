@@ -923,6 +923,7 @@ export function closeIdleSessions(now = Date.now()): void {
     if (now - since < IDLE_SESSION_MS) continue;
     runtime.dispose(true);
     runtimes.delete(id);
+    store.releaseMessages(id);
   }
 }
 

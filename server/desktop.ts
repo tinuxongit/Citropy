@@ -2,14 +2,18 @@ import { remoteId } from "./remote.ts";
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { closeSync, mkdirSync, openSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { WebSocket } from "ws";
 import { dev, developmentOrigin, origin } from "./config.ts";
+import { dataRoot } from "./paths.ts";
 
 const token = process.env.CITROPY_DESKTOP_TOKEN || randomBytes(32).toString("hex");
 const require = createRequire(import.meta.url);
 const entry = fileURLToPath(new URL("../desktop/entry.mjs", import.meta.url));
+const errorLog = join(dataRoot, "logs", "desktop.log");
 export const desktopEvents = new EventEmitter();
 let connection: WebSocket | null = null;
 let child: ChildProcess | null = null;
@@ -118,14 +122,16 @@ export function openDesktop(): Promise<void> {
     };
     delete env.ELECTRON_RUN_AS_NODE;
     try {
-      child = spawn(require("electron") as string, [entry], {
-        env,
-        stdio: ["ignore", "ignore", "pipe"],
-      });
-      let errorText = "";
-      child.stderr?.on("data", (data) => {
-        errorText = `${errorText}${data}`.slice(-2000);
-      });
+      mkdirSync(dirname(errorLog), { recursive: true, mode: 0o700 });
+      const errors = openSync(errorLog, "w", 0o600);
+      try {
+        child = spawn(require("electron") as string, [entry], {
+          env,
+          stdio: ["ignore", "ignore", errors],
+        });
+      } finally {
+        closeSync(errors);
+      }
       child.once("error", (error) => {
         clearTimeout(timer);
         desktopEvents.off("connected", connected);
@@ -138,7 +144,7 @@ export function openDesktop(): Promise<void> {
         if (!connection)
           reject(
             new Error(
-              errorText.trim().split("\n").at(-1) ||
+              readFileSync(errorLog, "utf8").trim().split("\n").at(-1) ||
                 "Citropy desktop closed before connecting",
             ),
           );

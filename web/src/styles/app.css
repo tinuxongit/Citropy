@@ -21,7 +21,7 @@
   height: 100%;
   isolation: isolate;
 }
-.shell:has(> .shell-body .sliding-panel[data-side="left"][data-shown="true"]) {
+.shell:has(> .shell-body > .sliding-panel[data-side="left"][data-shown="true"], > .shell-body > .stage > .section-view > .sliding-panel[data-side="left"][data-shown="true"]) {
   --visible-rail: var(--rail);
 }
 .shell-body,
@@ -36,7 +36,7 @@
     260px,
     var(
       --inspector-width,
-      clamp(280px, calc(var(--viewport-width) * 0.29), 500px)
+      clamp(280px, calc(var(--viewport-width) * 0.29), 760px)
     ),
     calc(var(--viewport-width) - var(--strip) - var(--visible-rail) - 360px)
   );

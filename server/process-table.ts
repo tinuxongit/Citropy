@@ -82,6 +82,18 @@ export function parseLinuxProcessStat(value: string, ticks: number): Pick<Proces
   return { parent, startedAt: `linux:${started}`, cpuTime: (user + system) / ticks };
 }
 
+export function parseLinuxProportionalMemory(value: string): number | undefined {
+  const kilobytes = /^Pss:\s+(\d+) kB$/m.exec(value)?.[1];
+  return kilobytes === undefined ? undefined : Number(kilobytes) * 1024;
+}
+
+async function readProcessFile(path: string): Promise<string> {
+  return readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
+    if (["ENOENT", "ESRCH", "EACCES", "EPERM"].includes(error.code ?? "")) return "";
+    throw error;
+  });
+}
+
 let scanning: Promise<ProcessEntry[]> | undefined;
 let clockTicks: Promise<number> | undefined;
 
@@ -110,12 +122,9 @@ export async function processTable(roots?: number[]): Promise<ProcessEntry[]> {
   }).catch((error) => { clockTicks = undefined; throw error; });
   const ticks = await clockTicks;
   const sampled = await Promise.all(table.map(async (entry) => {
-    const value = await readFile(`/proc/${entry.pid}/stat`, "utf8").catch((error: NodeJS.ErrnoException) => {
-      if (["ENOENT", "ESRCH", "EACCES", "EPERM"].includes(error.code ?? "")) return "";
-      throw error;
-    });
+    const [value, memory] = await Promise.all([readProcessFile(`/proc/${entry.pid}/stat`), readProcessFile(`/proc/${entry.pid}/smaps_rollup`)]);
     const usage = parseLinuxProcessStat(value, ticks);
-    return usage ? [{ ...entry, ...usage, sampledAt: performance.now() }] : [];
+    return usage ? [{ ...entry, ...usage, memory: parseLinuxProportionalMemory(memory) ?? entry.memory, sampledAt: performance.now() }] : [];
   }));
   table = sampled.flat();
   const included = descendants(table, roots);

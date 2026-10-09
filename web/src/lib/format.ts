@@ -139,6 +139,7 @@ export function duration(ms: number): string {
   const rounded = Math.round(seconds);
   const minutes = Math.floor(rounded / 60);
   const rest = rounded % 60;
+  if (minutes >= 60) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
   return `${minutes}m ${rest}s`;
 }
 

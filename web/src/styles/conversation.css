@@ -94,7 +94,7 @@
   max-height: 50%;
   background: var(--text-4);
   border-radius: 999px;
-  opacity: 0.28;
+  opacity: var(--message-nav-stop-opacity, 0.28);
   transition: width var(--dur-fast), opacity var(--dur-fast);
 }
 .message-nav-stop > span::before,
@@ -112,9 +112,8 @@
 .message-nav-stop > span::after {
   background: var(--text);
 }
-.message-nav:hover .message-nav-stop > span,
-.message-nav:has(:focus-visible) .message-nav-stop > span {
-  opacity: 1;
+.message-nav:is(:hover, :has(:focus-visible)) {
+  --message-nav-stop-opacity: 1;
 }
 .message-nav-stop[aria-current] > span {
   width: 15px;
@@ -1098,7 +1097,7 @@
 .user-card .prose p {
   white-space: pre-wrap;
 }
-.user-card > * + * {
+.user-card > :not(:first-child) {
   margin-top: var(--space-10);
 }
 .user-card[data-collapsed] {

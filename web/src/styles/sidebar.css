@@ -267,7 +267,7 @@
   flex-direction: column;
   max-height: min(460px, calc(100vh - 80px));
 }
-.app-update-popover:has(.app-update-notes) > * {
+.app-update-popover > * {
   flex: none;
 }
 .app-update-popover > .app-update-notes {

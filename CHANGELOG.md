@@ -2,6 +2,42 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.8.0
+
+### Added
+- Settings > Diagnostics shows Citropy's total memory and CPU use, in a summary card and in the process table headings.
+
+### Changed
+- The app uses the new Citropy Sans font.
+- The model picker has a new design.
+- An agent's work steps fold separately from its final answer.
+- Thinking stays open while it streams.
+- Tabs behave like Chrome tabs.
+- Window corners are rounded again, and the window has no outline.
+- Your messages use a shorter bubble.
+- On large windows, text and controls grow a little with the window. The UI size setting still applies on top.
+- The side panel keeps its share of the window when you resize it, and can be made wider than before.
+- The stop button is larger and uses the accent color.
+- New installs start with the plain background instead of the ASCII animation.
+- The terminal uses a newer version of xterm.
+- Citropy uses less memory. Very long open chats unload their oldest messages while you read the latest ones and load them again when you scroll up. Chats idle for an hour release their messages on the server. The code editor stops its TypeScript checker after two minutes without a TypeScript file open.
+- The usage pop-up loads only your limits, so it opens faster.
+- Terminals keep up with fast output, such as long build logs, with much less work.
+- Closing a project also clears the browser data saved for it.
+
+### Fixed
+- A chat no longer shows "Thinking" after the reply has finished. This happened when you sent a message while the agent was handling a finished background task.
+- Timers longer than an hour show hours, such as "16h 40m", instead of "999m 32s".
+- Opening and closing the terminal panel no longer leaks memory.
+- Drawings no longer keep removed images in memory.
+- Copy and cut in the code editor's menu work when Citropy is opened over the local network. Paste explains to use the keyboard shortcut when the clipboard can't be read there.
+- Drawing works when Citropy is opened over the local network.
+- Branching a chat copies only the screenshots that the new chat still uses.
+- Screenshots in long chats load faster.
+- Deleting all of a draft's text and files removes the saved draft.
+- Site icons next to links are fetched once per site instead of once per link.
+- Restore options that can't be chosen look disabled.
+
 ## 0.7.0
 
 ### Added

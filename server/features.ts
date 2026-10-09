@@ -41,7 +41,7 @@ import { changeSkill, listSkills, readSkill } from "./skills.ts";
 import { serveFavicon } from "./favicons.ts";
 import { serveToolImage } from "./tool-images.ts";
 import { diagnostics } from "./diagnostics.ts";
-import { usageReport } from "./usage.ts";
+import { usageLimits, usageReport } from "./usage.ts";
 import { configureAssistance, dismissGitActionError, generateThreadTitle, startGitAction } from "./assistance.ts";
 import { listCommands } from "./commands.ts";
 import { isProviderId, type ProjectSettings, type ProviderInfo } from "../shared/protocol.ts";
@@ -148,6 +148,7 @@ export async function handleFeatures(
   }
   const projectId = url.searchParams.get("projectId") || undefined;
   const threadId = url.searchParams.get("threadId") || undefined;
+  const usableProviders = () => providers.filter(hasUsableAccount).map((entry) => entry.id);
   const respond = (value: unknown) => {
     res
       .writeHead(200, {
@@ -513,13 +514,9 @@ export async function handleFeatures(
       );
       respond(await listSkills(projectId));
     } else if (url.pathname === "/api/usage" && req.method === "GET")
-      respond(
-        await usageReport(
-          providers
-            .filter(hasUsableAccount)
-            .map((entry) => entry.id),
-        ),
-      );
+      respond(await usageReport(usableProviders()));
+    else if (url.pathname === "/api/usage/limits" && req.method === "GET")
+      respond({ providers: await usageLimits(usableProviders()) });
     else if (url.pathname === "/api/diagnostics" && req.method === "GET")
       respond(await diagnostics());
     else if (

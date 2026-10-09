@@ -1,8 +1,15 @@
 import { environmentStorage } from "./environment.ts";
-import { CHAT_WIDTHS, useApp, type ChatWidth, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
+import { CHAT_WIDTHS, WINDOW_SHARE_PANELS, useApp, type ChatWidth, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import { applyCustomColor } from "./custom-theme.ts";
 import type { SearchEngine } from "./web-search.ts";
+
+const WINDOW_GROWTH = {
+  fromWidth: 1600,
+  toWidth: 2560,
+  largest: 1.2,
+  step: 5,
+};
 
 export function toggleFavoriteModel(model: WritingModel): void {
   const current = useApp.getState().favoriteModels;
@@ -16,7 +23,7 @@ export function setPanelWidth(panel: PanelId, width?: number): void {
   if (width !== undefined && (!Number.isFinite(width) || width <= 0)) return;
   const panelWidths = { ...useApp.getState().panelWidths };
   if (width === undefined) delete panelWidths[panel];
-  else panelWidths[panel] = Math.round(width);
+  else panelWidths[panel] = WINDOW_SHARE_PANELS.includes(panel) ? width / viewportWidth() : Math.round(width);
   useApp.setState({ panelWidths });
   environmentStorage.setItem("citropy.panelWidths", JSON.stringify(panelWidths));
 }
@@ -113,7 +120,8 @@ export function setStageBackground(background: StageBackground): void {
 }
 
 export function applyChatWidth(width: ChatWidth): void {
-  document.documentElement.style.setProperty("--reading", `${CHAT_WIDTHS[width].pixels}px`);
+  const { uiScale, uiSize } = useApp.getState();
+  document.documentElement.style.setProperty("--reading", `${Math.round((CHAT_WIDTHS[width].pixels * uiScale) / uiSize)}px`);
 }
 
 export function setChatWidth(width: ChatWidth): void {
@@ -128,15 +136,39 @@ export function setSidebarGroupOpen(id: string, open: boolean): void {
   environmentStorage.setItem("citropy.sidebarGroups", JSON.stringify(sidebarGroups));
 }
 
-export function setUiScale(value: number): void {
-  const uiScale = Math.max(75, Math.min(150, Math.round(value)));
-  if (!Number.isFinite(uiScale)) return;
+export function panelWidthValue(panel: PanelId, saved: number, uiScale: number): string {
+  return WINDOW_SHARE_PANELS.includes(panel) ? `calc(var(--viewport-width) * ${saved})` : `${Math.round((saved * uiScale) / 100)}px`;
+}
+
+export function setUiSize(value: number): void {
+  const uiSize = Math.max(75, Math.min(150, Math.round(value)));
+  if (!Number.isFinite(uiSize)) return;
+  useApp.setState({ uiSize });
+  environmentStorage.setItem("citropy.uiScale", String(uiSize));
+  applyUiScale();
+}
+
+function windowGrowth(): number {
+  const { fromWidth, toWidth, largest } = WINDOW_GROWTH;
+  const progress = Math.max(0, Math.min(1, (window.innerWidth - fromWidth) / (toWidth - fromWidth)));
+  return 1 + progress * (largest - 1);
+}
+
+function windowScale(): number {
+  return Math.round((useApp.getState().uiSize * windowGrowth()) / WINDOW_GROWTH.step) * WINDOW_GROWTH.step;
+}
+
+export function followWindowSize(): void {
+  window.addEventListener("resize", () => {
+    if (windowScale() !== useApp.getState().uiScale) applyUiScale();
+  });
+}
+
+export function applyUiScale(): void {
+  const uiScale = windowScale();
   useApp.setState({ uiScale });
-  environmentStorage.setItem("citropy.uiScale", String(uiScale));
-  document.documentElement.style.setProperty(
-    "--ui-scale",
-    String(uiScale / 100),
-  );
+  document.documentElement.style.setProperty("--ui-scale", String(uiScale / 100));
+  applyChatWidth(useApp.getState().chatWidth);
 }
 
 export function setTextStreaming(value: boolean): void {

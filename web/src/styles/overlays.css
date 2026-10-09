@@ -604,7 +604,7 @@
 .usage-peek .limit-window { grid-template-columns: var(--usage-peek-name-width) minmax(0, 1fr) var(--usage-peek-reset-width); align-items: center; gap: var(--space-12); padding: 0 var(--space-16); }
 .usage-peek .limit-window i { height: var(--usage-peek-bar-height); border-radius: 0; }
 .usage-peek .limit-reset { justify-content: end; }
-.usage-peek .limit-reset > span + span { display: none; }
+.usage-peek .limit-reset > span:not(:first-child) { display: none; }
 @keyframes usage-peek-in { from { opacity: 0; transform: translateY(2px); } }
 @media (prefers-reduced-motion: reduce) { .usage-peek { animation-name: thread-preview-enter; } }
 .dev-triggers {

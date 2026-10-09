@@ -288,7 +288,7 @@ export function Composer({
         }}
       >
         <ComposerFrame />
-        <motion.div className="composer-tabs" layout layoutRoot>
+        <motion.div className="composer-tabs" layout layoutRoot layoutDependency={tabs}>
           {tabs}
         </motion.div>
         <div className="composer-dock">
@@ -370,12 +370,12 @@ export function Composer({
                 <button
                   className="btn composer-stop"
                   type="button"
-                  data-variant="danger"
+                  data-variant="primary"
                   aria-label="Stop"
                   title="Stop"
                   onClick={stopThread}
                 >
-                  <StopIcon size={11} />
+                  <StopIcon size={18} />
                 </button>
               </>
             ) : (

@@ -16,7 +16,8 @@ export function useComposerDraft(threadId: string | null, scope: string) {
       clearTimeout(timer);
       if (pending.current !== save) return;
       pending.current = null;
-      environmentStorage.setItem(
+      if (!value && !attachments.length) environmentStorage.removeItem(`citropy.draft.${threadId}`, scope);
+      else environmentStorage.setItem(
         `citropy.draft.${threadId}`,
         JSON.stringify({ text: value, attachments }),
         scope,

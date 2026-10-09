@@ -4,13 +4,25 @@ import { randomId } from "../../lib/random-id.ts";
 const files = fileStore("citropy-drawing-images");
 const bitmaps = new Map<string, ImageBitmap>();
 const loading = new Map<string, Promise<ImageBitmap>>();
+const holders = new Map<object, ReadonlySet<string>>();
 
 export async function storeImage(file: Blob): Promise<{ id: string; bitmap: ImageBitmap }> {
   const id = randomId();
   const bitmap = await createImageBitmap(file);
-  bitmaps.set(id, bitmap);
   await files.save(id, file);
+  bitmaps.set(id, bitmap);
   return { id, bitmap };
+}
+
+export function holdImages(holder: object, ids: ReadonlySet<string>): void {
+  if (ids.size) holders.set(holder, ids);
+  else holders.delete(holder);
+  const held = [...holders.values()];
+  for (const [id, bitmap] of bitmaps) {
+    if (held.some((set) => set.has(id))) continue;
+    bitmap.close();
+    bitmaps.delete(id);
+  }
 }
 
 export function cachedImage(id: string): ImageBitmap | undefined {

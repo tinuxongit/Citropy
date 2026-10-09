@@ -6,6 +6,10 @@ import { dataRoot } from "./paths.ts";
 import { normalizeTodos } from "../shared/todos.ts";
 import type { HistoryPage, Message, Part, ServerEvent, Thread } from "../shared/protocol.ts";
 
+const SETTINGS = {
+  receiptRetentionMs: 86_400_000,
+};
+
 function normalizePart(part: Part): Part {
   return part.kind === "todo" ? { ...part, items: normalizeTodos(part.items) } : part;
 }
@@ -37,6 +41,7 @@ export class EventJournal {
   #readOnly: boolean;
   #statements = new Map<string, StatementSync>();
   #pending = new Map<string, Promise<ServerEvent[]>>();
+  #toolImageFiles = new Map<string, Set<string>>();
 
   constructor(path: string, readOnly = false) {
     this.#path = path;
@@ -53,6 +58,7 @@ export class EventJournal {
       CREATE TABLE IF NOT EXISTS events (sequence INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS documents (kind TEXT NOT NULL, id TEXT NOT NULL, parent TEXT NOT NULL, position INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(kind,id));
       CREATE INDEX IF NOT EXISTS document_parent ON documents(kind,parent,position);
+      CREATE INDEX IF NOT EXISTS part_state ON documents(json_extract(data,'$.kind'),json_extract(data,'$.status'),json_extract(data,'$.shape'),json_extract(data,'$.complete')) WHERE kind='part';
       CREATE TABLE IF NOT EXISTS text_deltas (part TEXT NOT NULL, sequence INTEGER NOT NULL, text TEXT NOT NULL, PRIMARY KEY(part,sequence)) WITHOUT ROWID;
       CREATE TABLE IF NOT EXISTS deleted_threads (id TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS search_revisions (thread TEXT PRIMARY KEY, sequence INTEGER NOT NULL);
@@ -156,9 +162,10 @@ export class EventJournal {
       if (sequence % 500 === 0) {
         this.#statement("DELETE FROM events WHERE sequence < ?").run(sequence - 5000);
         this.#db.exec("DELETE FROM events WHERE sequence IN (SELECT sequence FROM (SELECT sequence, sum(length(CAST(payload AS BLOB))) OVER (ORDER BY sequence DESC) AS bytes FROM events) WHERE bytes > 8388608)");
-        this.#statement("DELETE FROM receipts WHERE created < ?").run(Date.now() - 30 * 86400_000);
+        this.#statement("DELETE FROM receipts WHERE created < ?").run(Date.now() - SETTINGS.receiptRetentionMs);
       }
       this.#db.exec("COMMIT");
+      this.#forgetToolImageFiles(event);
       return sequence;
     } catch (error) {
       this.#db.exec("ROLLBACK");
@@ -239,6 +246,25 @@ export class EventJournal {
     return { messages, page: { ...(before ? { before } : {}), ...(next ? { next } : {}), revision } };
   }
 
+  hasToolImageFile(threadId: string, path: string): boolean {
+    let paths = this.#toolImageFiles.get(threadId);
+    if (!paths) {
+      paths = new Set(this.#statement(`SELECT json_extract(file.value,'$.path') AS path FROM documents m CROSS JOIN documents p ON p.kind='part' AND p.parent=m.id, json_each(p.data,'$.imageFiles') file
+        WHERE m.kind='message' AND m.parent=? AND instr(p.data,'"imageFiles"') AND json_extract(p.data,'$.kind')='tool'`).all(threadId).map(row => String(row.path)));
+      this.#toolImageFiles.set(threadId, paths);
+    }
+    return paths.has(path);
+  }
+
+  #forgetToolImageFiles(event: ServerEvent): void {
+    if (event.t === "thread.remove") this.#toolImageFiles.delete(event.id);
+    else if (event.t === "thread.messages" ||
+      (event.t === "message.add" && event.message.parts.some(part => part.kind === "tool" && part.imageFiles)) ||
+      (event.t === "part.add" && event.part.kind === "tool" && event.part.imageFiles) ||
+      (event.t === "part.patch" && Object.hasOwn(event.patch, "imageFiles")))
+      this.#toolImageFiles.delete(event.threadId);
+  }
+
   messageTexts(threadId: string): Array<{ id: string; text: string }> {
     const texts: Array<{ id: string; text: string }> = [];
     for (const row of this.#statement("SELECT m.id AS id, json_quote(json_extract(p.data,'$.text') || coalesce((SELECT group_concat(text,'') FROM (SELECT text FROM text_deltas WHERE part=p.id ORDER BY sequence)),'')) AS text FROM documents m CROSS JOIN documents p ON p.kind='part' AND p.parent=m.id WHERE m.kind='message' AND m.parent=? AND json_extract(p.data,'$.kind')='text' ORDER BY m.position, p.position").iterate(threadId)) {
@@ -273,10 +299,12 @@ export class EventJournal {
   }
 
   unsettledThreads(): Set<string> {
-    return new Set(this.#statement(`SELECT DISTINCT m.parent AS thread FROM documents p JOIN documents m ON m.kind='message' AND m.id=p.parent WHERE p.kind='part' AND (
-        (json_extract(p.data,'$.kind')='question' AND json_extract(p.data,'$.status')='pending') OR
-        (json_extract(p.data,'$.kind') IN ('text','reasoning') AND json_extract(p.data,'$.complete') IS NOT 1) OR
-        (json_extract(p.data,'$.kind')='tool' AND json_extract(p.data,'$.status')='running'))`).all().map(row => String(row.thread)));
+    return new Set(this.#statement([
+      "json_extract(p.data,'$.kind')='question' AND json_extract(p.data,'$.status')='pending'",
+      "json_extract(p.data,'$.kind')='text' AND json_extract(p.data,'$.complete') IS NOT 1",
+      "json_extract(p.data,'$.kind')='reasoning' AND json_extract(p.data,'$.complete') IS NOT 1",
+      "json_extract(p.data,'$.kind')='tool' AND json_extract(p.data,'$.status')='running'",
+    ].map(unsettled => `SELECT m.parent AS thread FROM documents p JOIN documents m ON m.kind='message' AND m.id=p.parent WHERE p.kind='part' AND ${unsettled}`).join(" UNION ")).all().map(row => String(row.thread)));
   }
 
   replay(after: number): ServerEvent[] | null {

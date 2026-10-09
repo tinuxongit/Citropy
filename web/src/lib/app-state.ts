@@ -73,6 +73,7 @@ export const CHAT_WIDTHS = {
 } as const;
 export type ChatWidth = keyof typeof CHAT_WIDTHS;
 export type PanelId = "sidebar" | "inspector" | "git" | "github";
+export const WINDOW_SHARE_PANELS: readonly PanelId[] = ["inspector"];
 
 export interface AppState {
   shells: Record<string, ShellProcess>;
@@ -159,6 +160,7 @@ export interface AppState {
   theme: Theme;
   scheme: Scheme;
   customColor: string;
+  uiSize: number;
   uiScale: number;
   panelWidths: Partial<Record<PanelId, number>>;
   textStreaming: boolean;
@@ -206,8 +208,8 @@ const storedTheme = readPref<string>("citropy.theme", "neutral");
 function readPanelWidths(): Partial<Record<PanelId, number>> {
   const stored = JSON.parse(readPref("citropy.panelWidths", "{}"));
   return Object.fromEntries(
-    ["sidebar", "inspector", "git", "github"]
-      .filter((key) => Number.isFinite(stored?.[key]) && stored[key] > 0)
+    (["sidebar", "inspector", "git", "github"] as const)
+      .filter((key) => Number.isFinite(stored?.[key]) && stored[key] > 0 && (!WINDOW_SHARE_PANELS.includes(key) || stored[key] < 1))
       .map((key) => [key, stored[key]]),
   );
 }
@@ -308,7 +310,7 @@ export const useApp = create<AppState>(() => ({
       window.innerWidth / (initialScale / 100) > 720,
   ),
   searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
-  stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "ascii"), "ascii"),
+  stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "default"), "default"),
   chatWidth: oneOf(Object.keys(CHAT_WIDTHS) as ChatWidth[], readPref<string>("citropy.chatWidth", "comfortable"), "comfortable"),
   backgroundDim: Number.isFinite(storedDim) ? Math.max(0, Math.min(90, storedDim)) : 68,
   backgroundBlur: readLevel("citropy.backgroundBlur", 0, 40, 0),
@@ -326,6 +328,7 @@ export const useApp = create<AppState>(() => ({
   theme: oneOf(THEMES, storedTheme, "neutral"),
   scheme: oneOf(SCHEMES, readPref<string>("citropy.scheme", storedTheme === "light" ? "light" : "dark"), "dark"),
   customColor: isHexColor(storedCustomColor) ? storedCustomColor : DEFAULT_CUSTOM_COLOR,
+  uiSize: initialScale,
   uiScale: initialScale,
   panelWidths: readPanelWidths(),
   textStreaming: readFlag("citropy.textStreaming", true),

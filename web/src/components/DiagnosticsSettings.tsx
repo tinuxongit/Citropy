@@ -53,6 +53,9 @@ export function DiagnosticsSettings() {
     };
   }, [live, revision]);
   const max = Math.max(...history.map((sample) => sample.memory), 1);
+  const measuredCpu = data?.processes.filter((entry) => entry.cpu !== null) ?? [];
+  const totalMemory = memory(data?.processes.reduce((total, entry) => total + entry.memory, 0) ?? 0);
+  const totalCpu = measuredCpu.length ? `${measuredCpu.reduce((total, entry) => total + entry.cpu!, 0).toFixed(1)}%` : undefined;
   return (
     <div className="feature-stack">
       <div className="settings-group">
@@ -118,6 +121,12 @@ export function DiagnosticsSettings() {
           </details>}
           <div className="metric-grid">
             <div>
+              <CpuIcon size={20} />
+              <span>Citropy total</span>
+              <strong>{totalMemory}</strong>
+              <small>{totalCpu ? `${totalCpu} CPU` : "Measuring CPU"} · {data.processes.length}{" "}processes</small>
+            </div>
+            <div>
               <MemoryIcon size={20} />
               <span>Server memory</span>
               <strong>{memory(data.server.rss)}</strong>
@@ -179,8 +188,8 @@ export function DiagnosticsSettings() {
                   <tr>
                     <th>Process</th>
                     <th>PID</th>
-                    <th>CPU</th>
-                    <th>Memory</th>
+                    <th>CPU{totalCpu && <span className="feature-table-total">{totalCpu}</span>}</th>
+                    <th>Memory<span className="feature-table-total">{totalMemory}</span></th>
                   </tr>
                 </thead>
                 <tbody>

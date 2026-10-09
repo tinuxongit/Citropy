@@ -54,6 +54,19 @@ test("sharing a temporary screenshot survives source removal and stays scoped to
   assert.equal((await fetch(url.replace(thread.id, "another-conversation"))).status, 404);
 });
 
+test("screenshots a tool reported outside the workspace open only in their conversation", async t => {
+  const { project, thread, path } = await fixture(t);
+  const other = await fixture(t);
+  const preview = (threadId, projectId = project.id) => previewFile(new URLSearchParams({ projectId, threadId, path }));
+  await assert.rejects(preview(thread.id), /outside this conversation's workspace/);
+  store.addMessage(thread.id, { id: "msg_screenshot", role: "assistant", ts: Date.now(), parts: [] });
+  store.addPart(thread.id, "msg_screenshot", { id: "prt_screenshot", kind: "tool", callId: "call_screenshot", name: "Read", shape: "read", headline: "Read screenshot", input: { path }, status: "running", startedAt: Date.now() });
+  await assert.rejects(preview(thread.id), /outside this conversation's workspace/);
+  store.patchPart(thread.id, "msg_screenshot", "prt_screenshot", { status: "ok", imageFiles: [{ path, label: "screenshot.png" }] });
+  assert.equal((await preview(thread.id)).path, path);
+  await assert.rejects(preview(other.thread.id, other.project.id), /outside this conversation's workspace/);
+});
+
 test("outside-workspace image sharing respects plan mode and manual approval", async t => {
   const { thread, path } = await fixture(t, "plan");
   await assert.rejects(callWorkspaceTool(thread.id, "workspace_image", { path }), /Plan only mode/);

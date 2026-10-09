@@ -62,7 +62,7 @@ test("idle sessions with paused queues release their process and retain resumabl
       provider.emit({ type: "turn.end", ...(reason === "usage limit" ? { error: "Usage limit reached" } : {}) });
       if (reason === "stop") provider.finishInterrupt();
       await until(() => !runtime.busy);
-      const { queue, status, usageLimit } = thread;
+      const { queue, status, usageLimit, messages } = thread;
       const now = Date.now();
       closeIdleSessions(now);
       closeIdleSessions(now + 60 * 60_000 - 1);
@@ -70,6 +70,8 @@ test("idle sessions with paused queues release their process and retain resumabl
       closeIdleSessions(now + 60 * 60_000);
       assert.equal(runtimeIfExists(thread.id), undefined);
       assert.equal(provider.disposed, true);
+      assert.notEqual(thread.messages, messages);
+      assert.deepEqual(thread.messages, messages);
       assert.deepEqual(thread.queue, queue);
       assert.equal(thread.status, status);
       assert.deepEqual(thread.usageLimit, usageLimit);

@@ -24,7 +24,7 @@
 .composer-dock:empty {
   display: none;
 }
-.composer-dock > * + * {
+.composer-dock > :not(:first-child) {
   box-shadow: inset 0 1px 0 var(--line);
 }
 .composer-dock .composer-finished {
@@ -217,7 +217,7 @@
   position: relative;
   flex: none;
 }
-.composer-bar-group > * + *::before {
+.composer-bar-group > :not(:first-child)::before {
   content: "";
   position: absolute;
   top: 50%;

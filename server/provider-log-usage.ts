@@ -50,7 +50,6 @@ interface Reading {
   totals: UsageTotals;
 }
 
-let cache: Cache | undefined;
 let running: Promise<UsageDay[]> | undefined;
 
 function loadCache(): Cache {
@@ -218,7 +217,7 @@ async function readOpenCode(current: Cache): Promise<boolean> {
 
 export function providerLogUsage(): Promise<UsageDay[]> {
   running ??= (async () => {
-    cache ??= loadCache();
+    const cache = loadCache();
     const seen = new Set(Object.values(cache.files).flatMap((file) => file.keys));
     const logsChanged = await scanLogs(cache, seen);
     const openCodeChanged = await readOpenCode(cache);

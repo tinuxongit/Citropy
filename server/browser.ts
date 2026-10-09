@@ -3,6 +3,7 @@ import { logFailure } from "../shared/expected-errors.mjs";
 import { uid } from "./ids.ts";
 import { closePanel, openPanel, renamePanel } from "./panels.ts";
 import {
+  desktopConnected,
   desktopEvents,
   desktopRequest,
   openDesktop,
@@ -161,6 +162,10 @@ export async function closeBrowser(id: string): Promise<void> {
   queues.delete(id);
   await desktopRequest("browser.close", { id }).catch(logFailure("Closing browser tab", id));
   closePanel(id);
+}
+
+export async function forgetBrowserData(projectId: string): Promise<void> {
+  if (desktopConnected()) await desktopRequest("profiles.forget", { projectId });
 }
 
 export async function closeBrowsers(): Promise<void> {

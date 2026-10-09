@@ -128,4 +128,8 @@ test("incomplete text, tools and questions still require restart recovery", t =>
     patch(journal, { status: part.kind === "tool" ? "error" : "dismissed" }, part.id);
     assert.deepEqual(journal.unsettledThreads(), new Set());
   }
+  journal.append({ t: "part.add", threadId: "chat", messageId: "message", part: { id: "reasoning", kind: "reasoning", text: "Thinking" } });
+  assert.deepEqual(journal.unsettledThreads(), new Set(["chat"]));
+  patch(journal, { complete: true }, "reasoning");
+  assert.deepEqual(journal.unsettledThreads(), new Set());
 });

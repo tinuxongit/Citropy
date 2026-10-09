@@ -37,6 +37,8 @@ import {
   selectThread,
   toggleInspector,
   toggleSidebar,
+  panelWidthValue,
+  type PanelId,
 } from "./lib/store.ts";
 import { send } from "./lib/socket.ts";
 import { useUiSounds } from "./lib/use-ui-sounds.ts";
@@ -283,7 +285,7 @@ export function App() {
         ...Object.fromEntries(
           Object.entries(panelWidths).map(([panel, width]) => [
             `--${panel}-width`,
-            `${Math.round((width * uiScale) / 100)}px`,
+            panelWidthValue(panel as PanelId, width, uiScale),
           ]),
         ),
         "--ui-alpha": 1 - uiTransparency / 100,

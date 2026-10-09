@@ -83,6 +83,7 @@ class ClaudeSession implements AgentSession {
   #permissionMode: PermissionMode;
   #active = false;
   #steers = new Set<string>();
+  #userMessageRead = false;
 
   constructor(options: StartOptions) {
     this.#emit = options.emit;
@@ -442,6 +443,7 @@ class ClaudeSession implements AgentSession {
 
     if (type === "user" && message.isReplay) {
       this.#steers.delete(String(message.uuid));
+      this.#userMessageRead = true;
       return;
     }
 
@@ -489,13 +491,14 @@ class ClaudeSession implements AgentSession {
         },
       });
       const origin = message.origin as { kind?: string } | undefined;
-      if (origin?.kind && origin.kind !== "human" && !message.user_message_uuid && !(Array.isArray(message.user_message_uuids) && message.user_message_uuids.length)) return;
+      if (origin?.kind && origin.kind !== "human" && !this.#userMessageRead && !message.user_message_uuid && !(Array.isArray(message.user_message_uuids) && message.user_message_uuids.length)) return;
       const compacted = this.#compacted;
       this.#compacted = false;
       const isError = message.is_error === true;
       if (this.#manualCompaction) {
         this.#manualCompaction = false;
         this.#active = false;
+        this.#userMessageRead = false;
         if (compacted && !isError) this.#emit({ type: "compacted", contextTokens: this.#contextTokens });
         else this.#emit({ type: "turn.end", error: String(message.result ?? "The provider could not compact this conversation yet.") });
         return;
@@ -505,6 +508,7 @@ class ClaudeSession implements AgentSession {
         return;
       }
       this.#active = false;
+      this.#userMessageRead = false;
       this.#emit({
         type: "turn.end",
         error: isError ? String(message.result ?? "run failed") : undefined,

@@ -13,6 +13,7 @@ const MAX_COLS = 1000;
 const MIN_ROWS = 5;
 const MAX_ROWS = 1000;
 const FLUSH_DELAY_MS = 16;
+const BACKLOG_FLUSH_DELAY_MS = 0;
 const FLUSH_CHUNK = 16_384;
 const PAUSE_ABOVE = 65_536;
 const RESUME_BELOW = 32_768;
@@ -107,7 +108,7 @@ export class TerminalHost {
       const data = session.pending.slice(0, length);
       session.pending = session.pending.slice(length);
       this.#emit({ type: "data", id: input.id, data, offset: session.offset - session.pending.length });
-      if (session.pending.length) session.timer = setTimeout(flush, FLUSH_DELAY_MS);
+      if (session.pending.length) session.timer = setTimeout(flush, BACKLOG_FLUSH_DELAY_MS);
       if (session.pending.length < RESUME_BELOW && !session.blocked.size) session.pty?.resume();
     };
     pty.onData(data => {

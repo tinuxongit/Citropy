@@ -17,7 +17,7 @@ import {
   setCustomColor,
   setTypingAnimation,
   setTypingSpeed,
-  setUiScale,
+  setUiSize,
   setChatWidth,
   useApp,
 } from "../lib/store.ts";
@@ -111,7 +111,7 @@ function CustomColorPicker() {
 }
 
 export function AppearanceSettings() {
-  const uiScale = useApp((state) => state.uiScale);
+  const uiSize = useApp((state) => state.uiSize);
   const theme = useApp((state) => state.theme);
   const scheme = useApp((state) => state.scheme);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
@@ -139,25 +139,25 @@ export function AppearanceSettings() {
         <div className="size-setting-heading">
           <div>
             <label htmlFor="ui-scale">UI size</label>
-            <p>Scale text, icons, and controls together.</p>
+            <p>Scale text, icons, and controls together. Large windows grow it a little more.</p>
           </div>
-          <output htmlFor="ui-scale">{uiScale}%</output>
+          <output htmlFor="ui-scale">{uiSize}%</output>
         </div>
         <Range
           id="ui-scale"
           min={75}
           max={150}
           step="5"
-          value={uiScale}
-          aria-valuetext={`${uiScale} percent`}
-          onChange={(event) => setUiScale(Number(event.target.value))}
+          value={uiSize}
+          aria-valuetext={`${uiSize} percent`}
+          onChange={(event) => setUiSize(Number(event.target.value))}
         />
         <div className="size-setting-labels">
           <span>Compact</span>
           <button
             type="button"
-            onClick={() => setUiScale(DEFAULT_UI_SCALE)}
-            disabled={uiScale === DEFAULT_UI_SCALE}
+            onClick={() => setUiSize(DEFAULT_UI_SCALE)}
+            disabled={uiSize === DEFAULT_UI_SCALE}
           >{" "}Reset to default{" "}</button>
           <span>Larger</span>
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { reportError } from "../../lib/api.ts";
+import { copyText } from "../../lib/copy-text.ts";
 import { MOD } from "../../lib/modifier-key.ts";
 import { monaco } from "./monaco.ts";
 
@@ -24,7 +25,7 @@ function clipboardItems(editor: monaco.editor.IStandaloneCodeEditor): Item[] {
       shortcut: `${MOD}X`,
       disabled: empty || readOnly,
       run: async () => {
-        await navigator.clipboard.writeText(model.getValueInRange(selection));
+        await copyText(model.getValueInRange(selection));
         replaceSelection("");
       },
     },
@@ -33,14 +34,17 @@ function clipboardItems(editor: monaco.editor.IStandaloneCodeEditor): Item[] {
       label: "Copy",
       shortcut: `${MOD}C`,
       disabled: empty,
-      run: () => navigator.clipboard.writeText(model.getValueInRange(selection)),
+      run: () => copyText(model.getValueInRange(selection)),
     },
     {
       id: "paste",
       label: "Paste",
       shortcut: `${MOD}V`,
       disabled: readOnly,
-      run: async () => { replaceSelection(await navigator.clipboard.readText()); },
+      run: async () => {
+        if (!navigator.clipboard) throw new Error(`Could not read the clipboard here. Paste with ${MOD}V instead.`);
+        replaceSelection(await navigator.clipboard.readText());
+      },
     },
   ];
 }

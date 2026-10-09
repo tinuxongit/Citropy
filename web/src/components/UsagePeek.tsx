@@ -7,12 +7,14 @@ import { ProviderLimits } from "./UsageLimits.tsx";
 const CACHE_MS = 60_000;
 const DELAY_MS = 120;
 
-let cached: { at: number; report: UsageReport } | undefined;
-let pending: Promise<UsageReport> | undefined;
+type UsageLimits = Pick<UsageReport, "providers">;
 
-function loadUsage(): Promise<UsageReport> {
+let cached: { at: number; report: UsageLimits } | undefined;
+let pending: Promise<UsageLimits> | undefined;
+
+function loadUsage(): Promise<UsageLimits> {
   if (cached && Date.now() - cached.at < CACHE_MS) return Promise.resolve(cached.report);
-  pending ??= api<UsageReport>("usage")
+  pending ??= api<UsageLimits>("usage/limits")
     .then((report) => {
       cached = { at: Date.now(), report };
       return report;

@@ -27,7 +27,8 @@ async function openDrawing(t, saved) {
     import '/web/src/styles/tokens.css';
     import '/web/src/styles/base.css';
     if (!sessionStorage.getItem('seeded')) { ${seed} sessionStorage.setItem('seeded', '1'); }
-    createRoot(document.getElementById('fixture')).render(React.createElement(DrawingPane, { projectId: 'fixture' }));
+    window.drawingRoot = createRoot(document.getElementById('fixture'));
+    window.drawingRoot.render(React.createElement(DrawingPane, { projectId: 'fixture' }));
   </script></body></html>`);
   await page.route("**/drawing-fixture.html", route => route.fulfill({ contentType: "text/html", body: html }));
   await page.goto(`${server.resolvedUrls.local[0]}drawing-fixture.html`);
@@ -118,6 +119,20 @@ test("pasting a screenshot from outside the app places it on the drawing and kee
   }, [x, y]);
   const center = [image.at[0] + 200, image.at[1] + 100];
   assert.equal(await redAt(center), true);
+
+  await page.locator(".drawing-pane").focus();
+  await page.keyboard.press("Delete");
+  await page.keyboard.press("Control+z");
+  assert.equal(await redAt(center), true);
+  const closedOnUnmount = await page.evaluate(async () => {
+    let count = 0;
+    const close = ImageBitmap.prototype.close;
+    ImageBitmap.prototype.close = function () { count++; return close.call(this); };
+    window.drawingRoot.unmount();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    return count;
+  });
+  assert.equal(closedOnUnmount, 1);
 
   await page.reload();
   await page.waitForFunction(([x, y]) => {

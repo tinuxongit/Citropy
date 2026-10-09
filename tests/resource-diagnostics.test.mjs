@@ -2,7 +2,7 @@ import "./fixtures/isolated-data.mjs";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { test } from "node:test";
-import { descendants, parseLinuxProcessStat, parseProcessTable, processCpuPercent, processTable } from "../server/process-table.ts";
+import { descendants, parseLinuxProcessStat, parseLinuxProportionalMemory, parseProcessTable, processCpuPercent, processTable } from "../server/process-table.ts";
 
 test("process CPU uses elapsed time and cumulative counters rather than lifetime averages", () => {
   const entry = { pid: 5, parent: 1, name: "agent", memory: 1024, cpu: 3, startedAt: "generation-1", cpuTime: 12 };
@@ -29,6 +29,11 @@ test("Linux process counters keep birth identity when the name contains parenthe
   assert.deepEqual(parseLinuxProcessStat(`42 (coding ) (agent)) ${fields.join(" ")}`, 100), { parent: 10, cpuTime: 2, startedAt: "linux:123456" });
   assert.equal(parseLinuxProcessStat("invalid", 100), undefined);
   assert.equal(parseLinuxProcessStat(`42 (agent) ${fields.join(" ")}`, 0), undefined);
+});
+
+test("Linux memory splits shared pages between the processes that use them", () => {
+  assert.equal(parseLinuxProportionalMemory("7f00-7fff ---p 00000000 00:00 0 [rollup]\nRss:  2048 kB\nPss:  1024 kB\nPss_Anon:  512 kB\n"), 1048576);
+  assert.equal(parseLinuxProportionalMemory(""), undefined);
 });
 
 test("platform snapshots parse cumulative CPU and preserve process names", () => {

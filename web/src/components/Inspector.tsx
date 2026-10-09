@@ -139,14 +139,21 @@ export function Inspector({ visible }: { visible: boolean }) {
   useLayoutEffect(() => {
     if (!visible || !tabStrip.current) return;
     const element = tabStrip.current;
-    const measure = (width: number) => {
-      setTabCapacity(width > 0 ? Math.floor((width + tabGap) / tabSpan) : null);
-      setOverflowCapacity(Math.max(1, Math.floor((width - overflowButton) / tabSpan)));
+    let applied = "";
+    const measure = (width: number, apply: (update: () => void) => void) => {
+      const capacity = width > 0 ? Math.floor((width + tabGap) / tabSpan) : null;
+      const overflow = Math.max(1, Math.floor((width - overflowButton) / tabSpan));
+      if (`${capacity} ${overflow}` === applied) return;
+      applied = `${capacity} ${overflow}`;
+      apply(() => {
+        setTabCapacity(capacity);
+        setOverflowCapacity(overflow);
+      });
     };
     const style = getComputedStyle(element);
-    measure(element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
+    measure(element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight), update => update());
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) flushSync(() => measure(Math.floor(entry.contentRect.width)));
+      if (entry) measure(Math.floor(entry.contentRect.width), flushSync);
     });
     observer.observe(element);
     return () => observer.disconnect();
