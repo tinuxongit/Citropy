@@ -9,6 +9,7 @@ import type {
   Usage,
 } from "../../shared/protocol.ts";
 import type { UserQuestion } from "../../shared/questions.ts";
+import type { SignInFlow } from "../../shared/provider-settings.ts";
 
 export type AgentEvent =
   | { type: "compacting"; active: boolean }
@@ -38,6 +39,7 @@ export type AgentEvent =
 type Emit = (event: AgentEvent) => void;
 
 export interface ProviderLaunch {
+  instanceId?: string;
   binary?: string;
   environment?: Record<string, string>;
 }
@@ -82,6 +84,22 @@ export interface AgentSession {
   dispose(): void;
 }
 
+export interface TerminalSignIn {
+  kind: "terminal";
+  login: string[];
+  status: string[];
+  signedIn(output: string): boolean;
+}
+
+export interface AppSignIn {
+  kind: "app";
+  status(launch: ProviderLaunch): Promise<{ signedIn: boolean; flow?: SignInFlow }>;
+  start(launch: ProviderLaunch, onSignedIn: () => void): SignInFlow;
+  complete(launch: ProviderLaunch, address: string): Promise<void>;
+  cancel(launch: ProviderLaunch): void;
+  signOut(launch: ProviderLaunch): Promise<void>;
+}
+
 export interface Provider {
   id: ProviderId;
   label: string;
@@ -92,6 +110,7 @@ export interface Provider {
   capabilities: { transport: "stdio" | "rpc" | "http"; steer: boolean; compact: boolean; stopShell: boolean };
   steerHint?: string;
   detect(launch?: ProviderLaunch): Promise<{ available: boolean; version?: string }>;
-  signIn: { login: string[]; status: string[]; signedIn(output: string): boolean };
+  signIn: TerminalSignIn | AppSignIn;
+  removeAccount?(instanceId: string): Promise<void>;
   start(options: StartOptions): AgentSession;
 }

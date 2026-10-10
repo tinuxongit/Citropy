@@ -13,6 +13,7 @@ import { confirmAction, useApp } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
 import type { ProviderInfo } from "../../../shared/protocol.ts";
 import { hasUsableAccount } from "../../../shared/provider-account.ts";
+import { GLOBAL_INSTRUCTION_PROVIDERS } from "../../../shared/provider-settings.ts";
 import { Select } from "./Select.tsx";
 import { selectEnvironment, useEnvironments } from "../lib/environment.ts";
 import { Loader } from "./Loader.tsx";
@@ -20,6 +21,8 @@ import { Modal } from "./Modal.tsx";
 import type { ProviderInstance } from "../../../shared/protocol.ts";
 import { ActionError } from "./ActionError.tsx";
 import { useProviderMaintenance } from "./providers/use-provider-maintenance.ts";
+import { signInFor, useProviderSignIns } from "./providers/use-provider-sign-ins.ts";
+import { AccountSignIn } from "./providers/AccountSignIn.tsx";
 
 function InstanceEditor({ provider, instance, onClose, onSaved }: { provider: ProviderInfo; instance?: ProviderInstance; onClose: () => void; onSaved: (instance: ProviderInstance) => void }) {
   const [name, setName] = useState(instance?.name ?? "");
@@ -38,12 +41,13 @@ function InstanceEditor({ provider, instance, onClose, onSaved }: { provider: Pr
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   };
-  return <Modal title={instance ? "Edit account" : "Add account"} description={`Run ${provider.label} with a separate CLI configuration.`} busy={busy} onClose={onClose} onSubmit={() => void save()} initialFocus="#provider-instance-name" footer={<>
+  const inApp = provider.signIn === "app";
+  return <Modal title={instance ? "Edit account" : "Add account"} description={inApp ? `Use another ${provider.label} account. Sign in to it after saving.` : `Run ${provider.label} with a separate CLI configuration.`} busy={busy} onClose={onClose} onSubmit={() => void save()} initialFocus="#provider-instance-name" footer={<>
     <button className="btn" type="button" data-cancel onClick={onClose} disabled={busy}>Cancel</button>
     <button className="btn" data-variant="primary" disabled={busy || !name.trim()}>{busy && <Loader size={14} />}Save account</button>
   </>}>
     <label className="feature-field">Name<input id="provider-instance-name" value={name} maxLength={80} onChange={event => setName(event.target.value)} /></label>
-    <label className="feature-field">CLI path (optional)<input value={binary} onChange={event => setBinary(event.target.value)} placeholder={provider.binary} /></label>
+    {!inApp && <label className="feature-field">CLI path (optional)<input value={binary} onChange={event => setBinary(event.target.value)} placeholder={provider.binary} /></label>}
     <label className="feature-field">Environment variables (JSON)<textarea value={environment} rows={5} spellCheck={false} onChange={event => setEnvironment(event.target.value)} /></label>
     <ActionError className="dialog-error" message={error} onDismiss={() => setError("")} />
   </Modal>;
@@ -58,6 +62,7 @@ export function ProviderSettings() {
   const resumeAfterLimits = useApp((state) => state.resumeAfterLimits);
   const { maintenance, error: maintenanceError, checking, updating, refresh: refreshMaintenance, update, updateAll } = useProviderMaintenance();
   const [error, setError] = useState("");
+  const { signIns, error: signInError, reload: reloadSignIns } = useProviderSignIns(false, providers.filter(provider => provider.signIn === "app").map(provider => provider.id));
   const [editor, setEditor] = useState<ProviderInfo>();
   const [instances, setInstances] = useState<ProviderInstance[]>([]);
   const [instanceEditor, setInstanceEditor] = useState<{ provider: ProviderInfo; instance?: ProviderInstance }>();
@@ -249,10 +254,10 @@ export function ProviderSettings() {
                       {state?.binaryPath ?? provider.binary}
                     </small>
                   </div>
-                  <button type="button" className="btn"
+                  {GLOBAL_INSTRUCTION_PROVIDERS.includes(provider.id) && <button type="button" className="btn"
                     disabled={!connected || switching} onClick={() => setEditor(provider)}>
                     <FileTextIcon size={14} />Global instructions
-                  </button>
+                  </button>}
                   {!installing && state?.updateStatus === "current" && !isUpdating ? (
                     <span className="provider-up-to-date" role="status">
                       <CheckIcon size={14} />{" "}Up to date{" "}</span>
@@ -316,8 +321,9 @@ export function ProviderSettings() {
               </div>
 
               <div className="provider-instances">
+                {provider.signIn === "app" && provider.available && <AccountSignIn provider={provider} status={signInFor(signIns, provider.id)} disabled={!connected || switching} onChange={reloadSignIns} />}
                 <div className="provider-instances-heading"><strong>Accounts</strong><button type="button" className="btn" disabled={!connected || switching} onClick={() => setInstanceEditor({ provider })}><PlusIcon size={14} />Add account</button></div>
-                {provider.instances?.map(entry => <div className="provider-instance-row" key={entry.id}>
+                {provider.instances?.map(entry => <div className="provider-instance" key={entry.id}><div className="provider-instance-row">
                   <span><strong>{entry.name}</strong><small>{entry.available ? (entry.models.length === 1 ? `${entry.models.length} model` : `${entry.models.length} models`) : "CLI unavailable"}</small></span>
                   <button type="button" className="btn" disabled={!connected || switching || !instances.some(value => value.id === entry.id)} onClick={() => setInstanceEditor({ provider, instance: instances.find(value => value.id === entry.id) })}>Edit</button>
                   <button type="button" className="btn" aria-label={`Remove ${entry.name}`} disabled={!connected || switching} onClick={() => void (async () => {
@@ -325,6 +331,8 @@ export function ProviderSettings() {
                     try { await api("providers/instances", { method: "DELETE", body: JSON.stringify({ id: entry.id }) }); setInstances(previous => previous.filter(value => value.id !== entry.id)); }
                     catch (cause) { reportError(cause); }
                   })()}><TrashIcon size={14} /></button>
+                </div>
+                {provider.signIn === "app" && entry.available && <AccountSignIn provider={provider} instanceId={entry.id} status={signInFor(signIns, provider.id, entry.id)} disabled={!connected || switching} onChange={reloadSignIns} />}
                 </div>)}
               </div>
 
@@ -333,12 +341,12 @@ export function ProviderSettings() {
         })}
       </div>
       <RuntimeDownloads onInstalled={refreshMaintenance} />
-      {(error || maintenanceError) && (
+      {(error || maintenanceError || signInError) && (
         <p className="dialog-error" role="alert">
-          {error || maintenanceError}{" "}
+          {error || maintenanceError || signInError}{" "}
           <button
             className="btn"
-            onClick={refreshMaintenance}
+            onClick={() => { refreshMaintenance(); reloadSignIns(); }}
           >{" "}Retry{" "}</button>
         </p>
       )}
@@ -352,7 +360,7 @@ export function ProviderSettings() {
           onClose={() => setEditor(undefined)}
         />
       )}</AnimatePresence>
-      <AnimatePresence>{instanceEditor && <InstanceEditor key={instanceEditor.instance?.id ?? `${instanceEditor.provider.id}-new`} provider={instanceEditor.provider} instance={instanceEditor.instance} onClose={() => setInstanceEditor(undefined)} onSaved={saved => { setInstances(previous => [...previous.filter(entry => entry.id !== saved.id), saved]); setInstanceEditor(undefined); }} />}</AnimatePresence>
+      <AnimatePresence>{instanceEditor && <InstanceEditor key={instanceEditor.instance?.id ?? `${instanceEditor.provider.id}-new`} provider={instanceEditor.provider} instance={instanceEditor.instance} onClose={() => setInstanceEditor(undefined)} onSaved={saved => { setInstances(previous => [...previous.filter(entry => entry.id !== saved.id), saved]); setInstanceEditor(undefined); reloadSignIns(); }} />}</AnimatePresence>
     </>
   );
 }

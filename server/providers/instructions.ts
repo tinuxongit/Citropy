@@ -48,7 +48,7 @@ export function globalInstructionLocation(
     note =
       "OpenCode uses this file for global rules. Creating it replaces the Claude Code fallback, if your OpenCode version uses that fallback.";
   } else {
-    throw new Error("Unknown provider.");
+    throw new Error("This provider has no global instructions file.");
   }
   return { path: resolve(path), note };
 }

@@ -3,7 +3,7 @@ import type { QuestionPart, QuestionRequest } from "./questions.ts";
 import type { GitHubRequest, GitHubResponse } from "./github.ts";
 import type { BrowserAction, BrowserState, PanelKind, PanelTab, ToolConnection, ToolDefinition } from "./workbench.ts";
 
-export const PROVIDER_IDS = ["claude", "codex", "opencode"] as const;
+export const PROVIDER_IDS = ["claude", "codex", "opencode", "antigravity"] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
@@ -357,6 +357,7 @@ export interface ProviderInfo {
   models: ModelOption[];
   supportsPermissionPrompt: boolean;
   capabilities?: { transport: "stdio" | "rpc" | "http"; steer: boolean; compact: boolean; stopShell: boolean };
+  signIn?: "terminal" | "app";
   steerHint?: string;
   modelsError?: string;
   modelsUpdatedAt?: number;

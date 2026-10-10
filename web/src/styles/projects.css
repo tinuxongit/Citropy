@@ -33,7 +33,7 @@
   padding: var(--space-12) var(--space-16);
   border: 0;
   border-radius: var(--r-sm);
-  background: var(--panel);
+  background: var(--surface);
   text-align: left;
 }
 .project-folder-picker > svg {
@@ -136,7 +136,7 @@
   border: 0;
   border-radius: var(--r-md);
   text-align: left;
-  background: var(--panel);
+  background: var(--surface);
 }
 .workspace-choice:hover {
   background: var(--hover);

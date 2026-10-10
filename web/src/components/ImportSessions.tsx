@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { DownloadIcon } from "./icons/arrows.tsx";
 import { RefreshIcon } from "./icons/rotation.tsx";
-import { IMPORT_LIST_LIMIT, type ImportableSession, type ImportProvider } from "../../../shared/session-import.ts";
+import { IMPORT_LIST_LIMIT, IMPORT_PROVIDERS, type ImportableSession, type ImportProvider } from "../../../shared/session-import.ts";
 import { api } from "../lib/api.ts";
 import { environmentName } from "../lib/environment.ts";
 import { selectProject, selectThread, useApp } from "../lib/store.ts";
@@ -9,7 +9,6 @@ import { Select } from "./Select.tsx";
 import { Modal } from "./Modal.tsx";
 import { Loader } from "./Loader.tsx";
 import { dateTime, providerLabels } from "../lib/format.ts";
-import { PROVIDER_IDS } from "../../../shared/protocol.ts";
 import { ActionError } from "./ActionError.tsx";
 
 export function ImportSessions({ onClose }: { onClose: () => void }) {
@@ -49,7 +48,7 @@ export function ImportSessions({ onClose }: { onClose: () => void }) {
     footer={<button type="button" className="btn" disabled={Boolean(busy)} onClick={onClose}>Close</button>}>
     <div className="feature-field feature-inline session-import-controls">
       <Select aria-label="Provider" value={provider} disabled={Boolean(busy)} onChange={value => setProvider(value as ImportProvider)}
-        options={PROVIDER_IDS.map(id => ({ value: id, label: providerLabels[id] }))} />
+        options={IMPORT_PROVIDERS.map(id => ({ value: id, label: providerLabels[id] }))} />
       <input aria-label="Find a conversation" placeholder="Find a conversation" value={query} onChange={event => setQuery(event.target.value)} />
       <button type="button" className="icon-btn" aria-label="Refresh" disabled={loading || Boolean(busy)} onClick={() => setRefresh(value => value + 1)}><RefreshIcon size={16} /></button>
     </div>

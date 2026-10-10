@@ -13,6 +13,8 @@ import { bus } from "../bus.ts";
 import { hasCode, ifMissing } from "../../shared/expected-errors.mjs";
 import { notifyUpdateAvailable } from "../update-notifications.ts";
 import type { ProviderId } from "../../shared/protocol.ts";
+import { installAntigravity, antigravityInstallation } from "./antigravity/install.ts";
+import { ANTIGRAVITY_RELEASE } from "./antigravity/release.ts";
 import type { ProviderMaintenance } from "../../shared/provider-settings.ts";
 
 const run = promisify(execFile);
@@ -22,11 +24,11 @@ const plans = new Map<
   ProviderId,
   { time: number; value: Promise<UpdatePlan> }
 >();
-const packages: Record<Exclude<ProviderId, "opencode">, string> = {
+const packages: Record<Exclude<ProviderId, "opencode" | "antigravity">, string> = {
   claude: "@anthropic-ai/claude-code",
   codex: "@openai/codex",
 };
-function packageFor(provider: ProviderId): string {
+function packageFor(provider: Exclude<ProviderId, "antigravity">): string {
   return provider === "opencode" ? openCodePackage() : packages[provider];
 }
 
@@ -47,6 +49,8 @@ interface UpdatePlan {
   reason?: string;
   installer?: string;
   install?: boolean;
+  latestVersion?: string;
+  download?: (progress: (message: string) => void) => Promise<unknown>;
 }
 
 async function executablePath(binary: string): Promise<string | undefined> {
@@ -96,7 +100,19 @@ async function nativeUpdaterHelp(binaryPath: string, args: string[]): Promise<st
   return help;
 }
 
+async function antigravityPlan(): Promise<UpdatePlan> {
+  const installation = await antigravityInstallation();
+  return {
+    binaryPath: installation?.executable,
+    install: !installation,
+    method: "Download from Google",
+    latestVersion: ANTIGRAVITY_RELEASE.version,
+    download: installAntigravity,
+  };
+}
+
 async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
+  if (provider === "antigravity") return antigravityPlan();
   const binaryPath = await executablePath(provider === "opencode" ? openCodeBinary() : providers[provider].binary);
   if (!binaryPath) {
     const packageName = packageFor(provider);
@@ -145,7 +161,7 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
       claude: "claude-code",
       codex: "codex",
       opencode: "opencode",
-    } satisfies Record<ProviderId, string>)[provider];
+    } satisfies Record<Exclude<ProviderId, "antigravity">, string>)[provider];
     if (
       brew[3] === name &&
       command &&
@@ -262,6 +278,7 @@ async function latestVersion(
   if (!fresh && cached && Date.now() - cached.time < 300000)
     return cached.value;
   const value = (async () => {
+    if (provider === "antigravity") return plan.latestVersion;
     if (plan.method === "Homebrew" && plan.executable) {
       const info = JSON.parse(
         await probe(plan.executable, [
@@ -347,7 +364,7 @@ export async function providerMaintenance(
         provider: provider.id,
         status: "idle" as const,
         ...states.get(provider.id),
-        available: Boolean(plan.executable),
+        available: Boolean(plan.executable || plan.download),
         install: plan.install ?? false,
         version,
         latestVersion: latest,
@@ -506,7 +523,7 @@ async function performProviderUpdate(
     await prepare();
     const plan = await updatePlan(provider, true);
     if (plan.install && !allowInstall) throw new Error("This provider is no longer installed. Install it separately.");
-    if (!plan.executable)
+    if (!plan.executable && !plan.download)
       throw new Error(
         plan.reason || "No updater is available for this installation.",
       );
@@ -514,12 +531,13 @@ async function performProviderUpdate(
       binaryPath: plan.binaryPath,
       install: plan.install ?? false,
       method: plan.method,
-      command: plan.installer || [plan.executable, ...plan.args!].join(" "),
+      command: plan.executable ? plan.installer || [plan.executable, ...plan.args!].join(" ") : undefined,
     });
     const before = await providers[provider].detect();
     state.message = plan.install ? "Installing provider…" : "Checking for updates and installing…";
-    await runUpdate(plan, state);
-    if (plan.install) {
+    if (plan.download) await plan.download(message => { state.message = message; });
+    else await runUpdate(plan, state);
+    if (plan.install && plan.method === "npm") {
       const bin = plan.method === "npm" && process.platform === "win32"
         ? plan.args![3]!
         : join(homedir(), ".local", "bin");

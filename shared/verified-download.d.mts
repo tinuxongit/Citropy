@@ -1,4 +1,4 @@
-export function downloadVerified(options: {
+interface DownloadOptions {
   url: string;
   sha256: string;
   maxBytes: number;
@@ -6,4 +6,9 @@ export function downloadVerified(options: {
   label: string;
   signal: AbortSignal;
   redirect: RequestRedirect;
-}): Promise<Buffer>;
+  progress?: (bytes: number) => void;
+}
+
+export function downloadVerified(options: DownloadOptions): Promise<Buffer>;
+
+export function downloadVerifiedFile(options: DownloadOptions, path: string): Promise<void>;

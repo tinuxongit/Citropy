@@ -107,7 +107,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await setup.getByRole("button", { name: /Project/ }).click();
     await setup.getByText("Step 5 of 5").waitFor();
     assert.equal(await setup.getByRole("button", { name: "Skip setup" }).count(), 0);
-    await setup.getByRole("button", { name: "Back" }).click();
+    await setup.getByRole("button", { name: "Back", exact: true }).click();
     await setup.getByRole("button", { name: "Skip setup" }).click();
     await setup.waitFor({ state: "detached" });
     assert.ok(sent.some(event => event.t === "setup.finish"));

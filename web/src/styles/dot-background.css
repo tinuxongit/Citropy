@@ -14,8 +14,3 @@
     var(--dot-fade, none),
     radial-gradient(var(--line-strong) var(--dot-size), transparent calc(var(--dot-size) + 0.5px)) 0 0 / var(--dot-gap) var(--dot-gap);
 }
-.dot-glow {
-  background:
-    radial-gradient(64rem 40rem at 100% 0%, var(--accent-soft), transparent 64%),
-    radial-gradient(44rem 34rem at 0% 100%, var(--accent-soft), transparent 62%);
-}

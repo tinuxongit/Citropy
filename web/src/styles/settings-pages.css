@@ -9,11 +9,11 @@
 .skill-card {
   position: relative;
   border-radius: var(--r-lg);
-  background: var(--panel);
+  background: var(--surface);
   transition: background var(--dur-instant) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .skill-card:hover { background: color-mix(in srgb, var(--panel), var(--text) 3%); }
+  .skill-card:hover { background: color-mix(in srgb, var(--surface), var(--text) 3%); }
 }
 .skill-card-open {
   display: grid;
@@ -161,7 +161,7 @@
   border: 0;
   border-radius: var(--r-lg);
   padding: var(--space-20);
-  background: var(--panel);
+  background: var(--surface);
   min-width: 0;
 }
 .metric-grid svg {
@@ -186,7 +186,7 @@
   padding: var(--space-20);
   border: 0;
   border-radius: var(--r-lg);
-  background: var(--panel);
+  background: var(--surface);
 }
 .resource-chart svg {
   display: block;

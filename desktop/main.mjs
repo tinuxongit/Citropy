@@ -1553,6 +1553,9 @@ app
       "leave-full-screen",
     ])
       window.on(event, publishWindow);
+    // Why: on KDE Wayland Chromium keeps stale off-shade rectangles over the stage background after the window is restored or maximized.
+    for (const event of ["show", "restore", "maximize", "unmaximize"])
+      window.on(event, () => window.webContents.invalidate());
     for (const event of ["show", "hide", "minimize", "restore"])
       window.on(event, () => {
         for (const tab of tabs.values())

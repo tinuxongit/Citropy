@@ -604,7 +604,7 @@ export const opencodeProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "http", steer: true, compact: true, stopShell: false },
   steerHint: "OpenCode adds it to the run in progress.",
-  signIn: { login: ["auth", "login"], status: ["auth", "list"], signedIn: (output) => /\b[1-9]\d* (credentials?|environment variables?)\b/.test(output) },
+  signIn: { kind: "terminal", login: ["auth", "login"], status: ["auth", "list"], signedIn: (output) => /\b[1-9]\d* (credentials?|environment variables?)\b/.test(output) },
   models: [],
   async listModels(launch) {
     const resolved = await resolveOpenCode(launch);

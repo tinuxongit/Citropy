@@ -64,6 +64,7 @@ export function listCommands(
         },
         ...(await codexPrompts()).map(({ template, ...command }) => command),
       ];
+    if (provider === "antigravity") return [];
     const result =
       provider === "claude"
         ? (await providerControl("claude", "initialize", {}, cwd)).commands

@@ -13,6 +13,7 @@ export const providerLabels: Record<ProviderId, string> = {
   claude: "Claude Code",
   codex: "Codex",
   opencode: "OpenCode",
+  antigravity: "Antigravity",
 };
 
 export function modelLabel(models: ModelOption[], modelId?: string): string {

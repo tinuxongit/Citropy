@@ -353,7 +353,7 @@ function BackdropLayers({ background }: { background: Exclude<StageBackground, "
   return (
     <div ref={root} className="backdrop-layers" data-kind={background} style={{ "--focus": focus / 100, "--focus-spread": `${spread}px` } as CSSProperties}>
       {background === "ascii" && <AsciiNoise metrics={metrics} />}
-      {background === "dots" && <DotBackground className="stage-dots" />}
+      {background === "dots" && <DotBackground />}
       {background === "image" && <CustomImage metrics={metrics} />}
       <div className="shell-glass" aria-hidden="true" />
     </div>

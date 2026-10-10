@@ -4,6 +4,7 @@ import { stopProcess } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverModels } from "./models.ts";
 import { toolContent } from "./tool-content.ts";
+import { isImage } from "./attachments.ts";
 import { SLASH_COMMAND } from "./skill-prompt.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -183,7 +184,7 @@ class ClaudeSession implements AgentSession {
   async #content(text: string, attachments: Attachment[], skills: Array<{ name: string; path: string }>): Promise<unknown[]> {
     const content: unknown[] = [];
     for (const file of attachments) {
-      if (["image/png", "image/jpeg", "image/gif", "image/webp"].includes(file.mime ?? "") && (file.size ?? 0) <= 10 * 1024 * 1024) content.push({ type: "image", source: { type: "base64", media_type: file.mime, data: (await readFile(file.path)).toString("base64") } });
+      if (isImage(file) && (file.size ?? 0) <= 10 * 1024 * 1024) content.push({ type: "image", source: { type: "base64", media_type: file.mime, data: (await readFile(file.path)).toString("base64") } });
       else if (file.mime === "application/pdf" && (file.size ?? 0) <= 20 * 1024 * 1024) content.push({ type: "document", source: { type: "base64", media_type: file.mime, data: (await readFile(file.path)).toString("base64") } });
       else content.push({ type: "text", text: `Attached file: ${file.label}\nLocal path: ${file.path}` });
     }
@@ -581,7 +582,7 @@ export const claudeProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "stdio", steer: true, compact: true, stopShell: true },
   steerHint: "Claude Code reads it at its next step.",
-  signIn: { login: ["auth", "login"], status: ["auth", "status"], signedIn: (output) => /"loggedIn":\s*true\b/.test(output) },
+  signIn: { kind: "terminal", login: ["auth", "login"], status: ["auth", "status"], signedIn: (output) => /"loggedIn":\s*true\b/.test(output) },
   models: [],
   listModels: (launch) => discoverModels("claude", launch),
   async detect(launch) {

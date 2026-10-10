@@ -66,7 +66,7 @@ export function ResizeHandle({
     Math.round(Math.max(minimum, Math.min(limit, value)));
   const liveTargets = (element: HTMLElement, root: HTMLElement): [HTMLElement, string][] => {
     const found: [HTMLElement | null | undefined, string][] = panel === "sidebar"
-      ? [[element.parentElement, "width"], [element, "width"], [root.querySelector<HTMLElement>(".topbar-left"), "width"], [root.querySelector<HTMLElement>(".backdrop-layers"), "--visible-rail"]]
+      ? [[element.parentElement, "width"], [element, "width"], [root.querySelector<HTMLElement>(".backdrop-layers"), "--visible-rail"]]
       : panel === "inspector"
         ? [[element.parentElement, "width"], [element, "width"]]
         : [[element.parentElement, `--${panel}-width`]];

@@ -6,7 +6,7 @@ import type { ProviderId } from "../../../../shared/protocol.ts";
 export type UsagePeriod = "daily" | "weekly" | "monthly";
 export type UsageMeasure = "tokens" | "output" | "cost";
 
-export const PROVIDER_ORDER: ProviderId[] = ["codex", "claude", "opencode"];
+export const PROVIDER_ORDER: ProviderId[] = ["codex", "claude", "opencode", "antigravity"];
 
 const BUCKET_COUNT: Record<UsagePeriod, number> = { daily: 30, weekly: 12, monthly: 12 };
 

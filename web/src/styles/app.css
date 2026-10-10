@@ -25,8 +25,6 @@
   --visible-rail: var(--rail);
 }
 .shell-body,
-.topbar,
-.topbar-left,
 .shell > .toasts {
   --visible-rail: inherit;
 }
@@ -75,16 +73,18 @@
 .sliding-panel[data-side="right"][data-shown="false"] { margin-right: calc(-1 * var(--panel-width)); }
 .sliding-panel[data-animate="true"] { transition: margin var(--panel-duration) var(--ease-drawer); }
 :root[data-resizing] .sliding-panel,
-:root[data-resizing] .sliding-panel > *,
-:root[data-resizing] .topbar-left { transition: none; }
+:root[data-resizing] .sliding-panel > * { transition: none; }
 :root[data-page-hidden] *,
 :root[data-page-hidden] *::before,
 :root[data-page-hidden] *::after { animation-play-state: paused !important; }
 
 .topbar {
+  --frame-corner: var(--r-lg);
+  position: relative;
   display: flex;
   align-items: center;
   z-index: 20;
+  background: var(--canvas-deep);
 }
 
 .topbar-left,
@@ -102,18 +102,19 @@
   justify-content: space-between;
   align-self: stretch;
   padding: 0 var(--space-10);
-  width: max(var(--space-10), var(--visible-rail));
-  transition: width var(--dur-panel) var(--ease-drawer);
 }
 
 @container application (width > 720px) {
-  .shell > .topbar { grid-area: 1 / 1; pointer-events: none; }
-  .shell > .shell-body { grid-area: 1 / 1 / -1; }
-  .topbar > :not(.topbar-left) { pointer-events: auto; }
-  .topbar-left { -webkit-app-region: no-drag; }
-  .shell-body > :is(.stage:not(:has(> .section-view)), .sliding-panel[data-side="right"]) { margin-top: var(--topbar); }
-  .section-view { padding-top: var(--topbar); }
-  .section-view > .sliding-panel { margin-top: calc(-1 * var(--topbar)); }
+  .topbar::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: var(--frame-corner);
+    height: var(--frame-corner);
+    background: radial-gradient(circle at 100% 100%, transparent calc(var(--frame-corner) - 0.5px), var(--canvas-deep) var(--frame-corner));
+    pointer-events: none;
+  }
 }
 
 .topbar-right {
@@ -295,9 +296,6 @@
 .backdrop-layers:is([data-kind="ascii"], [data-kind="dots"]) > .shell-glass {
   backdrop-filter: none;
 }
-.stage-dots {
-  --dot-fade: radial-gradient(ellipse 36% 60% at var(--stage-center, 50%) 45%, color-mix(in srgb, var(--canvas) 55%, transparent), transparent);
-}
 .stage-backdrop {
   position: absolute;
   inset: 0;
@@ -410,7 +408,6 @@
 [data-contrast="light"] { --contrast-ink: rgba(255, 255, 255, 0.92); }
 [data-contrast="dark"] { --contrast-ink: rgba(0, 0, 0, 0.82); }
 @media (prefers-reduced-motion: reduce) {
-  .topbar-left,
   .backdrop-layers,
   .stage-backdrop.stage-backdrop-inspector { transition: none; }
 }
@@ -767,10 +764,6 @@
 }
 :root[data-platform="darwin"] .topbar-left {
   padding-left: var(--traffic-light-inset);
-}
-@container application (width > 720px) {
-  :root[data-platform="darwin"] .rail .thread-toolbar { padding-left: var(--traffic-light-inset); }
-  :root[data-platform="darwin"] .section-rail { padding-top: var(--topbar); }
 }
 :root[data-platform="darwin"] .navigation-strip-brand::before {
   visibility: hidden;

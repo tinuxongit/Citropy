@@ -895,7 +895,7 @@
 }
 
 .notice[data-level="info"] {
-  background: var(--panel);
+  background: var(--surface);
   color: var(--text-2);
   font-size: var(--text-sm);
 }
@@ -1136,7 +1136,7 @@
   margin-top: var(--space-12);
   padding: var(--space-4);
   border-radius: var(--r-md);
-  background: var(--panel);
+  background: var(--surface);
 }
 .turn-changes-head {
   display: flex;

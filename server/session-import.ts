@@ -4,7 +4,6 @@ import { providerLogRoots } from "./provider-logs.ts";
 import { workspaceDirectory } from "./remote.ts";
 import { listOpenCodeSessions, readOpenCodeSession } from "./session-import-opencode.ts";
 import { readSession, scanSessionFiles } from "./session-import-jsonl.ts";
-import { isProviderId } from "../shared/protocol.ts";
 import type { ImportableSession, ImportProvider } from "../shared/session-import.ts";
 
 const candidates = new Map<string, { provider: ImportProvider; path: string; root: string; sessionId: string }>();
@@ -20,7 +19,6 @@ function register(provider: ImportProvider, path: string, root: string, summary:
 }
 
 export async function listImportableSessions(provider: ImportProvider): Promise<ImportableSession[]> {
-  if (!isProviderId(provider)) throw new Error("Choose a provider.");
   for (const [id, candidate] of candidates) if (candidate.provider === provider) candidates.delete(id);
   if (provider === "opencode") {
     const path = providerLogRoots("opencode")[0]!;

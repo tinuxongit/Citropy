@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import { PROVIDER_IDS } from "../shared/protocol.ts";
 
 const home = mkdtempSync(join(tmpdir(), "citropy-skills-home-"));
 process.env.HOME = home;
@@ -22,7 +23,7 @@ test("Citropy skills are saved once and offered to every provider", async () => 
   const draft = { name: "release-notes", description: 'Use when asked for "release notes": one line each', instructions: "# Steps\n\nList user-facing changes." };
   await saveCitropySkill(undefined, draft);
   const entries = await citropyEntries();
-  assert.deepEqual(entries.map((skill) => skill.provider).sort(), ["claude", "codex", "opencode"]);
+  assert.deepEqual(entries.map((skill) => skill.provider).sort(), [...PROVIDER_IDS].sort());
   assert.equal(new Set(entries.map((skill) => skill.path)).size, 1);
   assert.equal(entries[0].description, draft.description);
   assert.deepEqual(await readCitropySkill(entries[0].id), draft);

@@ -197,7 +197,7 @@
 .feature-table-wrap {
   border: 0;
   border-radius: var(--r-md);
-  background: var(--panel);
+  background: var(--surface);
   overflow: auto;
 }
 .feature-table {

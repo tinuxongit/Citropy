@@ -20,6 +20,10 @@ const WEEK_MINUTES = 7 * 24 * 60;
 const MONTH_MINUTES = 30 * 24 * 60;
 const SESSION_MINUTES = 5 * 60;
 const MONTHLY_PLANS = new Set(["free", "go"]);
+const UNREPORTED_LIMITS = {
+  opencode: "OpenCode does not expose a combined remaining allowance. Check the connected model service.",
+  antigravity: "Citropy cannot read Antigravity's remaining allowance yet.",
+};
 const CLAUDE_WINDOW_LABELS: Record<string, string> = { five_hour: "5 hours", seven_day: "Weekly", session: "5 hours", weekly_all: "Weekly", weekly_scoped: "Weekly" };
 
 function clampPercent(value: number): number {
@@ -93,14 +97,8 @@ export async function providerLimits(provider: ProviderId, instanceId?: string):
   if (existing) return existing;
   const request = (async (): Promise<ProviderUsage> => {
     try {
-      if (provider === "opencode")
-        return {
-          provider,
-          windows: [],
-          updatedAt: Date.now(),
-          error:
-            "OpenCode does not expose a combined remaining allowance. Check the connected model service.",
-        };
+      if (provider === "opencode" || provider === "antigravity")
+        return { provider, windows: [], updatedAt: Date.now(), error: UNREPORTED_LIMITS[provider] };
       return parseProviderLimits(
         provider,
         await providerControl(

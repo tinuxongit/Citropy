@@ -5,8 +5,9 @@ import { CheckIcon } from "../icons/marks.tsx";
 import { Loader } from "../Loader.tsx";
 import { ProviderIcon } from "../ProviderIcon.tsx";
 import { TerminalPane } from "../TerminalPane.tsx";
+import { AccountSignIn } from "../providers/AccountSignIn.tsx";
 
-export function ProviderSetupCard({ provider, maintenance, signIn, signingIn, busy, onInstall, onSignIn, onCancelSignIn }: {
+export function ProviderSetupCard({ provider, maintenance, signIn, signingIn, busy, onInstall, onSignIn, onCancelSignIn, onSignInChange }: {
   provider: ProviderInfo;
   maintenance?: ProviderMaintenance;
   signIn?: ProviderSignIn;
@@ -15,9 +16,11 @@ export function ProviderSetupCard({ provider, maintenance, signIn, signingIn, bu
   onInstall: () => void;
   onSignIn: () => void;
   onCancelSignIn: () => void;
+  onSignInChange: () => void;
 }) {
   const installing = maintenance?.status === "updating";
   const installed = provider.available && !installing;
+  const inApp = provider.signIn === "app";
   return (
     <section className="settings-group setup-provider" aria-label={provider.label}>
       <div className="setting-row">
@@ -32,7 +35,7 @@ export function ProviderSetupCard({ provider, maintenance, signIn, signingIn, bu
           <button type="button" className="btn" disabled={busy || !maintenance?.available} title={maintenance?.reason} onClick={onInstall}>
             {installing ? <Loader size={14} /> : <DownloadIcon size={14} />}{installing ? "Installing…" : "Install"}
           </button>
-        ) : signIn?.signedIn ? (
+        ) : inApp ? null : signIn?.signedIn ? (
           <span className="provider-up-to-date" role="status"><CheckIcon size={14} />Signed in</span>
         ) : signingIn ? (
           <button type="button" className="btn" onClick={onCancelSignIn}>Cancel</button>
@@ -46,7 +49,8 @@ export function ProviderSetupCard({ provider, maintenance, signIn, signingIn, bu
           {maintenance.message}
         </p>
       )}
-      {signIn?.error && <p className="provider-update-result" data-status="error" role="alert">{signIn.error}</p>}
+      {installed && inApp && <AccountSignIn provider={provider} status={signIn} disabled={busy} onChange={onSignInChange} />}
+      {!inApp && signIn?.error && <p className="provider-update-result" data-status="error" role="alert">{signIn.error}</p>}
       {signingIn && (
         <div className="setup-sign-in">
           <p className="provider-maintenance-note">Follow the steps below. A browser window may open to finish signing in.</p>

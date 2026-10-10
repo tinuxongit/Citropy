@@ -108,9 +108,9 @@
 
 :root[data-scheme="light"],
 :root[data-scheme="light"] .theme-preview {
-  --canvas: oklch(from var(--tint) 0.9818 var(--tint-surface) h);
-  --canvas-deep: oklch(from var(--tint) 0.955 var(--tint-surface) h);
-  --panel-solid: oklch(from var(--tint) 0.9665 var(--tint-surface) h);
+  --canvas: oklch(from var(--tint) 0.976 var(--tint-surface) h);
+  --canvas-deep: oklch(from var(--tint) 0.92 var(--tint-surface) h);
+  --panel-solid: oklch(from var(--tint) 0.952 var(--tint-surface) h);
   --raised-solid: oklch(from var(--tint) 0.9397 var(--tint-surface) h);
   --raised-2-solid: oklch(from var(--tint) 0.9068 var(--tint-surface) h);
   --overlay-solid: #ffffff;
@@ -249,7 +249,7 @@
 
 :root[data-scheme="light"] {
   color-scheme: light;
-  --neutral-surface-chroma: 0.008;
+  --neutral-surface-chroma: 0.0022;
   --neutral-text-chroma: 0.01;
   --surface-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 14px -6px rgba(0, 0, 0, 0.1);
 

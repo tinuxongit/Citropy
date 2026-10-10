@@ -251,7 +251,7 @@
   flex-wrap: wrap;
   gap: var(--space-20);
   padding: var(--space-12) var(--space-32);
-  background: var(--panel);
+  background: var(--surface);
   color: var(--text-3);
   font-size: var(--text-xs);
 }
@@ -278,7 +278,7 @@
 }
 .github-list {
   min-height: 0;
-  background: var(--panel);
+  background: var(--surface);
 }
 .github-list-caption {
   padding: var(--space-16) var(--space-20) var(--space-8);
@@ -433,7 +433,7 @@
 .github-comment {
   margin-top: var(--space-24);
   padding-top: var(--space-24);
-  background: var(--panel);
+  background: var(--surface);
   padding: var(--space-20);
   border-radius: var(--r-md);
 }
@@ -459,7 +459,7 @@
   gap: var(--space-8);
   margin: var(--space-24) 0;
   padding: var(--space-16);
-  background: var(--panel);
+  background: var(--surface);
   border-radius: var(--r-sm);
   color: var(--text-3);
   font-size: var(--text-xs);
@@ -469,14 +469,14 @@
   border-radius: var(--r-sm);
   overflow: hidden;
   margin: var(--space-16) 0;
-  background: var(--panel);
+  background: var(--surface);
 }
 .github-files summary {
   display: flex;
   align-items: center;
   gap: var(--space-10);
   padding: var(--space-12);
-  background: var(--panel);
+  background: var(--surface);
   font-size: var(--text-xs);
 }
 .github-files summary > span:first-of-type {
@@ -765,7 +765,7 @@
 .github-account-details {
   border: 0;
   border-radius: var(--r-md);
-  background: var(--panel);
+  background: var(--surface);
   margin-bottom: var(--space-24);
 }
 .github-account-details > div {
@@ -925,7 +925,7 @@
   flex-wrap: wrap;
   gap: var(--space-16);
   padding: var(--space-20) var(--space-24);
-  background: var(--panel);
+  background: var(--surface);
 }
 .github-local-workspace > svg {
   color: var(--text-3);

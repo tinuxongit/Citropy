@@ -790,7 +790,7 @@
   align-items: center;
   gap: var(--space-16);
   border: 0;
-  background: var(--panel);
+  background: var(--surface);
   border-radius: var(--r-md);
   padding: var(--space-20) var(--space-24);
 }
@@ -831,7 +831,7 @@
   margin: 0 0 var(--space-4);
   width: min(320px, 100%);
   border-radius: var(--r-md);
-  background: var(--panel);
+  background: var(--surface);
 }
 .git-table-heading {
   display: flex;
@@ -857,7 +857,7 @@
   display: grid;
   padding: var(--space-6);
   border-radius: var(--r-lg);
-  background: var(--panel);
+  background: var(--surface);
 }
 .git-branch-row,
 .git-remote-row {
@@ -872,7 +872,7 @@
 }
 .git-branch-row:hover,
 .git-remote-row:hover {
-  background: color-mix(in oklab, var(--panel), var(--text) 4%);
+  background: color-mix(in oklab, var(--surface), var(--text) 4%);
 }
 .git-row-mark {
   display: grid;
@@ -964,7 +964,7 @@
 .git-stash-list {
   min-width: 0;
   min-height: 0;
-  background: var(--panel);
+  background: var(--surface);
   padding: var(--space-10);
 }
 .git-sync {
@@ -975,7 +975,7 @@
   padding: var(--space-16) var(--space-20);
   border: 0;
   border-radius: var(--r-lg);
-  background: var(--panel);
+  background: var(--surface);
   margin-bottom: var(--space-4);
 }
 .git-sync-title {

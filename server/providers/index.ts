@@ -1,6 +1,7 @@
 import { claudeProvider } from "./claude.ts";
 import { codexProvider } from "./codex.ts";
 import { openCodeVersionInfo, opencodeProvider } from "./opencode.ts";
+import { antigravityProvider } from "./antigravity/index.ts";
 import { commandIdentity } from "./binary.ts";
 import type { Provider, ProviderLaunch } from "./types.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../shared/protocol.ts";
@@ -9,6 +10,7 @@ export const providers: Record<ProviderId, Provider> = {
   claude: claudeProvider,
   codex: codexProvider,
   opencode: opencodeProvider,
+  antigravity: antigravityProvider,
 };
 
 import { store } from "../store.ts";
@@ -54,6 +56,7 @@ export async function describeProviders(modelsMaxAge = 0): Promise<ProviderInfo[
       supportsPermissionPrompt: provider.supportsPermissionPrompt,
       steerHint: provider.steerHint,
       capabilities: provider.capabilities,
+      signIn: provider.signIn.kind,
       available: detected.available,
       enabled: !store.disabledProviders.has(provider.id),
       version: detected.version,
@@ -61,7 +64,7 @@ export async function describeProviders(modelsMaxAge = 0): Promise<ProviderInfo[
       modelsUpdatedAt,
       ...(provider.id === "opencode" ? { openCodeVersion: openCodeVersionInfo() } : {}),
       instances: await Promise.all([...store.providerInstances.values()].filter(instance => instance.provider === provider.id).map(async instance => {
-        const launch = { binary: instance.binary, environment: instance.environment };
+        const launch = { instanceId: instance.id, binary: instance.binary, environment: instance.environment };
         const previousInstance = previous?.instances?.find(entry => entry.id === instance.id);
         const detected = store.disabledProviders.has(provider.id)
           ? { available: previousInstance?.available ?? false, version: previousInstance?.version }

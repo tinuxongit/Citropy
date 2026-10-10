@@ -68,8 +68,8 @@ test('resolveProviderAccount checks the stored account against the provider', t 
   store.providerInstances.set('stored', { id: 'stored', name: 'Stored', provider: 'codex', binary: '/bin/codex', environment: { KEY: 'value' } });
   const { instance, launch } = resolveProviderAccount('codex', 'stored');
   assert.equal(instance?.id, 'stored');
-  assert.deepEqual(launch, { binary: '/bin/codex', environment: { KEY: 'value' } });
-  assert.deepEqual(resolveProviderAccount('codex'), { instance: undefined, launch: { binary: undefined, environment: undefined } });
+  assert.deepEqual(launch, { instanceId: 'stored', binary: '/bin/codex', environment: { KEY: 'value' } });
+  assert.deepEqual(resolveProviderAccount('codex'), { instance: undefined, launch: { instanceId: undefined, binary: undefined, environment: undefined } });
   assert.throws(() => resolveProviderAccount('claude', 'stored'), /account is unavailable/);
   assert.throws(() => resolveProviderAccount('codex', 'missing'), /account is unavailable/);
 });

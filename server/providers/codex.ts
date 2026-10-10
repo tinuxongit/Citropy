@@ -5,6 +5,7 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { discoverModels } from "./models.ts";
 import { CLIENT_INFO } from "./control.ts";
 import { toolContent, type ToolContent } from "./tool-content.ts";
+import { attachmentNote, isImage } from "./attachments.ts";
 import { onJson, onLines } from "../lines.ts";
 import { askQuestion, cancelQuestions } from "../questions.ts";
 import { ask, cancelThread } from "../permissions.ts";
@@ -194,13 +195,9 @@ class CodexSession implements AgentSession {
     return [
       { type: "text", text: text || "Please inspect the attached files.", text_elements: [] },
       ...attachments.map((file) =>
-        ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.mime ?? "")
+        isImage(file)
           ? { type: "localImage", path: file.path }
-          : {
-              type: "text",
-              text: `Attached file: ${file.label}\nLocal path on this host: ${JSON.stringify(file.path)}\nThis uploaded file is stored outside the workspace. Read it at the path above.`,
-              text_elements: [],
-            },
+          : { type: "text", text: attachmentNote(file), text_elements: [] },
       ),
       ...skills.map((skill) => ({ type: "skill", name: skill.name, path: skill.path })),
     ];
@@ -616,7 +613,7 @@ export const codexProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "rpc", steer: true, compact: true, stopShell: true },
   steerHint: "Codex adds it to the turn in progress.",
-  signIn: { login: ["login"], status: ["login", "status"], signedIn: (output) => /^Logged in\b/m.test(output) },
+  signIn: { kind: "terminal", login: ["login"], status: ["login", "status"], signedIn: (output) => /^Logged in\b/m.test(output) },
   models: [],
   listModels: (launch) => discoverModels("codex", launch),
   async detect(launch) {
