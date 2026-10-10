@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { renderMarkdown, renderStreamingMarkdown, type FinishedBlocks } from "./markdown.ts";
 import { escapeHtml } from "./escape-html.ts";
 import { useApp } from "./store.ts";
+import type { MentionTag } from "../../../shared/mention-tags.ts";
 
 const cache = new Map<string, string>();
 const MAX_CACHE_SIZE = 4 * 1024 * 1024;
@@ -26,11 +27,13 @@ function fallback(text: string): string {
   return `<p>${escapeHtml(text).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br />")}</p>`;
 }
 
-export function useMarkdown(text: string, live: boolean, images = true, commands = false): { html: string; blocks?: string[]; ready: boolean } {
+const NO_MENTIONS: MentionTag[] = [];
+
+export function useMarkdown(text: string, live: boolean, images = true, commands = false, mentions = NO_MENTIONS): { html: string; blocks?: string[]; ready: boolean } {
   const theme = useApp((state) => state.scheme);
   const projectId = useApp((state) => state.activeProjectId);
   const threadId = useApp((state) => state.activeThreadId);
-  const key = `${theme}:${projectId ?? ""}:${threadId ?? ""}:${images}:${commands}:${text}`;
+  const key = `${theme}:${projectId ?? ""}:${threadId ?? ""}:${images}:${commands}:${JSON.stringify(mentions)}:${text}`;
   const [rendered, setRendered] = useState<{ html: string; blocks?: string[]; key: string | null }>(() => ({
     html: cache.get(key) ?? fallback(text),
     key: cache.has(key) ? key : null,
@@ -84,7 +87,7 @@ export function useMarkdown(text: string, live: boolean, images = true, commands
     }
     let cancelled = false;
     const controller = new AbortController();
-    void renderMarkdown(text, theme, controller.signal, assets, { images, live, commands }).catch((error) => { console.error("Rendering markdown failed:", error); return fallback(text); }).then((result) => {
+    void renderMarkdown(text, theme, controller.signal, assets, { images, live, commands, mentions }).catch((error) => { console.error("Rendering markdown failed:", error); return fallback(text); }).then((result) => {
       if (cancelled || latest.current !== key) return;
       remember(key, result);
       setRendered({ html: result, key });
@@ -93,7 +96,7 @@ export function useMarkdown(text: string, live: boolean, images = true, commands
       cancelled = true;
       controller.abort();
     };
-  }, [key, text, theme, live, projectId, threadId, images, commands, settings]);
+  }, [key, text, theme, live, projectId, threadId, images, commands, mentions, settings]);
 
   return { html: rendered.html, blocks: rendered.blocks, ready: rendered.key === key };
 }

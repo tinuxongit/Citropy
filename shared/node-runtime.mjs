@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { downloadVerified } from "./verified-download.mjs";
 
 export const nodeVersion = "22.23.2";
 export const nodeChecksums = {
@@ -16,17 +16,13 @@ export function nodeArchiveName(platform) {
 
 export async function downloadNodeArchive(platform, signal) {
   if (!Object.hasOwn(nodeChecksums, platform)) throw new Error("Automatic Node setup supports Linux and macOS, or Windows, on x64 and ARM64.");
-  const response = await fetch(`https://nodejs.org/download/release/v${nodeVersion}/${nodeArchiveName(platform)}`, { signal: AbortSignal.any([signal, AbortSignal.timeout(180000)]), redirect: "error" });
-  if (!response.ok || !response.body) throw new Error(`Could not download Node.js (${response.status}). Check this computer's internet connection and retry.`);
-  const hash = createHash("sha256");
-  const chunks = [];
-  let length = 0;
-  for await (const chunk of response.body) {
-    length += chunk.length;
-    if (length > 100 * 1024 * 1024) throw new Error("The Node.js download exceeded the expected size.");
-    hash.update(chunk);
-    chunks.push(chunk);
-  }
-  if (hash.digest("hex") !== nodeChecksums[platform]) throw new Error("The Node.js download failed its integrity check. Nothing was installed; retry the connection.");
-  return Buffer.concat(chunks, length);
+  return downloadVerified({
+    url: `https://nodejs.org/download/release/v${nodeVersion}/${nodeArchiveName(platform)}`,
+    sha256: nodeChecksums[platform],
+    maxBytes: 100 * 1024 * 1024,
+    timeout: 180000,
+    label: "Node.js",
+    signal,
+    redirect: "error",
+  });
 }

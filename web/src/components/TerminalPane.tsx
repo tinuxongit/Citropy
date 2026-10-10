@@ -6,7 +6,7 @@ import "@xterm/xterm/css/xterm.css";
 import { onTerminal, send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
 import { environmentSignal } from "../lib/environment.ts";
-import type { PanelTab } from "../../../shared/workbench.ts";
+import type { TerminalTarget } from "../../../shared/protocol.ts";
 import { exitNotice } from "../../../shared/terminal.ts";
 
 const DARK = {
@@ -74,10 +74,12 @@ function hasWebgl2(): boolean {
 
 export function TerminalPane({
   active,
-  panel,
+  termId,
+  target,
 }: {
   active: boolean;
-  panel: PanelTab;
+  termId: string;
+  target: TerminalTarget;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<Terminal | null>(null);
@@ -89,7 +91,7 @@ export function TerminalPane({
   const cursor = useRef<{ offset: number; sessionId: string } | undefined>(undefined);
   const attached = useRef(false);
   const [signal] = useState(environmentSignal);
-  const projectId = panel.projectId;
+  const targetKey = JSON.stringify(target);
   const connected = useApp((state) => state.connected);
   const scheme = useApp((state) => state.scheme);
   const uiScale = useApp((state) => state.uiScale);
@@ -97,13 +99,13 @@ export function TerminalPane({
   useEffect(() => {
     if (!connected) attached.current = false;
     if (!active && attached.current) {
-      send({ t: "term.unsubscribe", termId: panel.id });
+      send({ t: "term.unsubscribe", termId: termId });
       attached.current = false;
     }
     if (!active || !connected) term.current?.blur();
     if (!active || !connected || !host.current || signal.aborted) return;
     const detach = () => {
-      if (attached.current && !signal.aborted) send({ t: "term.unsubscribe", termId: panel.id });
+      if (attached.current && !signal.aborted) send({ t: "term.unsubscribe", termId: termId });
       attached.current = false;
     };
     if (term.current) {
@@ -114,8 +116,8 @@ export function TerminalPane({
         attached.current = true;
         send({
           t: "term.open",
-          termId: panel.id,
-          projectId,
+          termId: termId,
+          ...target,
           cols: term.current.cols,
           rows: term.current.rows,
           flowControl: true,
@@ -176,18 +178,18 @@ export function TerminalPane({
 
       send({
         t: "term.open",
-        termId: panel.id,
-        projectId,
+        termId: termId,
+        ...target,
         cols: instance.cols,
         rows: instance.rows,
         flowControl: true,
       });
 
       instance.onData((data) => {
-        if (!signal.aborted && !replays.current.get(instance)) send({ t: "term.data", termId: panel.id, data });
+        if (!signal.aborted && !replays.current.get(instance)) send({ t: "term.data", termId: termId, data });
       });
       instance.onResize(({ cols, rows }) => {
-        if (!signal.aborted) send({ t: "term.resize", termId: panel.id, cols, rows });
+        if (!signal.aborted) send({ t: "term.resize", termId: termId, cols, rows });
       });
       if (!document.activeElement?.matches('[role="tab"]:focus-visible')) instance.focus();
     })();
@@ -196,7 +198,7 @@ export function TerminalPane({
       disposed = true;
       detach();
     };
-  }, [active, projectId, connected, panel.id]);
+  }, [active, targetKey, connected, termId]);
 
   useEffect(() => {
     if (!ready || signal.aborted) return;
@@ -244,13 +246,13 @@ export function TerminalPane({
   useEffect(() => {
     if (!active || !connected) return;
     return onTerminal((event) => {
-      if (event.termId !== panel.id || !attached.current) return;
+      if (event.termId !== termId || !attached.current) return;
       if (event.t === "term.data") {
         const instance = term.current;
         if (!instance) return;
         const acknowledge = () => {
           if (event.streamId && event.data.length && !signal.aborted)
-            send({ t: "term.ack", termId: panel.id, count: event.data.length, streamId: event.streamId });
+            send({ t: "term.ack", termId: termId, count: event.data.length, streamId: event.streamId });
         };
         const position = event.sessionId && Number.isSafeInteger(event.offset)
           ? { sessionId: event.sessionId, offset: event.offset! } : undefined;
@@ -270,7 +272,7 @@ export function TerminalPane({
           if (event.reset) replays.current.set(instance, (replays.current.get(instance) ?? 1) - 1);
           if (event.reset && attached.current && !signal.aborted && term.current) {
             if (!document.documentElement.hasAttribute("data-resizing")) fit.current?.fit();
-            send({ t: "term.resize", termId: panel.id, cols: term.current.cols, rows: term.current.rows });
+            send({ t: "term.resize", termId: termId, cols: term.current.cols, rows: term.current.rows });
           }
           acknowledge();
         });
@@ -285,7 +287,7 @@ export function TerminalPane({
         term.current?.writeln(`\r\n${`[process exited with code ${event.code ?? "?"}]`}`);
       }
     });
-  }, [active, connected, panel.id]);
+  }, [active, connected, termId]);
 
   useEffect(() => {
     if (!active || !term.current) return;
@@ -327,7 +329,7 @@ export function TerminalPane({
 
   useEffect(() => {
     return () => {
-      if (attached.current && !signal.aborted) send({ t: "term.unsubscribe", termId: panel.id });
+      if (attached.current && !signal.aborted) send({ t: "term.unsubscribe", termId: termId });
       renderer.current?.dispose();
       term.current?.dispose();
       term.current = null;

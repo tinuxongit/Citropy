@@ -135,7 +135,7 @@ export function Composer({
   const canSend =
     !sending &&
     !transferring &&
-    !thread?.compacting &&
+    thread?.compacting !== "manual" &&
     !gitActionBusy(thread?.gitAction) &&
     !uploading &&
     usable;

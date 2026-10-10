@@ -9,6 +9,9 @@ import { store } from "./store.ts";
 import { removeAttachment, validateAttachments } from "./assets.ts";
 import { workspacePath } from "./workspaces.ts";
 import { mentionedSkills } from "./skills.ts";
+import { mentionedTools, withToolMentions } from "./tool-mentions.ts";
+import { skillTag, toolTag, type MentionTag } from "../shared/mention-tags.ts";
+import { SLASH_COMMAND } from "./providers/skill-prompt.ts";
 import { expandCommand } from "./commands.ts";
 import { providers } from "./providers/index.ts";
 import { providerInfo } from "./provider-registry.ts";
@@ -40,7 +43,6 @@ import type {
 
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
 const SHELL_TOOLS = new Set(["Bash", "Shell", "Monitor"]);
-const COMMAND = /^\/[\w.:-]+(?:\s|$)/;
 
 interface Prepared {
   messageId: string;
@@ -50,6 +52,7 @@ interface Prepared {
   attachments: Attachment[];
   prompt: string;
   skills: Array<{ name: string; path: string }>;
+  mentions: MentionTag[];
 }
 
 class ThreadRuntime {
@@ -125,7 +128,7 @@ class ThreadRuntime {
       this.#checkSession(generation);
     }
     if (typeof text === "string" && text.trim() === "/compact" && Array.isArray(files) && !files.length) return this.compact();
-    if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");
+    if (this.#thread.compacting === "manual") throw new Error("Wait for context compaction to finish.");
     if (this.#preparing || this.#steering || this.#thread.running || this.#enqueuing || (this.#resume && this.#thread.queue?.length)) return this.#enqueue(text, files);
     this.#limitResume = limitResume;
     this.#preparing = true;
@@ -211,7 +214,7 @@ class ThreadRuntime {
       return this.#sendQueued(item, index);
     }
     if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");
-    if (COMMAND.test(item.text.trim())) throw new Error("Commands wait until the current run finishes.");
+    if (SLASH_COMMAND.test(item.text.trim())) throw new Error("Commands wait until the current run finishes.");
     const session = this.#session;
     if (!session || this.#preparing || this.#steering) throw new Error("Your last message is still on its way. Try again in a moment.");
     if (!session.steer) throw new Error(`${providers[this.#thread.provider].label} can't take a message until it finishes.`);
@@ -304,20 +307,21 @@ class ThreadRuntime {
     this.#check(text, files);
     if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");
     const attachments = await validateAttachments(this.id, files);
-    let prompt = await expandCommand(this.#thread.provider, text);
+    const skills = await mentionedSkills(this.#thread, text);
+    const tools = await mentionedTools(text, skills);
+    let prompt = withToolMentions(await expandCommand(this.#thread.provider, text), tools);
     const context = await prepareContext(this.#thread, prompt);
     prompt = context.prompt;
     if (this.#thread.transferContext) prompt = `${await transferPrompt(this.#thread.transferContext)}\n\nCurrent request:\n${prompt}`;
     else if (this.#thread.rebuildContext && !this.#thread.externalId) prompt = historyPrompt(this.#thread.messages, prompt);
-    const skills = await mentionedSkills(this.#thread, text);
     this.#checkSession(generation);
     if (store.disabledProviders.has(this.#thread.provider)) throw new Error("This provider is disabled. Enable it in Settings > Providers.");
     assertApplicationReady();
     assertProviderReady(this.#thread.provider);
-    return { messageId: uid("msg"), contextSources: context.sources, generation, text, attachments, prompt, skills };
+    return { messageId: uid("msg"), contextSources: context.sources, generation, text, attachments, prompt, skills, mentions: [...skills.map(skillTag), ...tools.map(toolTag)] };
   }
 
-  #addUserMessage({ messageId, text, attachments, contextSources }: Prepared): void {
+  #addUserMessage({ messageId, text, attachments, contextSources, mentions }: Prepared): void {
     if (this.#thread.finished) store.setThreadFinished(this.#thread.id, false);
     const message: Message = {
       id: messageId,
@@ -326,6 +330,7 @@ class ThreadRuntime {
       ts: Date.now(),
       attachments,
       contextSources,
+      ...(mentions.length ? { mentions } : {}),
     };
     store.addMessage(this.#thread.id, message);
     store.raiseThread(this.id);
@@ -435,9 +440,9 @@ class ThreadRuntime {
     const generation = this.#stopGeneration;
     const session = this.#ensureSession();
     if (!session.compact) throw new Error("This provider does not support manual compaction.");
-    store.patchThread(this.id, { compacting: true, status: "working", running: true, runStartedAt: Date.now(), activeTool: "Compacting context" });
+    store.patchThread(this.id, { compacting: "manual", status: "working", running: true, runStartedAt: Date.now(), activeTool: "Compacting context" });
     this.#compactionTimer = setTimeout(() => {
-      if (!this.#thread.compacting) return;
+      if (this.#thread.compacting !== "manual") return;
       this.stop();
       store.patchThread(this.id, { status: "error", error: "The provider did not finish compaction within five minutes. Try again when it is ready." });
     }, 300_000);
@@ -446,7 +451,7 @@ class ThreadRuntime {
     catch (error) {
       clearTimeout(this.#compactionTimer);
       if (this.#disposed || generation !== this.#stopGeneration || this.#thread.status === "stopped") return;
-      store.patchThread(this.id, { compacting: false, status: "error", running: false, activeTool: undefined, error: (error as Error).message });
+      store.patchThread(this.id, { compacting: undefined, status: "error", running: false, activeTool: undefined, error: (error as Error).message });
       throw error;
     }
   }
@@ -460,7 +465,7 @@ class ThreadRuntime {
     cancelThread(this.#thread.id, false);
     cancelQuestions(this.#thread.id);
     const active = this.#thread.running || this.#thread.compacting;
-    store.patchThread(this.#thread.id, { status: "stopped", running: false, compacting: false, activeTool: undefined });
+    store.patchThread(this.#thread.id, { status: "stopped", running: false, compacting: undefined, activeTool: undefined });
     if (this.#session && active && !this.#stopping) this.#waitForStop(this.#session);
   }
 
@@ -507,7 +512,7 @@ class ThreadRuntime {
     endThreadShells(this.id, "stopped");
     this.#finishParts();
     disconnectTools(this.#thread.id);
-    if (!preserveStatus) store.patchThread(this.#thread.id, { status: "stopped", running: false, compacting: false, activeTool: undefined });
+    if (!preserveStatus) store.patchThread(this.#thread.id, { status: "stopped", running: false, compacting: undefined, activeTool: undefined });
     cancelThread(this.#thread.id, false);
     cancelQuestions(this.#thread.id);
     this.#session?.dispose();
@@ -625,6 +630,9 @@ class ThreadRuntime {
       case "tool.output":
         shellOutput(this.#shellId(event.callId), event.output, event.append);
         return;
+      case "compacting":
+        if (this.#thread.running && this.#thread.compacting !== "manual") store.patchThread(this.id, { compacting: event.active ? "automatic" : undefined });
+        return;
       case "compacted":
         this.#onCompacted(event);
         return;
@@ -685,10 +693,10 @@ class ThreadRuntime {
   }
 
   #onCompacted(event: Extract<AgentEvent, { type: "compacted" }>): void {
-    const manual = this.#thread.compacting;
+    const manual = this.#thread.compacting === "manual";
     clearTimeout(this.#compactionTimer);
     if (event.contextTokens !== undefined) this.#applyUsage({ contextTokens: event.contextTokens });
-    store.patchThread(this.id, { compacting: false, compactedAt: Date.now(), ...(manual ? { running: false, status: "idle", activeTool: undefined } : {}) });
+    store.patchThread(this.id, { compacting: undefined, compactedAt: Date.now(), ...(manual ? { running: false, status: "idle", activeTool: undefined } : {}) });
     this.#transcript.notice("info", "Context compacted. Your conversation history is still available here.");
     if (manual) this.#transcript.closeMessage();
   }
@@ -780,7 +788,7 @@ class ThreadRuntime {
     store.patchThread(this.#thread.id, {
       status: stopped ? "stopped" : event.error ? "error" : "idle",
       running: false,
-      compacting: false,
+      compacting: undefined,
       activeTool: undefined,
       error: stopped ? undefined : event.error,
       usageLimit,
@@ -854,7 +862,7 @@ class ThreadRuntime {
     store.patchThread(this.#thread.id, {
       status: this.#thread.status === "stopped" ? "stopped" : status,
       running: false,
-      compacting: false,
+      compacting: undefined,
       activeTool: undefined,
     });
   }

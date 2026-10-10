@@ -476,13 +476,19 @@ export class OpenCode2Session implements AgentSession {
       case "session.retry.scheduled":
         emit({ type: "notice", level: "warn", text: `OpenCode is retrying after an error (attempt ${data.attempt}): ${(data.error as StructuredError).message}` });
         return;
+      case "session.compaction.started":
+        if (!this.#compaction) emit({ type: "compacting", active: true });
+        return;
       case "session.compaction.ended":
         if (this.#compaction) this.#compaction.resolve();
         else emit({ type: "compacted" });
         return;
       case "session.compaction.failed":
         if (this.#compaction) this.#compaction.reject(new Error((data.error as StructuredError).message));
-        else emit({ type: "notice", level: "warn", text: `OpenCode could not compact the context: ${(data.error as StructuredError).message}` });
+        else {
+          emit({ type: "compacting", active: false });
+          emit({ type: "notice", level: "warn", text: `OpenCode could not compact the context: ${(data.error as StructuredError).message}` });
+        }
         return;
       case "session.step.ended":
         this.#emitUsage(event.id, data.tokens as Tokens, data.cost as number);

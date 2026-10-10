@@ -8,7 +8,7 @@ import type {
   GitHubRequest,
 } from "../../../shared/github.ts";
 import { selectProject, selectThread, selectPanel, setEditorTerminal, useApp, confirmAction, type AppState } from "./store.ts";
-import { neighborTab, rememberClosedTab, saveTabs, stepTab, takeClosedTab, withKeptTab, withoutTab, type Tabs } from "./thread-tabs.ts";
+import { neighborTab, rememberClosedTab, saveTabs, stepTab, takeClosedTab, withKeptTab, withMovedTab, withoutTab, type Tabs } from "./thread-tabs.ts";
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { flushHeld, holdMessage } from "./offline.ts";
@@ -29,6 +29,7 @@ import type {
 } from "../../../shared/protocol.ts";
 import type { PanelKind } from "../../../shared/workbench.ts";
 import { movePanelTab } from "../../../shared/workbench.ts";
+import type { DropEdge } from "../../../shared/move-beside.ts";
 import { randomId } from "./random-id.ts";
 
 export async function saveProjectDefaults(settings: ProjectSettings): Promise<void> {
@@ -39,7 +40,7 @@ export async function saveProjectDefaults(settings: ProjectSettings): Promise<vo
   useApp.setState({ projectDefaults: result });
 }
 
-export function moveWorkbenchPanel(id: string, targetId: string, edge: "before" | "after"): void {
+export function moveWorkbenchPanel(id: string, targetId: string, edge: DropEdge): void {
   const state = useApp.getState();
   if (!state.connected) return;
   const panels = movePanelTab(state.panels, id, targetId, edge);
@@ -230,6 +231,10 @@ function updateTabs(change: (state: AppState) => Tabs): void {
 
 export function keepTab(id: string): void {
   updateTabs((state) => withKeptTab(state, id));
+}
+
+export function moveTab(id: string, targetId: string, edge: DropEdge): void {
+  updateTabs((state) => withMovedTab(state, id, targetId, edge));
 }
 
 export function openInNewTab(id: string): void {

@@ -160,7 +160,7 @@ export function NotificationCenter({
               <CloseIcon size={16} />
             </button>
           </header>
-          <div className="notification-tabs sliding-selection" role="tablist" aria-label="Notification types">
+          <div className="segmented-tabs notification-tabs sliding-selection" role="tablist" aria-label="Notification types">
             <SelectionHighlight value={tabId} />
             {TABS.map((entry) => {
               const count = notifications.filter((item) => !item.read && inTab(entry, item)).length;

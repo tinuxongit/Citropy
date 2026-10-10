@@ -52,7 +52,7 @@ test("terminal tabs resume without replaying parsed output and recover gaps and 
       const [active, setActive] = React.useState(true);
       return React.createElement(React.Fragment, null,
         React.createElement('button', { onClick: () => setActive(value => !value) }, 'Toggle'),
-        React.createElement('div', { style: { width: 900, height: 650, display: active ? 'block' : 'none' } }, React.createElement(TerminalPane, { active, panel })));
+        React.createElement('div', { style: { width: 900, height: 650, display: active ? 'block' : 'none' } }, React.createElement(TerminalPane, { active, termId: panel.id, target: { projectId: panel.projectId } })));
     }
     createRoot(document.querySelector('#fixture')).render(React.createElement(Fixture));
   </script></body></html>`);

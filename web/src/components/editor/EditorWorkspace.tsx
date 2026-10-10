@@ -403,7 +403,7 @@ function Workspace({
               />
             ) : current ? (
               (active || started) && <Suspense fallback={<div className="pane-empty" role="status">Loading editor…</div>}>
-                <CodeEditor document={current} wrap={wrap} onReady={ready} />
+                <CodeEditor document={current} threadId={threadId} wrap={wrap} onReady={ready} />
               </Suspense>
             ) : (
               <div className="editor-empty">

@@ -81,6 +81,28 @@ body {
   border-radius: var(--r-sm);
   background: var(--selection-fill, var(--highlight));
 }
+.segmented-tabs {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--r-md);
+  background: var(--panel);
+}
+.segmented-tabs button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  transition: color 0.15s ease;
+}
+.segmented-tabs button[aria-selected="true"] {
+  color: var(--text);
+}
 .animated-text { position: relative; display: inline-grid; min-width: 0; max-width: 100%; vertical-align: bottom; }
 .animated-text > span { grid-area: 1 / 1; min-width: 0; overflow: hidden; text-overflow: inherit; white-space: inherit; }
 .animated-text > [data-exiting] { position: absolute; inset: 0; pointer-events: none; }
@@ -355,7 +377,7 @@ kbd {
   .topbar .icon-btn { width: 40px; height: 40px; }
   /* iOS Safari zooms the page into any focused field whose text is under 16px. */
   :root :is(input:not([type="checkbox"], [type="radio"], [type="range"]), textarea, select),
-  :root .composer-highlights {
+  :root .composer-input, :root .composer-placeholder {
     font-size: max(16px, 1em);
   }
 }

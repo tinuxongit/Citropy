@@ -161,28 +161,29 @@
   display: block;
   width: 100%;
   min-height: 42px;
-  max-height: min(360px, calc(var(--viewport-height) * 0.55));
+  max-height: min(320px, calc(var(--viewport-height) * 0.55));
+  overflow-y: auto;
   padding: var(--space-12) var(--space-20) var(--space-6);
   border: none;
   background: none;
   color: var(--text);
   font-size: var(--text-body);
   line-height: 1.6;
-  resize: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
-.composer-input::placeholder {
+.composer-placeholder {
+  position: absolute;
+  inset: 0 0 auto;
+  padding: var(--space-12) var(--space-20) var(--space-6);
   color: var(--text-3);
+  font-size: var(--text-body);
+  line-height: 1.6;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-@supports (field-sizing: content) {
-  .composer-input {
-    field-sizing: content;
-    max-height: min(320px, calc(var(--viewport-height) * 0.55));
-  }
+  pointer-events: none;
 }
 
 .composer-row {
@@ -194,7 +195,7 @@
   min-width: 0;
 }
 .composer-row .composer-input,
-.composer-row .composer-highlights {
+.composer-row .composer-placeholder {
   padding: var(--space-12) var(--space-8) var(--space-12) var(--space-20);
 }
 
@@ -1029,38 +1030,32 @@
 .composer-writing {
   position: relative;
 }
-.composer-editor {
-  position: relative;
+.composer-input p {
+  margin: 0;
 }
-.composer-highlights {
-  position: absolute;
-  inset: 0;
-  max-width: 100%;
-  overflow: hidden;
-  padding: var(--space-12) var(--space-20) var(--space-6);
-  font-size: var(--text-body);
-  line-height: 1.6;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  pointer-events: none;
-  visibility: hidden;
-}
-.composer-editor[data-highlighted="true"] .composer-highlights {
-  visibility: visible;
-}
-.composer-editor[data-highlighted="true"] .composer-input {
-  position: relative;
-  color: transparent;
-  caret-color: var(--text);
-}
-.composer-input::selection {
+.composer-input ::selection {
   background: var(--accent-soft);
 }
-.skill-mention {
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  border-radius: 4px;
-  box-shadow: 0 0 0 2px var(--accent-soft);
+.mention-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-6) 0 var(--space-4);
+  background: var(--raised-2);
+  color: var(--text);
+  border-radius: var(--r-xs);
+  vertical-align: bottom;
+  line-height: inherit;
+}
+.mention-chip > :is(.citropy-mark, .link-site-icon, svg) {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  color: var(--text-2);
+}
+.mention-chip > .link-site-icon > * {
+  width: 14px;
+  height: 14px;
 }
 .composer-suggestions {
   position: absolute;
@@ -1073,30 +1068,29 @@
   border-radius: var(--r-popup);
   overflow: hidden;
 }
-.composer-suggestions-heading {
+.composer-suggestion-list {
+  max-height: min(360px, calc(var(--viewport-height) * 0.45));
+  padding: var(--space-6);
+}
+.composer-suggestion-section {
   display: flex;
   justify-content: space-between;
   gap: var(--space-16);
-  padding: var(--space-12) var(--space-16);
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  background: var(--raised);
-}
-.composer-suggestions-heading > span {
-  color: var(--text-3);
+  padding: var(--space-10) var(--space-10) var(--space-4);
   font-size: var(--text-xs);
+  color: var(--text-3);
 }
-.composer-suggestion-list {
-  max-height: min(320px, calc(var(--viewport-height) * 0.4));
-  padding: var(--space-6);
-}
+.composer-suggestion-section:not(:first-child) { margin-top: var(--space-6); }
+.composer-suggestion-section > span { color: var(--text-4); }
 .composer-suggestion-list > button {
   display: flex;
   align-items: center;
   width: 100%;
-  gap: var(--space-12);
-  padding: var(--space-10);
-  border-radius: var(--r-sm);
+  gap: var(--space-10);
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--r-xs);
+  color: var(--text-2);
+  font-size: var(--text-sm);
   text-align: left;
 }
 .composer-suggestion-list > button:hover {
@@ -1104,27 +1098,40 @@
 }
 .composer-suggestion-list > button[aria-selected="true"] {
   background: var(--highlight);
+  color: var(--text);
 }
-.composer-suggestion-list svg {
+.composer-suggestion-list > button > :is(svg, .citropy-mark, .link-site-icon) {
   flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
   color: var(--text-3);
-}
-.composer-suggestion-list > button > span {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
 }
 .composer-suggestion-list strong {
-  font-size: var(--text-sm);
+  flex: none;
+  max-width: 60%;
   font-weight: 500;
-}
-.composer-suggestion-list small {
-  font-size: var(--text-xs);
-  line-height: 1.5;
-  color: var(--text-3);
+  color: var(--text);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+.composer-suggestion-list small,
+.composer-suggestion-list em {
+  font-size: var(--text-xs);
+  font-style: normal;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.composer-suggestion-list small {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.composer-suggestion-list em {
+  flex: none;
+  color: var(--text-4);
 }
 .composer-suggestion-list > p {
   padding: var(--space-10);

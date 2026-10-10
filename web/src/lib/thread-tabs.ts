@@ -1,4 +1,5 @@
 import { environmentStorage } from "./environment.ts";
+import { moveBeside, type DropEdge } from "../../../shared/move-beside.ts";
 
 const TABS_KEY = "citropy.tabs";
 const CLOSED_TAB_LIMIT = 20;
@@ -46,6 +47,11 @@ export function withoutTab(state: Tabs, id: string): Tabs {
     openThreadIds: state.openThreadIds.filter((open) => open !== id),
     previewThreadId: state.previewThreadId === id ? null : state.previewThreadId,
   };
+}
+
+export function withMovedTab(state: Tabs, id: string, targetId: string, edge: DropEdge): Tabs {
+  const openThreadIds = moveBeside(state.openThreadIds, id, targetId, edge);
+  return openThreadIds === state.openThreadIds ? state : { ...state, openThreadIds };
 }
 
 export function neighborTab(openThreadIds: string[], id: string): string | null {

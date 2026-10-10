@@ -4,6 +4,7 @@ import { stopProcess } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverModels } from "./models.ts";
 import { toolContent } from "./tool-content.ts";
+import { SLASH_COMMAND } from "./skill-prompt.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -188,7 +189,7 @@ class ClaudeSession implements AgentSession {
     }
     for (const skill of skills) content.push({ type: "text", text: `Use the ${skill.name} skill. Read its instructions at ${skill.path}.` });
     const prompt = { type: "text", text: text || "Please inspect the attached files." };
-    if (/^\/[\w.:-]+(?:\s|$)/.test(text.trim())) content.unshift(prompt);
+    if (SLASH_COMMAND.test(text.trim())) content.unshift(prompt);
     else content.push(prompt);
     return content;
   }
@@ -406,6 +407,11 @@ class ClaudeSession implements AgentSession {
         this.#active = true;
         this.#emit({ type: "status", status: "thinking" });
       }
+      if (message.status === "compacting") this.#emit({ type: "compacting", active: true });
+      if (message.compact_result === "failed") {
+        this.#emit({ type: "compacting", active: false });
+        if (!this.#manualCompaction) this.#emit({ type: "notice", level: "warn", text: ["Claude Code could not compact the context.", message.compact_error].filter(Boolean).join(" ") });
+      }
       return;
     }
 
@@ -575,6 +581,7 @@ export const claudeProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "stdio", steer: true, compact: true, stopShell: true },
   steerHint: "Claude Code reads it at its next step.",
+  signIn: { login: ["auth", "login"], status: ["auth", "status"], signedIn: (output) => /"loggedIn":\s*true\b/.test(output) },
   models: [],
   listModels: (launch) => discoverModels("claude", launch),
   async detect(launch) {

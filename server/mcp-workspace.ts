@@ -3,6 +3,8 @@ import { resolve, sep } from "node:path";
 import { existsSync } from "node:fs";
 import { workspacePath } from "./workspaces.ts";
 import { saveToolImageFile } from "./tool-images.ts";
+import { appendVisualDraft, editVisual, readToolVisual, removeVisualDraft, saveToolVisual, type VisualEdit } from "./tool-visuals.ts";
+import { listConnections } from "./connections.ts";
 import { answerQuestion, askQuestion, hasPendingQuestion, pendingQuestions } from "./questions.ts";
 import { ask } from "./permissions.ts";
 import { store } from "./store.ts";
@@ -73,6 +75,13 @@ function pageText(value: string, args: Record<string, unknown>) {
   return { text: value.slice(offset, end), offset, totalCharacters: value.length, ...(end < value.length ? { nextOffset: end } : {}) };
 }
 
+function visualEdits(value: unknown): VisualEdit[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.some(edit => typeof edit?.find !== "string" || typeof edit?.replace !== "string"))
+    throw new Error("edits must be a list of { find, replace } strings");
+  return value;
+}
+
 function summary(child: Thread) {
   return {
     id: child.id,
@@ -101,13 +110,15 @@ export async function callWorkspaceTool(
     throw new Error("This conversation is no longer available");
   if (store.disabledProviders.has(thread.provider))
     throw new Error("This provider is disabled");
+  const settings = resolveProjectSettings(store.projectDefaults);
+  const browserAllowed = settings.browserAccess !== false;
   if (name === "tool_help") {
     const category = required(args, "category");
     if (!toolCategories.includes(category)) throw new Error("Unknown tool category");
-    const browserAllowed = resolveProjectSettings(store.projectDefaults, project.settings).browserAccess !== false;
     return text(workspaceTools.filter(tool =>
       (tool.name.startsWith(`${category}_`) || (category === "workspace" && tool.name === "open_panel")) &&
-      (!tool.name.startsWith("browser_") || browserAllowed),
+      (!tool.name.startsWith("browser_") || browserAllowed) &&
+      (!tool.name.startsWith("workspace_visual") || settings.visualReplies),
     ));
   }
   if (name === "run_tool") {
@@ -131,7 +142,8 @@ export async function callWorkspaceTool(
         : { behavior: "allow", updatedInput: input },
     );
   }
-  if (name.startsWith("browser_") && resolveProjectSettings(store.projectDefaults, project.settings).browserAccess === false) throw new Error("Browser access is disabled in this project's settings.");
+  if (name.startsWith("browser_") && !browserAllowed) throw new Error("Browser access is turned off in Citropy's settings.");
+  if (name.startsWith("workspace_visual") && !settings.visualReplies) throw new Error("Visual replies are turned off in Citropy's settings. Answer in text.");
   const definition = workspaceTools.find((tool) => tool.name === name);
   if (!definition) throw new Error(`Unknown tool: ${name}`);
   for (const key of definition.inputSchema.required ?? []) {
@@ -190,6 +202,8 @@ export async function callWorkspaceTool(
         throw error;
       }
     }
+    case "browser_connections":
+      return text(await listConnections());
     case "browser_tabs":
       return text(
         browser.browserStates().filter((tab) => tab.projectId === project.id),
@@ -308,6 +322,23 @@ export async function callWorkspaceTool(
       const image = await saveToolImageFile(threadId, path, () => store.threads.has(threadId));
       return text({ id: image.id, markdown: `![Image](citropy-image:${image.id})` });
     }
+    case "workspace_visual": {
+      const title = required(args, "title").replace(/[[\]\n]/g, " ");
+      if ((args.html === undefined) === (args.from === undefined)) throw new Error("Provide either html or from");
+      if (args.edits !== undefined && args.from === undefined) throw new Error("edits need from");
+      if (args.html !== undefined && typeof args.html !== "string") throw new Error("Provide a valid html");
+      const from = args.from === undefined ? undefined : required(args, "from");
+      const html = from ? editVisual(await readToolVisual(threadId, from), visualEdits(args.edits)) : args.html as string;
+      const id = await saveToolVisual(threadId, html);
+      if (from) await removeVisualDraft(threadId, from);
+      return text({ id, markdown: `![${title}](citropy-visual:${id})` });
+    }
+    case "workspace_visual_draft": {
+      if (typeof args.html !== "string" || !args.html) throw new Error("Provide a valid html");
+      return text(await appendVisualDraft(threadId, args.html, args.draft === undefined ? undefined : required(args, "draft")));
+    }
+    case "workspace_visual_source":
+      return text(pageText(await readToolVisual(threadId, required(args, "id")), args));
     case "open_panel": {
       const kind = required(args, "kind") as PanelKind;
       if (!["files", "changes", "subagents", "tools"].includes(kind))

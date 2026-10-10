@@ -93,6 +93,7 @@ export async function chooseThreadWorkspace(
   const defaults = resolveProjectSettings(store.projectDefaults, project.settings);
   const options = choice ?? { kind: defaults.workspace ?? "current" };
   if (options.kind === "current") {
+    if (!(await isRepo(project.path))) return { workspacePath: project.path };
     if (defaults.autoPull) {
       const clean = !(await tryGit(project.path, ["status", "--porcelain"]));
       const ahead = await tryGit(project.path, ["rev-list", "--count", "@{upstream}..HEAD"]);

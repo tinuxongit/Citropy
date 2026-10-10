@@ -8,19 +8,21 @@ import { Notice } from "./parts/Notice.tsx";
 import { ImageGallery } from "./parts/ImageGallery.tsx";
 import { TurnChanges } from "./parts/TurnChanges.tsx";
 import { useApp } from "../lib/store.ts";
+import type { MentionTag } from "../../../shared/mention-tags.ts";
 
 interface Props {
   partId: string;
   live: boolean;
+  mentions?: MentionTag[];
 }
 
-export const PartView = memo(function PartView({ partId, live }: Props) {
+export const PartView = memo(function PartView({ partId, live, mentions }: Props) {
   const part = useApp((state) => state.parts.get(partId));
   if (!part) return null;
 
   switch (part.kind) {
     case "text":
-      return <Prose partId={part.id} text={part.text} live={live && part.complete !== true} commands />;
+      return <Prose partId={part.id} text={part.text} live={live && part.complete !== true} commands mentions={mentions} />;
     case "reasoning":
       return <Reasoning ids={[part.id]} live={live} />;
     case "tool":

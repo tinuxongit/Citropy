@@ -292,8 +292,11 @@
   background: color-mix(in srgb, var(--canvas) calc(var(--focus) * 100%), transparent);
   backdrop-filter: blur(calc(var(--focus) * 6px));
 }
-.backdrop-layers[data-kind="ascii"] > .shell-glass {
+.backdrop-layers:is([data-kind="ascii"], [data-kind="dots"]) > .shell-glass {
   backdrop-filter: none;
+}
+.stage-dots {
+  --dot-fade: radial-gradient(ellipse 36% 60% at var(--stage-center, 50%) 45%, color-mix(in srgb, var(--canvas) 55%, transparent), transparent);
 }
 .stage-backdrop {
   position: absolute;

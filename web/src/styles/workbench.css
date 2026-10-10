@@ -80,7 +80,7 @@
   position: relative;
   user-select: none;
 }
-:is(.workbench-tab, .editor-terminal-tab)[data-dragging="true"] {
+:is(.workbench-tab, .editor-terminal-tab, .thread-tab)[data-dragging="true"] {
   z-index: 2;
   background: var(--raised-2);
   cursor: grabbing;
@@ -88,16 +88,11 @@
 [data-dragging="true"] > [role="tab"] {
   cursor: grabbing;
 }
-.panel-drop-marker {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 2px;
-  z-index: 3;
-  border-radius: 1px;
-  background: var(--accent);
-  pointer-events: none;
+.sliding-selection:has(> [data-tab-id][data-dragging="true"]) > .selection-highlight {
+  visibility: hidden;
+}
+.sliding-selection:has(> [data-tab-id][data-dragging="true"]) > [data-active="true"]:not([data-dragging="true"]) {
+  background: var(--selection-fill, var(--highlight));
 }
 .workbench-tab:hover:not([data-active="true"]) {
   color: var(--text);
@@ -201,7 +196,7 @@
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  background: var(--canvas);
+  background: var(--canvas-deep);
 }
 .browser-toolbar {
   display: flex;
@@ -389,6 +384,16 @@
   overflow-wrap: anywhere;
 }
 .browser-notice > svg {
+  flex: none;
+}
+.browser-sign-in {
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding-block: var(--space-6);
+  font-size: var(--text-sm);
+}
+.browser-sign-in > .btn {
   flex: none;
 }
 .browser-dialog {

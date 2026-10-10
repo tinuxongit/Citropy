@@ -202,7 +202,6 @@ export function Inspector({ visible }: { visible: boolean }) {
           }}
         >
           <SelectionHighlight value={`${activeId}:${visibleTabs.map((panel) => panel.id).join(",")}`} selector='.workbench-tab[data-active="true"]' />
-          {tabActions.indicator}
           {visibleTabs.map((panel) => {
             const Icon = options.find(
               (option) => option.kind === panel.kind,
@@ -346,7 +345,7 @@ export function Inspector({ visible }: { visible: boolean }) {
               {panel.kind === "browser" ? (
                 <BrowserPane panel={panel} active={active} />
               ) : panel.kind === "terminal" ? (
-                <TerminalPane panel={panel} active={active} />
+                <TerminalPane termId={panel.id} target={{ projectId: panel.projectId }} active={active} />
               ) : panel.kind === "drawing" ? (
                 <Suspense fallback={<div className="pane-empty" role="status">Loading…</div>}><DrawingPane projectId={panel.projectId} /></Suspense>
               ) : panel.kind === "notes" ? (

@@ -82,6 +82,16 @@ test("Claude context usage keeps updating after manual and automatic compaction"
   }
 });
 
+test("Claude reports when automatic compaction starts and when it fails", async t => {
+  const { session, events, receive } = fixture(t);
+  await session.send("Continue the work");
+  receive({ type: "system", subtype: "status", status: "compacting" });
+  assert.deepEqual(events.findLast(event => event.type === "compacting"), { type: "compacting", active: true });
+  receive({ type: "system", subtype: "status", status: null, compact_result: "failed", compact_error: "Prompt too long" });
+  assert.deepEqual(events.findLast(event => event.type === "compacting"), { type: "compacting", active: false });
+  assert.equal(events.findLast(event => event.type === "notice").text, "Claude Code could not compact the context. Prompt too long");
+});
+
 test("Claude reporting a larger context window does not change the configured window", async t => {
   const { session, events, receive } = fixture(t);
   receive({ ...result, modelUsage: { "claude-opus-5-5": { contextWindow: 1_000_000 } } });

@@ -59,7 +59,6 @@ export function EditorTerminal({
           }}
         >
           <SelectionHighlight value={`${selected?.id}:${tabActions.orderKey}`} selector='.editor-terminal-tab[data-active="true"]' />
-          {tabActions.indicator}
           {panels.map((panel) => (
             <div className="editor-terminal-tab" key={panel.id} data-active={panel.id === selectedId} {...tabActions.tabProps(panel)}>
               <button
@@ -121,7 +120,7 @@ export function EditorTerminal({
           aria-labelledby={`editor-terminal-tab-${panelId}-${panel.id}`}
           hidden={panel.id !== selectedId}
         >
-          <TerminalPane panel={panel} active={active && visible && panel.id === selectedId} />
+          <TerminalPane termId={panel.id} target={{ projectId: panel.projectId }} active={active && visible && panel.id === selectedId} />
         </div>
       ))}
       {!selected && (

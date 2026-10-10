@@ -1,0 +1,13 @@
+[
+  {"name": "Google", "url": "https://www.google.com/", "description": "Gmail, Calendar, Drive, Docs"},
+  {"name": "GitHub", "url": "https://github.com/login"},
+  {"name": "Amazon", "url": "https://www.amazon.com/"},
+  {"name": "LinkedIn", "url": "https://www.linkedin.com/login"},
+  {"name": "X", "url": "https://x.com/login"},
+  {"name": "Reddit", "url": "https://www.reddit.com/login"},
+  {"name": "Notion", "url": "https://www.notion.so/login"},
+  {"name": "Slack", "url": "https://slack.com/signin"},
+  {"name": "Discord", "url": "https://discord.com/login"},
+  {"name": "Figma", "url": "https://www.figma.com/login"},
+  {"name": "Vercel", "url": "https://vercel.com/login"}
+]

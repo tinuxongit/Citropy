@@ -28,15 +28,12 @@
 .canvas,
 .composer,
 .conversation-jump,
-.thread-details-panel { --chat-gutter: 36px; }
-
-@container conversation (max-width: 600px) {
-  .canvas,
-  .composer,
-  .conversation-jump,
-  .thread-details-panel {
-    --chat-gutter: 24px;
-  }
+.thread-details-panel {
+  --chat-gutter-narrow: 24px;
+  --chat-gutter-wide: 36px;
+  --chat-gutter-grows-from: 600px;
+  --chat-gutter-growth: 0.1;
+  --chat-gutter: clamp(var(--chat-gutter-narrow), var(--chat-gutter-narrow) + (100cqw - var(--chat-gutter-grows-from)) * var(--chat-gutter-growth), var(--chat-gutter-wide));
 }
 
 .canvas-inner {
@@ -1108,6 +1105,9 @@
   width: fit-content;
   padding: 0;
   border-radius: 0;
+}
+.agent-card:has(.markdown-visual) {
+  width: auto;
 }
 .agent-activity { --hang: 0px; min-width: 0; padding: 1px 0; user-select: text; }
 @container conversation (min-width: 961px) {

@@ -7,7 +7,7 @@ import {
   rename,
   mkdir,
 } from "node:fs/promises";
-import { dataRoot } from "./paths.ts";
+import { citropySkillsRoot, dataRoot } from "./paths.ts";
 import { hasCode, ifMissing, unlessCode } from "../shared/expected-errors.mjs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -17,23 +17,18 @@ import { providerControl } from "./providers/control.ts";
 import { PROVIDER_IDS, type ProviderId, type Thread } from "../shared/protocol.ts";
 import type { SkillInfo } from "../shared/features.ts";
 
+export const MAX_SKILL_BYTES = 100_000;
 const disabledName = "SKILL.md.citropy-disabled";
 const inventories = new Map<
   string,
   { time: number; value: Promise<SkillInfo[]> }
 >();
 
-async function roots(
-  projectPath?: string,
-): Promise<
-  Array<{ path: string; provider: ProviderId; scope: SkillInfo["scope"] }>
-> {
+type SkillRoot = { path: string; provider: ProviderId; scope: SkillInfo["scope"] };
+
+async function roots(projectPath?: string): Promise<SkillRoot[]> {
   const home = homedir();
-  const locations: Array<{
-    path: string;
-    provider: ProviderId;
-    scope: SkillInfo["scope"];
-  }> = [
+  const locations: SkillRoot[] = [
     {
       path: join(process.env.CODEX_HOME || join(home, ".codex"), "skills"),
       provider: "codex",
@@ -78,6 +73,7 @@ async function roots(
       provider,
       scope: "personal",
     });
+    locations.push({ path: citropySkillsRoot, provider, scope: "citropy" });
     if (projectPath) {
       locations.push({
         path: join(projectPath, `.${provider}/skills`),
@@ -167,16 +163,24 @@ async function codexSkills(
   }
 }
 
-function field(text: string, name: string): string {
-  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? "";
-  const match = new RegExp(`^${name}:\\s*(.+)$`, "m").exec(frontmatter);
-  return (match?.[1] ?? "").trim().replace(/^['"]|['"]$/g, "");
+const FRONTMATTER = /^---\r?\n[\s\S]*?\r?\n---\r?\n/;
+
+export function skillInstructions(text: string): string {
+  return text.replace(FRONTMATTER, "").trim();
 }
 
-async function instructions(path: string): Promise<string> {
+export function frontmatterField(text: string, name: string): string {
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? "";
+  const value = (new RegExp(`^${name}:\\s*(.+)$`, "m").exec(frontmatter)?.[1] ?? "").trim();
+  return value.startsWith('"')
+    ? value.replace(/^"|"$/g, "").replace(/\\(["\\])/g, "$1")
+    : value.replace(/^'|'$/g, "");
+}
+
+export async function readSkillFile(path: string): Promise<string> {
   const file = await open(path, "r");
   try {
-    const buffer = Buffer.alloc(100_000);
+    const buffer = Buffer.alloc(MAX_SKILL_BYTES);
     const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
     return buffer.toString("utf8", 0, bytesRead);
   } finally {
@@ -203,8 +207,12 @@ export async function listSkills(
   return value;
 }
 
+export function mentionNames(text: string): Set<string> {
+  return new Set([...text.matchAll(/(?:^|\s)[@$]([\w.:-]+)(?![\w./:-])/g)].map((match) => match[1]!));
+}
+
 export async function mentionedSkills(thread: Thread, text: string): Promise<SkillInfo[]> {
-  const requested = new Set([...text.matchAll(/(?:^|\s)[@$]([\w.:-]+)(?![\w./:-])/g)].map((match) => match[1]));
+  const requested = mentionNames(text);
   if (!requested.size) return [];
   const matching = (await listSkills(thread.projectId, thread.id)).filter((skill) =>
     skill.enabled && skill.provider === thread.provider && requested.has(skill.name),
@@ -215,63 +223,76 @@ export async function mentionedSkills(thread: Thread, text: string): Promise<Ski
   return [...selected.values()];
 }
 
+async function scanRoot(root: SkillRoot, found: Set<string>): Promise<SkillInfo[]> {
+  const skills: SkillInfo[] = [];
+  const queue = [{ path: root.path, depth: 0 }];
+  const seen = new Set<string>();
+  for (let index = 0; index < queue.length && index < 10_000; index++) {
+    const entry = queue[index]!;
+    const canonical = await realpath(entry.path).catch(unlessCode(["ENOENT", "ENOTDIR"], ""));
+    if (!canonical || seen.has(canonical)) continue;
+    seen.add(canonical);
+    const entries = await readdir(entry.path, { withFileTypes: true }).catch(
+      unlessCode(["ENOTDIR"], []),
+    );
+    const skill = entries.find(
+      (file) => file.name === "SKILL.md" || file.name === disabledName,
+    );
+    if (skill) {
+      const path = join(canonical, skill.name);
+      const key = `${root.provider}:${join(canonical, "SKILL.md")}`;
+      if (!found.has(key)) {
+        found.add(key);
+        const content = await readSkillFile(path).catch(ifMissing(""));
+        skills.push({
+          id: createHash("sha256").update(key).digest("hex").slice(0, 24),
+          name: frontmatterField(content, "name") || basename(canonical),
+          description: frontmatterField(content, "description").slice(0, 600),
+          path,
+          provider: root.provider,
+          scope: root.scope,
+          enabled: skill.name === "SKILL.md",
+        });
+      }
+    }
+    if (entry.depth < 9)
+      for (const item of entries) {
+        if (
+          (item.isDirectory() || item.isSymbolicLink()) &&
+          ![
+            "node_modules",
+            ".git",
+            ".trash",
+            "dist",
+            "assets",
+            "references",
+            "scripts",
+          ].includes(item.name)
+        )
+          queue.push({
+            path: join(entry.path, item.name),
+            depth: entry.depth + 1,
+          });
+      }
+  }
+  return skills;
+}
+
+export function citropySkills(provider: ProviderId): Promise<SkillInfo[]> {
+  return scanRoot({ path: citropySkillsRoot, provider, scope: "citropy" }, new Set());
+}
+
+export function forgetSkillInventory(): void {
+  inventories.clear();
+}
+
 async function scanSkills(projectPath?: string): Promise<SkillInfo[]> {
   const managed = await codexSkills(projectPath);
   const skills: SkillInfo[] = managed ?? [];
   const found = new Set<string>();
-  for (const root of await roots(projectPath)) {
-    if (managed && root.provider === "codex") continue;
-    const queue = [{ path: root.path, depth: 0 }];
-    const seen = new Set<string>();
-    for (let index = 0; index < queue.length && index < 10_000; index++) {
-      const entry = queue[index]!;
-      const canonical = await realpath(entry.path).catch(unlessCode(["ENOENT", "ENOTDIR"], ""));
-      if (!canonical || seen.has(canonical)) continue;
-      seen.add(canonical);
-      const entries = await readdir(entry.path, { withFileTypes: true }).catch(
-        unlessCode(["ENOTDIR"], []),
-      );
-      const skill = entries.find(
-        (file) => file.name === "SKILL.md" || file.name === disabledName,
-      );
-      if (skill) {
-        const path = join(canonical, skill.name);
-        const key = `${root.provider}:${join(canonical, "SKILL.md")}`;
-        if (!found.has(key)) {
-          found.add(key);
-          const content = await instructions(path).catch(ifMissing(""));
-          skills.push({
-            id: createHash("sha256").update(key).digest("hex").slice(0, 24),
-            name: field(content, "name") || basename(canonical),
-            description: field(content, "description").slice(0, 600),
-            path,
-            provider: root.provider,
-            scope: root.scope,
-            enabled: skill.name === "SKILL.md",
-          });
-        }
-      }
-      if (entry.depth < 9)
-        for (const item of entries) {
-          if (
-            (item.isDirectory() || item.isSymbolicLink()) &&
-            ![
-              "node_modules",
-              ".git",
-              ".trash",
-              "dist",
-              "assets",
-              "references",
-              "scripts",
-            ].includes(item.name)
-          )
-            queue.push({
-              path: join(entry.path, item.name),
-              depth: entry.depth + 1,
-            });
-        }
-    }
-  }
+  for (const root of await roots(projectPath))
+    if (!managed || root.provider !== "codex" || root.scope === "citropy")
+      skills.push(...await scanRoot(root, found));
   return skills.sort(
     (a, b) =>
       a.name.localeCompare(b.name) || a.provider.localeCompare(b.provider),
@@ -335,5 +356,5 @@ export async function readSkill(
 ): Promise<string> {
   const skill = (await listSkills(projectId)).find((entry) => entry.id === id);
   if (!skill) throw new Error("Skill not found");
-  return instructions(skill.path);
+  return skillInstructions(await readSkillFile(skill.path));
 }

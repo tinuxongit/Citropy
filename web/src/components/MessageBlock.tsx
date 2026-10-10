@@ -49,7 +49,7 @@ export const MessageBlock = memo(function MessageBlock({
               threadId={threadId}
             />
           ) : null}
-          <UserBubble partIds={shell.partIds} />
+          <UserBubble partIds={shell.partIds} mentions={shell.mentions} />
           <div className="turn-meta">
             <time>{clock(shell.ts)}</time>
             {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} user />}

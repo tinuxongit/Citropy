@@ -1,81 +1,98 @@
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
-import { autoscrollDistance, canStartPointerDrag, followPointerDrag } from "./pointer-drag.ts";
-import type { DropEdge } from "./use-project-order.ts";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { flushSync } from "react-dom";
+import { dropShifts, followListDrag, type ListDrop, type SlotBounds } from "./list-drag.ts";
+import { canStartPointerDrag } from "./pointer-drag.ts";
+import type { ThreadGroup } from "./thread-groups.ts";
+import type { DropEdge } from "../../../../shared/move-beside.ts";
 
-export interface ProjectDrop {
-  id: string;
-  edge: DropEdge;
-  top: number;
+const NO_SHIFTS = new Map<string, number>();
+
+function layoutBounds(section: HTMLElement, virtualized: boolean): { top: number; bottom: number } | undefined {
+  const boxes = virtualized ? Array.from(section.children as HTMLCollectionOf<HTMLElement>) : [section];
+  let top = Infinity;
+  let bottom = -Infinity;
+  for (const box of boxes) {
+    const parentTop = box.offsetParent?.getBoundingClientRect().top ?? 0;
+    top = Math.min(top, parentTop + box.offsetTop);
+    bottom = Math.max(bottom, parentTop + box.offsetTop + box.offsetHeight);
+  }
+  return top < bottom ? { top, bottom } : undefined;
 }
 
-const sameDrop = (a: ProjectDrop | undefined, b: ProjectDrop | undefined) =>
-  a?.id === b?.id && a?.edge === b?.edge && a?.top === b?.top;
+const siblingIds = (groups: ThreadGroup[], environment: string | undefined) =>
+  groups.filter((entry) => entry.project && entry.environment === environment).map((entry) => entry.id);
 
-function sectionBottom(list: HTMLElement, projectId: string): number {
-  const rows = list.querySelectorAll<HTMLElement>(
-    `[data-category="${CSS.escape(projectId)}"] :is(.global-project-heading, .thread-entry, .global-project-empty)`,
-  );
-  return Math.max(...Array.from(rows, (row) => row.getBoundingClientRect().bottom));
-}
-
-export function useProjectDrag({ viewport, list, projects, disabled, resetKey, onMove }: {
+export function useProjectDrag({ viewport, list, groups, disabled, resetKey, onMove }: {
   viewport: RefObject<HTMLElement | null>;
   list: RefObject<HTMLElement | null>;
-  projects: { id: string; environment?: string }[];
+  groups: ThreadGroup[];
   disabled: boolean;
   resetKey: string;
   onMove: (source: string, target: string, edge: DropEdge) => void;
 }) {
   const [dragging, setDragging] = useState<string>();
-  const [drop, setDrop] = useState<ProjectDrop>();
+  const [drop, setDrop] = useState<ListDrop>();
   const dragged = useRef(false);
   const cancel = useRef(() => {});
   useEffect(() => () => cancel.current(), [resetKey]);
+  const latest = useRef({ groups, disabled, onMove });
+  latest.current = { groups, disabled, onMove };
 
   const start = (event: ReactPointerEvent<HTMLElement>, projectId: string) => {
+    const { groups, disabled, onMove } = latest.current;
     cancel.current();
     dragged.current = false;
     const listElement = list.current;
     const scroll = viewport.current;
-    if (!canStartPointerDrag(event) || disabled || !listElement || !scroll) return;
-    const environment = projects.find((project) => project.id === projectId)?.environment;
-    const ids = projects.filter((project) => project.environment === environment).map((project) => project.id);
-    const source = ids.indexOf(projectId);
-    if (source < 0) return;
-    let current: ProjectDrop | undefined;
-    const target = (y: number): ProjectDrop | undefined => {
-      const listTop = listElement.getBoundingClientRect().top;
-      const headings = Array.from(listElement.querySelectorAll<HTMLElement>(".global-project-heading[data-drag-id]")).filter(heading => ids.includes(heading.dataset.dragId!));
-      const below = headings.find((heading) => {
-        const rect = heading.getBoundingClientRect();
-        return y < rect.top + rect.height / 2;
+    const group = groups.find((entry) => entry.id === projectId);
+    if (!canStartPointerDrag(event) || disabled || !listElement || !scroll || !group) return;
+    const ids = siblingIds(groups, group.environment);
+    const indices = new Map(ids.map((id, index) => [id, index]));
+    const wasOpen = group.open;
+    let section: HTMLElement | null = null;
+
+    const measure = () => {
+      if (!section?.isConnected) return [];
+      const virtualized = listElement.dataset.virtualized === "true";
+      return Array.from(listElement.querySelectorAll<HTMLElement>(".thread-category[data-tree]")).flatMap((node): SlotBounds[] => {
+        const id = node.dataset.category!;
+        const index = indices.get(id);
+        if (index === undefined) return [];
+        const bounds = layoutBounds(node, virtualized);
+        return bounds ? [{ id, index, ...bounds }] : [];
       });
-      const id = below ? below.dataset.dragId! : headings.at(-1)?.dataset.dragId;
-      const edge = below ? "before" : "after";
-      if (!id || id === projectId || ids.indexOf(id) === source + (edge === "before" ? 1 : -1)) return undefined;
-      const top = below ? below.getBoundingClientRect().top - listTop - 3 : sectionBottom(listElement, id) - listTop + 1;
-      return { id, edge, top: Math.max(0, top) };
     };
-    cancel.current = followPointerDrag(event, event.currentTarget, {
-      begin: () => setDragging(projectId),
-      step: ({ y }) => {
-        const distance = autoscrollDistance(y, scroll.getBoundingClientRect());
-        if (distance) scroll.scrollTop += Math.max(-12, Math.min(12, distance * 0.3));
-        const next = target(y);
-        if (!sameDrop(current, next)) {
-          current = next;
-          setDrop(next);
-        }
-        return distance !== 0;
+
+    cancel.current = followListDrag(event, event.currentTarget, {
+      scroll,
+      sourceIndex: indices.get(projectId)!,
+      lastIndex: ids.length - 1,
+      measure,
+      begin: () => {
+        flushSync(() => {
+          setDragging(projectId);
+          if (wasOpen) group.toggle();
+        });
+        section = listElement.querySelector<HTMLElement>(`.thread-category[data-category="${CSS.escape(projectId)}"]`);
       },
-      end: (commit) => {
+      place: (offset) => section?.style.setProperty("--project-drag-y", `${offset}px`),
+      change: setDrop,
+      end: (drop) => {
+        section?.style.removeProperty("--project-drag-y");
         dragged.current = true;
-        if (commit && current) onMove(projectId, current.id, current.edge);
+        if (drop) onMove(projectId, drop.id, drop.edge);
+        if (wasOpen) latest.current.groups.find((entry) => entry.id === projectId && !entry.open)?.toggle();
         setDragging(undefined);
         setDrop(undefined);
       },
     });
   };
+
+  const shifts = useMemo(() => {
+    const source = groups.find((entry) => entry.id === dragging);
+    if (!source || !drop) return NO_SHIFTS;
+    return dropShifts(siblingIds(groups, source.environment), source.id, drop);
+  }, [dragging, drop, groups]);
 
   const consumeDrag = (event: MouseEvent) => {
     const wasDragged = dragged.current && event.detail !== 0;
@@ -83,5 +100,5 @@ export function useProjectDrag({ viewport, list, projects, disabled, resetKey, o
     return wasDragged;
   };
 
-  return { dragging, drop, start, consumeDrag };
+  return { dragging, shifts, start, consumeDrag };
 }

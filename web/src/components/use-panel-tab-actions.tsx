@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type HTMLAttributes, type RefObject } from "react";
+import { useEffect, useState, type HTMLAttributes, type RefObject } from "react";
 import { ArrowLeftIcon, ArrowRightIcon } from "./icons/arrows.tsx";
 import { EditIcon } from "./icons/pencil.tsx";
 import { CloseIcon } from "./icons/marks.tsx";
@@ -9,22 +9,16 @@ import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
 import { Menu } from "./Menu.tsx";
 import { Modal } from "./Modal.tsx";
-import { canStartPointerDrag, followPointerDrag } from "./sidebar/pointer-drag.ts";
+import { useTabDrag } from "./use-tab-drag.tsx";
 
 type TabAnchor = { id: string; anchor: HTMLElement };
-type TabDrop = { id: string; edge: "before" | "after" };
 
 export function usePanelTabActions(panels: PanelTab[], strip: RefObject<HTMLDivElement | null>, enabled: boolean) {
   const connected = useApp((state) => state.connected);
   const [menu, setMenu] = useState<TabAnchor>();
   const [rename, setRename] = useState<TabAnchor & { name: string }>();
-  const [dragging, setDragging] = useState<string>();
-  const marker = useRef<HTMLSpanElement>(null);
-  const cancel = useRef(() => {});
-  const dragged = useRef(false);
   const orderKey = panels.map((panel) => panel.id).join(",");
-
-  useEffect(() => () => cancel.current(), [orderKey, enabled, connected]);
+  const drag = useTabDrag({ strip, enabled: enabled && connected, resetKey: orderKey, onMove: moveWorkbenchPanel });
   useEffect(() => {
     if (!enabled || !connected) {
       setMenu(undefined);
@@ -41,67 +35,15 @@ export function usePanelTabActions(panels: PanelTab[], strip: RefObject<HTMLDivE
   };
 
   const tabProps = (panel: PanelTab): HTMLAttributes<HTMLDivElement> & {
-    "data-panel-id": string;
+    "data-tab-id": string;
     "data-dragging": boolean;
   } => ({
-    "data-panel-id": panel.id,
-    "data-dragging": dragging === panel.id,
+    "data-tab-id": panel.id,
+    "data-dragging": drag.dragging === panel.id,
     onPointerDown: (event) => {
-      if (!(event.target instanceof Element) || !event.target.closest('[role="tab"]')) return;
-      cancel.current();
-      dragged.current = false;
-      const list = strip.current;
-      if (!connected || !enabled || !list || panels.length < 2 || !canStartPointerDrag(event)) return;
-      const source = event.currentTarget;
-      const origin = event.clientX;
-      const sourceBounds = source.getBoundingClientRect();
-      const scale = sourceBounds.width / source.offsetWidth;
-      const initialScroll = list.scrollLeft;
-      let current: TabDrop | undefined;
-      cancel.current = followPointerDrag(event, source, {
-        begin: () => setDragging(panel.id),
-        step: ({ x, y }) => {
-          const bounds = list.getBoundingClientRect();
-          const inside = y >= bounds.top - 24 && y <= bounds.bottom + 24;
-          let distance = 0;
-          if (inside && x < bounds.left + 32) distance = x - bounds.left - 32;
-          else if (inside && x > bounds.right - 32) distance = x - bounds.right + 32;
-          const previousScroll = list.scrollLeft;
-          if (distance) list.scrollLeft += Math.max(-12, Math.min(12, distance * 0.3));
-          const targets = Array.from(list.querySelectorAll<HTMLElement>("[data-panel-id]")).filter((element) => element !== source);
-          const before = targets.find((element) => {
-            const rect = element.getBoundingClientRect();
-            return x < rect.left + rect.width / 2;
-          });
-          const target = before ?? targets.at(-1);
-          current = inside && target ? { id: target.dataset.panelId!, edge: before ? "before" : "after" } : undefined;
-          const targetBounds = target?.getBoundingClientRect();
-          const left = Math.max(bounds.left, Math.min(sourceBounds.left + x - origin, bounds.right - sourceBounds.width));
-          source.style.transform = `translateX(${(left - sourceBounds.left) / scale + list.scrollLeft - initialScroll}px)`;
-          if (marker.current) {
-            marker.current.hidden = !current;
-            if (targetBounds) {
-              const position = (before ? targetBounds.left : targetBounds.right) - bounds.left;
-              marker.current.style.transform = `translateX(${Math.max(0, position / scale + list.scrollLeft - 1)}px)`;
-            }
-          }
-          return previousScroll !== list.scrollLeft;
-        },
-        end: (commit) => {
-          source.style.removeProperty("transform");
-          if (marker.current) marker.current.hidden = true;
-          dragged.current = true;
-          if (commit && current) moveWorkbenchPanel(panel.id, current.id, current.edge);
-          setDragging(undefined);
-        },
-      });
+      if (event.target instanceof Element && event.target.closest('[role="tab"]')) drag.start(event, panel.id);
     },
-    onClickCapture: (event) => {
-      if (!dragged.current || event.detail === 0) return;
-      dragged.current = false;
-      event.preventDefault();
-      event.stopPropagation();
-    },
+    onClickCapture: drag.suppressClickAfterDrag,
     onDoubleClick: (event) => {
       const anchor = event.target instanceof Element ? event.target.closest<HTMLElement>('[role="tab"]') : null;
       if (anchor) beginRename(panel, anchor);
@@ -177,6 +119,5 @@ export function usePanelTabActions(panels: PanelTab[], strip: RefObject<HTMLDivE
     </Modal>}
   </>;
 
-  const indicator = <span ref={marker} className="panel-drop-marker" aria-hidden="true" hidden />;
-  return { tabProps, overlays, indicator, orderKey };
+  return { tabProps, overlays, orderKey };
 }

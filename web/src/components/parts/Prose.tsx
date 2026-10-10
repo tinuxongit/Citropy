@@ -7,6 +7,8 @@ import { ImageViewer, type ViewerImage } from "../ImageViewer.tsx";
 import { copyText } from "../../lib/copy-text.ts";
 import { runCommand } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
+import { connectVisual } from "../../lib/visual-frames.ts";
+import type { MentionTag } from "../../../../shared/mention-tags.ts";
 
 interface Props {
   text: string;
@@ -15,12 +17,13 @@ interface Props {
   className?: string;
   images?: boolean;
   commands?: boolean;
+  mentions?: MentionTag[];
 }
 
-export function Prose({ partId, text, live, className, images = true, commands = false }: Props) {
+export function Prose({ partId, text, live, className, images = true, commands = false, mentions }: Props) {
   const streaming = useApp((state) => state.textStreaming);
   const waiting = live && !streaming;
-  const { html, blocks, ready } = useMarkdown(waiting ? "" : text, live && streaming, images, commands);
+  const { html, blocks, ready } = useMarkdown(waiting ? "" : text, live && streaming, images, commands, mentions);
   const root = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<{ images: ViewerImage[]; index: number } | null>(null);
   const shown = Boolean(text) && !waiting && (streaming || ready);
@@ -66,6 +69,7 @@ export function Prose({ partId, text, live, className, images = true, commands =
         setPreview({ images: elements.map(image => ({ src: image.src, name: image.alt || image.title || "Preview" })), index: elements.indexOf(selected) });
       }}
       onLoadCapture={event => {
+        if (event.target instanceof HTMLIFrameElement && event.target.classList.contains("markdown-visual")) connectVisual(event.target);
         if (event.target instanceof HTMLImageElement && event.target.classList.contains("link-favicon")) event.target.parentElement?.setAttribute("data-loaded", "");
       }}
       onErrorCapture={event => {

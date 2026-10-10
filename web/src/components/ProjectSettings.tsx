@@ -158,20 +158,17 @@ function DefaultsFields({ settings, globalDefaults, update }: {
           ]} />
       </label>
     </div>
-    {([
-      { key: "autoPull", label: "Pull before starting", description: "Fast-forward a clean checkout when it has no local commits." },
-      ...folder ? [{ key: "browserAccess", label: "Provider browser access", description: "Allow conversations to use the shared browser tools." }] as const : [],
-    ] as const).map(({ key, label, description }) => <label className="feature-setting-row" key={key}>
-      <span><strong>{label}</strong><small>{description}</small></span>
-      {folder ? <Select className="project-policy-select" value={settings[key] === undefined ? "inherit" : String(settings[key])}
-        onChange={(value) => update({ [key]: value === "inherit" ? undefined : value === "true" })}
+    <label className="feature-setting-row">
+      <span><strong>Pull before starting</strong><small>Fast-forward a clean checkout when it has no local commits.</small></span>
+      {folder ? <Select className="project-policy-select" value={settings.autoPull === undefined ? "inherit" : String(settings.autoPull)}
+        onChange={(value) => update({ autoPull: value === "inherit" ? undefined : value === "true" })}
         options={[
-          { value: "inherit", label: `Use global: ${global[key] ? "Enabled" : "Disabled"}` },
+          { value: "inherit", label: `Use global: ${global.autoPull ? "Enabled" : "Disabled"}` },
           { value: "true", label: "Enabled" },
           { value: "false", label: "Disabled" },
-        ]} /> : <input className="setting-switch" type="checkbox" role="switch" checked={Boolean(effective[key])}
-        onChange={(event) => update({ [key]: event.target.checked })} />}
-    </label>)}
+        ]} /> : <input className="setting-switch" type="checkbox" role="switch" checked={Boolean(effective.autoPull)}
+        onChange={(event) => update({ autoPull: event.target.checked })} />}
+    </label>
   </fieldset>;
 }
 

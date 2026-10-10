@@ -24,6 +24,7 @@ import { ThreadDetailsPanel } from "./components/thread-details/ThreadDetails.ts
 import { Inspector } from "./components/Inspector.tsx";
 import { DevTriggers } from "./components/DevTriggers.tsx";
 import { WhatsNew } from "./components/WhatsNew.tsx";
+import { SetupGuide } from "./components/setup/SetupGuide.tsx";
 import { SlidingPanel } from "./components/SlidingPanel.tsx";
 import { StageBackdrop } from "./components/StageBackdrop.tsx";
 import { Toasts } from "./components/Toasts.tsx";
@@ -388,6 +389,7 @@ export function App() {
       <LinkActions />
       <Toasts onOpen={openNotification} />
       <WhatsNew />
+      <SetupGuide />
       <DevTriggers />
     </div>
   );

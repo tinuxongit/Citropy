@@ -85,6 +85,21 @@ test("idle sessions with paused queues release their process and retain resumabl
   }
 });
 
+test("automatic compaction shows while it runs and still lets messages queue", async t => {
+  const { thread, runtime, provider } = await fixture(t);
+  await runtime.send("First");
+  provider.emit({ type: "compacting", active: true });
+  assert.equal(thread.compacting, "automatic");
+  await runtime.send("Sent while compacting");
+  assert.deepEqual(texts(thread), ["Sent while compacting"]);
+  provider.emit({ type: "compacted", contextTokens: 10_000 });
+  assert.equal(thread.compacting, undefined);
+  assert.equal(thread.running, true);
+  provider.emit({ type: "compacting", active: true });
+  provider.emit({ type: "turn.end" });
+  assert.equal(thread.compacting, undefined);
+});
+
 test("changing settings does not resume messages left queued by Stop", async t => {
   const { thread, runtime, provider } = await fixture(t, "manual", async () => {});
   await runtime.send("First");

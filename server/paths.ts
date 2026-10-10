@@ -3,10 +3,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, posix, win32 } from "node:path";
 import { dev } from "./config.ts";
+import { minGitCommands } from "./mingit.ts";
 
 export const appDataSwitch = join(homedir(), ".citropy-dev", "use-app-data");
 export const usingAppData = dev && !process.env.CITROPY_DATA_DIR && existsSync(appDataSwitch) && readFileSync(appDataSwitch, "utf8").trim() === "1";
 export const dataRoot = process.env.CITROPY_DATA_DIR || join(homedir(), dev && !usingAppData ? ".citropy-dev" : ".citropy");
+export const citropySkillsRoot = join(dataRoot, "skills");
 
 const augmented = new WeakSet<object>();
 
@@ -25,7 +27,7 @@ function wellKnownDirs(env: NodeJS.ProcessEnv, home: string, platform: NodeJS.Pl
     const local = env.LOCALAPPDATA;
     if (env.APPDATA) dirs.push(win32.join(env.APPDATA, "npm"));
     if (local) dirs.push(win32.join(local, "Programs", "opencode"));
-    dirs.push(win32.join(home, ".opencode", "bin"));
+    dirs.push(win32.join(home, ".opencode", "bin"), minGitCommands(home, process.arch));
   }
   return dirs;
 }

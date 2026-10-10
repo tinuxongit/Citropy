@@ -18,6 +18,10 @@ const types: Record<string, string> = {
   "image/gif": "gif",
 };
 
+export function toolAssetDirectory(threadId: string): string | null {
+  return inside(root, threadId);
+}
+
 export function removeToolImages(threadId: string): void {
   rmSync(join(root, threadId), { recursive: true, force: true });
 }

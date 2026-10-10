@@ -1,3 +1,4 @@
+import type { DropEdge } from "./move-beside.ts";
 import type { QuestionPart, QuestionRequest } from "./questions.ts";
 import type { GitHubRequest, GitHubResponse } from "./github.ts";
 import type { BrowserAction, BrowserState, PanelKind, PanelTab, ToolConnection, ToolDefinition } from "./workbench.ts";
@@ -177,6 +178,7 @@ export interface Message {
   ts: number;
   model?: string;
   attachments?: Attachment[];
+  mentions?: import("./mention-tags.ts").MentionTag[];
 }
 
 export interface HistoryPage {
@@ -223,7 +225,7 @@ export interface Project {
   isGit: boolean;
   branch?: string;
   lastOpened: number;
-  settings?: ProjectSettings;
+  settings?: FolderSettings;
   scripts?: ProjectScript[];
 }
 
@@ -233,14 +235,19 @@ export interface ProjectScript {
   command: string;
 }
 
-export interface ProjectSettings {
+export interface FolderSettings {
   provider?: ProviderId | null;
   model?: string;
   effort?: string;
   permissionMode?: PermissionMode;
   workspace?: "current" | "new";
   autoPull?: boolean;
+}
+
+export interface ProjectSettings extends FolderSettings {
   browserAccess?: boolean;
+  browserFirst?: boolean;
+  visualReplies?: boolean;
 }
 
 export interface WorkspaceChoice {
@@ -287,7 +294,7 @@ export interface ThreadMeta {
   pullRequest?: string;
   workspacePath?: string;
   workspaceBranch?: string;
-  compacting?: boolean;
+  compacting?: "manual" | "automatic";
   compactedAt?: number;
   parentThreadId?: string;
   parentMessageId?: string;
@@ -419,6 +426,7 @@ export interface Snapshot {
   notificationPreferences?: NotificationPreferences;
   logging?: { enabled: boolean; file: string };
   resumeAfterLimits?: boolean;
+  setupNeeded?: boolean;
   panels?: PanelTab[];
   browsers?: BrowserState[];
   toolConnections?: ToolConnection[];
@@ -496,11 +504,12 @@ export type ClientEvent = (
   | { t: "panel.open"; projectId: string; kind: PanelKind; id?: string; threadId?: string; url?: string; background?: boolean }
   | { t: "panel.close"; id: string }
   | { t: "panel.rename"; id: string; title: string }
-  | { t: "panel.move"; id: string; targetId: string; edge: "before" | "after" }
+  | { t: "panel.move"; id: string; targetId: string; edge: DropEdge }
   | { t: "browser.action"; id: string; input: BrowserAction }
   | { t: "desktop.open" }
   | { t: "logging.configure"; enabled: boolean }
   | { t: "limits.configure"; resumeAfterLimits: boolean }
+  | { t: "setup.finish" }
   | { t: "thread.resumeAfterLimit"; id: string; enabled: boolean }
   | { t: "thread.discardPlan"; id: string }
   | { t: "client.error"; message: string }
@@ -570,13 +579,19 @@ export type ClientEvent = (
   | { t: "git.diff"; requestId: string; projectId: string; path: string; staged?: boolean }
   | { t: "git.commit"; projectId: string; message: string }
   | { t: "git.discard"; projectId: string; path: string }
-  | { t: "term.open"; termId: string; projectId: string; cols: number; rows: number; flowControl?: boolean; offset?: number; sessionId?: string }
+  | ({ t: "term.open"; termId: string; cols: number; rows: number; flowControl?: boolean; offset?: number; sessionId?: string } & TerminalTarget)
   | { t: "term.ack"; termId: string; count: number; streamId: string }
   | { t: "term.unsubscribe"; termId: string }
   | { t: "term.data"; termId: string; data: string }
   | { t: "term.resize"; termId: string; cols: number; rows: number }
   | { t: "term.close"; termId: string }
 ) & { threadId?: string };
+
+export type TerminalTarget = { projectId: string } | { signIn: ProviderId };
+
+export function signInTerminalId(provider: ProviderId): string {
+  return `sign-in-${provider}`;
+}
 
 export interface GitOverview {
   repository: boolean;

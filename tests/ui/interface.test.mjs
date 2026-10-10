@@ -34,7 +34,7 @@ await warmup.goto(url, { timeout: 120_000 });
 await warmup.locator(".shell").waitFor({ timeout: 120_000 });
 await warmup.close();
 
-async function app(t, { messages, questions: asked = [], permissions = [], preferences = {}, threadPatch = {}, width = 1280, beforeNavigate }) {
+async function app(t, { messages, questions: asked = [], permissions = [], preferences = {}, threadPatch = {}, snapshotPatch = {}, width = 1280, beforeNavigate }) {
   const context = await browser.newContext({ viewport: { width, height: 860 }, permissions: ["clipboard-read", "clipboard-write"] });
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);
@@ -54,7 +54,7 @@ async function app(t, { messages, questions: asked = [], permissions = [], prefe
       if (event.t === "thread.load") socket.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages }));
       if (event.t === "git.refresh") socket.send(JSON.stringify({ t: "git.status", projectId: "project", threadId: "chat", status: { branch: "main", ahead: 0, behind: 0, clean: false, files: [{ path: "a.ts", status: "M", staged: false }] } }));
     });
-    socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [project], threads: [{ ...thread, ...threadPatch }], home: "/example", providers: [provider], questions: asked, permissions, assistance: { automaticTitles: false, commitModel: null, titleModel: null, reviewModel: null } } }));
+    socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [project], threads: [{ ...thread, ...threadPatch }], home: "/example", providers: [provider], questions: asked, permissions, assistance: { automaticTitles: false, commitModel: null, titleModel: null, reviewModel: null }, ...snapshotPatch } }));
   });
   await page.route("**/api/**", (route) => {
     const request = route.request();
@@ -95,6 +95,27 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
   const checks = [];
   const check = (name, run) => checks.push(t.test(name, run));
 
+  check("setup window opens on first run and from the development menu", async t => {
+    const { page, sent } = await app(t, { messages: [], snapshotPatch: { setupNeeded: true, development: true } });
+    const setup = page.locator(".setup-screen");
+    await setup.getByRole("heading", { name: "Welcome to Citropy" }).waitFor();
+    await page.keyboard.press("Escape");
+    await setup.getByRole("button", { name: "Get started" }).click();
+    await setup.getByText("Step 1 of 5").waitFor();
+    await setup.getByRole("button", { name: "Continue" }).click();
+    await setup.getByText("Step 2 of 5").waitFor();
+    await setup.getByRole("button", { name: /Project/ }).click();
+    await setup.getByText("Step 5 of 5").waitFor();
+    assert.equal(await setup.getByRole("button", { name: "Skip setup" }).count(), 0);
+    await setup.getByRole("button", { name: "Back" }).click();
+    await setup.getByRole("button", { name: "Skip setup" }).click();
+    await setup.waitFor({ state: "detached" });
+    assert.ok(sent.some(event => event.t === "setup.finish"));
+    await page.getByRole("button", { name: "Development triggers" }).click();
+    await page.getByRole("menuitem", { name: /^Setup/ }).click();
+    await setup.getByRole("heading", { name: "Welcome to Citropy" }).waitFor();
+  });
+
   check("conversation tabs preview, keep, and close conversations", async t => {
     const { page, push } = await app(t, { messages: history(2), preferences: { sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
     for (const [id, title] of [["second", "Second conversation"], ["third", "Third conversation"]])
@@ -111,10 +132,36 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.screenshot({ path: `${root}/node_modules/.vite-tests/thread-tabs.png`, clip: { x: 0, y: 0, width: 1280, height: 80 } });
     await third.locator(".thread-tab-open").dblclick();
     assert.equal(await third.getAttribute("data-preview"), null);
+    const from = await third.locator(".thread-tab-open").boundingBox();
+    const to = await tabs.first().boundingBox();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + 4, to.y + to.height / 2, { steps: 8 });
+    await expect(async () => (await tabs.first().evaluate(tab => new DOMMatrix(getComputedStyle(tab).transform).m41)) > 0);
+    await page.mouse.up();
+    await expect(async () => (await titles()).join() === "Third conversation,Build a small world");
+    assert.equal(await third.getAttribute("data-active"), "true");
+    const end = await tabs.last().boundingBox();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(end.x + end.width + 200, end.y + end.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await expect(async () => (await titles()).join() === "Build a small world,Third conversation");
     await tabs.first().locator(".thread-tab-open").click();
     await tabs.first().locator(".thread-tab-close").click();
     await expect(async () => (await titles()).join() === "Third conversation");
     assert.equal(await third.getAttribute("data-active"), "true");
+  });
+
+  check("sent messages show mentions as named tags", async t => {
+    const mentions = [{ name: "google", title: "Google", icon: "site", url: "https://www.google.com/" }, { name: "review", title: "review", icon: "book" }];
+    const sent = { id: "sent", role: "user", ts: 1, mentions, parts: [text("sent-text", "Check @google with @review, not @other")] };
+    const { page } = await app(t, { messages: [sent], threadPatch: { running: false, status: "idle" } });
+    const chips = page.locator(".turn-user .mention-chip");
+    await expect(async () => (await chips.count()) === 2);
+    assert.deepEqual(await chips.allTextContents(), ["Google", "review"]);
+    assert.deepEqual(await chips.evaluateAll(nodes => nodes.map(node => node.firstElementChild?.matches(".link-site-icon, svg"))), [true, true]);
+    assert.match(await page.locator(".turn-user").innerText(), /@other/);
   });
 
   for (const width of [900, 1280, 1600, 380]) check(`side panel transitions glide the chat in one direction at ${width}px`, async t => {
@@ -195,7 +242,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     const { page, sent } = await app(t, { messages: history(2), threadPatch: { running: false, status: "idle" } });
     await settled(page);
     const chooses = () => sent.filter(event => event.t === "project.choose").length;
-    const box = page.locator(".composer-shell textarea").first();
+    const box = page.getByRole("textbox", { name: "Message", exact: true });
     assert.equal(await box.isEnabled(), true);
     await box.focus();
     await page.keyboard.press("Control+,");
@@ -397,6 +444,19 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.getByText("Source", { exact: true }).click();
     assert.equal(page.context().pages().length, 1);
     assert.ok(page.url().includes("/fixture-"));
+  });
+
+  check("Markdown images written beside text start on their own line", async t => {
+    const page = await fixture(t, `
+      import { renderMarkdown } from '/web/src/lib/markdown.ts';
+      const source = ${JSON.stringify('**Before** ![One](' + square + ') ![Two](' + square + ') after')};
+      document.querySelector('#fixture').innerHTML = await renderMarkdown(source, 'dark');
+    `);
+    await page.locator("#fixture strong").waitFor();
+    assert.deepEqual(
+      await page.locator("#fixture > p").evaluateAll(paragraphs => paragraphs.map(paragraph => [paragraph.className, paragraph.querySelectorAll(".markdown-image").length, paragraph.innerText.trim()])),
+      [["", 0, "Before"], ["markdown-images", 2, ""], ["", 0, "after"]],
+    );
   });
 
   check("persistent Markdown images load in chat and open the image viewer", async t => {

@@ -38,6 +38,9 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@lexical/history": "^0.52.0",
+    "@lexical/plain-text": "^0.52.0",
+    "@lexical/react": "^0.52.0",
     "@tanstack/react-virtual": "3.14.13",
     "@types/node": "^22.10.6",
     "@types/react": "^19.0.7",
@@ -51,6 +54,7 @@
     "@xterm/xterm": "^6.0.0",
     "electron": "^44.2.0",
     "electron-builder": "26.15.3",
+    "lexical": "^0.52.0",
     "marked": "^15.0.6",
     "monaco-editor": "^0.56.0",
     "motion": "^12.0.6",

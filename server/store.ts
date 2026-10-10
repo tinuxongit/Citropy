@@ -102,6 +102,7 @@ export class Store {
   };
   logging = true;
   resumeAfterLimits = false;
+  setupFinished = false;
   #savedProjects = "";
   #loaded = new Map<string, Message[]>();
   #search = new ConversationSearch(join(root, "events.sqlite"));
@@ -119,7 +120,7 @@ export class Store {
       const interrupted = thread.running || thread.compacting;
       if (gitActionBusy(thread.gitAction)) thread.gitAction = { ...thread.gitAction!, status: "error", message: "Citropy restarted during the Git action. Check source control before retrying." };
       thread.running = false;
-      thread.compacting = false;
+      thread.compacting = undefined;
       thread.activeTool = undefined;
       if (interrupted) { thread.status = "stopped"; thread.error = "Citropy restarted before this turn finished. Your conversation was recovered."; }
       if (!isProviderId(thread.provider)) { thread.status = "error"; thread.error = REMOVED_AGENT_ERROR; }
@@ -198,6 +199,7 @@ export class Store {
         if (settings.openCodeVersion === 1 || settings.openCodeVersion === 2) this.openCodeVersion = settings.openCodeVersion;
         this.logging = settings.logging !== false;
         this.resumeAfterLimits = settings.resumeAfterLimits === true;
+        this.setupFinished = settings.setupFinished === true;
         if (typeof settings.assistance?.automaticTitles === "boolean") this.assistance.automaticTitles = settings.assistance.automaticTitles;
         for (const key of ["titleModel", "commitModel", "reviewModel"] as const) {
           const model = settings.assistance?.[key];
@@ -345,6 +347,11 @@ export class Store {
     bus.emit({ t: "limits.resume", enabled });
   }
 
+  finishSetup(): void {
+    this.#saveSettings({ setupFinished: true });
+    this.setupFinished = true;
+  }
+
   configureAssistance(settings: AssistanceSettings): void {
     this.#saveSettings({ assistance: settings });
     this.assistance = settings;
@@ -399,6 +406,7 @@ export class Store {
       notifications: this.notificationPreferences,
       logging: this.logging,
       resumeAfterLimits: this.resumeAfterLimits,
+      setupFinished: this.setupFinished,
       assistance: this.assistance,
       projectDefaults: this.projectDefaults,
       providerInstances: [...this.providerInstances.values()],

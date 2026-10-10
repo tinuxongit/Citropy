@@ -1,20 +1,41 @@
 import {
+  Fragment,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
 } from "react";
 import { BookIcon } from "./BookIcon.tsx";
+import { SiteIcon } from "./SiteIcon.tsx";
 import { TerminalIcon } from "./icons/squares.tsx";
 import { FolderIcon } from "./icons/folders.tsx";
 import { FileTextIcon } from "./icons/files.tsx";
 import { contextReference } from "../../../shared/context.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
+import { skillTag, toolTag, type MentionTag } from "../../../shared/mention-tags.ts";
 import { providerLabels } from "../lib/format.ts";
-import { scaled, useApp } from "../lib/store.ts";
+import { useApp } from "../lib/store.ts";
 import { useComposerCatalog } from "./composer/use-composer-catalog.ts";
 import { useTypeToFocus } from "./composer/use-type-to-focus.ts";
+import { MessageEditor, type MessageEditorHandle } from "./composer/MessageEditor.tsx";
+import type { MentionLook } from "./composer/mention-node.tsx";
+
+const CITROPY_MARK = <span className="citropy-mark" aria-hidden="true" />;
+
+const tagIcon = (tag: MentionTag) =>
+  tag.icon === "site" ? <SiteIcon url={tag.url!} /> : tag.icon === "citropy" ? CITROPY_MARK : <BookIcon size={16} />;
+
+const SECTION_NOTES: Record<string, string> = { Files: "Add #L10-L20 for specific lines" };
+
+type SuggestionOption = {
+  id: string;
+  section: string;
+  label: string;
+  title?: string;
+  hint: string;
+  tag?: string;
+  icon: ReactNode;
+};
 
 export function ComposerInput({
   value,
@@ -33,10 +54,9 @@ export function ComposerInput({
   thread: ThreadMeta;
   commands: Array<{ id: string; label: string; hint: string; icon: ReactNode }>;
 }) {
-  const box = useRef<HTMLTextAreaElement>(null);
-  const highlights = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const editor = useRef<MessageEditorHandle>(null);
   const list = useRef<HTMLDivElement>(null);
-  const composing = useRef(false);
   const [caret, setCaret] = useState(value.length);
   const [selected, setSelected] = useState(0);
   const [dismissed, setDismissed] = useState<string>();
@@ -49,35 +69,13 @@ export function ComposerInput({
   const catalogMode = mode === "commands"
     ? "commands"
     : mode === "skills" || hasMentions ? "skills" : undefined;
-  const { skills, nativeCommands, paths, loading, error } = useComposerCatalog({
+  const { skills, tools, nativeCommands, paths, loading, error } = useComposerCatalog({
     thread,
     mode,
     catalogMode,
     mentionText: mention?.[1] ?? "",
   });
-  const pasteFiles = useTypeToFocus({ box, disabled, onFiles });
-  useLayoutEffect(() => {
-    const node = box.current;
-    if (!node || CSS.supports("field-sizing", "content")) return;
-    const editor = node.parentElement!;
-    editor.style.minHeight = `${editor.offsetHeight}px`;
-    node.style.height = "0px";
-    node.style.height = `${Math.min(node.scrollHeight, scaled(320))}px`;
-    editor.style.minHeight = "";
-    if (highlights.current) highlights.current.scrollTop = node.scrollTop;
-  }, [value]);
-  useEffect(() => {
-    const node = box.current;
-    if (!node) return;
-    const observer = new ResizeObserver(() => {
-      if (highlights.current) {
-        highlights.current.style.width = `${node.clientWidth}px`;
-        highlights.current.scrollTop = node.scrollTop;
-      }
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
+  const pastedFiles = useTypeToFocus({ box, disabled, onFiles });
   useEffect(() => {
     setSelected(0);
     setDismissed(undefined);
@@ -91,22 +89,25 @@ export function ComposerInput({
       (skill, index, entries) =>
         entries.findIndex((entry) => entry.name === skill.name) === index,
     );
+  const citropyTools = tools.filter((tool) => !enabled.some((skill) => skill.name === tool.name));
+  const mentions = new Map<string, MentionLook>([
+    ...[...enabled.map(skillTag), ...citropyTools.map(toolTag)].map((tag) => [tag.name, { label: tag.title, icon: tagIcon(tag) }] as const),
+  ]);
   const localCommandNames = new Set(commands.map((command) => command.label.slice(1)));
-  const highlighted: ReactNode[] = [];
-  let end = 0;
-  for (const match of value.matchAll(/(?:^|\s)@([\w.:-]+)(?![\w./:-])/g)) {
-    if (!enabled.some((skill) => skill.name === match[1])) continue;
-    const start = match.index + match[0].indexOf("@");
-    highlighted.push(value.slice(end, start));
-    highlighted.push(
-      <mark key={start} className="skill-mention">@{match[1]}</mark>,
-    );
-    end = match.index + match[0].length;
-  }
-  highlighted.push(value.slice(end));
-  const options =
+  const lines = (mention?.[1] ?? "").match(/#L\d+(?:-L?\d+)?$/)?.[0] ?? "";
+  const options: SuggestionOption[] =
     mode === "skills"
-      ? [...paths.map(entry => ({ id: `context:${entry.path}`, label: `${contextReference(entry.path)}${(mention?.[1] ?? "").match(/#L\d+(?:-L?\d+)?$/)?.[0] ?? ""}`, hint: entry.dir ? "Folder listing" : "File context · add #L10-L20 for specific lines", icon: entry.dir ? <FolderIcon size={16} /> : <FileTextIcon size={16} /> })), ...enabled
+      ? [...paths.map(entry => {
+          const slash = entry.path.lastIndexOf("/");
+          return {
+            id: `context:${entry.path}`,
+            section: "Files",
+            label: `${contextReference(entry.path)}${lines}`,
+            title: `${entry.path.slice(slash + 1)}${entry.dir ? "/" : lines}`,
+            hint: entry.path.slice(0, Math.max(0, slash)),
+            icon: entry.dir ? <FolderIcon size={16} /> : <FileTextIcon size={16} />,
+          };
+        }), ...enabled
           .filter((skill) =>
             skill.name
               .toLowerCase()
@@ -114,12 +115,24 @@ export function ComposerInput({
           )
           .map((skill) => ({
             id: skill.id,
+            section: "Skills",
             label: `@${skill.name}`,
-            hint: `${skill.scope} · ${skill.description || "Use this skill"}`,
-            icon: <BookIcon size={16} />,
+            title: skill.name,
+            hint: skill.description,
+            tag: skill.scope,
+            icon: tagIcon(skillTag(skill)),
+          })), ...citropyTools
+          .filter((tool) => tool.name.includes((mention?.[1] ?? "").toLowerCase()))
+          .map((tool) => ({
+            id: `tool:${tool.name}`,
+            section: tool.section,
+            label: `@${tool.name}`,
+            title: tool.title,
+            hint: tool.description,
+            icon: tagIcon(toolTag(tool)),
           }))]
       : [
-          ...commands,
+          ...commands.map((command) => ({ ...command, section: "Citropy" })),
           ...nativeCommands
             .filter(
               (command) =>
@@ -133,8 +146,10 @@ export function ComposerInput({
             )
             .map((command) => ({
               id: `provider:${command.name}`,
+              section: providerLabels[thread.provider],
               label: `/${command.name}`,
-              hint: `${providerLabels[thread.provider]} · ${command.description}${command.argumentHint ? ` · ${command.argumentHint}` : ""}`,
+              hint: command.description,
+              tag: command.argumentHint,
               icon: <TerminalIcon size={16} />,
             })),
         ].filter((command) =>
@@ -158,25 +173,12 @@ export function ComposerInput({
     const position = mention
       ? caret - (mention[1] ?? "").length - 1 + label.length + 1
       : next.length;
-    onChange(next);
-    setCaret(position);
-    requestAnimationFrame(() => {
-      box.current?.focus();
-      box.current?.setSelectionRange(position, position);
-    });
+    editor.current!.setMessage(next, position);
   };
   return (
     <div className="composer-writing">
       {visible && (
         <div className="composer-suggestions" ref={list}>
-          <div className="composer-suggestions-heading">
-            {mode === "skills" ? "Files and skills" : "Commands"}
-            <span>
-              {mode === "skills"
-                ? providerLabels[thread.provider]
-                : "Citropy & provider"}
-            </span>
-          </div>
           <div
             className="composer-suggestion-list scroll"
             id="composer-suggestions"
@@ -184,112 +186,87 @@ export function ComposerInput({
             aria-label={mode === "skills" ? "Files and skills" : "Commands"}
           >
             {options.map((option, i) => (
-              <button
-                type="button"
-                role="option"
-                aria-selected={i === index}
-                id={`composer-option-${i}`}
-                key={option.id}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => choose(option.label)}
-              >
-                {option.icon}
-                <span>
-                  <strong>{option.label}</strong>
+              <Fragment key={option.id}>
+                {option.section !== options[i - 1]?.section && (
+                  <div className="composer-suggestion-section" role="presentation">
+                    {option.section}
+                    {SECTION_NOTES[option.section] && <span>{SECTION_NOTES[option.section]}</span>}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={i === index}
+                  id={`composer-option-${i}`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => choose(option.label)}
+                >
+                  {option.icon}
+                  <strong>{option.title ?? option.label}</strong>
                   <small>{option.hint}</small>
-                </span>
-              </button>
+                  {option.tag && <em>{option.tag}</em>}
+                </button>
+              </Fragment>
             ))}
             {loading && <p role="status">{mode === "skills" ? "Loading skills…" : "Loading commands…"}</p>}
             {!options.length && !loading && !error && (
-              <p>{mode === "skills" ? "No matching skills." : "No matching commands."}</p>
+              <p>{mode === "skills" ? "No matching files, skills, Citropy tools, or connections." : "No matching commands."}</p>
             )}
             {error && <p role="status">{error}</p>}
           </div>
         </div>
       )}
-      <div className="composer-editor" data-highlighted={highlighted.length > 1}>
-        <div className="composer-highlights" ref={highlights} aria-hidden="true">
-          {highlighted}{"\n"}
-        </div>
-        <textarea
-          ref={box}
-          className="composer-input scroll"
-          value={value}
-          rows={1}
-          aria-label="Message"
-          aria-autocomplete="list"
-          aria-controls={visible ? "composer-suggestions" : undefined}
-          aria-activedescendant={
-            visible && options.length ? `composer-option-${index}` : undefined
+      <MessageEditor
+        box={box}
+        handle={editor}
+        value={value}
+        onChange={onChange}
+        onCaret={setCaret}
+        disabled={disabled}
+        mentions={mentions}
+        pastedFiles={pastedFiles}
+        onFiles={onFiles}
+        aria-controls={visible ? "composer-suggestions" : undefined}
+        aria-activedescendant={visible && options.length ? `composer-option-${index}` : undefined}
+        placeholder={
+          !connected
+            ? "Citropy is reconnecting. Your message will wait…"
+            : thread.running
+              ? "Queue a follow-up…"
+              : "Ask a question or describe a change…"
+        }
+        onKey={(event) => {
+          if (visible && event.key === "Escape") {
+            setDismissed(query);
+            return true;
           }
-          disabled={disabled}
-          placeholder={
-            !connected
-              ? "Citropy is reconnecting. Your message will wait…"
-              : thread.running
-                ? "Queue a follow-up…"
-                : "Ask a question or describe a change…"
+          if (visible && activeOption) {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              setSelected(
+                (index +
+                  (event.key === "ArrowDown" ? 1 : -1) +
+                  options.length) %
+                  options.length,
+              );
+              return true;
+            }
+            if (
+              event.key === "Tab" ||
+              (event.key === "Enter" &&
+                !event.shiftKey &&
+                (mode === "skills" || activeOption.label !== value.trim()))
+            ) {
+              choose(activeOption.label);
+              return true;
+            }
           }
-          spellCheck={false}
-          onScroll={(event) => {
-            if (highlights.current)
-              highlights.current.scrollTop = event.currentTarget.scrollTop;
-          }}
-          onPaste={(event) => {
-            const files = pasteFiles(event.clipboardData);
-            if (files.length) {
-              event.preventDefault();
-              onFiles(files);
-            }
-          }}
-          onChange={(event) => {
-            setCaret(event.target.selectionStart);
-            onChange(event.target.value);
-          }}
-          onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
-          onCompositionStart={() => {
-            composing.current = true;
-          }}
-          onCompositionEnd={() => {
-            composing.current = false;
-          }}
-          onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing || composing.current) return;
-            if (visible && event.key === "Escape") {
-              event.preventDefault();
-              setDismissed(query);
-              return;
-            }
-            if (visible && activeOption) {
-              if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                event.preventDefault();
-                setSelected(
-                  (index +
-                    (event.key === "ArrowDown" ? 1 : -1) +
-                    options.length) %
-                    options.length,
-                );
-                return;
-              }
-              if (
-                event.key === "Tab" ||
-                (event.key === "Enter" &&
-                  !event.shiftKey &&
-                  (mode === "skills" || activeOption.label !== value.trim()))
-              ) {
-                event.preventDefault();
-                choose(activeOption.label);
-                return;
-              }
-            }
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              onSubmit();
-            }
-          }}
-        />
-      </div>
+          if (event.key === "Enter" && !event.shiftKey) {
+            onSubmit();
+            return true;
+          }
+          return false;
+        }}
+      />
     </div>
   );
 }

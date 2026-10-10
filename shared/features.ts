@@ -19,9 +19,25 @@ export interface SkillInfo {
   description: string;
   path: string;
   provider: ProviderId;
-  scope: "project" | "personal" | "plugin";
+  scope: "project" | "personal" | "plugin" | "citropy";
   enabled: boolean;
   providerManaged?: boolean;
+}
+
+export interface ToolMention {
+  name: string;
+  title: string;
+  description: string;
+  section: "Citropy" | "Connections";
+  url?: string;
+}
+
+export const CITROPY_SKILL_LIMITS = { name: 64, description: 1024 };
+
+export interface CitropySkillDraft {
+  name: string;
+  description: string;
+  instructions: string;
 }
 
 export interface ProviderCommand {
@@ -126,6 +142,14 @@ export interface BrowserProfile {
   projectId: string;
   cookies: number;
   activeTabs: number;
+}
+
+export interface Connection {
+  id: string;
+  name: string;
+  url: string;
+  site: string;
+  signedIn: boolean;
 }
 
 export interface ImportBrowser {

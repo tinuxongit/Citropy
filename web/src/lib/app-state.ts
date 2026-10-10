@@ -38,6 +38,7 @@ interface MessageShell {
   model?: string;
   partIds: string[];
   attachments?: Message["attachments"];
+  mentions?: Message["mentions"];
 }
 
 export interface Toast {
@@ -64,7 +65,7 @@ const half = Math.ceil(COLOR_THEMES.length / 2);
 export const THEMES: readonly Theme[] = [...COLOR_THEMES.slice(0, half), "neutral", "custom", ...COLOR_THEMES.slice(half)];
 export const SCHEMES = ["dark", "light"] as const;
 export type Scheme = typeof SCHEMES[number];
-const STAGE_BACKGROUNDS = ["default", "ascii", "image"] as const;
+const STAGE_BACKGROUNDS = ["default", "ascii", "dots", "image"] as const;
 export type StageBackground = typeof STAGE_BACKGROUNDS[number];
 export const CHAT_WIDTHS = {
   comfortable: { label: "Comfortable", pixels: 780 },
@@ -82,6 +83,7 @@ export interface AppState {
   activeView: "chat" | "git" | "github" | "settings" | "usage";
   newThreadProvider: import("../../../shared/protocol.ts").ProviderId | null;
   whatsNew: import("../../../shared/app-update.ts").ReleaseNotes | null;
+  setupOpen: boolean;
   creatingThread: boolean;
   threadDefaults: Pick<ThreadMeta, "provider" | "providerInstanceId" | "model" | "effort" | "contextWindow" | "fastMode"> | null;
   favoriteModels: WritingModel[];
@@ -243,6 +245,7 @@ export const useApp = create<AppState>(() => ({
   shells: {},
   newThreadProvider: null,
   whatsNew: null,
+  setupOpen: false,
   creatingThread: false,
   threadDefaults: readThreadDefaults(),
   favoriteModels: readFavoriteModels(),

@@ -19,12 +19,11 @@ import { DisconnectedIcon } from "../icons/hardware.tsx";
 import type { ThreadGroup } from "./thread-groups.ts";
 import { WorkspaceMenu, type WorkspaceDialog } from "../WorkspaceSelector.tsx";
 
-export function ProjectHeading({ group, project, searching, picked, dragging, canCreateThread, onDragStart, consumeDrag, onNewThread, onConversation }: {
+export function ProjectHeading({ group, project, searching, picked, canCreateThread, onDragStart, consumeDrag, onNewThread, onConversation }: {
   group: ThreadGroup;
   project: Project;
   searching: boolean;
   picked: boolean;
-  dragging: boolean;
   canCreateThread: boolean;
   onDragStart: (event: ReactPointerEvent<HTMLElement>) => void;
   consumeDrag: (event: MouseEvent) => boolean;
@@ -69,7 +68,7 @@ export function ProjectHeading({ group, project, searching, picked, dragging, ca
   const disabled = pending || connecting || (current && !connected && !window.citropyDesktop?.connectEnvironment);
 
   return <>
-    <div className="global-project-heading" data-project-id={project.id} data-environment={environment} data-drag-id={group.id} data-active={current && project.id === activeProjectId} data-dragging={dragging} data-picked={picked}
+    <div className="global-project-heading" data-project-id={project.id} data-environment={environment} data-drag-id={group.id} data-active={current && project.id === activeProjectId} data-picked={picked}
       onContextMenu={event => {
         if ((event.target as HTMLElement).closest('[role="menu"], dialog')) return;
         event.preventDefault();

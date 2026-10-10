@@ -49,7 +49,7 @@ test("idle terminals release GPU contexts and preserve buffer, selection and res
     function Fixture() {
       const [active, setActive] = React.useState(true);
       window.setActive = setActive;
-      return React.createElement('div', { style: { width: 900, height: 650, display: active ? 'block' : 'none' } }, React.createElement(TerminalPane, { active, panel }));
+      return React.createElement('div', { style: { width: 900, height: 650, display: active ? 'block' : 'none' } }, React.createElement(TerminalPane, { active, termId: panel.id, target: { projectId: panel.projectId } }));
     }
     const root = createRoot(document.querySelector('#fixture'));
     window.unmountTerminal = () => root.unmount();
@@ -141,7 +141,7 @@ test("terminal panes reuse successful WebGL detection while preserving per-pane 
     function Fixture() {
       const [active, setActive] = React.useState(0);
       window.setActive = setActive;
-      return panels.map((panel, index) => React.createElement('div', { key: panel.id, style: { height: '100%', display: active === index ? 'block' : 'none' } }, React.createElement(TerminalPane, { active: active === index, panel })));
+      return panels.map((panel, index) => React.createElement('div', { key: panel.id, style: { height: '100%', display: active === index ? 'block' : 'none' } }, React.createElement(TerminalPane, { active: active === index, termId: panel.id, target: { projectId: panel.projectId } })));
     }
     const root = createRoot(document.querySelector('#fixture'));
     window.unmountTerminal = () => root.unmount();

@@ -389,6 +389,10 @@ class CodexSession implements AgentSession {
       }
       return;
     }
+    if (method === "item/started" && (params.item as Item)?.type === "contextCompaction") {
+      emit({ type: "compacting", active: true });
+      return;
+    }
     switch (method) {
       case "item/commandExecution/outputDelta":
         emit({ type: "tool.output", callId: String(params.itemId), output: String(params.delta ?? ""), append: true });
@@ -612,6 +616,7 @@ export const codexProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "rpc", steer: true, compact: true, stopShell: true },
   steerHint: "Codex adds it to the turn in progress.",
+  signIn: { login: ["login"], status: ["login", "status"], signedIn: (output) => /^Logged in\b/m.test(output) },
   models: [],
   listModels: (launch) => discoverModels("codex", launch),
   async detect(launch) {

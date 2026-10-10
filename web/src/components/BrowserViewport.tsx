@@ -164,7 +164,7 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
             <button type="button" className="btn" onClick={() => setCustom(false)}>
               Cancel
             </button>
-            <button type="submit" className="btn primary" disabled={disabled || !valid}>
+            <button type="submit" className="btn" data-variant="primary" disabled={disabled || !valid}>
               Apply size
             </button>
           </div>

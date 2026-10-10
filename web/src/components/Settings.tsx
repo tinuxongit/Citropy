@@ -4,6 +4,7 @@ import { FolderIcon } from "./icons/folders.tsx";
 import { BookIcon } from "./BookIcon.tsx";
 import { GlobeIcon } from "./GlobeIcon.tsx";
 import { InboxIcon } from "./InboxIcon.tsx";
+import { LockIcon } from "./LockIcon.tsx";
 import { PaletteIcon } from "./PaletteIcon.tsx";
 import { PhoneIcon } from "./PhoneIcon.tsx";
 import { PulseIcon } from "./PulseIcon.tsx";
@@ -19,6 +20,7 @@ import { AppearanceSettings } from "./AppearanceSettings.tsx";
 import { ApplicationSettings } from "./ApplicationSettings.tsx";
 import { AssistanceSettings } from "./AssistanceSettings.tsx";
 import { BrowserProfiles } from "./BrowserProfiles.tsx";
+import { ConnectionsSettings } from "./ConnectionsSettings.tsx";
 import { DiagnosticsSettings } from "./DiagnosticsSettings.tsx";
 import { EnvironmentSettings } from "./EnvironmentSettings.tsx";
 import { GeneralSettings } from "./GeneralSettings.tsx";
@@ -39,8 +41,9 @@ const sections: { name: string; description: string; group: typeof GROUPS[number
   { name: "Environments", description: "This computer, and the servers and containers you connect to.", group: "Workspaces", icon: ServerIcon },
   { name: "Providers", description: "Installed providers, accounts, and usage limits.", group: "Agents", icon: WorkflowIcon },
   { name: "AI assistance", description: "Models for conversation titles, commit messages, and code review.", group: "Agents", icon: SparkleIcon },
-  { name: "Skills", description: "Skills your providers can use, and how they are shared.", group: "Agents", icon: BookIcon },
+  { name: "Skills", description: "Skills you write once for every provider, and skills each provider has installed.", group: "Agents", icon: BookIcon },
   { name: "Browser", description: "Search engine, browser profiles, and what providers can access.", group: "Tools", icon: GlobeIcon },
+  { name: "Connections", description: "Websites you signed in to, so agents can use them for you.", group: "Tools", icon: LockIcon },
   { name: "Local sharing", description: "Use Citropy from your phone on the same Wi-Fi.", group: "Tools", icon: PhoneIcon, available: canShareLocally },
   { name: "Resources", description: "Memory use, running conversations, and logs.", group: "System", icon: PulseIcon },
   { name: "Application", description: "Updates and restarts.", group: "System", icon: WindowIcon },
@@ -116,6 +119,7 @@ export function Settings({
             {section === "Skills" && <SkillsSettings />}
             {section === "AI assistance" && <AssistanceSettings />}
             {section === "Browser" && <BrowserProfiles />}
+            {section === "Connections" && <ConnectionsSettings />}
             {section === "Local sharing" && <LocalSharing />}
             {section === "Resources" && <DiagnosticsSettings />}
             {section === "General" && <GeneralSettings />}

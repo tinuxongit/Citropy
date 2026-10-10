@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { ifMissing, logFailure } from "../shared/expected-errors.mjs";
+import { hasCode, ifMissing, logFailure } from "../shared/expected-errors.mjs";
 import { promisify } from "node:util";
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -9,6 +9,7 @@ import { parseUnifiedDiff } from "./diff.ts";
 
 const run = promisify(execFile);
 const GIT_ANSWERED_NO = [1, 128];
+const GIT_MISSING = "Git is not installed. Install it under Runtime downloads in Settings, Providers.";
 
 /** Run Git with literal, case-sensitive UI selections and noninteractive authentication. */
 export async function git(cwd: string, args: string[], env: NodeJS.ProcessEnv = {}, input?: string): Promise<string> {
@@ -23,7 +24,9 @@ export async function git(cwd: string, args: string[], env: NodeJS.ProcessEnv = 
     command.child.stdin!.on("error", logFailure("Writing to git", cwd));
     command.child.stdin!.end(input);
   }
-  return (await command).stdout;
+  return (await command.catch(error => {
+    throw hasCode(error, "ENOENT") ? Object.assign(new Error(GIT_MISSING), { code: "ENOENT" }) : error;
+  })).stdout;
 }
 
 export async function tryGit(cwd: string, args: string[]): Promise<string> {
@@ -38,7 +41,7 @@ export async function tryGit(cwd: string, args: string[]): Promise<string> {
 
 export async function isRepo(cwd: string): Promise<boolean> {
   if (!await stat(cwd).catch(ifMissing(null))) return false;
-  const out = await tryGit(cwd, ["rev-parse", "--is-inside-work-tree"]);
+  const out = await tryGit(cwd, ["rev-parse", "--is-inside-work-tree"]).catch(ifMissing(""));
   return out.trim() === "true";
 }
 

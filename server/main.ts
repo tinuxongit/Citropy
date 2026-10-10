@@ -80,6 +80,7 @@ function snapshot(): Snapshot {
     notificationPreferences: store.notificationPreferences,
     logging: { enabled: store.logging, file: logFile },
     resumeAfterLimits: store.resumeAfterLimits,
+    setupNeeded: !store.setupFinished && store.projects.size === 0,
     panels: panelList(),
     browsers: browser.browserStates(),
     tools: workspaceTools,

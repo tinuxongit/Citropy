@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
-import type { ProviderCommand, SkillInfo } from "../../../../shared/features.ts";
+import type { ProviderCommand, SkillInfo, ToolMention } from "../../../../shared/features.ts";
 import { api } from "../../lib/api.ts";
 
 const PATH_SEARCH_DELAY_MS = 120;
@@ -19,6 +19,7 @@ export function useComposerCatalog({
   mentionText: string;
 }) {
   const [skills, setSkills] = useState<SkillInfo[]>([]);
+  const [tools, setTools] = useState<ToolMention[]>([]);
   const [paths, setPaths] = useState<PathEntry[]>([]);
   const [nativeCommands, setNativeCommands] = useState<ProviderCommand[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +49,12 @@ export function useComposerCatalog({
               if (!controller.signal.aborted) setNativeCommands(value);
             }),
           ]
-        : [readSkills];
+        : [
+            readSkills,
+            api<ToolMention[]>("tool-mentions", { signal: controller.signal }).then((value) => {
+              if (!controller.signal.aborted) setTools(value);
+            }),
+          ];
     void Promise.all(requests)
       .catch((error) => {
         if (!controller.signal.aborted) setError(error.message);
@@ -67,5 +73,5 @@ export function useComposerCatalog({
     }, PATH_SEARCH_DELAY_MS);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [mode, mentionText, thread.id]);
-  return { skills, nativeCommands, paths, loading, error };
+  return { skills, tools, nativeCommands, paths, loading, error };
 }

@@ -5,6 +5,8 @@ import { CircleAlertIcon } from "./icons/status.tsx";
 import { CheckIcon, CloseIcon } from "./icons/marks.tsx";
 import { LinkIcon } from "./icons/editing.tsx";
 import { send } from "../lib/socket.ts";
+import { api } from "../lib/api.ts";
+import { ActionError } from "./ActionError.tsx";
 import { addressOrSearch } from "../lib/web-search.ts";
 import { useApp } from "../lib/store.ts";
 import { BrowserViewport } from "./BrowserViewport.tsx";
@@ -40,11 +42,24 @@ export function BrowserPane({
   const [address, setAddress] = useState("");
   const [dialogText, setDialogText] = useState("");
   const [cover, setCover] = useState<string>();
+  const [finishing, setFinishing] = useState(false);
+  const [signInError, setSignInError] = useState("");
   const [copied, copy] = useCopied();
   const screen = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const act = (action: BrowserAction) => {
     if (connected) send({ t: "browser.action", id: panel.id, input: action });
+  };
+  const finishSignIn = async (id: string) => {
+    setFinishing(true);
+    setSignInError("");
+    try {
+      await api("connections/status", { method: "POST", body: JSON.stringify({ id, signedIn: true }) });
+    } catch (error) {
+      setSignInError((error as Error).message);
+    } finally {
+      setFinishing(false);
+    }
   };
 
   useEffect(() => {
@@ -246,6 +261,13 @@ export function BrowserPane({
           )}
         </form>
       </div>
+      {native && state?.connection && !state.connection.signedIn && (
+        <div className="browser-notice browser-sign-in">
+          <span>Sign in to {state.profileName} below, then finish.</span>
+          <button className="btn" data-variant="primary" disabled={finishing || !connected} onClick={() => void finishSignIn(state.connection!.id)}>Finish sign-in</button>
+        </div>
+      )}
+      {signInError && <ActionError className="browser-notice" message={signInError} onDismiss={() => setSignInError("")} />}
       {native && state && (
         <BrowserViewport state={state} disabled={!connected} onResize={act} />
       )}
@@ -283,7 +305,7 @@ export function BrowserPane({
               className="btn"
               onClick={() => act({ action: "dialog", accept: false })}
             >{" "}Dismiss{" "}</button>
-            <button type="submit" className="btn primary">{" "}OK{" "}</button>
+            <button type="submit" className="btn" data-variant="primary">{" "}OK{" "}</button>
           </div>
         </form>
       )}
@@ -294,7 +316,7 @@ export function BrowserPane({
             <p>{" "}The desktop app runs the browser directly, with normal scrolling, typing, and tabs shared with your provider.{" "}</p>
             <button
               type="button"
-              className="btn primary"
+              className="btn" data-variant="primary"
               disabled={!connected}
               onClick={() => send({ t: "desktop.open" })}
             >{" "}Open Citropy desktop{" "}<ArrowUpRightIcon size={14} />

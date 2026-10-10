@@ -57,10 +57,12 @@ function themeColors(element: HTMLElement, alpha: number): Record<string, string
 
 export function CodeEditor({
   document,
+  threadId,
   wrap,
   onReady,
 }: {
   document: TextDocument;
+  threadId?: string;
   wrap: boolean;
   onReady: (editor: monaco.editor.IStandaloneCodeEditor | null) => void;
 }) {
@@ -188,7 +190,7 @@ export function CodeEditor({
         </button>
       )}
       {menu && instance.current && (
-        <EditorContextMenu editor={instance.current} x={menu.x} y={menu.y} onClose={() => setMenu(undefined)} />
+        <EditorContextMenu editor={instance.current} file={document} threadId={threadId} x={menu.x} y={menu.y} onClose={() => setMenu(undefined)} />
       )}
     </>
   );

@@ -1,8 +1,10 @@
-import type { ProjectSettings } from "./protocol.ts";
+import type { FolderSettings, ProjectSettings } from "./protocol.ts";
+
+export const GLOBAL_SWITCHES = ["browserAccess", "browserFirst", "visualReplies"] as const;
 
 export function resolveProjectSettings(
   defaults: ProjectSettings = {},
-  overrides: ProjectSettings = {},
+  overrides: FolderSettings = {},
 ): ProjectSettings {
   const model = overrides.provider !== undefined ? overrides : defaults;
   return {
@@ -12,6 +14,8 @@ export function resolveProjectSettings(
     permissionMode: overrides.permissionMode ?? defaults.permissionMode ?? "manual",
     workspace: overrides.workspace ?? defaults.workspace ?? "current",
     autoPull: overrides.autoPull ?? defaults.autoPull ?? false,
-    browserAccess: overrides.browserAccess ?? defaults.browserAccess ?? true,
+    browserAccess: defaults.browserAccess ?? true,
+    browserFirst: defaults.browserFirst ?? true,
+    visualReplies: defaults.visualReplies ?? true,
   };
 }

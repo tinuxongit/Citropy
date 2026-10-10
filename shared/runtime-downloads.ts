@@ -1,10 +1,17 @@
-export interface NodeRuntimeStatus {
+export interface RuntimeStatus {
   status: "idle" | "installing" | "success" | "error";
   ready: boolean;
-  shellReady?: boolean;
   supported: boolean;
   version?: string;
+  message?: string;
+}
+
+export interface NodeRuntimeStatus extends RuntimeStatus {
+  shellReady?: boolean;
   npmVersion?: string;
   installVersion: string;
-  message?: string;
+}
+
+export interface GitRuntimeStatus extends RuntimeStatus {
+  method: string;
 }

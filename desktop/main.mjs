@@ -13,6 +13,7 @@ import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-
 import { packagedBackend } from "./backend.mjs";
 import { desktopDiagnostics } from "./diagnostics.mjs";
 import { initializeProfiles, browserProfile, handleProfiles } from "./browser-profiles.mjs";
+import { initializeConnections, connectionProfile, connectionOfProfile, handleConnections } from "./connections.mjs";
 import { browserActivity } from "./browser-activity.mjs";
 import { formatTree } from "./browser-snapshot.mjs";
 import { createPointer } from "./browser-pointer.mjs";
@@ -91,6 +92,8 @@ if (app.isPackaged) {
 v8.setFlagsFromString("--optimize-for-size");
 app.commandLine.appendSwitch("enable-features", "NetworkServiceInProcess2");
 app.commandLine.appendSwitch("disable-features", "AudioServiceOutOfProcess");
+// Chromium redraws only changed regions over the stage background, rounding them one shade off and leaving visible rectangles behind running turns.
+app.commandLine.appendSwitch("ui-disable-partial-swap");
 const backend = app.isPackaged ? packagedBackend(process.env, diagnose) : undefined;
 let updates;
 let environments;
@@ -175,6 +178,7 @@ function state(tab) {
     scale: tab.scale,
     canGoBack: content.navigationHistory.canGoBack(),
     canGoForward: content.navigationHistory.canGoForward(),
+    connection: connectionOfProfile(tab.state.profileId),
   };
 }
 
@@ -373,7 +377,7 @@ async function capture(tab) {
 async function open(input) {
   const existing = tabs.get(input.id);
   if (existing) return state(existing);
-  const profile = browserProfile(input.projectId, input.profileId);
+  const profile = connectionProfile(input.profileId, input.url) ?? browserProfile(input.projectId, input.profileId);
   input = { ...input, profileId: profile.id, profileName: profile.name };
   const browserSession = session.fromPartition(profile.partition);
   watchDownloads(browserSession);
@@ -1140,6 +1144,11 @@ async function request(method, params) {
     return;
   }
   if (method.startsWith("profiles.")) return handleProfiles(method.slice(9), params, session, tabs);
+  if (method.startsWith("connections.")) {
+    const result = await handleConnections(method.slice(12), params, session, tabs);
+    for (const tab of tabs.values()) if (connectionOfProfile(tab.state.profileId)) publish(tab);
+    return result;
+  }
   if (method === "diagnostics") return app.getAppMetrics().map((entry) => ({
     pid: entry.pid,
     parent: process.pid,
@@ -1302,6 +1311,7 @@ app
     const started = backend?.start() ?? Promise.resolve();
     void started.catch(() => {});
     await initializeProfiles(app.getPath("userData"));
+    await initializeConnections(app.getPath("userData"));
     Menu.setApplicationMenu(null);
     const trusted = (event) =>
       event.sender === window.webContents &&

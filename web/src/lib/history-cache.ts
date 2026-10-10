@@ -20,6 +20,19 @@ export function releaseHistoryRequest(threadId: string): void {
   requestedHistories.delete(threadId);
 }
 
+function messageShell(message: Message, partIds: string[]): AppState["messages"][string] {
+  return {
+    id: message.id,
+    role: message.role,
+    ts: message.ts,
+    model: message.model,
+    provider: message.provider,
+    attachments: message.attachments,
+    mentions: message.mentions,
+    partIds,
+  };
+}
+
 export function replaceHistory(
   state: AppState,
   threadId: string,
@@ -39,15 +52,7 @@ export function replaceHistory(
       state.parts.set(part.id, part);
       partIds.push(part.id);
     }
-    state.messages[message.id] = {
-      id: message.id,
-      role: message.role,
-      ts: message.ts,
-      model: message.model,
-      provider: message.provider,
-      attachments: message.attachments,
-      partIds,
-    };
+    state.messages[message.id] = messageShell(message, partIds);
     ids.push(message.id);
     added.push(message);
   }
@@ -196,15 +201,7 @@ export function applyMessageEvent(
           state.reveals[part.id] = true;
         partIds.push(part.id);
       }
-      state.messages[event.message.id] = {
-        id: event.message.id,
-        role: event.message.role,
-        ts: event.message.ts,
-        model: event.message.model,
-        provider: event.message.provider,
-        attachments: event.message.attachments,
-        partIds,
-      };
+      state.messages[event.message.id] = messageShell(event.message, partIds);
       state.order[event.threadId] = [
         ...(state.order[event.threadId] ?? []),
         event.message.id,

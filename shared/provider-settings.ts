@@ -17,6 +17,12 @@ export interface ProviderMaintenance {
   output?: string;
 }
 
+export interface ProviderSignIn {
+  provider: ProviderId;
+  signedIn?: boolean;
+  error?: string;
+}
+
 export interface GlobalInstructions {
   provider: ProviderId;
   path: string;

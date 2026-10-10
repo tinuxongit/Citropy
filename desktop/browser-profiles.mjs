@@ -275,7 +275,7 @@ export function handleProfiles(operation, input, session, tabs) {
   return result;
 }
 
-async function clearProfileData(target) {
+export async function clearProfileData(target) {
   await target.clearStorageData();
   await target.clearCache();
   await target.clearCodeCaches({});

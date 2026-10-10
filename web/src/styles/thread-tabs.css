@@ -9,6 +9,7 @@
   align-self: stretch;
   gap: var(--tab-gap);
   min-width: 0;
+  position: relative;
   padding: 0 var(--space-6);
   overflow-x: auto;
   scrollbar-width: none;

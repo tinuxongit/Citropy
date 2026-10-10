@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { defaultRangeExtractor, useVirtualizer, type Range } from "@tanstack/react-virtual";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { hasUsableAccount } from "../../../shared/provider-account.ts";
@@ -21,7 +21,8 @@ import { shownThreads, threadKey, threadOrderAfterMove, useThreadGroups, type En
 import { ThreadRow } from "./sidebar/ThreadRow.tsx";
 import { useProjectDrag } from "./sidebar/use-project-drag.ts";
 import { useRowPicking } from "./sidebar/use-row-picking.ts";
-import { useProjectOrder, type DropEdge } from "./sidebar/use-project-order.ts";
+import { useProjectOrder } from "./sidebar/use-project-order.ts";
+import type { DropEdge } from "../../../shared/move-beside.ts";
 import { useThreadDrag } from "./sidebar/use-thread-drag.ts";
 import { useThreadPreview } from "./sidebar/use-thread-preview.ts";
 import { useThreadSearch } from "./sidebar/use-thread-search.ts";
@@ -104,7 +105,8 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
   const dragResetKey = [environment, activeProjectId, query, connected, uiScale, rowOrder].join("\n");
   const threadDrag = useThreadDrag({ viewport, groups, disabled: Boolean(query), resetKey: dragResetKey, onDrop: reorder });
   const folderGroups = groups.filter(group => group.project);
-  const projectDrag = useProjectDrag({ viewport, list: threadList, projects: folderGroups, disabled: Boolean(query), resetKey: dragResetKey, onMove: (source, target, edge) => {
+  const projectDragResetKey = [environment, activeProjectId, query, connected, uiScale, folderGroups.map(group => group.id).join()].join("\n");
+  const projectDrag = useProjectDrag({ viewport, list: threadList, groups: folderGroups, disabled: Boolean(query), resetKey: projectDragResetKey, onMove: (source, target, edge) => {
     const from = folderGroups.find(group => group.id === source);
     const to = folderGroups.find(group => group.id === target);
     if (from?.project && to?.project && from.environment === to.environment) moveProject(from.environment!, from.project.id, to.project.id, edge);
@@ -119,7 +121,7 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
     return project ? [{ project, environment: row.environment }] : [];
   });
   const preview = useThreadPreview({
-    disabled: Boolean(threadDrag.draggingId),
+    disabled: Boolean(threadDrag.draggingId || projectDrag.dragging),
     resetKey: [environment, activeProjectId, activeThreadId, query, rowOrder, uiScale].join("\n"),
   });
   const handlers = useRef({ revealFinished, onConversation });
@@ -131,7 +133,8 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
 
   const virtualized = threads.length > VIRTUALIZE_AFTER_THREADS;
   const focusedIndex = focusedRow ? rowIndexes.get(focusedRow) ?? -1 : -1;
-  const draggingIndex = threadDrag.draggingId ? rowIndexes.get(threadDrag.draggingId) ?? -1 : -1;
+  const draggingId = threadDrag.draggingId ?? projectDrag.dragging;
+  const draggingIndex = draggingId ? rowIndexes.get(draggingId) ?? -1 : -1;
   const activeIndex = activeRoot ? rowIndexes.get(threadKey(environment, activeRoot.id)) ?? -1 : -1;
   const getItemKey = useMemo(() => {
     const keys = rows.map((row) => row.key);
@@ -197,7 +200,6 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
       project={project}
       searching={searching}
       picked={picking.isPicked({ kind: "project", environment: group.environment!, id: project.id })}
-      dragging={projectDrag.dragging === group.id}
       canCreateThread={canCreateIn(group)}
       onDragStart={(event) => projectDrag.start(event, group.id)}
       consumeDrag={projectDrag.consumeDrag}
@@ -228,6 +230,7 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
 
   const renderGroup = (group: ThreadGroup) => {
     const shown = shownThreads(group, Boolean(query), selected);
+    const animated = projectDrag.dragging !== group.id;
     if (virtualized) return list.getVirtualItems().filter((item) => rows[item.index]?.group.id === group.id).map((item) => {
       const row = rows[item.index]!;
       return <div key={item.key} data-index={item.index} ref={list.measureElement} className="thread-list-item" style={{ position: "absolute", top: item.start, left: 0, width: "100%" }}>
@@ -236,16 +239,17 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
     });
     return <>
       {renderHeading(group)}
-      {group.threads.map((item) => <Collapsible key={threadKey(item.environment, item.thread.id)} open={shown.includes(item)} className="thread-category-content">
+      {group.threads.map((item) => <Collapsible key={threadKey(item.environment, item.thread.id)} open={shown.includes(item)} animated={animated} className="thread-category-content">
         <div className="thread-list-item">{renderItem(item, group)}</div>
       </Collapsible>)}
-      {group.project && !query && !group.threads.length && <Collapsible open={group.open} className="thread-category-content">
+      {group.project && !query && !group.threads.length && <Collapsible open={group.open} animated={animated} className="thread-category-content">
         <div className="thread-list-item">{renderEmpty(group)}</div>
       </Collapsible>}
     </>;
   };
 
-  const renderCategory = (group: ThreadGroup) => <section className="thread-category" data-category={group.id} data-tree={group.project ? "" : undefined} key={group.id} style={virtualized ? { display: "contents" } : undefined}>
+  const renderCategory = (group: ThreadGroup) => <section className="thread-category" data-category={group.id} data-tree={group.project ? "" : undefined} data-dragging={projectDrag.dragging === group.id || undefined} key={group.id}
+    style={{ "--project-shift": `${projectDrag.shifts.get(group.id) ?? 0}px`, ...(virtualized ? { display: "contents" } : undefined) } as CSSProperties}>
     {renderGroup(group)}
   </section>;
 
@@ -275,13 +279,12 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
             if (!event.currentTarget.contains(event.relatedTarget)) setFocusedRow(undefined);
           }}
         >
-          <div className="thread-list sliding-selection" ref={threadList} data-virtualized={virtualized} data-dragging={Boolean(threadDrag.draggingId)} style={virtualized ? { height: list.getTotalSize(), position: "relative" } : undefined}>
+          <div className="thread-list sliding-selection" ref={threadList} data-virtualized={virtualized} data-dragging={threadDrag.draggingId ? "thread" : projectDrag.dragging ? "project" : undefined} style={virtualized ? { height: list.getTotalSize(), position: "relative" } : undefined}>
             <SelectionHighlight value={activeThreadId ? threadKey(environment, activeThreadId) : undefined} layout={rowOrder} selector='.thread-card[data-active="true"]' />
             {virtualized ? groups.map(renderCategory) : groups.filter((group) => !group.parent).map((group) => group.section ? [
               renderCategory(group),
               <Collapsible key={`${group.id}:content`} open={group.open} className="rail-section-content">{groups.filter((child) => child.parent === group.id).map(renderCategory)}</Collapsible>,
             ] : renderCategory(group))}
-            {projectDrag.drop && <div className="project-drop-line" style={{ top: projectDrag.drop.top }} />}
           </div>
           {threads.length === 0 && (query || groups.length === 0) && <div className="rail-empty">{emptyMessage}</div>}
         </div>

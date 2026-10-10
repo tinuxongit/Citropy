@@ -3,7 +3,9 @@ import { startAsciiNoise } from "../lib/ascii-noise.ts";
 import { useBackgroundFile } from "../lib/background-files.ts";
 import { colorLight, lightMap, regionLight, type LightMap } from "../lib/backdrop-contrast.ts";
 import { reportError } from "../lib/api.ts";
+import { DotBackground } from "./DotBackground.tsx";
 import { useApp } from "../lib/store.ts";
+import type { StageBackground } from "../lib/app-state.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 
 const READING_COLUMN = ".settings, .github-main, .git-manager, .canvas-inner";
@@ -343,14 +345,16 @@ function CustomImage({ metrics }: { metrics: RefObject<StageMetrics> }) {
   return <StillImage bitmap={bitmap} blur={blur} dim={dim} focus={focus} layer={layer} />;
 }
 
-function BackdropLayers({ background }: { background: "ascii" | "image" }) {
+function BackdropLayers({ background }: { background: Exclude<StageBackground, "default"> }) {
   const root = useRef<HTMLDivElement>(null);
   const metrics = useStageMetrics(root);
   const focus = useApp((state) => state.backgroundFocus);
   const spread = useApp((state) => state.backgroundFocusSpread);
   return (
     <div ref={root} className="backdrop-layers" data-kind={background} style={{ "--focus": focus / 100, "--focus-spread": `${spread}px` } as CSSProperties}>
-      {background === "ascii" ? <AsciiNoise metrics={metrics} /> : <CustomImage metrics={metrics} />}
+      {background === "ascii" && <AsciiNoise metrics={metrics} />}
+      {background === "dots" && <DotBackground className="stage-dots" />}
+      {background === "image" && <CustomImage metrics={metrics} />}
       <div className="shell-glass" aria-hidden="true" />
     </div>
   );

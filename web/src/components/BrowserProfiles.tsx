@@ -132,11 +132,11 @@ export function BrowserProfiles() {
         setData(await loadProfiles());
       });
   };
-  const configureAccess = async (browserAccess: boolean) => {
+  const configure = async (patch: { browserAccess?: boolean; browserFirst?: boolean }) => {
     setBusy(true);
     setError("");
     try {
-      await saveProjectDefaults({ ...projectDefaults, browserAccess });
+      await saveProjectDefaults({ ...projectDefaults, ...patch });
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -168,7 +168,7 @@ export function BrowserProfiles() {
         <label className="setting-row">
           <span>
             <strong>Provider browser access</strong>
-            <small>Allow conversations to use the shared browser tools. Folders can override this in Projects.</small>
+            <small>Allow conversations to use the shared browser tools.</small>
           </span>
           <input
             className="setting-switch"
@@ -176,7 +176,21 @@ export function BrowserProfiles() {
             role="switch"
             checked={Boolean(resolveProjectSettings(projectDefaults).browserAccess)}
             disabled={busy}
-            onChange={(event) => void configureAccess(event.target.checked)}
+            onChange={(event) => void configure({ browserAccess: event.target.checked })}
+          />
+        </label>
+        <label className="setting-row">
+          <span>
+            <strong>Browse in Citropy</strong>
+            <small>Ask providers to search and read websites in this browser, where your sign-ins work, instead of their built-in web tools.</small>
+          </span>
+          <input
+            className="setting-switch"
+            type="checkbox"
+            role="switch"
+            checked={Boolean(resolveProjectSettings(projectDefaults).browserFirst)}
+            disabled={busy || !resolveProjectSettings(projectDefaults).browserAccess}
+            onChange={(event) => void configure({ browserFirst: event.target.checked })}
           />
         </label>
       </div>

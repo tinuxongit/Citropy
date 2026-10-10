@@ -24,6 +24,12 @@ export const workspaceTools = ([
     inputSchema: { type: "object", properties: { url: string } },
   },
   {
+    name: "browser_connections",
+    description: "List the websites the user connected under Settings > Connections, with each site's address and whether the user finished signing in. browser_open on a URL inside a connected site opens it with that sign-in. If signedIn is false, or the page still asks to sign in, ask the user to sign in from Settings > Connections.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true },
+  },
+  {
     name: "browser_tabs",
     description: "List the browser tabs in this workspace.",
     inputSchema: { type: "object", properties: {} },
@@ -167,6 +173,44 @@ export const workspaceTools = ([
     annotations: { readOnlyHint: true },
   },
   {
+    name: "workspace_visual",
+    description: "Show a self-contained HTML page inside this conversation, such as a chart, table, diagram, calculator, or mockup, up to 512 KiB. Pass the whole page as html, or pass from with the id of a draft or an earlier visual. With from, edits apply exact find and replace changes in order, so a small change never needs the page rewritten; each find must match once. Publishing a draft removes it, and earlier visuals stay unchanged in older messages. Inline all CSS, scripts, and images as data URLs; the page cannot load anything from the network. Scripts run in a sandbox. Use the theme variables --citropy-background, --citropy-surface, --citropy-text, --citropy-muted, --citropy-line, --citropy-accent, --citropy-font-ui, and --citropy-font-mono so the page follows the user's light or dark theme, and leave the page background transparent. The frame grows to fit the page height. Returns the new id and Markdown to place verbatim in your response.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: string,
+        html: string,
+        from: { type: "string", description: "Id of a draft or an earlier visual to publish or change instead of html." },
+        edits: { type: "array", items: { type: "object", properties: { find: string, replace: string }, required: ["find", "replace"], additionalProperties: false } },
+      },
+      required: ["title"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "workspace_visual_draft",
+    description: "Build a large visual in parts. Without draft, starts a new draft with html; with draft, adds html to its end. Returns the draft id and its size. Publish it with workspace_visual and from, applying edits there if a part needs fixing.",
+    inputSchema: {
+      type: "object",
+      properties: { html: string, draft: string },
+      required: ["html"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "workspace_visual_source",
+    description: "Read the HTML of a draft or an earlier visual in this conversation, up to 16,000 characters per call. Continue with nextOffset when present. Use it to copy exact find text for edits.",
+    inputSchema: {
+      type: "object",
+      properties: { id: string, ...textPage },
+      required: ["id"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true },
+  },
+  {
     name: "open_panel",
     description:
       "Show Files, Changes, Subagents, or Tools in Citropy beside the conversation.",
@@ -295,7 +339,7 @@ export const toolCategories = remoteId ? ["terminal", "workspace", "subagent"] :
 export const discoveryTools: ToolDefinition[] = [
   {
     name: "tool_help",
-    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, and OpenCode accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, and panels; terminal has visible commands.`,
+    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, and OpenCode accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, visual replies, and panels; terminal has visible commands.${remoteId ? "" : " Browser has the shared browser and the sites the user signed in to under Connections."}`,
     inputSchema: { type: "object", properties: { category: { type: "string", enum: toolCategories } }, required: ["category"], additionalProperties: false },
     annotations: { readOnlyHint: true },
   },

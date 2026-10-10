@@ -2,7 +2,10 @@ import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { reportError } from "../../lib/api.ts";
 import { copyText } from "../../lib/copy-text.ts";
 import { MOD } from "../../lib/modifier-key.ts";
+import { sendToComposer } from "../../lib/composer-inbox.ts";
 import { monaco } from "./monaco.ts";
+import type { TextDocument } from "./documents.ts";
+import { selectionForChat } from "./selection-for-chat.ts";
 
 interface Item {
   id: string;
@@ -49,15 +52,21 @@ function clipboardItems(editor: monaco.editor.IStandaloneCodeEditor): Item[] {
   ];
 }
 
-export function EditorContextMenu({ editor, x, y, onClose }: {
+export function EditorContextMenu({ editor, file, threadId, x, y, onClose }: {
   editor: monaco.editor.IStandaloneCodeEditor;
+  file: TextDocument;
+  threadId?: string;
   x: number;
   y: number;
   onClose: () => void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
   const format = editor.getAction("editor.action.formatDocument");
+  const selection = editor.getSelection()!;
   const groups: Item[][] = [
+    ...(threadId && !selection.isEmpty()
+      ? [[{ id: "chat", label: "Add to chat", run: () => sendToComposer(threadId, { text: selectionForChat(selection, file), attachments: [], placement: "after" }) }]]
+      : []),
     clipboardItems(editor),
     [
       { id: "select", label: "Select all", shortcut: `${MOD}A`, run: () => editor.trigger("context-menu", "editor.action.selectAll", null) },

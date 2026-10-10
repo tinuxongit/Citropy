@@ -1,15 +1,31 @@
-import { Marked, type Tokens } from "marked";
+import { Marked, type Token, type Tokens } from "marked";
 import { escapeHtml } from "./escape-html.ts";
 import { highlight } from "./highlight.ts";
 import { rawCode } from "./raw-code.ts";
 import { serverUrl } from "./environment.ts";
-import { COPIED_ICON, COPY_ICON, RUN_ICON, SITE_ICON } from "./markdown-icons.ts";
+import { faviconUrl } from "./favicon.ts";
+import { BOOK_ICON, COPIED_ICON, COPY_ICON, RUN_ICON, SITE_ICON } from "./markdown-icons.ts";
+import type { MentionTag } from "../../../shared/mention-tags.ts";
 
 interface CodeToken extends Tokens.Code {
   rendered?: string;
 }
 
 const SHELL_LANGUAGES = ["sh", "bash", "zsh", "fish", "shell", "powershell", "pwsh"];
+
+interface MentionToken extends Tokens.Generic {
+  tag: MentionTag;
+}
+
+function siteIcon(origin: string): string {
+  const favicon = escapeHtml(faviconUrl(origin));
+  return `<span class="link-site-icon" aria-hidden="true">${SITE_ICON}<img class="link-favicon" src="${favicon}" width="16" height="16" alt="" decoding="async" referrerpolicy="no-referrer"/></span>`;
+}
+
+function mentionIcon(tag: MentionTag): string {
+  if (tag.icon === "site") return siteIcon(new URL(tag.url!).origin);
+  return tag.icon === "citropy" ? '<span class="citropy-mark" aria-hidden="true"></span>' : BOOK_ICON;
+}
 
 interface AssetContext {
   projectId: string;
@@ -25,8 +41,9 @@ function runnable(code: Tokens.Code, label: string): boolean {
   return SHELL_LANGUAGES.includes(label) && closedFence(code.raw) && Boolean(command) && !command.endsWith("\\") && !/[\p{Cc}\p{Cf}]/u.test(command.replace(/[\n\t]/g, ""));
 }
 
-function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, assets: AssetContext | undefined, images: boolean, live: boolean, commands: boolean) {
+function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, assets: AssetContext | undefined, images: boolean, live: boolean, commands: boolean, mentions: MentionTag[] = []) {
   let linkedImage = false;
+  const tags = new Map(mentions.map((tag) => [tag.name, tag]));
   const marked = new Marked({
     gfm: true,
     breaks: false,
@@ -40,6 +57,23 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
       level: "inline",
       start: (source) => /~(?!~)/.exec(source)?.index,
       tokenizer: (source) => source.startsWith("~") && !source.startsWith("~~") ? { type: "text", raw: "~", text: "~" } : undefined,
+    }, {
+      name: "mention",
+      level: "inline",
+      start: (source) => {
+        const match = tags.size ? /(?:^|\s)@/.exec(source) : null;
+        return match ? match.index + match[0].length - 1 : undefined;
+      },
+      tokenizer: (source, tokens) => {
+        const before = tokens.at(-1)?.raw;
+        const match = /^@([\w.:-]+)(?![\w./:-])/.exec(source);
+        const tag = match && (!before || /\s$/.test(before)) ? tags.get(match[1]!) : undefined;
+        return tag ? { type: "mention", raw: match![0], tag } : undefined;
+      },
+      renderer: (token) => {
+        const { tag } = token as MentionToken;
+        return `<span class="mention-chip">${mentionIcon(tag)}${escapeHtml(tag.title)}</span>`;
+      },
     }],
     walkTokens: async (token) => {
       if (token.type !== "code" || signal?.aborted) return;
@@ -60,12 +94,29 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
       html(token) {
         return escapeHtml((token as Tokens.HTML).raw);
       },
+      paragraph(token) {
+        const inline = (token as Tokens.Paragraph).tokens;
+        if (!images || !inline.some((part) => part.type === "image")) return false;
+        const runs: { images: boolean; tokens: Token[] }[] = [];
+        for (const part of inline) {
+          const last = runs.at(-1);
+          const image = part.type === "image";
+          if (last && (last.images === image || !part.raw.trim())) last.tokens.push(part);
+          else runs.push({ images: image, tokens: [part] });
+        }
+        return runs.map((run) => `<p${run.images ? ' class="markdown-images"' : ""}>${this.parser.parseInline(run.tokens)}</p>\n`).join("");
+      },
       image(token) {
         const image = token as Tokens.Image;
         if (!images) return escapeHtml(image.text || image.href || "");
         let src = image.href ?? "";
         const alt = escapeHtml(image.text ?? "");
         const title = image.title ? ` title="${escapeHtml(image.title)}"` : "";
+        const visual = /^citropy-visual:([0-9a-f-]{36})$/.exec(src);
+        if (visual && assets) {
+          const page = serverUrl(`/api/visual-pages?${new URLSearchParams({ threadId: assets.threadId, id: visual[1]! })}`);
+          return `<iframe class="markdown-visual" src="${escapeHtml(page)}" title="${alt}" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>`;
+        }
         const stored = /^citropy-image:([0-9a-f-]{36})$/.exec(src);
         if (stored && assets) {
           src = serverUrl(`/api/tool-images?${new URLSearchParams({ threadId: assets.threadId, id: stored[1]! })}`);
@@ -85,10 +136,7 @@ function createParser(theme: "dark" | "light", signal: AbortSignal | undefined, 
         let icon = "";
         try {
           const url = new URL(link.href);
-          if (images && ["http:", "https:"].includes(url.protocol)) {
-            const favicon = escapeHtml(serverUrl(`/api/favicon?url=${encodeURIComponent(url.origin)}`));
-            icon = `<span class="link-site-icon" aria-hidden="true">${SITE_ICON}<img class="link-favicon" src="${favicon}" width="16" height="16" alt="" decoding="async" referrerpolicy="no-referrer"/></span>`;
-          }
+          if (images && ["http:", "https:"].includes(url.protocol)) icon = siteIcon(url.origin);
         } catch {}
         const previous = linkedImage;
         linkedImage = true;
@@ -130,7 +178,7 @@ export async function renderStreamingMarkdown(text: string, mode: "dark" | "ligh
   };
 }
 
-export async function renderMarkdown(text: string, mode: "dark" | "light", signal?: AbortSignal, assets?: AssetContext, { images = true, live = false, commands = false }: { images?: boolean; live?: boolean; commands?: boolean } = {}): Promise<string> {
+export async function renderMarkdown(text: string, mode: "dark" | "light", signal?: AbortSignal, assets?: AssetContext, { images = true, live = false, commands = false, mentions = [] }: { images?: boolean; live?: boolean; commands?: boolean; mentions?: MentionTag[] } = {}): Promise<string> {
   if (/^\s*\d+[.)]\s*$/.test(text)) return `<p>${escapeHtml(text.trim())}</p>`;
-  return (await createParser(mode, signal, assets, images, live, commands).parse(text)) as string;
+  return (await createParser(mode, signal, assets, images, live, commands, mentions).parse(text)) as string;
 }

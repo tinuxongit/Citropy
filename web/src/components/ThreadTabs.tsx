@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PinIcon } from "./icons/actions.tsx";
 import { CloseIcon, PlusIcon } from "./icons/marks.tsx";
 import { useApp } from "../lib/store.ts";
-import { closeTab, createThread, keepTab, showThread } from "../lib/actions.ts";
+import { closeTab, createThread, keepTab, moveTab, showThread } from "../lib/actions.ts";
 import { Menu } from "./Menu.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
+import { useTabDrag } from "./use-tab-drag.tsx";
 
 const MIDDLE_BUTTON = 1;
 
@@ -16,15 +17,21 @@ export function ThreadTabs() {
   const canCreate = useApp((state) => state.connected && !state.creatingThread && Boolean(state.activeProjectId));
   const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement }>();
   const open = openThreadIds.flatMap((id) => threads[id] ?? []);
+  const strip = useRef<HTMLDivElement>(null);
+  const drag = useTabDrag({ strip, enabled: true, resetKey: openThreadIds.join(","), onMove: moveTab });
 
   return (
-    <div className="thread-tabs" role="group" aria-label="Conversation tabs">
+    <div ref={strip} className="thread-tabs" role="group" aria-label="Conversation tabs">
       {open.map((thread) => (
         <div
           key={thread.id}
           className="thread-tab"
+          data-tab-id={thread.id}
           data-active={thread.id === activeThreadId || undefined}
           data-preview={thread.id === previewThreadId || undefined}
+          data-dragging={drag.dragging === thread.id}
+          onPointerDown={(event) => { if (event.target instanceof Element && event.target.closest(".thread-tab-open")) drag.start(event, thread.id); }}
+          onClickCapture={drag.suppressClickAfterDrag}
           onAuxClick={(event) => { if (event.button === MIDDLE_BUTTON) closeTab(thread.id); }}
           onContextMenu={(event) => {
             event.preventDefault();

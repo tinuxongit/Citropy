@@ -10,6 +10,16 @@
   inherits: false;
   initial-value: 0;
 }
+@property --details-lane-fits {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --details-push {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
 .stage:has(> .thread-details-panel) :is(.canvas, .composer, .conversation-jump),
 .thread-details-panel {
   --details-card-room: calc(var(--details-panel-inset) + var(--details-panel-width) + var(--details-clearance));
@@ -17,7 +27,7 @@
   --details-lane-fits: max(0, sign(var(--settled-stage-width) - var(--details-card-room) - var(--chat-gutter) - var(--details-min-chat)));
   --details-shown: 0;
   --details-push: calc(var(--details-lane-fits) * var(--details-shown));
-  transition: --details-shown var(--details-slide) var(--ease-drawer);
+  transition: --details-shown var(--details-slide) var(--ease-drawer), --details-lane-fits var(--details-slide) var(--ease-drawer);
 }
 .stage:has(> .thread-details-panel[data-open="true"]) :is(.canvas, .composer, .conversation-jump),
 .thread-details-panel[data-open="true"] {

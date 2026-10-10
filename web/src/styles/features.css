@@ -13,6 +13,9 @@
 .feature-stack > .settings-group-heading {
   margin-bottom: -16px;
 }
+.settings-inner .feature-stack > .settings-group + .settings-group-heading {
+  margin-top: var(--space-8);
+}
 .feature-field {
   display: flex;
   flex-direction: column;

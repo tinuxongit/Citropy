@@ -44,7 +44,7 @@ export function useTypeToFocus({
   disabled,
   onFiles,
 }: {
-  box: RefObject<HTMLTextAreaElement | null>;
+  box: RefObject<HTMLElement | null>;
   disabled: boolean;
   onFiles: (files: File[]) => void;
 }) {
@@ -57,7 +57,8 @@ export function useTypeToFocus({
     const insert = (text: string) => {
       const node = box.current!;
       node.focus();
-      node.setSelectionRange(node.value.length, node.value.length);
+      document.getSelection()!.selectAllChildren(node);
+      document.getSelection()!.collapseToEnd();
       document.execCommand("insertText", false, text);
     };
     const onKey = (event: KeyboardEvent) => {

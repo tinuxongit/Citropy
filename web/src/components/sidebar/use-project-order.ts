@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Project } from "../../../../shared/protocol.ts";
 
-export type DropEdge = "before" | "after";
+import { moveBeside, type DropEdge } from "../../../../shared/move-beside.ts";
 
 const storageKey = (environment: string) => `citropy.globalProjectOrder.${environment}`;
 
@@ -21,10 +21,9 @@ export function useProjectOrder(projectsByEnvironment: Record<string, Project[]>
     [environment, orderProjects(projects, orders[environment] ?? readProjectOrder(environment))],
   )), [projectsByEnvironment, orders]);
   const moveProject = (environment: string, source: string, target: string, edge: DropEdge) => {
-    const ids = (orderedProjects[environment] ?? []).map((project) => project.id);
-    if (source === target || !ids.includes(source) || !ids.includes(target)) return;
-    ids.splice(ids.indexOf(source), 1);
-    ids.splice(ids.indexOf(target) + (edge === "after" ? 1 : 0), 0, source);
+    const order = (orderedProjects[environment] ?? []).map((project) => project.id);
+    const ids = moveBeside(order, source, target, edge);
+    if (ids === order) return;
     localStorage.setItem(storageKey(environment), JSON.stringify(ids));
     setOrders((current) => ({ ...current, [environment]: ids }));
   };

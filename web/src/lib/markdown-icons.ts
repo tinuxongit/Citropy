@@ -1,6 +1,7 @@
 import { createElement, type ComponentType } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { BookIcon } from "../components/BookIcon.tsx";
 import { GlobeIcon } from "../components/GlobeIcon.tsx";
 import { CopyIcon } from "../components/icons/actions.tsx";
 import type { IconProps } from "../components/icons/kit.tsx";
@@ -20,3 +21,4 @@ export const RUN_ICON = markup("run", PlayIcon);
 export const COPY_ICON = markup("copy", CopyIcon, { className: "code-copy-idle" });
 export const COPIED_ICON = markup("copied", CheckIcon, { className: "code-copy-done" });
 export const SITE_ICON = markup("site", GlobeIcon);
+export const BOOK_ICON = markup("book", BookIcon, { size: 16 });

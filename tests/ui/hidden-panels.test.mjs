@@ -113,6 +113,33 @@ test("hidden inspector resources", { timeout: 120_000 }, async t => {
     assert.equal(await page.evaluate(() => window.documents.getState().documents[0].dirty), false);
   });
 
+  await t.test("right-clicking selected code adds its line reference to the thread's chat", async t => {
+    const page = await fixture(t, `
+      import EditorWorkspace from '/web/src/components/editor/EditorWorkspace.tsx';
+      import { monaco } from '/web/src/components/editor/monaco.ts';
+      import { takeComposerDeliveries } from '/web/src/lib/composer-inbox.ts';
+      useApp.setState({ connected: true, activeProjectId: 'project', activeThreadId: 'a', projects: [{ id: 'project', name: 'Project', path: '/project' }], threads: { a: { id: 'a', projectId: 'project', workspacePath: '/project/a' } } });
+      window.monaco = monaco;
+      window.takeComposerDeliveries = takeComposerDeliveries;
+      createRoot(document.querySelector('#fixture')).render(React.createElement('div', { style: { height: '100%' } }, React.createElement(EditorWorkspace, { panelId: 'files', active: true })));
+    `, route => route.fulfill({ json: new URL(route.request().url()).pathname === "/api/editor/tree" ? [{ name: "hello.ts", path: "src/hello.ts", dir: false }] : { text: Array.from({ length: 20 }, (_, i) => `export const value${i} = ${i};`).join("\n"), revision: "a".repeat(64) } }));
+    await page.getByRole("button", { name: "hello.ts", exact: true }).click();
+    await page.waitForFunction(() => window.monaco.editor.getEditors()[0]?.getModel());
+    const openMenu = () => page.evaluate(() => {
+      const editor = window.monaco.editor.getEditors()[0];
+      const spot = editor.getScrolledVisiblePosition({ lineNumber: 3, column: 4 });
+      const bounds = editor.getDomNode().getBoundingClientRect();
+      return { x: bounds.left + spot.left + 60, y: bounds.top + spot.top + spot.height / 2 };
+    }).then(({ x, y }) => page.mouse.click(x, y, { button: "right" }));
+    await openMenu();
+    assert.equal(await page.getByRole("menuitem", { name: "Add to chat" }).count(), 0);
+    await page.keyboard.press("Escape");
+    await page.evaluate(() => window.monaco.editor.getEditors()[0].setSelection(new window.monaco.Selection(2, 1, 5, 1)));
+    await openMenu();
+    await page.getByRole("menuitem", { name: "Add to chat" }).click();
+    assert.deepEqual(await page.evaluate(() => window.takeComposerDeliveries('a')), [{ text: "@[src/hello.ts]#L2-L4", attachments: [], placement: "after" }]);
+  });
+
   await t.test("file requests pause while hidden, retain completed results, and refresh after reconnect", async t => {
     const requests = [];
     let delayed;

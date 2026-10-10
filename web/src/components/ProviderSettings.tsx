@@ -1,6 +1,6 @@
 import { RuntimeDownloads } from "./RuntimeDownloads.tsx";
 import { AnimatePresence } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowUpToLineIcon } from "./icons/arrows.tsx";
 import { CheckIcon, PlusIcon } from "./icons/marks.tsx";
 import { FileTextIcon } from "./icons/files.tsx";
@@ -12,7 +12,6 @@ import { api, reportError } from "../lib/api.ts";
 import { confirmAction, useApp } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
 import type { ProviderInfo } from "../../../shared/protocol.ts";
-import type { ProviderMaintenance } from "../../../shared/provider-settings.ts";
 import { hasUsableAccount } from "../../../shared/provider-account.ts";
 import { Select } from "./Select.tsx";
 import { selectEnvironment, useEnvironments } from "../lib/environment.ts";
@@ -20,6 +19,7 @@ import { Loader } from "./Loader.tsx";
 import { Modal } from "./Modal.tsx";
 import type { ProviderInstance } from "../../../shared/protocol.ts";
 import { ActionError } from "./ActionError.tsx";
+import { useProviderMaintenance } from "./providers/use-provider-maintenance.ts";
 
 function InstanceEditor({ provider, instance, onClose, onSaved }: { provider: ProviderInfo; instance?: ProviderInstance; onClose: () => void; onSaved: (instance: ProviderInstance) => void }) {
   const [name, setName] = useState(instance?.name ?? "");
@@ -52,20 +52,15 @@ function InstanceEditor({ provider, instance, onClose, onSaved }: { provider: Pr
 export function ProviderSettings() {
   const environments = useEnvironments();
   const [switching, setSwitching] = useState(false);
-  const [starting, setStarting] = useState(false);
   const providers = useApp((state) => state.providers);
   const connected = useApp((state) => state.connected);
   const threads = useApp((state) => state.threads);
   const resumeAfterLimits = useApp((state) => state.resumeAfterLimits);
-  const [maintenance, setMaintenance] = useState<ProviderMaintenance[]>([]);
+  const { maintenance, error: maintenanceError, checking, updating, refresh: refreshMaintenance, update, updateAll } = useProviderMaintenance();
   const [error, setError] = useState("");
-  const [checking, setChecking] = useState(false);
-  const [refresh, setRefresh] = useState(0);
-  const refreshMaintenance = useCallback(() => setRefresh(value => value + 1), []);
   const [editor, setEditor] = useState<ProviderInfo>();
   const [instances, setInstances] = useState<ProviderInstance[]>([]);
   const [instanceEditor, setInstanceEditor] = useState<{ provider: ProviderInfo; instance?: ProviderInstance }>();
-  const updating = starting || maintenance.some((entry) => entry.status === "updating");
 
   useEffect(() => {
     if (!connected) { setInstances([]); return; }
@@ -74,80 +69,9 @@ export function ProviderSettings() {
     return () => controller.abort();
   }, [connected, environments.activeId]);
 
-  useEffect(() => {
-    if (!connected) return;
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let first = true;
-    const load = async () => {
-      setChecking(true);
-      try {
-        const value = await api<ProviderMaintenance[]>(
-          `providers/maintenance${refresh > 0 && first ? "?refresh=1" : ""}`,
-          { signal: controller.signal },
-        );
-        if (controller.signal.aborted) return;
-        first = false;
-        setMaintenance(value);
-        setError("");
-        if (value.some((entry) => entry.status === "updating"))
-          timer = setTimeout(() => void load(), 1000);
-      } catch (error) {
-        if (!controller.signal.aborted) setError((error as Error).message);
-      } finally {
-        if (!controller.signal.aborted) setChecking(false);
-      }
-    };
-    void load();
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [connected, refresh, providers]);
-
-  const update = async (provider: ProviderInfo) => {
-    setStarting(true);
-    setMaintenance((previous) =>
-      previous.map((entry) =>
-        entry.provider === provider.id
-          ? { ...entry, status: "updating", message: provider.available ? "Starting update…" : "Starting installation…" }
-          : entry,
-      ),
-    );
-    try {
-      const value = await api<ProviderMaintenance>("providers/update", {
-        method: "POST",
-        body: JSON.stringify({ provider: provider.id }),
-      });
-      setMaintenance((previous) =>
-        previous.map((entry) =>
-          entry.provider === provider.id ? value : entry,
-        ),
-      );
-    } catch (error) {
-      reportError(error);
-    } finally {
-      setStarting(false);
-      setRefresh((value) => value + 1);
-    }
-  };
-
   const eligible = maintenance.some(entry =>
     entry.available && !entry.install && entry.binaryPath && entry.updateStatus !== "current" &&
     !Object.values(threads).some(thread => thread.provider === entry.provider && (thread.running || thread.status === "awaiting")));
-
-  const updateAll = async () => {
-    setStarting(true);
-    try {
-      const queued = await api<ProviderMaintenance[]>("providers/update-all", { method: "POST" });
-      setMaintenance(previous => previous.map(entry => queued.find(state => state.provider === entry.provider) ?? entry));
-    } catch (error) {
-      reportError(error);
-    } finally {
-      setStarting(false);
-      setRefresh(value => value + 1);
-    }
-  };
 
   return (
     <>
@@ -197,7 +121,7 @@ export function ProviderSettings() {
         <button
           className="btn"
           disabled={!connected || switching || updating || checking}
-          onClick={() => setRefresh((value) => value + 1)}
+          onClick={refreshMaintenance}
         >
           {checking ? <Loader size={14} /> : <RefreshIcon size={14} />}{" "}Check for updates{" "}</button>
       </div>
@@ -409,12 +333,12 @@ export function ProviderSettings() {
         })}
       </div>
       <RuntimeDownloads onInstalled={refreshMaintenance} />
-      {error && (
+      {(error || maintenanceError) && (
         <p className="dialog-error" role="alert">
-          {error}{" "}
+          {error || maintenanceError}{" "}
           <button
             className="btn"
-            onClick={() => setRefresh((value) => value + 1)}
+            onClick={refreshMaintenance}
           >{" "}Retry{" "}</button>
         </p>
       )}

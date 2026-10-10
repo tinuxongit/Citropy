@@ -1,12 +1,7 @@
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  type ReactNode,
-  type FormEvent,
-} from "react";
+import { useId, type ReactNode, type FormEvent } from "react";
 import { CloseIcon } from "./icons/marks.tsx";
-import { motion, useIsPresent } from "motion/react";
+import { motion } from "motion/react";
+import { useModalDialog } from "../lib/use-modal-dialog.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 
 export function Modal({
@@ -38,22 +33,9 @@ export function Modal({
   onClose: () => void;
   onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
 }) {
-  const present = useIsPresent();
+  const { ref, present } = useModalDialog(initialFocus, returnFocus);
   const reducedMotion = useReducedMotion();
-  const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
-  useLayoutEffect(() => {
-    if (!present) return;
-    const previous = returnFocus ?? document.activeElement;
-    const dialog = ref.current;
-    dialog?.showModal();
-    dialog?.querySelector<HTMLElement>(initialFocus)?.focus();
-    return () => {
-      dialog?.close();
-      if (previous instanceof HTMLElement && previous.isConnected && !document.querySelector("dialog[open]"))
-        previous.focus();
-    };
-  }, [present]);
   return (
     <motion.dialog
       ref={ref}

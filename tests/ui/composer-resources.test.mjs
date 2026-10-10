@@ -12,17 +12,14 @@ test("composer resource usage", { timeout: 120_000 }, async (t) => {
   const browser = await chromium.launch();
   t.after(async () => { await browser.close(); await server.close(); });
   let sequence = 0;
-  async function fixture(t, body, native = true) {
+  async function fixture(t, body) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 860 } });
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
-    if (!native) await page.addInitScript(() => {
-      const supports = CSS.supports.bind(CSS);
-      CSS.supports = (...args) => args[0] === "field-sizing" ? false : supports(...args);
-    });
     await page.route("**/api/skills?*", route => route.fulfill({ json: [{ id: "skill", name: "review", provider: "codex", enabled: true, scope: "project", description: "Review changes" }] }));
     await page.route("**/api/threads/context?*", route => route.fulfill({ json: [] }));
+    await page.route("**/api/tool-mentions", route => route.fulfill({ json: [{ name: "browser", title: "Browser", description: "Use Citropy's shared browser", section: "Citropy" }, { name: "review", title: "Review", description: "Shadowed by the skill", section: "Citropy" }, { name: "gmail", title: "Gmail", description: "google.com", section: "Connections", url: "https://www.google.com/" }] }));
     t.after(async () => { await context.close(); assert.deepEqual(errors, []); });
     const path = `/composer-resource-fixture-${++sequence}.html`;
     const html = await server.transformIndexHtml(path, `<!doctype html><html data-theme="neutral" data-scheme="dark"><body style="margin:0;background:#1e1e1e"><div id="fixture" style="margin:40px 20px"></div><script type="module">
@@ -32,7 +29,6 @@ test("composer resource usage", { timeout: 120_000 }, async (t) => {
       import '/web/src/styles/tokens.css';
       import '/web/src/styles/base.css';
       import '/web/src/styles/composer.css';
-      ${!native ? `const fallback = document.createElement('style'); fallback.textContent = '.composer-input { field-sizing: fixed; }'; document.head.append(fallback);` : ""}
       ${body}
     </script></body></html>`);
     await page.route(`**${path}`, route => route.fulfill({ contentType: "text/html", body: html }));
@@ -40,62 +36,72 @@ test("composer resource usage", { timeout: 120_000 }, async (t) => {
     return page;
   }
 
-  await t.test("native sizing preserves wrapping, shrinking, limits, and mention scrolling with a fallback", async t => {
-    const body = `
+  await t.test("the message box grows to a limit, turns mentions into named chips, and keeps plain text", async t => {
+    const page = await fixture(t, `
       import { ComposerInput } from '/web/src/components/ComposerInput.tsx';
       const thread = { id: 'chat', projectId: 'project', provider: 'codex' };
       useApp.setState({ connected: true });
+      window.submits = 0;
       function Fixture() {
         const [value, setValue] = React.useState('');
         window.setValue = setValue;
+        window.value = value;
         window.setScale = scale => { useApp.setState({ uiScale: scale }); document.documentElement.style.setProperty('--ui-scale', scale / 100); };
-        return React.createElement(ComposerInput, { value, onChange: setValue, onSubmit: () => {}, onFiles: () => {}, disabled: false, thread, commands: [] });
+        return React.createElement(ComposerInput, { value, onChange: setValue, onSubmit: () => window.submits++, onFiles: () => {}, disabled: false, thread, commands: [] });
       }
       createRoot(document.querySelector('#fixture')).render(React.createElement(Fixture));
-    `;
-    const native = await fixture(t, body);
-    const fallback = await fixture(t, body, false);
-    await native.getByRole("textbox", { name: "Message" }).waitFor();
-    await fallback.getByRole("textbox", { name: "Message" }).waitFor();
-    assert.equal(await native.evaluate(() => CSS.supports("field-sizing", "content")), true);
-    assert.equal(await native.locator("textarea").evaluate(node => getComputedStyle(node).fieldSizing), "content");
-    assert.equal(await fallback.locator("textarea").evaluate(node => getComputedStyle(node).fieldSizing), "fixed");
+    `);
+    const input = page.getByRole("textbox", { name: "Message" });
+    const value = () => page.evaluate(() => window.value);
+    await input.waitFor();
     for (const width of [1280, 390]) {
       for (const scale of [75, 100, 150]) {
-        for (const value of ["", "A short message", "A wrapping message with several words. ".repeat(20), "@review\n".repeat(50), "Shrunk"]) {
-          const heights = [];
-          for (const page of [native, fallback]) {
-            await page.setViewportSize({ width, height: 860 });
-            await page.evaluate(scale => { window.setScale(scale); window.setValue("Reset dimensions"); }, scale);
-            await page.waitForFunction(() => document.querySelector("textarea").value === "Reset dimensions");
-            await page.evaluate(({ scale, value }) => { window.setScale(scale); window.setValue(value); }, { scale, value });
-            await page.waitForFunction(value => document.querySelector("textarea").value === value, value);
-            await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-            heights.push(await page.locator("textarea").evaluate(node => node.getBoundingClientRect().height));
-            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-          }
-          assert.ok(Math.abs(heights[0] - heights[1]) <= 1, `${width}px at ${scale}%: ${heights.join(" vs ")} for ${value.slice(0, 30)}`);
+        const heights = [];
+        for (const text of ["", "A short message", "A wrapping message with several words. ".repeat(20), "@review\n".repeat(50)]) {
+          await page.setViewportSize({ width, height: 860 });
+          await page.evaluate(({ scale, text }) => { window.setScale(scale); window.setValue(text); }, { scale, text });
+          await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          heights.push(await input.evaluate(node => node.getBoundingClientRect().height));
+          assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
         }
+        assert.ok(heights[0] === heights[1] && heights[1] < heights[2] && heights[2] <= heights[3], `${width}px at ${scale}%: ${heights.join(", ")}`);
+        assert.ok(await input.evaluate(node => node.scrollHeight > node.clientHeight));
       }
     }
-    await native.getByRole("textbox", { name: "Message" }).fill("@review\n".repeat(50));
-    await native.locator(".skill-mention").first().waitFor();
-    await native.locator("textarea").evaluate(node => { node.scrollTop = node.scrollHeight; });
-    await native.waitForFunction(() => document.querySelector(".composer-highlights").scrollTop === document.querySelector("textarea").scrollTop);
-    assert.ok(await native.locator("textarea").evaluate(node => node.scrollTop > 0));
-    await native.getByRole("textbox", { name: "Message" }).fill("@review");
-    await native.waitForFunction(() => document.querySelector("textarea").scrollTop === 0 && document.querySelector(".composer-highlights").scrollTop === 0);
-    await native.evaluate(() => {
-      window.geometryReads = 0;
-      for (const [owner, key] of [[HTMLElement.prototype, "offsetHeight"], [Element.prototype, "scrollHeight"]]) {
-        const descriptor = Object.getOwnPropertyDescriptor(owner, key);
-        Object.defineProperty(owner, key, { ...descriptor, get() { if (this.matches?.("textarea, .composer-editor")) window.geometryReads++; return descriptor.get.call(this); } });
-      }
-    });
-    await native.getByRole("textbox", { name: "Message" }).fill("Typing stays on one line");
-    assert.equal(await native.evaluate(() => window.geometryReads), 0);
-    assert.equal(await native.locator("textarea").evaluate(node => node.style.height), "");
-    assert.notEqual(await fallback.locator("textarea").evaluate(node => node.style.height), "");
+    await page.evaluate(() => window.setValue(""));
+    await input.fill("Check @");
+    const menu = page.getByRole("listbox", { name: "Files and skills" });
+    await menu.getByRole("option", { name: /Browser/ }).waitFor();
+    assert.deepEqual(await menu.locator(".composer-suggestion-section").allInnerTexts(), ["Skills", "Citropy", "Connections"]);
+    assert.equal(await menu.getByRole("option").count(), 3);
+    await input.fill("Check @browser and @gmail now");
+    assert.deepEqual(await input.locator(".mention-chip").allInnerTexts(), ["Browser", "Gmail"]);
+    assert.deepEqual(await input.locator(".mention-chip > :first-child").evaluateAll(nodes => nodes.map(node => node.className)), ["citropy-mark", "link-site-icon"]);
+    assert.equal(await value(), "Check @browser and @gmail now");
+    await input.fill("Ask @bro");
+    await page.keyboard.press("Enter");
+    assert.equal(await value(), "Ask @browser ");
+    assert.deepEqual(await input.locator(".mention-chip").allInnerTexts(), ["Browser"]);
+    assert.equal(await page.evaluate(() => window.submits), 0);
+    await page.keyboard.press("Backspace");
+    await page.keyboard.press("Backspace");
+    assert.equal(await value(), "Ask ");
+    await page.keyboard.type("@gmail");
+    assert.equal(await input.locator(".mention-chip").count(), 0);
+    await page.keyboard.press("Escape");
+    await page.keyboard.type(" today");
+    assert.equal(await value(), "Ask @gmail today");
+    assert.deepEqual(await input.locator(".mention-chip").allInnerTexts(), ["Gmail"]);
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type("Thanks");
+    assert.equal(await value(), "Ask @gmail today\nThanks");
+    await page.screenshot({ path: "/tmp/citropy-connections/editor-typed.png", clip: { x: 0, y: 0, width: 700, height: 160 } });
+    await page.keyboard.press("Enter");
+    assert.equal(await page.evaluate(() => window.submits), 1);
+    await page.evaluate(() => window.setValue("Restored @review draft"));
+    await input.getByText("Restored").waitFor();
+    assert.deepEqual(await input.locator(".mention-chip").allInnerTexts(), ["review"]);
+    await page.screenshot({ path: "/tmp/citropy-connections/editor-chips.png", clip: { x: 0, y: 0, width: 700, height: 160 } });
   });
 
   await t.test("latest plan lookup skips text streams and follows plan replacement and history changes", async t => {

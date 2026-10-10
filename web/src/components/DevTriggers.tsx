@@ -5,6 +5,7 @@ import { BellIcon } from "./BellIcon.tsx";
 import { UpdateIcon } from "./UpdateIcon.tsx";
 import { QuestionMessageIcon } from "./icons/messages.tsx";
 import { SparkleIcon } from "./SparkleIcon.tsx";
+import { SettingsIcon } from "./SettingsIcon.tsx";
 import { TerminalIcon } from "./icons/squares.tsx";
 import { TrashIcon } from "./icons/actions.tsx";
 import { Menu } from "./Menu.tsx";
@@ -33,6 +34,7 @@ export function DevTriggers() {
     { id: "notify-update", section: "Notifications", label: "Update ready", hint: "Info that opens settings", icon: <UpdateIcon size={16} />, onSelect: () => fakeNotification(update), thread: needsThread(update) },
     { id: "notify-burst", section: "Notifications", label: "All at once", hint: "Every notification above, stacked", icon: <BellIcon size={16} />, onSelect: fakeNotificationBurst, thread: Object.values(FAKE_NOTIFICATIONS).some(needsThread) },
     { id: "toast", section: "Notifications", label: "Plain toast", hint: "One line, no title or action", icon: <InfoIcon size={16} />, onSelect: fakeToast, thread: false },
+    { id: "setup", section: "App", label: "Setup", hint: "The first-run setup window", icon: <SettingsIcon size={16} />, onSelect: () => useApp.setState({ setupOpen: true }), thread: false },
     { id: "whats-new", section: "App", label: "What's new", hint: "Release notes shown after an update", icon: <SparkleIcon size={16} />, onSelect: () => { fakeWhatsNew().catch(reportError); }, thread: false },
     { id: "clear", section: "App", label: "Clear fakes", hint: "Git refreshes on its own", icon: <TrashIcon size={16} />, onSelect: clearFakes, thread: false },
   ].map(({ thread, ...item }) => ({ ...item, disabled: thread && !hasThread }));

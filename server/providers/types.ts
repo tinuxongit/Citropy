@@ -11,6 +11,7 @@ import type {
 import type { UserQuestion } from "../../shared/questions.ts";
 
 export type AgentEvent =
+  | { type: "compacting"; active: boolean }
   | { type: "compacted"; contextTokens?: number }
   | { type: "subagent"; id: string; title?: string; prompt?: string; model?: string; status: ThreadStatus; result?: string }
   | { type: "session"; externalId: string; model?: string; effort?: string; contextMax?: number; fastMode?: boolean }
@@ -91,5 +92,6 @@ export interface Provider {
   capabilities: { transport: "stdio" | "rpc" | "http"; steer: boolean; compact: boolean; stopShell: boolean };
   steerHint?: string;
   detect(launch?: ProviderLaunch): Promise<{ available: boolean; version?: string }>;
+  signIn: { login: string[]; status: string[]; signedIn(output: string): boolean };
   start(options: StartOptions): AgentSession;
 }

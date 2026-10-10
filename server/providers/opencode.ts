@@ -360,7 +360,8 @@ class OpenCodeSession implements AgentSession {
     if (type === "message.part.updated") {
       const part = props.part as OcPart | undefined;
       if (!part) return;
-      this.#part(part);
+      if (part.type === "compaction") emit({ type: "compacting", active: true });
+      else this.#part(part);
       return;
     }
 
@@ -603,6 +604,7 @@ export const opencodeProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "http", steer: true, compact: true, stopShell: false },
   steerHint: "OpenCode adds it to the run in progress.",
+  signIn: { login: ["auth", "login"], status: ["auth", "list"], signedIn: (output) => /\b[1-9]\d* (credentials?|environment variables?)\b/.test(output) },
   models: [],
   async listModels(launch) {
     const resolved = await resolveOpenCode(launch);

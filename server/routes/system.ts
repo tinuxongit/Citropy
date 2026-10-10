@@ -53,6 +53,9 @@ export const systemRoutes: Routes = {
   "limits.configure": (event) => {
     store.configureResumeAfterLimits(event.resumeAfterLimits);
   },
+  "setup.finish": () => {
+    store.finishSetup();
+  },
   "client.error": (event) => {
     writeLog("error", "interface", String(event.message));
   },

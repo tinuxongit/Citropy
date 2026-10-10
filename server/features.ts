@@ -2,10 +2,12 @@ import { listImportableSessions, importSession } from "./session-import.ts";
 import { descendants, processTable } from "./process-table.ts";
 import { createPairing, LAN_DEVICE_HEADER, openFirewall, removeDevice, setSharing, sharingState } from "./lan-sharing.ts";
 import { nodeRuntimeStatus, installNodeRuntime } from "./node-runtime.ts";
+import { gitRuntimeStatus, installGitRuntime } from "./git-runtime.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createEditorFile, readEditorFile, saveEditorFile } from "./editor.ts";
 import { tree } from "./files.ts";
 import { store } from "./store.ts";
+import { listToolMentions } from "./tool-mentions.ts";
 import { refreshProvidersNow } from "./provider-registry.ts";
 import { usableProviderAccount } from "./provider-account.ts";
 import { closeProject } from "./routes/projects.ts";
@@ -20,12 +22,13 @@ import type { ReviewScope } from "../shared/review.ts";
 import { changeHunk, reviewWithModel } from "./review.ts";
 import { findContextPaths, findWorkspacePaths } from "./context.ts";
 import { copyToWorktree, removeWorktree } from "./worktree-actions.ts";
+import { providerSignIns } from "./provider-sign-in.ts";
 import { providerMaintenance, startProviderUpdate, startProviderUpdates, assertProviderReady } from "./providers/maintenance.ts";
 import { readGlobalInstructions, saveGlobalInstructions } from "./providers/instructions.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
 import { modelSettings } from "../shared/model-options.ts";
 import { hasUsableAccount } from "../shared/provider-account.ts";
-import { resolveProjectSettings } from "../shared/project-settings.ts";
+import { GLOBAL_SWITCHES, resolveProjectSettings } from "../shared/project-settings.ts";
 import {
   chooseThreadWorkspace,
   workspaceOptions,
@@ -38,13 +41,17 @@ import {
   serveAsset,
 } from "./assets.ts";
 import { changeSkill, listSkills, readSkill } from "./skills.ts";
+import { readCitropySkill, saveCitropySkill } from "./citropy-skills.ts";
+import type { CitropySkillDraft } from "../shared/features.ts";
 import { serveFavicon } from "./favicons.ts";
 import { serveToolImage } from "./tool-images.ts";
+import { serveToolVisual } from "./tool-visuals.ts";
+import { handleConnections } from "./connections.ts";
 import { diagnostics } from "./diagnostics.ts";
 import { usageLimits, usageReport } from "./usage.ts";
 import { configureAssistance, dismissGitActionError, generateThreadTitle, startGitAction } from "./assistance.ts";
 import { listCommands } from "./commands.ts";
-import { isProviderId, type ProjectSettings, type ProviderInfo } from "../shared/protocol.ts";
+import { isProviderId, PROVIDER_IDS, type ProjectSettings, type ProviderInfo } from "../shared/protocol.ts";
 
 async function body(req: IncomingMessage, limit = 128 * 1024): Promise<Record<string, any>> {
   let size = 0;
@@ -104,7 +111,7 @@ function settings(
       throw new Error("Unknown workspace preference");
     out.workspace = input.workspace;
   }
-  for (const key of ["autoPull", "browserAccess"] as const)
+  for (const key of ["autoPull", ...shared ? GLOBAL_SWITCHES : []] as const)
     if (input[key] !== undefined) {
       if (typeof input[key] !== "boolean")
         throw new Error(`Invalid ${key} setting`);
@@ -121,7 +128,7 @@ export async function handleFeatures(
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", "http://localhost");
   if (
-    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|providers|runtimes|shells|sharing|agents)(\/|$)/.test(
+    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|visual-pages|tool-mentions|connections|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|providers|runtimes|shells|sharing|agents)(\/|$)/.test(
       url.pathname,
     )
   )
@@ -288,8 +295,11 @@ export async function handleFeatures(
       await refreshProvidersNow();
       respond({ ok: true });
     } else if (url.pathname === "/api/providers/maintenance" && req.method === "GET") respond(await providerMaintenance(url.searchParams.get("refresh") === "1"));
+    else if (url.pathname === "/api/providers/sign-in" && req.method === "GET") respond(await providerSignIns());
     else if (url.pathname === "/api/runtimes/node" && req.method === "GET") respond(await nodeRuntimeStatus());
     else if (url.pathname === "/api/runtimes/node" && req.method === "POST") respond(installNodeRuntime());
+    else if (url.pathname === "/api/runtimes/git" && req.method === "GET") respond(await gitRuntimeStatus());
+    else if (url.pathname === "/api/runtimes/git" && req.method === "POST") respond(installGitRuntime());
     else if (url.pathname === "/api/providers/update-all" && req.method === "POST") {
       const maintenance = await providerMaintenance(true);
       const eligible = maintenance.filter(entry =>
@@ -331,6 +341,8 @@ export async function handleFeatures(
       await serveFavicon(res, url.searchParams);
     else if (url.pathname === "/api/tool-images" && ["GET", "HEAD"].includes(req.method ?? ""))
       await serveToolImage(req, res, url.searchParams);
+    else if (url.pathname === "/api/visual-pages" && ["GET", "HEAD"].includes(req.method ?? ""))
+      await serveToolVisual(req, res, url.searchParams);
     else if (url.pathname === "/api/attachments" && req.method === "POST")
       respond(
         await uploadAttachment(
@@ -507,11 +519,20 @@ export async function handleFeatures(
           ? { content: await readSkill(projectId, id) }
           : await listSkills(projectId, threadId),
       );
+    } else if (url.pathname === "/api/tool-mentions" && req.method === "GET") {
+      respond(await listToolMentions());
     } else if (url.pathname === "/api/skills" && req.method === "PATCH") {
       const input = await body(req);
       reloadProviderSessions(
         await changeSkill(projectId, input.id, input.action),
       );
+      respond(await listSkills(projectId));
+    } else if (url.pathname === "/api/skills/citropy" && req.method === "GET") {
+      respond(await readCitropySkill(url.searchParams.get("id") ?? ""));
+    } else if (url.pathname === "/api/skills/citropy" && req.method === "PUT") {
+      const { id, ...draft } = await body(req);
+      await saveCitropySkill(id || undefined, draft as CitropySkillDraft);
+      reloadProviderSessions(new Set(PROVIDER_IDS));
       respond(await listSkills(projectId));
     } else if (url.pathname === "/api/usage" && req.method === "GET")
       respond(await usageReport(usableProviders()));
@@ -519,7 +540,15 @@ export async function handleFeatures(
       respond({ providers: await usageLimits(usableProviders()) });
     else if (url.pathname === "/api/diagnostics" && req.method === "GET")
       respond(await diagnostics());
-    else if (
+    else if (/^\/api\/connections(\/|$)/.test(url.pathname)) {
+      if (projectId && !store.projects.has(projectId)) throw new Error("Workspace not found");
+      respond(await handleConnections(
+        req.method ?? "",
+        url.pathname.slice("/api/connections".length).replace(/^\//, ""),
+        req.method === "GET" ? {} : await body(req),
+        projectId,
+      ));
+    } else if (
       url.pathname.startsWith("/api/browser/") &&
       ["GET", "POST", "DELETE"].includes(req.method ?? "")
     ) {

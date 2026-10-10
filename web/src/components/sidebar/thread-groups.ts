@@ -4,6 +4,7 @@ import { MonitorIcon } from "../icons/hardware.tsx";
 import { PinIcon } from "../icons/actions.tsx";
 import { FolderIcon } from "../icons/folders.tsx";
 import type { Project, ThreadMeta } from "../../../../shared/protocol.ts";
+import { moveBeside, type DropEdge } from "../../../../shared/move-beside.ts";
 import type { CachedThread } from "../../lib/environment.ts";
 import { threadIsActive } from "../../lib/format.ts";
 import { setSidebarGroupOpen, useApp } from "../../lib/store.ts";
@@ -101,16 +102,14 @@ export function threadOrderAfterMove(
   projectId: string,
   source: string,
   target: string,
-  edge?: "before" | "after",
+  edge?: DropEdge,
 ): string[] | undefined {
   if (!groups.some((group) => group.threads.some((item) => !item.cached && item.environment === environment && item.thread.id === source) && group.threads.some((item) => !item.cached && item.environment === environment && item.thread.id === target))) return undefined;
   const ordered = groups.flatMap((group) => group.threads.filter((item) => !item.cached && item.environment === environment && item.thread.projectId === projectId).map((item) => item.thread.id));
   const from = ordered.indexOf(source);
   const to = ordered.indexOf(target);
   if (from < 0 || to < 0) return undefined;
-  ordered.splice(from, 1);
-  ordered.splice(ordered.indexOf(target) + ((edge ?? (from < to ? "after" : "before")) === "after" ? 1 : 0), 0, source);
-  return ordered;
+  return moveBeside(ordered, source, target, edge ?? (from < to ? "after" : "before"));
 }
 
 export interface EnvironmentFolders {

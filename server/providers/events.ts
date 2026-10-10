@@ -28,6 +28,7 @@ function validateAgentEvent(raw: unknown): AgentEvent {
   const id = (key: string) => { text(key); if (!event[key] || String(event[key]).length > 1000) throw new Error(`Invalid ${key}.`); };
   const bool = (key: string) => { if (typeof event[key] !== "boolean") throw new Error(`Expected ${key} to be a boolean.`); };
   switch (event.type) {
+    case "compacting": bool("active"); break;
     case "compacted":
       if (event.contextTokens !== undefined && (typeof event.contextTokens !== "number" || !Number.isFinite(event.contextTokens) || event.contextTokens < 0)) throw new Error("Invalid compacted context size.");
       break;

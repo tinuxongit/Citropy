@@ -1,3 +1,5 @@
+import { moveBeside, type DropEdge } from "./move-beside.ts";
+
 export type PanelKind =
   "browser" | "terminal" | "files" | "changes" | "subagents" | "tools" | "drawing" | "notes";
 
@@ -9,18 +11,17 @@ export interface PanelTab {
   threadId?: string;
 }
 
-export function movePanelTab(panels: PanelTab[], id: string, targetId: string, edge: "before" | "after"): PanelTab[] {
+export function movePanelTab(panels: PanelTab[], id: string, targetId: string, edge: DropEdge): PanelTab[] {
   const panel = panels.find((entry) => entry.id === id);
   const target = panels.find((entry) => entry.id === targetId);
-  if (!panel || !target || panel === target || panel.projectId !== target.projectId) return panels;
-  const next = panels.filter((entry) => entry !== panel);
-  next.splice(next.indexOf(target) + (edge === "after" ? 1 : 0), 0, panel);
-  return next.every((entry, index) => entry === panels[index]) ? panels : next;
+  if (!panel || !target || panel.projectId !== target.projectId) return panels;
+  return moveBeside(panels, panel, target, edge);
 }
 
 export interface BrowserState {
   profileId?: string;
   profileName?: string;
+  connection?: { id: string; signedIn: boolean };
   id: string;
   projectId: string;
   threadId?: string;

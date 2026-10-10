@@ -2,6 +2,7 @@ import { uid } from "./ids.ts";
 import { bus } from "./bus.ts";
 import type { PanelKind, PanelTab } from "../shared/workbench.ts";
 import { movePanelTab } from "../shared/workbench.ts";
+import type { DropEdge } from "../shared/move-beside.ts";
 
 const panels = new Map<string, PanelTab>();
 
@@ -73,7 +74,7 @@ export function renameTerminal(id: string, title: string): void {
   renamePanel(id, title.trim());
 }
 
-export function movePanel(id: string, targetId: string, edge: "before" | "after"): void {
+export function movePanel(id: string, targetId: string, edge: DropEdge): void {
   const panel = panels.get(id);
   const target = panels.get(targetId);
   if (!panel || !target) throw new Error("Panel not found");

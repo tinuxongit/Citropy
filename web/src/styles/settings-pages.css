@@ -1,82 +1,73 @@
-.skill-list {
+.skill-grid {
   display: grid;
-  border: 0;
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  background: var(--panel);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-12);
 }
-.skill-list:empty {
+.skill-grid:empty {
   display: none;
 }
-.skill-row {
+.skill-card {
+  position: relative;
+  border-radius: var(--r-lg);
+  background: var(--panel);
   transition: background var(--dur-instant) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .skill-row:hover { background: color-mix(in srgb, var(--panel), var(--text) 3%); }
+  .skill-card:hover { background: color-mix(in srgb, var(--panel), var(--text) 3%); }
 }
-.skill-summary {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-16);
-  padding: var(--space-16) var(--space-16);
-}
-.skill-summary > .provider-icon {
-  margin-top: var(--space-4);
-  flex: none;
-}
-.skill-summary > input {
-  margin-top: var(--space-4);
-}
-.skill-copy {
-  flex: 1;
-  min-width: 0;
+.skill-card-open {
+  display: grid;
+  align-content: start;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-16);
+  border-radius: inherit;
   text-align: left;
 }
-.skill-copy strong {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
+.skill-card-open > .provider-icon,
+.skill-card-open > .citropy-mark {
+  margin-bottom: var(--space-12);
+}
+.skill-card-open strong {
   font-size: var(--text-base);
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
-.skill-copy strong > svg {
+.skill-card-open small {
+  margin-top: var(--space-2);
   color: var(--text-3);
-  transition: transform var(--dur-fast);
+  font-size: var(--text-xs);
 }
-.skill-copy[aria-expanded="true"] strong > svg {
-  transform: rotate(180deg);
-}
-.skill-copy span {
+.skill-card-open span {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  margin-top: var(--space-4);
-  font-size: var(--text-sm);
-  color: var(--text-3);
-  line-height: 1.55;
-}
-.skill-copy[aria-expanded="true"] span {
-  display: block;
-  color: var(--text-2);
-}
-.skill-copy small {
-  display: none;
   margin-top: var(--space-8);
   color: var(--text-3);
-  font-size: var(--text-xs);
-  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+  line-height: 1.55;
 }
-.skill-copy[aria-expanded="true"] small {
+.skill-card > .setting-switch {
+  position: absolute;
+  top: var(--space-16);
+  right: var(--space-16);
+}
+.citropy-mark {
   display: block;
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  mask: url("../assets/citropy-mark.svg") center / contain no-repeat;
 }
-.skill-content {
-  padding: var(--space-20);
-  background: var(--canvas);
-  max-height: 450px;
-  overflow: auto;
+.citropy-dialog.skill-details {
+  width: min(720px, calc(var(--viewport-width) - 32px));
 }
-.skill-content .prose {
+.skill-details .dialog-content {
+  display: grid;
+  gap: var(--space-12);
+}
+.skill-details .prose {
   font-size: var(--text-sm);
 }
 .profile-row {
@@ -104,6 +95,59 @@
   margin-top: var(--space-6);
   color: var(--text-3);
   font-size: var(--text-xs);
+}
+.connection-row {
+  gap: var(--space-12);
+}
+.connection-site {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+.connection-site > span:last-child {
+  min-width: 0;
+}
+.connection-site small {
+  margin-top: 0;
+  overflow-wrap: anywhere;
+}
+.connection-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--raised);
+}
+.connection-icon:has(> [data-loaded]) {
+  background: white;
+}
+.connection-icon > .link-site-icon {
+  margin: 0;
+  vertical-align: 0;
+}
+.citropy-skill-form {
+  display: grid;
+  gap: var(--space-20);
+}
+.citropy-skill-form .settings-group-heading {
+  margin: 0;
+}
+.citropy-skill-form .feature-field small {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.citropy-skill-form textarea {
+  font-family: var(--font-mono);
+}
+.row-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
 }
 .metric-grid {
   display: grid;
@@ -156,9 +200,8 @@
   }
 }
 @container application (max-width: 600px) {
-  .skill-summary {
-    padding: var(--space-16);
-    gap: var(--space-10);
+  .skill-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
   .metric-grid > div {
     padding: var(--space-16);
