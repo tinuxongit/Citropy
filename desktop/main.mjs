@@ -95,7 +95,7 @@ app.commandLine.appendSwitch("enable-features", "NetworkServiceInProcess2");
 app.commandLine.appendSwitch("disable-features", "AudioServiceOutOfProcess");
 // Chromium redraws only changed regions over the stage background, rounding them one shade off and leaving visible rectangles behind running turns.
 app.commandLine.appendSwitch("ui-disable-partial-swap");
-const backend = app.isPackaged ? packagedBackend(process.env, diagnose) : undefined;
+const backend = app.isPackaged ? packagedBackend({ ...process.env }, diagnose) : undefined;
 let updates;
 let environments;
 let folderChoice;
