@@ -1,14 +1,23 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { framedVisual } from "../server/tool-visuals.ts";
+import { composeArt } from "./readme-art/compose.mjs";
+
+const DESKTOP = { width: 1600, height: 1000 };
+const PHONE = { width: 390, height: 844 };
+const DESKTOP_SCALE = 2;
+const PHONE_SCALE = 3;
+const BACKGROUNDS = { dark: "ascii", light: "dots" };
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const assets = join(root, "docs/assets");
 const directory = await mkdtemp(join(tmpdir(), "citropy-screenshots-"));
+const captures = join(directory, "captures");
 
 const now = Date.now();
 const minute = 60_000;
@@ -44,6 +53,15 @@ const providers = [
       { id: "kimi-k2.5", label: "Kimi K2.5", isDefault: true, contextMax: 200000 },
     ],
   },
+  {
+    id: "antigravity",
+    label: "Antigravity",
+    available: true,
+    enabled: true,
+    models: [
+      { id: "gemini-3.5-pro", label: "Gemini 3.5 Pro", isDefault: true, efforts: ["low", "high"], defaultEffort: "high", contextMax: 1000000 },
+    ],
+  },
 ];
 
 const usage = (turns = 0) => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, contextTokens: 0, contextMax: 200000, turns });
@@ -74,6 +92,7 @@ const threads = [
   thread("frost", "Frost alert thresholds", "claude", "claude-opus-5", { pinned: true, updatedAt: now - 2 * hour }),
   thread("humidity", "Debounce flaky humidity sensor", "codex", "gpt-5.5", { updatedAt: now - 5 * hour }),
   thread("csv", "CSV export for station logs", "opencode", "kimi-k2.5", { updatedAt: now - day }),
+  thread("forecast", "Sketch the forecast page", "antigravity", "gemini-3.5-pro", { updatedAt: now - 30 * hour }),
   thread("ci", "Speed up CI test matrix", "codex", "gpt-5.5", { updatedAt: now - 2 * day }),
   thread("units", "Metric and imperial toggle", "claude", "claude-opus-5", { updatedAt: now - 3 * day }),
 ];
@@ -162,6 +181,23 @@ const gitStatus = {
   ],
 };
 
+const gitOverview = {
+  repository: true,
+  hasCommits: true,
+  mergeInProgress: false,
+  status: gitStatus,
+  branches: [
+    { name: "feat/rainfall-chart", current: true, remote: false, upstream: "origin/feat/rainfall-chart", subject: "Fill empty hours with zero", date: new Date(now - hour).toISOString() },
+    { name: "main", current: false, remote: false, upstream: "origin/main", subject: "Release 1.4.0", date: new Date(now - 2 * day).toISOString() },
+  ],
+  commits: [
+    { hash: "4f1c9ad", author: "Dev", date: new Date(now - hour).toISOString(), subject: "Fill empty hours with zero", refs: "HEAD -> feat/rainfall-chart" },
+    { hash: "b82e017", author: "Dev", date: new Date(now - 3 * hour).toISOString(), subject: "Add bucketByHour", refs: "" },
+  ],
+  remotes: [{ name: "origin", url: "git@github.com:dev/weather-station.git" }],
+  stashes: [],
+};
+
 const gitPatch = {
   path: "src/lib/buckets.ts",
   added: 31,
@@ -221,6 +257,7 @@ const usageHistory = Array.from({ length: 120 }, (_, offset) => [
 const usageReport = {
   totals: { input: 1284000, output: 192000, cacheRead: 6420000, cacheWrite: 512000, costUsd: 0 },
   history: usageHistory,
+  pricing: { fetchedAt: now },
   providers: [
     {
       provider: "claude",
@@ -239,6 +276,7 @@ const usageReport = {
   conversations: threads.map((entry) => ({
     id: entry.id,
     title: entry.title,
+    projectId: entry.projectId,
     provider: entry.provider,
     model: entry.model,
     usage: entry.usage,
@@ -371,7 +409,83 @@ export function RainfallChart({ readings, now }: { readings: Reading[]; now: num
 }
 `;
 
+const visualId = "5f0c2a8e-7d1b-4c3a-9e2f-1b6d8a4c0e57";
+const weekRain = [
+  ["Mon", 4.2, 1.1],
+  ["Tue", 12.8, 3.4],
+  ["Wed", 7.5, 6.2],
+  ["Thu", 18.4, 2.8],
+  ["Fri", 9.1, 0.4],
+  ["Sat", 2.3, 5.9],
+  ["Sun", 6.7, 2.2],
+];
+const rainPeak = Math.max(...weekRain.flatMap(([, now, before]) => [now, before]));
+
+const visualHtml = `<!doctype html>
+<style>
+  * { box-sizing: border-box; }
+  .card { padding: 22px 24px 20px; border: 1px solid var(--citropy-line); border-radius: 16px; background: var(--citropy-surface); }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  header span { color: var(--citropy-muted); font-size: 12px; }
+  .totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 20px; }
+  .total { padding: 12px 14px; border-radius: 12px; background: var(--citropy-background); }
+  .total small { display: block; color: var(--citropy-muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .total strong { font-size: 24px; font-weight: 600; }
+  .total em { margin-left: 6px; color: #3fb68b; font-size: 12px; font-style: normal; }
+  .chart { display: grid; grid-template-columns: repeat(7, 1fr); gap: 14px; align-items: end; height: 170px; }
+  .day { display: grid; grid-template-rows: 1fr auto; gap: 8px; height: 100%; }
+  .pair { display: flex; gap: 4px; align-items: end; }
+  .pair span { flex: 1; border-radius: 5px 5px 2px 2px; }
+  .now { background: linear-gradient(180deg, #59b8f0, #2f7fd0); }
+  .before { background: var(--citropy-line); }
+  .day small { color: var(--citropy-muted); font-size: 11px; text-align: center; }
+  .legend { display: flex; gap: 16px; margin-top: 14px; color: var(--citropy-muted); font-size: 12px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+</style>
+<div class="card">
+  <header><h1>Rainfall, this week and last</h1><span>Cedar Ridge station</span></header>
+  <div class="totals">
+    <div class="total"><small>This week</small><strong>61.0</strong> mm<em>+39.0</em></div>
+    <div class="total"><small>Wettest day</small><strong>Thu</strong> 18.4 mm</div>
+    <div class="total"><small>Dry hours</small><strong>131</strong> of 168</div>
+  </div>
+  <div class="chart">${weekRain.map(([label, current, before]) => `<div class="day"><div class="pair"><span class="now" style="height:${(current / rainPeak) * 140}px"></span><span class="before" style="height:${(before / rainPeak) * 140}px"></span></div><small>${label}</small></div>`).join("")}</div>
+  <div class="legend"><span><i class="now"></i>This week</span><span><i class="before"></i>Last week</span></div>
+</div>`;
+
+const visualMessages = [
+  { id: "visual-question", role: "user", ts: now - 6 * minute, parts: [text("visual-question-text", "How does this week's rain compare with last week?")] },
+  {
+    id: "visual-answer",
+    role: "assistant",
+    ts: now - 5 * minute,
+    parts: [
+      tool("visual-read", "Read", "read", "readings.ts"),
+      text("visual-answer-text", `This week was much wetter, 61 mm against 22 mm, and most of it fell on Tuesday and Thursday.\n\n![Rainfall this week and last](citropy-visual:${visualId})\n\nSaturday is the only day that was drier than last week.`),
+    ],
+  },
+];
+
+const sharingState = {
+  enabled: true,
+  addresses: ["192.168.1.24:4180"],
+  devices: [{ id: "pixel", name: "Pixel 9", createdAt: now - 3 * day, lastSeen: now - 12 * minute }],
+};
+
 const ok = (route) => route.fulfill({ json: [] });
+
+async function visualPage(route) {
+  if (new URL(route.request().url()).pathname !== "/api/visual-pages") return;
+  await route.fulfill({ contentType: "text/html", body: framedVisual(visualHtml) });
+  return true;
+}
+
+async function waitForVisual(page) {
+  await page.locator("iframe.markdown-visual").waitFor();
+  await page.frameLocator("iframe.markdown-visual").getByText("Rainfall, this week and last").waitFor();
+  await page.waitForFunction(() => document.querySelector("iframe.markdown-visual")?.style.height);
+}
 
 async function main() {
   const server = await createServer({
@@ -393,18 +507,25 @@ async function main() {
     return data;
   }
 
-  async function shot(name, theme, { preferences = {}, snapshot: data = snapshot(), desktop, onMessage, api, boot, act } = {}) {
-    const page = await browser.newPage({ viewport: { width: 2560, height: 1440 }, deviceScaleFactor: 1, reducedMotion: "reduce" });
+  async function shot(name, theme, { preferences = {}, snapshot: data = snapshot(), desktop, phone = false, regions = {}, onMessage, api, boot, act } = {}) {
+    const page = await browser.newPage({
+      viewport: phone ? PHONE : DESKTOP,
+      deviceScaleFactor: phone ? PHONE_SCALE : DESKTOP_SCALE,
+      isMobile: phone,
+      hasTouch: phone,
+      reducedMotion: "reduce",
+    });
     page.setDefaultTimeout(20000);
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.addInitScript(
-      ({ values, theme }) => {
-        for (const [key, value] of Object.entries({ project: "workspace", thread: "rainfall", inspector: "0", uiScale: "100", ...values }))
+      ({ values, theme, background }) => {
+        if (window !== window.top) return;
+        for (const [key, value] of Object.entries({ project: "workspace", thread: "rainfall", inspector: "0", uiScale: "100", stageBackground: background, ...values }))
           localStorage.setItem(`citropy.${key}`, String(value));
         localStorage.setItem("citropy.scheme", theme);
       },
-      { values: preferences, theme },
+      { values: preferences, theme, background: BACKGROUNDS[theme] },
     );
     if (desktop)
       await page.addInitScript((mode) => {
@@ -465,7 +586,10 @@ async function main() {
       throw new Error(`${name}-${theme}: ${errors.join(" | ") || (await page.locator("body").innerText()).slice(0, 300)}`, { cause: error });
     }
     await page.waitForTimeout(250);
-    await page.screenshot({ path: join(assets, `${name}-${theme}.png`), animations: "disabled" });
+    await page.screenshot({ path: join(captures, `${name}-${theme}.png`), animations: "disabled" });
+    const boxes = {};
+    for (const [region, selector] of Object.entries(regions)) boxes[region] = await page.locator(selector).first().boundingBox();
+    await writeFile(join(captures, `${name}-${theme}.json`), JSON.stringify({ ...page.viewportSize(), regions: boxes }));
     if (errors.length) throw new Error(`${name}-${theme}: ${errors.join(" | ")}`);
     await page.close();
   }
@@ -473,6 +597,7 @@ async function main() {
   const scenes = {
     async chat(theme) {
       await shot("chat", theme, {
+        regions: { threads: ".thread-list" },
         onMessage: (event, connection) => {
           if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
         },
@@ -483,8 +608,90 @@ async function main() {
       });
     },
 
+    async picker(theme) {
+      await shot("picker", theme, {
+        regions: Object.fromEntries([["menu", ".model-picker-menu"], ...providers.map((provider) => [provider.id, `.model-picker-menu button:has-text("${provider.label}")`])]),
+        preferences: { thread: "frost" },
+        onMessage: (event, connection) => {
+          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: [] }));
+        },
+        act: async (page) => {
+          await page.locator('button[aria-haspopup="menu"]', { hasText: "Claude Opus 5" }).last().click();
+          await page.locator(".model-picker-menu").waitFor();
+          await page.getByRole("button", { name: "Antigravity" }).waitFor();        },
+      });
+    },
+
+    async visual(theme) {
+      await shot("visual", theme, {
+        regions: { visual: "iframe.markdown-visual" },
+        onMessage: (event, connection) => {
+          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: visualMessages }));
+        },
+        api: visualPage,
+        act: waitForVisual,
+      });
+    },
+
+    async phone(theme) {
+      await shot("phone", theme, {
+        phone: true,
+        onMessage: (event, connection) => {
+          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: visualMessages }));
+        },
+        api: visualPage,
+        act: waitForVisual,
+      });
+    },
+
+    async sidebar(theme) {
+      await shot("sidebar", theme, {
+        phone: true,
+        onMessage: (event, connection) => {
+          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+        },
+        act: async (page) => {
+          await page.getByText("All 38 tests pass", { exact: false }).waitFor();
+          await page.getByRole("button", { name: "Toggle sidebar", exact: true }).click();
+          await page.locator(".thread-list").waitFor();
+        },
+      });
+    },
+
+    async sharing(theme) {
+      await shot("sharing", theme, {
+        regions: { pairing: ".sharing-pairing", devices: ".sharing-pairing ~ .settings-group" },
+        api: (route) => {
+          const path = new URL(route.request().url()).pathname;
+          if (path === "/api/sharing") return sharingState;
+          if (path === "/api/sharing/pair") return { url: `http://${sharingState.addresses[0]}/pair#7Qm2xV9cLr`, expiresAt: now + 5 * minute };
+        },
+        onMessage: (event, connection) => {
+          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+        },
+        act: async (page) => {
+          await page.locator(".turn").first().waitFor();
+          await page.getByRole("button", { name: "Account", exact: true }).click();
+          await page.getByRole("button", { name: "Settings", exact: true }).click();
+          await page.getByRole("button", { name: "Local sharing", exact: false }).click();
+          await page.locator(".sharing-qr svg").waitFor();
+        },
+      });
+    },
+
+    async setup(theme) {
+      await shot("setup", theme, {
+        snapshot: snapshot({ setupNeeded: true }),
+        act: async (page) => {
+          await page.getByRole("button", { name: "Get started" }).click();
+          await page.getByText("Choose how Citropy looks", { exact: true }).waitFor();
+        },
+      });
+    },
+
     async usage(theme) {
       await shot("usage", theme, {
+        regions: { chart: ".usage-chart" },
         api: (route) => {
           if (new URL(route.request().url()).pathname === "/api/usage") return usageReport;
         },
@@ -493,7 +700,9 @@ async function main() {
         },
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
+          await page.getByRole("button", { name: "Account", exact: true }).click();
           await page.getByRole("button", { name: "Usage", exact: true }).click();
+          await page.getByRole("button", { name: "Overview", exact: true }).click();
           await page.locator(".usage-chart").waitFor();
         },
       });
@@ -501,22 +710,26 @@ async function main() {
 
     async git(theme) {
       await shot("git", theme, {
+        regions: { files: ".git-change-files", commit: ".git-commit-form", review: ".git-review-pane" },
         onMessage: (event, connection) => {
           if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
           if (event.t === "git.refresh") connection.send(JSON.stringify({ t: "git.status", projectId: event.projectId, status: gitStatus }));
+          if (event.t === "git.manage" && event.operation === "overview") connection.send(JSON.stringify({ t: "git.manage", requestId: event.requestId, result: gitOverview }));
+          if (event.t === "git.diff") connection.send(JSON.stringify({ t: "git.diff", requestId: event.requestId, patch: { ...gitPatch, path: event.path } }));
         },
         act: async (page, connection) => {
           await page.locator(".turn").first().waitFor();
           connection().send(JSON.stringify({ t: "git.status", projectId: "workspace", status: gitStatus }));
-          await page.getByRole("button", { name: "Git actions", exact: true }).click();
+          await page.getByRole("button", { name: "Source control", exact: true }).click();
           await page.getByText("feat/rainfall-chart").first().waitFor();
-          await page.getByText("AI commit", { exact: true }).first().waitFor();
+          await page.waitForTimeout(1000);
         },
       });
     },
 
     async changes(theme) {
       await shot("changes", theme, {
+        regions: { panel: ".inspector" },
         preferences: { inspector: "1", inspectorWidth: "460" },
         snapshot: snapshot({ panels: [{ id: "changes", kind: "changes", projectId: "workspace", title: "Changes" }] }),
         onMessage: (event, connection) => {
@@ -539,6 +752,7 @@ async function main() {
     async editor(theme) {
       const panel = { id: "files", kind: "files", projectId: "workspace", title: "Files", threadId: "rainfall" };
       await shot("editor", theme, {
+        regions: { panel: ".inspector", code: ".editor-main" },
         preferences: { inspector: "1", panelWidths: JSON.stringify({ inspector: 840 }) },
         snapshot: snapshot({ panels: [panel] }),
         api: (route) => {
@@ -562,6 +776,7 @@ async function main() {
 
     async browser(theme) {
       await shot("browser", theme, {
+        regions: { panel: ".inspector" },
         preferences: { inspector: "1", inspectorWidth: "620" },
         desktop: "browser",
         snapshot: snapshot({
@@ -587,6 +802,7 @@ async function main() {
 
     async question(theme) {
       await shot("question", theme, {
+        regions: { panel: ".question-panel" },
         snapshot: snapshot({ threads: [questionThread, ...threads.slice(1)], questions: [questionRequest] }),
         onMessage: (event, connection) => {
           if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: questionMessages }));
@@ -605,6 +821,7 @@ async function main() {
 
     async workspaces(theme) {
       await shot("workspaces", theme, {
+        regions: { menu: ".workspace-menu" },
         desktop: "workspaces",
         snapshot: snapshot({ projects: [project] }),
         onMessage: (event, connection) => {
@@ -621,6 +838,7 @@ async function main() {
     },
   };
 
+  await mkdir(captures);
   const requested = process.argv.slice(2);
   const names = requested.length ? requested : Object.keys(scenes);
   for (const theme of ["light", "dark"])
@@ -630,9 +848,13 @@ async function main() {
       console.log(`${name}-${theme}`);
     }
 
+  if (requested.length) console.log(`Captures kept in ${captures}. Run without scene names to rebuild the README art.`);
+  else {
+    await composeArt({ browser, origin: server.resolvedUrls.local[0], captures, output: assets, providers });
+    await rm(directory, { recursive: true, force: true });
+  }
   await browser.close();
   await server.close();
-  await rm(directory, { recursive: true, force: true });
 }
 
 await main();

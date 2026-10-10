@@ -71,7 +71,7 @@
   font-size: var(--text-sm);
   font-weight: 600;
 }
-.settings-inner :is(.settings-group, .option-strip-zone, .custom-color-reveal, .settings-note) + .settings-group-heading {
+.settings-inner :is(.settings-group, .option-strip-zone, .custom-color-reveal, .settings-note, .sharing-pairing) + .settings-group-heading {
   margin-top: var(--space-32);
 }
 .settings-group {

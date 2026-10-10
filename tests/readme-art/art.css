@@ -1,0 +1,248 @@
+@font-face {
+  font-family: "Citropy Sans";
+  src: url("/fonts/CitropySans.woff2") format("woff2");
+  font-weight: 300 800;
+}
+
+:root {
+  --ink: #0a0a09;
+  --ink-raised: #131311;
+  --paper: #f1eee8;
+  --paper-raised: #faf8f4;
+  --glow: #fff6e3;
+  --muted-on-ink: rgb(255 246 227 / 0.56);
+  --muted-on-paper: rgb(10 10 9 / 0.55);
+  --hair-on-ink: rgb(255 246 227 / 0.13);
+  --hair-on-paper: rgb(10 10 9 / 0.13);
+  --sans: "Citropy Sans", system-ui, sans-serif;
+  --mono: "Droid Sans Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  margin: 0;
+  background: transparent;
+}
+
+.art {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.art.flat { border-radius: 0; }
+
+.art.dark {
+  background: var(--ink);
+  color: var(--glow);
+  --muted: var(--muted-on-ink);
+  --hair: var(--hair-on-ink);
+}
+
+.art.light {
+  background: var(--paper);
+  color: var(--ink);
+  --muted: var(--muted-on-paper);
+  --hair: var(--hair-on-paper);
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.ascii-field {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dots {
+  background: radial-gradient(var(--hair) 1.1px, transparent 1.6px) 0 0 / 22px 22px;
+}
+
+.glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+}
+
+.place { position: absolute; }
+
+.crop {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+
+.crop > img {
+  position: absolute;
+  max-width: none;
+}
+
+.window {
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px var(--hair),
+    0 1px 0 0 rgb(255 255 255 / 0.08) inset,
+    0 40px 90px -20px rgb(0 0 0 / 0.65),
+    0 18px 36px -18px rgb(0 0 0 / 0.5);
+}
+
+.light .window {
+  box-shadow:
+    0 0 0 1px var(--hair),
+    0 40px 80px -28px rgb(60 44 20 / 0.35),
+    0 14px 30px -16px rgb(60 44 20 / 0.25);
+}
+
+.card {
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px var(--hair),
+    0 30px 60px -24px rgb(0 0 0 / 0.55);
+}
+
+.light .card {
+  box-shadow:
+    0 0 0 1px var(--hair),
+    0 30px 60px -26px rgb(60 44 20 / 0.32);
+}
+
+.label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.mark {
+  display: block;
+  background: currentColor;
+  mask: url("/web/src/assets/citropy-mark.svg") center / contain no-repeat;
+}
+
+.ticks {
+  position: absolute;
+  pointer-events: none;
+}
+
+.ticks i {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--muted);
+  border-style: solid;
+  border-width: 0;
+}
+
+.ticks i:nth-child(1) { left: -1px; top: -1px; border-left-width: 1px; border-top-width: 1px; }
+.ticks i:nth-child(2) { right: -1px; top: -1px; border-right-width: 1px; border-top-width: 1px; }
+.ticks i:nth-child(3) { left: -1px; bottom: -1px; border-left-width: 1px; border-bottom-width: 1px; }
+.ticks i:nth-child(4) { right: -1px; bottom: -1px; border-right-width: 1px; border-bottom-width: 1px; }
+
+.logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--hair);
+  background: var(--ink-raised);
+}
+
+.light .logo { background: var(--paper-raised); }
+
+.logo img {
+  width: 52%;
+  height: 52%;
+  object-fit: contain;
+}
+
+.phone {
+  position: absolute;
+  background: linear-gradient(145deg, #3a3835, #121110 40%, #2a2826);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.1) inset,
+    0 0 0 1.5px #050504,
+    0 50px 80px -30px rgb(0 0 0 / 0.7),
+    0 20px 40px -20px rgb(0 0 0 / 0.5);
+}
+
+.connector {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.connector path {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.connector circle { fill: var(--glow); }
+.light .connector circle { fill: var(--ink); }
+
+.tile {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 22px;
+  padding: 26px 28px;
+  background: var(--ink-raised);
+  box-shadow: 0 0 0 1px var(--hair) inset;
+  color: var(--glow);
+  --muted: var(--muted-on-ink);
+  --hair: var(--hair-on-ink);
+}
+
+.tile.paper {
+  background: var(--paper);
+  color: var(--ink);
+  --muted: var(--muted-on-paper);
+  --hair: var(--hair-on-paper);
+}
+
+.tile h3 {
+  margin: 10px 0 6px;
+  font-size: 23px;
+  font-weight: 560;
+  letter-spacing: -0.015em;
+}
+
+.tile p {
+  margin: 0;
+  max-width: 270px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.tile .crop {
+  position: absolute;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px var(--hair), 0 24px 50px -20px rgb(0 0 0 / 0.55);
+}
+
+.tile.paper .crop { box-shadow: 0 0 0 1px var(--hair), 0 24px 50px -24px rgb(60 44 20 / 0.32); }
+
+.window.lit {
+  box-shadow:
+    0 0 0 1px rgb(255 246 227 / 0.24),
+    0 1px 0 0 rgb(255 246 227 / 0.2) inset,
+    0 0 120px 10px rgb(255 200 130 / 0.1),
+    0 40px 90px -20px rgb(0 0 0 / 0.8);
+}
+
+.socket {
+  border: 1px dashed rgb(255 246 227 / 0.3);
+  border-radius: 10px;
+  background: var(--ink);
+}
