@@ -15,10 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  tests:
-    name: Tests
+  linux:
+    name: Linux
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
@@ -42,20 +42,6 @@ jobs:
           shellcheck -s sh scripts/install.sh desktop/apply-appimage-update.sh
           pwsh -NoProfile -Command '$errors = $null; [System.Management.Automation.Language.Parser]::ParseFile("scripts/install.ps1", [ref]$null, [ref]$errors) | Out-Null; if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }'
       - run: npm test
-
-  interface:
-    name: Interface
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22.18.0'
-          cache: npm
-      - run: npm ci
       - id: playwright
         run: echo "version=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
@@ -68,41 +54,14 @@ jobs:
       - name: Check production resource usage
         run: node tests/performance-browser.mjs
 
-  portable:
-    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+  other-systems:
+    name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-26, windows-latest]
-        node: ['22.18.0', '24', '26']
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ matrix.node }}
-      - name: Check request, filesystem, and proxy regressions
-        run: >-
-          node --experimental-strip-types --test --test-reporter=tap --test-concurrency=1
-          tests/audit-static.test.mjs tests/audit-files.test.mjs
-          tests/audit-remote-proxy.test.mjs
-          tests/audit-diff.test.mjs tests/audit-terminal-daemon.test.mjs
-          tests/audit-http.test.mjs tests/audit-diff-paths.test.mjs
-          tests/audit-containment-race.test.mjs tests/audit-tree-aba.test.mjs
-          tests/audit-zero-hunk.test.mjs tests/audit-git-paths.test.mjs
-          tests/audit-git-filename-diffs.test.mjs tests/workspace-branches.test.mjs
-
-  backend:
-    name: Backend / ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, macos-26, windows-latest]
+        os: [macos-26, windows-latest]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -112,5 +71,14 @@ jobs:
           node-version: '22.18.0'
           cache: npm
       - run: npm ci
-      - name: Check the real backend HTTP boundary
-        run: node --experimental-strip-types --test --test-reporter=tap tests/audit-http-server.test.mjs
+      - name: Check request, filesystem, proxy, and backend regressions
+        run: >-
+          node --experimental-strip-types --test --test-reporter=tap --test-concurrency=1
+          tests/audit-static.test.mjs tests/audit-files.test.mjs
+          tests/audit-remote-proxy.test.mjs
+          tests/audit-diff.test.mjs tests/audit-terminal-daemon.test.mjs
+          tests/audit-http.test.mjs tests/audit-diff-paths.test.mjs
+          tests/audit-containment-race.test.mjs tests/audit-tree-aba.test.mjs
+          tests/audit-zero-hunk.test.mjs tests/audit-git-paths.test.mjs
+          tests/audit-git-filename-diffs.test.mjs tests/workspace-branches.test.mjs
+          tests/audit-http-server.test.mjs

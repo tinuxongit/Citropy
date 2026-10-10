@@ -7,6 +7,8 @@ dist/
 .DS_Store
 .desktop-build/
 release/
+test-results/
+DESIGN.md
 .audition/
 /design-audit/
 CLAUDE.md

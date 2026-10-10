@@ -203,8 +203,6 @@ jobs:
         with:
           path: dist
           merge-multiple: true
-      - name: Collect release files
-        run: ls -l dist
       - name: Checksum release files
         working-directory: dist
         run: |
