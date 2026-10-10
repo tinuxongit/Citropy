@@ -18,6 +18,7 @@ export function Modal({
   returnFocus,
   onClose,
   onSubmit,
+  onShown,
 }: {
   title: string;
   description?: string;
@@ -32,6 +33,7 @@ export function Modal({
   returnFocus?: HTMLElement | null;
   onClose: () => void;
   onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
+  onShown?: () => void;
 }) {
   const { ref, present } = useModalDialog(initialFocus, returnFocus);
   const reducedMotion = useReducedMotion();
@@ -47,6 +49,9 @@ export function Modal({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: reducedMotion ? 0 : 8, scale: reducedMotion ? 1 : 0.985 }}
       transition={{ duration: reducedMotion ? 0 : 0.16, ease: [0.16, 1, 0.3, 1] }}
+      onAnimationComplete={() => {
+        if (present) onShown?.();
+      }}
       aria-labelledby={`${id}-title`}
       aria-describedby={description ? `${id}-description` : undefined}
       onCancel={(event) => {

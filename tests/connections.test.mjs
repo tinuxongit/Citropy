@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { initializeConnections, handleConnections, connectionProfile, connectionOfProfile, matchConnection } from "../desktop/connections.mjs";
+import { initializeConnections, handleConnections, connectionProfile, connectionOfProfile, matchConnection, signInTarget } from "../desktop/connections.mjs";
 import { siteOf } from "../shared/connection-sites.mjs";
 
 test("connected sites match their own subdomains and prefer the most specific site", () => {
@@ -46,6 +46,8 @@ test("each connection keeps its own sign-in and signing out clears only that sit
   assert.deepEqual(connectionProfile(profile.id, "https://example.com/"), profile);
 
   assert.deepEqual(connectionOfProfile(profile.id), { id: amazon.id, signedIn: false });
+  assert.deepEqual(signInTarget(amazon.id), { ...profile, id: amazon.id, url: "https://www.amazon.com/" });
+  assert.throws(() => signInTarget("missing"), /Connection not found/);
   assert.equal(connectionOfProfile("personal"), undefined);
   assert.equal((await action("status", { id: amazon.id, signedIn: true }))[0].signedIn, true);
   assert.deepEqual(connectionOfProfile(profile.id), { id: amazon.id, signedIn: true });

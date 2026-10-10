@@ -13,7 +13,8 @@ import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-
 import { packagedBackend } from "./backend.mjs";
 import { desktopDiagnostics } from "./diagnostics.mjs";
 import { initializeProfiles, browserProfile, handleProfiles } from "./browser-profiles.mjs";
-import { initializeConnections, connectionProfile, connectionOfProfile, handleConnections } from "./connections.mjs";
+import { initializeConnections, connectionProfile, connectionOfProfile, handleConnections, signInTarget } from "./connections.mjs";
+import { createSignInView } from "./sign-in-view.mjs";
 import { browserActivity } from "./browser-activity.mjs";
 import { formatTree } from "./browser-snapshot.mjs";
 import { createPointer } from "./browser-pointer.mjs";
@@ -112,6 +113,7 @@ if (
   throw new Error("Citropy desktop requires a local server");
 const token = process.env.CITROPY_DESKTOP_TOKEN;
 if (!token) throw new Error("Start Citropy desktop through npm run desktop");
+delete process.env.CITROPY_DESKTOP_TOKEN;
 const windowFile = join(app.getPath("userData"), "window.json");
 const tabs = new Map();
 let window;
@@ -1497,6 +1499,18 @@ app
     ipcMain.handle("window:capture", async (event) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
       return (await window.webContents.capturePage()).toDataURL();
+    });
+    const signIn = createSignInView(window);
+    ipcMain.handle("connections:sign-in", async (event, id) => {
+      if (!trusted(event)) throw new Error("Unavailable outside Citropy");
+      const signedIn = await signIn.open(signInTarget(id));
+      return request(signedIn ? "connections.status" : "connections.list", { id, signedIn });
+    });
+    ipcMain.on("connections:sign-in-bounds", (event, bounds) => {
+      if (trusted(event)) signIn.place(bounds);
+    });
+    ipcMain.on("connections:sign-in-command", (event, command) => {
+      if (trusted(event)) signIn.command(command);
     });
     ipcMain.handle("window:open-folder", async (event, path) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");

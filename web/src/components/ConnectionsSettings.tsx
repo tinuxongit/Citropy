@@ -3,18 +3,20 @@ import { SiteIcon } from "./SiteIcon.tsx";
 import { PlusIcon } from "./icons/marks.tsx";
 import { TrashIcon } from "./icons/actions.tsx";
 import { api } from "../lib/api.ts";
-import { confirmAction, useApp } from "../lib/store.ts";
+import { confirmAction } from "../lib/store.ts";
 import type { Connection } from "../../../shared/features.ts";
 import { connectionMention, siteOf } from "../../../shared/connection-sites.mjs";
 import suggestions from "../../../shared/connection-suggestions.json";
 import { ActionError } from "./ActionError.tsx";
+import { SignInDialog } from "./SignInDialog.tsx";
+import { AnimatePresence } from "motion/react";
 
 export function ConnectionsSettings() {
-  const projectId = useApp((state) => state.activeProjectId);
   const [connections, setConnections] = useState<Connection[]>();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [signingIn, setSigningIn] = useState<Connection>();
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
@@ -39,8 +41,17 @@ export function ConnectionsSettings() {
     }
   };
   const suggested = suggestions.filter((suggestion) => !connections?.some((connection) => connection.site === siteOf(suggestion.url)));
-  const signIn = async (id: string) => {
-    if (await perform(`connections/sign-in?projectId=${projectId}`, "POST", { id })) useApp.setState({ activeView: "chat" });
+  const signIn = async (connection: Connection) => {
+    setSigningIn(connection);
+    setError("");
+    try {
+      if (!window.citropyDesktop) throw new Error("Open Citropy desktop to sign in.");
+      setConnections(await window.citropyDesktop.signIn(connection.id));
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setSigningIn(undefined);
+    }
   };
   const signOut = async (connection: Connection) => {
     if (await confirmAction({
@@ -61,7 +72,7 @@ export function ConnectionsSettings() {
   return (
     <div className="feature-stack">
       <p className="feature-note">
-        Sign in to a website once in Citropy's browser. Agents can then open it with your account, and they ask you before buying, sending, posting, or deleting anything there. Each site keeps its own sign-in.
+        Sign in to a website once in Citropy. Agents can then open it with your account, and they ask you before buying, sending, posting, or deleting anything there. Each site keeps its own sign-in.
       </p>
       {connections && connections.length > 0 && (
         <section className="settings-group" aria-label="Connected websites">
@@ -78,7 +89,7 @@ export function ConnectionsSettings() {
                 {connection.signedIn ? (
                   <button className="btn" data-variant="ghost" disabled={busy} onClick={() => void signOut(connection)}>Sign out</button>
                 ) : (
-                  <button className="btn" data-variant="primary" disabled={busy || !projectId} title={projectId ? undefined : "Open a project first"} onClick={() => void signIn(connection.id)}>Sign in</button>
+                  <button className="btn" data-variant="primary" disabled={busy || Boolean(signingIn)} onClick={() => void signIn(connection)}>Sign in</button>
                 )}
                 <button className="icon-btn" disabled={busy} aria-label={`Remove ${connection.name}`} title="Remove" onClick={() => void remove(connection)}>
                   <TrashIcon size={15} />
@@ -133,6 +144,7 @@ export function ConnectionsSettings() {
         </form>
       </section>
       <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
+      <AnimatePresence>{signingIn && <SignInDialog key={signingIn.id} connection={signingIn} />}</AnimatePresence>
     </div>
   );
 }

@@ -12,19 +12,12 @@ import { useApp } from "../lib/store.ts";
 import { BrowserViewport } from "./BrowserViewport.tsx";
 import type { BrowserAction, PanelTab } from "../../../shared/workbench.ts";
 import { useCopied } from "../lib/use-copied.ts";
-import { OPEN_OVERLAYS } from "../lib/overlays.ts";
+import { movingAncestor, OPEN_OVERLAYS } from "../lib/overlays.ts";
 
 function covers(overlay: Element, bounds: DOMRect): boolean {
   if (overlay.matches('dialog:modal, [aria-modal="true"]')) return true;
   const box = overlay.getBoundingClientRect();
   return box.width > 0 && box.height > 0 && box.left < bounds.right && box.right > bounds.left && box.top < bounds.bottom && box.bottom > bounds.top;
-}
-
-function movingAncestor(element: Element): boolean {
-  return document.getAnimations().some((animation) => {
-    const target = (animation.effect as KeyframeEffect | null)?.target;
-    return animation.playState === "running" && target instanceof Element && target.contains(element);
-  });
 }
 
 export function BrowserPane({

@@ -2,6 +2,15 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.10.1
+
+### Changed
+- Signing in to a website in Settings > Connections opens it in a dialog inside Settings. You no longer need a project open, and Citropy no longer switches to the chat and its browser panel.
+- Choose Done when you finish signing in, or Cancel to close the dialog without marking the site as signed in.
+
+### Fixed
+- Starting a second copy of Citropy from an agent or tool inside Citropy no longer closes the running app.
+
 ## 0.10.0
 
 ### Added

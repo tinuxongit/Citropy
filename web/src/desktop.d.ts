@@ -10,6 +10,13 @@ export interface DesktopWindowState {
   electron: string;
 }
 
+export interface SignInState {
+  url: string;
+  loading: boolean;
+  canGoBack: boolean;
+  error?: string;
+}
+
 declare global {
   interface Window {
     loomDesktop?: Window["citropyDesktop"];
@@ -63,6 +70,10 @@ declare global {
         callback: (id: string, image?: string) => void,
       ): () => void;
       onAddressFocus(callback: (id: string) => void): () => void;
+      signIn(id: string): Promise<import("../../shared/features.ts").Connection[]>;
+      signInBounds(bounds: { x: number; y: number; width: number; height: number } | null): void;
+      signInCommand(command: "back" | "reload" | "done" | "cancel"): void;
+      onSignInState(callback: (state: SignInState) => void): () => void;
     };
   }
 }

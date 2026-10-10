@@ -52,6 +52,14 @@ contextBridge.exposeInMainWorld("citropyDesktop", {
     ipcRenderer.on("browser:cover", listener);
     return () => ipcRenderer.removeListener("browser:cover", listener);
   },
+  signIn: (id) => ipcRenderer.invoke("connections:sign-in", id),
+  signInBounds: (bounds) => ipcRenderer.send("connections:sign-in-bounds", bounds),
+  signInCommand: (command) => ipcRenderer.send("connections:sign-in-command", command),
+  onSignInState: (callback) => {
+    const listener = (_, state) => callback(state);
+    ipcRenderer.on("connections:sign-in-state", listener);
+    return () => ipcRenderer.removeListener("connections:sign-in-state", listener);
+  },
   onAddressFocus: (callback) => {
     const listener = (_, id) => callback(id);
     ipcRenderer.on("browser:address", listener);

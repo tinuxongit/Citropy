@@ -7,6 +7,7 @@ import { REMOTE_TOKEN_HEADER } from "../shared/remote-connection.mjs";
 
 export const remoteId = process.env.CITROPY_REMOTE_ID;
 const token = process.env.CITROPY_REMOTE_TOKEN;
+delete process.env.CITROPY_REMOTE_TOKEN;
 if (remoteId && (!token || token.length < 64 || (process.env.CITROPY_HOST !== "127.0.0.1" && !(process.env.CITROPY_CONTAINER === "1" && process.env.CITROPY_HOST === "0.0.0.0"))))
   throw new Error("Remote environments require authentication and a loopback listener.");
 

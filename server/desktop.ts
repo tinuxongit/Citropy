@@ -11,6 +11,7 @@ import { dev, developmentOrigin, origin } from "./config.ts";
 import { dataRoot } from "./paths.ts";
 
 const token = process.env.CITROPY_DESKTOP_TOKEN || randomBytes(32).toString("hex");
+delete process.env.CITROPY_DESKTOP_TOKEN;
 const require = createRequire(import.meta.url);
 const entry = fileURLToPath(new URL("../desktop/entry.mjs", import.meta.url));
 const errorLog = join(dataRoot, "logs", "desktop.log");

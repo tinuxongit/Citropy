@@ -708,3 +708,33 @@
 .provider-up-to-date { display: inline-flex; align-items: center; gap: var(--space-6); color: var(--ok); font-size: var(--text-sm); white-space: nowrap; }
 
 .in-use-label { display: inline-flex; align-items: center; gap: var(--space-6); padding: 0 var(--space-12); color: var(--accent); font-size: var(--text-sm); }
+
+.citropy-dialog.sign-in-dialog {
+  width: min(960px, calc(var(--viewport-width) - 48px));
+  overflow: hidden;
+}
+.sign-in-dialog .dialog-heading {
+  align-items: center;
+  padding-bottom: var(--space-16);
+}
+.sign-in-dialog .dialog-heading p {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.sign-in-navigation {
+  display: flex;
+  gap: var(--space-4);
+}
+.sign-in-dialog .dialog-content {
+  padding: 0;
+}
+.sign-in-page {
+  height: calc(var(--viewport-height) - 220px);
+  background: var(--canvas);
+}
+.sign-in-hint {
+  align-self: center;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}

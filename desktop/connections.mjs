@@ -63,6 +63,11 @@ export function connectionOfProfile(profileId) {
   return connection && { id: connection.id, signedIn: connection.signedIn };
 }
 
+export function signInTarget(id) {
+  const connection = find(id);
+  return { ...profileOf(connection), id: connection.id, url: connection.url };
+}
+
 function find(id) {
   const connection = connections.find((entry) => entry.id === id);
   if (!connection) throw new Error("Connection not found.");

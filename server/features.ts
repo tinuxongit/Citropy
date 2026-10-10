@@ -569,12 +569,10 @@ export async function handleFeatures(
     else if (url.pathname === "/api/diagnostics" && req.method === "GET")
       respond(await diagnostics());
     else if (/^\/api\/connections(\/|$)/.test(url.pathname)) {
-      if (projectId && !store.projects.has(projectId)) throw new Error("Workspace not found");
       respond(await handleConnections(
         req.method ?? "",
         url.pathname.slice("/api/connections".length).replace(/^\//, ""),
         req.method === "GET" ? {} : await body(req),
-        projectId,
       ));
     } else if (
       url.pathname.startsWith("/api/browser/") &&
