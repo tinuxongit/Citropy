@@ -55,6 +55,15 @@ test("Claude ends the turn when a background run reads the user's message", asyn
   assert.equal(events.filter(event => event.type === "turn.end").length, 1);
 });
 
+test("Claude ends a turn that a finished background task started after the user's turn ended", async t => {
+  const { session, events, receive } = fixture(t);
+  await session.send("Publish the release when the checks pass");
+  receive({ ...result, origin: { kind: "human" } });
+  receive({ type: "system", subtype: "status", status: "requesting" });
+  receive(backgroundResult);
+  assert.equal(events.filter(event => event.type === "turn.end").length, 2);
+});
+
 test("Claude resume background results do not fail a queued manual compaction", async t => {
   const { session, events, receive } = fixture(t);
   await session.compact();

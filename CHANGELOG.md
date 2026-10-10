@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.10.2
+
+### Fixed
+- A Claude chat that replies on its own after a background task finishes, such as a build it was waiting on, no longer stays on Thinking after the reply ends.
+
 ## 0.10.1
 
 ### Changed
