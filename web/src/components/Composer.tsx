@@ -28,7 +28,6 @@ import {
 import { confirmAction, selectThread, useApp } from "../lib/store.ts";
 import { playUiSound } from "../lib/ui-sound.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
-import { Select } from "./Select.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { Loader } from "./Loader.tsx";
 import {
@@ -195,12 +194,6 @@ export function Composer({
     <ContextMenu thread={configuredThread!} model={model} disabled={!connected || sending || transferring} />
 
     <EffortMenu thread={configuredThread!} model={model} disabled={!connected || sending || transferring} buttonRef={effortButton} />
-
-    {provider?.instances?.length ? <Select className="composer-select composer-account" aria-label="Account" title="Account" value={thread.providerInstanceId ?? ""} disabled={!connected || sending || transferring || running || hasMessages || Boolean(thread.externalId || thread.parentThreadId || thread.queue?.length)} onChange={value => void configureThread(thread.id, { providerInstanceId: value || null })}
-      options={[
-        ...provider.available ? [{ value: "", label: "Default" }] : [],
-        ...provider.instances.map(entry => ({ value: entry.id, label: entry.name, disabled: !entry.available })),
-      ]} /> : null}
   </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal]);
 
   const submit = async () => {

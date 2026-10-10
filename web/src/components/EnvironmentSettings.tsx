@@ -2,10 +2,9 @@ import type { SshConnection } from "../../../shared/environments.ts";
 import { useEffect, useId, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { BoxIcon, MonitorIcon } from "./icons/hardware.tsx";
-import { StopIcon } from "./icons/squares.tsx";
-import { EditIcon } from "./icons/pencil.tsx";
-import { CheckIcon, PlusIcon } from "./icons/marks.tsx";
-import { TrashIcon } from "./icons/actions.tsx";
+import type { MenuItem } from "./Menu.tsx";
+import { EnvironmentRow, type RowState } from "./environments/EnvironmentRow.tsx";
+import { connectionAddress, connectionStatus, type Connection } from "./environments/environment-status.ts";
 import { ServerIcon } from "./ServerIcon.tsx";
 import { ContainerEnvironment } from "./ContainerEnvironment.tsx";
 import { Modal } from "./Modal.tsx";
@@ -70,21 +69,43 @@ export function EnvironmentSettings() {
   const [error, setError] = useState("");
   const desktop = window.citropyDesktop;
   const run = async (operation: () => Promise<unknown>) => { setError(""); try { await operation(); } catch (error) { setError((error as Error).message); } };
+  const connecting = state.connections.some(entry => entry.status === "connecting");
+  const use = (id: string) => void run(() => selectEnvironment(id));
+  const rowState = (connection: Connection): RowState => {
+    if (connection.status === "connecting") return "connecting";
+    if (connection.status === "connected" && connection.id === state.activeId) return "in-use";
+    return connection.status === "error" ? "error" : "idle";
+  };
+  const menu = (connection: Connection): MenuItem[] => {
+    const busy = connection.status === "connecting";
+    const active = connection.id === state.activeId;
+    return [
+      { id: "edit", label: "Edit…", disabled: busy || connection.status === "connected", hint: connection.status === "connected" ? "Disconnect first" : undefined, onSelect: () => setEditing(connection) },
+      { id: "disconnect", label: "Disconnect", disabled: connection.status !== "connected", onSelect: () => void run(() => desktop!.disconnectEnvironment(connection.id)) },
+      ...(connection.kind === "container" ? [{ id: "stop", label: "Stop container", disabled: busy, onSelect: () => void run(async () => { if (await confirmAction({ title: "Stop container?", description: "Running tasks and shells in this container will stop. Files and task history are preserved.", label: "Stop container", danger: true })) await desktop!.stopEnvironment(connection.id); }) }] : []),
+      { id: "remove", label: "Remove", danger: true, disabled: active || busy, hint: active ? "Switch away first" : undefined, onSelect: () => void run(async () => { if (await confirmAction({ title: "Remove connection?", description: connection.kind === "container" ? "This stops the container and removes the connection. Your mounted folder and saved history stay on disk." : "This removes the saved connection. Remote files and tasks stay on the host.", label: "Remove", danger: true })) await desktop!.removeEnvironment(connection.id); }) },
+    ];
+  };
   return <div className="environment-settings">
-    <div className="environment-row"><MonitorIcon size={20} /><div><strong>Local</strong><small>Work on this computer</small></div>{state.activeId === "local" ? <CheckIcon size={16} aria-label="Selected" /> : <button className="btn" onClick={() => void run(() => selectEnvironment("local"))}>Switch to Local</button>}</div>
-    <div className="environment-heading"><h2>Environments</h2><div className="feature-inline"><button className="btn" onClick={() => setContainer(true)} disabled={!desktop?.saveEnvironment}><BoxIcon size={14} />Add container</button><button className="btn" onClick={() => setAdding(true)} disabled={!desktop?.saveEnvironment}><PlusIcon size={14} />Add connection</button></div></div>
-    {state.connections.map(connection => <div className="environment-row" key={connection.id} data-active={state.activeId === connection.id}>
-      {connection.kind === "container" ? <BoxIcon size={20} /> : <ServerIcon size={20} />}<div><strong>{connection.name}</strong><small>{connection.target}{connection.port ? `:${connection.port}` : ""}</small><small className={connection.status === "error" ? "ssh-error" : undefined}>{connection.message || connection.status}</small></div>
-      <div className="environment-actions">
-        {connection.kind === "container" && <button className="icon-btn" aria-label="Stop container" disabled={connection.status === "connecting"} onClick={() => void run(async () => { if (await confirmAction({ title: "Stop container?", description: "Running tasks and shells in this container will stop. Files and task history are preserved.", label: "Stop container", danger: true })) await desktop!.stopEnvironment(connection.id); })}><StopIcon size={14} /></button>}
-        {connection.status === "connecting" || connection.status === "connected" ? <button className="btn" onClick={() => void run(() => desktop!.disconnectEnvironment(connection.id))}>{connection.status === "connecting" ? "Cancel connection" : "Disconnect"}</button> : <button className="btn" disabled={state.connections.some(entry => entry.status === "connecting")} onClick={() => void run(() => selectEnvironment(connection.id))}>{state.activeId === connection.id ? "Reconnect" : "Connect"}</button>}
-        <button className="icon-btn" disabled={connection.status === "connecting" || connection.status === "connected"} aria-label={`Edit ${connection.name}`} onClick={() => setEditing(connection)}><EditIcon size={15} /></button>
-        <button className="icon-btn" disabled={state.activeId === connection.id || connection.status === "connecting"} aria-label={`Remove ${connection.name}`} onClick={() => void run(async () => { if (await confirmAction({ title: "Remove connection?", description: connection.kind === "container" ? "This stops the container and removes the connection. Your mounted folder and saved history stay on disk." : "This removes the saved connection. Remote files and tasks stay on the host.", label: "Remove", danger: true })) await desktop!.removeEnvironment(connection.id); })}><TrashIcon size={15} /></button>
-      </div>
-    </div>)}
-    {!state.connections.length && <p className="settings-note">Add an SSH host to work remotely. Each environment keeps its own workspaces and tasks.</p>}
-    {!desktop?.saveEnvironment && <p className="settings-note">Open Citropy desktop to use SSH environments.</p>}
-    <p className="settings-note">Disconnecting closes the tunnel. Remote tasks and shells keep running; reconnect to manage them.</p>
+    <div className="settings-group environment-list">
+      <EnvironmentRow icon={<MonitorIcon size={18} />} name="Local" detail="This computer" status="Always available"
+        state={state.activeId === "local" ? "in-use" : "idle"}
+        action={{ label: "Use", disabled: !desktop?.connectEnvironment, onClick: () => use("local") }} />
+      {state.connections.map(connection => <EnvironmentRow key={connection.id}
+        icon={connection.kind === "container" ? <BoxIcon size={18} /> : <ServerIcon size={18} />}
+        name={connection.name} detail={connectionAddress(connection)} status={connectionStatus(connection)}
+        state={rowState(connection)} menu={desktop ? menu(connection) : undefined}
+        action={connection.status === "connecting"
+          ? { label: "Cancel", onClick: () => void run(() => desktop!.disconnectEnvironment(connection.id)) }
+          : { label: connection.id === state.activeId ? "Reconnect" : "Use", disabled: connecting || !desktop?.connectEnvironment, onClick: () => use(connection.id) }} />)}
+    </div>
+    <div className="environment-add">
+      <button className="btn" onClick={() => setAdding(true)} disabled={!desktop?.saveEnvironment}><ServerIcon size={14} />Add SSH server</button>
+      <button className="btn" onClick={() => setContainer(true)} disabled={!desktop?.saveEnvironment}><BoxIcon size={14} />Add container</button>
+    </div>
+    <p className="settings-note">{desktop?.saveEnvironment
+      ? "Each environment keeps its own projects and conversations. Disconnecting leaves tasks and shells running on the other machine."
+      : "SSH servers and containers need the Citropy desktop app."}</p>
     <ActionError className="ssh-error" message={error} onDismiss={() => setError("")} />
     <AnimatePresence>{(container || editing?.kind === "container") && <ContainerEnvironment connection={editing} onClose={() => { setContainer(false); setEditing(undefined); }} />}{(adding || editing && editing.kind !== "container") && <NewSshConnection connection={editing} onClose={() => { setAdding(false); setEditing(undefined); }} />}</AnimatePresence>
   </div>;

@@ -1,10 +1,10 @@
 import { readdir, readFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { providerControl } from "./providers/control.ts";
 import { discoverOpenCodeCommands } from "./providers/opencode.ts";
 import type { ProviderCommand } from "../shared/features.ts";
 import type { ProviderId } from "../shared/protocol.ts";
+import { codexHome } from "./providers/config-folders.ts";
 
 const HIDDEN_COMMAND_NAMES = new Set([
   "color",
@@ -19,7 +19,7 @@ const catalogs = new Map<
   { time: number; value: Promise<ProviderCommand[]> }
 >();
 const promptDirectory = () =>
-  join(process.env.CODEX_HOME || join(homedir(), ".codex"), "prompts");
+  join(codexHome(), "prompts");
 
 async function codexPrompts() {
   const files = await readdir(promptDirectory(), { withFileTypes: true }).catch(

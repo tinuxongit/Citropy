@@ -6,6 +6,21 @@ const CELL_HEIGHT = 13;
 const FONT = '11px "Droid Sans Mono", ui-monospace, monospace';
 const THRESHOLD = 0.54;
 const STAR_AREA = 26000;
+const FADE_FLOOR = 0.45;
+const FADE_RADIUS = { x: 0.36, y: 0.6 };
+const FADE_TOP = 0.45;
+
+const STAGE_FADE = `
+uniform vec2 fadeCenter;
+uniform vec2 fadeRadius;
+uniform float visibleFrom;
+
+float stageFade(vec2 pixel) {
+  if (pixel.x < visibleFrom) return 0.0;
+  return mix(${FADE_FLOOR}, 1.0, clamp(length((pixel - fadeCenter) / fadeRadius), 0.0, 1.0));
+}`;
+
+const FADE_UNIFORMS = ["fadeCenter", "fadeRadius", "visibleFrom"];
 
 const FULL_SCREEN = `#version 300 es
 void main() {
@@ -17,7 +32,6 @@ const CELL_STATE = `#version 300 es
 precision highp float;
 precision highp int;
 uniform float time;
-uniform float firstColumn;
 out vec4 state;
 
 float hash(int x, int y, int z) {
@@ -42,7 +56,6 @@ float valueNoise(vec3 point) {
 void main() {
   state = vec4(0.0);
   int column = int(gl_FragCoord.x), row = int(gl_FragCoord.y);
-  if (float(column) < firstColumn) return;
   float density = valueNoise(vec3(float(column) * 0.032, float(row) * 0.058, time * 0.04)) * 0.7
     + valueNoise(vec3(float(column) * 0.12, float(row) * 0.2, time * 0.11 + 17.0)) * 0.3;
   float strength = (density - ${THRESHOLD}) / (1.0 - ${THRESHOLD});
@@ -60,15 +73,17 @@ uniform highp sampler2D atlas;
 uniform highp sampler2D cellState;
 uniform vec2 cell;
 uniform float height;
+${STAGE_FADE}
 out vec4 color;
 
 void main() {
   vec2 pixel = vec2(gl_FragCoord.x, height - gl_FragCoord.y);
+  float fade = stageFade(pixel);
   vec2 index = floor(pixel / cell);
   vec4 state = texelFetch(cellState, ivec2(index), 0);
-  if (state.a == 0.0) discard;
+  if (state.a == 0.0 || fade == 0.0) discard;
   vec2 glyph = floor(state.xy * 255.0 + 0.5);
-  color = texelFetch(atlas, ivec2(glyph * cell + pixel - index * cell), 0);
+  color = texelFetch(atlas, ivec2(glyph * cell + pixel - index * cell), 0) * fade;
 }`;
 
 const STAR_SHAPE = `#version 300 es
@@ -92,6 +107,7 @@ const STAR_FILL = `#version 300 es
 precision highp float;
 uniform vec4 starColor;
 uniform float height;
+${STAGE_FADE}
 flat in vec4 shape;
 flat in float level;
 out vec4 color;
@@ -102,9 +118,10 @@ void main() {
   bool across = pixel.y >= center.y && pixel.y < center.y + line.y && pixel.x >= center.x - arm.x && pixel.x < center.x + arm.x + line.x;
   bool down = pixel.x >= center.x && pixel.x < center.x + line.x && pixel.y >= center.y - arm.y && pixel.y < center.y + arm.y + line.y;
   float coats = float(across) + float(down);
-  if (coats == 0.0) discard;
+  float fade = stageFade(pixel);
+  if (coats == 0.0 || fade == 0.0) discard;
   float alpha = 1.0 - pow(1.0 - level * starColor.a, coats);
-  color = vec4(starColor.rgb * alpha, alpha);
+  color = vec4(starColor.rgb * alpha, alpha) * fade;
 }`;
 
 function hash(x: number, y: number, z: number): number {
@@ -170,12 +187,14 @@ function compile(gl: WebGL2RenderingContext, vertex: string, fragment: string): 
   return program;
 }
 
-function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFrom: initialVisibleFrom }: { color: string; starColor: string; animate: boolean; visibleFrom: number }) {
+export interface StageArea { left: number; center: number }
+
+function start(canvas: HTMLCanvasElement, { color, starColor, animate, stage: initialStage }: { color: string; starColor: string; animate: boolean; stage: StageArea }) {
   const gl = canvas.getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false, powerPreference: "low-power" });
   if (!gl) throw new Error("The ASCII background needs WebGL 2, which this display doesn't provide. Choose another background in Appearance settings.");
   const cellWidth = measureCellWidth();
   const star = rgba(starColor);
-  let visibleFrom = initialVisibleFrom;
+  let stage = initialStage;
   let scale = 1;
   let width = 0;
   let height = 0;
@@ -203,9 +222,9 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
     cellState = compile(gl, FULL_SCREEN, CELL_STATE);
     cells = compile(gl, FULL_SCREEN, CELLS);
     starProgram = compile(gl, STAR_SHAPE, STAR_FILL);
-    stateUniforms = Object.fromEntries(["time", "firstColumn"].map((name) => [name, gl.getUniformLocation(cellState, name)]));
-    cellUniforms = Object.fromEntries(["atlas", "cellState", "cell", "height"].map((name) => [name, gl.getUniformLocation(cells, name)]));
-    starUniforms = Object.fromEntries(["size", "time", "starColor", "height"].map((name) => [name, gl.getUniformLocation(starProgram, name)]));
+    stateUniforms = Object.fromEntries(["time"].map((name) => [name, gl.getUniformLocation(cellState, name)]));
+    cellUniforms = Object.fromEntries(["atlas", "cellState", "cell", "height", ...FADE_UNIFORMS].map((name) => [name, gl.getUniformLocation(cells, name)]));
+    starUniforms = Object.fromEntries(["size", "time", "starColor", "height", ...FADE_UNIFORMS].map((name) => [name, gl.getUniformLocation(starProgram, name)]));
     atlas = gl.createTexture();
     stateTexture = gl.createTexture();
     stateBuffer = gl.createFramebuffer();
@@ -226,6 +245,12 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
     width = 0;
   };
 
+  const setFade = (uniforms: Record<string, WebGLUniformLocation | null>) => {
+    gl.uniform2f(uniforms.fadeCenter!, stage.center * scale, canvas.height * FADE_TOP);
+    gl.uniform2f(uniforms.fadeRadius!, canvas.width * FADE_RADIUS.x, canvas.height * FADE_RADIUS.y);
+    gl.uniform1f(uniforms.visibleFrom!, stage.left * scale);
+  };
+
   const draw = (now: number) => {
     const time = clock(now);
     gl.disable(gl.BLEND);
@@ -233,7 +258,6 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
     gl.viewport(0, 0, columns, rows);
     gl.useProgram(cellState);
     gl.uniform1f(stateUniforms.time!, time);
-    gl.uniform1f(stateUniforms.firstColumn!, Math.max(0, Math.floor(visibleFrom / cellWidth)));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.enable(gl.BLEND);
@@ -249,12 +273,14 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
     gl.uniform1i(cellUniforms.cellState!, 1);
     gl.uniform2f(cellUniforms.cell!, cellWidth * scale, CELL_HEIGHT * scale);
     gl.uniform1f(cellUniforms.height!, canvas.height);
+    setFade(cellUniforms);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.useProgram(starProgram);
     gl.uniform2f(starUniforms.size!, canvas.width, canvas.height);
     gl.uniform1f(starUniforms.time!, time);
     gl.uniform4f(starUniforms.starColor!, ...star);
     gl.uniform1f(starUniforms.height!, canvas.height);
+    setFade(starUniforms);
     gl.bindVertexArray(starLayout);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, starCount);
     gl.bindVertexArray(null);
@@ -310,7 +336,10 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
       pausedFor += performance.now() - pausedAt;
       pausedAt = undefined;
     },
-    setVisibleFrom: (value: number) => { visibleFrom = value; },
+    setStage: (value: StageArea) => {
+      stage = value;
+      if (pausedAt !== undefined && !gl.isContextLost()) draw(pausedAt);
+    },
     stop: () => {
       canvas.removeEventListener("webglcontextlost", lose);
       canvas.removeEventListener("webglcontextrestored", restore);
@@ -326,20 +355,20 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFr
   };
 }
 
-export function startAsciiNoise(canvas: HTMLCanvasElement, { color, starColor, animate, visibleFrom }: {
+export function startAsciiNoise(canvas: HTMLCanvasElement, { color, starColor, animate, stage }: {
   color: string;
   starColor: string;
   animate: boolean;
-  visibleFrom: () => number;
+  stage: () => StageArea;
 }): () => void {
   const scale = () => Math.min(2, window.devicePixelRatio || 1);
-  const noise = start(canvas, { color, starColor, animate, visibleFrom: visibleFrom() });
+  const noise = start(canvas, { color, starColor, animate, stage: stage() });
   noise.resize(canvas.clientWidth, canvas.clientHeight, scale());
   const observer = new ResizeObserver(() => noise.resize(canvas.clientWidth, canvas.clientHeight, scale()));
   observer.observe(canvas);
-  const stage = canvas.parentElement!;
-  const moved = () => noise.setVisibleFrom(visibleFrom());
-  stage.addEventListener("stage-metrics", moved);
+  const layers = canvas.parentElement!;
+  const moved = () => noise.setStage(stage());
+  layers.addEventListener("stage-metrics", moved);
   const visibility = () => noise.setHidden(document.hidden);
   const stopTicks = animate ? onAnimationTick(noise.tick) : undefined;
   if (animate) {
@@ -349,7 +378,7 @@ export function startAsciiNoise(canvas: HTMLCanvasElement, { color, starColor, a
   return () => {
     stopTicks?.();
     observer.disconnect();
-    stage.removeEventListener("stage-metrics", moved);
+    layers.removeEventListener("stage-metrics", moved);
     document.removeEventListener("visibilitychange", visibility);
     noise.stop();
   };

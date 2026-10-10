@@ -218,17 +218,6 @@
   position: relative;
   flex: none;
 }
-.composer-bar-group > :not(:first-child)::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: calc(var(--bar-gap) / -2);
-  width: 1px;
-  height: 16px;
-  transform: translate(-50%, -50%);
-  background: var(--line);
-  pointer-events: none;
-}
 .composer-bar > :last-child {
   flex-shrink: 1;
   min-width: 0;

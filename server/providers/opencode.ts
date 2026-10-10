@@ -18,6 +18,10 @@ import { normalizeTodos } from "../../shared/todos.ts";
 import { pathToFileURL } from "node:url";
 import type { ProviderCommand } from "../../shared/features.ts";
 
+function outputLimitError(tokens: { output: number; reasoning?: number } | undefined): string {
+  const used = (tokens?.output ?? 0) + (tokens?.reasoning ?? 0);
+  return `The model reached its output limit of ${used.toLocaleString("en-US")} tokens before finishing its reply, ${(tokens?.reasoning ?? 0).toLocaleString("en-US")} of them spent thinking. Try a lower effort or a smaller request.`;
+}
 
 interface Instance {
   base: string;
@@ -367,7 +371,7 @@ class OpenCodeSession implements AgentSession {
 
     if (type === "message.updated") {
       const info = props.info as
-        | { id?: string; role?: string; tokens?: { input: number; output: number; reasoning?: number; total?: number; cache?: { read: number; write: number } }; cost?: number; time?: { completed?: number } }
+        | { id?: string; role?: string; finish?: string; tokens?: { input: number; output: number; reasoning?: number; total?: number; cache?: { read: number; write: number } }; cost?: number; time?: { completed?: number } }
         | undefined;
       if (info?.id && info.role) this.#roles.set(info.id, info.role);
       if (!info || info.role !== "assistant") return;
@@ -390,6 +394,7 @@ class OpenCodeSession implements AgentSession {
       if (info.time?.completed) {
         for (const id of this.#blocks.keys()) emit({ type: "block.end", blockId: id });
         this.#blocks.clear();
+        if (info.finish === "length") this.#finish(outputLimitError(info.tokens));
       }
       return;
     }
@@ -604,7 +609,8 @@ export const opencodeProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "http", steer: true, compact: true, stopShell: false },
   steerHint: "OpenCode adds it to the run in progress.",
-  signIn: { kind: "terminal", login: ["auth", "login"], status: ["auth", "list"], signedIn: (output) => /\b[1-9]\d* (credentials?|environment variables?)\b/.test(output) },
+  signIn: { kind: "terminal", login: ["auth", "login"], status: ["auth", "list"], signedIn: (output) => /\b[1-9]\d* (credentials?|environment variables?)\b/.test(output),
+    home: { variable: "XDG_DATA_HOME" } },
   models: [],
   async listModels(launch) {
     const resolved = await resolveOpenCode(launch);

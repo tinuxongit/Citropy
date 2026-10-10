@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { isProviderId, signInTerminalId, type ClientEvent } from "../../shared/protocol.ts";
 import { panelList } from "../panels.ts";
 import { providerSignInCommand } from "../provider-sign-in.ts";
+import { resolveProviderAccount } from "../provider-account.ts";
 import { providers } from "../providers/index.ts";
 import * as terminals from "../terminals.ts";
 import { resolveWorkspace, workspacePath } from "../workspaces.ts";
@@ -9,8 +10,10 @@ import type { Routes } from "./types.ts";
 
 async function openSignIn(event: Extract<ClientEvent, { t: "term.open" }> & { signIn: unknown }): Promise<boolean> {
   if (!isProviderId(event.signIn)) throw new Error("Unknown provider.");
-  if (event.termId !== signInTerminalId(event.signIn)) throw new Error("This sign-in terminal does not match its provider.");
-  await terminals.open(event.termId, homedir(), event.cols, event.rows, providerSignInCommand(providers[event.signIn]));
+  const instanceId = "instanceId" in event && typeof event.instanceId === "string" ? event.instanceId : undefined;
+  if (event.termId !== signInTerminalId(event.signIn, instanceId)) throw new Error("This sign-in terminal does not match its provider.");
+  const { launch } = resolveProviderAccount(event.signIn, instanceId);
+  await terminals.open(event.termId, homedir(), event.cols, event.rows, providerSignInCommand(providers[event.signIn], launch), launch.environment);
   return true;
 }
 

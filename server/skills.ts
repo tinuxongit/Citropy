@@ -16,6 +16,7 @@ import { store } from "./store.ts";
 import { providerControl } from "./providers/control.ts";
 import { PROVIDER_IDS, type ProviderId, type Thread } from "../shared/protocol.ts";
 import type { SkillInfo } from "../shared/features.ts";
+import { claudeHome, codexHome } from "./providers/config-folders.ts";
 
 export const MAX_SKILL_BYTES = 100_000;
 const disabledName = "SKILL.md.citropy-disabled";
@@ -30,13 +31,13 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
   const home = homedir();
   const locations: SkillRoot[] = [
     {
-      path: join(process.env.CODEX_HOME || join(home, ".codex"), "skills"),
+      path: join(codexHome(), "skills"),
       provider: "codex",
       scope: "personal",
     },
     {
       path: join(
-        process.env.CODEX_HOME || join(home, ".codex"),
+        codexHome(),
         "plugins/cache",
       ),
       provider: "codex",
@@ -44,7 +45,7 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
     },
     {
       path: join(
-        process.env.CLAUDE_CONFIG_DIR || join(home, ".claude"),
+        claudeHome(),
         "skills",
       ),
       provider: "claude",
@@ -52,7 +53,7 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
     },
     {
       path: join(
-        process.env.CLAUDE_CONFIG_DIR || join(home, ".claude"),
+        claudeHome(),
         "plugins/cache",
       ),
       provider: "claude",
@@ -89,7 +90,7 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
   }
   const registryFile = await readFile(
     join(
-      process.env.CLAUDE_CONFIG_DIR || join(home, ".claude"),
+      claudeHome(),
       "plugins/installed_plugins.json",
     ),
     "utf8",
@@ -119,7 +120,7 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
 async function codexSkills(
   projectPath?: string,
 ): Promise<SkillInfo[] | undefined> {
-  const home = process.env.CODEX_HOME || join(homedir(), ".codex");
+  const home = codexHome();
   if (!(await realpath(home).catch(ifMissing("")))) return;
   try {
     const result = await providerControl("codex", "skills/list", {

@@ -58,5 +58,7 @@ test("a sign-in terminal only opens under its own provider's id", async () => {
   const open = (termId, signIn) => terminalRoutes["term.open"]({ t: "term.open", termId, cols: 80, rows: 24, signIn }, event => sent.push(event));
   await assert.rejects(open("sign-in-claude", "codex"), /does not match its provider/);
   await assert.rejects(open("sign-in-nobody", "nobody"), /Unknown provider/);
+  await assert.rejects(terminalRoutes["term.open"]({ t: "term.open", termId: "sign-in-claude", cols: 80, rows: 24, signIn: "claude", instanceId: "pvi_other" }, event => sent.push(event)), /does not match its provider/);
+  await assert.rejects(terminalRoutes["term.open"]({ t: "term.open", termId: "sign-in-claude-pvi_missing", cols: 80, rows: 24, signIn: "claude", instanceId: "pvi_missing" }, event => sent.push(event)), /account is unavailable/);
   assert.deepEqual(sent, []);
 });

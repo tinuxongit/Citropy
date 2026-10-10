@@ -14,7 +14,9 @@ import { ANSWER_WAIT_MS, permissionToolName } from "../permissions.ts";
 import type { AgentEvent, AgentSession, Provider, SessionConfig, StartOptions } from "./types.ts";
 import type { Attachment, PermissionMode, ThreadStatus, TodoItem } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
+import { claudeHome } from "./config-folders.ts";
 
+const SHARED_SETTINGS = ["settings.json", "CLAUDE.md", "agents", "commands", "skills", "plugins"];
 const DEFAULT_CONTEXT_MAX = 200_000;
 const EXTENDED_CONTEXT_MAX = 1_000_000;
 
@@ -582,7 +584,8 @@ export const claudeProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "stdio", steer: true, compact: true, stopShell: true },
   steerHint: "Claude Code reads it at its next step.",
-  signIn: { kind: "terminal", login: ["auth", "login"], status: ["auth", "status"], signedIn: (output) => /"loggedIn":\s*true\b/.test(output) },
+  signIn: { kind: "terminal", login: ["auth", "login"], status: ["auth", "status"], signedIn: (output) => /"loggedIn":\s*true\b/.test(output),
+    home: { variable: "CLAUDE_CONFIG_DIR", shared: { from: claudeHome, items: SHARED_SETTINGS } } },
   models: [],
   listModels: (launch) => discoverModels("claude", launch),
   async detect(launch) {

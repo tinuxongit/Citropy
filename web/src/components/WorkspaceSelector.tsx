@@ -16,6 +16,7 @@ import { confirmAction, selectProject, useApp } from "../lib/store.ts";
 import type { Project } from "../../../shared/protocol.ts";
 import { Menu, type MenuItem } from "./Menu.tsx";
 import { Loader } from "./Loader.tsx";
+import { connectionAddress, connectionStatus } from "./environments/environment-status.ts";
 
 export type WorkspaceScope = "local" | "servers";
 export type WorkspaceDialog = "import" | "container" | "ssh";
@@ -45,7 +46,7 @@ export function WorkspaceMenu({ scope, onDialog }: { scope: WorkspaceScope; onDi
     const entries = current ? projects : catalog[id]?.projects ?? [];
     const root = current ? home : catalog[id]?.home ?? "";
     return [
-      { id: `${id}:open`, label: "Open another folder…", icon: <FolderPlusIcon size={17} className="workspace-add-icon" />, disabled: choosing, onSelect: () => { void chooseWorkspaceOn(id); } },
+      { id: `${id}:open`, label: "Open a folder…", icon: <FolderPlusIcon size={17} />, disabled: choosing, onSelect: () => { void chooseWorkspaceOn(id); } },
       ...entries.map(entry => ({
         id: `${id}:${entry.id}`, label: entry.name, hint: shortPath(entry.path, root),
         selected: current && entry.id === activeProjectId,
@@ -56,20 +57,19 @@ export function WorkspaceMenu({ scope, onDialog }: { scope: WorkspaceScope; onDi
           else void selectEnvironment(id, entry.id).catch(reportError);
         },
       })),
-      ...(!current && !catalog[id] ? [{ id: `${id}:load`, label: "Load workspaces", icon: <ServerIcon size={17} />, onSelect: () => { void selectEnvironment(id).catch(reportError); } }] : []),
     ];
   };
   const items: MenuItem[] = scope === "local" ? [
     ...group("local"),
     { id: "import-sessions", label: "Import conversations…", section: "Workspace actions", icon: <DownloadIcon size={17} />, onSelect: () => onDialog("import") },
   ] : [
-    ...environments.connections.map(entry => ({
-      id: `environment:${entry.id}`, label: entry.name, hint: entry.target,
+    ...environments.connections.length === 1 ? group(environments.connections[0]!.id) : environments.connections.map(entry => ({
+      id: `environment:${entry.id}`, label: entry.name, hint: `${connectionAddress(entry)} · ${connectionStatus(entry)}`,
       icon: entry.status === "connecting" ? <Loader size={17} /> : entry.kind === "container" ? <BoxIcon size={17} /> : <ServerIcon size={17} />,
       children: group(entry.id),
     })),
     { id: "environment:container", label: "Add container…", section: "Workspace actions", icon: <BoxIcon size={17} />, onSelect: () => onDialog("container") },
-    { id: "environment:add", label: "Connect over SSH…", section: "Workspace actions", icon: <ServerIcon size={17} />, onSelect: () => onDialog("ssh") },
+    { id: "environment:add", label: "Add SSH server…", section: "Workspace actions", icon: <ServerIcon size={17} />, onSelect: () => onDialog("ssh") },
   ];
   const label = SCOPE_LABELS[scope];
   return <Menu align="start" side="right" header={label} className="workspace-menu" width={340} searchable searchPlaceholder="Find a workspace" items={items}

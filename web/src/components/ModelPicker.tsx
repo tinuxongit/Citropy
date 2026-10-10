@@ -8,7 +8,7 @@ import { StarIcon } from "./icons/actions.tsx";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../../shared/protocol.ts";
 import { effectiveEffort, selectedModel } from "../../../shared/model-options.ts";
-import { providerAccount } from "../../../shared/provider-account.ts";
+import { activeAccountId, providerAccount } from "../../../shared/provider-account.ts";
 import { toggleFavoriteModel, useApp, viewportWidth } from "../lib/store.ts";
 import { effortLabel, modelLabel, modelSource } from "../lib/format.ts";
 import { byFamily } from "../lib/model-order.ts";
@@ -51,7 +51,8 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
     setTransferring(false);
     setTarget(undefined);
   }, [choice?.provider]);
-  const available = providers.filter((entry) => entry.enabled && (entry.available || (!defaultOnly && entry.instances?.some(instance => instance.available))));
+  const accountId = (source: ProviderInfo) => defaultOnly ? undefined : activeAccountId(source);
+  const available = providers.filter((entry) => providerAccount(entry, accountId(entry)).usable);
   const provider = providers.find((entry) => entry.id === choice?.provider);
   const locked = transferring ? undefined : lockedProvider;
   const catalog = locked ? providers.find((entry) => entry.id === locked) : available.find((entry) => entry.id === browsing) ?? available[0];
@@ -66,19 +67,19 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
   const favoritesView = browsing === "favorites";
   const catalogs = favoritesView ? available.filter((entry) => !locked || entry.id === locked) : catalog ? [catalog] : [];
   const columnProviders = locked ? (catalog ? [catalog] : []) : available;
-  const accounts = (source: ProviderInfo, restrict: boolean): Array<{ id?: string; instance?: string; models: ModelOption[] }> => [
-    ...(source.available ? [{ id: undefined, instance: undefined, models: byFamily(source.models) }] : []),
-    ...(!defaultOnly ? (source.instances ?? []).filter(instance => instance.available).map(instance => ({ id: instance.id, instance: instance.name, models: byFamily(instance.models) })) : []),
-  ].filter(account => !restrict || account.id === currentInstanceId);
-  const modelHint = (source: ProviderInfo, instance: string | undefined, entry: ModelOption) => {
+  const accounts = (source: ProviderInfo, restrict: boolean): Array<{ id?: string; models: ModelOption[] }> => {
+    const id = restrict ? currentInstanceId : accountId(source);
+    return [{ id, models: byFamily(providerAccount(source, id).models) }];
+  };
+  const modelHint = (source: ProviderInfo, entry: ModelOption) => {
     const origin = modelSource(source, entry);
-    return [instance, origin !== source.label && origin].filter(Boolean).join(" · ") || undefined;
+    return origin !== source.label ? origin : undefined;
   };
   const providerMark = (source: ProviderInfo) => favoritesView ? <ProviderIcon provider={source.id} /> : undefined;
   const transferItems = catalogs.flatMap(source => accounts(source, false).flatMap(account => account.models.filter(entry => !favoritesView || favorites.some(favorite => favorite.provider === source.id && favorite.providerInstanceId === account.id && favorite.model === entry.id)).map(entry => ({
     id: `${source.id}:${account.id ?? "default"}:${entry.id}`,
     label: entry.label,
-    hint: modelHint(source, account.instance, entry),
+    hint: modelHint(source, entry),
     icon: providerMark(source),
     disabled: transferDisabled || (source.id === choice?.provider && account.id === choice?.providerInstanceId && entry.id === model?.id),
     selected: Boolean(target && target.provider === source.id && target.providerInstanceId === account.id && target.model === entry.id),
@@ -144,7 +145,7 @@ export function ModelPicker({ value, fallback, label, onChange, onTransfer, tran
       ...(transferring ? transferItems : catalogs.flatMap(source => accounts(source, Boolean(locked)).flatMap(account => account.models.filter(entry => !favoritesView || favorites.some(favorite => favorite.provider === source.id && favorite.model === entry.id && favorite.providerInstanceId === account.id)).map(entry => ({
         id: `${source.id}:${account.id ?? "default"}:${entry.id}`,
         label: entry.label,
-        hint: modelHint(source, account.instance, entry),
+        hint: modelHint(source, entry),
         icon: providerMark(source),
         selected: Boolean(value && source.id === choice?.provider && account.id === choice?.providerInstanceId && entry.id === model?.id),
         keepOpen: Boolean(tuning),

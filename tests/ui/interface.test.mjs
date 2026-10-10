@@ -602,7 +602,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   });
 
-  check("settings keep edits made while an earlier save is pending", async t => {
+  check("project defaults keep the newest edit while an earlier save is pending", async t => {
     const page = await fixture(t, `
       import React from 'react';
       import { createRoot } from 'react-dom/client';
@@ -614,30 +614,51 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       root.style.cssText = 'position:absolute;top:20px;left:40px;width:700px';
       createRoot(root).render(React.createElement(ProjectSettings));
     `);
-    let pending;
-    await page.route('**/api/projects**', route => { pending = route; });
-    const pull = page.getByRole('switch', { name: /Pull before starting/ });
+    const pending = [];
+    await page.route('**/api/projects/defaults', route => { pending.push(route); });
+    const pull = page.getByRole('switch', { name: 'Pull before starting' });
     await pull.check();
-    await page.getByRole('button', { name: 'Save global defaults', exact: true }).click();
-    await expect(() => Boolean(pending));
+    await expect(() => pending.length === 1);
     await pull.uncheck();
-    await pending.fulfill({ json: { autoPull: true } });
+    await expect(() => pending.length === 2);
+    await pending[0].fulfill({ json: { autoPull: true } });
     await page.waitForFunction(() => window.settingsStore.getState().projectDefaults.autoPull === true);
     await settled(page);
     assert.equal(await pull.isChecked(), false);
-    assert.equal(await page.getByText('Global defaults saved', { exact: true }).count(), 0);
-    pending = undefined;
-    const name = page.getByRole('textbox', { name: 'Project name', exact: true });
-    await name.fill('First name');
-    await page.getByRole('button', { name: 'Save folder settings', exact: true }).click();
-    await expect(() => Boolean(pending));
-    await name.fill('Latest name');
-    const finished = page.waitForEvent('requestfinished', request => request === pending.request());
-    await pending.fulfill({ json: { ...project, name: 'First name', settings: {} } });
-    await finished;
-    await settled(page);
-    assert.equal(await name.inputValue(), 'Latest name');
-    assert.equal(await page.getByText('Folder settings saved', { exact: true }).count(), 0);
+    await pending[1].fulfill({ json: { autoPull: false } });
+    await page.waitForFunction(() => window.settingsStore.getState().projectDefaults.autoPull === false);
+    assert.equal(await pull.isChecked(), false);
+  });
+
+  check("a project dialog saves only the settings changed for that project", async t => {
+    const page = await fixture(t, `
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { ProjectSettings } from '/web/src/components/ProjectSettings.tsx';
+      import { useApp } from '/web/src/lib/store.ts';
+      useApp.setState({ projects: [${JSON.stringify(project)}], activeProjectId: 'project', projectDefaults: { permissionMode: 'plan' }, providers: [] });
+      const root = document.querySelector('#fixture');
+      root.style.cssText = 'position:absolute;top:20px;left:40px;width:700px';
+      createRoot(root).render(React.createElement(ProjectSettings));
+    `);
+    let saved;
+    await page.route('**/api/projects?projectId=*', route => { saved = route.request().postDataJSON(); route.fulfill({ json: { ...project, ...saved } }); });
+    await page.getByRole('button', { name: new RegExp(project.name) }).click();
+    const dialog = page.getByRole('dialog');
+    const permissions = dialog.getByRole('button', { name: 'Permissions', exact: true });
+    assert.equal(await permissions.textContent(), 'Plan only');
+    await permissions.click();
+    await page.getByRole('menuitem', { name: /^Full access/ }).click();
+    const reset = dialog.getByRole('button', { name: 'Use default permissions' });
+    await reset.click();
+    assert.equal(await reset.count(), 0);
+    assert.equal(await permissions.textContent(), 'Plan only');
+    await dialog.getByRole('button', { name: 'Workspace', exact: true }).click();
+    await page.getByRole('menuitem', { name: /^New worktree/ }).click();
+    await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill('Renamed');
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(async () => await page.getByRole('dialog').count() === 0);
+    assert.deepEqual(saved, { name: 'Renamed', settings: { workspace: 'new' } });
   });
 
   check("typing several lines keeps the chat at the bottom", async (t) => {

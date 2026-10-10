@@ -11,47 +11,50 @@ import type { AppSignIn, Provider, TerminalSignIn } from "./providers/types.ts";
 
 const STATUS_TIMEOUT = 15_000;
 
-function statusOutput(provider: Provider, signIn: TerminalSignIn): Promise<string> {
-  const call = invocation(resolveCommand(provider.binary), signIn.status);
+type Launch = ReturnType<typeof resolveProviderAccount>["launch"];
+
+function accounts(provider: Provider): Array<string | undefined> {
+  return [undefined, ...[...store.providerInstances.values()].filter(instance => instance.provider === provider.id).map(instance => instance.id)];
+}
+
+function statusOutput(binary: string, signIn: TerminalSignIn, launch: Launch): Promise<string> {
+  const call = invocation(resolveCommand(binary), signIn.status);
   return new Promise((resolve, reject) => {
-    execFile(call.file, call.args, { timeout: STATUS_TIMEOUT, windowsHide: true, windowsVerbatimArguments: call.verbatim }, (error, stdout, stderr) => {
+    execFile(call.file, call.args, { timeout: STATUS_TIMEOUT, windowsHide: true, windowsVerbatimArguments: call.verbatim, env: { ...process.env, ...launch.environment } }, (error, stdout, stderr) => {
       if (error && (error.killed || typeof error.code !== "number")) reject(error);
       else resolve(stripVTControlCharacters(`${stdout}\n${stderr}`));
     });
   });
 }
 
-async function terminalStatus(provider: Provider, signIn: TerminalSignIn): Promise<ProviderSignIn> {
-  if (!resolveCommand(provider.binary).path) return { provider: provider.id };
+async function terminalStatus(provider: Provider, signIn: TerminalSignIn, launch: Launch): Promise<{ signedIn?: boolean; error?: string }> {
+  const binary = launch.binary ?? provider.binary;
+  if (!resolveCommand(binary).path) return {};
   try {
-    return { provider: provider.id, signedIn: signIn.signedIn(await statusOutput(provider, signIn)) };
+    return { signedIn: signIn.signedIn(await statusOutput(binary, signIn, launch)) };
   } catch (error) {
-    return { provider: provider.id, error: `Could not check sign-in: ${(error as Error).message}` };
+    return { error: `Could not check sign-in: ${(error as Error).message}` };
   }
 }
 
-function appStatuses(provider: Provider, signIn: AppSignIn): Promise<ProviderSignIn[]> {
-  const accounts = [undefined, ...[...store.providerInstances.values()].filter(instance => instance.provider === provider.id).map(instance => instance.id)];
-  return Promise.all(accounts.map(async instanceId => ({
+function accountStatus(provider: Provider, launch: Launch) {
+  return provider.signIn.kind === "terminal" ? terminalStatus(provider, provider.signIn, launch) : provider.signIn.status(launch);
+}
+
+export function providerSignIns(): Promise<ProviderSignIn[]> {
+  return Promise.all(Object.values(providers).flatMap(provider => accounts(provider).map(async instanceId => ({
     provider: provider.id,
     ...(instanceId ? { instanceId } : {}),
-    ...await signIn.status(resolveProviderAccount(provider.id, instanceId).launch),
-  })));
+    ...await accountStatus(provider, resolveProviderAccount(provider.id, instanceId).launch),
+  }))));
 }
 
-export async function providerSignIns(only: ProviderId[] = []): Promise<ProviderSignIn[]> {
-  const chosen = Object.values(providers).filter(provider => !only.length || only.includes(provider.id));
-  const statuses = await Promise.all(chosen.map(provider =>
-    provider.signIn.kind === "terminal" ? terminalStatus(provider, provider.signIn).then(status => [status]) : appStatuses(provider, provider.signIn)));
-  return statuses.flat();
-}
-
-export function providerSignInCommand(provider: Provider): string {
+export function providerSignInCommand(provider: Provider, launch: Launch): string {
   if (provider.signIn.kind !== "terminal") throw new Error(`${provider.label} signs in from Settings > Providers.`);
-  return [provider.binary, ...provider.signIn.login].join(" ");
+  return [launch.binary ?? provider.binary, ...provider.signIn.login].join(" ");
 }
 
-export function appSignIn(providerId: ProviderId, instanceId?: string): { signIn: AppSignIn; launch: ReturnType<typeof resolveProviderAccount>["launch"] } {
+export function appSignIn(providerId: ProviderId, instanceId?: string): { signIn: AppSignIn; launch: Launch } {
   const provider = providers[providerId];
   if (provider.signIn.kind !== "app") throw new Error(`${provider.label} signs in from a terminal.`);
   return { signIn: provider.signIn, launch: resolveProviderAccount(providerId, instanceId).launch };

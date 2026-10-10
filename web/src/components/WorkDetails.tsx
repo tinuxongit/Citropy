@@ -1,5 +1,5 @@
 import { useShallow } from "zustand/react/shallow";
-import type { ToolPart } from "../../../shared/protocol.ts";
+import type { Part, ToolPart } from "../../../shared/protocol.ts";
 import { useApp } from "../lib/store.ts";
 import { useDisclosure } from "../lib/use-disclosure.ts";
 import { groupStats } from "../lib/group.ts";
@@ -9,12 +9,19 @@ import { WarningIcon } from "./icons/status.tsx";
 import { ChevronRightIcon } from "./icons/chevrons.tsx";
 import { CheckIcon } from "./icons/marks.tsx";
 
+function partEndedAt(part: Part | undefined): number {
+  if (part?.kind === "tool") return part.endedAt ?? part.startedAt;
+  if (part?.kind === "text" || part?.kind === "reasoning") return part.endedAt ?? 0;
+  return 0;
+}
+
 export function WorkDetails({ id, ids, messageIds, open, active, since, transitionActivity }: Omit<FoldRow, "kind"> & { transitionActivity?: (id: string, update: () => void) => void }) {
   const showFailedTools = useApp(state => state.showFailedTools);
   const [, setOpen] = useDisclosure(id, "activity");
   const tools = useApp(useShallow(state => ids.map(id => state.parts.get(id)).filter((part): part is ToolPart => part?.kind === "tool")));
   const lastMessageAt = useApp(state => Math.max(...messageIds.map(id => state.messages[id]?.ts ?? since)));
-  const endedAt = Math.max(lastMessageAt, ...tools.map(tool => tool.endedAt ?? tool.startedAt));
+  const lastPartAt = useApp(state => Math.max(since, ...ids.map(id => partEndedAt(state.parts.get(id)))));
+  const endedAt = Math.max(lastMessageAt, lastPartAt);
   const { failed } = groupStats(tools);
   return (
     <button id={`fold-${id}`} className="work-fold" type="button" aria-expanded={open} onClick={() => {

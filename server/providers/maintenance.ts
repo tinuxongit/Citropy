@@ -16,6 +16,7 @@ import type { ProviderId } from "../../shared/protocol.ts";
 import { installAntigravity, antigravityInstallation } from "./antigravity/install.ts";
 import { ANTIGRAVITY_RELEASE } from "./antigravity/release.ts";
 import type { ProviderMaintenance } from "../../shared/provider-settings.ts";
+import { claudeHome, codexHome } from "./config-folders.ts";
 
 const run = promisify(execFile);
 const WHERE_NOT_FOUND = 1;
@@ -199,7 +200,7 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
   }
   if (provider === "codex" && process.platform !== "win32") {
     const installDirectory = process.env.CODEX_INSTALL_DIR || join(homedir(), ".local", "bin");
-    const standalone = join(process.env.CODEX_HOME || join(homedir(), ".codex"), "packages", "standalone", "releases");
+    const standalone = join(codexHome(), "packages", "standalone", "releases");
     if (binaryPath === join(installDirectory, "codex") && (target === binaryPath || target.startsWith(`${standalone}/`))) {
       const shell = await executablePath("sh");
       if (shell) return { binaryPath, method: "Standalone installer", executable: shell, args: [], installer: "https://chatgpt.com/codex/install.sh" };
@@ -302,7 +303,7 @@ async function latestVersion(
     if (provider === "claude" && plan.method === "Native updater") {
       const settings = await readFile(
         join(
-          process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"),
+          claudeHome(),
           "settings.json",
         ),
         "utf8",

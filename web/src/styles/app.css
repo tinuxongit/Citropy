@@ -285,8 +285,9 @@
   transition: --glass-width var(--dur-panel) var(--ease-drawer);
 }
 .backdrop-layers[data-kind="ascii"] > .stage-backdrop {
-  clip-path: inset(0 0 0 var(--stage-left, 0px));
   opacity: calc(0.55 * (1 - var(--dim)));
+}
+.backdrop-layers[data-kind="ascii"] > .stage-backdrop[data-blurred] {
   filter: blur(var(--blur));
 }
 .stage-focus-band.stage-focus-ascii {
@@ -305,13 +306,11 @@
   color: var(--text-4);
   opacity: 0.55;
   pointer-events: none;
-  mask-image: radial-gradient(ellipse 36% 60% at var(--stage-center, 50%) 45%, rgb(0 0 0 / 0.45), #000);
 }
 .stage-backdrop-image {
   background: center / cover no-repeat;
   object-fit: cover;
   image-rendering: pixelated;
-  mask-image: none;
 }
 .stage-backdrop-image[data-blurred] {
   object-fit: fill;
@@ -344,19 +343,16 @@
 .stage-backdrop.stage-backdrop-focus {
   transform: translateX(calc(-1 * var(--focus-offset)));
   will-change: transform;
-  mask-image: none;
 }
 .stage-backdrop:is(.stage-backdrop-glass, .stage-backdrop-focus) {
   opacity: 1;
 }
 .stage-backdrop.stage-backdrop-glass {
-  mask: none;
   clip-path: inset(0 calc(100% - var(--strip) - var(--glass-width)) 0 var(--strip));
 }
 .stage-backdrop.stage-backdrop-inspector {
   opacity: 0;
   transition: opacity var(--dur-panel) var(--ease-out);
-  mask: none;
   clip-path: inset(var(--topbar) 0 0 calc(100% - var(--stage-right, 0px)) round var(--r-lg) 0 0 0);
 }
 .shell:has(> .shell-body > .sliding-panel[data-side="right"][data-shown="true"]) .stage-backdrop-inspector {
@@ -391,7 +387,7 @@
 .shell[data-backdrop="image"] :is(.inspector, .composer-glass, .question-form, .permission-card) {
   backdrop-filter: blur(18px);
 }
-.shell[data-backdrop] :is([popover], dialog, .notification-center, .details-card, .toast, .context-details, .composer-suggestions, .message-nav-preview, .remote-connection-banner, .app-update-popover) {
+.shell[data-backdrop] :is([popover]:not(.usage-peek), dialog, .notification-center, .details-card, .toast, .context-details, .composer-suggestions, .message-nav-preview, .remote-connection-banner, .app-update-popover) {
   backdrop-filter: blur(28px) saturate(1.1);
 }
 .shell[data-backdrop] .composer-shell::before { background: none; }
@@ -768,6 +764,3 @@
 :root[data-platform="darwin"] .navigation-strip-brand::before {
   visibility: hidden;
 }
-
-.workspace-menu .menu-item:has(.workspace-add-icon) { background: var(--raised-2); color: var(--text); }
-.workspace-menu .workspace-add-icon { color: var(--accent); }

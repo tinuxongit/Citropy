@@ -1,13 +1,23 @@
 .environment-settings { display: flex; flex-direction: column; gap: var(--space-16); }
-.environment-row { display: flex; align-items: center; gap: var(--space-16); padding: var(--space-20) 0; }
-.environment-row > svg { flex: none; color: var(--text-3); }
-.environment-row > div:first-of-type { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: var(--space-6); }
-.environment-row strong { font-weight: 500; overflow-wrap: anywhere; }
-.environment-row small { color: var(--text-3); overflow-wrap: anywhere; }
-.environment-row[data-active="true"] > svg { color: var(--accent); }
-.environment-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-8); }
-.environment-heading h2 { font-size: var(--text-body); font-weight: 500; }
-.environment-actions { display: flex; align-items: center; gap: var(--space-6); }
+.environment-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 64px;
+  padding: var(--space-12) var(--settings-inset);
+}
+.environment-list > .environment-row + .environment-row { border-top: 1px solid var(--line); }
+.environment-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-full); background: var(--raised); color: var(--text-2); }
+.environment-row[data-state="in-use"] .environment-icon { color: var(--accent); }
+.environment-text { display: grid; gap: var(--space-2); min-width: 0; }
+.environment-text strong { overflow: hidden; font-size: var(--text-sm); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.environment-text small { overflow: hidden; color: var(--text-3); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.environment-status { display: flex; align-items: center; gap: var(--space-6); }
+.environment-row[data-state="error"] .environment-status { color: var(--bad); white-space: normal; overflow-wrap: anywhere; }
+.environment-actions { display: flex; align-items: center; gap: var(--space-4); }
+.environment-menu-space { width: 32px; }
+.environment-add { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .ssh-form, .ssh-options { display: flex; flex-direction: column; gap: var(--space-10); }
 .ssh-form > label:not(:first-child) { margin-top: var(--space-6); }
 .ssh-form input { min-width: 0; width: 100%; padding: var(--space-10) var(--space-12); }
@@ -34,8 +44,6 @@
 .remote-connection-banner > svg { flex: none; }
 .environment-breadcrumb { max-width: 130px; }
 @media (max-width: 720px) {
-  .environment-row { flex-wrap: wrap; }
-  .environment-actions { margin-left: auto; }
   .remote-connection-banner { flex-wrap: wrap; }
   .remote-connection-banner > span { flex-basis: calc(100% - 40px); }
   .environment-breadcrumb { display: none; }

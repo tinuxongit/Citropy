@@ -12,7 +12,9 @@ import { ask, cancelThread } from "../permissions.ts";
 import type { AgentSession, Provider, StartOptions } from "./types.ts";
 import type { Attachment, PermissionMode } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
+import { codexHome } from "./config-folders.ts";
 
+const SHARED_SETTINGS = ["config.toml", "AGENTS.md", "prompts", "skills"];
 const MODES: Record<PermissionMode, { approvalPolicy: string; sandbox: string; approvalsReviewer: string }> = {
   manual: { approvalPolicy: "untrusted", sandbox: "read-only", approvalsReviewer: "user" },
   acceptEdits: { approvalPolicy: "on-request", sandbox: "workspace-write", approvalsReviewer: "user" },
@@ -613,7 +615,8 @@ export const codexProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "rpc", steer: true, compact: true, stopShell: true },
   steerHint: "Codex adds it to the turn in progress.",
-  signIn: { kind: "terminal", login: ["login"], status: ["login", "status"], signedIn: (output) => /^Logged in\b/m.test(output) },
+  signIn: { kind: "terminal", login: ["login"], status: ["login", "status"], signedIn: (output) => /^Logged in\b/m.test(output),
+    home: { variable: "CODEX_HOME", shared: { from: codexHome, items: SHARED_SETTINGS } } },
   models: [],
   listModels: (launch) => discoverModels("codex", launch),
   async detect(launch) {

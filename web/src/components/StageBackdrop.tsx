@@ -30,7 +30,6 @@ function useStageMetrics(root: RefObject<HTMLElement | null>): RefObject<StageMe
       const last = metrics.current;
       if (left === last.left && center === last.center && right === last.right && width === last.column) return;
       metrics.current = { left, center, right, column: width };
-      layers.style.setProperty("--stage-left", `${left}px`);
       layers.style.setProperty("--stage-center", `${center}px`);
       layers.style.setProperty("--stage-right", `${right}px`);
       if (width) layers.style.setProperty("--stage-column", `${width}px`);
@@ -79,7 +78,7 @@ function AsciiNoise({ metrics }: { metrics: RefObject<StageMetrics> }) {
         color: colors.color,
         starColor: colors.star,
         animate: !reducedMotion,
-        visibleFrom: () => metrics.current.left,
+        stage: () => metrics.current,
       });
     } catch (error) {
       reportError(error);
@@ -89,7 +88,7 @@ function AsciiNoise({ metrics }: { metrics: RefObject<StageMetrics> }) {
   const blur = useApp((state) => state.asciiBlur);
   const focus = useApp((state) => state.asciiFocus);
   return <>
-    <canvas ref={canvas} className="stage-backdrop" style={{ "--dim": dim / 100, "--blur": `${blur}px` } as CSSProperties} aria-hidden="true" />
+    <canvas ref={canvas} className="stage-backdrop" data-blurred={blur > 0 || undefined} style={{ "--dim": dim / 100, "--blur": `${blur}px` } as CSSProperties} aria-hidden="true" />
     {focus > 0 && <div className="stage-focus-band stage-focus-ascii" style={{ "--focus": focus / 100 } as CSSProperties} aria-hidden="true" />}
   </>;
 }

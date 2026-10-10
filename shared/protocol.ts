@@ -84,6 +84,7 @@ interface TextPart {
   kind: "text";
   text: string;
   complete?: boolean;
+  endedAt?: number;
 }
 
 export interface ReasoningPart {
@@ -91,7 +92,7 @@ export interface ReasoningPart {
   kind: "reasoning";
   text: string;
   complete?: boolean;
-  seconds?: number;
+  endedAt?: number;
 }
 
 export interface TodoItem {
@@ -362,6 +363,7 @@ export interface ProviderInfo {
   modelsError?: string;
   modelsUpdatedAt?: number;
   instances?: Array<{ id: string; name: string; available: boolean; version?: string; models: ModelOption[]; modelsError?: string }>;
+  activeInstanceId?: string;
   openCodeVersion?: { setting: OpenCodeVersionSetting; active?: OpenCodeMajor };
 }
 
@@ -523,6 +525,7 @@ export type ClientEvent = (
   | { t: "project.choose"; path?: string }
   | { t: "providers.refresh"; force?: boolean }
   | { t: "providers.configure"; provider: ProviderId; enabled: boolean }
+  | { t: "providers.activeAccount"; provider: ProviderId; instanceId: string | null }
   | { t: "providers.opencodeVersion"; setting: OpenCodeVersionSetting }
   | { t: "project.open"; path: string }
   | { t: "project.rename"; id: string; name: string }
@@ -588,10 +591,10 @@ export type ClientEvent = (
   | { t: "term.close"; termId: string }
 ) & { threadId?: string };
 
-export type TerminalTarget = { projectId: string } | { signIn: ProviderId };
+export type TerminalTarget = { projectId: string } | { signIn: ProviderId; instanceId?: string };
 
-export function signInTerminalId(provider: ProviderId): string {
-  return `sign-in-${provider}`;
+export function signInTerminalId(provider: ProviderId, instanceId?: string): string {
+  return instanceId ? `sign-in-${provider}-${instanceId}` : `sign-in-${provider}`;
 }
 
 export interface GitOverview {

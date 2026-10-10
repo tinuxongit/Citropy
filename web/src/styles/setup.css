@@ -310,8 +310,8 @@ li[data-state="done"] .setup-rail-number {
   display: grid;
   gap: var(--space-12);
 }
-.setup-provider .provider-maintenance-note,
-.setup-provider .provider-update-result {
+.setup-provider > .provider-maintenance-note,
+.setup-provider > .provider-update-result {
   margin: 0;
   padding: 0 var(--settings-inset) var(--space-12);
 }
@@ -325,21 +325,6 @@ li[data-state="done"] .setup-rail-number {
   display: grid;
   min-width: 0;
 }
-.setup-sign-in {
-  display: grid;
-  gap: var(--space-8);
-  padding: 0 var(--settings-inset) var(--space-16);
-}
-.setup-sign-in .provider-maintenance-note { padding: 0; }
-.setup-provider .account-sign-in { padding: 0 var(--settings-inset) var(--space-12); }
-.setup-provider .account-sign-in .provider-maintenance-note,
-.setup-provider .account-sign-in .provider-update-result { padding: 0; }
-.setup-sign-in-terminal {
-  height: 240px;
-  overflow: hidden;
-  border-radius: var(--r-md);
-}
-
 @container application (max-width: 820px) {
   .setup-screen { --setup-gutter: 24px; }
   .setup-layout {

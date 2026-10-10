@@ -95,7 +95,7 @@ export class ThreadTranscript {
 
   endBlock(event: Event<"block.end">): void {
     const ref = this.#blocks.get(event.blockId);
-    if (ref) store.patchPart(this.#thread.id, ref.messageId, ref.partId, { complete: true });
+    if (ref) store.patchPart(this.#thread.id, ref.messageId, ref.partId, { complete: true, endedAt: Date.now() });
     this.#blocks.delete(event.blockId);
   }
 
@@ -178,7 +178,7 @@ export class ThreadTranscript {
 
   finish(stopped: boolean): void {
     for (const ref of this.#blocks.values())
-      store.patchPart(this.#thread.id, ref.messageId, ref.partId, { complete: true });
+      store.patchPart(this.#thread.id, ref.messageId, ref.partId, { complete: true, endedAt: Date.now() });
     for (const ref of this.#tools.values())
       store.patchPart(this.#thread.id, ref.messageId, ref.partId, stopped
         ? { status: "stopped", endedAt: Date.now() }

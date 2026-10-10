@@ -6,6 +6,7 @@ import "./styles/app.css";
 import "./styles/thread-tabs.css";
 import "./styles/sidebar.css";
 import "./styles/settings.css";
+import "./styles/providers.css";
 import "./styles/conversation.css";
 import "./styles/markdown.css";
 import "./styles/diff.css";

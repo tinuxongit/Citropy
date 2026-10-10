@@ -3,6 +3,7 @@ import { providerAccount } from "../shared/provider-account.ts";
 import type { ProviderId, ProviderInfo, ProviderInstance } from "../shared/protocol.ts";
 import type { ProviderLaunch } from "./providers/types.ts";
 import { providers } from "./providers/index.ts";
+import { removeAccountHome } from "./provider-account-home.ts";
 
 const ACCOUNT_UNAVAILABLE = "This provider account is unavailable. Restore it in Settings > Providers.";
 
@@ -21,5 +22,7 @@ export function usableProviderAccount(provider: ProviderInfo | undefined, instan
 export async function removeProviderAccount(id: string): Promise<void> {
   const instance = store.providerInstances.get(id);
   store.removeProviderInstance(id);
-  if (instance) await providers[instance.provider].removeAccount?.(id);
+  if (!instance) return;
+  await providers[instance.provider].removeAccount?.(id);
+  await removeAccountHome(instance);
 }

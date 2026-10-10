@@ -143,24 +143,6 @@
   font-size: var(--text-sm);
   color: var(--ok);
 }
-.feature-setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-24);
-  padding: var(--space-16) 0;
-}
-.feature-setting-row strong {
-  font-size: var(--text-base);
-  font-weight: 500;
-}
-.feature-setting-row small {
-  display: block;
-  font-size: var(--text-sm);
-  line-height: 1.6;
-  margin-top: var(--space-6);
-  color: var(--text-3);
-}
 .feature-search {
   display: flex;
   align-items: center;

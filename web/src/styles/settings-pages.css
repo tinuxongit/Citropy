@@ -1,21 +1,21 @@
-.skill-grid {
+.settings-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-12);
 }
-.skill-grid:empty {
+.settings-card-grid:empty {
   display: none;
 }
-.skill-card {
+.settings-card {
   position: relative;
   border-radius: var(--r-lg);
   background: var(--surface);
   transition: background var(--dur-instant) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .skill-card:hover { background: color-mix(in srgb, var(--surface), var(--text) 3%); }
+  .settings-card:hover { background: color-mix(in srgb, var(--surface), var(--text) 3%); }
 }
-.skill-card-open {
+.settings-card-open {
   display: grid;
   align-content: start;
   width: 100%;
@@ -24,21 +24,23 @@
   border-radius: inherit;
   text-align: left;
 }
-.skill-card-open > .provider-icon,
-.skill-card-open > .citropy-mark {
+.settings-card-open > :first-child {
   margin-bottom: var(--space-12);
 }
-.skill-card-open strong {
+.settings-card-open strong {
   font-size: var(--text-base);
   font-weight: 500;
   overflow-wrap: anywhere;
 }
-.skill-card-open small {
+.settings-card-open small {
+  overflow: hidden;
   margin-top: var(--space-2);
   color: var(--text-3);
   font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.skill-card-open span {
+.settings-card-open span {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -48,7 +50,7 @@
   font-size: var(--text-sm);
   line-height: 1.55;
 }
-.skill-card > .setting-switch {
+.settings-card > .setting-switch {
   position: absolute;
   top: var(--space-16);
   right: var(--space-16);
@@ -200,7 +202,7 @@
   }
 }
 @container application (max-width: 600px) {
-  .skill-grid {
+  .settings-card-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .metric-grid > div {

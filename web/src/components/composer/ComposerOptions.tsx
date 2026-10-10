@@ -22,7 +22,7 @@ import type {
 const BAR_ICON_SIZE = 18;
 const FAST_BADGE_SIZE = 14;
 
-const MODES: Array<{
+export const PERMISSION_MODES: Array<{
   id: PermissionMode;
   label: string;
   hint: string;
@@ -265,11 +265,11 @@ export function PermissionMenu({
   buttonRef: Ref<HTMLButtonElement>;
 }) {
   const mode =
-    MODES.find((entry) => entry.id === thread.permissionMode) ?? MODES[0]!;
+    PERMISSION_MODES.find((entry) => entry.id === thread.permissionMode) ?? PERMISSION_MODES[0]!;
   return (
     <Menu
       width={290}
-      items={MODES.map((entry) => ({
+      items={PERMISSION_MODES.map((entry) => ({
         id: entry.id,
         label: entry.label,
         icon: <entry.icon size={17} />,

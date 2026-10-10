@@ -11,6 +11,11 @@ export function providerAccount(provider: ProviderInfo | undefined, instanceId?:
   };
 }
 
+export function activeAccountId(provider: ProviderInfo): string | undefined {
+  if (provider.activeInstanceId) return provider.activeInstanceId;
+  return provider.available ? undefined : provider.instances?.find(entry => entry.available)?.id;
+}
+
 export function hasUsableAccount(provider: ProviderInfo): boolean {
-  return provider.enabled && (provider.available || Boolean(provider.instances?.some(entry => entry.available)));
+  return providerAccount(provider, activeAccountId(provider)).usable;
 }

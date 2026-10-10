@@ -533,57 +533,6 @@
   .custom-background-replace { opacity: 1; }
 }
 
-.provider-setting {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-16);
-  padding: var(--settings-inset);
-}
-.provider-setting-identity {
-  display: flex;
-  align-items: center;
-  gap: var(--space-16);
-  min-width: 0;
-}
-.provider-setting-icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: var(--canvas);
-  flex: none;
-}
-.provider-setting-identity strong {
-  font-weight: 500;
-  font-size: var(--text-base);
-}
-.provider-setting small {
-  display: block;
-  font-size: var(--text-xs);
-  color: var(--text-3);
-  margin-top: var(--space-4);
-}
-.provider-setting-status {
-  margin-left: auto;
-  text-align: right;
-}
-.provider-setting-status > span {
-  color: var(--text-3);
-  font-size: var(--text-sm);
-}
-.provider-setting-status > span[data-available="true"] {
-  color: var(--text-2);
-}
-.provider-setting-error {
-  width: 100%;
-  color: var(--warn);
-  font-size: var(--text-sm);
-  overflow-wrap: anywhere;
-}
 
 @container application (max-width: 720px) {
   .settings {
@@ -613,12 +562,6 @@
   .assistance-model-row > .assistance-model-choice {
     flex: 1 1 100%;
     width: 100%;
-  }
-  .provider-setting-identity {
-    gap: var(--space-10);
-  }
-  .provider-maintenance-heading .settings-group-heading {
-    flex-basis: 100%;
   }
 }
 
@@ -675,39 +618,6 @@
   opacity: 0.5;
 }
 
-@container application (max-width: 720px) {
-  .provider-setting {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-8) var(--space-16);
-  }
-  .provider-setting-identity {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .provider-setting-identity small {
-    overflow-wrap: anywhere;
-  }
-  .provider-setting-status {
-    grid-column: 1;
-    grid-row: 2;
-    margin: 0 0 0 var(--space-48);
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-  }
-  .provider-setting-status small {
-    margin: 0;
-  }
-  .provider-setting > .setting-switch {
-    grid-column: 2;
-    grid-row: 1 / 3;
-  }
-  .provider-setting-error {
-    grid-column: 1 / -1;
-  }
-}
 
 .application-identity {
   display: flex;
@@ -740,96 +650,6 @@
   flex: none;
 }
 
-.provider-settings-group {
-  display: grid;
-  gap: var(--space-16);
-}
-.provider-maintenance {
-  padding: 0 var(--settings-inset) 16px;
-}
-.provider-instances { padding: 0 var(--settings-inset) 16px; }
-.provider-instances-heading, .provider-instance-row { display: flex; align-items: center; gap: var(--space-8); }
-.provider-instances-heading { justify-content: space-between; margin-bottom: var(--space-8); }
-.provider-instance-row { padding: var(--space-8) 0; }
-.provider-instance-row > span { flex: 1; min-width: 0; }
-.provider-instance-row small { display: block; color: var(--text-2); }
-.account-sign-in { display: grid; gap: var(--space-8); padding-bottom: var(--space-8); }
-.account-sign-in-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
-.account-sign-in-row > span { display: flex; align-items: center; gap: var(--space-6); min-width: 0; color: var(--text-2); font-size: var(--text-sm); }
-.account-sign-in-steps { display: grid; justify-items: start; gap: var(--space-8); }
-.account-sign-in-steps .feature-field { justify-self: stretch; }
-.account-sign-in .provider-maintenance-note,
-.account-sign-in .provider-update-result { margin: 0; }
-.provider-update-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-16);
-}
-.provider-installation {
-  flex: 1 1 180px;
-  min-width: 0;
-  font-size: var(--text-sm);
-  color: var(--text-2);
-}
-.provider-installation small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: var(--space-4);
-  color: var(--text-3);
-  font-size: var(--text-xs);
-}
-.provider-update-row .btn {
-  flex: none;
-}
-.provider-update-row + .provider-update-row {
-  margin-top: var(--space-12);
-}
-.provider-update-row .btn > svg {
-  color: currentColor;
-}
-.provider-maintenance-note,
-.provider-update-result {
-  margin: var(--space-12) 0 0;
-  color: var(--text-3);
-  font-size: var(--text-sm);
-  line-height: 1.6;
-}
-.provider-update-result {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-}
-.provider-update-result[data-status="success"] {
-  color: var(--ok);
-}
-.provider-update-result[data-status="error"] {
-  color: var(--bad);
-}
-.provider-update-output {
-  margin-top: var(--space-10);
-  font-size: var(--text-xs);
-  color: var(--text-3);
-}
-.provider-update-output summary {
-  width: fit-content;
-}
-.provider-update-output code {
-  display: block;
-  overflow-wrap: anywhere;
-  margin: var(--space-8) 0;
-}
-.provider-update-output pre {
-  max-height: 180px;
-  margin-top: var(--space-8);
-  padding: var(--space-12);
-  border-radius: var(--r-sm);
-  background: var(--canvas);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
 .citropy-dialog.provider-instructions-dialog {
   width: min(800px, calc(var(--viewport-width) - 48px));
 }
@@ -885,6 +705,6 @@
 }
 
 .provider-environment { margin-bottom: var(--space-16); }
-.provider-maintenance-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: var(--space-12); }
-.provider-maintenance-heading .settings-group-heading { margin: 0; margin-right: auto; }
 .provider-up-to-date { display: inline-flex; align-items: center; gap: var(--space-6); color: var(--ok); font-size: var(--text-sm); white-space: nowrap; }
+
+.in-use-label { display: inline-flex; align-items: center; gap: var(--space-6); padding: 0 var(--space-12); color: var(--accent); font-size: var(--text-sm); }

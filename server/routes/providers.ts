@@ -14,6 +14,10 @@ export const providerRoutes: Routes = {
     publishProviderStatus();
     if (event.enabled) await refreshProvidersNow();
   },
+  "providers.activeAccount": async (event) => {
+    store.setActiveAccount(event.provider, event.instanceId);
+    publishProviderStatus();
+  },
   "providers.opencodeVersion": async (event) => {
     store.setOpenCodeVersion(event.setting);
     for (const thread of store.threads.values()) {

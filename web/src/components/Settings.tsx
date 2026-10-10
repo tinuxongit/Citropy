@@ -37,7 +37,7 @@ const sections: { name: string; description: string; group: typeof GROUPS[number
   { name: "General", description: "Chat identity and interface sounds.", group: "Preferences", icon: SlidersIcon },
   { name: "Appearance", description: "Interface size, theme, background, and how conversations look.", group: "Preferences", icon: PaletteIcon },
   { name: "Inbox", description: "What reaches your inbox, popups, and the alert sound.", group: "Preferences", icon: InboxIcon },
-  { name: "Projects", description: "Your project folders and their options.", group: "Workspaces", icon: FolderIcon },
+  { name: "Projects", description: "The settings new chats start with, and changes for single projects.", group: "Workspaces", icon: FolderIcon },
   { name: "Environments", description: "This computer, and the servers and containers you connect to.", group: "Workspaces", icon: ServerIcon },
   { name: "Providers", description: "Installed providers, accounts, and usage limits.", group: "Agents", icon: WorkflowIcon },
   { name: "AI assistance", description: "Models for conversation titles, commit messages, and code review.", group: "Agents", icon: SparkleIcon },

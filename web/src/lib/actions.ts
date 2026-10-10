@@ -17,7 +17,7 @@ import { isUnusedThread } from "./thread-started.ts";
 import { api, reportError } from "./api.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
-import { hasUsableAccount, providerAccount } from "../../../shared/provider-account.ts";
+import { activeAccountId, hasUsableAccount, providerAccount } from "../../../shared/provider-account.ts";
 import type {
   FilePatch,
   GitResult,
@@ -127,9 +127,9 @@ export async function closeProject(id: string, environment = environmentId()): P
   else await api(`projects?projectId=${encodeURIComponent(id)}`, { method: "DELETE" }, environment);
 }
 
-export function rememberThreadSettings(thread: Pick<ThreadMeta, "provider" | "providerInstanceId" | "model" | "effort" | "contextWindow" | "fastMode">): void {
-  const { provider, providerInstanceId, model, effort, contextWindow, fastMode } = thread;
-  const threadDefaults = { provider, providerInstanceId: providerInstanceId || undefined, model, effort, contextWindow, fastMode };
+export function rememberThreadSettings(thread: Pick<ThreadMeta, "provider" | "model" | "effort" | "contextWindow" | "fastMode">): void {
+  const { provider, model, effort, contextWindow, fastMode } = thread;
+  const threadDefaults = { provider, model, effort, contextWindow, fastMode };
   useApp.setState({ threadDefaults });
   environmentStorage.setItem("citropy.threadDefaults", JSON.stringify(threadDefaults));
 }
@@ -176,8 +176,7 @@ export async function createThread(provider?: ProviderId, options = false): Prom
     : previous?.provider === chosen
       ? previous
       : undefined;
-  const lastInstanceId = last && "providerInstanceId" in last ? last.providerInstanceId : undefined;
-  const providerInstanceId = lastInstanceId && catalog.instances?.some(instance => instance.id === lastInstanceId && instance.available) ? lastInstanceId : !catalog.available ? catalog.instances?.find(instance => instance.available)?.id : undefined;
+  const providerInstanceId = activeAccountId(catalog);
   const models = providerAccount(catalog, providerInstanceId).models;
   const model = selectedModel(models, last?.model) ?? selectedModel(models);
   useApp.setState({ creatingThread: true });

@@ -85,7 +85,7 @@ export interface AppState {
   whatsNew: import("../../../shared/app-update.ts").ReleaseNotes | null;
   setupOpen: boolean;
   creatingThread: boolean;
-  threadDefaults: Pick<ThreadMeta, "provider" | "providerInstanceId" | "model" | "effort" | "contextWindow" | "fastMode"> | null;
+  threadDefaults: Pick<ThreadMeta, "provider" | "model" | "effort" | "contextWindow" | "fastMode"> | null;
   favoriteModels: WritingModel[];
   notifications: AppNotification[];
   notificationPreferences: NotificationPreferences;
@@ -231,9 +231,8 @@ export function readOffline(id?: string): Record<string, QueuedMessage[]> {
 function readThreadDefaults(): AppState["threadDefaults"] {
   const value = JSON.parse(readPref("citropy.threadDefaults", "null"));
   return value && isProviderId(value.provider) &&
-    (value.providerInstanceId == null || typeof value.providerInstanceId === "string") &&
     (value.model === undefined || typeof value.model === "string") &&
-    (value.effort === undefined || typeof value.effort === "string") ? { ...value, providerInstanceId: value.providerInstanceId || undefined } : null;
+    (value.effort === undefined || typeof value.effort === "string") ? value : null;
 }
 
 function readFavoriteModels(): WritingModel[] {

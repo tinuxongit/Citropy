@@ -7,7 +7,8 @@ import { api } from "../../lib/api.ts";
 import { confirmAction } from "../../lib/store.ts";
 import { ActionError } from "../ActionError.tsx";
 import { CitropySkillForm } from "./CitropySkillForm.tsx";
-import { SkillCard } from "./SkillCard.tsx";
+import { SettingsCard } from "../SettingsCard.tsx";
+import { skillDescription } from "./skill-description.ts";
 import { SkillDetails } from "./SkillDetails.tsx";
 import type { CitropySkillDraft, SkillInfo } from "../../../../shared/features.ts";
 
@@ -84,15 +85,20 @@ export function CitropySkills() {
         </div>
       )}
       <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
-      <div className="skill-grid">
+      <div className="settings-card-grid">
         {citropySkills.map((skill) => (
-          <SkillCard
+          <SettingsCard
             key={skill.path}
-            skill={skill}
+            title={skill.name}
+            subtitle={SOURCE}
+            description={skillDescription(skill)}
             icon={MARK}
-            source={SOURCE}
-            busy={busy}
-            onToggle={() => void perform("skills", "PATCH", { id: skill.id, action: skill.enabled ? "disable" : "enable" })}
+            toggle={{
+              checked: skill.enabled,
+              label: `Enable ${skill.name}, ${SOURCE}`,
+              busy,
+              onChange: () => void perform("skills", "PATCH", { id: skill.id, action: skill.enabled ? "disable" : "enable" }),
+            }}
             onOpen={() => setOpenId(skill.id)}
           />
         ))}

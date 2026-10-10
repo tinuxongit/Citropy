@@ -841,7 +841,6 @@
 }
 .picked-actions-buttons .btn {
   padding: 0 var(--space-8);
-  box-shadow: none;
 }
 .thread-more {
   display: grid;

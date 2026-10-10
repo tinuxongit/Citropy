@@ -4,10 +4,11 @@ import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { ifMissing } from "../shared/expected-errors.mjs";
 import type { ImportProvider } from "../shared/session-import.ts";
+import { claudeHome, codexHome } from "./providers/config-folders.ts";
 
 export function providerLogRoots(provider: ImportProvider): string[] {
-  if (provider === "claude") return [join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "projects")];
-  if (provider === "codex") return ["sessions", "archived_sessions"].map(folder => join(process.env.CODEX_HOME || join(homedir(), ".codex"), folder));
+  if (provider === "claude") return [join(claudeHome(), "projects")];
+  if (provider === "codex") return ["sessions", "archived_sessions"].map(folder => join(codexHome(), folder));
   const data = process.env.XDG_DATA_HOME || (process.platform === "darwin"
     ? join(homedir(), "Library", "Application Support")
     : process.platform === "win32" ? process.env.APPDATA || join(homedir(), "AppData", "Roaming")

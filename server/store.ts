@@ -90,6 +90,7 @@ export class Store {
   threads = new Map<string, Thread>();
   disabledProviders = new Set<ProviderId>();
   providerInstances = new Map<string, ProviderInstance>();
+  activeAccounts = new Map<ProviderId, string>();
   openCodeVersion: OpenCodeVersionSetting = "auto";
   assistance: AssistanceSettings = { ...defaultAssistance };
   projectDefaults: ProjectSettings = {};
@@ -221,6 +222,11 @@ export class Store {
               this.providerInstances.set(instance.id, instance);
           }
         }
+        if (settings.activeAccounts && typeof settings.activeAccounts === "object" && !Array.isArray(settings.activeAccounts)) {
+          for (const [provider, id] of Object.entries(settings.activeAccounts)) {
+            if (isProviderId(provider) && typeof id === "string" && this.providerInstances.get(id)?.provider === provider) this.activeAccounts.set(provider, id);
+          }
+        }
       } catch (error) {
         throw new Error(`Could not read ${settingsFile}. Fix or delete that file, then start Citropy again.`, { cause: error });
       }
@@ -277,6 +283,16 @@ export class Store {
     else disabled.add(id);
     this.#saveSettings({ disabledProviders: [...disabled] });
     this.disabledProviders = disabled;
+  }
+
+  setActiveAccount(provider: ProviderId, instanceId: string | null): void {
+    if (!isProviderId(provider)) throw new Error("Choose a provider.");
+    if (instanceId !== null && this.providerInstances.get(instanceId)?.provider !== provider) throw new Error("Provider account not found");
+    const accounts = new Map(this.activeAccounts);
+    if (instanceId === null) accounts.delete(provider);
+    else accounts.set(provider, instanceId);
+    this.#saveSettings({ activeAccounts: Object.fromEntries(accounts) });
+    this.activeAccounts = accounts;
   }
 
   setOpenCodeVersion(setting: OpenCodeVersionSetting): void {
@@ -391,8 +407,10 @@ export class Store {
     if (this.#providerInstanceUsed(id)) throw new Error("Remove conversations and writing-model selections using this account before deleting it.");
     const instances = new Map(this.providerInstances);
     instances.delete(id);
-    this.#saveSettings({ providerInstances: [...instances.values()] });
+    const accounts = new Map([...this.activeAccounts].filter(([, active]) => active !== id));
+    this.#saveSettings({ providerInstances: [...instances.values()], activeAccounts: Object.fromEntries(accounts) });
     this.providerInstances = instances;
+    this.activeAccounts = accounts;
   }
 
   #providerInstanceUsed(id: string): boolean {
@@ -410,6 +428,7 @@ export class Store {
       assistance: this.assistance,
       projectDefaults: this.projectDefaults,
       providerInstances: [...this.providerInstances.values()],
+      activeAccounts: Object.fromEntries(this.activeAccounts),
       openCodeVersion: this.openCodeVersion,
       ...patch,
     });

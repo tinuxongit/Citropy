@@ -1,0 +1,273 @@
+.provider-dialog,
+.setup-provider {
+  --account-avatar: 28px;
+  --account-surface: var(--surface);
+}
+.citropy-dialog.provider-dialog {
+  --settings-inset: var(--space-12);
+  --account-surface: var(--canvas);
+  width: min(640px, calc(var(--viewport-width) - 32px));
+}
+.provider-dialog .dialog-content {
+  display: grid;
+  gap: var(--space-8);
+  overflow-y: auto;
+}
+.provider-dialog-heading {
+  margin-top: var(--space-12);
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.provider-grid { margin-bottom: var(--space-24); }
+
+.providers-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-12);
+}
+.providers-toolbar > p {
+  margin: 0 auto 0 0;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+
+.provider-setting-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--canvas);
+}
+.account-list,
+.provider-details {
+  padding: var(--space-4) 0;
+  border-radius: var(--r-md);
+  background: var(--canvas);
+}
+.account-row,
+.account-add,
+.account-add-button {
+  display: grid;
+  grid-template-columns: var(--account-avatar) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 52px;
+  padding: var(--space-8) var(--settings-inset);
+}
+.account-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--account-avatar);
+  height: var(--account-avatar);
+  border-radius: var(--r-full);
+  background: var(--raised);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+.account-avatar[data-signed-in="true"]::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--ok);
+  box-shadow: 0 0 0 2px var(--account-surface);
+}
+.account-avatar[data-placeholder="true"] {
+  background: transparent;
+  outline: 1px dashed var(--line-bright);
+  outline-offset: -1px;
+  color: var(--text-3);
+}
+.account-text {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.account-text strong {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-text small {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.account-body {
+  display: grid;
+  gap: var(--space-8);
+  padding: 0 var(--settings-inset) var(--space-12) calc(var(--settings-inset) + var(--account-avatar) + var(--space-12));
+}
+.account-add-button {
+  width: 100%;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  text-align: left;
+  transition: background var(--dur-instant) var(--ease-out), color var(--dur-instant) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .account-add-button:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+}
+.account-add-button:disabled { opacity: 0.5; cursor: default; }
+.account-add > input {
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--space-10);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+.account-add > input:focus { outline: none; box-shadow: var(--field-focus-ring); }
+.account-add-note {
+  grid-column: 2 / -1;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+.account-list-error { padding: 0 var(--settings-inset); }
+
+.terminal-sign-in {
+  display: grid;
+  gap: var(--space-8);
+}
+.terminal-sign-in-pane {
+  height: 240px;
+  overflow: hidden;
+  border-radius: var(--r-md);
+}
+.browser-sign-in {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-8);
+}
+.browser-sign-in .feature-field { justify-self: stretch; }
+
+.provider-detail-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  padding: var(--space-8) var(--settings-inset);
+}
+.provider-detail-row > span {
+  display: grid;
+  flex: 1;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+.provider-detail-row strong { font-weight: 500; }
+.provider-detail-row small {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.provider-detail-row > .btn { flex: none; }
+.provider-details > .provider-maintenance-note,
+.provider-details > .provider-update-output { padding: 0 var(--settings-inset); }
+
+.provider-maintenance-note,
+.provider-update-result {
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.provider-update-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+.provider-update-result[data-status="success"] { color: var(--ok); }
+.provider-update-result[data-status="error"] { color: var(--bad); }
+.provider-update-output {
+  margin-top: var(--space-10);
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.provider-update-output summary { width: fit-content; }
+.provider-update-output code {
+  display: block;
+  margin: var(--space-8) 0;
+  overflow-wrap: anywhere;
+}
+.provider-update-output pre {
+  max-height: 180px;
+  margin-top: var(--space-8);
+  padding: var(--space-12);
+  border-radius: var(--r-sm);
+  background: var(--canvas);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.account-dialog-advanced > summary {
+  width: fit-content;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.account-dialog-advanced[open] {
+  display: grid;
+  gap: var(--space-12);
+}
+.environment-fields {
+  display: grid;
+  gap: var(--space-8);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.environment-fields > legend {
+  margin-bottom: var(--space-10);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+.environment-fields > .btn { justify-self: start; }
+.environment-field {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+.environment-field input {
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--space-10);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.environment-field input:focus { outline: none; box-shadow: var(--field-focus-ring); }
+
+@container application (max-width: 720px) {
+  .account-add > .account-actions {
+    grid-column: 2 / -1;
+    justify-self: end;
+  }
+}

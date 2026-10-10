@@ -2,6 +2,32 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.10.0
+
+### Added
+- Google Antigravity is a provider alongside Claude Code, Codex, and OpenCode.
+- A setup guide on first launch walks you through signing in to your agents and opening a project.
+- Visual replies. Agents can answer with an interactive chart, table, calculator, or mockup shown inside the message. They can build big pages in parts and change an earlier visual without rewriting it. Turn them off in Settings > Appearance.
+- Settings > Connections. Sign in to websites such as email or shopping once in Citropy's browser, and agents use that sign-in when you mention the site.
+- Citropy skills. Write a skill once in Settings > Skills and every agent can use it in every project.
+- Type `@` to tag a tool in your message, such as `@browser`, `@terminal`, `@subagents`, `@visual`, or `@image`, and the agent uses it for that message.
+- Select code in the editor, right-click, and choose Add to chat.
+- A dots background, and new pickers for theme, background, and interface size in Settings > Appearance.
+- Each extra account gets its own sign-in, and you choose which account new chats use with the Use button in Settings > Providers.
+
+### Changed
+- The top bar and sidebar are joined into one surface, and light mode has a new look.
+- Settings > Providers, Projects, and Environments have a cleaner layout, with accounts, folders, and servers in simple lists.
+- The account picker is gone from the message box. Choose the account in Settings > Providers instead.
+- The thin separators between the buttons below the message box are gone.
+- The Add server project menu skips the server heading when you have only one server, and its options read "Open a folder…" and "Add SSH server…".
+- Skills show as cards with an on/off switch.
+
+### Fixed
+- Visual replies that size themselves to the window, such as a phone mockup, show in full instead of being cut off.
+- "Worked for" counts the time an agent spent thinking. Before, a long think could show as a few seconds.
+- When an OpenCode model uses up its output limit before replying, the chat says so and suggests a lower effort, instead of ending with no answer.
+
 ## 0.9.0
 
 ### Added

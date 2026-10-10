@@ -89,6 +89,12 @@ export interface TerminalSignIn {
   login: string[];
   status: string[];
   signedIn(output: string): boolean;
+  home: AccountHome;
+}
+
+export interface AccountHome {
+  variable: string;
+  shared?: { from(): string; items: string[] };
 }
 
 export interface AppSignIn {

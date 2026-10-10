@@ -11,8 +11,8 @@ let info: ProviderInfo[] = [];
 let refreshing: Promise<void> | null = null;
 let lastRefresh = 0;
 
-function withEnabled(providers: ProviderInfo[]): ProviderInfo[] {
-  return providers.map((provider) => ({ ...provider, enabled: !store.disabledProviders.has(provider.id) }));
+function withSettings(providers: ProviderInfo[]): ProviderInfo[] {
+  return providers.map((provider) => ({ ...provider, enabled: !store.disabledProviders.has(provider.id), activeInstanceId: store.activeAccounts.get(provider.id) }));
 }
 
 export function providerInfo(): ProviderInfo[] {
@@ -25,7 +25,7 @@ export function refreshProviders(force = false): Promise<void> {
   if (force) clearCommandCache();
   refreshing = describeProviders(force ? 0 : MODELS_MAX_AGE)
     .then((described) => {
-      const next = withEnabled(described);
+      const next = withSettings(described);
       lastRefresh = Date.now();
       if (JSON.stringify(next) === JSON.stringify(info)) return;
       info = next;
@@ -41,7 +41,7 @@ export function refreshProviders(force = false): Promise<void> {
 }
 
 export function publishProviderStatus(): void {
-  info = withEnabled(info);
+  info = withSettings(info);
   bus.emit({ t: "providers.update", providers: info });
 }
 

@@ -11,7 +11,8 @@ import { PROVIDER_IDS } from "../../../../shared/protocol.ts";
 import { providerLabels } from "../../lib/format.ts";
 import { Select } from "../Select.tsx";
 import { ActionError } from "../ActionError.tsx";
-import { SkillCard } from "./SkillCard.tsx";
+import { SettingsCard } from "../SettingsCard.tsx";
+import { skillDescription } from "./skill-description.ts";
 import { SkillDetails } from "./SkillDetails.tsx";
 
 const source = (skill: SkillInfo) => `${providerLabels[skill.provider]} · ${skill.scope}`;
@@ -131,15 +132,20 @@ export function InstalledSkills() {
         {filtered.filter((skill) => skill.enabled).length} of {filtered.length} enabled
       </p>
       <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
-      <div className="skill-grid">
+      <div className="settings-card-grid">
         {filtered.map((skill) => (
-          <SkillCard
+          <SettingsCard
             key={skill.id}
-            skill={skill}
+            title={skill.name}
+            subtitle={source(skill)}
+            description={skillDescription(skill)}
             icon={<ProviderIcon provider={skill.provider} />}
-            source={source(skill)}
-            busy={Boolean(busy)}
-            onToggle={() => void change(skill, skill.enabled ? "disable" : "enable")}
+            toggle={{
+              checked: skill.enabled,
+              label: `Enable ${skill.name}, ${source(skill)}`,
+              busy: Boolean(busy),
+              onChange: () => void change(skill, skill.enabled ? "disable" : "enable"),
+            }}
             onOpen={() => setOpenId(skill.id)}
           />
         ))}

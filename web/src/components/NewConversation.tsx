@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import { Select } from "./Select.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import type { TuningSettings } from "./composer/ComposerOptions.tsx";
-import { FolderIcon } from "./icons/folders.tsx";
-import { BranchIcon, ForkIcon } from "./icons/git.tsx";
+import { ForkIcon } from "./icons/git.tsx";
+import { WORKSPACE_CHOICES } from "./projects/workspace-choices.ts";
 import { Modal } from "./Modal.tsx";
 import { api } from "../lib/api.ts";
 import { loadThread, refreshGit, rememberThreadSettings } from "../lib/actions.ts";
 import { selectThread, useApp } from "../lib/store.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
-import { providerAccount } from "../../../shared/provider-account.ts";
+import { activeAccountId, providerAccount } from "../../../shared/provider-account.ts";
 import type { WorkspaceOptions } from "../../../shared/features.ts";
 import type { ThreadMeta, WorkspaceChoice } from "../../../shared/protocol.ts";
 import { Loader } from "./Loader.tsx";
@@ -38,7 +38,7 @@ export function NewConversation() {
   const [base, setBase] = useState("HEAD");
   const [model, setModel] = useState(preferred?.model ?? "");
   const [tuning, setTuning] = useState<TuningSettings>({ effort: preferred?.effort });
-  const [providerInstanceId, setProviderInstanceId] = useState(defaults?.provider === providerId && provider?.instances?.some(entry => entry.id === defaults.providerInstanceId && entry.available) ? defaults.providerInstanceId! : provider?.available ? "" : provider?.instances?.find(entry => entry.available)?.id ?? "");
+  const [providerInstanceId, setProviderInstanceId] = useState(provider ? activeAccountId(provider) ?? "" : "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -149,33 +149,14 @@ export function NewConversation() {
         role="radiogroup"
         aria-label="Conversation workspace"
       >
-        {[
-          {
-            id: "current",
-            label: "Current folder",
-            detail: "Use the project's existing checkout.",
-            icon: FolderIcon,
-          },
-          {
-            id: "new",
-            label: "New worktree",
-            detail: "A separate branch and folder for this conversation.",
-            icon: ForkIcon,
-          },
-          {
-            id: "existing",
-            label: "Existing worktree",
-            detail: "Continue in a worktree you already have.",
-            icon: BranchIcon,
-          },
-        ].map(({ id, label, detail, icon: Icon }) => (
+        {WORKSPACE_CHOICES.map(({ id, label, detail, icon: Icon }) => (
           <button
             key={id}
             type="button"
             role="radio"
             aria-checked={kind === id}
             className="workspace-choice"
-            onClick={() => setKind(id as WorkspaceChoice["kind"])}
+            onClick={() => setKind(id)}
           >
             <Icon size={20} />
             <span>

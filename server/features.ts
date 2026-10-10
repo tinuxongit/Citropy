@@ -11,6 +11,7 @@ import { store } from "./store.ts";
 import { listToolMentions } from "./tool-mentions.ts";
 import { refreshProvidersNow } from "./provider-registry.ts";
 import { removeProviderAccount, usableProviderAccount } from "./provider-account.ts";
+import { prepareAccountHome, withAccountHome } from "./provider-account-home.ts";
 import { closeProject } from "./routes/projects.ts";
 import { removeThread } from "./routes/threads.ts";
 import { answerQuestion } from "./questions.ts";
@@ -293,7 +294,8 @@ export async function handleFeatures(
     } else if (url.pathname === "/api/providers/instances" && req.method === "GET") respond([...store.providerInstances.values()]);
     else if (url.pathname === "/api/providers/instances" && req.method === "POST") {
       const input = await body(req);
-      const instance = store.saveProviderInstance(input as Parameters<typeof store.saveProviderInstance>[0]);
+      const instance = store.saveProviderInstance(withAccountHome(input as Parameters<typeof store.saveProviderInstance>[0]));
+      await prepareAccountHome(instance);
       await refreshProvidersNow();
       respond(instance);
     } else if (url.pathname === "/api/providers/instances" && req.method === "DELETE") {
@@ -303,7 +305,7 @@ export async function handleFeatures(
       await refreshProvidersNow();
       respond({ ok: true });
     } else if (url.pathname === "/api/providers/maintenance" && req.method === "GET") respond(await providerMaintenance(url.searchParams.get("refresh") === "1"));
-    else if (url.pathname === "/api/providers/sign-in" && req.method === "GET") respond(await providerSignIns(url.searchParams.getAll("provider").filter(isProviderId)));
+    else if (url.pathname === "/api/providers/sign-in" && req.method === "GET") respond(await providerSignIns());
     else if (url.pathname === "/api/providers/sign-in" && req.method === "POST") {
       const { input } = await appSignInRequest(req);
       respond(startAppSignIn(input.provider, input.instanceId));
