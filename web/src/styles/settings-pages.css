@@ -218,22 +218,26 @@
 .sharing-error {
   color: var(--bad);
 }
-.sharing-firewall {
+.sharing-notice {
   display: grid;
   gap: var(--space-8);
+  margin-top: var(--space-12);
   padding: var(--space-10);
   border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--warn) 12%, transparent);
   color: var(--text);
 }
-.sharing-firewall p {
+.sharing-notice p {
   margin: 0;
 }
-.sharing-firewall code {
+.sharing-notice code {
   flex: 1;
   min-width: 0;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+}
+.sharing-routes {
+  margin-top: var(--space-20);
 }
 .sharing-pairing {
   display: flex;

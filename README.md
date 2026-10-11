@@ -68,9 +68,9 @@ Agents can reply with an interactive chart, table, calculator or mockup, drawn r
 
 ## Use it from your phone
 
-Turn on Local sharing in Settings, scan the code with your phone's camera, and your conversations open on the phone. Each code works once. Paired phones are listed in Settings, and you can remove one at any time.
+Turn on Phone access in Settings, scan the code with your phone's camera, and your conversations open on the phone. Share on your Wi-Fi, or over Tailscale to reach Citropy from anywhere with HTTPS. Each code works once. Paired phones are listed in Settings, and you can remove one at any time.
 
-<img src="docs/assets/phones.png" width="100%" alt="Two phones showing the conversation list and a chart reply, next to the Local sharing QR code and paired devices list">
+<img src="docs/assets/phones.png" width="100%" alt="Two phones showing the conversation list and a chart reply, next to the Phone access QR code and paired devices list">
 
 ## More features
 

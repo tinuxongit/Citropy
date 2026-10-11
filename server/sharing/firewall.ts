@@ -1,6 +1,6 @@
-import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { unlessCode } from "../shared/expected-errors.mjs";
+import { unlessCode } from "../../shared/expected-errors.mjs";
+import { canRunAsAdmin, runAsAdmin } from "../admin-command.ts";
 
 export interface FirewallBlock {
   name: "ufw";
@@ -12,7 +12,6 @@ const userRulesPath = "/etc/ufw/user.rules";
 const granted = new Set<string>();
 
 const ufw = ["/usr/bin/ufw", "/usr/sbin/ufw"].find(existsSync);
-const pkexec = ["/usr/bin/pkexec", "/usr/sbin/pkexec"].find(existsSync);
 
 function setting(file: string, name: string): string | undefined {
   if (!existsSync(file)) return undefined;
@@ -40,7 +39,7 @@ function ufwAllows(port: number): boolean {
 }
 
 function ufwArguments(port: number, subnet: string): string[] {
-  return ["allow", "from", subnet, "to", "any", "port", String(port), "proto", "tcp", "comment", "Citropy local sharing"];
+  return ["allow", "from", subnet, "to", "any", "port", String(port), "proto", "tcp", "comment", "Citropy phone access"];
 }
 
 export function subnetOf(cidr: string): string {
@@ -57,22 +56,11 @@ export function firewallBlock(port: number, subnet: string): FirewallBlock | und
   if (setting("/etc/ufw/ufw.conf", "ENABLED") !== "yes") return undefined;
   if (!["DROP", "REJECT"].includes(setting("/etc/default/ufw", "DEFAULT_INPUT_POLICY") ?? "")) return undefined;
   if (granted.has(grantKey(port, subnet)) || ufwAllows(port)) return undefined;
-  return { name: "ufw", command: `sudo ufw ${ufwArguments(port, subnet).map((part) => (part.includes(" ") ? `'${part}'` : part)).join(" ")}`, canFix: Boolean(pkexec) };
+  return { name: "ufw", command: `sudo ufw ${ufwArguments(port, subnet).map((part) => (part.includes(" ") ? `'${part}'` : part)).join(" ")}`, canFix: canRunAsAdmin };
 }
 
-export function allowThroughFirewall(port: number, subnet: string): Promise<void> {
-  if (!ufw || !pkexec) return Promise.reject(new Error("Run the firewall command shown in Local sharing in a terminal."));
-  return new Promise((resolve, reject) => {
-    const child = spawn(pkexec, [ufw, ...ufwArguments(port, subnet)], { stdio: ["ignore", "ignore", "pipe"] });
-    let error = "";
-    child.stderr.on("data", (chunk) => { error += chunk; });
-    child.on("error", reject);
-    child.on("exit", (code) => {
-      if (code === 0) {
-        granted.add(grantKey(port, subnet));
-        resolve();
-      } else if (code === 126 || code === 127) reject(new Error("The firewall change was cancelled."));
-      else reject(new Error(error.trim() || `The firewall change failed (exit ${code}).`));
-    });
-  });
+export async function allowThroughFirewall(port: number, subnet: string): Promise<void> {
+  if (!ufw) throw new Error("No supported firewall was found on this computer.");
+  await runAsAdmin([ufw, ...ufwArguments(port, subnet)], "firewall change");
+  granted.add(grantKey(port, subnet));
 }

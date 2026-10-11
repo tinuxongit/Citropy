@@ -31,16 +31,10 @@ export async function api<T>(
 export function reportError(error: unknown): void {
   if ((error as Error).name === "AbortError") return;
   logClientError(error);
-  useApp.setState((state) => ({
-    toasts: [
-      ...state.toasts,
-      {
-        id: randomId(),
-        level: "error",
-        text: (error as Error).message || "This action could not be completed.",
-      },
-    ],
-  }));
+  const text = (error as Error).message || "This action could not be completed.";
+  useApp.setState((state) => state.toasts.some((toast) => toast.level === "error" && toast.text === text) ? state : {
+    toasts: [...state.toasts, { id: randomId(), level: "error", text }],
+  });
 }
 
 export function assetQuery(

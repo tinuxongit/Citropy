@@ -2,6 +2,19 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.10.5
+
+### Added
+- Share over Tailscale in Settings > Phone access. Your phone opens Citropy from anywhere over HTTPS after scanning a code. Citropy walks you through turning on HTTPS and Tailscale permissions, and reconnects on its own if Tailscale restarts.
+- Paired devices show whether they joined over Tailscale or Wi-Fi.
+
+### Changed
+- Settings > Local sharing is now Settings > Phone access, with Tailscale and Wi-Fi side by side.
+
+### Fixed
+- Menus opened inside a dialog appear above the dialog instead of behind it.
+- The same error message no longer stacks up several times when it repeats.
+
 ## 0.10.4
 
 ### Added

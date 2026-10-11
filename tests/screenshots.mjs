@@ -470,7 +470,8 @@ const visualMessages = [
 const sharingState = {
   enabled: true,
   addresses: ["192.168.1.24:4180"],
-  devices: [{ id: "pixel", name: "Pixel 9", createdAt: now - 3 * day, lastSeen: now - 12 * minute }],
+  tailscale: { status: "off" },
+  devices: [{ id: "pixel", name: "Pixel 9", route: "lan", createdAt: now - 3 * day, lastSeen: now - 12 * minute }],
 };
 
 const ok = (route) => route.fulfill({ json: [] });
@@ -673,7 +674,7 @@ async function main() {
           await page.locator(".turn").first().waitFor();
           await page.getByRole("button", { name: "Account", exact: true }).click();
           await page.getByRole("button", { name: "Settings", exact: true }).click();
-          await page.getByRole("button", { name: "Local sharing", exact: false }).click();
+          await page.getByRole("button", { name: "Phone access", exact: false }).click();
           await page.locator(".sharing-qr svg").waitFor();
         },
       });

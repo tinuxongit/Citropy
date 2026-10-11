@@ -1,7 +1,7 @@
 import { listImportableSessions, importSession } from "./session-import.ts";
 import { isImportProvider } from "../shared/session-import.ts";
 import { descendants, processTable } from "./process-table.ts";
-import { createPairing, LAN_DEVICE_HEADER, openFirewall, removeDevice, setSharing, sharingState } from "./lan-sharing.ts";
+import { createPairing, DEVICE_HEADER, fixTailscale, openFirewall, removeDevice, setSharing, setTailscaleSharing, sharingState } from "./sharing/sharing.ts";
 import { nodeRuntimeStatus, installNodeRuntime } from "./node-runtime.ts";
 import { gitRuntimeStatus, installGitRuntime } from "./git-runtime.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -174,8 +174,8 @@ export async function handleFeatures(
       .end(JSON.stringify(value));
   };
   try {
-    if (url.pathname.startsWith("/api/sharing") && req.headers[LAN_DEVICE_HEADER])
-      throw new Error("Manage local sharing from the computer running Citropy.");
+    if (url.pathname.startsWith("/api/sharing") && req.headers[DEVICE_HEADER])
+      throw new Error("Manage phone access from the computer running Citropy.");
     if (url.pathname === "/api/agents" && req.method === "GET") {
       const agents = liveAgents();
       if (url.searchParams.get("usage") !== "1") respond({ agents });
@@ -200,10 +200,16 @@ export async function handleFeatures(
       respond(sharingState());
     } else if (url.pathname === "/api/sharing" && req.method === "PUT") {
       respond(setSharing((await body(req)).enabled === true));
+    } else if (url.pathname === "/api/sharing/tailscale" && req.method === "PUT") {
+      respond(await setTailscaleSharing((await body(req)).enabled === true));
+    } else if (url.pathname === "/api/sharing/tailscale/fix" && req.method === "POST") {
+      respond(await fixTailscale());
     } else if (url.pathname === "/api/sharing/firewall" && req.method === "POST") {
       respond(await openFirewall());
     } else if (url.pathname === "/api/sharing/pair" && req.method === "POST") {
-      respond(createPairing());
+      const route = url.searchParams.get("route");
+      if (route !== "lan" && route !== "tailscale") throw new Error(`Unknown sharing route: ${route}`);
+      respond(createPairing(route));
     } else if (url.pathname === "/api/sharing/devices" && req.method === "DELETE") {
       respond(removeDevice(url.searchParams.get("id") ?? ""));
     } else if (url.pathname === "/api/editor/search" && req.method === "GET") {

@@ -7,6 +7,7 @@ import {
   type ReactNode,
   Fragment,
 } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useTouchInput } from "../lib/use-touch-input.ts";
@@ -318,7 +319,7 @@ export function Menu({
     )}
   </div>;
 
-  return (
+  const menuWrap = (
     <div
       className="menu-wrap"
       style={anchor || inline ? { display: "contents" } : undefined}
@@ -410,4 +411,6 @@ export function Menu({
       </AnimatePresence>
     </div>
   );
+  const modalHost = anchor?.closest("dialog[open]");
+  return modalHost ? createPortal(menuWrap, modalHost) : menuWrap;
 }

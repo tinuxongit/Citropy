@@ -24,7 +24,7 @@ import { ConnectionsSettings } from "./ConnectionsSettings.tsx";
 import { DiagnosticsSettings } from "./DiagnosticsSettings.tsx";
 import { EnvironmentSettings } from "./EnvironmentSettings.tsx";
 import { GeneralSettings } from "./GeneralSettings.tsx";
-import { canShareLocally, LocalSharing } from "./LocalSharing.tsx";
+import { canShareLocally, PhoneAccess } from "./PhoneAccess.tsx";
 import { InboxSettings } from "./InboxSettings.tsx";
 import { ProjectSettings } from "./ProjectSettings.tsx";
 import { ProviderSettings } from "./ProviderSettings.tsx";
@@ -44,7 +44,7 @@ const sections: { name: string; description: string; group: typeof GROUPS[number
   { name: "Skills", description: "Skills you write once for every provider, and skills each provider has installed.", group: "Agents", icon: BookIcon },
   { name: "Browser", description: "Search engine, browser profiles, and what providers can access.", group: "Tools", icon: GlobeIcon },
   { name: "Connections", description: "Websites you signed in to, so agents can use them for you.", group: "Tools", icon: LockIcon },
-  { name: "Local sharing", description: "Use Citropy from your phone on the same Wi-Fi.", group: "Tools", icon: PhoneIcon, available: canShareLocally },
+  { name: "Phone access", description: "Use Citropy from your phone, on this Wi-Fi or anywhere through Tailscale.", group: "Tools", icon: PhoneIcon, available: canShareLocally },
   { name: "Resources", description: "Memory use, running conversations, and logs.", group: "System", icon: PulseIcon },
   { name: "Application", description: "Updates and restarts.", group: "System", icon: WindowIcon },
 ];
@@ -120,7 +120,7 @@ export function Settings({
             {section === "AI assistance" && <AssistanceSettings />}
             {section === "Browser" && <BrowserProfiles />}
             {section === "Connections" && <ConnectionsSettings />}
-            {section === "Local sharing" && <LocalSharing />}
+            {section === "Phone access" && <PhoneAccess />}
             {section === "Resources" && <DiagnosticsSettings />}
             {section === "General" && <GeneralSettings />}
             {section === "Inbox" && <InboxSettings />}
