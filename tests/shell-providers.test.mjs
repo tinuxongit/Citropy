@@ -95,6 +95,94 @@ test("provider shells expose background lifetime and targeted stop protocols", a
     assert.deepEqual(subagents().slice(4), [{ type: "subagent", id: "call:1", status: "stopped" }]);
   });
 
+  await t.test("Claude follows a subagent by its task id across launch, resume and stop", async () => {
+    const events = [];
+    const session = claudeProvider.start({ ...options, emit: event => events.push(event) });
+    sessions.push(session);
+    const child = children.at(-1);
+    const subagents = () => events.filter(event => event.type === "subagent");
+    child.receive({ type: "assistant", message: { content: [{ type: "tool_use", id: "launch", name: "Agent", input: { description: "Coder", prompt: "Build blocks", model: "haiku", run_in_background: true } }] } });
+    child.receive({ type: "system", subtype: "task_started", task_type: "local_agent", task_id: "agent", tool_use_id: "launch", description: "Coder", prompt: "Build blocks" });
+    child.receive({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "launch", content: [{ type: "text", text: "Async agent launched successfully." }] }] }, tool_use_result: { status: "async_launched", agentId: "agent" } });
+    child.receive({ type: "system", subtype: "task_started", task_type: "local_bash", task_id: "sleep", tool_use_id: "bash", owned_by_subagent: true });
+    child.receive({ type: "system", subtype: "task_notification", task_id: "sleep", tool_use_id: "bash", status: "completed", summary: "Sleep" });
+    child.receive({ type: "system", subtype: "task_notification", task_id: "agent", tool_use_id: "launch", status: "completed", summary: "Blocks built" });
+    child.receive({ type: "system", subtype: "task_started", task_type: "local_agent", task_id: "agent", tool_use_id: "resume", description: "Coder", prompt: "Add textures" });
+    child.receive({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "resume", content: [{ type: "text", text: "{\"success\":true}" }] }] }, tool_use_result: { success: true, resumedAgentId: "agent" } });
+    child.receive({ type: "system", subtype: "task_notification", task_id: "agent", tool_use_id: "resume", status: "stopped", summary: "Coder" });
+    assert.deepEqual(subagents(), [
+      { type: "subagent", id: "agent", title: "Coder", model: "haiku", status: "working", runPrompt: "Build blocks", launchId: "launch" },
+      { type: "subagent", id: "agent", status: "idle", result: "Blocks built" },
+      { type: "subagent", id: "agent", title: "Coder", status: "working", runPrompt: "Add textures" },
+      { type: "subagent", id: "agent", status: "stopped" },
+    ]);
+    assert.equal(events.some(event => event.type.startsWith("shell.")), false);
+  });
+
+  await t.test("Claude streams a subagent's own work into its chat and keeps the streamed reply as its result", async () => {
+    const events = [];
+    const session = claudeProvider.start({ ...options, emit: event => events.push(event) });
+    sessions.push(session);
+    const child = children.at(-1);
+    child.receive({ type: "assistant", message: { content: [{ type: "tool_use", id: "launch", name: "Agent", input: { description: "Coder", prompt: "Build blocks" } }] } });
+    child.receive({ type: "system", subtype: "task_started", task_type: "local_agent", task_id: "agent", tool_use_id: "launch", description: "Coder", prompt: "Build blocks" });
+    child.receive({ type: "assistant", parent_tool_use_id: "launch", uuid: "one", message: { content: [{ type: "thinking", thinking: "Plan it" }] } });
+    child.receive({ type: "assistant", parent_tool_use_id: "launch", uuid: "two", message: { content: [{ type: "tool_use", id: "bash", name: "Bash", input: { command: "ls" } }] } });
+    child.receive({ type: "user", parent_tool_use_id: "launch", uuid: "three", message: { content: [{ type: "tool_result", tool_use_id: "bash", content: "blocks.ts" }] } });
+    child.receive({ type: "assistant", parent_tool_use_id: "launch", uuid: "four", message: { content: [{ type: "text", text: "Blocks built" }] } });
+    child.receive({ type: "system", subtype: "task_notification", task_id: "agent", tool_use_id: "launch", status: "completed", summary: "Blocks built" });
+    assert.deepEqual(events.filter(event => event.type === "subagent.activity").map(event => event.event), [
+      { type: "block.start", blockId: "agent:one:0", block: "reasoning" },
+      { type: "block.delta", blockId: "agent:one:0", text: "Plan it" },
+      { type: "block.end", blockId: "agent:one:0" },
+      { type: "tool.start", callId: "bash", name: "Bash", input: { command: "ls" } },
+      { type: "tool.end", callId: "bash", ok: true, output: "blocks.ts" },
+      { type: "block.start", blockId: "agent:four:0", block: "text" },
+      { type: "block.delta", blockId: "agent:four:0", text: "Blocks built" },
+      { type: "block.end", blockId: "agent:four:0" },
+    ]);
+    assert.deepEqual(events.filter(event => event.type === "subagent").at(-1), { type: "subagent", id: "agent", status: "idle" });
+    assert.equal(events.some(event => event.callId === "bash" || event.blockId?.startsWith("agent:")), false);
+  });
+
+  await t.test("Claude nests a subagent's own subagents under it and shows their report on the launch card", async () => {
+    const events = [];
+    const session = claudeProvider.start({ ...options, emit: event => events.push(event) });
+    sessions.push(session);
+    const child = children.at(-1);
+    child.receive({ type: "assistant", message: { content: [{ type: "tool_use", id: "launch", name: "Agent", input: { description: "Lead", prompt: "Delegate" } }] } });
+    child.receive({ type: "system", subtype: "task_started", task_type: "local_agent", task_id: "lead", tool_use_id: "launch", description: "Lead", prompt: "Delegate" });
+    child.receive({ type: "assistant", parent_tool_use_id: "launch", uuid: "one", message: { content: [{ type: "tool_use", id: "inner", name: "Agent", input: { description: "Leaf", prompt: "Say hi", model: "haiku" } }] } });
+    child.receive({ type: "system", subtype: "task_started", task_type: "local_agent", task_id: "leaf", tool_use_id: "inner", description: "Leaf", prompt: "Say hi" });
+    child.receive({ type: "system", subtype: "task_notification", task_id: "leaf", tool_use_id: "inner", status: "completed", summary: "hi" });
+    child.receive({ type: "user", parent_tool_use_id: "launch", uuid: "two", message: { content: [{ type: "tool_result", tool_use_id: "inner", content: [{ type: "text", text: "[Subagent hand-back] The report follows:\n  hi" }] }] } });
+    assert.deepEqual(events.filter(event => event.type === "subagent").slice(1, 2), [{ type: "subagent", id: "leaf", title: "Leaf", model: "haiku", status: "working", runPrompt: "Say hi", launchId: "inner", parent: "lead" }]);
+    assert.deepEqual(events.at(-1), { type: "subagent.activity", id: "lead", event: { type: "tool.end", callId: "inner", ok: true, output: "hi" } });
+  });
+
+  await t.test("Claude gives a cloud session its own subagent chat", async () => {
+    const events = [];
+    const session = claudeProvider.start({ ...options, emit: event => events.push(event) });
+    sessions.push(session);
+    const child = children.at(-1);
+    child.receive({ type: "system", subtype: "task_started", task_type: "remote_agent", task_id: "cloud", tool_use_id: "review", description: "Cloud review", prompt: "Review the branch" });
+    child.receive({ type: "system", subtype: "task_notification", task_id: "cloud", tool_use_id: "review", status: "completed", summary: "Cloud review completed" });
+    assert.deepEqual(events.filter(event => event.type === "subagent"), [
+      { type: "subagent", id: "cloud", title: "Cloud review", status: "working", runPrompt: "Review the branch" },
+      { type: "subagent", id: "cloud", status: "idle", result: "Cloud review completed" },
+    ]);
+  });
+
+  await t.test("Claude shows a resumed subagent's work after a restart from its saved launch", async () => {
+    const events = [];
+    const session = claudeProvider.start({ ...options, subagentLaunches: { launch: "agent" }, emit: event => events.push(event) });
+    sessions.push(session);
+    const child = children.at(-1);
+    child.receive({ type: "system", subtype: "task_started", task_type: "local_agent", task_id: "agent", tool_use_id: "resume", description: "Coder", prompt: "Add textures" });
+    child.receive({ type: "assistant", parent_tool_use_id: "launch", uuid: "one", message: { content: [{ type: "tool_use", id: "bash", name: "Bash", input: { command: "ls" } }] } });
+    assert.deepEqual(events.filter(event => event.type.startsWith("subagent")).map(event => event.type === "subagent" ? event.runPrompt : event.event.callId), ["Add textures", "bash"]);
+  });
+
   await t.test("Codex streams output, retains background terminals after turn end and stops polling when empty", async test => {
     test.mock.timers.enable({ apis: ["setTimeout"] });
     const events = [];

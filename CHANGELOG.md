@@ -2,6 +2,24 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.10.4
+
+### Added
+- A Claude subagent's chat shows its work as it happens: its thinking, each tool it runs with the result, and its replies.
+- Cloud sessions Claude starts, such as `/code-review ultra`, get their own subagent chat with their task, status, and result.
+
+### Changed
+- A subagent started by another subagent appears inside that subagent's chat instead of directly under your chat.
+
+### Fixed
+- A Claude subagent's chat no longer shows the "Async agent launched successfully" note as its answer.
+- Sending a Claude subagent a follow-up continues its chat instead of opening a second one with raw data as the reply.
+- A stopped subagent no longer shows its title as its answer.
+- Shell commands a subagent runs no longer appear in your chat's terminal list.
+- A subagent's launch card shows its answer instead of Claude's hand-off note.
+- After restarting Citropy, a subagent that Claude continues still shows its steps.
+- Citropy no longer closes Claude after an hour of quiet while a subagent's own subagent is still working.
+
 ## 0.10.3
 
 ### Changed

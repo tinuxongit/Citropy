@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { onJson, onLines } from "../lines.ts";
 import { ANSWER_WAIT_MS, permissionToolName } from "../permissions.ts";
-import type { AgentEvent, AgentSession, Provider, SessionConfig, StartOptions } from "./types.ts";
+import type { AgentEvent, AgentSession, Provider, SessionConfig, StartOptions, TranscriptEvent } from "./types.ts";
 import type { Attachment, PermissionMode, ThreadStatus, TodoItem } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
 import { claudeHome } from "./config-folders.ts";
@@ -21,6 +21,7 @@ const DEFAULT_CONTEXT_MAX = 200_000;
 const EXTENDED_CONTEXT_MAX = 1_000_000;
 
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
+const AGENT_TASK_TYPES = new Set(["local_agent", "remote_agent"]);
 
 const MODES: Record<PermissionMode, string> = {
   plan: "plan",
@@ -71,7 +72,10 @@ class ClaudeSession implements AgentSession {
   #reportedContextMax: number;
   #tasks = new Map<string, TodoItem>();
   #pendingTasks = new Map<string, string>();
-  #agents = new Map<string, { title: string; prompt?: string; model?: string }>();
+  #agentLaunches = new Map<string, { model?: string; parent?: string }>();
+  #agentIds = new Set<string>();
+  #agentCalls: Map<string, string>;
+  #agentReplies = new Map<string, string>();
   #workflows = new Map<string, Map<string, ThreadStatus>>();
   #shells = new Map<string, string>();
   #controls = new Map<string, { resolve: () => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
@@ -91,6 +95,7 @@ class ClaudeSession implements AgentSession {
 
   constructor(options: StartOptions) {
     this.#emit = options.emit;
+    this.#agentCalls = new Map(Object.entries(options.subagentLaunches ?? {}));
     this.#usage = new MessageUsage(options.usage);
     this.#initialUsage = { ...this.#usage.totals };
     this.#model = options.model;
@@ -321,6 +326,53 @@ class ClaudeSession implements AgentSession {
     for (const [id, status] of helpers) if (status !== "idle" && status !== "error") this.#emit({ type: "subagent", id, status: final });
   }
 
+  #startAgentRun(taskId: string, message: Record<string, unknown>): void {
+    const callId = String(message.tool_use_id ?? "");
+    const launch = this.#agentLaunches.get(callId);
+    this.#agentLaunches.delete(callId);
+    this.#agentIds.add(taskId);
+    this.#agentCalls.set(callId, taskId);
+    this.#agentReplies.delete(taskId);
+    this.#emit({ type: "subagent", id: taskId, title: String(message.description ?? "Subagent"), ...(launch?.model ? { model: launch.model } : {}), status: "working", ...(typeof message.prompt === "string" ? { runPrompt: message.prompt } : {}), ...(launch ? { launchId: callId } : {}), ...(launch?.parent ? { parent: launch.parent } : {}) });
+  }
+
+  #noteAgentLaunch(block: Record<string, unknown>, parent?: string): void {
+    if (block.name !== "Agent" && block.name !== "Task") return;
+    const model = (block.input as { model?: unknown } | undefined)?.model;
+    this.#agentLaunches.set(String(block.id), { ...(typeof model === "string" ? { model } : {}), ...(parent ? { parent } : {}) });
+  }
+
+  #toolEnd(block: Record<string, unknown>): Extract<TranscriptEvent, { type: "tool.end" }> {
+    const result = toolContent(block.content);
+    const agentId = this.#agentCalls.get(String(block.tool_use_id));
+    const reply = agentId && block.is_error !== true ? this.#agentReplies.get(agentId) : undefined;
+    return { type: "tool.end", callId: String(block.tool_use_id), ok: block.is_error !== true, output: reply ?? result.text, ...(result.images.length ? { images: result.images } : {}) };
+  }
+
+  #subagentFrame(message: Record<string, unknown>): void {
+    const id = this.#agentCalls.get(String(message.parent_tool_use_id));
+    if (!id || (message.type !== "assistant" && message.type !== "user")) return;
+    const activity = (event: TranscriptEvent) => this.#emit({ type: "subagent.activity", id, event });
+    const content = (message.message as { content?: unknown } | undefined)?.content;
+    if (!Array.isArray(content)) return;
+    content.forEach((raw, index) => {
+      const block = raw as Record<string, unknown>;
+      const text = block.type === "text" ? block.text : block.type === "thinking" ? block.thinking : undefined;
+      if (message.type === "assistant" && typeof text === "string" && text) {
+        const blockId = `${id}:${String(message.uuid)}:${index}`;
+        activity({ type: "block.start", blockId, block: block.type === "thinking" ? "reasoning" : "text" });
+        activity({ type: "block.delta", blockId, text });
+        activity({ type: "block.end", blockId });
+        if (block.type === "text") this.#agentReplies.set(id, text);
+      } else if (message.type === "assistant" && block.type === "tool_use") {
+        this.#noteAgentLaunch(block, id);
+        activity({ type: "tool.start", callId: String(block.id), name: String(block.name ?? "tool"), input: block.input ?? {} });
+      } else if (message.type === "user" && block.type === "tool_result") {
+        activity(this.#toolEnd(block));
+      }
+    });
+  }
+
   #adopt(callId: string, output: string): void {
     const title = this.#pendingTasks.get(callId);
     if (title === undefined) return;
@@ -370,6 +422,7 @@ class ClaudeSession implements AgentSession {
 
     if (type === "system" && ["task_started", "task_progress", "task_notification"].includes(String(message.subtype))) {
       const taskId = String(message.task_id ?? "");
+      if (message.task_type === "local_bash" && message.owned_by_subagent) return;
       if (taskId && (message.task_type === "local_bash" || this.#shells.has(taskId))) {
         const callId = this.#shells.get(taskId) ?? String(message.tool_use_id ?? taskId);
         if (message.subtype === "task_notification") {
@@ -385,15 +438,26 @@ class ClaudeSession implements AgentSession {
         this.#workflow(taskId, message);
         return;
       }
-      const id = String(message.tool_use_id ?? message.task_id ?? "");
-      if (message.task_type === "local_agent" && !this.#agents.has(id)) this.#agents.set(id, { title: String(message.description ?? "Subagent"), prompt: typeof message.prompt === "string" ? message.prompt : undefined });
-      const agent = this.#agents.get(id);
-      if (!agent) return;
-      const status = message.status;
-      this.#emit({ type: "subagent", id, ...agent, status: message.subtype === "task_notification" ? status === "failed" ? "error" : status === "stopped" ? "stopped" : "idle" : "working", result: typeof message.summary === "string" ? message.summary : undefined });
+      if (AGENT_TASK_TYPES.has(String(message.task_type)) && message.subtype === "task_started") {
+        this.#startAgentRun(taskId, message);
+        return;
+      }
+      if (!this.#agentIds.has(taskId)) return;
+      if (message.subtype !== "task_notification") {
+        this.#emit({ type: "subagent", id: taskId, status: "working" });
+        return;
+      }
+      const status = message.status === "failed" ? "error" : message.status === "stopped" ? "stopped" : "idle";
+      const summary = status !== "stopped" && typeof message.summary === "string" ? message.summary : undefined;
+      const shown = this.#agentReplies.has(taskId);
+      if (summary) this.#agentReplies.set(taskId, summary);
+      this.#emit({ type: "subagent", id: taskId, status, ...(summary && !shown ? { result: summary } : {}) });
       return;
     }
-    if (message.parent_tool_use_id) return;
+    if (message.parent_tool_use_id) {
+      this.#subagentFrame(message);
+      return;
+    }
 
     if (type === "system" && message.subtype === "init") {
       if (typeof message.model === "string") this.#model = message.model;
@@ -440,12 +504,7 @@ class ClaudeSession implements AgentSession {
         if (block.type === "tool_use") {
           this.#emit({ type: "tool.input", callId: String(block.id), input: block.input });
           this.#task(String(block.name ?? ""), String(block.id), block.input);
-          if (block.name === "Agent" || block.name === "Task") {
-            const input = (block.input ?? {}) as Record<string, unknown>;
-            const agent = { title: String(input.description ?? input.subagent_type ?? "Subagent"), prompt: typeof input.prompt === "string" ? input.prompt : undefined, model: typeof input.model === "string" ? input.model : undefined };
-            this.#agents.set(String(block.id), agent);
-            this.#emit({ type: "subagent", id: String(block.id), ...agent, status: "working" });
-          }
+          this.#noteAgentLaunch(block);
         }
       }
       return;
@@ -462,13 +521,11 @@ class ClaudeSession implements AgentSession {
       for (const raw of content) {
         const block = raw as Record<string, unknown>;
         if (block.type !== "tool_result") continue;
-        const callId = String(block.tool_use_id);
-        const result = toolContent(block.content);
-        const output = result.text;
-        const agent = this.#agents.get(callId);
-        if (agent && !/running.*background|launched.*asynchronously/i.test(output)) this.#emit({ type: "subagent", id: callId, ...agent, status: block.is_error ? "error" : "idle", result: output });
-        this.#adopt(callId, output);
-        this.#emit({ type: "tool.end", callId, ok: block.is_error !== true, output, ...(result.images.length ? { images: result.images } : {}) });
+        const event = this.#toolEnd(block);
+        const agentId = this.#agentCalls.get(event.callId);
+        if (agentId && block.is_error) this.#emit({ type: "subagent", id: agentId, status: "error", ...(this.#agentReplies.has(agentId) ? {} : { result: event.output }) });
+        this.#adopt(event.callId, event.output);
+        this.#emit(event);
       }
       return;
     }

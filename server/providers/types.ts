@@ -11,21 +11,25 @@ import type {
 import type { UserQuestion } from "../../shared/questions.ts";
 import type { SignInFlow } from "../../shared/provider-settings.ts";
 
-export type AgentEvent =
-  | { type: "compacting"; active: boolean }
-  | { type: "compacted"; contextTokens?: number }
-  | { type: "subagent"; id: string; title?: string; prompt?: string; model?: string; status: ThreadStatus; result?: string }
-  | { type: "session"; externalId: string; model?: string; effort?: string; contextMax?: number; fastMode?: boolean }
-  /** The provider named the conversation itself. */
-  | { type: "title"; title: string }
-  | { type: "status"; status: ThreadStatus; tool?: string }
-  | { type: "question"; id: string; questions: UserQuestion[] }
+export type TranscriptEvent =
   | { type: "block.start"; blockId: string; block: "text" | "reasoning" }
   | { type: "block.delta"; blockId: string; text: string }
   | { type: "block.end"; blockId: string }
   | { type: "tool.start"; callId: string; name: string; input: unknown }
   | { type: "tool.input"; callId: string; input: unknown; name?: string }
-  | { type: "tool.end"; callId: string; ok: boolean; output: string; images?: Array<{ mime: string; data: string }>; patch?: FilePatch }
+  | { type: "tool.end"; callId: string; ok: boolean; output: string; images?: Array<{ mime: string; data: string }>; patch?: FilePatch };
+
+export type AgentEvent =
+  | TranscriptEvent
+  | { type: "compacting"; active: boolean }
+  | { type: "compacted"; contextTokens?: number }
+  | { type: "subagent"; id: string; title?: string; prompt?: string; model?: string; status: ThreadStatus; result?: string; runPrompt?: string; parent?: string; launchId?: string }
+  | { type: "subagent.activity"; id: string; event: TranscriptEvent }
+  | { type: "session"; externalId: string; model?: string; effort?: string; contextMax?: number; fastMode?: boolean }
+  /** The provider named the conversation itself. */
+  | { type: "title"; title: string }
+  | { type: "status"; status: ThreadStatus; tool?: string }
+  | { type: "question"; id: string; questions: UserQuestion[] }
   | { type: "tool.output"; callId: string; output: string; append?: boolean }
   | { type: "shell.background"; callId: string; taskId: string; command?: string; cwd?: string }
   | { type: "shell.end"; callId: string; ok: boolean; output?: string; stopped?: boolean }
@@ -55,6 +59,7 @@ export interface StartOptions extends ProviderLaunch {
   fastModeTier?: "priority" | "fast";
   permissionMode: PermissionMode;
   externalId?: string;
+  subagentLaunches?: Record<string, string>;
   usage?: Partial<Usage>;
   emit: Emit;
 }

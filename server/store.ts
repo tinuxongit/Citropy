@@ -577,14 +577,17 @@ export class Store {
     }
   }
 
-  updateSubagent(parentId: string, update: { id: string; title?: string; prompt?: string; model?: string; status: ThreadMeta["status"]; result?: string }): void {
-    const parent = this.threads.get(parentId);
-    if (!parent) return;
-    let child = [...this.threads.values()].find((entry) => entry.parentThreadId === parentId && entry.nativeAgentId === update.id);
+  updateSubagent(rootId: string, update: { id: string; title?: string; prompt?: string; model?: string; status: ThreadMeta["status"]; result?: string; runPrompt?: string; parent?: string; launchId?: string }): void {
+    const root = this.threads.get(rootId);
+    if (!root) return;
+    let child = this.findSubagent(rootId, update.id);
     if (!child) {
-      child = this.createThread({ projectId: parent.projectId, provider: parent.provider, providerInstanceId: parent.providerInstanceId, workspacePath: parent.workspacePath, workspaceBranch: parent.workspaceBranch, parentThreadId: parentId, nativeAgentId: update.id, title: update.title || "Subagent", model: update.model ?? parent.model, permissionMode: parent.permissionMode });
+      const parent = update.parent ? this.findSubagent(rootId, update.parent) : root;
+      if (!parent) throw new Error(`Subagent ${update.id} started under unknown subagent ${update.parent}.`);
+      child = this.createThread({ projectId: parent.projectId, provider: parent.provider, providerInstanceId: parent.providerInstanceId, workspacePath: parent.workspacePath, workspaceBranch: parent.workspaceBranch, parentThreadId: parent.id, nativeAgentId: update.id, ...(update.launchId ? { nativeLaunchId: update.launchId } : {}), title: update.title || "Subagent", model: update.model ?? parent.model, permissionMode: parent.permissionMode });
       if (update.prompt) this.addMessage(child.id, { id: uid("msg"), ts: Date.now(), role: "user", parts: [{ id: uid("prt"), kind: "text", text: update.prompt }] });
     }
+    if (update.runPrompt) this.addMessage(child.id, { id: uid("msg"), ts: Date.now(), role: "user", parts: [{ id: uid("prt"), kind: "text", text: update.runPrompt }] });
     if (update.result) {
       const previous = child.messages.at(-1);
       if (previous?.role === "assistant" && previous.parts[0]?.kind === "text") {
@@ -594,6 +597,20 @@ export class Store {
       }
     }
     this.patchThread(child.id, { status: update.status, running: ["queued", "thinking", "working", "awaiting"].includes(update.status), ...(update.title ? { title: update.title.slice(0, 80) } : {}), ...(update.model ? { model: update.model } : {}) });
+  }
+
+  findSubagent(rootId: string, nativeAgentId: string): Thread | undefined {
+    return this.subagentsOf(rootId).find((entry) => entry.nativeAgentId === nativeAgentId);
+  }
+
+  subagentsOf(rootId: string): Thread[] {
+    const found: Thread[] = [];
+    const pending = [rootId];
+    while (pending.length) {
+      const id = pending.pop();
+      for (const entry of this.threads.values()) if (entry.parentThreadId === id) { found.push(entry); pending.push(entry.id); }
+    }
+    return found;
   }
 
   setUsage(id: string, usage: Usage): void {

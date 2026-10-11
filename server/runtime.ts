@@ -31,6 +31,7 @@ import { startShell, shellOutput, endShell, endThreadShells, shellList } from ".
 import { waitForStoppedProcesses } from "./providers/process.ts";
 import { stopCommandProcess } from "./shell-process.ts";
 import { ThreadTranscript } from "./thread-transcript.ts";
+import { SubagentTranscripts } from "./subagent-transcripts.ts";
 import type {
   Message,
   Thread,
@@ -76,11 +77,13 @@ class ThreadRuntime {
   #usagePulse = 0;
   #autoTitle: string | undefined;
   #transcript: ThreadTranscript;
+  #subagents: SubagentTranscripts;
   #sessionStarted = 0;
 
   constructor(thread: Thread) {
     this.#thread = thread;
     this.#transcript = new ThreadTranscript(thread);
+    this.#subagents = new SubagentTranscripts(thread.id);
   }
 
   get #cwd(): string {
@@ -145,7 +148,7 @@ class ThreadRuntime {
       throw new Error("Wait for this conversation and its queued messages to finish before transferring.");
     if (thread.parentThreadId || thread.nativeAgentId || !thread.messages.length)
       throw new Error("Transfer is only available in an existing chat.");
-    if ([...store.threads.values()].some(child => child.parentThreadId === this.id && (child.running || child.status === "awaiting")))
+    if (store.subagentsOf(this.id).some(child => child.running || child.status === "awaiting"))
       throw new Error("Wait for this conversation's subagents to finish before transferring.");
     resolveProviderAccount(provider.id, providerInstanceId);
     const { models } = usableProviderAccount(provider, providerInstanceId);
@@ -462,6 +465,7 @@ class ThreadRuntime {
     this.#resume = false;
     this.#buildPlan = false;
     stopChildren(this.#thread.id);
+    this.#subagents.finishAll(true);
     cancelThread(this.#thread.id, false);
     cancelQuestions(this.#thread.id);
     const active = this.#thread.running || this.#thread.compacting;
@@ -545,6 +549,7 @@ class ThreadRuntime {
       fastModeTier: models.find((model) => model.id === this.#thread.model)?.fastModeTier,
       permissionMode: this.#thread.permissionMode,
       externalId: this.#thread.externalId,
+      subagentLaunches: Object.fromEntries(store.subagentsOf(this.#thread.id).flatMap(child => child.nativeLaunchId && child.nativeAgentId ? [[child.nativeLaunchId, child.nativeAgentId]] : [])),
       usage: { ...this.#thread.usage },
       emit: (event) => {
         if (generation !== this.#sessionGeneration) return;
@@ -637,7 +642,10 @@ class ThreadRuntime {
         this.#onCompacted(event);
         return;
       case "subagent":
-        store.updateSubagent(this.#thread.id, event);
+        this.#subagents.update(event);
+        return;
+      case "subagent.activity":
+        this.#subagents.record(event);
         return;
       case "session":
         this.#onSession(event);
@@ -852,6 +860,7 @@ class ThreadRuntime {
     }
     disconnectTools(this.#thread.id);
     stopChildren(this.#thread.id);
+    this.#subagents.finishAll(true);
     cancelThread(this.#thread.id, false);
     cancelQuestions(this.#thread.id);
     this.#closeSession();
@@ -924,7 +933,7 @@ export function closeIdleSessions(now = Date.now()): void {
   for (const [id, runtime] of runtimes) {
     const thread = store.threads.get(id);
     const waiting = !thread || runtime.busy ||
-      [...store.threads.values()].some(child => child.parentThreadId === id && (child.running || child.status === "awaiting"));
+      store.subagentsOf(id).some(child => child.running || child.status === "awaiting");
     if (waiting) { idleSince.delete(runtime); continue; }
     const since = idleSince.get(runtime) ?? now;
     idleSince.set(runtime, since);
@@ -950,7 +959,7 @@ export interface LiveAgent {
 }
 
 function childrenBusy(threadId: string): boolean {
-  return [...store.threads.values()].some((child) => child.parentThreadId === threadId && (child.running || child.status === "awaiting" || runtimes.get(child.id)?.busy));
+  return store.subagentsOf(threadId).some((child) => child.running || child.status === "awaiting" || runtimes.get(child.id)?.busy);
 }
 
 export function liveAgents(): LiveAgent[] {

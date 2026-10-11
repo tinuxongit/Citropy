@@ -300,6 +300,7 @@ export interface ThreadMeta {
   parentThreadId?: string;
   parentMessageId?: string;
   nativeAgentId?: string;
+  nativeLaunchId?: string;
   error?: string;
   usageLimit?: UsageLimitState;
   queue?: QueuedMessage[];
