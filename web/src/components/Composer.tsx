@@ -6,6 +6,8 @@ import { environmentId, environmentSignal } from "../lib/environment.ts";
 import { ComposerInput } from "./ComposerInput.tsx";
 import { gitActionBusy } from "../../../shared/assistance.ts";
 import { Attachments } from "./Attachments.tsx";
+import { ComposerQuotes } from "./composer/ComposerQuotes.tsx";
+import { withQuotes } from "../lib/quotes.ts";
 import { QueueList } from "./QueueList.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { QueuedMessage } from "../../../shared/protocol.ts";
@@ -65,7 +67,8 @@ export function Composer({
   const projectName = useApp((state) => state.projects.find((entry) => entry.id === thread?.projectId)?.name);
   const hasMessages = useApp((state) => Boolean(threadId && state.order[threadId]?.length));
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
-  const { value, setValue, attachments, setAttachments, clearDraft } = useComposerDraft(threadId, scope);
+  const { value, setValue, attachments, setAttachments, quotes, setQuotes, clearDraft } = useComposerDraft(threadId, scope);
+  const message = withQuotes(quotes, value);
   const { uploading, upload } = useAttachmentUpload({
     threadId,
     scopeSignal,
@@ -111,13 +114,14 @@ export function Composer({
     } catch (error) { reportError(error); }
     finally { if (!scopeSignal.aborted) setTransferring(false); }
   };
-  const place = useCallback(({ text, attachments = [], placement }: Pick<QueuedMessage, "text" | "attachments"> & Pick<ComposerDelivery, "placement">) => {
+  const place = useCallback(({ text, attachments = [], quotes = [], placement }: Pick<QueuedMessage, "text" | "attachments"> & Pick<ComposerDelivery, "quotes" | "placement">) => {
     const before = placement === "before";
     if (text) setValue((previous) =>
       !previous.trim() ? text : before ? `${text}\n\n${previous}` : `${previous.trimEnd()}\n\n${text}`,
     );
     setAttachments((previous) => before ? [...attachments, ...previous] : [...previous, ...attachments]);
-  }, [setValue, setAttachments]);
+    setQuotes((previous) => before ? [...quotes, ...previous] : [...previous, ...quotes]);
+  }, [setValue, setAttachments, setQuotes]);
   const restore = useCallback((item: QueuedMessage) => place({ ...item, placement: "before" }), [place]);
   useEffect(() => {
     if (!threadId) return;
@@ -197,7 +201,7 @@ export function Composer({
   </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal]);
 
   const submit = async () => {
-    const text = value.trim();
+    const text = message;
     if ((!text && !attachments.length) || !threadId || !canSend) return;
     playUiSound("send");
     const command = commands.find((entry) => entry.label === text);
@@ -315,6 +319,12 @@ export function Composer({
             event.target.value = "";
           }}
         />
+        {quotes.length > 0 && (
+          <ComposerQuotes
+            quotes={quotes}
+            onRemove={(index) => setQuotes((previous) => previous.filter((_, position) => position !== index))}
+          />
+        )}
         {attachments.length > 0 && (
           <Attachments
             files={attachments}
@@ -355,7 +365,7 @@ export function Composer({
                   data-variant="primary"
                   data-ui-sound="off"
                   onClick={submit}
-                  disabled={(!value.trim() && !attachments.length) || !canSend}
+                  disabled={(!message && !attachments.length) || !canSend}
                 >
                   <ArrowUpIcon size={13} />
                   Queue
@@ -380,7 +390,7 @@ export function Composer({
                 aria-label="Send"
                 title="Send"
                 onClick={submit}
-                disabled={(!value.trim() && !attachments.length) || !canSend}
+                disabled={(!message && !attachments.length) || !canSend}
               >
                 <ArrowUpIcon size={17} />
               </button>
@@ -408,7 +418,7 @@ export function Composer({
         </div>
         <div className="composer-bar-group">
           {settingsBar}
-          <ContextUsage onCompact={compact} draft={value} />
+          <ContextUsage onCompact={compact} draft={message} />
         </div>
       </div>
       </div>

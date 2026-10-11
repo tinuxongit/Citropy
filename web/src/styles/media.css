@@ -58,6 +58,16 @@
   margin: 0 var(--space-8);
   flex: none;
 }
+.composer-quote > p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+  white-space: pre-line;
+}
 .file-dialog {
   width: min(980px, calc(var(--viewport-width) - 40px));
   max-width: none;

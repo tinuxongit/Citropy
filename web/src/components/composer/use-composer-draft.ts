@@ -9,25 +9,27 @@ export function useComposerDraft(threadId: string | null, scope: string) {
   const [attachments, setAttachments] = useState<Attachment[]>(
     draft.attachments,
   );
+  const [quotes, setQuotes] = useState<string[]>(draft.quotes);
   const pending = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!threadId) return;
+    const empty = !value && !attachments.length && !quotes.length;
     const save = () => {
       clearTimeout(timer);
       if (pending.current !== save) return;
       pending.current = null;
-      if (!value && !attachments.length) environmentStorage.removeItem(`citropy.draft.${threadId}`, scope);
+      if (empty) environmentStorage.removeItem(`citropy.draft.${threadId}`, scope);
       else environmentStorage.setItem(
         `citropy.draft.${threadId}`,
-        JSON.stringify({ text: value, attachments }),
+        JSON.stringify({ text: value, attachments, quotes }),
         scope,
       );
     };
     const timer = setTimeout(save, 300);
     pending.current = save;
-    if (!value && !attachments.length) save();
+    if (empty) save();
     return () => clearTimeout(timer);
-  }, [threadId, value, attachments, scope]);
+  }, [threadId, value, attachments, quotes, scope]);
   useEffect(() => {
     const save = () => pending.current?.();
     const hidden = () => { if (document.hidden) save(); };
@@ -46,6 +48,7 @@ export function useComposerDraft(threadId: string | null, scope: string) {
     if (threadId) environmentStorage.removeItem(`citropy.draft.${threadId}`, scope);
     setValue("");
     setAttachments([]);
+    setQuotes([]);
   };
-  return { value, setValue, attachments, setAttachments, clearDraft };
+  return { value, setValue, attachments, setAttachments, quotes, setQuotes, clearDraft };
 }

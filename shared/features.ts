@@ -161,4 +161,5 @@ export interface ImportBrowser {
 export interface ComposerDraft {
   text: string;
   attachments: Attachment[];
+  quotes: string[];
 }

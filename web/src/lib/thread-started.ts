@@ -12,5 +12,5 @@ export function isUnusedThread(state: AppState, id: string): boolean {
   if (!thread || !state.loaded[id] || thread.parentThreadId || thread.running || thread.queue?.length) return false;
   if (threadStarted(thread, Boolean(state.order[id]?.length), false)) return false;
   const draft = readDraft(id, environmentId());
-  return !draft.text.trim() && !draft.attachments.length;
+  return !draft.text.trim() && !draft.attachments.length && !draft.quotes.length;
 }

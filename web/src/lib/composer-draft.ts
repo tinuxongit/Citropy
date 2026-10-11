@@ -18,5 +18,8 @@ export function readDraft(threadId: string | null, scope: string): ComposerDraft
           )
           .slice(0, 8)
       : [],
+    quotes: Array.isArray(saved.quotes)
+      ? saved.quotes.filter((quote: unknown) => typeof quote === "string")
+      : [],
   };
 }

@@ -2,6 +2,15 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.10.3
+
+### Changed
+- To quote part of a chat, select the text and right-click it, then choose Quote. Selecting text no longer shows the Quote button by itself.
+- Quoted text appears as a card above the message box, like an attached file. Remove it with its X button.
+
+### Fixed
+- Dragging a panel edge across the built-in browser no longer stops partway. While you drag, the browser shows a still picture of the page and resizes once you let go.
+
 ## 0.10.2
 
 ### Fixed
