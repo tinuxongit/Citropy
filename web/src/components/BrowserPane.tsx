@@ -95,7 +95,8 @@ export function BrowserPane({
     const update = () => {
       const current = latest.current;
       const bounds = element.getBoundingClientRect();
-      const overlay = [...document.querySelectorAll(OPEN_OVERLAYS)].some((node) => covers(node, bounds));
+      const resizing = document.documentElement.hasAttribute("data-resizing");
+      const overlay = resizing || [...document.querySelectorAll(OPEN_OVERLAYS)].some((node) => covers(node, bounds));
       const visible =
         Boolean(current) &&
         !current!.dialog &&
@@ -110,7 +111,7 @@ export function BrowserPane({
         height: bounds.height,
       };
       const covered = Boolean(overlay);
-      const value = JSON.stringify([position, visible, covered]);
+      const value = JSON.stringify(visible ? [position, visible, covered] : [visible, covered]);
       if (value === previous) return;
       previous = value;
       desktop.browserBounds(panel.id, position, visible, covered);
@@ -149,6 +150,7 @@ export function BrowserPane({
       attributes: true,
       attributeFilter: ["open", "role", "aria-modal"],
     });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-resizing"] });
     window.addEventListener("resize", schedule);
     return () => {
       resize.disconnect();
