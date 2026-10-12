@@ -3,6 +3,7 @@ import type { Bot, BotProfile } from "../../../../shared/bots.ts";
 import { reportError } from "../../lib/api.ts";
 import { updateBot } from "../../lib/bots.ts";
 import { BotLookPicker } from "./BotLookPicker.tsx";
+import { BotMemory } from "./BotMemory.tsx";
 import { BotProfileFields, type ProfileDraft, type TextField } from "./BotProfileFields.tsx";
 
 export function BotSettings({ bot }: { bot: Bot }) {
@@ -12,7 +13,9 @@ export function BotSettings({ bot }: { bot: Bot }) {
     reportError(error);
   });
   const commit = (key: TextField) => {
-    if (draft[key].trim() !== bot[key]) save({ [key]: draft[key] });
+    const value = draft[key].trim();
+    setDraft({ ...draft, [key]: value });
+    if (value !== bot[key]) save({ [key]: value });
   };
   return (
     <div className="bot-settings">
@@ -25,6 +28,7 @@ export function BotSettings({ bot }: { bot: Bot }) {
         </span>
         <input className="setting-switch" type="checkbox" role="switch" checked={bot.notifications} onChange={(event) => save({ notifications: event.target.checked })} />
       </label>
+      <BotMemory bot={bot} />
     </div>
   );
 }

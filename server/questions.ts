@@ -15,6 +15,11 @@ export function hasPendingQuestion(threadId: string, options: { blockingOnly?: b
   return [...pending.values()].some(entry => entry.request.threadId === threadId && (!options.blockingOnly || entry.blocking));
 }
 
+export function resumeIfAnswered(threadId: string): void {
+  const thread = store.threads.get(threadId);
+  if (thread?.running && thread.status === "awaiting" && !hasPendingQuestion(threadId, { blockingOnly: true }) && !pendingRequests().some(request => request.threadId === threadId)) store.patchThread(threadId, { status: "working", activeTool: undefined });
+}
+
 export function askQuestion(threadId: string, input: unknown, options: { id?: string; signal?: AbortSignal; blocking?: boolean } = {}): Promise<QuestionResult> {
   const thread = store.threads.get(threadId);
   const blocking = options.blocking !== false;
@@ -39,7 +44,7 @@ export function askQuestion(threadId: string, input: unknown, options: { id?: st
     options.signal?.removeEventListener("abort", abort);
     if (store.threads.has(threadId)) {
       store.patchPart(threadId, request.messageId, id, { status: answers ? "answered" : "dismissed", ...(answers ? { answers: Object.fromEntries(questions.map(question => [question.id, question.secret ? ["••••••"] : answers[question.id]])) } : {}) });
-      if (thread.running && thread.status === "awaiting" && !hasPendingQuestion(threadId, { blockingOnly: true }) && !pendingRequests().some(request => request.threadId === threadId)) store.patchThread(threadId, { status: "working", activeTool: undefined });
+      resumeIfAnswered(threadId);
     }
     bus.emit({ t: "question.close", id });
     resolve({ cancelled: !answers, answers: answers ?? {} });

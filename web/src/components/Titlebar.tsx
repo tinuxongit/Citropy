@@ -5,6 +5,7 @@ import { BranchIcon } from "./icons/git.tsx";
 import { PanelLeftIcon, PanelRightIcon } from "./icons/squares.tsx";
 import { ComposeIcon } from "./icons/pencil.tsx";
 import { toggleBotPanel, toggleInspector, useApp } from "../lib/store.ts";
+import { MOD } from "../lib/modifier-key.ts";
 import type { AppState } from "../lib/app-state.ts";
 import { BotAvatar } from "./bots/BotAvatar.tsx";
 import { botMood, workingLine } from "../lib/roster.ts";
@@ -157,7 +158,7 @@ export function Titlebar({
             data-active={botPanelOpen}
             aria-expanded={botPanelOpen}
             aria-label="Toggle details panel"
-            title="Toggle details panel"
+            title={`Toggle details panel (${MOD}Shift+,)`}
           >
             <PanelRightIcon size={16} />
           </button>

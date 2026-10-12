@@ -6,6 +6,7 @@ import { notificationRoutes } from "./notifications.ts";
 import { panelRoutes } from "./panels.ts";
 import { projectRoutes } from "./projects.ts";
 import { providerRoutes } from "./providers.ts";
+import { routineRoutes } from "./routines.ts";
 import { systemRoutes } from "./system.ts";
 import { terminalRoutes } from "./terminals.ts";
 import { threadRoutes } from "./threads.ts";
@@ -21,6 +22,7 @@ const routes: Routes = {
   ...providerRoutes,
   ...threadRoutes,
   ...botRoutes,
+  ...routineRoutes,
   ...gitRoutes,
   ...terminalRoutes,
 };

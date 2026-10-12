@@ -12,13 +12,8 @@ import { useApp } from "../lib/store.ts";
 import { BrowserViewport } from "./BrowserViewport.tsx";
 import type { BrowserAction, PanelTab } from "../../../shared/workbench.ts";
 import { useCopied } from "../lib/use-copied.ts";
-import { movingAncestor, OPEN_OVERLAYS } from "../lib/overlays.ts";
-
-function covers(overlay: Element, bounds: DOMRect): boolean {
-  if (overlay.matches('dialog:modal, [aria-modal="true"]')) return true;
-  const box = overlay.getBoundingClientRect();
-  return box.width > 0 && box.height > 0 && box.left < bounds.right && box.right > bounds.left && box.top < bounds.bottom && box.bottom > bounds.top;
-}
+import { fitScale, useBrowserSurfaces } from "../lib/browser-surfaces.ts";
+import { useBrowserSurface } from "../lib/use-browser-surface.ts";
 
 export function BrowserPane({
   panel,
@@ -29,16 +24,15 @@ export function BrowserPane({
 }) {
   const state = useApp((store) => store.browsers[panel.id]);
   const connected = useApp((store) => store.connected);
-  const uiScale = useApp((store) => store.uiScale);
   const searchEngine = useApp((store) => store.searchEngine);
   const native = Boolean(window.citropyDesktop);
   const [address, setAddress] = useState("");
   const [dialogText, setDialogText] = useState("");
-  const [cover, setCover] = useState<string>();
   const [finishing, setFinishing] = useState(false);
   const [signInError, setSignInError] = useState("");
   const [copied, copy] = useCopied();
-  const screen = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
+  const surface = useBrowserSurfaces((store) => store.byId[panel.id]);
   const input = useRef<HTMLInputElement>(null);
   const act = (action: BrowserAction) => {
     if (connected) send({ t: "browser.action", id: panel.id, input: action });
@@ -68,106 +62,8 @@ export function BrowserPane({
       }),
     [panel.id],
   );
-  useEffect(
-    () =>
-      window.citropyDesktop?.onBrowserCover((id, image) => {
-        if (id === panel.id) setCover(image);
-      }),
-    [panel.id],
-  );
-  const latest = useRef(state);
-  latest.current = state;
-  const reposition = useRef<() => void>(undefined);
-  useEffect(() => {
-    reposition.current?.();
-  }, [state?.url, state?.dialog]);
-  useEffect(() => {
-    const desktop = window.citropyDesktop;
-    const element = screen.current;
-    if (!desktop || !element) return;
-    if (!active || !connected || !state) {
-      desktop.browserBounds(panel.id, null, false);
-      setCover(undefined);
-      return;
-    }
-    let previous = "";
-    let frame = 0;
-    const update = () => {
-      const current = latest.current;
-      const bounds = element.getBoundingClientRect();
-      const resizing = document.documentElement.hasAttribute("data-resizing");
-      const overlay = resizing || [...document.querySelectorAll(OPEN_OVERLAYS)].some((node) => covers(node, bounds));
-      const visible =
-        Boolean(current) &&
-        !current!.dialog &&
-        current!.url !== "about:blank" &&
-        !overlay &&
-        bounds.width > 0 &&
-        bounds.height > 0;
-      const position = {
-        x: bounds.x,
-        y: bounds.y,
-        width: bounds.width,
-        height: bounds.height,
-      };
-      const covered = Boolean(overlay);
-      const value = JSON.stringify(visible ? [position, visible, covered] : [visible, covered]);
-      if (value === previous) return;
-      previous = value;
-      desktop.browserBounds(panel.id, position, visible, covered);
-    };
-    const schedule = () => {
-      if (frame) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        update();
-        if (movingAncestor(element)) schedule();
-      });
-    };
-    update();
-    reposition.current = schedule;
-    const resize = new ResizeObserver(schedule);
-    resize.observe(element);
-    const onscreen = new IntersectionObserver(schedule, { threshold: [0, 1] });
-    onscreen.observe(element);
-    const observer = new MutationObserver((records) => {
-      if (
-        records.some(
-          (record) =>
-            record.type === "attributes" ||
-            [...record.addedNodes, ...record.removedNodes].some(
-              (node) =>
-                node instanceof Element &&
-                (node.matches(OPEN_OVERLAYS) || node.querySelector(OPEN_OVERLAYS)),
-            ),
-        )
-      )
-        schedule();
-    });
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["open", "role", "aria-modal"],
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-resizing"] });
-    window.addEventListener("resize", schedule);
-    return () => {
-      resize.disconnect();
-      onscreen.disconnect();
-      observer.disconnect();
-      window.removeEventListener("resize", schedule);
-      cancelAnimationFrame(frame);
-      reposition.current = undefined;
-      desktop.browserBounds(panel.id, null, false);
-    };
-  }, [
-    active,
-    connected,
-    panel.id,
-    Boolean(state),
-    uiScale,
-  ]);
+  const shown = Boolean(active && connected && state && state.url !== "about:blank" && !state.dialog);
+  useBrowserSurface(panel.id, frame, shown);
 
   return (
     <div className="browser-pane">
@@ -304,7 +200,7 @@ export function BrowserPane({
           </div>
         </form>
       )}
-      <div className="browser-screen" ref={screen} aria-label="Browser page">
+      <div className="browser-screen" aria-label="Browser page">
         {!native ? (
           <div className="browser-start">
             <h3>Continue in Citropy desktop</h3>
@@ -324,17 +220,10 @@ export function BrowserPane({
           </div>
         ) : (
           <div
+            ref={frame}
             className="browser-frame"
             style={{ "--page-width": state.width, "--page-height": state.height } as CSSProperties}
           >
-            {cover && (
-              <img
-                className="browser-cover"
-                src={cover}
-                alt=""
-                aria-hidden="true"
-              />
-            )}
             {state.url === "about:blank" && (
               <div className="browser-start">
                 <p>Enter an address above, or ask your provider to open a page.</p>
@@ -349,8 +238,8 @@ export function BrowserPane({
             ? `${state?.profileName ?? "Workspace"} · Shared with providers`
             : "Desktop browser"}
         </span>
-        {native && state && (
-          <span>Fit{" "}{Math.round((state.scale ?? 1) * 100)}%</span>
+        {native && state && surface && (
+          <span>Fit{" "}{Math.round(fitScale(surface, state.width) * 100)}%</span>
         )}
       </div>
     </div>

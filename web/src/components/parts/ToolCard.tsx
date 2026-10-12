@@ -21,7 +21,7 @@ import { escapeHtml } from "../../lib/escape-html.ts";
 export function ToolCard({ part }: { part: ToolPart }) {
   const [open, setOpen] = useDisclosure(part.id, "tool");
   const Icon = shapeIcon[part.shape];
-  const label = toolLabel(part.name, part.status);
+  const label = toolLabel(part);
   const elapsed = part.endedAt ? part.endedAt - part.startedAt : null;
   const output = part.output ?? "";
   const hasImages = Boolean(part.images?.length || part.imageFiles?.length);

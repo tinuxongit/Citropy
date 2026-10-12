@@ -149,6 +149,7 @@ export interface Connection {
   name: string;
   url: string;
   site: string;
+  sites: string[];
   signedIn: boolean;
 }
 

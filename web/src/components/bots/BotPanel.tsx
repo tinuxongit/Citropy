@@ -1,13 +1,14 @@
 import { useState } from "react";
+import { MOD } from "../../lib/modifier-key.ts";
 import { toggleBotPanel, useApp } from "../../lib/store.ts";
 import { ChevronLeftIcon } from "../icons/chevrons.tsx";
 import { CloseIcon } from "../icons/marks.tsx";
 import { BotOverview } from "./BotOverview.tsx";
 import { BotSettings } from "./BotSettings.tsx";
 import { GroupPanel } from "./GroupPanel.tsx";
-import { RoutineEditor } from "./RoutineEditor.tsx";
+import { ResizeHandle } from "../ResizeHandle.tsx";
 
-export type BotPage = { kind: "overview" } | { kind: "settings" } | { kind: "routine"; id?: string };
+export type BotPage = { kind: "overview" } | { kind: "settings" };
 
 const OVERVIEW: BotPage = { kind: "overview" };
 
@@ -22,8 +23,7 @@ export function BotPanel() {
     setPage(OVERVIEW);
   }
   if (!item) return <aside className="inspector bot-panel" aria-label="Bot" />;
-  const routine = bot && page.kind === "routine" && page.id ? bot.routines.find((entry) => entry.id === page.id) : undefined;
-  const title = page.kind === "settings" ? "Settings" : page.kind === "routine" ? routine?.name ?? "New routine" : item.name;
+  const title = page.kind === "settings" ? "Settings" : item.name;
   return (
     <aside className="inspector bot-panel" aria-label={`${item.name} details`}>
       <header className="bot-panel-head">
@@ -33,7 +33,7 @@ export function BotPanel() {
           </button>
         )}
         <h2 className="bot-panel-title truncate">{title}</h2>
-        <button type="button" className="icon-btn" aria-label="Close panel" title="Close panel" onClick={toggleBotPanel}>
+        <button type="button" className="icon-btn" aria-label="Close panel" title={`Close panel (${MOD}Shift+,)`} onClick={toggleBotPanel}>
           <CloseIcon size={14} />
         </button>
       </header>
@@ -41,8 +41,8 @@ export function BotPanel() {
         {group && <GroupPanel key={group.id} group={group} />}
         {bot && page.kind === "overview" && <BotOverview bot={bot} onPage={setPage} />}
         {bot && page.kind === "settings" && <BotSettings key={bot.id} bot={bot} />}
-        {bot && page.kind === "routine" && <RoutineEditor key={page.id ?? "new"} bot={bot} routine={routine} onDone={() => setPage(OVERVIEW)} onSaved={(id) => setPage({ kind: "routine", id })} />}
       </div>
+      <ResizeHandle panel="inspector" />
     </aside>
   );
 }

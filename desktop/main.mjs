@@ -15,6 +15,7 @@ import { desktopDiagnostics } from "./diagnostics.mjs";
 import { initializeProfiles, browserProfile, handleProfiles } from "./browser-profiles.mjs";
 import { initializeConnections, connectionProfile, connectionOfProfile, handleConnections, signInTarget } from "./connections.mjs";
 import { createSignInView } from "./sign-in-view.mjs";
+import { keepSessionCookies } from "./session-cookies.mjs";
 import { browserActivity } from "./browser-activity.mjs";
 import { formatTree } from "./browser-snapshot.mjs";
 import { createPointer } from "./browser-pointer.mjs";
@@ -22,7 +23,6 @@ import {
   app,
   dialog,
   BrowserWindow,
-  WebContentsView,
   ipcMain,
   Menu,
   Notification,
@@ -120,10 +120,6 @@ let window;
 let socket;
 let quitting = false;
 const notifications = new Set();
-let ready;
-const frontendReady = new Promise((resolve) => {
-  ready = resolve;
-});
 app.on("before-quit", (event) => {
   if (quitting) return;
   event.preventDefault();
@@ -134,7 +130,7 @@ app.on("before-quit", (event) => {
     updates?.dispose();
     for (const notification of notifications) notification.close();
     for (const tab of tabs.values())
-      tab.view.webContents.close({ waitForBeforeUnload: false });
+      if (tab.contents && !tab.contents.isDestroyed()) tab.contents.close({ waitForBeforeUnload: false });
     socket?.close();
     app.quit();
   });
@@ -168,7 +164,9 @@ function address(raw) {
 }
 
 function state(tab) {
-  const content = tab.view.webContents;
+  const content = tab.contents;
+  if (!content || content.isDestroyed())
+    return { ...tab.state, loading: true, connection: connectionOfProfile(tab.state.profileId) };
   return {
     ...tab.state,
     url: content.getURL() || "about:blank",
@@ -177,7 +175,6 @@ function state(tab) {
         ? "Browser"
         : content.getTitle() || "Browser",
     loading: content.isLoadingMainFrame(),
-    scale: tab.scale,
     canGoBack: content.navigationHistory.canGoBack(),
     canGoForward: content.navigationHistory.canGoForward(),
     connection: connectionOfProfile(tab.state.profileId),
@@ -185,12 +182,15 @@ function state(tab) {
 }
 
 function publish(tab) {
-  if (!tab.view.webContents.isDestroyed())
-    emit({ t: "browser.state", browser: state(tab) });
+  if (tabs.get(tab.state.id) !== tab) return;
+  const browser = state(tab);
+  Object.assign(tab.state, { url: browser.url, title: browser.title });
+  emit({ t: "browser.state", browser });
 }
 
 function cdp(tab, method, params = {}, sessionId) {
-  const debuggerApi = tab.view.webContents.debugger;
+  if (!tab.contents || tab.contents.isDestroyed()) throw new Error("This browser tab is reconnecting. Try again.");
+  const debuggerApi = tab.contents.debugger;
   if (!debuggerApi.isAttached()) debuggerApi.attach("1.3");
   return sessionId ? debuggerApi.sendCommand(method, params, sessionId) : debuggerApi.sendCommand(method, params);
 }
@@ -219,28 +219,9 @@ async function elementBox(tab, node, { scroll = true, quad = "content" } = {}) {
 
 const centre = (box) => ({ x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 });
 
-function parkedBounds() {
-  const [width, height] = window.getContentSize();
-  return { x: width - 1, y: height - 1, width: 1, height: 1 };
-}
-
 function applyViewport(tab) {
   const { width, height, mobile } = tab.state;
-  const bounds = tab.bounds;
-  const fitted = Math.min(1, bounds.width / width, bounds.height / height);
-  const scale = tab.visible ? fitted : tab.scale >= 0.05 ? tab.scale : 1;
-  const displayWidth = Math.max(1, Math.round(width * scale));
-  const displayHeight = Math.max(1, Math.round(height * scale));
-  tab.scale = scale;
-  const next = tab.visible ? {
-    x: bounds.x + Math.round((bounds.width - displayWidth) / 2),
-    y: bounds.y + Math.round((bounds.height - displayHeight) / 2),
-    width: displayWidth,
-    height: displayHeight,
-  } : parkedBounds();
-  const current = tab.view.getBounds();
-  if (current.x !== next.x || current.y !== next.y || current.width !== next.width || current.height !== next.height) tab.view.setBounds(next);
-  const metrics = JSON.stringify([width, height, Boolean(mobile), scale]);
+  const metrics = JSON.stringify([width, height, Boolean(mobile)]);
   if (metrics === tab.metrics && tab.layout) return tab.layout;
   tab.metrics = metrics;
   tab.layout = cdp(tab, "Emulation.setDeviceMetricsOverride", tab.metricsParams = {
@@ -250,7 +231,6 @@ function applyViewport(tab) {
     screenHeight: height,
     deviceScaleFactor: 1,
     mobile: Boolean(mobile),
-    scale,
     screenOrientation: {
       type: width > height ? "landscapePrimary" : "portraitPrimary",
       angle: width > height ? 90 : 0,
@@ -306,17 +286,12 @@ async function behindCover(tab, work) {
   const still = (await capture(tab))?.toDataURL();
   if (!still) return work();
   await showCover(tab, still);
-  tab.view.setBounds(parkedBounds());
   try {
     return await work();
   } finally {
     if (tab.metricsParams) await cdp(tab, "Emulation.setDeviceMetricsOverride", tab.metricsParams).catch(logFailure("Restoring the browser viewport", id));
     await waitForPaint(tab);
-    if (tab.visible) {
-      await applyViewport(tab).catch(logFailure("Restoring the browser viewport", id));
-      await new Promise((resolve) => setTimeout(resolve, 34));
-      if (tab.visible) window.webContents.send("browser:cover", id, undefined);
-    }
+    window.webContents.send("browser:cover", id, undefined);
   }
 }
 
@@ -325,7 +300,7 @@ async function showCover(tab, still) {
   await window.webContents.executeJavaScript(`new Promise((resolve) => {
     const started = performance.now();
     const check = () => {
-      const image = document.querySelector(".browser-cover");
+      const image = document.querySelector(${JSON.stringify(`[data-browser-cover="${tab.state.id}"]`)});
       if ((image?.complete && image.naturalWidth) || performance.now() - started > 300) requestAnimationFrame(() => requestAnimationFrame(resolve));
       else requestAnimationFrame(check);
     };
@@ -339,10 +314,9 @@ async function waitForPaint(tab) {
 
 async function capture(tab) {
   let timer;
-  const { width, height } = tab.view.getBounds();
   try {
     return await Promise.race([
-      tab.view.webContents.capturePage({ x: 0, y: 0, width, height }),
+      tab.contents.capturePage(),
       new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error("Screenshot timed out")), 800);
       }),
@@ -354,40 +328,53 @@ async function capture(tab) {
   }
 }
 
+function guests() {
+  return [...tabs.values()].map((tab) => ({
+    id: tab.state.id,
+    partition: tab.partition,
+    width: tab.state.width,
+    height: tab.state.height,
+    rendering: tab.activity.rendering,
+  }));
+}
+
+function publishGuests() {
+  if (!window.isDestroyed()) window.webContents.send("browser:guests", guests());
+}
+
+function awaitGuest(tab) {
+  tab.attached = new Promise((resolve, reject) => {
+    tab.attach = { resolve, reject };
+  });
+  tab.attached.catch(() => {});
+}
+
 async function open(input) {
   const existing = tabs.get(input.id);
   if (existing) return state(existing);
+  const url = address(input.url ?? "about:blank");
   const profile = connectionProfile(input.profileId, input.url) ?? browserProfile(input.projectId, input.profileId);
   input = { ...input, profileId: profile.id, profileName: profile.name };
   const browserSession = session.fromPartition(profile.partition);
   watchDownloads(browserSession);
+  if (connectionOfProfile(profile.id)) keepSessionCookies(browserSession);
   browserSession.setPermissionRequestHandler((_, __, callback) =>
     callback(false),
   );
   browserSession.setPermissionCheckHandler(() => false);
-  const view = new WebContentsView({
-    webPreferences: {
-      session: browserSession,
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-      backgroundThrottling: true,
-      webSecurity: true,
-    },
-  });
-  view.setBackgroundColor("#151515");
-  view.setBounds(parkedBounds());
   const tab = {
-    view,
-    activity: browserActivity(view, window.contentView, enabled => {
-      view.webContents.setBackgroundThrottling(!enabled);
+    partition: profile.partition,
+    contents: undefined,
+    activity: browserActivity(publishGuests, enabled => {
+      if (!tab.contents || tab.contents.isDestroyed()) return;
+      tab.contents.setBackgroundThrottling(!enabled);
       return cdp(tab, "Emulation.setFocusEmulationEnabled", { enabled });
     }),
     visible: false,
-    presentation: 0,
-    bounds: view.getBounds(),
+    scale: 1,
     state: {
       ...input,
+      url,
       width: input.width || 1920,
       height: input.height || 1080,
       mobile: Boolean(input.mobile),
@@ -405,10 +392,32 @@ async function open(input) {
     (method, params) => cdp(tab, method, params),
     () => tab.visible && window.isVisible() && !window.isMinimized(),
     () => Boolean(tab.state.mobile),
-    () => tab.scale ?? 1,
+    () => tab.scale,
   );
+  awaitGuest(tab);
   tabs.set(input.id, tab);
-  const content = view.webContents;
+  publishGuests();
+  await tab.attached;
+  return state(tab);
+}
+
+function attachGuest(tab, contents) {
+  const { resolve, reject } = tab.attach;
+  bind(tab, contents).then(resolve, (error) => {
+    reject(error);
+    tab.state.error = error.message;
+    publish(tab);
+  });
+}
+
+async function bind(tab, content) {
+  const id = tab.state.id;
+  const url = tab.state.url;
+  tab.contents = content;
+  tab.metrics = undefined;
+  tab.layout = undefined;
+  tab.metricsParams = undefined;
+  tab.frames.clear();
   content.setZoomFactor(1);
   for (const event of [
     "did-start-loading",
@@ -424,11 +433,9 @@ async function open(input) {
     publish(tab);
   });
   content.once("destroyed", () => {
-    tab.activity.dispose();
-    if (quitting || tabs.get(input.id) !== tab) return;
-    tabs.delete(input.id);
-    window.contentView.removeChildView(view);
-    emit({ t: "browser.closed", id: input.id });
+    if (tab.contents !== content) return;
+    tab.contents = undefined;
+    if (!quitting && tabs.get(id) === tab) awaitGuest(tab);
   });
   content.on("render-process-gone", () => {
     tab.state.error = "This page stopped responding. Reload it to continue.";
@@ -444,7 +451,7 @@ async function open(input) {
   content.setWindowOpenHandler(({ url }) => {
     try {
       const opened = address(url);
-      emit({ t: "browser.popup", parentId: input.id, url: opened });
+      emit({ t: "browser.popup", parentId: id, url: opened });
       tab.logs.push({ time: Date.now(), kind: "tab", level: "info", text: `Opened ${opened} in a new tab` });
     } catch {}
     return { action: "deny" };
@@ -456,7 +463,7 @@ async function open(input) {
     ) {
       event.preventDefault();
       window.webContents.focus();
-      window.webContents.send("browser:address", input.id);
+      window.webContents.send("browser:address", id);
     }
   });
   content.debugger.on("message", (_, method, params) => {
@@ -465,7 +472,7 @@ async function open(input) {
       const key = `f${++tab.frameCount}`;
       tab.frames.set(key, { sessionId: params.sessionId, targetId: params.targetInfo.targetId });
       for (const [domain, options] of [["Runtime.enable", {}], ["Log.enable", {}], ["Network.enable", { maxTotalBufferSize: 0, maxResourceBufferSize: 0, maxPostDataSize: 0 }], ["Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }]])
-        void cdp(tab, domain, options, params.sessionId).catch(logFailure(`Browser frame ${domain}`, input.id));
+        void cdp(tab, domain, options, params.sessionId).catch(logFailure(`Browser frame ${domain}`, id));
       return;
     }
     if (method === "Target.detachedFromTarget") {
@@ -479,7 +486,6 @@ async function open(input) {
     else return;
     publish(tab);
   });
-  await content.loadURL("about:blank");
   await Promise.all([
     cdp(tab, "Runtime.enable"),
     cdp(tab, "Log.enable"),
@@ -488,18 +494,18 @@ async function open(input) {
   await cdp(tab, "Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true });
   await cdp(tab, "DOM.enable");
   await cdp(tab, "Overlay.enable");
-  return tab.activity.run(async () => {
+  tab.activity.reattached();
+  await tab.activity.run(async () => {
     await applyViewport(tab);
     await applyMobileMode(tab);
     const navigation = content
-      .loadURL(address(input.url ?? "about:blank"))
+      .loadURL(url)
       .catch((error) => {
         if (error.code !== "ERR_ABORTED" && error.errno !== -3) throw error;
       });
     await Promise.all([navigation, cdp(tab, "Page.enable")]);
-    publish(tab);
-    return state(tab);
   });
+  publish(tab);
 }
 
 async function target(tab, input) {
@@ -554,8 +560,6 @@ async function click(tab, input) {
     throw new Error("Choose an element or valid click coordinates");
   await tab.pointer.moveTo(x, y);
   await tab.pointer.press(box);
-  x *= tab.scale;
-  y *= tab.scale;
   if (tab.state.mobile) {
     try {
       await cdp(tab, "Input.dispatchTouchEvent", {
@@ -609,7 +613,7 @@ function watchDownloads(browserSession) {
   if (watchedSessions.has(browserSession)) return;
   watchedSessions.add(browserSession);
   browserSession.on("will-download", (_, item, contents) => {
-    const tab = [...tabs.values()].find((entry) => entry.view.webContents === contents);
+    const tab = [...tabs.values()].find((entry) => entry.contents === contents);
     const directory = join(app.getPath("downloads"), "Citropy");
     mkdirSync(directory, { recursive: true });
     const path = uniquePath(directory, basename(item.getFilename()) || "download");
@@ -656,7 +660,7 @@ async function hover(tab, input) {
   if (node) ({ x, y } = centre(await elementBox(tab, node)));
   if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Choose an element or valid hover coordinates");
   await tab.pointer.moveTo(x, y);
-  await cdp(tab, "Input.dispatchMouseEvent", { type: "mouseMoved", x: x * tab.scale, y: y * tab.scale });
+  await cdp(tab, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
   await tab.pointer.release();
 }
 
@@ -737,12 +741,11 @@ async function swipe(tab, input) {
   if (!values.every(Number.isFinite)) throw new Error("A swipe needs x, y, toX and toY coordinates");
   const duration = input.duration ?? 300;
   if (!Number.isFinite(duration) || duration < 0 || duration > 5000) throw new Error("Use a swipe duration from 0 to 5000 milliseconds");
-  const [x, y, toX, toY] = values.map((value) => value * tab.scale);
+  const [x, y, toX, toY] = values;
   const steps = Math.max(2, Math.round(duration / 16));
   const point = (step) => ({ x: x + ((toX - x) * step) / steps, y: y + ((toY - y) * step) / steps });
-  const drawn = (step) => ({ x: input.x + ((input.toX - input.x) * step) / steps, y: input.y + ((input.toY - input.y) * step) / steps });
   const pause = async (step) => {
-    if (step !== undefined) await tab.pointer.drawAt(drawn(step).x, drawn(step).y, true);
+    if (step !== undefined) await tab.pointer.drawAt(point(step).x, point(step).y, true);
     await new Promise((resolve) => setTimeout(resolve, duration / steps));
   };
   await tab.pointer.moveTo(input.x, input.y);
@@ -756,7 +759,7 @@ async function swipe(tab, input) {
     await tab.pointer.release();
     return;
   }
-  const content = tab.view.webContents;
+  const content = tab.contents;
   let dragData;
   const intercept = (_, method, params) => { if (method === "Input.dragIntercepted") dragData = params.data; };
   content.debugger.on("message", intercept);
@@ -806,7 +809,7 @@ async function closeTopLayer(tab) {
 }
 
 async function performAction(tab, input) {
-  const content = tab.view.webContents;
+  const content = tab.contents;
   tab.state.error = undefined;
   if (tab.state.dialog && input.action !== "dialog")
     throw new Error(
@@ -822,32 +825,26 @@ async function performAction(tab, input) {
   try {
   switch (input.action) {
     case "navigate":
-      await behindCover(tab, () =>
-        content.loadURL(address(input.url)).catch((error) => {
-          if (error.code !== "ERR_ABORTED" && error.errno !== -3) throw error;
-        }),
-      );
+      await content.loadURL(address(input.url)).catch((error) => {
+        if (error.code !== "ERR_ABORTED" && error.errno !== -3) throw error;
+      });
       break;
     case "back":
       if (tab.state.mobile && (await closeTopLayer(tab))) break;
-      if (content.navigationHistory.canGoBack())
-        await behindCover(tab, async () => {
-          content.navigationHistory.goBack();
-          await settle(tab, () => true);
-        });
+      if (content.navigationHistory.canGoBack()) {
+        content.navigationHistory.goBack();
+        await settle(tab, () => true);
+      }
       break;
     case "forward":
-      if (content.navigationHistory.canGoForward())
-        await behindCover(tab, async () => {
-          content.navigationHistory.goForward();
-          await settle(tab, () => true);
-        });
+      if (content.navigationHistory.canGoForward()) {
+        content.navigationHistory.goForward();
+        await settle(tab, () => true);
+      }
       break;
     case "reload":
-      await behindCover(tab, async () => {
-        content.reload();
-        await settle(tab, () => true);
-      });
+      content.reload();
+      await settle(tab, () => true);
       break;
     case "stop":
       content.stop();
@@ -977,8 +974,8 @@ async function performAction(tab, input) {
       await tab.pointer.moveTo(point.x, point.y);
       await cdp(tab, "Input.dispatchMouseEvent", {
         type: "mouseWheel",
-        x: point.x * tab.scale,
-        y: point.y * tab.scale,
+        x: point.x,
+        y: point.y,
         deltaX: input.x,
         deltaY: input.y,
       });
@@ -1033,6 +1030,7 @@ async function performAction(tab, input) {
         height: input.height,
         mobile,
       });
+      publishGuests();
       await applyViewport(tab);
       if (changedMode) {
         await applyMobileMode(tab);
@@ -1066,7 +1064,7 @@ async function performAction(tab, input) {
 }
 
 async function settle(tab, navigationStarted) {
-  const content = tab.view.webContents;
+  const content = tab.contents;
   await new Promise((resolve) => setTimeout(resolve, 200));
   if (!navigationStarted() && !content.isLoadingMainFrame()) return;
   if (!content.isLoadingMainFrame()) return;
@@ -1088,12 +1086,12 @@ async function action(tab, input) {
     onDialog = (_, method) => {
       if (method === "Page.javascriptDialogOpening") resolve(state(tab));
     };
-    tab.view.webContents.debugger.on("message", onDialog);
+    tab.contents.debugger.on("message", onDialog);
   });
   try {
     return await Promise.race([performAction(tab, input), opened]);
   } finally {
-    tab.view.webContents.debugger.off("message", onDialog);
+    tab.contents.debugger.off("message", onDialog);
   }
 }
 
@@ -1145,10 +1143,11 @@ async function request(method, params) {
   if (method === "browser.close") {
     tabs.delete(params.id);
     tab.activity.dispose();
-    window.contentView.removeChildView(tab.view);
-    tab.view.webContents.close({ waitForBeforeUnload: false });
+    tab.attach.reject(new Error("This browser tab is closed"));
+    publishGuests();
     return;
   }
+  await tab.attached;
   if (tab.state.dialog) {
     if (method === "browser.action") return action(tab, params.input);
     if (method === "browser.snapshot")
@@ -1216,7 +1215,7 @@ async function request(method, params) {
     const tree = body.length > limit ? `${body.slice(0, limit)}\n… truncated. Snapshot a selector or ref to see the rest.` : body;
     const errors = tab.logs.filter((entry) => entry.level === "error").length;
     return {
-      text: `${tab.view.webContents.getTitle()}\n${tab.view.webContents.getURL()}\nViewport: ${tab.state.width} × ${tab.state.height}${tab.state.mobile ? " (mobile)" : " (desktop)"}. Screenshot coordinates use these dimensions. Use [ref=N] values with browser_action ref.${errors ? ` ${errors} unread error${errors === 1 ? "" : "s"} in browser_logs.` : ""}\n\n${tree}`,
+      text: `${tab.contents.getTitle()}\n${tab.contents.getURL()}\nViewport: ${tab.state.width} × ${tab.state.height}${tab.state.mobile ? " (mobile)" : " (desktop)"}. Screenshot coordinates use these dimensions. Use [ref=N] values with browser_action ref.${errors ? ` ${errors} unread error${errors === 1 ? "" : "s"} in browser_logs.` : ""}\n\n${tree}`,
       image,
     };
   });
@@ -1258,6 +1257,7 @@ app
         contextIsolation: true,
         sandbox: true,
         spellcheck: false,
+        webviewTag: true,
       },
     });
     window.on("close", () => {
@@ -1318,14 +1318,7 @@ app
       save: input => environments.save(input),
       "project-defaults": settings => environments.syncProjectDefaults(settings),
       connect: async id => {
-        const state = await environments.connect(id);
-        if (id !== "local") for (const tab of tabs.values()) {
-          tab.presentation++;
-          tab.visible = false;
-          tab.view.setBounds(parkedBounds());
-          tab.activity.present(false);
-        }
-        return state;
+        return environments.connect(id);
       },
       disconnect: id => environments.disconnect(id),
       remove: id => environments.remove(id),
@@ -1431,7 +1424,7 @@ app
         }
         applyingUpdate = true;
         diagnose("app.update-preparing");
-        for (const profile of new Set([session.defaultSession, ...[...tabs.values()].map(tab => tab.view.webContents.session)])) {
+        for (const profile of new Set([session.defaultSession, ...[...tabs.values()].map(tab => session.fromPartition(tab.partition))])) {
           await profile.cookies.flushStore();
           profile.flushStorageData();
         }
@@ -1502,14 +1495,8 @@ app
         if (window.isMaximized()) window.unmaximize();
         else window.maximize();
       } else if (command === "close") window.close();
-      else if (command === "reload") {
-        for (const tab of tabs.values()) {
-          tab.visible = false;
-          tab.view.setBounds(parkedBounds());
-          tab.activity.present(false);
-        }
-        window.webContents.reload();
-      } else if (command === "restart") {
+      else if (command === "reload") window.webContents.reload();
+      else if (command === "restart") {
         if (process.env.APPIMAGE) {
           spawnAppImageRelaunch({
             appImage: process.env.APPIMAGE,
@@ -1563,82 +1550,46 @@ app
       } catch {}
       return { action: "deny" };
     });
-    ipcMain.on("browser:ready", (event) => {
-      if (
-        event.sender === window.webContents &&
-        event.senderFrame === window.webContents.mainFrame
-      )
-        ready();
+    window.webContents.on("will-attach-webview", (event, preferences, params) => {
+      delete preferences.preload;
+      Object.assign(preferences, {
+        nodeIntegration: false,
+        nodeIntegrationInSubFrames: false,
+        contextIsolation: true,
+        sandbox: true,
+        webSecurity: true,
+        backgroundThrottling: true,
+      });
+      if (params.src !== "about:blank" || ![...tabs.values()].some((tab) => tab.partition === params.partition))
+        event.preventDefault();
     });
-    ipcMain.on(
-      "browser:bounds",
-      async (event, { id, bounds, visible, cover }) => {
-        if (
-          event.sender !== window.webContents ||
-          event.senderFrame !== window.webContents.mainFrame ||
-          new URL(event.senderFrame.url).origin !== ui.origin
-        )
-          return;
-        const tab = tabs.get(id);
-        if (!tab) return;
-        if (environments.activeId !== "local") { visible = false; cover = false; }
-        const presentation = ++tab.presentation;
-        if (visible) {
-          if (
-            !bounds ||
-            ![bounds.x, bounds.y, bounds.width, bounds.height].every(
-              Number.isFinite,
-            )
-          )
-            return;
-          const [width, height] = window.getContentSize();
-          const x = Math.max(0, Math.min(width, Math.round(bounds.x)));
-          const y = Math.max(0, Math.min(height, Math.round(bounds.y)));
-          tab.bounds = {
-            x,
-            y,
-            width: Math.max(1, Math.min(width - x, Math.round(bounds.width))),
-            height: Math.max(
-              1,
-              Math.min(height - y, Math.round(bounds.height)),
-            ),
-          };
-          tab.visible = true;
-          tab.activity.present(window.isVisible() && !window.isMinimized());
-          try {
-            await applyViewport(tab);
-          } catch (error) {
-            if (!tab.view.webContents.isDestroyed()) {
-              tab.state.error = error.message;
-              publish(tab);
-            }
-            return;
-          }
-          if (tab.view.webContents.isDestroyed() || tab.presentation !== presentation) return;
-          for (const other of tabs.values())
-            if (other !== tab) {
-              other.visible = false;
-              void applyViewport(other).catch(logFailure("Hiding a browser tab", other.state.id));
-              other.activity.present(false);
-            }
-          window.webContents.send("browser:cover", id, undefined);
-        } else if (cover && tab.visible) {
-          const image = (await capture(tab))?.toDataURL();
-          if (
-            tab.view.webContents.isDestroyed() ||
-            tab.presentation !== presentation
-          )
-            return;
-          window.webContents.send("browser:cover", id, image);
-          await new Promise((resolve) => setTimeout(resolve, 50));
-          if (tab.view.webContents.isDestroyed() || tab.presentation !== presentation) return;
-        }
-        tab.visible = Boolean(visible);
-        if (!visible) void applyViewport(tab).catch(logFailure("Hiding a browser tab", tab.state.id));
-        tab.activity.present(tab.visible && window.isVisible() && !window.isMinimized());
-        publish(tab);
-      },
-    );
+    ipcMain.handle("browser:guests", (event) => {
+      if (!trusted(event)) throw new Error("Unavailable outside Citropy");
+      return guests();
+    });
+    ipcMain.on("browser:attach", (event, { id, contentsId }) => {
+      if (!trusted(event)) return;
+      const tab = tabs.get(id);
+      const contents = webContents.fromId(contentsId);
+      if (
+        !tab ||
+        !contents ||
+        tab.contents === contents ||
+        contents.getType() !== "webview" ||
+        contents.hostWebContents !== window.webContents ||
+        contents.session !== session.fromPartition(tab.partition)
+      )
+        return;
+      attachGuest(tab, contents);
+    });
+    ipcMain.on("browser:presented", (event, { id, visible, scale }) => {
+      if (!trusted(event)) return;
+      const tab = tabs.get(id);
+      if (!tab) return;
+      tab.visible = Boolean(visible) && environments.activeId === "local";
+      if (Number.isFinite(scale) && scale > 0) tab.scale = scale;
+      tab.activity.present(tab.visible && window.isVisible() && !window.isMinimized());
+    });
     connectDesktop = () => {
     const wsUrl = new URL("/socket", base);
     wsUrl.protocol = "ws:";

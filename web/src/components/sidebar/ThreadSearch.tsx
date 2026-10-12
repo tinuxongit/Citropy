@@ -6,12 +6,12 @@ import { SearchIcon } from "../icons/actions.tsx";
 
 export function ThreadSearch() {
   const query = useApp((state) => state.threadQuery);
-  const focusPending = useApp((state) => state.threadSearchFocusPending);
+  const focusPending = useApp((state) => state.searchFocusPending);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!focusPending || !input.current!.checkVisibility()) return;
     input.current!.select();
-    useApp.setState({ threadSearchFocusPending: false });
+    useApp.setState({ searchFocusPending: false });
   }, [focusPending]);
   return (
     <label className="thread-search" title={`Find a conversation (${MOD}K)`}>

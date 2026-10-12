@@ -43,7 +43,7 @@ const NOUN: Record<ToolShape, [string, string, string]> = {
   command: ["Ran", "command", "commands"],
   search: ["Searched", "time", "times"],
   web: ["Searched the web", "time", "times"],
-  computer: ["Used the computer", "time", "times"],
+  computer: ["Used the browser", "time", "times"],
   task: ["Ran", "subagent", "subagents"],
   todo: ["Updated", "plan", "plans"],
   generic: ["Used", "tool", "tools"],
@@ -117,12 +117,27 @@ const VERBS: Record<string, [string, string]> = {
   citropy_terminal_open: ["Opening terminal", "Opened terminal"],
   citropy_terminal_read: ["Reading terminal output", "Read terminal output"],
   citropy_terminal_write: ["Writing to terminal", "Wrote to terminal"],
+  citropy_tool_help: ["Looking up", "Looked up"],
+  citropy_browser_open: ["Opening", "Opened"],
+  citropy_browser_action: ["Using the browser to", "Used the browser to"],
+  citropy_browser_snapshot: ["Reading the page", "Read the page"],
+  citropy_workspace_image: ["Sharing", "Shared"],
+  citropy_bots_memory_save: ["Remembering", "Remembered"],
+  citropy_bots_create: ["Creating bot", "Created bot"],
+  citropy_bots_message: ["Messaging a bot", "Messaged a bot"],
 };
 
-export function toolLabel(name: string, status: ToolPart["status"]): string {
+function shownName({ name, input }: Pick<ToolPart, "name" | "input">): string {
+  const inner = /(?:^|_)run_tool$/.test(name) && input && typeof input === "object" && "name" in input && typeof input.name === "string" ? input.name : undefined;
+  return inner ? `citropy_${inner}` : name.replace(/^mcp__citropy__/, "citropy_");
+}
+
+export function toolLabel(part: Pick<ToolPart, "name" | "input" | "status">): string {
+  const name = shownName(part);
+  const { status } = part;
   const pair = VERBS[name];
   if (!pair) {
-    const short = (name.startsWith("mcp__") ? name.split("__").slice(2).join(" ") || name : name).replaceAll("_", " ");
+    const short = (name.startsWith("mcp__") ? name.split("__").slice(2).join(" ") || name : name.replace(/^citropy_/, "")).replaceAll("_", " ");
     return status === "running" ? `Running ${short}` : short;
   }
   if (status === "denied") return `Blocked ${pair[1].toLowerCase()}`;

@@ -19,6 +19,15 @@ test("connected sites match their own subdomains and prefer the most specific si
   assert.equal(matchConnection(list, "not a url"), undefined);
 });
 
+test("a suggested connection also covers its provider's other domains", () => {
+  const list = [{ id: "google", url: "https://www.google.com/" }];
+  assert.equal(matchConnection(list, "https://mail.google.com/")?.id, "google");
+  assert.equal(matchConnection(list, "https://gmail.com/")?.id, "google");
+  assert.equal(matchConnection(list, "https://www.youtube.com/watch")?.id, "google");
+  assert.equal(matchConnection([...list, { id: "youtube", url: "https://youtube.com/" }], "https://www.youtube.com/")?.id, "youtube");
+  assert.equal(matchConnection([{ id: "other", url: "https://example.com/" }], "https://gmail.com/"), undefined);
+});
+
 test("each connection keeps its own sign-in and signing out clears only that site", async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-connections-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
@@ -35,7 +44,7 @@ test("each connection keeps its own sign-in and signing out clears only that sit
   const action = (operation, input = {}) => handleConnections(operation, input, session, tabs);
 
   const [amazon] = await action("add", { name: "Amazon", url: "www.amazon.com" });
-  assert.deepEqual(amazon, { id: amazon.id, name: "Amazon", url: "https://www.amazon.com/", site: "amazon.com", signedIn: false });
+  assert.deepEqual(amazon, { id: amazon.id, name: "Amazon", url: "https://www.amazon.com/", site: "amazon.com", sites: ["amazon.com"], signedIn: false });
   await assert.rejects(action("add", { name: "Again", url: "https://amazon.com/cart" }), /already connected/);
   await assert.rejects(action("add", { name: "", url: "gmail.com" }), /Enter a name/);
 

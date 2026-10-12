@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { spawnSync } from "node:child_process";
-import { ConversationSearch, searchConversations } from "../server/conversation-search.ts";
+import { ConversationSearch, findInMessages, searchConversations } from "../server/conversation-search.ts";
 import { EventJournal } from "../server/event-journal.ts";
 
 function fixture(t, count = 2) {
@@ -21,6 +21,19 @@ function fixture(t, count = 2) {
   t.after(async () => { await search.close(); journal.close(); rmSync(directory, { recursive: true, force: true }); });
   return { journal, search, threads, path };
 }
+
+test("find in messages returns text matches in order and skips system notes and tools", () => {
+  const message = (id, role, parts) => ({ id, ts: 1, role, parts });
+  const messages = [
+    message("first", "user", [{ id: "a", kind: "text", text: "Check the **Café** menu", complete: true }]),
+    message("notice", "system", [{ id: "b", kind: "text", text: "Café renamed", complete: true }]),
+    message("tool", "assistant", [{ id: "c", kind: "tool", name: "Bash", input: { command: "café" }, status: "ok" }]),
+    message("second", "assistant", [{ id: "d", kind: "text", text: "The café opens at nine", complete: true }]),
+  ];
+  assert.deepEqual(findInMessages(messages, "  CAFÉ "), ["first", "second"]);
+  assert.deepEqual(findInMessages(messages, "absent"), []);
+  assert.deepEqual(findInMessages(messages, "   "), []);
+});
 
 test("worker search preserves substring, markdown, Unicode, snippets and sorting", async t => {
   const { journal, search, threads } = fixture(t);

@@ -5,6 +5,7 @@ import { providerInfo } from "../provider-registry.ts";
 import { usableProviderAccount } from "../provider-account.ts";
 import { disposeRuntime, runtimeFor, runtimeIfExists } from "../runtime.ts";
 import { store } from "../store.ts";
+import { findInMessages } from "../conversation-search.ts";
 import { chooseThreadWorkspace, workspacePath } from "../workspaces.ts";
 import { cleanupCheckpoints } from "../checkpoints.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../shared/model-options.ts";
@@ -131,6 +132,10 @@ export const threadRoutes: Routes = {
     } finally {
       if (searches.get(send) === controller) searches.delete(send);
     }
+  },
+  "thread.find": (event, send) => {
+    if (!store.threads.has(event.threadId)) throw new Error("This conversation no longer exists.");
+    send({ t: "thread.found", requestId: event.requestId, messageIds: findInMessages(store.readMessages(event.threadId), event.query) });
   },
   "thread.load": (event, send) => {
     if (event.requestId !== undefined && (typeof event.requestId !== "string" || !event.requestId || event.requestId.length > 200)) throw new Error("Invalid request identifier.");

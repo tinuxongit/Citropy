@@ -128,3 +128,4 @@ button.details-row:disabled { opacity: 0.5; }
 .details-note { margin: 0; padding: var(--space-8) var(--space-16) var(--space-12); color: var(--text-3); font-size: var(--text-xs); }
 
 .script-editor .feature-field + .feature-field { margin-top: var(--space-12); }
+.script-command { font-family: var(--font-mono); }

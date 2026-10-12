@@ -13,8 +13,8 @@ const textPage = {
 export const workspaceTools = ([
   {
     name: "ask_user",
-    description: "Ask 1 to 4 concise questions and wait for answers, in any access mode. Options are optional; free text is always allowed. Set multiple for multiple choices. Returns answers by question id, or cancelled. Never invent an answer after cancellation. Use instead of a printed questionnaire or shell wait. Does not authorize other tools.",
-    inputSchema: { type: "object", properties: { questions: { type: "array", minItems: 1, maxItems: 4, items: { type: "object", properties: { id: string, question: string, header: string, options: { type: "array", maxItems: 12, items: { type: "object", properties: { label: string, description: string }, required: ["label"], additionalProperties: false } }, multiple: { type: "boolean" } }, required: ["question"], additionalProperties: false } } }, required: ["questions"], additionalProperties: false },
+    description: "Ask 1 to 4 concise questions and wait for answers, in any access mode. Options are optional; free text is always allowed. Set multiple for multiple choices. Returns answers by question id, or cancelled. Never invent an answer after cancellation. Use instead of a printed questionnaire or shell wait. Does not authorize other tools. When the user has to do something in a browser tab, such as signing in or solving a check, set browserTab to that tab's id from browser_tabs and offer a Done option. The user gets a button that opens the tab full size, and you wait until they finish.",
+    inputSchema: { type: "object", properties: { questions: { type: "array", minItems: 1, maxItems: 4, items: { type: "object", properties: { id: string, question: string, header: string, options: { type: "array", maxItems: 12, items: { type: "object", properties: { label: string, description: string }, required: ["label"], additionalProperties: false } }, multiple: { type: "boolean" }, browserTab: string }, required: ["question"], additionalProperties: false } } }, required: ["questions"], additionalProperties: false },
     annotations: { readOnlyHint: true },
   },
   {
@@ -322,9 +322,14 @@ export const workspaceTools = ([
   },
   {
     name: "bots_list",
-    description: "List the user's Citropy bots with their ids, names, titles, descriptions, and whether each is busy. Bots are long-running agents, each with its own conversation and routines.",
+    description: "List the user's Citropy bots with their ids, names, titles, descriptions, and whether each is busy. Bots are long-running agents, each with its own conversation, memory and routines.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true },
+  },
+  {
+    name: "bots_create",
+    description: "Create a new bot when a job needs a long-lived owner of its own, such as a recurring area of work. The bot gets its own conversation with this conversation's provider and model. The description holds its standing instructions, so write everything it needs to know. Check bots_list first so you don't duplicate one, and ask the user before creating several bots so the list stays small.",
+    inputSchema: { type: "object", properties: { name: string, title: string, description: string }, required: ["name"] },
   },
   {
     name: "bots_message",
@@ -343,14 +348,14 @@ export const workspaceTools = ([
     inputSchema: { type: "object", properties: { groupId: string, text: string }, required: ["groupId", "text"] },
   },
   {
-    name: "bots_routine_list",
-    description: "List a bot's routines, which are tasks it runs on a schedule, with their recent runs. Omit botId to list this bot's own routines.",
+    name: "routine_list",
+    description: "List the routines of this conversation, which are tasks it runs on a schedule, with their recent runs. Pass a botId to list a bot's routines instead.",
     inputSchema: { type: "object", properties: { botId: string } },
     annotations: { readOnlyHint: true },
   },
   {
-    name: "bots_routine_save",
-    description: "Create a routine, or update one by passing its id. A schedule is either {\"kind\":\"interval\",\"minutes\":60} with at least 5 minutes, or {\"kind\":\"weekly\",\"days\":[1,2,3,4,5],\"time\":\"08:00\"} where days run from 0 for Sunday to 6 for Saturday in local time. The prompt is the full task the bot receives each run. Omit botId for this bot's own routines.",
+    name: "routine_save",
+    description: "Create a routine for this conversation, or update one by passing its id. Each run sends the prompt here as a new message, so write the full task. Times are local. Days run from 0 for Sunday to 6 for Saturday. A schedule is one of {\"kind\":\"interval\",\"minutes\":15} for every 1 minute up to 90 days, optionally limited with \"days\":[1,2,3,4,5] and \"from\":\"09:00\",\"to\":\"17:00\"; {\"kind\":\"weekly\",\"days\":[1,2,3,4,5],\"time\":\"08:00\"}; {\"kind\":\"monthly\",\"day\":1,\"time\":\"09:00\"}, where short months use their last day; or {\"kind\":\"once\",\"at\":\"2026-01-15T09:00\"} for a single run at a future local date and time. Pass a botId to manage a bot's routines instead.",
     inputSchema: {
       type: "object",
       properties: {
@@ -365,9 +370,25 @@ export const workspaceTools = ([
     },
   },
   {
-    name: "bots_routine_remove",
-    description: "Delete a routine permanently. Omit botId for this bot's own routines.",
+    name: "routine_remove",
+    description: "Delete a routine permanently. Pass a botId for a bot's routines.",
     inputSchema: { type: "object", properties: { botId: string, id: string }, required: ["id"] },
+  },
+  {
+    name: "bots_memory_list",
+    description: "List this bot's memories, the lasting notes it keeps across its conversation.",
+    inputSchema: { type: "object", properties: {} },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "bots_memory_save",
+    description: "Save a lasting memory for this bot, or replace one by passing its id. Keep stable working preferences, important facts about the user and your role, and short summaries of finished work. Don't save task instructions or anything that changes often. When the user corrects something you remembered, replace that entry instead of adding a new one.",
+    inputSchema: { type: "object", properties: { id: string, text: string }, required: ["text"] },
+  },
+  {
+    name: "bots_memory_remove",
+    description: "Remove one of this bot's memories when it is wrong or no longer useful.",
+    inputSchema: { type: "object", properties: { id: string }, required: ["id"] },
   },
 ] satisfies ToolDefinition[]).filter(tool => !remoteId || !tool.name.startsWith("browser_"));
 
@@ -384,11 +405,11 @@ export const approvalTool: ToolDefinition = {
     required: ["tool_name", "input"],
   },
 };
-export const toolCategories = remoteId ? ["terminal", "workspace", "subagent", "bots"] : ["browser", "terminal", "workspace", "subagent", "bots"];
+export const toolCategories = remoteId ? ["terminal", "workspace", "subagent", "routine", "bots"] : ["browser", "terminal", "workspace", "subagent", "routine", "bots"];
 export const discoveryTools: ToolDefinition[] = [
   {
     name: "tool_help",
-    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, and OpenCode accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, visual replies, and panels; terminal has visible commands; bots has the user's long-running bots, handoffs between them, and their scheduled routines.${remoteId ? "" : " Browser has the shared browser and the sites the user signed in to under Connections."}`,
+    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, and OpenCode accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, visual replies, and panels; terminal has visible commands; routine has tasks this conversation runs on a schedule, from every minute to once at a set time; bots has the user's long-running bots and handoffs between them.${remoteId ? "" : " Browser has the shared browser and the sites the user signed in to under Connections."}`,
     inputSchema: { type: "object", properties: { category: { type: "string", enum: toolCategories } }, required: ["category"], additionalProperties: false },
     annotations: { readOnlyHint: true },
   },

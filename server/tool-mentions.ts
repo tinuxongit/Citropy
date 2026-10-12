@@ -54,7 +54,7 @@ const TOOLS: Array<Omit<Mention, "section"> & { available: (settings: Settings) 
 function connectionInstruction(connection: Connection): string {
   const open = `Load tool_help with {"category":"browser"}, then call run_tool with {"name":"browser_open","arguments":{"url":${JSON.stringify(connection.url)}}}`;
   return connection.signedIn
-    ? `Use the user's ${connection.name} account for this request. ${open}. Pages on ${connection.site} open with their sign-in.`
+    ? `Use the user's ${connection.name} account for this request. ${open}. Pages on ${connection.sites.join(", ")} open with their sign-in.`
     : `Use the user's ${connection.name} account for this request. They have not finished signing in to ${connection.site}. ${open}, then use ask_user to have them sign in on that page and choose Finish sign-in before you continue.`;
 }
 

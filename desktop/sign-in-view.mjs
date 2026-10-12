@@ -1,4 +1,5 @@
 import { WebContentsView, session } from "electron";
+import { keepSessionCookies } from "./session-cookies.mjs";
 
 const BACKGROUND = "#151515";
 const NAVIGATION_ABORTED = -3;
@@ -46,6 +47,7 @@ export function createSignInView(window) {
     async open({ partition, url }) {
       finish(false);
       const signInSession = session.fromPartition(partition);
+      keepSessionCookies(signInSession);
       signInSession.setPermissionRequestHandler((_, __, callback) => callback(false));
       signInSession.setPermissionCheckHandler(() => false);
       const view = new WebContentsView({

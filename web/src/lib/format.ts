@@ -171,14 +171,16 @@ export function since(ts: number, now = Date.now()): string {
 
 const relativeDays = new Intl.RelativeTimeFormat(LOCALE, { numeric: "auto" });
 
-export function day(ts: number, now = Date.now()): string {
+export function dayInSentence(ts: number, now = Date.now()): string {
   const midnight = (time: number) => new Date(time).setHours(0, 0, 0, 0);
   const offset = Math.round((midnight(ts) - midnight(now)) / 86_400_000);
-  if (offset >= -1) {
-    const label = relativeDays.format(offset, "day");
-    return label[0]!.toUpperCase() + label.slice(1);
-  }
+  if (offset >= -1) return relativeDays.format(offset, "day");
   return formatDate(ts, { weekday: "long", month: "short", day: "numeric" });
+}
+
+export function day(ts: number, now = Date.now()): string {
+  const label = dayInSentence(ts, now);
+  return label[0]!.toUpperCase() + label.slice(1);
 }
 
 export function until(ts: number, now = Date.now()): string {

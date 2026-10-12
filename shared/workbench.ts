@@ -31,7 +31,6 @@ export interface BrowserState {
   width: number;
   height: number;
   mobile?: boolean;
-  scale?: number;
   canGoBack?: boolean;
   canGoForward?: boolean;
   error?: string;

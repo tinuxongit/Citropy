@@ -93,6 +93,10 @@
   --raised-2-solid: oklch(from var(--tint) 0.2652 var(--tint-surface) h);
   --overlay-solid: var(--panel-solid);
   --surface-solid: var(--panel-solid);
+  --menu-solid: oklch(from var(--tint) 0.2397 var(--tint-surface) h);
+  --menu-highlight: oklch(from var(--tint) 0.2952 var(--tint-surface) h);
+  --menu-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 16px 36px -8px rgba(0, 0, 0, 0.6);
+  --popup-well: var(--panel-solid);
   --tree-line: var(--raised-2-solid);
   --code-bg: var(--canvas-deep);
 
@@ -115,6 +119,10 @@
   --raised-2-solid: oklch(from var(--tint) 0.9068 var(--tint-surface) h);
   --overlay-solid: #ffffff;
   --surface-solid: #ffffff;
+  --menu-solid: var(--overlay-solid);
+  --menu-highlight: var(--raised-2-solid);
+  --menu-shadow: 0 1px 6px rgba(0, 0, 0, 0.08), 0 12px 32px -8px rgba(0, 0, 0, 0.2);
+  --popup-well: var(--raised);
   --tree-line: oklch(from var(--tint) 0.8762 var(--tint-surface) h);
   --code-bg: var(--canvas-deep);
 
@@ -384,10 +392,15 @@
 :root {
   --panel: var(--panel-solid);
   --overlay: var(--overlay-solid);
+  --menu: var(--menu-solid);
   --surface: var(--surface-solid);
   --raised: var(--raised-solid);
   --raised-2: var(--raised-2-solid);
   --highlight: var(--raised-2);
   --hover-strength: 45%;
+}
+
+:root,
+.menu {
   --hover: color-mix(in oklab, var(--highlight) var(--hover-strength), transparent);
 }

@@ -181,7 +181,10 @@ export interface Message {
   attachments?: Attachment[];
   mentions?: import("./mention-tags.ts").MentionTag[];
   origin?: import("./bots.ts").MessageOrigin;
+  reactions?: import("./reactions.ts").Reaction[];
 }
+
+export type MessagePatch = Partial<Pick<Message, "reactions">>;
 
 export interface HistoryPage {
   before?: string;
@@ -305,6 +308,7 @@ export interface ThreadMeta {
   nativeLaunchId?: string;
   botId?: string;
   groupId?: string;
+  routines?: import("./routines.ts").Routine[];
   error?: string;
   usageLimit?: UsageLimitState;
   queue?: QueuedMessage[];
@@ -484,6 +488,7 @@ export type ServerEvent = (
   | { t: "github.result"; requestId: string; result?: GitHubResponse; error?: string }
   | { t: "git.manage"; requestId: string; result?: GitResult; error?: string }
   | { t: "thread.search"; query: string; results: Array<{ threadId: string; messageId?: string; snippet: string }> }
+  | { t: "thread.found"; requestId: string; messageIds: string[] }
   | { t: "project.chosen"; projectId: string | null; error?: string }
   | { t: "providers.update"; providers: ProviderInfo[] }
   | { t: "hello"; snapshot: Snapshot; epoch?: string }
@@ -493,11 +498,13 @@ export type ServerEvent = (
   | { t: "thread.upsert"; thread: ThreadMeta }
   | { t: "thread.remove"; id: string }
   | { t: "bot.upsert"; bot: import("./bots.ts").Bot; requestId?: string }
+  | { t: "routine.saved"; requestId: string; id: string }
   | { t: "bot.remove"; id: string }
   | { t: "group.upsert"; group: import("./bots.ts").BotGroup; requestId?: string }
   | { t: "group.remove"; id: string }
   | { t: "thread.messages"; threadId: string; messages: Message[]; page?: HistoryPage; requestId?: string }
   | { t: "message.add"; threadId: string; message: Message }
+  | { t: "message.patch"; threadId: string; messageId: string; patch: MessagePatch }
   | { t: "part.add"; threadId: string; messageId: string; part: Part }
   | { t: "part.append"; threadId: string; messageId: string; partId: string; text: string }
   | { t: "part.patch"; threadId: string; messageId: string; partId: string; patch: Record<string, unknown> }
@@ -544,6 +551,7 @@ export type ClientEvent = (
   | { t: "github.request"; requestId: string; request: GitHubRequest }
   | { t: "git.manage"; requestId: string; projectId: string; threadId?: string; operation: GitOperation; value?: string; offset?: number; remote?: string }
   | { t: "thread.search"; query: string }
+  | { t: "thread.find"; requestId: string; threadId: string; query: string }
   | { t: "project.choose"; path?: string }
   | { t: "providers.refresh"; force?: boolean }
   | { t: "providers.configure"; provider: ProviderId; enabled: boolean }
@@ -588,9 +596,11 @@ export type ClientEvent = (
   | { t: "group.create"; requestId: string; thread: BotThreadSettings; botIds: string[] }
   | { t: "group.update"; requestId?: string; id: string; patch: import("./bots.ts").BotGroupPatch }
   | { t: "group.remove"; id: string }
-  | { t: "routine.save"; requestId: string; botId: string; routine: import("./bots.ts").RoutineDraft }
-  | { t: "routine.remove"; botId: string; id: string }
-  | { t: "routine.run"; botId: string; id: string }
+  | { t: "routine.save"; requestId: string; threadId: string; routine: import("./routines.ts").RoutineDraft }
+  | { t: "routine.remove"; threadId: string; id: string }
+  | { t: "routine.run"; threadId: string; id: string }
+  | { t: "memory.remove"; botId: string; id: string }
+  | { t: "message.react"; threadId: string; messageId: string; key: import("./reactions.ts").ReactionKey; on: boolean }
   | { t: "thread.load"; id: string; page?: { before?: string; revision?: number }; requestId?: string }
   | { t: "thread.subscribe"; ids: string[] }
   | {

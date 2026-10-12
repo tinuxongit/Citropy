@@ -7,13 +7,13 @@ import test from "node:test";
 import { botStore } from "../server/bots/bot-store.ts";
 import { postFromUser } from "../server/bots/group-chat.ts";
 import { groupStore } from "../server/bots/group-store.ts";
-import { checkRoutines, runRoutine } from "../server/bots/routines.ts";
+import { react } from "../server/bots/reactions.ts";
 import { uid } from "../server/ids.ts";
 import { callWorkspaceTool } from "../server/mcp-workspace.ts";
+import { refreshProvidersNow } from "../server/provider-registry.ts";
 import { providers } from "../server/providers/index.ts";
 import { removeThread } from "../server/routes/threads.ts";
 import { store } from "../server/store.ts";
-import { describeSchedule, nextRunAfter } from "../shared/bots.ts";
 
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), "citropy-bots-"));
@@ -75,37 +75,6 @@ test("bot handoffs stop after the chain limit", async t => {
   );
 });
 
-test("routines reject schedules under five minutes and record finished runs", async t => {
-  const { makeBot, sessions } = await fixture(t);
-  const bot = makeBot({ name: "Daily" });
-  assert.throws(() => botStore.saveRoutine(bot.id, { name: "Too often", prompt: "Check", schedule: { kind: "interval", minutes: 4 }, paused: false }), /every 5 minutes/);
-  const routine = botStore.saveRoutine(bot.id, { name: "Inbox", prompt: "Summarize new mail.", schedule: { kind: "interval", minutes: 30 }, paused: false });
-  assert.equal(store.threads.get(bot.threadId).messages.at(-1).parts[0].text, "Created routine Inbox");
-  await runRoutine(bot.id, routine.id, true);
-  const session = sessions.get(bot.threadId);
-  assert.match(session.sent[0], /Your routine "Inbox" is running/);
-  assert.equal(botStore.routine(bot.id, routine.id).runs[0].status, "running");
-  await assert.rejects(runRoutine(bot.id, routine.id, true), /Daily is busy/);
-  session.emit({ type: "turn.end" });
-  await until(() => botStore.routine(bot.id, routine.id).runs[0].status !== "running");
-  const [run] = botStore.routine(bot.id, routine.id).runs;
-  assert.equal(run.status, "ok");
-  assert.equal(run.test, true);
-});
-
-test("the scheduler runs a due routine once and moves it to the next slot", async t => {
-  const { makeBot, sessions } = await fixture(t);
-  const bot = makeBot({ name: "Ticker" });
-  const routine = botStore.saveRoutine(bot.id, { name: "Ping", prompt: "Ping.", schedule: { kind: "interval", minutes: 5 }, paused: false });
-  const due = routine.nextRunAt;
-  checkRoutines(due);
-  await until(() => sessions.get(bot.threadId)?.sent.length === 1);
-  const ran = botStore.routine(bot.id, routine.id);
-  assert.equal(ran.nextRunAt, ran.runs[0].startedAt + 5 * 60_000);
-  checkRoutines(due);
-  assert.equal(botStore.routine(bot.id, routine.id).runs.length, 1);
-});
-
 test("deleting a bot's conversation deletes the bot", async t => {
   const { makeBot } = await fixture(t);
   const bot = makeBot({ name: "Temporary" });
@@ -127,10 +96,17 @@ test("a bot shows its latest reply as a preview once the turn ends", async t => 
   const { makeBot } = await fixture(t);
   const bot = makeBot({ name: "Writer" });
   store.patchThread(bot.threadId, { running: true });
-  store.addMessage(bot.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "  Draft is ready.  " }] });
+  store.addMessage(bot.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "  ## Draft\n- **Saved** to `draft.md`, see [notes](https://example.com).  " }] });
   assert.equal(botStore.get(bot.id).preview, undefined);
   store.patchThread(bot.threadId, { running: false });
-  assert.equal(botStore.get(bot.id).preview, "Draft is ready.");
+  assert.equal(botStore.get(bot.id).preview, "Draft Saved to draft.md, see notes.");
+  assert.equal(botStore.get(bot.id).unread, true);
+  botStore.update(bot.id, { unread: false });
+  store.addMessage(bot.threadId, { id: uid("msg"), role: "user", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "word ".repeat(80) }] });
+  store.patchThread(bot.threadId, { running: true });
+  store.patchThread(bot.threadId, { running: false });
+  assert.equal(botStore.get(bot.id).unread, false);
+  assert.match(botStore.get(bot.id).preview, /^word word .*word…$/);
 });
 
 function groupTexts(group) {
@@ -154,9 +130,12 @@ test("a group message goes to the mentioned bot and its reply is posted to the g
   store.patchThread(writer.threadId, { running: false, status: "idle" });
   await until(() => sessions.get(scout.threadId)?.sent.length === 1);
   assert.deepEqual(groupTexts(group), ["user: @LaunchWriter draft the post", "Launch Writer: Draft ready. @Scout check the facts."]);
+  assert.ok(!botStore.get(writer.id).unread);
+  assert.deepEqual(store.readMessages(group.threadId).map(message => message.mentions?.map(tag => tag.title)), [["Launch Writer"], ["Scout"]]);
   assert.deepEqual(groupStore.get(group.id).working, [scout.id]);
   assert.match(sessions.get(scout.threadId).sent[0], /from Launch Writer, another bot/);
   assert.equal(groupStore.get(group.id).preview, "Launch Writer: Draft ready. @Scout check the facts.");
+  assert.equal(groupStore.get(group.id).unread, true);
 });
 
 test("an unaddressed group message reaches every member and PASS replies stay out of the group", async t => {
@@ -186,12 +165,60 @@ test("groups hold two to six bots and drop deleted members", async t => {
   assert.deepEqual(groupTexts(group).slice(-3), ["system: Renamed to Ops", "system: Added Bot3", "system: Removed Bot2"]);
 });
 
-test("weekly schedules find the next matching day and read naturally", () => {
-  const schedule = { kind: "weekly", days: [1, 2, 3, 4, 5], time: "08:00" };
-  const friday = new Date(2026, 9, 9, 9, 0).getTime();
-  const next = new Date(nextRunAfter(schedule, friday));
-  assert.equal(next.getDay(), 1);
-  assert.equal(next.getHours(), 8);
-  assert.match(describeSchedule(schedule), /^Every weekday at 8:00/);
-  assert.equal(describeSchedule({ kind: "interval", minutes: 120 }), "Every 2 hours");
+test("a bot keeps its own memories and gets them in its next briefing", async t => {
+  const { makeBot, sessions } = await fixture(t);
+  const scout = makeBot({ name: "Scout" });
+  const writer = makeBot({ name: "Writer" });
+  const run = (name, args = {}) => callWorkspaceTool(writer.threadId, "run_tool", { name, arguments: args });
+  await run("bots_memory_save", { text: "The user wants summaries under five lines." });
+  const [saved] = botStore.get(writer.id).memory;
+  await run("bots_memory_save", { id: saved.id, text: "The user wants summaries under three lines." });
+  await run("bots_memory_save", { text: "Stale fact." });
+  await run("bots_memory_remove", { id: botStore.get(writer.id).memory[1].id });
+  assert.deepEqual(botStore.get(writer.id).memory.map(entry => entry.text), ["The user wants summaries under three lines."]);
+  await callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_message", arguments: { botId: writer.id, text: "Summarize the launch." } });
+  assert.match(sessions.get(writer.threadId).sent[0], new RegExp(`\\[${saved.id}\\] The user wants summaries under three lines\\.`));
+});
+
+test("a bot creates a focused bot with its own provider settings", async t => {
+  const { makeBot } = await fixture(t);
+  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  await refreshProvidersNow();
+  const scout = makeBot({ name: "Scout" });
+  const result = JSON.parse((await callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_create", arguments: { name: "Tracker", title: "Release tracking", description: "Watch the release checklist." } }))[0].text);
+  const tracker = botStore.get(result.id);
+  assert.equal(tracker.description, "Watch the release checklist.");
+  const thread = store.threads.get(tracker.threadId);
+  assert.equal(thread.provider, "claude");
+  assert.equal(thread.messages.at(-1).parts[0].text, "Created by Scout");
+  store.patchThread(scout.threadId, { permissionMode: "plan" });
+  await assert.rejects(callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_create", arguments: { name: "Another" } }), /Plan only/);
+});
+
+test("reactions reach the bot that wrote the message on its next prompt", async t => {
+  const { makeBot, makeGroup, sessions } = await fixture(t);
+  const scout = makeBot({ name: "Scout" });
+  const writer = makeBot({ name: "Writer" });
+  const reply = store.addMessage(writer.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Draft is ready." }] });
+  const ask = { id: uid("msg"), role: "user", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Hi" }] };
+  store.addMessage(writer.threadId, ask);
+  assert.throws(() => react(writer.threadId, ask.id, "like", true), /only react to a bot's message/);
+  assert.throws(() => react(writer.threadId, reply.id, "wave", true), /listed reactions/);
+  react(writer.threadId, reply.id, "dislike", true);
+  react(writer.threadId, reply.id, "dislike", false);
+  react(writer.threadId, reply.id, "like", true);
+  assert.deepEqual(store.readMessages(writer.threadId).find(message => message.id === reply.id).reactions.map(entry => entry.key), ["like"]);
+  const group = makeGroup([scout, writer]);
+  const post = store.addMessage(group.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Shipped." }], origin: { kind: "bot", threadId: writer.threadId, botId: writer.id, name: "Writer", depth: 1 } });
+  react(group.threadId, post.id, "love", true);
+  await callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_message", arguments: { botId: writer.id, text: "Next task." } });
+  const first = sessions.get(writer.threadId).sent[0];
+  assert.match(first, /reacted with thumbs up to your message: "Draft is ready\."/);
+  assert.match(first, /reacted with heart to your message in the group chat "Scout, Writer": "Shipped\."/);
+  assert.doesNotMatch(first, /thumbs down/);
+  sessions.get(writer.threadId).emit({ type: "turn.end" });
+  await until(() => !store.threads.get(writer.threadId).running);
+  await callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_message", arguments: { botId: writer.id, text: "Another task." } });
+  assert.doesNotMatch(sessions.get(writer.threadId).sent[1], /reacted/);
 });

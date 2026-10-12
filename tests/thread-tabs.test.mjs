@@ -32,3 +32,17 @@ test("closing a tab clears its preview and picks the next neighbor", () => {
   assert.equal(neighborTab(["a", "b", "c"], "c"), "b");
   assert.equal(neighborTab(["a"], "a"), null);
 });
+
+test("selecting a conversation that already has a tab shows it", async () => {
+  const saved = new Map();
+  globalThis.localStorage = { getItem: (key) => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value), removeItem: (key) => saved.delete(key) };
+  try {
+    const { useApp, selectThread } = await import("../web/src/lib/store.ts");
+    useApp.setState({ threads: { a: { id: "a", projectId: "p" } }, ...tabs(["a"], null, null) });
+    selectThread("a");
+    assert.equal(useApp.getState().activeThreadId, "a");
+    assert.deepEqual(useApp.getState().openThreadIds, ["a"]);
+  } finally {
+    delete globalThis.localStorage;
+  }
+});

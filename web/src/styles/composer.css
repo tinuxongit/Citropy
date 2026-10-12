@@ -303,8 +303,10 @@
   padding: var(--space-8);
   border-radius: var(--r-popup);
   border: 0;
-  background: var(--overlay);
+  background: var(--menu);
+  box-shadow: var(--menu-shadow);
   transform-origin: top left;
+  --highlight: var(--menu-highlight);
 }
 .menu[data-sheet] {
   max-width: none;
@@ -335,6 +337,9 @@
   overflow: visible;
   border-radius: 0 var(--r-popup) var(--r-popup) 0;
   background: var(--panel);
+  box-shadow: none;
+  --highlight: var(--raised-2);
+  --popup-well: var(--raised);
 }
 .menu[data-side="edge"]::before,
 .menu[data-side="edge"]::after {

@@ -21,7 +21,8 @@ export function NewChatDialog() {
   const threads = useApp((state) => state.threads);
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  const [making, setMaking] = useState(false);
+  const firstBot = Object.keys(bots).length === 0;
+  const [making, setMaking] = useState(firstBot);
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [look, setLook] = useState<BotLook>(() => defaultLook(Object.keys(bots).length));
   const [busy, setBusy] = useState(false);
@@ -72,7 +73,7 @@ export function NewChatDialog() {
       onSubmit={submit}
       footer={making ? (
         <>
-          <button className="btn" type="button" data-cancel disabled={busy} onClick={() => setMaking(false)}>Back</button>
+          <button className="btn" type="button" data-cancel disabled={busy} onClick={() => firstBot ? closeNewBotChat() : setMaking(false)}>{firstBot ? "Cancel" : "Back"}</button>
           <button className="btn" data-variant="primary" disabled={busy || !profile.name.trim()}>{busy && <Loader size={15} />}Create bot</button>
         </>
       ) : (

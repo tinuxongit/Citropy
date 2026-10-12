@@ -3,6 +3,7 @@ import { AnimatePresence } from "motion/react";
 import { EditIcon } from "../icons/pencil.tsx";
 import { PlayIcon } from "../icons/media.tsx";
 import { PlusIcon } from "../icons/marks.tsx";
+import { TerminalIcon } from "../icons/squares.tsx";
 import { TrashIcon } from "../icons/actions.tsx";
 import { Modal } from "../Modal.tsx";
 import type { MenuItem } from "../Menu.tsx";
@@ -41,7 +42,7 @@ export function ProjectScripts({ project, threadId, disabled }: { project: Proje
   return <>
     {primary
       ? <DetailSplitRow icon={<PlayIcon size={16} />} label={`Run ${primary.name}`} title={primary.command} disabled={disabled} onClick={() => run(primary)} menu={menu} menuLabel="Project scripts" />
-      : <DetailRow icon={<PlusIcon size={16} />} label="Add project script" onClick={add} />}
+      : <DetailRow icon={<TerminalIcon size={16} />} label="Add project script" onClick={add} />}
     <AnimatePresence>{editing && <ScriptEditor script={editing} scripts={scripts} onClose={() => setEditing(undefined)} onSave={(next) => { saveProjectScripts(project.id, next); setEditing(undefined); }} />}</AnimatePresence>
   </>;
 }
@@ -56,14 +57,14 @@ function ScriptEditor({ script, scripts, onClose, onSave }: { script: ProjectScr
     onSave(existing ? scripts.map((entry) => entry.id === script.id ? next : entry) : [...scripts, next]);
   };
   return (
-    <Modal className="script-editor" title={existing ? "Edit project script" : "Add project script"} description="Runs in a new terminal in this conversation's workspace." initialFocus="input" onClose={onClose} onSubmit={submit}
+    <Modal className="script-editor" title={existing ? "Edit project script" : "Add project script"} description="Runs in a new terminal in this conversation's workspace." icon={<TerminalIcon size={18} />} initialFocus="input" onClose={onClose} onSubmit={submit}
       footer={<>
         {existing && <button type="button" className="btn" data-variant="danger" onClick={() => onSave(scripts.filter((entry) => entry.id !== script.id))}><TrashIcon size={14} />Delete</button>}
         <button type="button" className="btn" data-cancel onClick={onClose}>Cancel</button>
         <button className="btn" data-variant="primary" disabled={!name.trim() || !command.trim()}>Save</button>
       </>}>
       <label className="feature-field">Name<input type="text" value={name} maxLength={PROJECT_SCRIPT_LIMITS.name} placeholder="Dev server" onChange={(event) => setName(event.target.value)} /></label>
-      <label className="feature-field">Command<input type="text" value={command} maxLength={PROJECT_SCRIPT_LIMITS.command} placeholder="npm run dev" spellCheck={false} onChange={(event) => setCommand(event.target.value)} /></label>
+      <label className="feature-field">Command<input type="text" value={command} maxLength={PROJECT_SCRIPT_LIMITS.command} className="script-command" placeholder="npm run dev" spellCheck={false} onChange={(event) => setCommand(event.target.value)} /></label>
     </Modal>
   );
 }

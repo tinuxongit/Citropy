@@ -40,7 +40,7 @@ import { logFile, setLogging, writeLog } from "./logs.ts";
 import { startUsageResume } from "./usage-resume.ts";
 import { botStore } from "./bots/bot-store.ts";
 import { groupStore } from "./bots/group-store.ts";
-import { startRoutines } from "./bots/routines.ts";
+import { startRoutines } from "./routines/scheduler.ts";
 import * as terminals from "./terminals.ts";
 import type { ClientEvent, ServerEvent, Snapshot } from "../shared/protocol.ts";
 import { REMOTE_PROTOCOL } from "../shared/remote-connection.mjs";

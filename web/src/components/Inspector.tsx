@@ -23,6 +23,7 @@ import { Menu } from "./Menu.tsx";
 import { usePanelTabActions } from "./use-panel-tab-actions.tsx";
 import { scaled, selectPanel, useApp } from "../lib/store.ts";
 import { openWorkbenchPanel } from "../lib/actions.ts";
+import { useBrowserTakeover } from "../lib/browser-takeover.ts";
 import { send } from "../lib/socket.ts";
 import type { PanelKind } from "../../../shared/workbench.ts";
 
@@ -94,6 +95,7 @@ export function Inspector({ visible }: { visible: boolean }) {
   const activePanels = useApp((state) => state.activePanels);
   const unseenPanels = useApp((state) => state.unseenPanels);
   const connected = useApp((state) => state.connected);
+  const takenOver = useBrowserTakeover((state) => state.tabId);
   const tabStrip = useRef<HTMLDivElement>(null);
   const focusTab = useRef(false);
   const [expandedProject, setExpandedProject] = useState<string>();
@@ -332,7 +334,7 @@ export function Inspector({ visible }: { visible: boolean }) {
       <div className="inspector-body">
         {panels.toSorted((a, b) => a.id.localeCompare(b.id)).map((panel) => {
           const selected = panel.projectId === projectId && panel.id === activeId;
-          const active = visible && selected;
+          const active = visible && selected && panel.id !== takenOver;
           return (
             <div
               key={panel.id}

@@ -390,6 +390,7 @@ export function applyEvent(state: AppState, event: ServerEvent, focused = true):
       applyThreadEvent(state, event);
       return;
     case "message.add":
+    case "message.patch":
     case "part.add":
     case "part.append":
     case "part.patch":
@@ -409,6 +410,9 @@ export function applyEvent(state: AppState, event: ServerEvent, focused = true):
     case "request.error":
       resolveResponse(event.requestId, undefined, event.error);
       return;
+    case "thread.found":
+      resolveResponse(event.requestId, event.messageIds);
+      return;
     case "providers.update":
       state.providers = event.providers;
       return;
@@ -425,6 +429,9 @@ export function applyEvent(state: AppState, event: ServerEvent, focused = true):
     case "bot.upsert":
       state.bots = { ...state.bots, [event.bot.id]: event.bot };
       if (event.requestId) resolveResponse(event.requestId, event.bot);
+      return;
+    case "routine.saved":
+      resolveResponse(event.requestId, event.id);
       return;
     case "bot.remove": {
       const bots = { ...state.bots };

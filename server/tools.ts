@@ -50,7 +50,27 @@ export function describeTool(name: string, rawInput: unknown, root = ""): ToolDe
   const short = path ? basename(path) : "";
   const dir = folder(path, root);
 
-  if (name.replace(/^(?:mcp__citropy__|citropy_)/, "") === "workspace_image") return { shape: "read", headline: `Share ${short || "image"}`, detail: dir };
+  switch (name.replace(/^(?:mcp__citropy__|citropy_)/, "")) {
+    case "workspace_image":
+      return { shape: "read", headline: short || "image", detail: dir };
+    case "browser_open":
+      return { shape: "computer", headline: str(input.url) || "a new tab" };
+    case "browser_snapshot":
+      return { shape: "computer", headline: "" };
+    case "bots_memory_save":
+    case "bots_message":
+      return { shape: "generic", headline: firstLine(str(input.text)) };
+    case "tool_help":
+      return { shape: "generic", headline: [str(input.category), "tools"].filter(Boolean).join(" ") };
+    case "bots_create":
+      return { shape: "generic", headline: str(input.name) };
+    case "terminal_open":
+      return { shape: "command", headline: firstLine(str(input.command)) || "Open a terminal" };
+    case "terminal_write":
+      return { shape: "command", headline: firstLine(str(input.text)) || "Send input to a terminal" };
+    case "browser_action":
+      return { shape: "computer", headline: [str(input.action) || "act", str(input.name) || str(input.text) || str(input.key) || str(input.option) || str(input.url) || str(input.selector) || "on the page"].join(" ") };
+  }
   switch (name) {
     case "Bash":
     case "BashOutput":

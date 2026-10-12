@@ -24,7 +24,7 @@ export function applyNotificationEvent(
       const viewingWorkspace = active && focused && ["git", "github"].includes(notification.kind) &&
         target.view === state.activeView && target.projectId === state.activeProjectId &&
         (!target.threadId || target.threadId === state.activeThreadId);
-      const seen = notification.level === "success" && (readingChat || viewingWorkspace);
+      const seen = notification.level !== "error" && (readingChat || viewingWorkspace);
       state.notifications = [
         seen ? { ...notification, read: true } : notification,
         ...state.notifications,

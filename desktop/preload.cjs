@@ -42,11 +42,16 @@ contextBridge.exposeInMainWorld("citropyDesktop", {
   onBrowserSelect: (callback) => {
     const listener = (_, panel) => callback(panel);
     ipcRenderer.on("browser:select", listener);
-    ipcRenderer.send("browser:ready");
     return () => ipcRenderer.removeListener("browser:select", listener);
   },
-  browserBounds: (id, bounds, visible, cover = false) =>
-    ipcRenderer.send("browser:bounds", { id, bounds, visible, cover }),
+  onBrowserGuests: (callback) => {
+    const listener = (_, guests) => callback(guests);
+    ipcRenderer.on("browser:guests", listener);
+    void ipcRenderer.invoke("browser:guests").then(callback);
+    return () => ipcRenderer.removeListener("browser:guests", listener);
+  },
+  attachBrowser: (id, contentsId) => ipcRenderer.send("browser:attach", { id, contentsId }),
+  browserPresented: (id, visible, scale) => ipcRenderer.send("browser:presented", { id, visible, scale }),
   onBrowserCover: (callback) => {
     const listener = (_, id, image) => callback(id, image);
     ipcRenderer.on("browser:cover", listener);

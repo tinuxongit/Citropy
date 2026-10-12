@@ -1,18 +1,19 @@
-import { inBotsView, type Bot, type BotGroup, type BotGroupPatch, type BotProfile, type RoutineDraft } from "../../../shared/bots.ts";
+import { inBotsView, type Bot, type BotGroup, type BotGroupPatch, type BotProfile } from "../../../shared/bots.ts";
 import type { BotThreadSettings } from "../../../shared/protocol.ts";
+import type { ReactionKey } from "../../../shared/reactions.ts";
 import { loadThread, newThreadSettings } from "./actions.ts";
 import { awaitResponse } from "./requests.ts";
 import { rosterItem } from "./roster.ts";
 import { requestId, send } from "./socket.ts";
 import { confirmAction, selectRosterEntry, showBotThread, useApp } from "./store.ts";
 
-useApp.subscribe((state) => {
+useApp.subscribe((state, previous) => {
   if (state.activeView === "bots") {
     const wanted = rosterItem(state, state.activeRosterId)?.threadId ?? null;
     if (state.activeThreadId === wanted) return;
     showBotThread(wanted);
     if (wanted) loadThread(wanted);
-  } else if (inBotsView(state.threads[state.activeThreadId ?? ""])) {
+  } else if (previous.activeView === "bots" || inBotsView(state.threads[state.activeThreadId ?? ""])) {
     showBotThread(state.threads[state.chatThreadId ?? ""] ? state.chatThreadId : null);
   }
 });
@@ -29,6 +30,10 @@ function threadSettings(): BotThreadSettings {
   if (!settings) throw new Error("Open a project with a signed-in provider first.");
   const { workspace: _workspace, ...thread } = settings;
   return thread;
+}
+
+export function reactToMessage(threadId: string, messageId: string, key: ReactionKey, on: boolean): void {
+  send({ t: "message.react", threadId, messageId, key, on });
 }
 
 export function openNewBotChat(): void {
@@ -79,21 +84,13 @@ export async function duplicateBot(id: string): Promise<void> {
 export async function removeBot(bot: Bot): Promise<void> {
   const confirmed = await confirmAction({
     title: `Delete ${bot.name}?`,
-    description: "This deletes the bot, its conversation, and its routines.",
+    description: "This deletes the bot with its conversation, routines and memories.",
     label: "Delete",
     danger: true,
   });
   if (confirmed) send({ t: "bot.remove", id: bot.id });
 }
 
-export function saveRoutine(botId: string, routine: RoutineDraft): Promise<Bot> {
-  return request<Bot>((requestId) => ({ t: "routine.save", requestId, botId, routine }));
-}
-
-export function removeRoutine(botId: string, id: string): void {
-  send({ t: "routine.remove", botId, id });
-}
-
-export function runRoutine(botId: string, id: string): void {
-  send({ t: "routine.run", botId, id });
+export function removeMemory(botId: string, id: string): void {
+  send({ t: "memory.remove", botId, id });
 }

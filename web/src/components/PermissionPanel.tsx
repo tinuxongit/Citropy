@@ -28,6 +28,8 @@ function lede(request: PermissionRequest, project: string): string {
       return "Fetch this address from the internet.";
     case "task":
       return "Start a subagent for this task.";
+    case "computer":
+      return `In the browser, ${request.headline}.`;
     default:
       return `Run the ${request.tool} tool.`;
   }

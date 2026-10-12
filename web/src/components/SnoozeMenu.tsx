@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ChevronDownIcon, ChevronUpIcon } from "./icons/chevrons.tsx";
 import { HourglassIcon } from "./icons/status.tsx";
 import { Menu } from "./Menu.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
+import { Stepper } from "./Stepper.tsx";
 import { organizeConversation } from "./ConversationMenu.tsx";
 import { reportError } from "../lib/api.ts";
 import { clock, formatDate } from "../lib/format.ts";
@@ -68,22 +68,16 @@ export function SnoozeMenu({ thread, environment, anchor, onClose }: { thread: T
           ))}
         </div>
         <form className="snooze-stepper" onSubmit={(event) => { event.preventDefault(); if (valid) void snooze(Date.now() + amount * ms); }}>
-          <button type="button" className="snooze-step" aria-label="More" disabled={amount >= max} onClick={() => step(1)}><ChevronUpIcon size={18} /></button>
-          <label className="snooze-amount">
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={max}
-              step={1}
-              value={amounts[unit]}
-              aria-label={UNITS[unit].label}
-              onKeyDown={(event) => event.stopPropagation()}
-              onChange={(event) => setAmount(event.target.value)}
-            />
-            <span>{UNITS[unit].label}</span>
-          </label>
-          <button type="button" className="snooze-step" aria-label="Fewer" disabled={amount <= 1} onClick={() => step(-1)}><ChevronDownIcon size={18} /></button>
+          <Stepper
+            label={UNITS[unit].label}
+            value={amounts[unit]}
+            min={1}
+            max={max}
+            canIncrease={amount < max}
+            canDecrease={amount > 1}
+            onInput={setAmount}
+            onStep={step}
+          />
           <p className="snooze-wake" aria-live="polite">{valid ? `Wakes ${wakeLabel(Date.now() + amount * ms)}` : `Enter a whole number from 1 to ${max}.`}</p>
           <button className="btn snooze-submit" data-variant="primary" disabled={busy || !valid}>Snooze</button>
         </form>

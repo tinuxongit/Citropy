@@ -34,6 +34,7 @@ import { ThreadTranscript } from "./thread-transcript.ts";
 import { SubagentTranscripts } from "./subagent-transcripts.ts";
 import { botStore } from "./bots/bot-store.ts";
 import { withBotContext } from "./bots/bot-prompt.ts";
+import { withRoutineContext } from "./routines/routine-prompt.ts";
 import type { MessageOrigin } from "../shared/bots.ts";
 import type {
   Message,
@@ -327,7 +328,7 @@ class ThreadRuntime {
     prompt = context.prompt;
     if (this.#thread.transferContext) prompt = `${await transferPrompt(this.#thread.transferContext)}\n\nCurrent request:\n${prompt}`;
     else if (this.#thread.rebuildContext && !this.#thread.externalId) prompt = historyPrompt(this.#thread.messages, prompt);
-    prompt = withBotContext(this.#thread, prompt, origin);
+    prompt = withBotContext(this.#thread, withRoutineContext(prompt, origin), origin);
     this.#checkSession(generation);
     if (store.disabledProviders.has(this.#thread.provider)) throw new Error("This provider is disabled. Enable it in Settings > Providers.");
     assertApplicationReady();

@@ -1,5 +1,5 @@
 import { applyFake, isDevFake } from "../lib/dev-triggers.ts";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRightIcon } from "./icons/arrows.tsx";
 import { ChevronLeftIcon } from "./icons/chevrons.tsx";
 import { QuestionMessageIcon } from "./icons/messages.tsx";
@@ -9,6 +9,8 @@ import { api } from "../lib/api.ts";
 import { ComposerWideTab } from "./composer/ComposerWideTab.tsx";
 import "../styles/questions.css";
 import { ActionError } from "./ActionError.tsx";
+import { GlobeIcon } from "./GlobeIcon.tsx";
+import { collapseForQuestion, expandBrowser } from "../lib/browser-takeover.ts";
 
 const emptyDraft: AppState["questionDrafts"][string] = { index: 0, choices: {}, text: {} };
 
@@ -23,6 +25,7 @@ export function QuestionForm({ request }: { request: QuestionRequest }) {
   const text = draft.text[question.id] ?? "";
   const ready = choices.length > 0 || Boolean(text.trim());
   const last = draft.index === request.questions.length - 1;
+  useEffect(() => () => collapseForQuestion(request.id), [request.id]);
   const update = (patch: Partial<typeof draft>) => {
     setError("");
     useApp.setState(state => ({ questionDrafts: { ...state.questionDrafts, [request.id]: { ...draft, ...patch } } }));
@@ -68,6 +71,7 @@ export function QuestionForm({ request }: { request: QuestionRequest }) {
       <div className="question-body">
         <fieldset disabled={submitting || !connected}>
           <legend ref={heading} tabIndex={-1}>{question.question}</legend>
+          {question.browserTab && <button type="button" className="btn question-browser" data-variant="primary" onClick={() => expandBrowser(question.browserTab!, request.id)}><GlobeIcon size={14} />Open browser</button>}
           {question.multiple && <p className="question-hint">Select all that apply.</p>}
           <div className="question-options">
             {question.options.map(option => <label key={option.label} className="question-option" data-selected={choices.includes(option.label) || undefined}>

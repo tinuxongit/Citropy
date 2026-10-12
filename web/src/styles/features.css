@@ -133,9 +133,6 @@
   color: var(--text-2);
   margin-right: auto;
 }
-.feature-inline input[type="checkbox"] {
-  accent-color: var(--accent);
-}
 .feature-save {
   justify-content: flex-end;
 }

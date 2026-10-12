@@ -726,9 +726,6 @@
   font-size: var(--text-sm);
   padding: var(--space-6) 0;
 }
-.github-checkbox input {
-  accent-color: var(--accent);
-}
 .github-inline-link {
   display: inline-flex;
   gap: var(--space-6);

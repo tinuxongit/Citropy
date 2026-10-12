@@ -70,9 +70,9 @@ test("Connection names become mentions", () => {
 
 test("Mentioning a connection opens it with the user's sign-in, or asks them to sign in", async (t) => {
   fakeDesktop(t, [
-    { id: "g", name: "Gmail", url: "https://mail.google.com/", site: "mail.google.com", signedIn: true },
-    { id: "b", name: "My Bank", url: "https://bank.example/", site: "bank.example", signedIn: false },
-    { id: "x", name: "Browser", url: "https://browser.example/", site: "browser.example", signedIn: true },
+    { id: "g", name: "Gmail", url: "https://mail.google.com/", site: "mail.google.com", sites: ["mail.google.com"], signedIn: true },
+    { id: "b", name: "My Bank", url: "https://bank.example/", site: "bank.example", sites: ["bank.example"], signedIn: false },
+    { id: "x", name: "Browser", url: "https://browser.example/", site: "browser.example", sites: ["browser.example"], signedIn: true },
   ]);
   const mentions = await listToolMentions();
   assert.deepEqual(mentions.filter((mention) => mention.section === "Connections"), [

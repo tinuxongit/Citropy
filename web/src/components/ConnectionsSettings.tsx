@@ -56,7 +56,7 @@ export function ConnectionsSettings() {
   const signOut = async (connection: Connection) => {
     if (await confirmAction({
       title: `Sign out of ${connection.name}?`,
-      description: "Citropy's browser forgets this site's sign-in. Agents can't use your account there until you sign in again.",
+      description: "This also closes its open browser tabs. Agents can't use your account there until you sign in again.",
       label: "Sign out",
       danger: true,
     })) await perform("connections/status", "POST", { id: connection.id, signedIn: false });
@@ -64,7 +64,7 @@ export function ConnectionsSettings() {
   const remove = async (connection: Connection) => {
     if (await confirmAction({
       title: `Remove ${connection.name}?`,
-      description: "This also signs you out of it in Citropy's browser.",
+      description: "This also signs you out of it in Citropy's browser and closes its open tabs.",
       label: "Remove",
       danger: true,
     })) await perform("connections", "DELETE", { id: connection.id });
@@ -82,7 +82,7 @@ export function ConnectionsSettings() {
                 <span className="connection-icon"><SiteIcon url={connection.url} /></span>
                 <span>
                   <strong>{connection.name}</strong>
-                  <small>{connection.site} · @{connectionMention(connection)}</small>
+                  <small>{connection.sites.join(", ")} · @{connectionMention(connection)}</small>
                 </span>
               </span>
               <span className="row-actions">

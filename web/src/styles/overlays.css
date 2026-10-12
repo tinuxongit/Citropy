@@ -76,6 +76,13 @@
 .citropy-dialog::backdrop {
   background: transparent;
 }
+.citropy-dialog .settings-group {
+  background: var(--canvas);
+}
+.citropy-dialog [popover]:popover-open:not(.menu) {
+  background: var(--menu);
+  box-shadow: var(--menu-shadow);
+}
 .dialog-heading {
   display: flex;
   align-items: flex-start;
@@ -521,7 +528,7 @@
 .usage-peek-header { justify-content: space-between; }
 .usage-peek-header strong { color: var(--text); font-size: var(--text-sm); font-weight: 500; }
 .usage-peek-header span,
-.usage-peek-note { color: var(--text-4); }
+.usage-peek-note { color: var(--text-3); }
 .usage-peek-note { margin: 0; padding: var(--space-8) var(--space-16); }
 .usage-peek .limit-card { gap: var(--space-8); margin: 0 var(--usage-peek-inset) var(--usage-peek-inset); padding: 0 0 var(--space-12); border-radius: calc(var(--r-sm) + var(--usage-peek-inset)); background: var(--panel); }
 .usage-peek .limit-card h3 { padding: 0 var(--usage-peek-inset); font-size: var(--text-xs); color: var(--text-2); }

@@ -16,6 +16,7 @@ import {
 } from "../lib/timeline.ts";
 import { LatestButton } from "./LatestButton.tsx";
 import { SelectionQuote } from "./SelectionQuote.tsx";
+import { FindBar } from "./FindBar.tsx";
 import { onPanelSettled, panelMoving } from "../lib/panel-motion.ts";
 
 type RowAnchor = { key: string; offset: number };
@@ -24,6 +25,7 @@ const readingPositions = new Map<string, RowAnchor>();
 
 export function Conversation() {
   const searchMessageId = useApp((state) => state.searchMessageId);
+  const findOpen = useApp((state) => state.chatFindOpen);
   const searchShellId = useApp((state) => state.searchShellId);
   const threadId = useApp((state) => state.activeThreadId);
   const ids = useApp((state) => (threadId ? state.order[threadId] : undefined));
@@ -397,6 +399,8 @@ export function Conversation() {
       />
 
       {threadId && <SelectionQuote key={threadId} viewport={viewport} threadId={threadId} />}
+
+      {threadId && findOpen && <FindBar threadId={threadId} viewport={viewport} />}
     </div>
   );
 }

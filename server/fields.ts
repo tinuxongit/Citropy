@@ -1,5 +1,5 @@
-import { uid } from "../ids.ts";
-import { store } from "../store.ts";
+import { uid } from "./ids.ts";
+import { store } from "./store.ts";
 
 export function text(value: unknown, label: string, max: number, allowEmpty = true): string {
   if (typeof value !== "string") throw new Error(`${label} must be text.`);

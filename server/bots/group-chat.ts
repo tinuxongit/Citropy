@@ -4,10 +4,11 @@ import { uid } from "../ids.ts";
 import { runtimeFor } from "../runtime.ts";
 import { store } from "../store.ts";
 import { botStore } from "./bot-store.ts";
-import { addNotice } from "./fields.ts";
+import { addNotice } from "../fields.ts";
 import { groupStore } from "./group-store.ts";
 import { BOT_LIMITS, EVERYONE_HANDLE, PASS_REPLY, botHandle, mentionedHandles } from "../../shared/bots.ts";
 import type { Bot, BotGroup, GroupAddress } from "../../shared/bots.ts";
+import type { MentionTag } from "../../shared/mention-tags.ts";
 import type { Attachment, Message } from "../../shared/protocol.ts";
 
 interface Delivery {
@@ -33,6 +34,19 @@ function recipients(group: BotGroup, text: string, authorId?: string): Array<[Bo
   const named = others.filter(bot => handles.has(botHandle(bot.name).toLowerCase()));
   if (named.length) return named.map(bot => [bot, "you"]);
   return authorId ? [] : others.map(bot => [bot, "open"]);
+}
+
+function mentionTags(group: BotGroup, text: string): MentionTag[] {
+  const handles = mentionedHandles(text);
+  const tags: MentionTag[] = groupStore.members(group)
+    .filter(bot => handles.has(botHandle(bot.name).toLowerCase()))
+    .map(bot => ({ name: botHandle(bot.name), title: bot.name, icon: "bot", color: bot.color }));
+  return handles.has(EVERYONE_HANDLE) ? [...tags, { name: EVERYONE_HANDLE, title: "Everyone", icon: "bot" }] : tags;
+}
+
+function withMentions(group: BotGroup, text: string): { mentions?: MentionTag[] } {
+  const mentions = mentionTags(group, text);
+  return mentions.length ? { mentions } : {};
 }
 
 function withFiles(text: string, attachments: Attachment[]): string {
@@ -70,7 +84,7 @@ export async function postFromUser(threadId: string, text: string, files: Attach
   const attachments = await validateAttachments(threadId, files);
   if (!text.trim() && !attachments.length) throw new Error("Write a message first.");
   if (!group.botIds.length) throw new Error("Add a bot to this group first.");
-  store.addMessage(threadId, { id: uid("msg"), role: "user", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text }], ...(attachments.length ? { attachments } : {}) });
+  store.addMessage(threadId, { id: uid("msg"), role: "user", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text }], ...withMentions(group, text), ...(attachments.length ? { attachments } : {}) });
   store.raiseThread(threadId);
   await deliver(group, text, attachments, { name: "You" }, 1);
 }
@@ -83,6 +97,7 @@ export async function postFromBot(group: BotGroup, bot: Bot, text: string, depth
     ts: Date.now(),
     parts: [{ id: uid("prt"), kind: "text", text }],
     origin: { kind: "bot", threadId: bot.threadId, botId: bot.id, name: bot.name, depth },
+    ...withMentions(group, text),
   });
   store.raiseThread(group.threadId);
   await deliver(group, text, [], { botId: bot.id, name: bot.name }, depth + 1);

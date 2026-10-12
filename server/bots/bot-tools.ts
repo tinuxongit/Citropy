@@ -2,15 +2,16 @@ import { required } from "../mcp-workspace.ts";
 import { runtimeFor } from "../runtime.ts";
 import { store } from "../store.ts";
 import { botStore } from "./bot-store.ts";
+import { createBot, settingsOf } from "./create-bot.ts";
+import { addNotice } from "../fields.ts";
 import { postFromBot } from "./group-chat.ts";
 import { groupStore } from "./group-store.ts";
-import { BOT_LIMITS, botHandle, describeSchedule } from "../../shared/bots.ts";
-import type { Bot, RoutineSchedule } from "../../shared/bots.ts";
+import { BOT_LIMITS, botHandle } from "../../shared/bots.ts";
+import type { Bot } from "../../shared/bots.ts";
 import type { Thread } from "../../shared/protocol.ts";
 
 const LIST_DESCRIPTION_LENGTH = 500;
-const LISTED_RUNS = 5;
-const CHANGES = new Set(["bots_message", "bots_group_post", "bots_routine_save", "bots_routine_remove"]);
+const CHANGES = new Set(["bots_create", "bots_message", "bots_group_post"]);
 
 function summary(bot: Bot) {
   const thread = store.threads.get(bot.threadId);
@@ -21,13 +22,12 @@ function summary(bot: Bot) {
     description: bot.description.slice(0, LIST_DESCRIPTION_LENGTH),
     busy: Boolean(thread?.running),
     queued: thread?.queue?.length ?? 0,
-    routines: bot.routines.length,
+    routines: thread?.routines?.length ?? 0,
   };
 }
 
-function targetBot(thread: Thread, args: Record<string, unknown>): Bot {
-  if (args.botId !== undefined) return botStore.get(required(args, "botId"));
-  if (!thread.botId) throw new Error("Pass a botId. This conversation is not a bot.");
+function ownBot(thread: Thread): Bot {
+  if (!thread.botId) throw new Error("This conversation is not a bot.");
   return botStore.get(thread.botId);
 }
 
@@ -51,7 +51,7 @@ function groups(bot: Bot) {
 }
 
 async function postToGroup(thread: Thread, args: Record<string, unknown>) {
-  const bot = targetBot(thread, {});
+  const bot = ownBot(thread);
   const group = groupStore.get(required(args, "groupId"));
   await postFromBot(group, bot, messageText(args), currentDepth(thread));
   return "Posted.";
@@ -70,17 +70,19 @@ async function message(thread: Thread, args: Record<string, unknown>) {
   return { sent: true, to: summary(target) };
 }
 
-function routines(bot: Bot) {
-  return bot.routines.map(routine => ({
-    id: routine.id,
-    name: routine.name,
-    prompt: routine.prompt,
-    schedule: routine.schedule,
-    when: describeSchedule(routine.schedule),
-    paused: routine.paused,
-    ...(routine.nextRunAt ? { nextRunAt: new Date(routine.nextRunAt).toISOString() } : {}),
-    recentRuns: routine.runs.slice(0, LISTED_RUNS).map(run => ({ status: run.status, startedAt: new Date(run.startedAt).toISOString(), ...(run.error ? { error: run.error } : {}) })),
-  }));
+async function create(thread: Thread, args: Record<string, unknown>) {
+  const creator = thread.botId ? botStore.get(thread.botId).name : thread.title;
+  const bot = await createBot(settingsOf(thread), {
+    name: required(args, "name"),
+    ...(args.title === undefined ? {} : { title: required(args, "title") }),
+    ...(args.description === undefined ? {} : { description: required(args, "description") }),
+  });
+  addNotice(bot.threadId, `Created by ${creator}`);
+  return summary(bot);
+}
+
+function memories(bot: Bot) {
+  return bot.memory.map(entry => ({ id: entry.id, text: entry.text, savedAt: new Date(entry.savedAt).toISOString() }));
 }
 
 export async function callBotTool(thread: Thread, name: string, args: Record<string, unknown>): Promise<unknown> {
@@ -88,31 +90,24 @@ export async function callBotTool(thread: Thread, name: string, args: Record<str
   switch (name) {
     case "bots_list":
       return botStore.list().map(summary);
+    case "bots_create":
+      return create(thread, args);
     case "bots_message":
       return message(thread, args);
+    case "bots_memory_list":
+      return memories(ownBot(thread));
+    case "bots_memory_save": {
+      const bot = ownBot(thread);
+      const entry = botStore.saveMemory(bot.id, { ...(args.id === undefined ? {} : { id: required(args, "id") }), text: required(args, "text") });
+      return memories(bot).find(memory => memory.id === entry.id);
+    }
+    case "bots_memory_remove":
+      botStore.removeMemory(ownBot(thread).id, required(args, "id"));
+      return "Memory removed.";
     case "bots_group_list":
-      return groups(targetBot(thread, {}));
+      return groups(ownBot(thread));
     case "bots_group_post":
       return postToGroup(thread, args);
-    case "bots_routine_list":
-      return routines(targetBot(thread, args));
-    case "bots_routine_save": {
-      const bot = targetBot(thread, args);
-      if (args.paused !== undefined && typeof args.paused !== "boolean") throw new Error("paused must be true or false");
-      const routine = botStore.saveRoutine(bot.id, {
-        ...(args.id === undefined ? {} : { id: required(args, "id") }),
-        name: required(args, "name"),
-        prompt: required(args, "prompt"),
-        schedule: args.schedule as RoutineSchedule,
-        paused: args.paused === true,
-      });
-      return routines(bot).find(entry => entry.id === routine.id);
-    }
-    case "bots_routine_remove": {
-      const bot = targetBot(thread, args);
-      botStore.removeRoutine(bot.id, required(args, "id"));
-      return "Routine deleted.";
-    }
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

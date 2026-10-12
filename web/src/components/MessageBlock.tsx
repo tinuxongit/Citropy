@@ -4,6 +4,7 @@ import { PartView } from "./PartView.tsx";
 import { WorkGroup } from "./WorkGroup.tsx";
 import { WorkDetails } from "./WorkDetails.tsx";
 import { Working } from "./Working.tsx";
+import { MessageReactions } from "./MessageReactions.tsx";
 import { MessageActions } from "./MessageActions.tsx";
 import { UserBubble } from "./UserBubble.tsx";
 import type { TimelineRow } from "../lib/timeline.ts";
@@ -110,10 +111,11 @@ export const MessageBlock = memo(function MessageBlock({
             ) : row.kind === "group" ? (
               <WorkGroup key={row.ids[0]} ids={row.ids} live={streaming} latestStep={latestStep} />
             ) : (
-              <PartView key={row.id} partId={row.id} live={streaming} />
+              <PartView key={row.id} partId={row.id} live={streaming} mentions={shell?.mentions} />
             )}
           </div>
         )}
+        {last && messageId && threadId && !streaming && <MessageReactions threadId={threadId} messageId={messageId} />}
         {last && messageId && !streaming && (
           <div className="turn-meta">
             <time>{clock(timestamp)}</time>

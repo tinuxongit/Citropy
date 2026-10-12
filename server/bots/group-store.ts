@@ -5,8 +5,8 @@ import { dataRoot } from "../paths.ts";
 import { saveJson } from "../save-json.ts";
 import { store } from "../store.ts";
 import { botStore } from "./bot-store.ts";
-import { addNotice, flag, text } from "./fields.ts";
-import { BOT_LIMITS } from "../../shared/bots.ts";
+import { addNotice, flag, text } from "../fields.ts";
+import { BOT_LIMITS, previewText } from "../../shared/bots.ts";
 import type { Bot, BotGroup, BotGroupPatch } from "../../shared/bots.ts";
 import type { Message } from "../../shared/protocol.ts";
 
@@ -34,7 +34,7 @@ function previewLine(message: Message): string | undefined {
   const body = message.parts.findLast(part => part.kind === "text" && part.text.trim());
   if (message.role === "system" || body?.kind !== "text") return undefined;
   const author = message.origin?.kind === "bot" ? message.origin.name : "You";
-  return `${author}: ${body.text.trim()}`.slice(0, BOT_LIMITS.previewLength);
+  return previewText(`${author}: ${body.text}`);
 }
 
 class GroupStore {
@@ -58,6 +58,7 @@ class GroupStore {
         const preview = group && previewLine(event.message);
         if (group && preview) {
           group.preview = preview;
+          if (event.message.origin?.kind === "bot") group.unread = true;
           this.#changed(group);
         }
       }
@@ -118,6 +119,7 @@ class GroupStore {
         }
         case "pinned": group.pinned = flag(value, "Pinned"); break;
         case "hidden": group.hidden = flag(value, "Hidden"); break;
+        case "unread": group.unread = flag(value, "Unread"); break;
         default: throw new Error(`Groups have no ${key} setting.`);
       }
     }

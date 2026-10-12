@@ -17,7 +17,7 @@ export function Working({ messageIds }: { messageIds: string[] }) {
     const running = messageIds.flatMap(id => state.messages[id]?.partIds ?? []).map(id => state.parts.get(id))
       .findLast(part => part?.kind === "tool" && part.status === "running");
     if (running?.kind !== "tool") return undefined;
-    const label = toolLabel(running.name, running.status);
+    const label = toolLabel(running);
     return running.shape === "generic" || !running.headline ? label : `${label} ${running.headline}`;
   });
   const startedAt = thread?.runStartedAt ?? thread?.updatedAt ?? 0;

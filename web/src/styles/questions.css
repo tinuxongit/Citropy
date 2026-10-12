@@ -55,6 +55,8 @@
   overflow-wrap: anywhere;
 }
 
+.question-browser { margin: 0 0 var(--space-12); }
+
 .question-hint {
   margin: 0 0 var(--space-10);
   font-size: var(--text-sm);
@@ -88,13 +90,7 @@
   background: var(--highlight);
 }
 
-.question-option input {
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
-  margin: var(--space-2) 0 0;
-  accent-color: var(--accent);
-}
+.question-option input { margin: var(--space-2) 0 0; }
 
 .question-option > span {
   min-width: 0;

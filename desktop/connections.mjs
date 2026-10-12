@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { ifMissing } from "../shared/expected-errors.mjs";
 import { siteOf } from "../shared/connection-sites.mjs";
+import suggestions from "../shared/connection-suggestions.json" with { type: "json" };
 import { clearProfileData } from "./browser-profiles.mjs";
 
 const MAX_CONNECTIONS = 50;
@@ -24,6 +25,21 @@ async function save() {
   await rename(temporary, file);
 }
 
+function extraSitesOf(connection) {
+  const site = siteOf(connection.url);
+  return suggestions.find((suggestion) => siteOf(suggestion.url) === site)?.sites ?? [];
+}
+
+function longestMatch(list, host, sitesOf) {
+  return list
+    .map((connection) => ({
+      connection,
+      length: Math.max(0, ...sitesOf(connection).filter((site) => host === site || host.endsWith(`.${site}`)).map((site) => site.length)),
+    }))
+    .filter((entry) => entry.length > 0)
+    .sort((left, right) => right.length - left.length)[0]?.connection;
+}
+
 export function matchConnection(list, address) {
   let host;
   try {
@@ -31,12 +47,7 @@ export function matchConnection(list, address) {
   } catch {
     return undefined;
   }
-  return list
-    .filter((connection) => {
-      const site = siteOf(connection.url);
-      return host === site || host.endsWith(`.${site}`);
-    })
-    .sort((left, right) => siteOf(right.url).length - siteOf(left.url).length)[0];
+  return longestMatch(list, host, (connection) => [siteOf(connection.url)]) ?? longestMatch(list, host, extraSitesOf);
 }
 
 function profileOf(connection) {
@@ -95,7 +106,11 @@ async function apply(operation, input, session, tabs) {
     else connection.signedIn = input.signedIn === true;
   } else if (operation !== "list") throw new Error("Unknown connections action");
   if (operation !== "list") await save();
-  return connections.map(({ id, name, url, signedIn }) => ({ id, name, url, site: siteOf(url), signedIn }));
+  return connections.map((connection) => {
+    const { id, name, url, signedIn } = connection;
+    const site = siteOf(url);
+    return { id, name, url, site, sites: [site, ...extraSitesOf(connection)], signedIn };
+  });
 }
 
 export function handleConnections(operation, input, session, tabs) {

@@ -9,6 +9,7 @@ import { answerQuestion, askQuestion, hasPendingQuestion, pendingQuestions } fro
 import { ask } from "./permissions.ts";
 import { store } from "./store.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
+import { normalizeQuestions } from "../shared/questions.ts";
 import { providerAccount } from "../shared/provider-account.ts";
 import { providers } from "./providers/index.ts";
 import { providerInfo } from "./provider-registry.ts";
@@ -26,6 +27,7 @@ import type {
 } from "../shared/workbench.ts";
 import { workspaceTools, toolCategories } from "./mcp-catalog.ts";
 import { callBotTool } from "./bots/bot-tools.ts";
+import { callRoutineTool } from "./routines/routine-tools.ts";
 
 type Content =
   | { type: "text"; text: string }
@@ -115,7 +117,7 @@ export async function callWorkspaceTool(
   const browserAllowed = settings.browserAccess !== false;
   if (name === "tool_help") {
     const category = required(args, "category");
-    if (!toolCategories.includes(category)) throw new Error("Unknown tool category");
+    if (!toolCategories.includes(category)) throw new Error(`Unknown tool category ${category}. Use one of ${toolCategories.join(", ")}.`);
     return text(workspaceTools.filter(tool =>
       (tool.name.startsWith(`${category}_`) || (category === "workspace" && tool.name === "open_panel")) &&
       (!tool.name.startsWith("browser_") || browserAllowed) &&
@@ -185,8 +187,13 @@ export async function callWorkspaceTool(
     if (!store.threads.has(threadId)) throw new Error("Conversation closed");
   }
   if (name.startsWith("bots_")) return text(await callBotTool(thread, name, args));
+  if (name.startsWith("routine_")) return text(callRoutineTool(thread, name, args));
   switch (name) {
-    case "ask_user": return text(await askQuestion(threadId, args.questions, { signal }));
+    case "ask_user": {
+      const missing = normalizeQuestions(args.questions).find((question) => question.browserTab && !browser.browserStates().some((tab) => tab.id === question.browserTab && tab.projectId === project.id));
+      if (missing) throw new Error(`No browser tab ${missing.browserTab} is open in this workspace. Check browser_tabs.`);
+      return text(await askQuestion(threadId, args.questions, { signal }));
+    }
     case "browser_open": {
       const panel = openPanel(project.id, "browser", threadId);
       try {

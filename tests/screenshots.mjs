@@ -544,7 +544,12 @@ async function main() {
           onNotification: () => () => {},
           onBrowserSelect: () => () => {},
           onAddressFocus: () => () => {},
-          browserBounds: async () => {},
+          onBrowserGuests: (callback) => {
+            callback([{ id: "browser", partition: "persist:browser", width: 390, height: 844, rendering: false }]);
+            return () => {};
+          },
+          attachBrowser: () => {},
+          browserPresented: () => {},
           onBrowserCover: (callback) => {
             window.__browserCover = callback;
             return () => {};

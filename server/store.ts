@@ -18,6 +18,7 @@ import type {
   ProviderId,
   ProviderInstance,
   Message,
+  MessagePatch,
   Part,
   Project,
   ProjectSettings,
@@ -648,6 +649,11 @@ export class Store {
     const part = this.#part(threadId, messageId, partId);
     if (part.kind === "text" || part.kind === "reasoning") part.text += text;
     bus.emit({ t: "part.append", threadId, messageId, partId, text });
+  }
+
+  patchMessage(threadId: string, messageId: string, patch: MessagePatch): void {
+    Object.assign(this.#message(threadId, messageId), patch);
+    bus.emit({ t: "message.patch", threadId, messageId, patch });
   }
 
   patchPart(threadId: string, messageId: string, partId: string, patch: Record<string, unknown>): void {

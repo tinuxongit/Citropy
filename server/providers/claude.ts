@@ -124,7 +124,7 @@ class ClaudeSession implements AgentSession {
         },
       }),
     ];
-    if (options.mcp) args.push("--permission-prompt-tool", permissionToolName, "--allowedTools", "mcp__citropy__ask_user");
+    if (options.mcp) args.push("--permission-prompt-tool", permissionToolName, "--allowedTools", "mcp__citropy");
     if (options.effort) args.push("--effort", options.effort);
     if (options.model)
       args.push(

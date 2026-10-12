@@ -5,9 +5,9 @@ import { uid } from "../ids.ts";
 import { dataRoot } from "../paths.ts";
 import { saveJson } from "../save-json.ts";
 import { store } from "../store.ts";
-import { addNotice, flag, text } from "./fields.ts";
-import { BOT_COLORS, BOT_LIMITS, BOT_SHAPES, checkSchedule, defaultLook, nextRunAfter } from "../../shared/bots.ts";
-import type { Bot, BotProfile, Routine, RoutineDraft, RoutineRun, RoutineRunStatus } from "../../shared/bots.ts";
+import { addNotice, flag, text } from "../fields.ts";
+import { BOT_COLORS, BOT_LIMITS, BOT_SHAPES, PASS_REPLY, defaultLook, previewText } from "../../shared/bots.ts";
+import type { Bot, BotMemory, BotProfile } from "../../shared/bots.ts";
 import type { Message } from "../../shared/protocol.ts";
 
 const NEW_BOT = { name: "New bot", title: "", description: "", notifications: true };
@@ -16,18 +16,17 @@ const botsFile = join(dataRoot, "bots.json");
 
 function loadBots(): Bot[] {
   if (!existsSync(botsFile)) return [];
-  const bots = JSON.parse(readFileSync(botsFile, "utf8")) as Bot[];
-  for (const bot of bots)
-    for (const routine of bot.routines)
-      for (const run of routine.runs)
-        if (run.status === "running") Object.assign(run, { status: "stopped", finishedAt: run.startedAt, error: "Citropy closed during this run." });
-  return bots;
+  return JSON.parse(readFileSync(botsFile, "utf8")) as Bot[];
 }
 
-function latestText(messages: Message[]): string | undefined {
+function answersGroup(messages: Message[], index: number): boolean {
+  return messages.slice(0, index).findLast(message => message.role === "user")?.origin?.kind === "group";
+}
+
+function latestText(messages: Message[]): { text: string; unseenReply: boolean } | undefined {
   for (let index = messages.length - 1; index >= 0; index--) {
-    const part = messages[index]!.parts.findLast(entry => entry.kind === "text" && entry.text.trim());
-    if (part?.kind === "text") return part.text.trim().slice(0, BOT_LIMITS.previewLength);
+    const part = messages[index]!.parts.findLast(entry => entry.kind === "text" && entry.text.trim() && entry.text.trim() !== PASS_REPLY);
+    if (part?.kind === "text") return { text: previewText(part.text), unseenReply: messages[index]!.role === "assistant" && !answersGroup(messages, index) };
   }
 }
 
@@ -49,6 +48,7 @@ function checkProfile(input: Partial<BotProfile>): Partial<BotProfile> {
       case "notifications": profile.notifications = flag(value, "Notifications"); break;
       case "pinned": profile.pinned = flag(value, "Pinned"); break;
       case "hidden": profile.hidden = flag(value, "Hidden"); break;
+      case "unread": profile.unread = flag(value, "Unread"); break;
       default: throw new Error(`Bots have no ${key} setting.`);
     }
   }
@@ -88,12 +88,6 @@ class BotStore {
     return this.byThread(threadId)?.notifications === false;
   }
 
-  routine(botId: string, id: string): Routine {
-    const routine = this.get(botId).routines.find(entry => entry.id === id);
-    if (!routine) throw new Error("This routine no longer exists.");
-    return routine;
-  }
-
   assertRoom(): void {
     if (this.bots.size >= BOT_LIMITS.bots) throw new Error(`You can keep up to ${BOT_LIMITS.bots} bots. Delete one to make room.`);
   }
@@ -110,7 +104,7 @@ class BotStore {
       threadId,
       profileUpdatedAt: Date.now(),
       createdAt: Date.now(),
-      routines: [],
+      memory: [],
     };
     this.bots.set(bot.id, bot);
     store.patchThread(threadId, { title: bot.name });
@@ -138,73 +132,46 @@ class BotStore {
     this.#save();
   }
 
-  saveRoutine(botId: string, draft: RoutineDraft): Routine {
+  markReactionsSeen(id: string): void {
+    const bot = this.get(id);
+    bot.reactionsSeenAt = Date.now();
+    this.#save();
+  }
+
+  memoryEntry(botId: string, id: string): BotMemory {
+    const entry = this.get(botId).memory.find(memory => memory.id === id);
+    if (!entry) throw new Error("This memory no longer exists.");
+    return entry;
+  }
+
+  saveMemory(botId: string, draft: { id?: string; text: string }): BotMemory {
     const bot = this.get(botId);
-    const fields = {
-      name: text(draft.name, "Routine name", BOT_LIMITS.routineNameLength, false),
-      prompt: text(draft.prompt, "Instructions", BOT_LIMITS.promptLength, false),
-      schedule: checkSchedule(draft.schedule),
-      paused: flag(draft.paused, "Paused"),
-    };
-    const nextRunAt = fields.paused ? undefined : nextRunAfter(fields.schedule, Date.now());
+    const fields = { text: text(draft.text, "Memory", BOT_LIMITS.memoryLength, false), savedAt: Date.now() };
     if (draft.id) {
-      const routine = this.routine(botId, draft.id);
-      Object.assign(routine, fields, { nextRunAt });
+      const entry = Object.assign(this.memoryEntry(botId, draft.id), fields);
       this.#changed(bot);
-      return routine;
+      return entry;
     }
-    if (bot.routines.length >= BOT_LIMITS.routinesPerBot) throw new Error(`A bot can have up to ${BOT_LIMITS.routinesPerBot} routines.`);
-    const routine: Routine = { id: uid("rtn"), ...fields, nextRunAt, createdAt: Date.now(), runs: [] };
-    bot.routines.push(routine);
-    addNotice(bot.threadId, `Created routine ${routine.name}`);
+    if (bot.memory.length >= BOT_LIMITS.memoryEntries) throw new Error(`A bot can keep up to ${BOT_LIMITS.memoryEntries} memories. Update or remove one first.`);
+    const entry: BotMemory = { id: uid("mem"), ...fields };
+    bot.memory.push(entry);
     this.#changed(bot);
-    return routine;
+    return entry;
   }
 
-  copyRoutines(fromId: string, toId: string): Bot {
-    const bot = this.get(toId);
-    bot.routines = this.get(fromId).routines.map(routine => ({
-      ...structuredClone(routine),
-      id: uid("rtn"),
-      createdAt: Date.now(),
-      runs: [],
-      nextRunAt: routine.paused ? undefined : nextRunAfter(routine.schedule, Date.now()),
-    }));
-    this.#changed(bot);
-    return bot;
-  }
-
-  removeRoutine(botId: string, id: string): void {
+  removeMemory(botId: string, id: string): void {
     const bot = this.get(botId);
-    const routine = this.routine(botId, id);
-    bot.routines = bot.routines.filter(entry => entry !== routine);
-    addNotice(bot.threadId, `Deleted routine ${routine.name}`);
-    this.#changed(bot);
-  }
-
-  startRun(botId: string, routineId: string, test: boolean): RoutineRun {
-    const bot = this.get(botId);
-    const routine = this.routine(botId, routineId);
-    const run: RoutineRun = { id: uid("run"), startedAt: Date.now(), status: "running", ...(test ? { test } : {}) };
-    routine.runs = [run, ...routine.runs].slice(0, BOT_LIMITS.runsKept);
-    if (!test && !routine.paused) routine.nextRunAt = nextRunAfter(routine.schedule, run.startedAt);
-    this.#changed(bot);
-    return run;
-  }
-
-  finishRun(botId: string, routineId: string, runId: string, status: Exclude<RoutineRunStatus, "running">, error?: string): void {
-    const bot = this.bots.get(botId);
-    const run = bot?.routines.find(entry => entry.id === routineId)?.runs.find(entry => entry.id === runId);
-    if (!bot || run?.status !== "running") return;
-    Object.assign(run, { status, finishedAt: Date.now() }, error ? { error } : {});
+    const entry = this.memoryEntry(botId, id);
+    bot.memory = bot.memory.filter(memory => memory !== entry);
     this.#changed(bot);
   }
 
   #refreshPreview(threadId: string): void {
     const bot = this.byThread(threadId);
-    const preview = latestText(store.readMessages(threadId));
-    if (!bot || preview === undefined || preview === bot.preview) return;
-    bot.preview = preview;
+    const latest = latestText(store.readMessages(threadId));
+    if (!bot || latest === undefined || latest.text === bot.preview) return;
+    bot.preview = latest.text;
+    if (latest.unseenReply) bot.unread = true;
     this.#changed(bot);
   }
 

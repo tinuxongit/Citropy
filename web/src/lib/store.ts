@@ -119,16 +119,17 @@ export function selectThread(id: string | null): void {
     const git = { ...state.git };
     const projectId = id ? state.threads[id]?.projectId : state.activeProjectId;
     if (projectId) delete git[projectId];
-    return { ...withActiveThread(state, id), ...tabs, git };
+    return { ...withActiveThread({ ...state, ...tabs }, id), git };
   });
   if (id) environmentStorage.setItem("citropy.thread", id);
   else environmentStorage.removeItem("citropy.thread");
   saveTabs(useApp.getState());
 }
 
-export function selectRosterEntry(id: string): void {
+export function selectRosterEntry(id: string | null): void {
   useApp.setState({ activeRosterId: id, activeView: "bots" });
-  environmentStorage.setItem("citropy.bot", id);
+  if (id) environmentStorage.setItem("citropy.bot", id);
+  else environmentStorage.removeItem("citropy.bot");
 }
 
 export function showBotThread(id: string | null): void {

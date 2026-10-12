@@ -16,7 +16,8 @@ import { Modal } from "./Modal.tsx";
 import { TaskReview } from "./TaskReview.tsx";
 import { fileRestoreIssue } from "../../../shared/review.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
-import { botHandle } from "../../../shared/bots.ts";
+import { botHandle, inBotsView } from "../../../shared/bots.ts";
+import { ReactionPicker } from "./MessageReactions.tsx";
 import { ActionError } from "./ActionError.tsx";
 
 function answerText(messageIds: string[], user: boolean): string {
@@ -33,6 +34,7 @@ export function MessageActions({ threadId, messageId, replyIds = [messageId], us
   const compacting = useApp(state => Boolean(state.threads[threadId]?.compacting));
   const nativeAgent = useApp(state => Boolean(state.threads[threadId]?.nativeAgentId));
   const groupChat = useApp(state => Boolean(state.threads[threadId]?.groupId));
+  const botChat = useApp(state => inBotsView(state.threads[threadId]));
   const author = useApp(state => {
     const origin = state.messages[messageId]?.origin;
     return origin?.kind === "bot" ? origin.name : undefined;
@@ -81,6 +83,7 @@ export function MessageActions({ threadId, messageId, replyIds = [messageId], us
   };
   return <><span className="message-actions">
     <button className="icon-btn" type="button" aria-label={copied ? "Copied" : "Copy message"} title={copied ? "Copied" : "Copy message"} onClick={() => copy(answerText(replyIds, user))}>{copied ? <CheckIcon size={13} /> : <CopyIcon size={13} />}</button>
+    {botChat && !user && <ReactionPicker threadId={threadId} messageId={messageId} />}
     {groupChat && author && <button className="icon-btn" type="button" aria-label={`Reply to ${author}`} title={`Reply to ${author}`} onClick={() => sendToComposer(threadId, { text: `@${botHandle(author)} `, attachments: [], quotes: [answerText(replyIds, false)], placement: "before" })}><ReplyIcon size={13} /></button>}
     {!fixedHistory && <button className="icon-btn" type="button" aria-label="Branch from this message" title="Branch from this message" disabled={busy} onClick={() => void fork()}><BranchIcon size={13} /></button>}
     {user && !fixedHistory && <button className="icon-btn" type="button" aria-label="Restore before this message" title="Restore before this message" disabled={busy || running} onClick={() => { setMode("conversation"); setDialog("restore"); setError(""); }}><RotateCcwIcon size={13} /></button>}

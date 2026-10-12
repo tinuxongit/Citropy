@@ -36,9 +36,6 @@
   gap: var(--space-12);
   overflow-y: auto;
 }
-.project-dialog .settings-group {
-  background: var(--canvas);
-}
 .project-dialog .settings-note {
   margin: 0;
   padding: 0;

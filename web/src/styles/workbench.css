@@ -272,8 +272,48 @@
 .browser-frame > .browser-start {
   padding: var(--space-16);
 }
+.browser-takeover {
+  position: absolute;
+  inset: 0;
+  grid-area: 1 / 1 / 2 / 2;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: var(--space-12);
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.browser-takeover-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-8) 0 var(--space-16);
+}
+.browser-takeover-head h2 { flex: 1; min-width: 0; margin: 0; font-size: var(--text-sm); font-weight: 600; }
+.browser-takeover > .browser-pane { flex: 1; min-height: 0; }
+.browser-guest {
+  position: fixed;
+  overflow: hidden;
+  background: var(--canvas-deep);
+}
+.browser-guests-backing {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--canvas);
+  pointer-events: none;
+}
+.browser-guest > webview {
+  position: absolute;
+  inset: 0 auto auto 0;
+  transform-origin: 0 0;
+}
 .browser-cover {
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;

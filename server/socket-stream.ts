@@ -12,7 +12,7 @@ export function encodeServerEvent(event: ServerEvent): string {
 }
 
 function transcriptEvent(event: ServerEvent): boolean {
-  return event.t === "thread.messages" || event.t === "message.add" || event.t === "part.add" || event.t === "part.append" || event.t === "part.patch";
+  return event.t === "thread.messages" || event.t === "message.add" || event.t === "message.patch" || event.t === "part.add" || event.t === "part.append" || event.t === "part.patch";
 }
 
 type PendingEvent = {

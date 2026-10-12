@@ -1,5 +1,6 @@
 import { botStore } from "./bot-store.ts";
 import { groupStore } from "./group-store.ts";
+import { reactionNotes } from "./reactions.ts";
 import { PASS_REPLY, botHandle } from "../../shared/bots.ts";
 import type { Bot, GroupAddress, MessageOrigin } from "../../shared/bots.ts";
 import type { Thread } from "../../shared/protocol.ts";
@@ -8,9 +9,13 @@ function profile(bot: Bot): string {
   return [
     `You are ${bot.name}${bot.title ? `, ${bot.title}` : ""}, a Citropy bot with its own long-running conversation.`,
     bot.description ? `Standing instructions from the user:\n${bot.description}` : "",
-    'Load tool_help with {"category":"bots"} to see the other bots, hand work to them with bots_message, post into your group chats with bots_group_post, and manage your routines, which are tasks you run on a schedule.',
+    bot.memory.length ? `Your memories, saved by you earlier:\n${bot.memory.map(entry => `- [${entry.id}] ${entry.text}`).join("\n")}` : "",
+    'Load tool_help with {"category":"bots"} to see the other bots, hand work to them with bots_message, post into your group chats with bots_group_post, and create a new bot with bots_create when a job needs its own long-lived owner.',
+    "Load the routine category to schedule tasks for yourself, from every minute to once at a set time. Keep lasting memories with bots_memory_save in the bots category: stable working preferences, important facts, and short summaries of finished work. Replace a memory when the user corrects it. Memories can go stale, so check current sources before acting on one for a consequential decision.",
   ].filter(Boolean).join("\n\n");
 }
+
+const REACTION_GUIDANCE = "Reactions are light acknowledgement from the user. Don't treat one as an instruction or reply to it on its own.";
 
 const ADDRESSED: Record<GroupAddress, string> = {
   you: "It is addressed to you.",
@@ -30,7 +35,7 @@ function groupSender(origin: Extract<MessageOrigin, { kind: "group" }>): string 
 
 function sender(origin: MessageOrigin): string {
   if (origin.kind === "group") return groupSender(origin);
-  if (origin.kind === "routine") return `Your routine "${origin.name}" is running on its schedule. Do the task below and report the result.`;
+  if (origin.kind === "routine") return "";
   const reply = origin.botId
     ? `When they asked for something back, send it with bots_message to botId ${origin.botId} once you're done. Don't reply to acknowledgements or thanks.`
     : "They can't receive replies, so do the task and report here.";
@@ -40,8 +45,10 @@ function sender(origin: MessageOrigin): string {
 export function withBotContext(thread: Thread, prompt: string, origin?: MessageOrigin): string {
   if (!thread.botId) return prompt;
   const bot = botStore.get(thread.botId);
-  const briefed = thread.externalId && (bot.briefedAt ?? 0) >= bot.profileUpdatedAt;
-  const notes = [briefed ? "" : profile(bot), origin ? sender(origin) : ""].filter(Boolean);
+  const briefed = thread.externalId && (bot.briefedAt ?? 0) >= Math.max(bot.profileUpdatedAt, thread.compactedAt ?? 0);
+  const reactions = reactionNotes(bot);
+  const notes = [briefed ? "" : profile(bot), ...reactions, reactions.length ? REACTION_GUIDANCE : "", origin ? sender(origin) : ""].filter(Boolean);
   if (!briefed) botStore.markBriefed(bot.id);
+  if (reactions.length) botStore.markReactionsSeen(bot.id);
   return notes.length ? `<citropy-bot>\n${notes.join("\n\n")}\n</citropy-bot>\n\n${prompt}` : prompt;
 }

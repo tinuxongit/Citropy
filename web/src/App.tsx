@@ -37,13 +37,16 @@ import { BotPanel } from "./components/bots/BotPanel.tsx";
 import { BotsEmpty } from "./components/bots/BotsEmpty.tsx";
 import { NewChatDialog } from "./components/bots/NewChatDialog.tsx";
 import { orderedRoster, rosterItem } from "./lib/roster.ts";
+import { visitNextEntry, visitPreviousEntry } from "./lib/roster-history.ts";
 import { inBotsView } from "../../shared/bots.ts";
 import { openNewBotChat } from "./lib/bots.ts";
+import { openChatFind } from "./lib/find-in-chat.ts";
 import {
   useApp,
   viewportWidth,
   selectRosterEntry,
   selectThread,
+  toggleBotPanel,
   toggleInspector,
   toggleSidebar,
   panelWidthValue,
@@ -54,6 +57,8 @@ import { useUiSounds } from "./lib/use-ui-sounds.ts";
 import { chooseWorkspace, closeTab, createThread, reopenClosedTab, showNextTab } from "./lib/actions.ts";
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
+import { BrowserGuests } from "./components/BrowserGuests.tsx";
+import { BrowserTakeover } from "./components/BrowserTakeover.tsx";
 
 const NARROW_VIEWPORT = 720;
 const INSPECTOR_MIN_WIDTH = 260;
@@ -244,11 +249,25 @@ export function App() {
       (target.isContentEditable ||
         target.closest(".xterm, textarea, select, input:not([type='checkbox']):not([type='radio'])") !== null);
     const inTerminal = (target: EventTarget | null) => target instanceof HTMLElement && target.closest(".xterm") !== null;
+    const showRosterEntry = (event: KeyboardEvent, pick: (shown: string[], current: number) => string | undefined) => {
+      const state = useApp.getState();
+      const shown = orderedRoster(state).shown.map((entry) => entry.item.id);
+      const next = pick(shown, shown.indexOf(state.activeRosterId ?? ""));
+      if (!next) return;
+      event.preventDefault();
+      selectRosterEntry(next);
+    };
+    const stepRoster = (event: KeyboardEvent, step: number) =>
+      showRosterEntry(event, (shown, current) => shown[(current + step + shown.length) % shown.length]);
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const mod = event.metaKey || event.ctrlKey;
-      if (!mod) return;
       const key = event.key.toLowerCase();
+      if (view === "bots" && event.altKey && !mod && !event.shiftKey && (key === "arrowup" || key === "arrowdown") && !inTextEntry(event.target)) {
+        stepRoster(event, key === "arrowup" ? -1 : 1);
+        return;
+      }
+      if (!mod) return;
       if ((key === "," || key === "o") && !event.altKey && !event.shiftKey) {
         // Leave text fields and embedded terminals alone; their own keys win.
         if (inTextEntry(event.target)) return;
@@ -256,6 +275,9 @@ export function App() {
         if (event.repeat) return;
         if (key === ",") openSettings();
         else chooseWorkspace();
+      } else if (view === "bots" && (event.shiftKey ? event.code === "Comma" : event.altKey && key === "b")) {
+        event.preventDefault();
+        toggleBotPanel();
       } else if (key === "b") {
         event.preventDefault();
         if (view === "chat") toggleSidebar();
@@ -264,19 +286,31 @@ export function App() {
         event.preventDefault();
         setView("chat");
         toggleInspector();
+      } else if (view === "bots" && !event.altKey && (event.shiftKey ? key === "f" : key === "k")) {
+        event.preventDefault();
+        setSectionSidebarOpen(true);
+        useApp.setState({ searchFocusPending: true });
+      } else if (key === "f" && !event.altKey && !event.shiftKey && !inTerminal(event.target) && (view === "chat" || view === "bots") && useApp.getState().activeThreadId) {
+        event.preventDefault();
+        openChatFind();
       } else if (key === "k" && !event.altKey && !event.shiftKey) {
         event.preventDefault();
         setView("chat");
         if (!useApp.getState().sidebarOpen) toggleSidebar();
-        useApp.setState({ threadSearchFocusPending: true });
-      } else if (view === "bots" && !inTextEntry(event.target) && (event.altKey ? key === "arrowup" || key === "arrowdown" : /^[1-9]$/.test(key))) {
-        const state = useApp.getState();
-        const shown = orderedRoster(state).shown.map((entry) => entry.item);
-        const current = shown.findIndex((item) => item.id === state.activeRosterId);
-        const next = event.altKey ? shown[(current + (key === "arrowup" ? -1 : 1) + shown.length) % shown.length] : shown[Number(key) - 1];
-        if (!next) return;
+        useApp.setState({ searchFocusPending: true });
+      } else if ((key === "i" || key === "l") && !event.altKey && !event.shiftKey) {
+        const composer = document.querySelector<HTMLElement>(".stage .composer-input");
+        if (!composer || (inTextEntry(event.target) && event.target !== composer)) return;
         event.preventDefault();
-        selectRosterEntry(next.id);
+        composer.focus();
+      } else if (view === "bots" && !event.altKey && !event.shiftKey && (key === "[" || key === "]")) {
+        event.preventDefault();
+        if (key === "[") visitPreviousEntry();
+        else visitNextEntry();
+      } else if (view === "bots" && event.ctrlKey && key === "tab") {
+        stepRoster(event, event.shiftKey ? -1 : 1);
+      } else if (view === "bots" && !event.altKey && /^[1-9]$/.test(key) && !inTextEntry(event.target)) {
+        showRosterEntry(event, (shown) => shown[Number(key) - 1]);
       } else if (key === "n" && !event.shiftKey) {
         event.preventDefault();
         if (view === "bots") {
@@ -392,6 +426,7 @@ export function App() {
             ) : hasProject && activeThreadId ? (
               <Fragment key={`${environment}:${activeThreadId}`}>
                 <Conversation />
+                <BrowserTakeover />
                 {view === "chat" && <ThreadDetailsPanel />}
                 <Composer
                   onUsage={() => openView("usage")}
@@ -429,6 +464,7 @@ export function App() {
       />
       <SetupGuide />
       <DevTriggers />
+      {window.citropyDesktop && <BrowserGuests />}
     </div>
   );
 }

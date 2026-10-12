@@ -32,7 +32,11 @@ export function GroupPanel({ group }: { group: BotGroup }) {
         <label className="feature-field">
           <span>Name</span>
           <input maxLength={BOT_LIMITS.groupNameLength} value={name} onChange={(event) => setName(event.target.value)}
-            onBlur={() => { if (name.trim() !== group.name) change({ name }); }}
+            onBlur={() => {
+              const trimmed = name.trim();
+              setName(trimmed);
+              if (trimmed !== group.name) change({ name: trimmed });
+            }}
             onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />
         </label>
       </div>

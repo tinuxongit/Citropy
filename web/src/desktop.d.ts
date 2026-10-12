@@ -60,12 +60,11 @@ declare global {
           threadId?: string;
         }) => void,
       ): () => void;
-      browserBounds(
-        id: string,
-        bounds: { x: number; y: number; width: number; height: number } | null,
-        visible: boolean,
-        cover?: boolean,
-      ): void;
+      onBrowserGuests(
+        callback: (guests: import("./components/BrowserGuests.tsx").BrowserGuest[]) => void,
+      ): () => void;
+      attachBrowser(id: string, contentsId: number): void;
+      browserPresented(id: string, visible: boolean, scale: number): void;
       onBrowserCover(
         callback: (id: string, image?: string) => void,
       ): () => void;

@@ -371,6 +371,7 @@
 .shell[data-backdrop] {
   --panel: color-mix(in srgb, var(--panel-solid) calc(var(--ui-alpha) * 100%), transparent);
   --overlay: color-mix(in srgb, var(--overlay-solid) calc(max(var(--ui-alpha) + 0.12, var(--popup-floor)) * 100%), transparent);
+  --menu: color-mix(in srgb, var(--menu-solid) calc(max(var(--ui-alpha) + 0.12, var(--popup-floor)) * 100%), transparent);
   --surface: color-mix(in srgb, var(--surface-solid) calc(var(--ui-alpha) * 100%), transparent);
   --raised: color-mix(in srgb, var(--raised-solid) calc(var(--ui-alpha) * 100%), transparent);
   --raised-2: color-mix(in srgb, var(--raised-2-solid) calc(var(--ui-alpha) * 100%), transparent);
@@ -570,7 +571,8 @@
     --drawer: min(320px, calc(var(--viewport-width) * 0.85));
   }
   .shell { --visible-rail: 0px; }
-  .shell[data-backdrop] :is(.menu, [popover]:not(.strip-peek), dialog, .strip-peek-card, .context-details, .composer-suggestions, .message-nav-preview, .app-update-popover) { background: var(--overlay-solid); }
+  .shell[data-backdrop] .menu:not([data-side="edge"]) { background: var(--menu-solid); }
+  .shell[data-backdrop] :is(.menu[data-side="edge"], [popover]:not(.strip-peek, .menu), dialog, .strip-peek-card, .context-details, .composer-suggestions, .message-nav-preview, .app-update-popover) { background: var(--overlay-solid); }
   .shell { padding-bottom: var(--tabbar); }
   :root .dev-triggers { bottom: calc(80px + env(safe-area-inset-bottom)); }
   :root .dev-mark { bottom: calc(58px + env(safe-area-inset-bottom)); }

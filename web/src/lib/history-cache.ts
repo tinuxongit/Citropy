@@ -30,6 +30,7 @@ function messageShell(message: Message, partIds: string[]): AppState["messages"]
     attachments: message.attachments,
     mentions: message.mentions,
     origin: message.origin,
+    reactions: message.reactions,
     partIds,
   };
 }
@@ -101,6 +102,7 @@ export const historyChanges: Partial<Record<ServerEvent["t"], HistoryCollection[
   "thread.remove": allHistory,
   "thread.messages": allHistory,
   "message.add": ["messages", "parts", "order", "reveals", "historyBytes"],
+  "message.patch": ["messages"],
   "part.add": ["messages", "parts", "reveals", "historyBytes"],
   "part.append": ["parts", "historyBytes"],
   "part.patch": ["parts", "historyBytes"],
@@ -179,7 +181,7 @@ export function trimOlderMessages(state: AppState, threadId: string): AppState {
 
 export function unloadedDelta(state: AppState, event: ServerEvent): boolean {
   return (
-    (event.t === "message.add" || event.t === "part.add" ||
+    (event.t === "message.add" || event.t === "message.patch" || event.t === "part.add" ||
       event.t === "part.append" || event.t === "part.patch") &&
     !state.loaded[event.threadId]
   );
@@ -189,7 +191,7 @@ export function applyMessageEvent(
   state: AppState,
   event: Extract<
     ServerEvent,
-    { t: "message.add" } | { t: "part.add" } | { t: "part.append" } | { t: "part.patch" }
+    { t: "message.add" } | { t: "message.patch" } | { t: "part.add" } | { t: "part.append" } | { t: "part.patch" }
   >,
 ): void {
   switch (event.t) {
@@ -207,6 +209,11 @@ export function applyMessageEvent(
         ...(state.order[event.threadId] ?? []),
         event.message.id,
       ];
+      return;
+    }
+    case "message.patch": {
+      const shell = state.messages[event.messageId];
+      if (shell) state.messages[event.messageId] = { ...shell, ...event.patch };
       return;
     }
     case "part.add": {

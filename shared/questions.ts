@@ -5,6 +5,7 @@ export interface UserQuestion {
   options: Array<{ label: string; description?: string }>;
   multiple: boolean;
   secret?: boolean;
+  browserTab?: string;
 }
 
 export interface QuestionRequest {
@@ -41,6 +42,7 @@ export function normalizeQuestions(input: unknown): UserQuestion[] {
     if (!text(id, 100) || ["__proto__", "constructor", "prototype"].includes(id)) throw new Error("Choose a valid question identifier.");
     if (entry.header !== undefined && !text(entry.header, 100)) throw new Error("Use a short question heading.");
     if (entry.multiple !== undefined && typeof entry.multiple !== "boolean") throw new Error("Choose whether multiple answers are allowed.");
+    if (entry.browserTab !== undefined && !text(entry.browserTab, 100)) throw new Error("Give the browser tab's id from browser_tabs.");
     const options = entry.options ?? [];
     if (!Array.isArray(options) || options.length > 12) throw new Error("Offer up to twelve choices per question.");
     const normalized = options.map(option => {
@@ -48,7 +50,7 @@ export function normalizeQuestions(input: unknown): UserQuestion[] {
       return { label: option.label.trim(), ...(option.description ? { description: option.description } : {}) };
     });
     if (new Set(normalized.map(option => option.label)).size !== normalized.length) throw new Error("Give each choice a different label.");
-    return { id, question: entry.question.trim(), ...(entry.header ? { header: entry.header } : {}), options: normalized, multiple: entry.multiple === true, ...(entry.secret === true ? { secret: true } : {}) };
+    return { id, question: entry.question.trim(), ...(entry.header ? { header: entry.header } : {}), options: normalized, multiple: entry.multiple === true, ...(entry.secret === true ? { secret: true } : {}), ...(entry.browserTab ? { browserTab: entry.browserTab } : {}) };
   });
   if (new Set(questions.map(question => question.id)).size !== questions.length) throw new Error("Question identifiers must be unique.");
   return questions;

@@ -20,6 +20,7 @@ import { ProjectScripts } from "./ProjectScripts.tsx";
 import { GitSection } from "./GitSection.tsx";
 import { ShellsSection } from "./ShellsSection.tsx";
 import { useGitActions } from "./use-git-actions.ts";
+import { ThreadRoutines } from "./ThreadRoutines.tsx";
 import { useVisibleInterval } from "../../lib/use-visible-interval.ts";
 import { usePresent } from "../../lib/use-present.ts";
 import { useLaggedValue } from "../../lib/use-lagged-value.ts";
@@ -103,6 +104,7 @@ function ThreadDetails({ thread, project }: { thread: ThreadMeta; project: Proje
         <DetailRow icon={<ComposeIcon size={16} />} label="Open in editor" disabled={!connected} onClick={() => showInChat(() => openWorkbenchPanel("files"))} />
         {openFolder && <DetailRow icon={<FolderOpenIcon size={16} />} label="Open folder" title={folder} onClick={() => void openFolder(folder).catch(reportError)} />}
         <ProjectScripts project={project} threadId={thread.id} disabled={!connected} />
+        <ThreadRoutines threadId={thread.id} />
       </div>
       {isGit && <div className="details-section" aria-label="Version control">
         <GitSection thread={thread} git={git} branch={branch} onReview={() => setReviewing(true)} onSourceControl={openSourceControl} onChanges={() => showInChat(() => openWorkbenchPanel("changes"))} />

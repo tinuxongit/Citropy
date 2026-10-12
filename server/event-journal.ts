@@ -132,6 +132,8 @@ export class EventJournal {
       else if (event.t === "message.add") {
         this.#message(event.threadId, event.message);
         searchThread = event.threadId;
+      } else if (event.t === "message.patch") {
+        this.#statement("UPDATE documents SET data=json_patch(data,?) WHERE kind='message' AND id=?").run(JSON.stringify(event.patch), event.messageId);
       } else if (event.t === "part.add") {
         if (event.part.kind === "text" || this.#statement("SELECT 1 FROM documents WHERE kind='part' AND id=? AND json_extract(data,'$.kind')='text'").get(event.part.id)) searchThread = event.threadId;
         this.#put("part", event.part.id, event.messageId, event.part);

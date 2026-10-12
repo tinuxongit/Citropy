@@ -2,6 +2,7 @@ import { bus } from "./bus.ts";
 import { uid } from "./ids.ts";
 import { store } from "./store.ts";
 import { describeTool } from "./tools.ts";
+import { resumeIfAnswered } from "./questions.ts";
 import type { PermissionRequest } from "../shared/protocol.ts";
 
 export const ANSWER_WAIT_MS = 30 * 60 * 1000;
@@ -28,6 +29,7 @@ function settle(entry: Pending, decision: Decision): void {
   pending.delete(entry.request.id);
   clearTimeout(entry.timer);
   bus.emit({ t: "permission.close", id: entry.request.id });
+  resumeIfAnswered(entry.request.threadId);
   entry.resolve(decision);
 }
 
@@ -69,6 +71,7 @@ export function ask(threadId: string, tool: string, input: unknown): Promise<Dec
     const entry: Pending = { request, resolve, timer: setTimeout(() => settle(entry, "deny"), ANSWER_WAIT_MS) };
     entry.timer.unref();
     pending.set(request.id, entry);
+    if (thread.running) store.patchThread(threadId, { status: "awaiting", activeTool: undefined });
     bus.emit({ t: "permission.request", request });
   });
 }

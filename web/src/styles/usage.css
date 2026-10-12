@@ -69,6 +69,7 @@
   border-radius: var(--r-md);
   background: var(--panel);
 }
+.menu .usage-segmented { background: var(--popup-well); }
 .usage-segmented button {
   padding: var(--space-6) var(--space-12);
   border-radius: var(--r-sm);
@@ -86,16 +87,6 @@
 .snooze-divider { width: 100%; margin: 0; border: 0; border-top: 1px solid var(--line); }
 .snooze-units button { flex: 1; }
 .snooze-stepper { display: grid; justify-items: center; gap: var(--space-2); }
-.snooze-step { display: grid; place-items: center; width: 100%; height: 30px; border-radius: var(--r-sm); color: var(--text-2); transition: background var(--dur-instant) var(--ease-out), color var(--dur-instant) var(--ease-out); }
-.snooze-step:hover:not(:disabled) { background: var(--hover); color: var(--text); }
-.snooze-step:disabled { opacity: 0.35; }
-.snooze-amount { display: grid; justify-items: center; width: 100%; padding: var(--space-4) 0; border-radius: var(--r-md); background: var(--panel); }
-.snooze-amount:focus-within { box-shadow: 0 0 0 2px var(--field-focus-ring); }
-.snooze-amount input { width: 100%; padding: 0; border: 0; background: none; color: var(--text); font-size: var(--text-display); font-weight: 600; line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; appearance: textfield; outline: none; }
-.snooze-amount input:focus-visible { outline: none; box-shadow: none; }
-.snooze-amount input::-webkit-inner-spin-button,
-.snooze-amount input::-webkit-outer-spin-button { appearance: none; margin: 0; }
-.snooze-amount span { color: var(--text-3); font-size: var(--text-xs); }
 .snooze-wake { margin: var(--space-6) 0 var(--space-4); color: var(--text-3); font-size: var(--text-xs); text-align: center; font-variant-numeric: tabular-nums; }
 .snooze-submit { width: 100%; }
 .usage-provider-filter {

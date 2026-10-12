@@ -167,10 +167,7 @@
 .restore-choice-text { min-width: 0; }
 .restore-choice-text strong { display: block; font-size: var(--text-base); font-weight: 500; line-height: 1.5; }
 .restore-choice-text small { display: block; margin-top: var(--space-4); font-size: var(--text-sm); line-height: 1.5; color: var(--text-3); }
-.restore-choice input { appearance: none; display: grid; place-items: center; width: 16px; height: 16px; margin: 0; border: 0; border-radius: 50%; outline: none; background: var(--raised-2); cursor: inherit; }
-.restore-choice input:checked {
-  background: var(--text-3); }
-.restore-choice input:checked::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--canvas); }
+.restore-choice input { cursor: inherit; }
 .restore-unavailable { margin: var(--space-12) var(--space-12) 0; font-size: var(--text-sm); line-height: 1.6; color: var(--text-2); }
 .restore-note { margin: var(--space-20) 0 0; font-size: var(--text-sm); line-height: 1.6; color: var(--text-3); }
 @media (max-width: 700px) { .review-toolbar { align-items: stretch; } .diff-line[data-interactive] { grid-template-columns: 28px 28px 12px minmax(0, 1fr) 22px; } }

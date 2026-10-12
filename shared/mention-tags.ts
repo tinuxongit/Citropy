@@ -3,8 +3,9 @@ import type { SkillInfo, ToolMention } from "./features.ts";
 export interface MentionTag {
   name: string;
   title: string;
-  icon: "book" | "citropy" | "site";
+  icon: "book" | "citropy" | "site" | "bot";
   url?: string;
+  color?: string;
 }
 
 export function skillTag(skill: Pick<SkillInfo, "name" | "scope">): MentionTag {

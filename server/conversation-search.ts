@@ -1,5 +1,7 @@
 import { Worker } from "node:worker_threads";
-import type { ThreadMeta } from "../shared/protocol.ts";
+import type { Message, ThreadMeta } from "../shared/protocol.ts";
+
+const QUERY_LENGTH = 300;
 
 type MessageTexts = (threadId: string) => Iterable<{ id: string; text: string; normalized?: boolean }>;
 export type SearchThread = Pick<ThreadMeta, "id" | "title" | "updatedAt">;
@@ -9,8 +11,20 @@ export function normalizeSearchText(text: string): string {
   return text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[`#*]/g, "").replace(/\s+/g, " ");
 }
 
+function needleOf(query: string): string {
+  return query.trim().toLocaleLowerCase().slice(0, QUERY_LENGTH);
+}
+
+export function findInMessages(messages: Message[], query: string): string[] {
+  const needle = needleOf(query);
+  if (!needle) return [];
+  return messages
+    .filter(message => message.role !== "system" && message.parts.some(part => part.kind === "text" && normalizeSearchText(part.text).toLocaleLowerCase().includes(needle)))
+    .map(message => message.id);
+}
+
 export function searchConversations(threads: Iterable<SearchThread>, messageTexts: MessageTexts, query: string, cancelled?: () => boolean): SearchResult[] {
-  const needle = query.trim().toLocaleLowerCase().slice(0, 300);
+  const needle = needleOf(query);
   if (!needle) return [];
   const results: SearchResult[] = [];
   for (const thread of [...threads].sort((a, b) => b.updatedAt - a.updatedAt)) {

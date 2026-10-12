@@ -24,6 +24,7 @@ function siteIcon(origin: string): string {
 
 function mentionIcon(tag: MentionTag): string {
   if (tag.icon === "site") return siteIcon(new URL(tag.url!).origin);
+  if (tag.icon === "bot") return `<span class="mention-swatch" data-color="${escapeHtml(tag.color ?? "")}" aria-hidden="true"></span>`;
   return tag.icon === "citropy" ? '<span class="citropy-mark" aria-hidden="true"></span>' : BOOK_ICON;
 }
 

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { hasUsableAccount } from "../../../../shared/provider-account.ts";
 import { openNewBotChat } from "../../lib/bots.ts";
 import { entryText, orderedRoster, searchMatcher } from "../../lib/roster.ts";
 import { useApp } from "../../lib/store.ts";
+import { MOD } from "../../lib/modifier-key.ts";
 import { useVisibleInterval } from "../../lib/use-visible-interval.ts";
 import { Collapsible } from "../Collapsible.tsx";
 import { SearchIcon } from "../icons/actions.tsx";
@@ -21,6 +22,13 @@ export function BotRoster({ onOpen }: { onOpen: () => void }) {
   const activeRosterId = useApp((state) => state.activeRosterId);
   const canCreate = useApp((state) => state.connected && Boolean(state.activeProjectId) && state.providers.some(hasUsableAccount));
   const [query, setQuery] = useState("");
+  const search = useRef<HTMLInputElement>(null);
+  const focusPending = useApp((state) => state.searchFocusPending);
+  useEffect(() => {
+    if (!focusPending || !search.current!.checkVisibility()) return;
+    search.current!.select();
+    useApp.setState({ searchFocusPending: false });
+  }, [focusPending]);
   const [hiddenOpen, setHiddenOpen] = useState(false);
   const [now, setNow] = useState(Date.now);
   useVisibleInterval(() => setNow(Date.now()), ROW_TIME_REFRESH_MS);
@@ -32,18 +40,16 @@ export function BotRoster({ onOpen }: { onOpen: () => void }) {
   const empty = !shown.length && !hidden.length;
   return (
     <aside className="rail bot-roster" aria-label="Bots">
-      <div className="bot-roster-head">
-        <button type="button" className="icon-btn bot-new" aria-label="New chat" title="New chat" disabled={!canCreate} onClick={openNewBotChat}>
-          <PlusIcon size={16} />
-        </button>
-      </div>
       <div className="thread-toolbar">
         <label className="thread-search">
           <SearchIcon size={16} />
-          <input aria-label="Find a bot or group" placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)}
+          <input ref={search} aria-label="Find a bot or group" title={`Find a bot or group (${MOD}K)`} placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => { if (event.key === "Escape") { setQuery(""); event.currentTarget.blur(); } }} />
           {query && <button type="button" className="thread-search-clear" aria-label="Clear search" onClick={() => setQuery("")}><CloseIcon size={12} aria-hidden="true" /></button>}
         </label>
+        <button type="button" className="icon-btn bot-new" aria-label="New chat" title={`New chat (${MOD}N)`} disabled={!canCreate} onClick={openNewBotChat}>
+          <PlusIcon size={16} />
+        </button>
       </div>
       <div className="rail-scroll">
         <div className="rail-list scroll">
@@ -61,7 +67,7 @@ export function BotRoster({ onOpen }: { onOpen: () => void }) {
               </Collapsible>
             </>}
           </div>
-          {empty && <div className="rail-empty">{query ? "Nothing matches your search." : "No bots yet."}</div>}
+          {empty && query && <div className="rail-empty">Nothing matches your search.</div>}
         </div>
       </div>
       <ResizeHandle panel="sidebar" />

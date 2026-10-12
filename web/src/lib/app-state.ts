@@ -41,6 +41,7 @@ interface MessageShell {
   attachments?: Message["attachments"];
   mentions?: Message["mentions"];
   origin?: Message["origin"];
+  reactions?: Message["reactions"];
 }
 
 export interface Toast {
@@ -97,6 +98,7 @@ export interface AppState {
     results: Array<{ threadId: string; messageId?: string; snippet: string }>;
   } | null;
   searchMessageId: string | null;
+  chatFindOpen: boolean;
   searchShellId: string | null;
   connected: boolean;
   development: boolean;
@@ -166,7 +168,7 @@ export interface AppState {
   backgroundEverywhere: boolean;
   sidebarGroups: Record<string, boolean>;
   threadQuery: string;
-  threadSearchFocusPending: boolean;
+  searchFocusPending: boolean;
   theme: Theme;
   scheme: Scheme;
   customColor: string;
@@ -180,6 +182,8 @@ export interface AppState {
   uiAlertSounds: boolean;
   uiSoundVolume: number;
 }
+
+const REOPENED_VIEWS = ["chat", "bots"] as const;
 
 function oneOf<T extends string>(options: readonly T[], value: string, fallback: T): T {
   return (options as readonly string[]).includes(value) ? value as T : fallback;
@@ -259,11 +263,12 @@ export const useApp = create<AppState>(() => ({
   notifications: [],
   assistance: { ...defaultAssistance },
   projectDefaults: {},
-  activeView: "chat",
+  activeView: oneOf(REOPENED_VIEWS, readPref("citropy.view", "chat"), "chat"),
   notificationPreferences: { toasts: true, desktop: true, sound: false, subagents: false },
   confirmation: null,
   searchResult: null,
   searchMessageId: null,
+  chatFindOpen: false,
   searchShellId: null,
   connected: false,
   development: false,
@@ -340,7 +345,7 @@ export const useApp = create<AppState>(() => ({
   backgroundEverywhere: readFlag("citropy.backgroundEverywhere", false),
   sidebarGroups: readSidebarGroups(),
   threadQuery: "",
-  threadSearchFocusPending: false,
+  searchFocusPending: false,
   theme: oneOf(THEMES, storedTheme, "neutral"),
   scheme: oneOf(SCHEMES, readPref<string>("citropy.scheme", storedTheme === "light" ? "light" : "dark"), "dark"),
   customColor: isHexColor(storedCustomColor) ? storedCustomColor : DEFAULT_CUSTOM_COLOR,
@@ -359,3 +364,8 @@ export const useApp = create<AppState>(() => ({
     ? Math.max(0, Math.min(100, storedVolume))
     : 60,
 }));
+
+useApp.subscribe((state, previous) => {
+  if (state.activeView !== previous.activeView && (REOPENED_VIEWS as readonly string[]).includes(state.activeView))
+    environmentStorage.setItem("citropy.view", state.activeView);
+});
