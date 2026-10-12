@@ -1,6 +1,4 @@
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
-import { AnimatePresence, motion } from "motion/react";
-import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useEffect, useId, useRef, useState, type ComponentType } from "react";
 import { CheckCheckIcon, CheckIcon, CloseIcon } from "./icons/marks.tsx";
 import { TrashIcon } from "./icons/actions.tsx";
@@ -12,6 +10,7 @@ import { ago, dateTime, day } from "../lib/format.ts";
 import { ConversationsIcon } from "./ConversationsIcon.tsx";
 import { GitHubIcon, GitIcon } from "./BrandIcon.tsx";
 import { InboxIcon } from "./InboxIcon.tsx";
+import { StripPeek } from "./StripPeek.tsx";
 import type { AppNotification, NotificationTarget } from "../../../shared/protocol.ts";
 
 type Kind = AppNotification["kind"];
@@ -57,7 +56,6 @@ export function NotificationCenter({
 }: {
   onOpen: (target: NotificationTarget) => void;
 }) {
-  const reducedMotion = useReducedMotion();
   const notifications = useApp((state) => state.notifications);
   const connected = useApp((state) => state.connected);
   const [open, setOpen] = useState(false);
@@ -125,134 +123,128 @@ export function NotificationCenter({
           </span>
         </span>
       </button>
-      <AnimatePresence>{open && (
-        <motion.section initial={{ opacity: 0, x: reducedMotion ? 0 : -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: reducedMotion ? 0 : -4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }}
-          className="notification-center"
-          role="dialog"
-          aria-label="Inbox"
-        >
-          <header>
-            <h2>Inbox</h2>
-            {unread > 0 && <span className="notification-badge">{unread} new</span>}
-            <button
-              type="button"
-              className="notification-unread-toggle"
-              aria-pressed={unreadOnly}
-              onClick={() => setUnreadOnly(!unreadOnly)}
-            >Unread only</button>
-            <button
-              className="icon-btn"
-              type="button"
-              aria-label="Mark all read"
-              title="Mark all read"
-              disabled={!tabUnread.length || !connected}
-              onClick={() => send({ t: "notifications.read", ids: tabUnread.map((entry) => entry.id) })}
-            >
-              <CheckCheckIcon size={16} />
-            </button>
-            <button
-              className="icon-btn"
-              type="button"
-              aria-label="Close notifications"
-              title="Close notifications"
-              onClick={close}
-            >
-              <CloseIcon size={16} />
-            </button>
-          </header>
-          <div className="segmented-tabs notification-tabs sliding-selection" role="tablist" aria-label="Notification types">
-            <SelectionHighlight value={tabId} />
-            {TABS.map((entry) => {
-              const count = notifications.filter((item) => !item.read && inTab(entry, item)).length;
-              return (
-                <button
-                  key={entry.id}
-                  type="button"
-                  role="tab"
-                  id={`${id}-${entry.id}`}
-                  aria-selected={entry.id === tabId}
-                  aria-controls={`${id}-panel`}
-                  onClick={() => setTabId(entry.id)}
-                >
-                  {entry.label}
-                  {count > 0 && <span>{count}</span>}
-                </button>
-              );
-            })}
-          </div>
-          <div className="notification-list scroll" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tabId}`}>
-            {byDay(visible).map(([label, entries]) => (
-              <section className="notification-day" key={label} aria-label={label}>
-                <h3>{label}</h3>
-                {entries.map((entry) => {
-                  const Icon = entry.level === "error" ? CircleAlertIcon : KIND_ICONS[entry.kind];
-                  return (
-                    <article
-                      key={entry.id}
-                      className="notification-row"
-                      data-unread={!entry.read}
+      <StripPeek anchor={trigger.current} open={open} className="inbox-peek" role="dialog" aria-label="Inbox">
+        <header>
+          <h2>Inbox</h2>
+          {unread > 0 && <span className="notification-badge">{unread} new</span>}
+          <button
+            type="button"
+            className="notification-unread-toggle"
+            aria-pressed={unreadOnly}
+            onClick={() => setUnreadOnly(!unreadOnly)}
+          >Unread only</button>
+          <button
+            className="icon-btn"
+            type="button"
+            aria-label="Mark all read"
+            title="Mark all read"
+            disabled={!tabUnread.length || !connected}
+            onClick={() => send({ t: "notifications.read", ids: tabUnread.map((entry) => entry.id) })}
+          >
+            <CheckCheckIcon size={16} />
+          </button>
+          <button
+            className="icon-btn"
+            type="button"
+            aria-label="Close notifications"
+            title="Close notifications"
+            onClick={close}
+          >
+            <CloseIcon size={16} />
+          </button>
+        </header>
+        <div className="segmented-tabs notification-tabs sliding-selection" role="tablist" aria-label="Notification types">
+          <SelectionHighlight value={tabId} />
+          {TABS.map((entry) => {
+            const count = notifications.filter((item) => !item.read && inTab(entry, item)).length;
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                role="tab"
+                id={`${id}-${entry.id}`}
+                aria-selected={entry.id === tabId}
+                aria-controls={`${id}-panel`}
+                onClick={() => setTabId(entry.id)}
+              >
+                {entry.label}
+                {count > 0 && <span>{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div className="notification-list scroll" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tabId}`}>
+          {byDay(visible).map(([label, entries]) => (
+            <section className="notification-day" key={label} aria-label={label}>
+              <h3>{label}</h3>
+              {entries.map((entry) => {
+                const Icon = entry.level === "error" ? CircleAlertIcon : KIND_ICONS[entry.kind];
+                return (
+                  <article
+                    key={entry.id}
+                    className="notification-row"
+                    data-unread={!entry.read}
+                  >
+                    <span className="notification-symbol" data-level={entry.level}>
+                      <Icon size={16} />
+                    </span>
+                    <button
+                      type="button"
+                      className="notification-copy"
+                      onClick={() => {
+                        send({ t: "notifications.read", ids: [entry.id] });
+                        onOpen(entry.target);
+                        setOpen(false);
+                      }}
                     >
-                      <span className="notification-symbol" data-level={entry.level}>
-                        <Icon size={16} />
-                      </span>
+                      <strong>{entry.title}</strong>
+                      <span>{entry.kind === "update" ? `${entry.text} is available. Open settings to update when you're ready.` : entry.text}</span>
+                      <time
+                        dateTime={new Date(entry.createdAt).toISOString()}
+                        title={dateTime(entry.createdAt)}
+                      >
+                        {ago(entry.createdAt)}
+                      </time>
+                    </button>
+                    {!entry.read && (
                       <button
                         type="button"
-                        className="notification-copy"
-                        onClick={() => {
-                          send({ t: "notifications.read", ids: [entry.id] });
-                          onOpen(entry.target);
-                          setOpen(false);
-                        }}
+                        className="icon-btn notification-read"
+                        aria-label="Mark read"
+                        title="Mark read"
+                        disabled={!connected}
+                        onClick={() =>
+                          send({ t: "notifications.read", ids: [entry.id] })
+                        }
                       >
-                        <strong>{entry.title}</strong>
-                        <span>{entry.kind === "update" ? `${entry.text} is available. Open settings to update when you're ready.` : entry.text}</span>
-                        <time
-                          dateTime={new Date(entry.createdAt).toISOString()}
-                          title={dateTime(entry.createdAt)}
-                        >
-                          {ago(entry.createdAt)}
-                        </time>
+                        <CheckIcon size={14} />
                       </button>
-                      {!entry.read && (
-                        <button
-                          type="button"
-                          className="icon-btn notification-read"
-                          aria-label="Mark read"
-                          title="Mark read"
-                          disabled={!connected}
-                          onClick={() =>
-                            send({ t: "notifications.read", ids: [entry.id] })
-                          }
-                        >
-                          <CheckIcon size={14} />
-                        </button>
-                      )}
-                    </article>
-                  );
-                })}
-              </section>
-            ))}
-            {!visible.length && (
-              <div className="notification-empty">
-                <span className="notification-empty-art"><InboxIcon size={28} /></span>
-                <strong>{unreadOnly ? "All caught up" : "Nothing here yet"}</strong>
-                <p>{tab.empty}</p>
-              </div>
-            )}
-          </div>
-          <footer>
-            <span>Last 100 items</span>
-            <button
-              type="button"
-              disabled={
-                !connected || !notifications.some((entry) => entry.read)
-              }
-              onClick={() => send({ t: "notifications.clear" })}
-            >
-              <TrashIcon size={13} />Clear read</button>
-          </footer>
-        </motion.section>
-      )}</AnimatePresence>
+                    )}
+                  </article>
+                );
+              })}
+            </section>
+          ))}
+          {!visible.length && (
+            <div className="notification-empty">
+              <span className="notification-empty-art"><InboxIcon size={28} /></span>
+              <strong>{unreadOnly ? "All caught up" : "Nothing here yet"}</strong>
+              <p>{tab.empty}</p>
+            </div>
+          )}
+        </div>
+        <footer>
+          <span>Last 100 items</span>
+          <button
+            type="button"
+            disabled={
+              !connected || !notifications.some((entry) => entry.read)
+            }
+            onClick={() => send({ t: "notifications.clear" })}
+          >
+            <TrashIcon size={13} />Clear read</button>
+        </footer>
+      </StripPeek>
     </div>
   );
 }

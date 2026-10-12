@@ -39,7 +39,7 @@ export function NavigationStrip({
 }) {
   const usagePeek = useUsagePeek();
   const { activeId: environment } = useEnvironments();
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(true);
   const conversations: StripButton = { name: "Conversations", icon: ConversationsIcon, run: onChat, view: "chat" };
   const code = [
     { name: "Source control", icon: GitIcon, run: onGit, view: "git" },

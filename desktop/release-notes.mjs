@@ -1,3 +1,5 @@
+export const RELEASE_NOTE_HEADINGS = ["Added", "Changed", "Fixed"];
+
 function plain(text) {
   return text
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")

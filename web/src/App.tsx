@@ -388,7 +388,12 @@ export function App() {
       <RemoteFolderDialog />
       <LinkActions />
       <Toasts onOpen={openNotification} />
-      <WhatsNew />
+      <WhatsNew
+        onOpenSettings={(section) => {
+          setSettingsSection(section);
+          openView("settings");
+        }}
+      />
       <SetupGuide />
       <DevTriggers />
     </div>

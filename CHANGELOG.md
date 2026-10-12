@@ -2,6 +2,15 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.10.6
+
+### Added
+- What's new shows each new feature on its own card. Changes and fixes follow as short lists, and a mention of a page such as Settings > Phone access opens that page when you click it.
+
+### Changed
+- The Inbox, running agents, and update panels slide out from the left strip next to their button, the same way usage limits do.
+- The left strip shows Settings and the other account buttons without opening the account menu first.
+
 ## 0.10.5
 
 ### Added

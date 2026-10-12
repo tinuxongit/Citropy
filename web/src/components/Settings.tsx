@@ -1,18 +1,5 @@
-import { Fragment, useEffect, useState, type ComponentType } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { RefreshIcon } from "./icons/rotation.tsx";
-import { FolderIcon } from "./icons/folders.tsx";
-import { BookIcon } from "./BookIcon.tsx";
-import { GlobeIcon } from "./GlobeIcon.tsx";
-import { InboxIcon } from "./InboxIcon.tsx";
-import { LockIcon } from "./LockIcon.tsx";
-import { PaletteIcon } from "./PaletteIcon.tsx";
-import { PhoneIcon } from "./PhoneIcon.tsx";
-import { PulseIcon } from "./PulseIcon.tsx";
-import { ServerIcon } from "./ServerIcon.tsx";
-import { SlidersIcon } from "./SlidersIcon.tsx";
-import { SparkleIcon } from "./SparkleIcon.tsx";
-import { WindowIcon } from "./WindowIcon.tsx";
-import { WorkflowIcon } from "./WorkflowIcon.tsx";
 import { isRemote, useEnvironments } from "../lib/environment.ts";
 import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
@@ -24,30 +11,13 @@ import { ConnectionsSettings } from "./ConnectionsSettings.tsx";
 import { DiagnosticsSettings } from "./DiagnosticsSettings.tsx";
 import { EnvironmentSettings } from "./EnvironmentSettings.tsx";
 import { GeneralSettings } from "./GeneralSettings.tsx";
-import { canShareLocally, PhoneAccess } from "./PhoneAccess.tsx";
+import { PhoneAccess } from "./PhoneAccess.tsx";
+import { isSectionShown, settingsSections, SETTINGS_GROUPS } from "../lib/settings-sections.ts";
 import { InboxSettings } from "./InboxSettings.tsx";
 import { ProjectSettings } from "./ProjectSettings.tsx";
 import { ProviderSettings } from "./ProviderSettings.tsx";
 import { SectionLink, SectionSidebar } from "./SectionSidebar.tsx";
 import { SkillsSettings } from "./SkillsSettings.tsx";
-
-const GROUPS = ["Preferences", "Workspaces", "Agents", "Tools", "System"] as const;
-
-const sections: { name: string; description: string; group: typeof GROUPS[number]; icon: ComponentType<{ size?: number }>; available?: () => boolean }[] = [
-  { name: "General", description: "Chat identity and interface sounds.", group: "Preferences", icon: SlidersIcon },
-  { name: "Appearance", description: "Interface size, theme, background, and how conversations look.", group: "Preferences", icon: PaletteIcon },
-  { name: "Inbox", description: "What reaches your inbox, popups, and the alert sound.", group: "Preferences", icon: InboxIcon },
-  { name: "Projects", description: "The settings new chats start with, and changes for single projects.", group: "Workspaces", icon: FolderIcon },
-  { name: "Environments", description: "This computer, and the servers and containers you connect to.", group: "Workspaces", icon: ServerIcon },
-  { name: "Providers", description: "Installed providers, accounts, and usage limits.", group: "Agents", icon: WorkflowIcon },
-  { name: "AI assistance", description: "Models for conversation titles, commit messages, and code review.", group: "Agents", icon: SparkleIcon },
-  { name: "Skills", description: "Skills you write once for every provider, and skills each provider has installed.", group: "Agents", icon: BookIcon },
-  { name: "Browser", description: "Search engine, browser profiles, and what providers can access.", group: "Tools", icon: GlobeIcon },
-  { name: "Connections", description: "Websites you signed in to, so agents can use them for you.", group: "Tools", icon: LockIcon },
-  { name: "Phone access", description: "Use Citropy from your phone, on this Wi-Fi or anywhere through Tailscale.", group: "Tools", icon: PhoneIcon, available: canShareLocally },
-  { name: "Resources", description: "Memory use, running conversations, and logs.", group: "System", icon: PulseIcon },
-  { name: "Application", description: "Updates and restarts.", group: "System", icon: WindowIcon },
-];
 
 export function Settings({
   sidebarOpen,
@@ -62,13 +32,13 @@ export function Settings({
   const [section, setSection] = useState(initialSection);
   useEffect(() => setSection(initialSection), [initialSection]);
   const connected = useApp((state) => state.connected);
-  const current = sections.find((entry) => entry.name === section)!;
+  const current = settingsSections.find((entry) => entry.name === section)!;
 
   return (
     <section className="section-view" aria-label="Settings">
       <SectionSidebar activeItem={section} open={sidebarOpen} title="Settings">
-          {GROUPS.map((group) => {
-            const entries = sections.filter((entry) => entry.group === group && (!isRemote() || entry.group !== "Tools") && (entry.available?.() ?? true));
+          {SETTINGS_GROUPS.map((group) => {
+            const entries = settingsSections.filter((entry) => entry.group === group && isSectionShown(entry));
             if (!entries.length) return null;
             return <Fragment key={group}>
               <h2 className="section-nav-label">{group}</h2>

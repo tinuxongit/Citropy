@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { CopyIcon, TrashIcon } from "./icons/actions.tsx";
 import { renderSVG } from "uqr";
 import { api, reportError } from "../lib/api.ts";
-import { isRemote } from "../lib/environment.ts";
 import { ago } from "../lib/format.ts";
 import { useCopied } from "../lib/use-copied.ts";
 import { useVisibleInterval } from "../lib/use-visible-interval.ts";
@@ -41,8 +40,6 @@ interface Pairing {
   url: string;
   expiresAt: number;
 }
-
-export const canShareLocally = () => ["127.0.0.1", "localhost", "[::1]"].includes(location.hostname) && !isRemote();
 
 function SharingNotice({ message, link, command, fixLabel, onFix }: { message: string; link?: { label: string; url: string }; command?: string; fixLabel?: string; onFix?: () => Promise<unknown> }) {
   const [copied, copy] = useCopied();

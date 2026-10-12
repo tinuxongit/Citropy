@@ -387,7 +387,7 @@
 .shell[data-backdrop="image"] :is(.inspector, .composer-glass, .question-form, .permission-card) {
   backdrop-filter: blur(18px);
 }
-.shell[data-backdrop] :is([popover]:not(.usage-peek), dialog, .notification-center, .details-card, .toast, .context-details, .composer-suggestions, .message-nav-preview, .remote-connection-banner, .app-update-popover) {
+.shell[data-backdrop] :is([popover]:not(.strip-peek), dialog, .strip-peek-card, .details-card, .toast, .context-details, .composer-suggestions, .message-nav-preview, .remote-connection-banner, .app-update-popover) {
   backdrop-filter: blur(28px) saturate(1.1);
 }
 .shell[data-backdrop] .composer-shell::before { background: none; }
@@ -570,7 +570,7 @@
     --drawer: min(320px, calc(var(--viewport-width) * 0.85));
   }
   .shell { --visible-rail: 0px; }
-  .shell[data-backdrop] :is(.menu, [popover], dialog, .notification-center, .context-details, .composer-suggestions, .message-nav-preview, .app-update-popover) { background: var(--overlay-solid); }
+  .shell[data-backdrop] :is(.menu, [popover]:not(.strip-peek), dialog, .strip-peek-card, .context-details, .composer-suggestions, .message-nav-preview, .app-update-popover) { background: var(--overlay-solid); }
   .shell { padding-bottom: var(--tabbar); }
   :root .dev-triggers { bottom: calc(80px + env(safe-area-inset-bottom)); }
   :root .dev-mark { bottom: calc(58px + env(safe-area-inset-bottom)); }
@@ -591,7 +591,6 @@
   .shell .navigation-strip .account-menu > .account-menu-items { visibility: visible; }
   .shell .account-menu-button { display: none; }
   .shell .navigation-strip-group > * { flex: 1; }
-  .shell .navigation-strip :is(.app-update-control, .agents-control) { position: static; }
   .shell .strip-action,
   .shell .navigation-strip .rail-action.app-update-button {
     flex: 1;
@@ -604,12 +603,6 @@
   .shell .navigation-strip .app-update-control:not(:has([data-state="available"], [data-state="downloading"], [data-state="ready"])),
   .context-usage:not(:has([data-hot="true"])) {
     display: none;
-  }
-  .shell .navigation-strip .app-update-popover {
-    left: 8px;
-    right: 8px;
-    bottom: calc(100% + 8px);
-    width: auto;
   }
   .rail > .panel-resize,
   .inspector > .panel-resize {
@@ -696,13 +689,6 @@
   }
   .topbar-subtitle svg { flex: none; margin-left: var(--space-4); }
   .topbar-new-thread { display: grid; }
-  :root .topbar .notification-center {
-    position: fixed;
-    top: calc(var(--topbar) + env(safe-area-inset-top));
-    left: 12px;
-    right: 12px;
-    width: auto;
-  }
 }
 
 @container application (max-width: 480px) {

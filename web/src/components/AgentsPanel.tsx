@@ -1,4 +1,3 @@
-import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { PowerIcon } from "./icons/hardware.tsx";
 import type { ProviderId } from "../../../shared/protocol.ts";
@@ -6,10 +5,10 @@ import { api, reportError } from "../lib/api.ts";
 import { loadThread } from "../lib/actions.ts";
 import { ago, duration } from "../lib/format.ts";
 import { selectProject, selectThread, useApp } from "../lib/store.ts";
-import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useVisibleInterval } from "../lib/use-visible-interval.ts";
 import { AgentsIcon } from "./AgentsIcon.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
+import { StripPeek } from "./StripPeek.tsx";
 
 const SETTINGS = { pollMs: 5000, openPollMs: 2000 };
 
@@ -36,8 +35,8 @@ function megabytes(bytes: number): string {
 
 export function AgentsPanel() {
   const id = useId();
-  const reducedMotion = useReducedMotion();
   const wrap = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [busy, setBusy] = useState<string>();
@@ -70,6 +69,7 @@ export function AgentsPanel() {
   return (
     <div className="agents-control" ref={wrap} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}>
       <button
+        ref={trigger}
         type="button"
         className="strip-action"
         aria-label={`Running agents, ${agents.length}`}
@@ -83,54 +83,43 @@ export function AgentsPanel() {
           {agents.length > 0 && <span className="agents-count" aria-hidden="true">{agents.length}</span>}
         </span>
       </button>
-      <AnimatePresence>{open && (
-        <motion.div
-          initial={{ opacity: 0, x: reducedMotion ? 0 : -4 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: reducedMotion ? 0 : -4, pointerEvents: "none" }}
-          transition={{ duration: reducedMotion ? 0 : 0.16 }}
-          className="app-update-popover agents-popover"
-          id={id}
-          role="dialog"
-          aria-label="Running agents"
-        >
-          {agents.length === 0 ? (
-            <p>No agents are running. An agent starts when you send a message and stays ready for an hour after it goes quiet.</p>
-          ) : (
-            <ul className="agents-list">
-              {agents.map((agent) => (
-                <li key={agent.threadId} data-status={agent.status}>
-                  <ProviderIcon provider={agent.provider} />
-                  <button type="button" className="agents-thread" onClick={() => show(agent)} title="Open conversation">
-                    <strong className="truncate">{agent.title}</strong>
-                    <small className="truncate">
-                      {agent.parentThreadId ? `${`Subagent of ${titles.get(agent.parentThreadId) ?? "another chat"}`} · ` : `${agent.projectName} · `}
-                      {statusLabel[agent.status]}
-                      {agent.status === "idle" ? ` ${ago(agent.lastActive)}` : ` · ${duration(Date.now() - agent.started)}`}
-                      {agent.memory !== undefined && ` · ${megabytes(agent.memory)}`}
-                    </small>
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label={`Turn off ${agent.title}`}
-                    title={agent.status === "idle" ? "Turn off" : "Stop and turn off"}
-                    disabled={busy !== undefined}
-                    onClick={() => turnOff(`agents/turn-off?threadId=${encodeURIComponent(agent.threadId)}`, agent.threadId)}
-                  >
-                    <PowerIcon size={14} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {idle > 0 && (
-            <button type="button" className="btn" disabled={busy !== undefined} onClick={() => turnOff("agents/turn-off-idle", "idle")}>
-              <PowerIcon size={14} />Turn off idle agents ({idle})
-            </button>
-          )}
-        </motion.div>
-      )}</AnimatePresence>
+      <StripPeek anchor={trigger.current} open={open} className="agents-peek" id={id} role="dialog" aria-label="Running agents">
+        {agents.length === 0 ? (
+          <p>No agents are running. An agent starts when you send a message and stays ready for an hour after it goes quiet.</p>
+        ) : (
+          <ul className="agents-list">
+            {agents.map((agent) => (
+              <li key={agent.threadId} data-status={agent.status}>
+                <ProviderIcon provider={agent.provider} />
+                <button type="button" className="agents-thread" onClick={() => show(agent)} title="Open conversation">
+                  <strong className="truncate">{agent.title}</strong>
+                  <small className="truncate">
+                    {agent.parentThreadId ? `${`Subagent of ${titles.get(agent.parentThreadId) ?? "another chat"}`} · ` : `${agent.projectName} · `}
+                    {statusLabel[agent.status]}
+                    {agent.status === "idle" ? ` ${ago(agent.lastActive)}` : ` · ${duration(Date.now() - agent.started)}`}
+                    {agent.memory !== undefined && ` · ${megabytes(agent.memory)}`}
+                  </small>
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label={`Turn off ${agent.title}`}
+                  title={agent.status === "idle" ? "Turn off" : "Stop and turn off"}
+                  disabled={busy !== undefined}
+                  onClick={() => turnOff(`agents/turn-off?threadId=${encodeURIComponent(agent.threadId)}`, agent.threadId)}
+                >
+                  <PowerIcon size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {idle > 0 && (
+          <button type="button" className="btn" disabled={busy !== undefined} onClick={() => turnOff("agents/turn-off-idle", "idle")}>
+            <PowerIcon size={14} />Turn off idle agents ({idle})
+          </button>
+        )}
+      </StripPeek>
     </div>
   );
 }

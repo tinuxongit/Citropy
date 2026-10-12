@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
+import { parseReleaseNotes } from "../../desktop/release-notes.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, contextTokens: 0, contextMax: 200000, turns: 1 };
@@ -763,13 +765,14 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     const notes = (version) => ({ version, sections: [{ title: "Fixed", items: [`Change in ${version}`, ...(version === "0.1.1" ? ["Another", "And another", "One more"] : [])] }] });
     const releases = ["0.1.3", "0.1.2", "0.1.1"].map(notes);
     const page = await fixture(t, `
+      import '/web/src/styles/strip-peek.css';
       import React from 'react';
       import { createRoot } from 'react-dom/client';
       import { AppUpdateControl } from '/web/src/components/AppUpdateControl.tsx';
       const releases = ${JSON.stringify(releases)};
       const state = { status: "current", currentVersion: "0.1.3", notes: releases[0] };
       window.citropyDesktop = { updateState: async () => state, onUpdateState: () => () => {}, updateCommand: async () => state, releaseHistory: async () => releases };
-      createRoot(document.getElementById('fixture')).render(React.createElement(AppUpdateControl));
+      createRoot(document.getElementById('fixture')).render(React.createElement('nav', { className: 'navigation-strip' }, React.createElement(AppUpdateControl, { variant: 'strip' })));
     `);
     await page.locator(".app-update-control").hover();
     const older = page.getByRole("button", { name: "Older release", exact: true });
@@ -792,6 +795,36 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.equal(await page.locator(".app-update-popover").count(), 1);
     assert.equal(await newer.isVisible(), false);
     assert.equal(await older.evaluate((node) => node === document.activeElement), true);
+  });
+
+  check("what's new fits and lists every item of every release", async (t) => {
+    const changelog = readFileSync(new URL("../../CHANGELOG.md", import.meta.url), "utf8");
+    const releases = changelog.split(/^## /m).slice(1).map((block) => ({ version: block.split("\n", 1)[0].trim(), sections: parseReleaseNotes(block.slice(block.indexOf("\n"))) }));
+    const page = await fixture(t, `
+      import '/web/src/styles/overlays.css';
+      import '/web/src/styles/whats-new.css';
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { useApp } from '/web/src/lib/store.ts';
+      import { WhatsNew } from '/web/src/components/WhatsNew.tsx';
+      window.showRelease = (notes) => useApp.setState({ whatsNew: notes });
+      createRoot(document.getElementById('fixture')).render(React.createElement(WhatsNew, { onOpenSettings: () => {} }));
+    `);
+    await page.waitForFunction(() => window.showRelease);
+    for (const release of releases) {
+      await page.evaluate((notes) => window.showRelease(notes), release);
+      const dialog = page.locator(".whats-new-dialog");
+      await dialog.getByText(`Citropy ${release.version}`).waitFor();
+      const more = dialog.getByRole("button", { name: /^Show \d+ more$/ });
+      while (await more.count()) await more.first().click();
+      await settled(page);
+      const shown = await dialog.locator(".whats-new-tile, .whats-new-list li").count();
+      assert.equal(shown, release.sections.flatMap((section) => section.items).length, release.version);
+      const box = await dialog.boundingBox();
+      assert.ok(box.y >= 0 && box.y + box.height <= 900, release.version);
+      await page.evaluate(() => window.showRelease(null));
+      await dialog.waitFor({ state: "detached" });
+    }
   });
 
   check("the video player plays, seeks, and mutes from the keyboard", async (t) => {

@@ -188,11 +188,13 @@
   max-width: 100%;
 }
 .app-update-settings .app-update-popover {
-  left: auto;
+  position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  bottom: auto;
+  z-index: 100;
   width: min(310px, calc(100vw - 48px));
+  border-radius: var(--r-popup);
+  background: var(--overlay);
 }
 .rail-action.app-update-button {
   position: relative;
@@ -218,21 +220,14 @@
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
-.navigation-strip .app-update-popover {
-  left: calc(100% + 10px);
-  bottom: 0;
-  width: var(--strip-popover-width, 280px);
+.update-peek {
+  --strip-peek-width: 280px;
+}
+.update-peek:has(.app-update-notes) {
+  --strip-peek-width: 340px;
 }
 .app-update-popover {
-  position: absolute;
-  left: 8px;
-  bottom: calc(100% + 8px);
-  width: calc(100% - 16px);
-  z-index: 100;
   padding: var(--space-16);
-  border: 0;
-  border-radius: var(--r-popup);
-  background: var(--overlay);
   font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--text-2);
@@ -274,9 +269,6 @@
   flex: 0 1 auto;
   flex-direction: column;
   min-height: 0;
-}
-.app-update-popover:has(.app-update-notes) {
-  --strip-popover-width: 340px;
 }
 .app-update-notes {
   margin-top: var(--space-16);
