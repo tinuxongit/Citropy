@@ -38,6 +38,8 @@ import { requestHandler } from "./http-handler.ts";
 import { store } from "./store.ts";
 import { logFile, setLogging, writeLog } from "./logs.ts";
 import { startUsageResume } from "./usage-resume.ts";
+import { botStore } from "./bots/bot-store.ts";
+import { startRoutines } from "./bots/routines.ts";
 import * as terminals from "./terminals.ts";
 import type { ClientEvent, ServerEvent, Snapshot } from "../shared/protocol.ts";
 import { REMOTE_PROTOCOL } from "../shared/remote-connection.mjs";
@@ -91,6 +93,7 @@ function snapshot(): Snapshot {
     usingAppData,
     projects: [...store.projects.values()].sort((a, b) => b.lastOpened - a.lastOpened),
     threads: store.allMeta().sort((a, b) => b.updatedAt - a.updatedAt),
+    bots: botStore.list(),
     providers: providerInfo(),
     home: homedir(),
   };
@@ -317,6 +320,7 @@ desktopEvents.on("event", (event) => {
 
 let stopProviderUpdateChecks: (() => void) | undefined;
 let stopUsageResume: (() => void) | undefined;
+let stopRoutines: (() => void) | undefined;
 const providerTimer = setInterval(() => {
   closeIdleSessions();
   if (wss.clients.size) void refreshProviders();
@@ -338,6 +342,7 @@ onShutdown(async () => {
   clearInterval(providerTimer);
   stopProviderUpdateChecks?.();
   stopUsageResume?.();
+  stopRoutines?.();
   clearInterval(gitTimer);
   disposeAll();
   terminals.detach();
@@ -362,6 +367,7 @@ server.listen(port, host, async () => {
     if (shuttingDown()) return;
     stopProviderUpdateChecks = startProviderUpdateChecks();
     stopUsageResume = startUsageResume();
+    stopRoutines = startRoutines();
     const available = providerInfo().filter((entry) => entry.available).map((entry) => entry.label);
     writeLog("info", "providers", `Discovery finished with ${available.join(", ") || "no providers"}`);
   });

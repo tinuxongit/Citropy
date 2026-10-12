@@ -25,6 +25,7 @@ import type {
   PanelKind,
 } from "../shared/workbench.ts";
 import { workspaceTools, toolCategories } from "./mcp-catalog.ts";
+import { callBotTool } from "./bots/bot-tools.ts";
 
 type Content =
   | { type: "text"; text: string }
@@ -36,7 +37,7 @@ export const text = (value: unknown): Content[] => [
   },
 ];
 
-function required(args: Record<string, unknown>, key: string): string {
+export function required(args: Record<string, unknown>, key: string): string {
   const value = args[key];
   if (typeof value !== "string" || !value.trim() || value.length > 100_000)
     throw new Error(`Provide a valid ${key}`);
@@ -183,6 +184,7 @@ export async function callWorkspaceTool(
     if (decision === "deny") throw new Error("Denied by the operator");
     if (!store.threads.has(threadId)) throw new Error("Conversation closed");
   }
+  if (name.startsWith("bots_")) return text(await callBotTool(thread, name, args));
   switch (name) {
     case "ask_user": return text(await askQuestion(threadId, args.questions, { signal }));
     case "browser_open": {

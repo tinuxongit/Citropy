@@ -1,6 +1,7 @@
 import { bus } from "./bus.ts";
 import { store } from "./store.ts";
 import { uid } from "./ids.ts";
+import { botStore } from "./bots/bot-store.ts";
 import { ANSWER_WAIT_MS, pendingRequests } from "./permissions.ts";
 import { normalizeQuestions, type QuestionRequest, type QuestionResult } from "../shared/questions.ts";
 
@@ -50,7 +51,7 @@ export function askQuestion(threadId: string, input: unknown, options: { id?: st
   if (blocking) store.patchThread(threadId, { status: "awaiting", activeTool: undefined });
   bus.emit({ t: "question.request", request });
   options.signal?.addEventListener("abort", abort, { once: true });
-  store.notify({ kind: "chat", level: "info", title: "Waiting for your answer", text: questions[0]!.question.slice(0, 200), target: { view: "chat", projectId: thread.projectId, threadId } });
+  if (!botStore.muted(threadId)) store.notify({ kind: "chat", level: "info", title: "Waiting for your answer", text: questions[0]!.question.slice(0, 200), target: { view: "chat", projectId: thread.projectId, threadId } });
   return promise;
 }
 

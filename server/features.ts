@@ -10,7 +10,8 @@ import { tree } from "./files.ts";
 import { store } from "./store.ts";
 import { listToolMentions } from "./tool-mentions.ts";
 import { refreshProvidersNow } from "./provider-registry.ts";
-import { removeProviderAccount, usableProviderAccount } from "./provider-account.ts";
+import { removeProviderAccount } from "./provider-account.ts";
+import { createRequestedThread } from "./thread-request.ts";
 import { prepareAccountHome, withAccountHome } from "./provider-account-home.ts";
 import { closeProject } from "./routes/projects.ts";
 import { removeThread } from "./routes/threads.ts";
@@ -28,11 +29,9 @@ import { appSignIn, providerSignIns, startAppSignIn } from "./provider-sign-in.t
 import { providerMaintenance, startProviderUpdate, startProviderUpdates, assertProviderReady } from "./providers/maintenance.ts";
 import { readGlobalInstructions, saveGlobalInstructions } from "./providers/instructions.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
-import { modelSettings } from "../shared/model-options.ts";
 import { hasUsableAccount } from "../shared/provider-account.ts";
-import { GLOBAL_SWITCHES, resolveProjectSettings } from "../shared/project-settings.ts";
+import { GLOBAL_SWITCHES } from "../shared/project-settings.ts";
 import {
-  chooseThreadWorkspace,
   workspaceOptions,
   workspacePath,
 } from "./workspaces.ts";
@@ -419,42 +418,7 @@ export async function handleFeatures(
         }),
       );
     } else if (url.pathname === "/api/threads" && req.method === "POST") {
-      const input = await body(req);
-      const project = store.projects.get(input.projectId);
-      if (!project) throw new Error("Workspace not found");
-      const defaults = resolveProjectSettings(store.projectDefaults, project.settings);
-      const instanceId = input.providerInstanceId;
-      if (instanceId !== undefined && typeof instanceId !== "string") throw new Error("Invalid provider instance.");
-      const { provider, models } = usableProviderAccount(
-        providers.find((entry) => entry.id === (input.provider ?? defaults?.provider)),
-        instanceId,
-      );
-      if (input.model && !models.some(model => model.id === input.model)) throw new Error("This model is not available for the selected provider instance.");
-      if (
-        input.permissionMode &&
-        !["manual", "acceptEdits", "plan", "bypass"].includes(
-          input.permissionMode,
-        )
-      )
-        throw new Error("Unknown permission mode");
-      const workspace = await chooseThreadWorkspace(project, input.workspace);
-      const thread = store.createThread({
-        projectId: project.id,
-        provider: provider.id,
-        providerInstanceId: instanceId,
-        ...workspace,
-        ...modelSettings(models, {
-          model:
-            input.model ??
-            (!instanceId && provider.id === defaults?.provider ? defaults.model : undefined),
-          effort: input.effort ?? (!instanceId && provider.id === defaults.provider && (!input.model || input.model === defaults.model) ? defaults.effort : undefined),
-          contextWindow: input.contextWindow,
-          fastMode: input.fastMode,
-        }),
-        permissionMode:
-          input.permissionMode ?? defaults?.permissionMode ?? "manual",
-        title: "New thread",
-      });
+      const thread = await createRequestedThread(await body(req), providers);
       respond(store.meta(thread));
     } else if (
       url.pathname === "/api/threads/organize" &&

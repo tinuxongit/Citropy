@@ -320,6 +320,44 @@ export const workspaceTools = ([
       required: ["id"],
     },
   },
+  {
+    name: "bots_list",
+    description: "List the user's Citropy bots with their ids, names, titles, descriptions, and whether each is busy. Bots are long-running agents, each with its own conversation and routines.",
+    inputSchema: { type: "object", properties: {} },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "bots_message",
+    description: "Hand a task or a reply to another bot. Delivery is asynchronous: the bot wakes, works in its own conversation, and can answer later with bots_message. The message waits in its queue when it is busy. Include everything it needs, because it cannot see this conversation.",
+    inputSchema: { type: "object", properties: { botId: string, text: string }, required: ["botId", "text"] },
+  },
+  {
+    name: "bots_routine_list",
+    description: "List a bot's routines, which are tasks it runs on a schedule, with their recent runs. Omit botId to list this bot's own routines.",
+    inputSchema: { type: "object", properties: { botId: string } },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "bots_routine_save",
+    description: "Create a routine, or update one by passing its id. A schedule is either {\"kind\":\"interval\",\"minutes\":60} with at least 5 minutes, or {\"kind\":\"weekly\",\"days\":[1,2,3,4,5],\"time\":\"08:00\"} where days run from 0 for Sunday to 6 for Saturday in local time. The prompt is the full task the bot receives each run. Omit botId for this bot's own routines.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        botId: string,
+        id: string,
+        name: string,
+        prompt: string,
+        schedule: { type: "object" },
+        paused: { type: "boolean", default: false },
+      },
+      required: ["name", "prompt", "schedule"],
+    },
+  },
+  {
+    name: "bots_routine_remove",
+    description: "Delete a routine permanently. Omit botId for this bot's own routines.",
+    inputSchema: { type: "object", properties: { botId: string, id: string }, required: ["id"] },
+  },
 ] satisfies ToolDefinition[]).filter(tool => !remoteId || !tool.name.startsWith("browser_"));
 
 export const approvalTool: ToolDefinition = {
@@ -335,11 +373,11 @@ export const approvalTool: ToolDefinition = {
     required: ["tool_name", "input"],
   },
 };
-export const toolCategories = remoteId ? ["terminal", "workspace", "subagent"] : ["browser", "terminal", "workspace", "subagent"];
+export const toolCategories = remoteId ? ["terminal", "workspace", "subagent", "bots"] : ["browser", "terminal", "workspace", "subagent", "bots"];
 export const discoveryTools: ToolDefinition[] = [
   {
     name: "tool_help",
-    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, and OpenCode accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, visual replies, and panels; terminal has visible commands.${remoteId ? "" : " Browser has the shared browser and the sites the user signed in to under Connections."}`,
+    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, and OpenCode accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, visual replies, and panels; terminal has visible commands; bots has the user's long-running bots, handoffs between them, and their scheduled routines.${remoteId ? "" : " Browser has the shared browser and the sites the user signed in to under Connections."}`,
     inputSchema: { type: "object", properties: { category: { type: "string", enum: toolCategories } }, required: ["category"], additionalProperties: false },
     annotations: { readOnlyHint: true },
   },

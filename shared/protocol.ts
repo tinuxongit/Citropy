@@ -180,6 +180,7 @@ export interface Message {
   model?: string;
   attachments?: Attachment[];
   mentions?: import("./mention-tags.ts").MentionTag[];
+  origin?: import("./bots.ts").MessageOrigin;
 }
 
 export interface HistoryPage {
@@ -192,6 +193,7 @@ export interface QueuedMessage {
   id: string;
   text: string;
   attachments?: Attachment[];
+  origin?: import("./bots.ts").MessageOrigin;
   createdAt: number;
 }
 
@@ -301,6 +303,7 @@ export interface ThreadMeta {
   parentMessageId?: string;
   nativeAgentId?: string;
   nativeLaunchId?: string;
+  botId?: string;
   error?: string;
   usageLimit?: UsageLimitState;
   queue?: QueuedMessage[];
@@ -441,6 +444,7 @@ export interface Snapshot {
   usingAppData?: boolean;
   projects: Project[];
   threads: ThreadMeta[];
+  bots?: import("./bots.ts").Bot[];
   providers: ProviderInfo[];
   activeProjectId?: string;
   home: string;
@@ -475,6 +479,8 @@ export type ServerEvent = (
   | { t: "project.remove"; id: string }
   | { t: "thread.upsert"; thread: ThreadMeta }
   | { t: "thread.remove"; id: string }
+  | { t: "bot.upsert"; bot: import("./bots.ts").Bot; requestId?: string }
+  | { t: "bot.remove"; id: string }
   | { t: "thread.messages"; threadId: string; messages: Message[]; page?: HistoryPage; requestId?: string }
   | { t: "message.add"; threadId: string; message: Message }
   | { t: "part.add"; threadId: string; messageId: string; part: Part }
@@ -560,6 +566,13 @@ export type ClientEvent = (
   | { t: "queue.move"; threadId: string; id: string; index: number }
   | { t: "queue.edit"; requestId: string; threadId: string; id: string }
   | { t: "thread.remove"; id: string }
+  | { t: "bot.create"; requestId: string; thread: { projectId: string; provider: ProviderId; providerInstanceId?: string; model?: string; effort?: string; contextWindow?: number; fastMode?: boolean }; profile?: Partial<import("./bots.ts").BotProfile> }
+  | { t: "bot.update"; requestId?: string; id: string; profile: Partial<import("./bots.ts").BotProfile> }
+  | { t: "bot.duplicate"; requestId: string; id: string }
+  | { t: "bot.remove"; id: string }
+  | { t: "routine.save"; requestId: string; botId: string; routine: import("./bots.ts").RoutineDraft }
+  | { t: "routine.remove"; botId: string; id: string }
+  | { t: "routine.run"; botId: string; id: string }
   | { t: "thread.load"; id: string; page?: { before?: string; revision?: number }; requestId?: string }
   | { t: "thread.subscribe"; ids: string[] }
   | {

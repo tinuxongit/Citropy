@@ -43,7 +43,7 @@ async function resumeWhenAvailable(thread: ThreadMeta): Promise<void> {
     text: current.title,
     target: { view: "chat", projectId: current.projectId, threadId: current.id },
   });
-  await runtimeFor(thread.id).send(RESUME_PROMPT, [], true);
+  await runtimeFor(thread.id).send(RESUME_PROMPT, [], { limitResume: true });
 }
 
 export function checkUsageResume(): void {

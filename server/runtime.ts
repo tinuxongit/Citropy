@@ -32,6 +32,9 @@ import { waitForStoppedProcesses } from "./providers/process.ts";
 import { stopCommandProcess } from "./shell-process.ts";
 import { ThreadTranscript } from "./thread-transcript.ts";
 import { SubagentTranscripts } from "./subagent-transcripts.ts";
+import { botStore } from "./bots/bot-store.ts";
+import { withBotContext } from "./bots/bot-prompt.ts";
+import type { MessageOrigin } from "../shared/bots.ts";
 import type {
   Message,
   Thread,
@@ -54,6 +57,12 @@ interface Prepared {
   prompt: string;
   skills: Array<{ name: string; path: string }>;
   mentions: MentionTag[];
+  origin?: MessageOrigin;
+}
+
+export interface SendOptions {
+  limitResume?: boolean;
+  origin?: MessageOrigin;
 }
 
 class ThreadRuntime {
@@ -124,7 +133,7 @@ class ThreadRuntime {
     return pending;
   }
 
-  async send(text: string, files: Attachment[] = [], limitResume = false): Promise<void> {
+  async send(text: string, files: Attachment[] = [], { limitResume = false, origin }: SendOptions = {}): Promise<void> {
     if (this.#configuring) {
       const generation = this.#stopGeneration;
       await this.#configuring.catch(() => {});
@@ -132,11 +141,11 @@ class ThreadRuntime {
     }
     if (typeof text === "string" && text.trim() === "/compact" && Array.isArray(files) && !files.length) return this.compact();
     if (this.#thread.compacting === "manual") throw new Error("Wait for context compaction to finish.");
-    if (this.#preparing || this.#steering || this.#thread.running || this.#enqueuing || (this.#resume && this.#thread.queue?.length)) return this.#enqueue(text, files);
+    if (this.#preparing || this.#steering || this.#thread.running || this.#enqueuing || (this.#resume && this.#thread.queue?.length)) return this.#enqueue(text, files, origin);
     this.#limitResume = limitResume;
     this.#preparing = true;
     this.#resume = false;
-    try { await this.#deliver(await this.#prepare(text, files)); }
+    try { await this.#deliver(await this.#prepare(text, files, origin)); }
     finally { this.#preparing = false; this.#pump(); }
   }
 
@@ -227,7 +236,7 @@ class ThreadRuntime {
     const turn = this.#turnsEnded;
     let steered = false;
     try {
-      const prepared = await this.#prepare(item.text, item.attachments ?? []);
+      const prepared = await this.#prepare(item.text, item.attachments ?? [], item.origin);
       this.#checkSession(prepared.generation);
       if (turn === this.#turnsEnded) {
         await session.steer(prepared.prompt, prepared.attachments, prepared.skills);
@@ -276,13 +285,13 @@ class ThreadRuntime {
     if (typeof text !== "string" || text.length > 120_000 || (!text.trim() && !files.length)) throw new Error("Enter a message or attach a file.");
   }
 
-  #enqueue(text: string, files: Attachment[]): Promise<void> {
+  #enqueue(text: string, files: Attachment[], origin?: MessageOrigin): Promise<void> {
     const pending = (this.#enqueuing ?? Promise.resolve()).then(async () => {
       this.#checkSession();
       this.#check(text, files);
       const attachments = await validateAttachments(this.id, files);
       this.#checkSession();
-      store.patchThread(this.id, { queue: [...(this.#thread.queue ?? []), { id: uid("que"), text, attachments, createdAt: Date.now() }] });
+      store.patchThread(this.id, { queue: [...(this.#thread.queue ?? []), { id: uid("que"), text, attachments, ...(origin ? { origin } : {}), createdAt: Date.now() }] });
     });
     const tail = pending.catch(() => {});
     this.#enqueuing = tail;
@@ -298,7 +307,7 @@ class ThreadRuntime {
     if (generation !== this.#stopGeneration) throw new Error("This session has stopped. Send your message again.");
   }
 
-  async #prepare(text: string, files: Attachment[]): Promise<Prepared> {
+  async #prepare(text: string, files: Attachment[], origin?: MessageOrigin): Promise<Prepared> {
     assertApplicationReady();
     assertProviderReady(this.#thread.provider);
     const generation = this.#stopGeneration;
@@ -317,14 +326,15 @@ class ThreadRuntime {
     prompt = context.prompt;
     if (this.#thread.transferContext) prompt = `${await transferPrompt(this.#thread.transferContext)}\n\nCurrent request:\n${prompt}`;
     else if (this.#thread.rebuildContext && !this.#thread.externalId) prompt = historyPrompt(this.#thread.messages, prompt);
+    prompt = withBotContext(this.#thread, prompt, origin);
     this.#checkSession(generation);
     if (store.disabledProviders.has(this.#thread.provider)) throw new Error("This provider is disabled. Enable it in Settings > Providers.");
     assertApplicationReady();
     assertProviderReady(this.#thread.provider);
-    return { messageId: uid("msg"), contextSources: context.sources, generation, text, attachments, prompt, skills, mentions: [...skills.map(skillTag), ...tools.map(toolTag)] };
+    return { messageId: uid("msg"), contextSources: context.sources, generation, text, attachments, prompt, skills, mentions: [...skills.map(skillTag), ...tools.map(toolTag)], origin };
   }
 
-  #addUserMessage({ messageId, text, attachments, contextSources, mentions }: Prepared): void {
+  #addUserMessage({ messageId, text, attachments, contextSources, mentions, origin }: Prepared): void {
     if (this.#thread.finished) store.setThreadFinished(this.#thread.id, false);
     const message: Message = {
       id: messageId,
@@ -334,6 +344,7 @@ class ThreadRuntime {
       attachments,
       contextSources,
       ...(mentions.length ? { mentions } : {}),
+      ...(origin ? { origin } : {}),
     };
     store.addMessage(this.#thread.id, message);
     store.raiseThread(this.id);
@@ -413,7 +424,7 @@ class ThreadRuntime {
     this.#preparing = true;
     const generation = this.#stopGeneration;
     try {
-      const prepared = await this.#prepare(item.text, item.attachments ?? []).catch((error: Error) => {
+      const prepared = await this.#prepare(item.text, item.attachments ?? [], item.origin).catch((error: Error) => {
         this.#requeue(item, index);
         throw error;
       });
@@ -588,6 +599,7 @@ class ThreadRuntime {
   }
 
   #notifyChat(level: "success" | "error", title: string, text: string): void {
+    if (botStore.muted(this.#thread.id)) return;
     store.notify({
       kind: "chat",
       level,
