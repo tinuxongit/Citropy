@@ -2,6 +2,31 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.11.0
+
+### Added
+- Bots. Each bot has its own place in the left strip, a roster, a conversation and a side panel with its status, routines and settings. Avatars blink, glance and breathe, and move differently while working or waiting for you.
+- Citropy for Android. Scan the code in Settings > Phone access to download the app, then pair it with your computer by scanning the pairing code from inside the app. The app tells you when a new version is out.
+- Group chats with 2 to 6 bots. Members answer when you mention them, hand off to each other with @handle, and reply to everyone with @everyone.
+- Routines run scheduled tasks for chats and bots. The routine editor has a time picker that follows your 12 or 24 hour clock setting.
+- Bot faces and accessories, from ears and hats to glasses. New bots can start from a template that comes with a look and a routine.
+- Message reactions. Reacting to a bot's message reaches the bot right away, so a thumbs up answers its question.
+- Find in chat searches the open conversation.
+- Citropy can be added to a phone's home screen from the browser.
+
+### Changed
+- On a phone, Citropy has a layout made for small screens, and switching views is instant instead of choppy.
+- On a phone, usage, Git and GitHub are hidden, along with settings that only make sense on a computer.
+- Creating a bot asks for its name and look first.
+- The app shows its logo while connecting and fades between views.
+
+### Fixed
+- Connection sign-ins survive restarts, and signing out or removing a connection closes its open tabs.
+- Renaming a bot no longer locks its provider.
+- Deleting an entry selects the next one.
+- Sending while another conversation saves a checkpoint waits instead of failing.
+- Text you typed is kept after inserting a mention.
+
 ## 0.10.6
 
 ### Added

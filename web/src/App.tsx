@@ -12,7 +12,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  useSyncExternalStore,
   type CSSProperties,
 } from "react";
 import { useDrawerGestures } from "./lib/use-drawer-gesture.ts";
@@ -44,7 +43,6 @@ import { openNewBotChat } from "./lib/bots.ts";
 import { openChatFind } from "./lib/find-in-chat.ts";
 import {
   useApp,
-  viewportWidth,
   selectRosterEntry,
   selectThread,
   toggleBotPanel,
@@ -53,6 +51,7 @@ import {
   panelWidthValue,
   type PanelId,
 } from "./lib/store.ts";
+import { isNarrowViewport, useNarrowViewport } from "./lib/use-narrow-viewport.ts";
 import { send } from "./lib/socket.ts";
 import { useUiSounds } from "./lib/use-ui-sounds.ts";
 import { chooseWorkspace, closeTab, createThread, reopenClosedTab, showNextTab } from "./lib/actions.ts";
@@ -60,23 +59,11 @@ import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
 import { BrowserGuests } from "./components/BrowserGuests.tsx";
 import { transitionView, viewShown } from "./lib/view-transition.ts";
+import { VIEW_MODULES } from "./lib/view-modules.ts";
 import { BrowserTakeover } from "./components/BrowserTakeover.tsx";
 
-const NARROW_VIEWPORT = 720;
 const INSPECTOR_MIN_WIDTH = 260;
 const CONVERSATION_MIN_WIDTH = 360;
-
-const subscribeResize = (onChange: () => void) => {
-  window.addEventListener("resize", onChange);
-  return () => window.removeEventListener("resize", onChange);
-};
-
-const VIEW_MODULES = {
-  github: () => import("./components/github/GitHub.tsx"),
-  git: () => import("./components/GitManager.tsx"),
-  settings: () => import("./components/Settings.tsx"),
-  usage: () => import("./components/UsageView.tsx"),
-};
 
 const GitHub = lazy(() => VIEW_MODULES.github().then((module) => ({ default: module.GitHub })));
 const GitManager = lazy(() => VIEW_MODULES.git().then((module) => ({ default: module.GitManager })));
@@ -90,12 +77,12 @@ export function App() {
   const setView = (activeView: typeof view) => useApp.setState({ activeView });
   const [settingsSection, setSettingsSection] = useState("General");
   const [sectionSidebarOpen, setSectionSidebarOpen] = useState(
-    viewportWidth() > NARROW_VIEWPORT,
+    !isNarrowViewport(),
   );
   const newThreadProvider = useApp((state) => state.newThreadProvider);
   const newBotChatOpen = useApp((state) => state.newBotChatOpen);
   const sidebarOpen = useApp((state) => state.sidebarOpen);
-  const narrow = useSyncExternalStore(subscribeResize, () => viewportWidth() <= NARROW_VIEWPORT);
+  const narrow = useNarrowViewport();
   const stageBackground = useApp((state) => state.stageBackground);
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const botPanelOpen = useApp((state) => state.botPanelOpen && Boolean(rosterItem(state, state.activeRosterId)));
@@ -142,7 +129,7 @@ export function App() {
   useEffect(() => {
     const previous = openPanels.current;
     openPanels.current = { sidebarOpen, inspectorOpen };
-    if (!panelsShown || !sidebarOpen || !inspectorOpen || viewportWidth() <= NARROW_VIEWPORT) return;
+    if (!panelsShown || !sidebarOpen || !inspectorOpen || isNarrowViewport()) return;
     const shell = shellBody.current!.parentElement!;
     const strip = parseFloat(getComputedStyle(shell).paddingLeft);
     const rail = shell.querySelector<HTMLElement>(".rail")!.offsetWidth;
@@ -172,18 +159,14 @@ export function App() {
   }, []);
 
   useLayoutEffect(() => viewShown(view), [view]);
-  useEffect(() => {
-    const idle = requestIdleCallback(() => Object.values(VIEW_MODULES).forEach((load) => void load()));
-    return () => cancelIdleCallback(idle);
-  }, []);
   const showView = (next: typeof view) => {
     if (next !== "chat") useApp.setState({ readingThreadId: null });
     setView(next);
     if (next === "chat") {
-      if (viewportWidth() <= NARROW_VIEWPORT && useApp.getState().sidebarOpen)
+      if (isNarrowViewport() && useApp.getState().sidebarOpen)
         toggleSidebar();
     } else {
-      setSectionSidebarOpen(viewportWidth() > NARROW_VIEWPORT);
+      setSectionSidebarOpen(!isNarrowViewport());
     }
   };
   const openView = (next: typeof view) => transitionView(next, () => showView(next));
@@ -192,7 +175,7 @@ export function App() {
     else setSectionSidebarOpen((open) => !open);
   };
   const closeSectionSidebarOnNarrow = () => {
-    if (viewportWidth() <= NARROW_VIEWPORT) setSectionSidebarOpen(false);
+    if (isNarrowViewport()) setSectionSidebarOpen(false);
   };
   const openSettings = (open = openView) => {
     setSettingsSection("General");

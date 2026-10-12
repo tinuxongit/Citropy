@@ -70,8 +70,15 @@ export function Conversation() {
     return saved && index >= 0 ? { ...saved, index } : undefined;
   });
   const estimatedRowHeight = scaled(180);
-  const paddingStart = scaled(olderCursor ? 76 : 30);
   const rowHeights = useRef(new WeakMap<Element, number>());
+  const [topInset, setTopInset] = useState(0);
+  useLayoutEffect(() => {
+    const node = viewport.current!;
+    const observer = new ResizeObserver(() => setTopInset(parseFloat(getComputedStyle(node).getPropertyValue("--canvas-top-inset"))));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [viewport]);
+  const paddingStart = topInset + scaled(olderCursor ? 76 : 30);
   const timeline = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: rows.length,
     getScrollElement: () => viewport.current,

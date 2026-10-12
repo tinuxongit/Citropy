@@ -212,6 +212,8 @@ const initialScale =
   Number.isFinite(storedScale) && storedScale >= 75 && storedScale <= 150
     ? storedScale
     : DEFAULT_UI_SCALE;
+export const NARROW_VIEWPORT = 720;
+const startsWide = typeof window !== "undefined" && window.innerWidth / (initialScale / 100) > NARROW_VIEWPORT;
 const storedSpeed = Number(readPref("citropy.typingSpeed", "100"));
 const storedVolume = Number(readPref("citropy.uiSoundVolume", "60"));
 const storedDim = Number(readPref("citropy.backgroundDim", "68"));
@@ -323,13 +325,9 @@ export const useApp = create<AppState>(() => ({
       window.innerWidth / (initialScale / 100) > 1150,
   ),
   threadDetailsOpen: readFlag("citropy.threadDetails", false),
-  botPanelOpen: readFlag("citropy.botPanel", true),
+  botPanelOpen: readFlag("citropy.botPanel", startsWide),
   newBotChatOpen: false,
-  sidebarOpen: readFlag(
-    "citropy.sidebar",
-    typeof window !== "undefined" &&
-      window.innerWidth / (initialScale / 100) > 720,
-  ),
+  sidebarOpen: readFlag("citropy.sidebar", startsWide),
   searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
   stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "default"), "default"),
   chatWidth: oneOf(Object.keys(CHAT_WIDTHS) as ChatWidth[], readPref<string>("citropy.chatWidth", "comfortable"), "comfortable"),

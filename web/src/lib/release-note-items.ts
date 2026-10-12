@@ -1,5 +1,6 @@
 import type { ReleaseNotes, ReleaseNoteSection } from "../../../shared/app-update.ts";
 import { isSectionShown, settingsSections, type SettingsSection } from "./settings-sections.ts";
+import { isNarrowViewport } from "./use-narrow-viewport.ts";
 
 const LEAD_SENTENCE = /^(.+?[.!?])\s+(?=[A-Z0-9"'])(.+)$/s;
 const SETTINGS_PLACE = new RegExp(`(?<=Settings > )(${settingsSections.map((section) => section.name).join("|")})\\b`);
@@ -14,7 +15,7 @@ export interface NoteItem {
 
 function openableSection(name: string) {
   const section = settingsSections.find((entry) => entry.name === name)!;
-  return isSectionShown(section) ? section : name;
+  return isSectionShown(section, isNarrowViewport()) ? section : name;
 }
 
 export function noteText(text: string): NoteText {

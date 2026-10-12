@@ -5,6 +5,7 @@ const DOUBLE_CHECK = "M1.75 12.75L6.25 17.25L16 6.75M12.25 16L13.5 17.25L23 7";
 const CROSS = "M6 6L18 18M18 6L6 18";
 const PLUS = "M12 4.5V19.5M4.5 12H19.5";
 const MINUS = "M4.5 12H19.5";
+const MENU = "M6 9H18M6 15H18";
 const HASH = "M9.75 3.5L7.75 20.5M16.25 3.5L14.25 20.5M4 8.75H20.5M3.5 15.25H20";
 const DOT_RADIUS = 2.25;
 const ROW_DOTS = [5, 12, 19];
@@ -29,6 +30,10 @@ export function PlusIcon(props: IconProps) {
 
 export function MinusIcon(props: IconProps) {
   return <Icon {...props}><Line d={MINUS} width={BOLD_LINE} /></Icon>;
+}
+
+export function MenuIcon(props: IconProps) {
+  return <Icon {...props}><Line d={MENU} width={BOLD_LINE} /></Icon>;
 }
 
 export function HashIcon(props: IconProps) {

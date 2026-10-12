@@ -1,3 +1,9 @@
+@property --canvas-top-inset {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 .conversation-viewport {
   position: relative;
   flex: 1;
@@ -46,7 +52,7 @@
 .conversation-history {
   position: absolute;
   z-index: 1;
-  top: var(--space-16);
+  top: calc(var(--canvas-top-inset) + var(--space-16));
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;

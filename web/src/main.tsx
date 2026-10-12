@@ -31,6 +31,7 @@ import "./styles/virtual-list.css";
 import "./styles/environments.css";
 import "./styles/bots.css";
 import "./styles/routines.css";
+import "./styles/phone.css";
 import { initializeEnvironment } from "./lib/environment.ts";
 import { applyReleaseDefaults } from "./lib/release-defaults.ts";
 import { applyCustomColor } from "./lib/custom-theme.ts";

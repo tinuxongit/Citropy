@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { environmentName, isRemote } from "../lib/environment.ts";
 import { BranchIcon } from "./icons/git.tsx";
 import { PanelLeftIcon, PanelRightIcon } from "./icons/squares.tsx";
+import { MenuIcon } from "./icons/marks.tsx";
 import { ComposeIcon } from "./icons/pencil.tsx";
 import { toggleBotPanel, toggleInspector, useApp } from "../lib/store.ts";
 import { MOD } from "../lib/modifier-key.ts";
@@ -79,7 +80,8 @@ export function Titlebar({
             aria-label="Toggle sidebar"
             title="Toggle sidebar"
           >
-            <PanelLeftIcon size={15} />
+            <PanelLeftIcon size={15} className="sidebar-toggle-panel" />
+            <MenuIcon size={20} className="sidebar-toggle-menu" />
           </button>}
         </div>
       </div>

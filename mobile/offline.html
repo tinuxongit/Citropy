@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Citropy</title>
+  <script type="module" src="./src/main.ts"></script>
+</head>
+
+<body data-page="offline">
+  <main class="screen">
+    <img class="screen-logo" src="/citropy.svg" alt="" />
+    <section data-screen="offline" hidden>
+      <h1>Can't reach your computer</h1>
+      <p>Make sure Citropy is open on <strong data-server></strong> and that this phone is on the same network or signed in to Tailscale.</p>
+      <button class="screen-button" type="button" data-action="retry">Try again</button>
+      <a class="screen-button" data-variant="quiet" href="/?scan">Scan a new code</a>
+    </section>
+    <section data-screen="unpaired" hidden>
+      <h1>This phone isn't paired</h1>
+      <p>Citropy on <strong data-server></strong> doesn't recognize this phone. Open Settings &gt; Phone access on your computer and scan the new code.</p>
+      <button class="screen-button" type="button" data-action="scan">Scan code</button>
+    </section>
+    <p class="screen-error" data-error hidden></p>
+  </main>
+</body>
+
+</html>

@@ -1,5 +1,6 @@
 import type { AppState } from "./app-state.ts";
 import { useApp } from "./store.ts";
+import { isNarrowViewport } from "./use-narrow-viewport.ts";
 
 type View = AppState["activeView"];
 
@@ -15,7 +16,7 @@ export function transitionView(view: View, change: () => void): void {
     change();
     return;
   }
-  if (useApp.getState().activeView === view) {
+  if (useApp.getState().activeView === view || isNarrowViewport()) {
     change();
     return;
   }

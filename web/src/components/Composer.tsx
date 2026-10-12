@@ -12,7 +12,8 @@ import { QueueList } from "./QueueList.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { QueuedMessage } from "../../../shared/protocol.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { PlusIcon } from "./icons/marks.tsx";
 import { StopIcon } from "./icons/squares.tsx";
 import { CircleCheckIcon } from "./icons/status.tsx";
 import { ArrowUpIcon } from "./icons/arrows.tsx";
@@ -223,6 +224,19 @@ export function Composer({
     }
   };
 
+  const attachButton = (className: string, icon: ReactNode) => (
+    <button
+      className={`icon-btn ${className}`}
+      type="button"
+      title="Attach images or files"
+      aria-label="Attach images or files"
+      disabled={!connected || Boolean(uploading)}
+      onClick={() => fileInput.current?.click()}
+    >
+      {icon}
+    </button>
+  );
+
   if (!thread) return null;
   if (thread.nativeAgentId && thread.parentThreadId)
     return (
@@ -348,6 +362,7 @@ export function Composer({
           </div>
         )}
         <div className="composer-row">
+        {attachButton("composer-attach-inline", <PlusIcon size={20} />)}
         <ComposerInput
           value={value}
           onChange={setValue}
@@ -401,16 +416,7 @@ export function Composer({
       </div>
       <div className="composer-bar">
         <div className="composer-bar-group">
-          <button
-            className="icon-btn"
-            type="button"
-            title="Attach images or files"
-            aria-label="Attach images or files"
-            disabled={!connected || Boolean(uploading)}
-            onClick={() => fileInput.current?.click()}
-          >
-            <AttachIcon size={18} />
-          </button>
+          {attachButton("composer-attach", <AttachIcon size={18} />)}
           {!thread.groupId && <PermissionMenu
             thread={configuredThread!}
             disabled={!connected || sending || transferring}

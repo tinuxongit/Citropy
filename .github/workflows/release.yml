@@ -187,8 +187,44 @@ jobs:
             release/*.exe.blockmap
             release/latest.yml
 
+  android:
+    needs: validate
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.18.0'
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Set version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: npm version "$VERSION" --no-git-tag-version
+      - name: Build the Android app
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CITROPY_ANDROID_KEYSTORE_BASE64 }}
+          CITROPY_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.CITROPY_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          export CITROPY_ANDROID_KEYSTORE="$RUNNER_TEMP/citropy.keystore"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$CITROPY_ANDROID_KEYSTORE"
+          npm run mobile:release
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-release
+          compression-level: 0
+          if-no-files-found: error
+          path: release/*.apk
+
   publish:
-    needs: [validate, check, linux, mac, windows]
+    needs: [validate, check, linux, mac, windows, android]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     permissions:
@@ -227,4 +263,4 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           node scripts/release-notes.mjs "$VERSION" > "$RUNNER_TEMP/notes.md"
-          gh release create "v$VERSION" dist/SHA256SUMS dist/*.AppImage dist/latest-linux.yml dist/*.zip dist/latest-mac.yml dist/*.exe dist/*.exe.blockmap dist/latest.yml --verify-tag --draft --title "Citropy $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+          gh release create "v$VERSION" dist/SHA256SUMS dist/*.AppImage dist/latest-linux.yml dist/*.zip dist/latest-mac.yml dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.apk --verify-tag --draft --title "Citropy $VERSION" --notes-file "$RUNNER_TEMP/notes.md"

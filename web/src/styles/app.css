@@ -573,41 +573,14 @@
 @container application (max-width: 720px) {
   .shell {
     --strip: 0px;
-    --tabbar: calc(52px + env(safe-area-inset-bottom));
     --drawer: min(320px, calc(var(--viewport-width) * 0.85));
   }
   .shell { --visible-rail: 0px; }
   .shell[data-backdrop] .menu:not([data-side="edge"]) { background: var(--menu-solid); }
   .shell[data-backdrop] :is(.menu[data-side="edge"], [popover]:not(.strip-peek, .menu), dialog, .strip-peek-card, .context-details, .composer-suggestions, .message-nav-preview, .app-update-popover) { background: var(--overlay-solid); }
-  .shell { padding-bottom: var(--tabbar); }
   :root .dev-triggers { bottom: calc(80px + env(safe-area-inset-bottom)); }
   :root .dev-mark { bottom: calc(58px + env(safe-area-inset-bottom)); }
   .topbar .thread-search { display: none; }
-  :root[data-keyboard] .shell { --tabbar: 0px; }
-  :root[data-keyboard] .shell .navigation-strip { display: none; }
-  .shell .navigation-strip {
-    inset: auto 0 0 0;
-    flex-direction: row;
-    width: auto;
-    height: var(--tabbar);
-    padding: 0 0 env(safe-area-inset-bottom);
-  }
-  .shell .navigation-strip-end,
-  .shell .navigation-strip-group,
-  .shell .account-menu,
-  .shell .navigation-strip .account-menu > .account-menu-items { display: contents; }
-  .shell .navigation-strip .account-menu > .account-menu-items { visibility: visible; }
-  .shell .account-menu-button { display: none; }
-  .shell .navigation-strip-group > * { flex: 1; }
-  .shell .strip-action,
-  .shell .navigation-strip .rail-action.app-update-button {
-    flex: 1;
-    height: 52px;
-  }
-  .shell .navigation-strip-brand { display: none; }
-  .shell .strip-action-face { width: 44px; height: 36px; border-radius: var(--r-sm); }
-  .shell .navigation-strip > .selection-highlight { border-radius: var(--r-sm); }
-  .shell .navigation-strip :is([data-view="git"], [data-view="github"]),
   .shell .navigation-strip .app-update-control:not(:has([data-state="available"], [data-state="downloading"], [data-state="ready"])),
   .context-usage:not(:has([data-hot="true"])) {
     display: none;
@@ -619,7 +592,7 @@
   .shell-body .sliding-panel[data-side="right"] {
     position: absolute;
     right: 0;
-    top: 0;
+    top: var(--phone-header);
     bottom: 0;
     z-index: 15;
     --panel-width: min(460px, var(--viewport-width));
@@ -656,51 +629,6 @@
     opacity: 0;
     pointer-events: none;
   }
-
-  .shell { grid-template-rows: calc(var(--topbar) + env(safe-area-inset-top)) minmax(0, 1fr); }
-  .topbar {
-    position: relative;
-    gap: var(--space-2);
-    padding: env(safe-area-inset-top) var(--space-6) 0;
-    background: var(--canvas);
-  }
-  .topbar .sidebar-toggle { order: -2; }
-  .topbar .icon-btn { width: 38px; height: 40px; }
-  .topbar-left,
-  .topbar-start,
-  .topbar-right { display: contents; }
-  .topbar-center {
-    order: -1;
-    height: var(--topbar);
-    padding: 0 var(--space-6);
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 1px;
-  }
-  .breadcrumb .workspace-breadcrumb,
-  .breadcrumb-separator {
-    display: none;
-  }
-  .breadcrumb .thread-title {
-    max-width: 100%;
-    font-size: var(--text-body);
-    font-weight: 600;
-  }
-  .topbar-subtitle {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    max-width: 100%;
-    color: var(--text-3);
-    font-size: var(--text-xs);
-  }
-  .topbar-subtitle svg { flex: none; margin-left: var(--space-4); }
-  .topbar-new-thread { display: grid; }
-}
-
-@container application (max-width: 480px) {
-  .breadcrumb .workspace-breadcrumb { flex: none; max-width: none; }
 }
 
 .topbar[data-desktop="true"] {

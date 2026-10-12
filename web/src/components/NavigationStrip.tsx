@@ -12,6 +12,8 @@ import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
 import { useState, type ComponentType } from "react";
 import { useEnvironments } from "../lib/environment.ts";
+import { useNarrowViewport } from "../lib/use-narrow-viewport.ts";
+import { preloadView } from "../lib/view-modules.ts";
 import type { NotificationTarget } from "../../../shared/protocol.ts";
 
 interface StripButton {
@@ -19,6 +21,7 @@ interface StripButton {
   icon: ComponentType<{ size?: number }>;
   run: () => void;
   view: string;
+  desktopOnly?: boolean;
 }
 
 export function NavigationStrip({
@@ -43,15 +46,16 @@ export function NavigationStrip({
   const usagePeek = useUsagePeek();
   const { activeId: environment } = useEnvironments();
   const [accountOpen, setAccountOpen] = useState(true);
+  const narrow = useNarrowViewport();
   const conversations: StripButton = { name: "Conversations", icon: ConversationsIcon, run: onChat, view: "chat" };
   const bots: StripButton = { name: "Bots", icon: BotsIcon, run: onBots, view: "bots" };
-  const code = [
-    { name: "Source control", icon: GitIcon, run: onGit, view: "git" },
-    { name: "GitHub", icon: GitHubIcon, run: onGitHub, view: "github" },
+  const code: StripButton[] = [
+    { name: "Source control", icon: GitIcon, run: onGit, view: "git", desktopOnly: true },
+    { name: "GitHub", icon: GitHubIcon, run: onGitHub, view: "github", desktopOnly: true },
   ];
-  const usage = { name: "Usage", icon: UsageIcon, run: onUsage, view: "usage" };
+  const usage: StripButton = { name: "Usage", icon: UsageIcon, run: onUsage, view: "usage", desktopOnly: true };
   const settings = { name: "Settings", icon: SettingsIcon, run: onSettings, view: "settings" };
-  const button = ({ name, icon: Icon, run, view }: StripButton) => (
+  const button = ({ name, icon: Icon, run, view, desktopOnly }: StripButton) => narrow && desktopOnly ? null : (
     <button
       type="button"
       className="strip-action"
@@ -59,6 +63,8 @@ export function NavigationStrip({
       aria-current={activeView === view ? "page" : undefined}
       key={view}
       onClick={() => { usagePeek.hide(); run(); }}
+      onPointerOver={() => preloadView(view)}
+      onFocusCapture={() => preloadView(view)}
       aria-label={name}
       title={view === "usage" ? undefined : name}
       aria-describedby={view === "usage" ? usagePeek.describedBy : undefined}

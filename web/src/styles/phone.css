@@ -1,0 +1,196 @@
+.composer-attach-inline,
+.sidebar-toggle-menu {
+  display: none;
+}
+
+@container application (max-width: 720px) {
+  .shell {
+    --phone-edge: 16px;
+    --phone-gap: 8px;
+    --phone-button: 44px;
+    --phone-pill: 44px;
+    --phone-send: 34px;
+    --phone-tab-height: 60px;
+    --phone-tab-face-width: 52px;
+    --phone-tab-face-height: 44px;
+    --phone-avatar-zoom: 1.8;
+    --phone-chip-overlap: 4px;
+    --phone-header: calc(env(safe-area-inset-top) + var(--phone-gap) + 72px);
+    --phone-fade: 40px;
+    --phone-float: var(--menu-solid);
+    --phone-float-shadow: var(--shadow-md-drop);
+    --phone-tab-selected: color-mix(in oklab, var(--text) 12%, var(--phone-float));
+    --tabbar: calc(var(--phone-tab-height) + var(--phone-edge) + env(safe-area-inset-bottom));
+    grid-template-rows: minmax(0, 1fr);
+    padding-bottom: var(--tabbar);
+  }
+  :root[data-keyboard] .shell { --tabbar: 0px; }
+  :root[data-keyboard] .shell .navigation-strip { display: none; }
+
+  .shell .navigation-strip {
+    --selection-fill: var(--phone-tab-selected);
+    inset: auto var(--phone-edge) calc(var(--phone-edge) + env(safe-area-inset-bottom));
+    flex-direction: row;
+    width: auto;
+    height: var(--phone-tab-height);
+    padding: 0 var(--phone-gap);
+    border-radius: var(--r-full);
+    background: var(--phone-float);
+    box-shadow: var(--phone-float-shadow);
+  }
+  .shell .navigation-strip-end,
+  .shell .navigation-strip-group,
+  .shell .account-menu,
+  .shell .navigation-strip .account-menu > .account-menu-items { display: contents; }
+  .shell .navigation-strip .account-menu > .account-menu-items { visibility: visible; }
+  .shell .navigation-strip :is(.navigation-strip-group, .account-menu)::before { display: none; }
+  .shell .account-menu-button,
+  .shell .navigation-strip-brand { display: none; }
+  .shell .navigation-strip-group > * { flex: 1; }
+  .shell .strip-action,
+  .shell .navigation-strip .rail-action.app-update-button {
+    flex: 1;
+    height: var(--phone-tab-height);
+  }
+  .shell .strip-action-face {
+    width: var(--phone-tab-face-width);
+    height: var(--phone-tab-face-height);
+    border-radius: var(--r-full);
+  }
+  .shell .navigation-strip > .selection-highlight { border-radius: var(--r-full); }
+
+  .topbar {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 16;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    padding: calc(env(safe-area-inset-top) + var(--phone-gap)) var(--phone-edge) 0;
+    background: none;
+    pointer-events: none;
+  }
+  .topbar > *,
+  .topbar-start > * { pointer-events: auto; }
+  .topbar-left,
+  .topbar-start { display: contents; }
+  .topbar .sidebar-toggle {
+    grid-column: 1;
+    width: var(--phone-button);
+    height: var(--phone-button);
+    border-radius: var(--r-full);
+    background: var(--phone-float);
+    box-shadow: var(--phone-float-shadow);
+    color: var(--text);
+  }
+  .sidebar-toggle-panel { display: none; }
+  .sidebar-toggle-menu { display: block; }
+
+  .topbar-center {
+    grid-column: 2;
+    justify-self: center;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    min-height: var(--phone-button);
+    max-width: calc(100% - 2 * var(--phone-gap));
+    padding: 0 var(--space-16);
+    border-radius: var(--r-full);
+    background: var(--phone-float);
+    box-shadow: var(--phone-float-shadow);
+  }
+  .topbar-center:empty { display: none; }
+  .breadcrumb .workspace-breadcrumb,
+  .breadcrumb-separator { display: none; }
+  .breadcrumb .thread-title {
+    max-width: 100%;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .topbar-subtitle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    max-width: 100%;
+    color: var(--text-3);
+    font-size: var(--text-xs);
+    line-height: 1.3;
+  }
+  .topbar-subtitle svg { flex: none; margin-left: var(--space-4); }
+
+  .topbar-center:has(> .bot-heading) {
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .topbar .bot-heading {
+    flex-direction: column;
+    gap: 0;
+  }
+  .topbar .bot-heading > :first-child { zoom: var(--phone-avatar-zoom); }
+  .topbar .bot-heading > .thread-title {
+    margin-top: calc(-1 * var(--phone-chip-overlap));
+    padding: var(--space-4) var(--space-12);
+    border-radius: var(--r-full);
+    background: var(--phone-float);
+    box-shadow: var(--phone-float-shadow);
+  }
+  .topbar .bot-heading > .topbar-subtitle { display: none; }
+
+  .topbar-right {
+    grid-column: 3;
+    gap: 0;
+    padding: 0;
+    border-radius: var(--r-full);
+    background: var(--phone-float);
+    box-shadow: var(--phone-float-shadow);
+  }
+  .topbar-right:empty { display: none; }
+  .topbar .topbar-right .icon-btn {
+    width: var(--phone-button);
+    height: var(--phone-button);
+    border-radius: var(--r-full);
+  }
+  .topbar-new-thread { display: grid; }
+
+  .stage { padding-top: var(--phone-header); }
+  .stage:has(> .conversation-viewport) { padding-top: 0; }
+  .canvas {
+    --canvas-top-inset: calc(var(--phone-header) + var(--phone-fade) / 2);
+    mask-image: linear-gradient(transparent calc(var(--phone-header) - var(--phone-fade) / 2), #000 calc(var(--phone-header) + var(--phone-fade) / 2), #000 calc(100% - var(--edge-fade)), transparent);
+  }
+
+  .composer { padding: 0 var(--phone-edge) var(--phone-gap); }
+  .composer-shell { border-radius: calc(var(--phone-pill) / 2); }
+  .composer-shell::before { box-shadow: var(--phone-float-shadow); }
+  .composer-glass { background: var(--phone-float); }
+  .composer-row .composer-input,
+  .composer-row .composer-placeholder {
+    min-height: var(--phone-pill);
+    padding-block: calc((var(--phone-pill) - var(--text-body) * 1.6) / 2);
+    padding-left: 0;
+  }
+  .composer-attach-inline {
+    display: grid;
+    flex: none;
+    width: var(--phone-pill);
+    height: var(--phone-pill);
+    border-radius: var(--r-full);
+    color: var(--text-2);
+  }
+  .composer-attach { display: none; }
+  .composer-actions {
+    min-height: var(--phone-pill);
+    padding: 0 calc((var(--phone-pill) - var(--phone-send)) / 2);
+  }
+  .composer-send,
+  .composer-stop {
+    width: var(--phone-send);
+    height: var(--phone-send);
+    border-radius: var(--r-full);
+  }
+  .composer:not(:focus-within, :has(.composer-bar [aria-expanded="true"])) .composer-bar { display: none; }
+}

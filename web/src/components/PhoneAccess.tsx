@@ -6,6 +6,7 @@ import { ago } from "../lib/format.ts";
 import { useCopied } from "../lib/use-copied.ts";
 import { useVisibleInterval } from "../lib/use-visible-interval.ts";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
+import { androidDownloadUrl } from "../../../shared/release.mjs";
 
 const SETTINGS = { pollMs: 3000 };
 
@@ -14,8 +15,8 @@ type Route = "tailscale" | "lan";
 const ROUTE_LABELS: Record<Route, string> = { tailscale: "Tailscale", lan: "Wi-Fi" };
 
 const PAIRING_HINTS: Record<Route, string> = {
-  tailscale: "Scan with your phone's camera. The phone needs the Tailscale app, signed in to the same tailnet, and then works from anywhere. Each code works once and changes every 5 minutes.",
-  lan: "Scan with your phone's camera while it is on this Wi-Fi. Each code works once and changes every 5 minutes.",
+  tailscale: "Scan with the Citropy app or your phone's camera. The phone needs the Tailscale app, signed in to the same tailnet, and then works from anywhere. Each code works once and changes every 5 minutes.",
+  lan: "Scan with the Citropy app or your phone's camera while it is on this Wi-Fi. Each code works once and changes every 5 minutes.",
 };
 
 interface TailscaleState {
@@ -162,6 +163,13 @@ export function PhoneAccess() {
           </div>
         </>
       )}
+      <h2 className="settings-group-heading">Android app</h2>
+      <div className="sharing-pairing">
+        <div className="sharing-qr" role="img" aria-label="Android app download QR code" dangerouslySetInnerHTML={{ __html: renderSVG(androidDownloadUrl, { border: 2 }) }} />
+        <div className="sharing-pairing-details">
+          <p>Scan to download Citropy for Android. Open the file to install it, then scan the pairing code from the app.</p>
+        </div>
+      </div>
       {deviceCount > 0 && (
         <>
           <h2 className="settings-group-heading">Paired devices</h2>

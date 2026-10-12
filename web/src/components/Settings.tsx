@@ -13,6 +13,7 @@ import { EnvironmentSettings } from "./EnvironmentSettings.tsx";
 import { GeneralSettings } from "./GeneralSettings.tsx";
 import { PhoneAccess } from "./PhoneAccess.tsx";
 import { isSectionShown, settingsSections, SETTINGS_GROUPS } from "../lib/settings-sections.ts";
+import { useNarrowViewport } from "../lib/use-narrow-viewport.ts";
 import { InboxSettings } from "./InboxSettings.tsx";
 import { ProjectSettings } from "./ProjectSettings.tsx";
 import { ProviderSettings } from "./ProviderSettings.tsx";
@@ -32,13 +33,14 @@ export function Settings({
   const [section, setSection] = useState(initialSection);
   useEffect(() => setSection(initialSection), [initialSection]);
   const connected = useApp((state) => state.connected);
+  const narrow = useNarrowViewport();
   const current = settingsSections.find((entry) => entry.name === section)!;
 
   return (
     <section className="section-view" aria-label="Settings">
       <SectionSidebar activeItem={section} open={sidebarOpen} title="Settings">
           {SETTINGS_GROUPS.map((group) => {
-            const entries = settingsSections.filter((entry) => entry.group === group && isSectionShown(entry));
+            const entries = settingsSections.filter((entry) => entry.group === group && isSectionShown(entry, narrow));
             if (!entries.length) return null;
             return <Fragment key={group}>
               <h2 className="section-nav-label">{group}</h2>
