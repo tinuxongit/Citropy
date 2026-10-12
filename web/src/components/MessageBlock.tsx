@@ -16,8 +16,12 @@ import { BotAvatar } from "./bots/BotAvatar.tsx";
 const AUTHOR_AVATAR_SIZE = 20;
 
 function originLabel(origin: MessageOrigin): string {
-  if (origin.kind === "group") return `From ${origin.botId ? origin.name : "you"} in ${origin.group}`;
-  return origin.kind === "bot" ? `From ${origin.name}` : `Routine: ${origin.name}`;
+  switch (origin.kind) {
+    case "group": return `From ${origin.botId ? origin.name : "you"} in ${origin.group}`;
+    case "bot": return `From ${origin.name}`;
+    case "routine": return `Routine: ${origin.name}`;
+    case "reaction": throw new Error("Reactions are hidden from the conversation.");
+  }
 }
 
 interface Props extends Omit<TimelineRow, "key"> {

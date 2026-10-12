@@ -1,6 +1,5 @@
 import { botStore } from "./bot-store.ts";
 import { groupStore } from "./group-store.ts";
-import { reactionNotes } from "./reactions.ts";
 import { PASS_REPLY, botHandle } from "../../shared/bots.ts";
 import type { Bot, GroupAddress, MessageOrigin } from "../../shared/bots.ts";
 import type { Thread } from "../../shared/protocol.ts";
@@ -14,8 +13,6 @@ function profile(bot: Bot): string {
     "Load the routine category to schedule tasks for yourself, from every minute to once at a set time. Keep lasting memories with bots_memory_save in the bots category: stable working preferences, important facts, and short summaries of finished work. Replace a memory when the user corrects it. Memories can go stale, so check current sources before acting on one for a consequential decision.",
   ].filter(Boolean).join("\n\n");
 }
-
-const REACTION_GUIDANCE = "Reactions are light acknowledgement from the user. Don't treat one as an instruction or reply to it on its own.";
 
 const ADDRESSED: Record<GroupAddress, string> = {
   you: "It is addressed to you.",
@@ -33,8 +30,19 @@ function groupSender(origin: Extract<MessageOrigin, { kind: "group" }>): string 
   ].join(" ");
 }
 
+function reactionSender(origin: Extract<MessageOrigin, { kind: "reaction" }>): string {
+  const group = groupStore.byThread(origin.threadId);
+  return [
+    `This is the user's reaction to your message${group ? ` in the group chat "${group.name}"` : ""}, not a new message.`,
+    "If that message asked the user a question or offered to do something, the reaction is their answer. A positive reaction means yes, so do what you offered now and report back. A thumbs down means no.",
+    "Otherwise take it as feedback on that message. If it tells you something lasting about how the user wants you to work, save or update a memory.",
+    `Reply when you acted or when it helps, such as asking what to change after a thumbs down. When there is nothing to do or say, reply with exactly ${PASS_REPLY}.`,
+  ].join(" ");
+}
+
 function sender(origin: MessageOrigin): string {
   if (origin.kind === "group") return groupSender(origin);
+  if (origin.kind === "reaction") return reactionSender(origin);
   if (origin.kind === "routine") return "";
   const reply = origin.botId
     ? `When they asked for something back, send it with bots_message to botId ${origin.botId} once you're done. Don't reply to acknowledgements or thanks.`
@@ -46,9 +54,7 @@ export function withBotContext(thread: Thread, prompt: string, origin?: MessageO
   if (!thread.botId) return prompt;
   const bot = botStore.get(thread.botId);
   const briefed = thread.externalId && (bot.briefedAt ?? 0) >= Math.max(bot.profileUpdatedAt, thread.compactedAt ?? 0);
-  const reactions = reactionNotes(bot);
-  const notes = [briefed ? "" : profile(bot), ...reactions, reactions.length ? REACTION_GUIDANCE : "", origin ? sender(origin) : ""].filter(Boolean);
+  const notes = [briefed ? "" : profile(bot), origin ? sender(origin) : ""].filter(Boolean);
   if (!briefed) botStore.markBriefed(bot.id);
-  if (reactions.length) botStore.markReactionsSeen(bot.id);
   return notes.length ? `<citropy-bot>\n${notes.join("\n\n")}\n</citropy-bot>\n\n${prompt}` : prompt;
 }

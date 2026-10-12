@@ -77,6 +77,12 @@
 :root[data-page-hidden] *,
 :root[data-page-hidden] *::before,
 :root[data-page-hidden] *::after { animation-play-state: paused !important; }
+:root::view-transition { pointer-events: none; }
+:root::view-transition-old(root),
+:root::view-transition-new(root) {
+  animation-duration: var(--dur-fast);
+  animation-timing-function: var(--ease-out);
+}
 
 .topbar {
   --frame-corner: var(--r-lg);

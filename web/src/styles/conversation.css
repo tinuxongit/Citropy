@@ -241,7 +241,8 @@
   animation: citropy-rise var(--dur-base) var(--ease-out) both;
 }
 
-.user-card .prose {
+.user-card .prose,
+.stage[data-view="bots"] .agent-card .prose {
   font-size: var(--text-body);
   line-height: 1.4;
 }
@@ -1041,7 +1042,7 @@
   .message-reaction:hover { background: var(--hover); }
 }
 @media (hover: hover) and (pointer: fine) {
-  .turn:not(:hover, :focus-within) .turn-meta {
+  .turn:not(:hover, :focus-within, :has(:popover-open)) .turn-meta {
     opacity: 0;
     pointer-events: none;
   }
@@ -1090,14 +1091,20 @@
   border-radius: var(--r-lg);
   max-width: 100%;
 }
-.user-card {
+.user-card,
+.stage[data-view="bots"] .agent-card {
   --user-card-padding-block: var(--space-8);
   width: fit-content;
   max-width: 75%;
-  padding-block: var(--user-card-padding-block);
+  padding: var(--user-card-padding-block) var(--space-16);
   border-radius: var(--r-xl);
-  margin-left: auto;
   background: var(--raised);
+}
+.user-card {
+  margin-left: auto;
+}
+.stage[data-view="bots"] .user-card {
+  background: var(--raised-2);
 }
 .user-card .prose p {
   white-space: pre-wrap;
@@ -1138,7 +1145,8 @@
   display: none;
 }
 @container application (max-width: 600px) {
-  .user-card {
+  .user-card,
+  .stage[data-view="bots"] .agent-card {
     max-width: 85%;
     border-radius: 20px;
   }

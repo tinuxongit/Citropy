@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { botStore } from "../server/bots/bot-store.ts";
+import { settingsOf } from "../server/bots/create-bot.ts";
 import { postFromUser } from "../server/bots/group-chat.ts";
 import { groupStore } from "../server/bots/group-store.ts";
 import { react } from "../server/bots/reactions.ts";
@@ -12,8 +13,10 @@ import { uid } from "../server/ids.ts";
 import { callWorkspaceTool } from "../server/mcp-workspace.ts";
 import { refreshProvidersNow } from "../server/provider-registry.ts";
 import { providers } from "../server/providers/index.ts";
+import { botRoutes } from "../server/routes/bots.ts";
 import { removeThread } from "../server/routes/threads.ts";
 import { store } from "../server/store.ts";
+import { BOT_TEMPLATES } from "../shared/bot-templates.ts";
 
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), "citropy-bots-"));
@@ -90,6 +93,43 @@ test("renaming a bot renames its conversation and logs the change", async t => {
   assert.equal(thread.title, "New");
   assert.equal(thread.messages.at(-1).parts[0].text, "Renamed to New");
   assert.throws(() => botStore.update(bot.id, { name: " " }), /Name cannot be empty/);
+});
+
+test("a bot keeps its chosen face and accessory and copies carry the look", async t => {
+  const { makeBot } = await fixture(t);
+  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  await refreshProvidersNow();
+  const bot = makeBot({ name: "Bun" });
+  assert.equal(bot.face, "neutral");
+  assert.equal(bot.accessory, "none");
+  botStore.update(bot.id, { shape: "heart", face: "happy", accessory: "bunny-ears" });
+  assert.throws(() => botStore.update(bot.id, { face: "winking" }), /listed face options/);
+  assert.throws(() => botStore.update(bot.id, { accessory: "eyepatch" }), /listed accessory options/);
+  const sent = [];
+  await botRoutes["bot.duplicate"]({ id: bot.id, requestId: "copy" }, message => sent.push(message));
+  const copy = sent[0].bot;
+  assert.equal(copy.name, "Bun copy");
+  assert.deepEqual([copy.shape, copy.face, copy.accessory], ["heart", "happy", "bunny-ears"]);
+});
+
+test("every bot template creates a bot with its look and routine", async t => {
+  const { makeBot } = await fixture(t);
+  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  await refreshProvidersNow();
+  const thread = settingsOf(store.threads.get(makeBot({ name: "Seed" }).threadId));
+  for (const template of BOT_TEMPLATES) {
+    const sent = [];
+    const { name, title, description, look } = template;
+    await botRoutes["bot.create"]({ requestId: template.id, thread, profile: { name, title, description, ...look }, template: template.id }, message => sent.push(message));
+    const bot = sent[0].bot;
+    assert.deepEqual([bot.name, bot.color, bot.shape, bot.face, bot.accessory], [name, look.color, look.shape, look.face, look.accessory]);
+    const routines = store.threads.get(bot.threadId).routines;
+    assert.deepEqual(routines.map(routine => [routine.name, routine.prompt]), [[template.routine.name, template.routine.prompt]]);
+    assert.ok(routines[0].nextRunAt > Date.now());
+  }
+  await assert.rejects(botRoutes["bot.create"]({ requestId: "x", thread, profile: { name: "X" }, template: "missing" }, () => {}), /no bot template named "missing"/);
 });
 
 test("a bot shows its latest reply as a preview once the turn ends", async t => {
@@ -196,29 +236,34 @@ test("a bot creates a focused bot with its own provider settings", async t => {
   await assert.rejects(callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_create", arguments: { name: "Another" } }), /Plan only/);
 });
 
-test("reactions reach the bot that wrote the message on its next prompt", async t => {
+test("a reaction reaches the bot that wrote the message right away", async t => {
   const { makeBot, makeGroup, sessions } = await fixture(t);
   const scout = makeBot({ name: "Scout" });
   const writer = makeBot({ name: "Writer" });
   const reply = store.addMessage(writer.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Draft is ready." }] });
   const ask = { id: uid("msg"), role: "user", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Hi" }] };
   store.addMessage(writer.threadId, ask);
-  assert.throws(() => react(writer.threadId, ask.id, "like", true), /only react to a bot's message/);
-  assert.throws(() => react(writer.threadId, reply.id, "wave", true), /listed reactions/);
-  react(writer.threadId, reply.id, "dislike", true);
-  react(writer.threadId, reply.id, "dislike", false);
-  react(writer.threadId, reply.id, "like", true);
-  assert.deepEqual(store.readMessages(writer.threadId).find(message => message.id === reply.id).reactions.map(entry => entry.key), ["like"]);
+  await assert.rejects(react(writer.threadId, ask.id, "like", true), /only react to a bot's message/);
+  await assert.rejects(react(writer.threadId, reply.id, "wave", true), /listed reactions/);
+  await react(writer.threadId, reply.id, "like", true);
+  const first = sessions.get(writer.threadId).sent[0];
+  assert.match(first, /Reacted with thumbs up to "Draft is ready\."/);
+  assert.match(first, /A positive reaction means yes, so do what you offered now/);
+  assert.match(first, /reply with exactly PASS/);
+  assert.equal(store.readMessages(writer.threadId).at(-1).origin.kind, "reaction");
+  await react(writer.threadId, reply.id, "like", true);
+  await react(writer.threadId, reply.id, "like", false);
+  assert.deepEqual(store.readMessages(writer.threadId).find(message => message.id === reply.id).reactions, []);
   const group = makeGroup([scout, writer]);
   const post = store.addMessage(group.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Shipped." }], origin: { kind: "bot", threadId: writer.threadId, botId: writer.id, name: "Writer", depth: 1 } });
-  react(group.threadId, post.id, "love", true);
-  await callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_message", arguments: { botId: writer.id, text: "Next task." } });
-  const first = sessions.get(writer.threadId).sent[0];
-  assert.match(first, /reacted with thumbs up to your message: "Draft is ready\."/);
-  assert.match(first, /reacted with heart to your message in the group chat "Scout, Writer": "Shipped\."/);
-  assert.doesNotMatch(first, /thumbs down/);
-  sessions.get(writer.threadId).emit({ type: "turn.end" });
-  await until(() => !store.threads.get(writer.threadId).running);
-  await callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_message", arguments: { botId: writer.id, text: "Another task." } });
-  assert.doesNotMatch(sessions.get(writer.threadId).sent[1], /reacted/);
+  await react(group.threadId, post.id, "love", true);
+  assert.deepEqual(store.threads.get(writer.threadId).queue.map(entry => entry.text), ['Reacted with heart to "Shipped."']);
+  const writerSession = sessions.get(writer.threadId);
+  writerSession.emit({ type: "block.start", blockId: "b1", block: "text" });
+  writerSession.emit({ type: "block.delta", blockId: "b1", text: "PASS" });
+  writerSession.emit({ type: "block.end", blockId: "b1" });
+  writerSession.emit({ type: "turn.end" });
+  await until(() => sessions.get(writer.threadId).sent.length === 2);
+  assert.match(sessions.get(writer.threadId).sent[1], /in the group chat "Scout, Writer"/);
+  assert.equal(store.notifications.filter(entry => entry.target.threadId === writer.threadId).length, 0);
 });

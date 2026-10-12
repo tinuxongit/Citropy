@@ -44,9 +44,9 @@ export function closeNewBotChat(): void {
   useApp.setState({ newBotChatOpen: false });
 }
 
-export async function createBot(profile: Partial<BotProfile> = {}): Promise<Bot> {
+export async function createBot(profile: Partial<BotProfile> = {}, template?: string): Promise<Bot> {
   const thread = threadSettings();
-  const bot = await request<Bot>((id) => ({ t: "bot.create", requestId: id, thread, profile }));
+  const bot = await request<Bot>((id) => ({ t: "bot.create", requestId: id, thread, profile, template }));
   selectRosterEntry(bot.id);
   return bot;
 }

@@ -35,7 +35,7 @@ import { SubagentTranscripts } from "./subagent-transcripts.ts";
 import { botStore } from "./bots/bot-store.ts";
 import { withBotContext } from "./bots/bot-prompt.ts";
 import { withRoutineContext } from "./routines/routine-prompt.ts";
-import type { MessageOrigin } from "../shared/bots.ts";
+import { finalReply, isPass, type MessageOrigin } from "../shared/bots.ts";
 import type {
   Message,
   Thread,
@@ -601,7 +601,7 @@ class ThreadRuntime {
   }
 
   #notifyChat(level: "success" | "error", title: string, text: string): void {
-    if (botStore.muted(this.#thread.id)) return;
+    if (botStore.muted(this.#thread.id) || (level === "success" && isPass(finalReply(store.readMessages(this.id)) ?? ""))) return;
     store.notify({
       kind: "chat",
       level,

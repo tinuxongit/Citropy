@@ -49,7 +49,7 @@ async function start() {
   followVisualViewport();
   await initializeEnvironment();
   applyReleaseDefaults();
-  const [{ App }, { connect, logClientError }, { useApp, applyUiScale, followWindowSize }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts")]);
+  const [{ App }, { connect, logClientError }, { useApp, applyUiScale, followWindowSize }, { hideBootScreenWhenConnected }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts"), import("./lib/boot-screen.ts")]);
 
   if (!window.citropyDesktop && window.loomDesktop)
     window.citropyDesktop = window.loomDesktop;
@@ -60,6 +60,7 @@ async function start() {
   applyCustomColor(customColor, scheme);
   applyUiScale();
   followWindowSize();
+  hideBootScreenWhenConnected();
   connect();
   window.addEventListener("error", (event) => logClientError(event.error ?? event.message));
   window.addEventListener("unhandledrejection", (event) => logClientError(event.reason));
@@ -76,6 +77,7 @@ async function start() {
 }
 
 void start().catch(error => {
+  document.getElementById("boot-screen")?.remove();
   const root = document.getElementById("root");
   if (root) root.textContent = error.message;
 });

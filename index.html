@@ -7,9 +7,45 @@
   <meta name="color-scheme" content="dark light" />
   <title>Citropy</title>
   <link rel="icon" type="image/svg+xml" href="/citropy.svg" />
+  <script>
+    if (localStorage.getItem("citropy.scheme") === "light") document.documentElement.dataset.scheme = "light";
+  </script>
+  <style>
+    :root { color-scheme: dark; }
+    :root[data-scheme="light"] { color-scheme: light; }
+    .boot-screen {
+      --boot-logo: 64px;
+      --boot-fade: 200ms;
+      --boot-logo-in: 320ms;
+      --boot-ease: cubic-bezier(0.16, 1, 0.3, 1);
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      display: grid;
+      place-items: center;
+      background: var(--canvas, Canvas);
+      -webkit-app-region: drag;
+      transition: opacity var(--boot-fade) var(--boot-ease);
+    }
+    .boot-screen[data-done] { opacity: 0; pointer-events: none; }
+    .boot-screen > img {
+      width: var(--boot-logo);
+      height: var(--boot-logo);
+      animation: boot-logo-in var(--boot-logo-in) var(--boot-ease) both;
+    }
+    @keyframes boot-logo-in {
+      from { opacity: 0; transform: scale(0.96); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      @keyframes boot-logo-in {
+        from { opacity: 0; }
+      }
+    }
+  </style>
 </head>
 
 <body>
+  <div class="boot-screen" id="boot-screen"><img src="/citropy.svg" alt="Citropy" /></div>
   <div id="root"></div>
   <script type="module" src="/web/src/main.tsx"></script>
 </body>

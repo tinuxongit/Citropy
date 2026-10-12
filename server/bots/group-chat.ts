@@ -6,10 +6,10 @@ import { store } from "../store.ts";
 import { botStore } from "./bot-store.ts";
 import { addNotice } from "../fields.ts";
 import { groupStore } from "./group-store.ts";
-import { BOT_LIMITS, EVERYONE_HANDLE, PASS_REPLY, botHandle, mentionedHandles } from "../../shared/bots.ts";
+import { BOT_LIMITS, EVERYONE_HANDLE, botHandle, finalReply, isPass, mentionedHandles } from "../../shared/bots.ts";
 import type { Bot, BotGroup, GroupAddress } from "../../shared/bots.ts";
 import type { MentionTag } from "../../shared/mention-tags.ts";
-import type { Attachment, Message } from "../../shared/protocol.ts";
+import type { Attachment } from "../../shared/protocol.ts";
 
 interface Delivery {
   groupId: string;
@@ -103,14 +103,6 @@ export async function postFromBot(group: BotGroup, bot: Bot, text: string, depth
   await deliver(group, text, [], { botId: bot.id, name: bot.name }, depth + 1);
 }
 
-function finalReply(messages: Message[]): string | undefined {
-  const start = messages.findLastIndex(message => message.role === "user");
-  for (const message of messages.slice(start + 1).reverse()) {
-    const part = message.role === "assistant" ? message.parts.findLast(entry => entry.kind === "text" && entry.text.trim()) : undefined;
-    if (part?.kind === "text") return part.text.trim();
-  }
-}
-
 function finish(id: string, delivery: Delivery, status: string, error?: string): void {
   deliveries.delete(id);
   groupStore.setWorking(delivery.groupId, delivery.botId, false);
@@ -120,7 +112,7 @@ function finish(id: string, delivery: Delivery, status: string, error?: string):
   if (status === "error") return addNotice(group.threadId, `${bot.name} ran into an error${error ? `: ${error}` : "."}`);
   if (status === "stopped") return addNotice(group.threadId, `${bot.name} stopped before replying.`);
   const reply = finalReply(store.readMessages(delivery.threadId));
-  if (!reply || reply === PASS_REPLY) return;
+  if (!reply || isPass(reply)) return;
   void postFromBot(group, bot, reply, delivery.depth).catch((failure: Error) => addNotice(group.threadId, failure.message));
 }
 

@@ -1,39 +1,32 @@
+import { runtimeFor } from "../runtime.ts";
 import { store } from "../store.ts";
-import { groupStore } from "./group-store.ts";
+import { botStore } from "./bot-store.ts";
 import { inBotsView, previewText } from "../../shared/bots.ts";
 import { checkReaction, reactionLabel } from "../../shared/reactions.ts";
-import type { Bot } from "../../shared/bots.ts";
-import type { Message } from "../../shared/protocol.ts";
-
-export function react(threadId: string, messageId: string, key: unknown, on: boolean): void {
-  const thread = store.threads.get(threadId);
-  if (!inBotsView(thread)) throw new Error("Reactions are for bot conversations.");
-  const message = thread!.messages.find(entry => entry.id === messageId);
-  if (message?.role !== "assistant") throw new Error("You can only react to a bot's message.");
-  const reaction = checkReaction(key);
-  const others = (message.reactions ?? []).filter(entry => entry.key !== reaction);
-  store.patchMessage(threadId, messageId, { reactions: on ? [...others, { key: reaction, at: Date.now() }] : others });
-}
+import type { Message, Thread } from "../../shared/protocol.ts";
 
 function excerpt(message: Message): string {
   const part = message.parts.find(entry => entry.kind === "text" && entry.text.trim());
   return part?.kind === "text" ? previewText(part.text) : "";
 }
 
-function authoredBy(bot: Bot, threadId: string, message: Message): boolean {
-  if (message.role !== "assistant") return false;
-  return threadId === bot.threadId || (message.origin?.kind === "bot" && message.origin.botId === bot.id);
+function authorThread(thread: Thread, message: Message): string {
+  const botId = thread.botId ?? (message.origin?.kind === "bot" ? message.origin.botId : undefined);
+  if (!botId) throw new Error("This message has no bot to react to.");
+  return botStore.get(botId).threadId;
 }
 
-export function reactionNotes(bot: Bot): string[] {
-  const since = bot.reactionsSeenAt ?? 0;
-  const places = [
-    { threadId: bot.threadId, where: "" },
-    ...groupStore.list().filter(group => group.botIds.includes(bot.id)).map(group => ({ threadId: group.threadId, where: ` in the group chat "${group.name}"` })),
-  ];
-  return places.flatMap(({ threadId, where }) => store.readMessages(threadId)
-    .filter(message => authoredBy(bot, threadId, message))
-    .flatMap(message => (message.reactions ?? [])
-      .filter(reaction => reaction.at > since)
-      .map(reaction => `The user reacted with ${reactionLabel(reaction.key).toLowerCase()} to your message${where}: "${excerpt(message)}"`)));
+export async function react(threadId: string, messageId: string, key: unknown, on: boolean): Promise<void> {
+  const thread = store.threads.get(threadId);
+  if (!inBotsView(thread)) throw new Error("Reactions are for bot conversations.");
+  const message = store.readMessages(threadId).find(entry => entry.id === messageId);
+  if (message?.role !== "assistant") throw new Error("You can only react to a bot's message.");
+  const reaction = checkReaction(key);
+  const existing = message.reactions ?? [];
+  const others = existing.filter(entry => entry.key !== reaction);
+  const added = on && others.length === existing.length;
+  store.patchMessage(threadId, messageId, { reactions: on ? [...others, { key: reaction, at: Date.now() }] : others });
+  if (!added) return;
+  const text = `Reacted with ${reactionLabel(reaction).toLowerCase()} to "${excerpt(message)}"`;
+  await runtimeFor(authorThread(thread!, message)).send(text, [], { origin: { kind: "reaction", threadId, messageId, key: reaction } });
 }

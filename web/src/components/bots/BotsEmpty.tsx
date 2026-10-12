@@ -1,9 +1,10 @@
+import { NEW_BOT_LOOK } from "../../../../shared/bots.ts";
 import { hasUsableAccount } from "../../../../shared/provider-account.ts";
 import { openNewBotChat } from "../../lib/bots.ts";
 import { useApp } from "../../lib/store.ts";
 import { BotAvatar } from "./BotAvatar.tsx";
 
-const SAMPLE = { color: "purple", shape: "cloud" } as const;
+const SAMPLE = { color: "purple", shape: "cloud", ...NEW_BOT_LOOK } as const;
 
 export function BotsEmpty() {
   const hasBots = useApp((state) => Object.keys(state.bots).length > 0);

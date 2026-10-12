@@ -589,7 +589,7 @@ export type ClientEvent = (
   | { t: "queue.move"; threadId: string; id: string; index: number }
   | { t: "queue.edit"; requestId: string; threadId: string; id: string }
   | { t: "thread.remove"; id: string }
-  | { t: "bot.create"; requestId: string; thread: BotThreadSettings; profile?: Partial<import("./bots.ts").BotProfile> }
+  | { t: "bot.create"; requestId: string; thread: BotThreadSettings; profile?: Partial<import("./bots.ts").BotProfile>; template?: string }
   | { t: "bot.update"; requestId?: string; id: string; profile: Partial<import("./bots.ts").BotProfile> }
   | { t: "bot.duplicate"; requestId: string; id: string }
   | { t: "bot.remove"; id: string }

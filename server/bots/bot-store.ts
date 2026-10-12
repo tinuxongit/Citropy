@@ -6,7 +6,7 @@ import { dataRoot } from "../paths.ts";
 import { saveJson } from "../save-json.ts";
 import { store } from "../store.ts";
 import { addNotice, flag, text } from "../fields.ts";
-import { BOT_COLORS, BOT_LIMITS, BOT_SHAPES, PASS_REPLY, defaultLook, previewText } from "../../shared/bots.ts";
+import { BOT_LIMITS, BOT_LOOK_OPTIONS, NEW_BOT_LOOK, defaultLook, isPass, previewText } from "../../shared/bots.ts";
 import type { Bot, BotMemory, BotProfile } from "../../shared/bots.ts";
 import type { Message } from "../../shared/protocol.ts";
 
@@ -16,7 +16,7 @@ const botsFile = join(dataRoot, "bots.json");
 
 function loadBots(): Bot[] {
   if (!existsSync(botsFile)) return [];
-  return JSON.parse(readFileSync(botsFile, "utf8")) as Bot[];
+  return (JSON.parse(readFileSync(botsFile, "utf8")) as Bot[]).map(bot => ({ ...NEW_BOT_LOOK, ...bot }));
 }
 
 function answersGroup(messages: Message[], index: number): boolean {
@@ -25,7 +25,8 @@ function answersGroup(messages: Message[], index: number): boolean {
 
 function latestText(messages: Message[]): { text: string; unseenReply: boolean } | undefined {
   for (let index = messages.length - 1; index >= 0; index--) {
-    const part = messages[index]!.parts.findLast(entry => entry.kind === "text" && entry.text.trim() && entry.text.trim() !== PASS_REPLY);
+    if (messages[index]!.origin?.kind === "reaction") continue;
+    const part = messages[index]!.parts.findLast(entry => entry.kind === "text" && entry.text.trim() && !isPass(entry.text));
     if (part?.kind === "text") return { text: previewText(part.text), unseenReply: messages[index]!.role === "assistant" && !answersGroup(messages, index) };
   }
 }
@@ -38,13 +39,14 @@ function checkProfile(input: Partial<BotProfile>): Partial<BotProfile> {
       case "title": profile.title = text(value, "Title", BOT_LIMITS.titleLength); break;
       case "description": profile.description = text(value, "Description", BOT_LIMITS.descriptionLength); break;
       case "color":
-        if (!BOT_COLORS.includes(value as never)) throw new Error("Choose one of the listed colors.");
-        profile.color = value as BotProfile["color"];
-        break;
       case "shape":
-        if (!BOT_SHAPES.includes(value as never)) throw new Error("Choose one of the listed shapes.");
-        profile.shape = value as BotProfile["shape"];
+      case "face":
+      case "accessory": {
+        const option = BOT_LOOK_OPTIONS[key];
+        if (!(option.values as readonly unknown[]).includes(value)) throw new Error(`Choose one of the listed ${option.label.toLowerCase()} options.`);
+        Object.assign(profile, { [key]: value });
         break;
+      }
       case "notifications": profile.notifications = flag(value, "Notifications"); break;
       case "pinned": profile.pinned = flag(value, "Pinned"); break;
       case "hidden": profile.hidden = flag(value, "Hidden"); break;
@@ -129,12 +131,6 @@ class BotStore {
   markBriefed(id: string): void {
     const bot = this.get(id);
     bot.briefedAt = Date.now();
-    this.#save();
-  }
-
-  markReactionsSeen(id: string): void {
-    const bot = this.get(id);
-    bot.reactionsSeenAt = Date.now();
     this.#save();
   }
 

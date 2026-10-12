@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BOT_LIMITS, defaultLook, type Bot } from "../../../../shared/bots.ts";
+import type { BotTemplate } from "../../../../shared/bot-templates.ts";
+import { BOT_LIMITS, defaultLook, type Bot, type BotLook } from "../../../../shared/bots.ts";
 import { closeNewBotChat, createBot, createGroup } from "../../lib/bots.ts";
 import { entryText, orderedRoster, searchMatcher } from "../../lib/roster.ts";
 import { selectRosterEntry, useApp } from "../../lib/store.ts";
@@ -9,8 +10,9 @@ import { PlusIcon } from "../icons/marks.tsx";
 import { Loader } from "../Loader.tsx";
 import { Modal } from "../Modal.tsx";
 import { BotAvatar } from "./BotAvatar.tsx";
-import { BotLookPicker, type BotLook } from "./BotLookPicker.tsx";
+import { BotLookPicker } from "./BotLookPicker.tsx";
 import { BotProfileFields, type ProfileDraft } from "./BotProfileFields.tsx";
+import { BotTemplatePicker } from "./BotTemplatePicker.tsx";
 
 const ROW_AVATAR_SIZE = 32;
 const EMPTY_PROFILE: ProfileDraft = { name: "", title: "", description: "" };
@@ -25,6 +27,7 @@ export function NewChatDialog() {
   const [making, setMaking] = useState(firstBot);
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [look, setLook] = useState<BotLook>(() => defaultLook(Object.keys(bots).length));
+  const [template, setTemplate] = useState<BotTemplate>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const fields = useRef<HTMLDivElement>(null);
@@ -44,7 +47,13 @@ export function NewChatDialog() {
   };
   const startMaking = () => {
     setProfile({ ...EMPTY_PROFILE, name: query.trim() });
+    setTemplate(undefined);
     setMaking(true);
+  };
+  const pickTemplate = (picked?: BotTemplate) => {
+    setTemplate(picked);
+    setProfile(picked ? { name: picked.name, title: picked.title, description: picked.description } : EMPTY_PROFILE);
+    setLook(picked?.look ?? defaultLook(Object.keys(bots).length));
   };
   const toggle = (id: string) => setPicked((current) => current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]);
   const openPicked = () => {
@@ -55,7 +64,7 @@ export function NewChatDialog() {
   };
   const submit = () => {
     if (making) {
-      if (profile.name.trim()) run(() => createBot({ ...profile, ...look }));
+      if (profile.name.trim()) run(() => createBot({ ...profile, ...look }, template?.id));
     } else if (picked.length) openPicked();
     else if (query.trim()) startMaking();
   };
@@ -65,7 +74,7 @@ export function NewChatDialog() {
   return (
     <Modal
       title={making ? "Create bot" : "New chat"}
-      description={making ? "Pick a look and tell it what it's for." : `Pick one bot to chat, or ${BOT_LIMITS.groupMembersMin} to ${BOT_LIMITS.groupMembersMax} for a group chat.`}
+      description={making ? "Start from a template or pick a look and tell it what it's for." : `Pick one bot to chat, or ${BOT_LIMITS.groupMembersMin} to ${BOT_LIMITS.groupMembersMax} for a group chat.`}
       className="new-chat-dialog"
       busy={busy}
       initialFocus=".new-chat-search input"
@@ -88,6 +97,7 @@ export function NewChatDialog() {
     >
       {making ? (
         <div ref={fields} className="new-chat-make">
+          <BotTemplatePicker picked={template} onPick={pickTemplate} />
           <BotLookPicker look={look} onChange={(patch) => setLook({ ...look, ...patch })} />
           <BotProfileFields draft={profile} onChange={setProfile} />
         </div>

@@ -2,7 +2,7 @@ import type { Part } from "../../../shared/protocol.ts";
 import type { AppState } from "./app-state.ts";
 import { buildRows, type Row } from "./group.ts";
 import { normalizeTodos } from "../../../shared/todos.ts";
-import { inBotsView, type MessageOrigin } from "../../../shared/bots.ts";
+import { inBotsView, isPass, type MessageOrigin } from "../../../shared/bots.ts";
 
 const STAMP_GAP_MS = 30 * 60_000;
 
@@ -113,6 +113,10 @@ function finalAnswerRange(rows: Row[], parts: AppState["parts"]): { start: numbe
   return { start, end };
 }
 
+function passReply(part: Part | undefined): boolean {
+  return part?.kind === "text" && isPass(part.text);
+}
+
 function sameAuthor(a: MessageOrigin | undefined, b: MessageOrigin | undefined): boolean {
   return (a?.kind === "bot" ? a.botId : undefined) === (b?.kind === "bot" ? b.botId : undefined);
 }
@@ -135,7 +139,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
   const timeline = turns.flatMap<TimelineRow>((messageIds, turnIndex) => {
     const messageId = messageIds[0]!;
     const message = state.messages[messageId];
-    if (!message) return [];
+    if (!message || message.origin?.kind === "reaction") return [];
     const previousTs = state.messages[turns[turnIndex - 1]?.at(-1) ?? ""]?.ts;
     const stamp = inBotsView(thread) && (previousTs === undefined || message.ts - previousTs > STAMP_GAP_MS) ? message.ts : undefined;
     if (message.role !== "assistant") return [{ key: messageId, messageId, first: true, last: true, stamp }];
@@ -143,7 +147,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     for (const id of messageIds) {
       for (const partId of state.messages[id]!.partIds) owners.set(partId, id);
     }
-    const partIds = [...owners.keys()];
+    const partIds = [...owners.keys()].filter(id => !(inBotsView(thread) && passReply(state.parts.get(id))));
     const rows = buildRows(partIds.map((id) => state.parts.get(id)));
     const before = turns[turnIndex - 1]?.at(-1);
     const turnKey = before ?? threadId;

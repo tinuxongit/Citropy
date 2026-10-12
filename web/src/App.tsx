@@ -9,6 +9,7 @@ import {
   Suspense,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -58,6 +59,7 @@ import { chooseWorkspace, closeTab, createThread, reopenClosedTab, showNextTab }
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
 import { BrowserGuests } from "./components/BrowserGuests.tsx";
+import { transitionView, viewShown } from "./lib/view-transition.ts";
 import { BrowserTakeover } from "./components/BrowserTakeover.tsx";
 
 const NARROW_VIEWPORT = 720;
@@ -69,10 +71,17 @@ const subscribeResize = (onChange: () => void) => {
   return () => window.removeEventListener("resize", onChange);
 };
 
-const GitHub = lazy(() => import("./components/github/GitHub.tsx").then((module) => ({ default: module.GitHub })));
-const GitManager = lazy(() => import("./components/GitManager.tsx").then((module) => ({ default: module.GitManager })));
-const Settings = lazy(() => import("./components/Settings.tsx").then((module) => ({ default: module.Settings })));
-const UsageView = lazy(() => import("./components/UsageView.tsx").then((module) => ({ default: module.UsageView })));
+const VIEW_MODULES = {
+  github: () => import("./components/github/GitHub.tsx"),
+  git: () => import("./components/GitManager.tsx"),
+  settings: () => import("./components/Settings.tsx"),
+  usage: () => import("./components/UsageView.tsx"),
+};
+
+const GitHub = lazy(() => VIEW_MODULES.github().then((module) => ({ default: module.GitHub })));
+const GitManager = lazy(() => VIEW_MODULES.git().then((module) => ({ default: module.GitManager })));
+const Settings = lazy(() => VIEW_MODULES.settings().then((module) => ({ default: module.Settings })));
+const UsageView = lazy(() => VIEW_MODULES.usage().then((module) => ({ default: module.UsageView })));
 
 export function App() {
   const { activeId: environment } = useEnvironments();
@@ -162,7 +171,12 @@ export function App() {
     };
   }, []);
 
-  const openView = (next: typeof view) => {
+  useLayoutEffect(() => viewShown(view), [view]);
+  useEffect(() => {
+    const idle = requestIdleCallback(() => Object.values(VIEW_MODULES).forEach((load) => void load()));
+    return () => cancelIdleCallback(idle);
+  }, []);
+  const showView = (next: typeof view) => {
     if (next !== "chat") useApp.setState({ readingThreadId: null });
     setView(next);
     if (next === "chat") {
@@ -172,6 +186,7 @@ export function App() {
       setSectionSidebarOpen(viewportWidth() > NARROW_VIEWPORT);
     }
   };
+  const openView = (next: typeof view) => transitionView(next, () => showView(next));
   const toggleNavigation = () => {
     if (view === "chat") toggleSidebar();
     else setSectionSidebarOpen((open) => !open);
@@ -179,9 +194,9 @@ export function App() {
   const closeSectionSidebarOnNarrow = () => {
     if (viewportWidth() <= NARROW_VIEWPORT) setSectionSidebarOpen(false);
   };
-  const openSettings = () => {
+  const openSettings = (open = openView) => {
     setSettingsSection("General");
-    openView("settings");
+    open("settings");
   };
 
   useEffect(() => {
@@ -273,7 +288,7 @@ export function App() {
         if (inTextEntry(event.target)) return;
         event.preventDefault();
         if (event.repeat) return;
-        if (key === ",") openSettings();
+        if (key === ",") openSettings(showView);
         else chooseWorkspace();
       } else if (view === "bots" && (event.shiftKey ? event.code === "Comma" : event.altKey && key === "b")) {
         event.preventDefault();
@@ -388,7 +403,7 @@ export function App() {
         {view === "bots" && <SlidingPanel open={sectionSidebarOpen} side="left" keepMounted pauseHidden>
           <BotRoster onOpen={closeSectionSidebarOnNarrow} />
         </SlidingPanel>}
-        <main className="stage">
+        <main className="stage" data-view={view}>
           <Suspense
             fallback={
               <div className="pane-empty" role="status">Loading…</div>

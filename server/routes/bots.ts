@@ -9,6 +9,8 @@ import { store } from "../store.ts";
 import { createRequestedThread } from "../thread-request.ts";
 import * as routines from "../routines/routine-store.ts";
 import { removeThread } from "./threads.ts";
+import { botTemplate } from "../../shared/bot-templates.ts";
+import { lookOf } from "../../shared/bots.ts";
 import type { BotThreadSettings } from "../../shared/protocol.ts";
 import type { Routes } from "./types.ts";
 
@@ -26,7 +28,9 @@ async function createGroup(thread: BotThreadSettings, botIds: string[]) {
 
 export const botRoutes: Routes = {
   "bot.create": async (event, send) => {
+    const template = event.template ? botTemplate(event.template) : undefined;
     const bot = await createBot(event.thread, event.profile ?? {});
+    if (template) routines.save(bot.threadId, template.routine);
     send({ t: "bot.upsert", bot, requestId: event.requestId });
   },
   "bot.update": (event, send) => {
@@ -37,8 +41,8 @@ export const botRoutes: Routes = {
     const source = botStore.get(event.id);
     const thread = store.threads.get(source.threadId);
     if (!thread) throw new Error("This bot's conversation is missing.");
-    const { name, title, description, color, shape, notifications } = source;
-    const bot = await createBot(settingsOf(thread), { name: `${name} copy`, title, description, color, shape, notifications });
+    const { name, title, description, notifications } = source;
+    const bot = await createBot(settingsOf(thread), { name: `${name} copy`, title, description, notifications, ...lookOf(source) });
     routines.copy(source.threadId, bot.threadId);
     send({ t: "bot.upsert", bot, requestId: event.requestId });
   },

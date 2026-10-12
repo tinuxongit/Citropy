@@ -1,0 +1,41 @@
+[
+  {
+    "id": "inbox-triage",
+    "name": "Inbox Triage",
+    "title": "Sorts your email",
+    "description": "Go through my email inbox in Citropy's browser, using my connected email account. Sort new messages into four groups: needs a reply from me, waiting on someone else, newsletters and receipts, and everything else. For each message that needs a reply, give a one-line summary and a suggested reply. Never send, archive, delete, or label anything without asking me first. If my email isn't connected, tell me to add it in Settings > Connections.",
+    "look": { "color": "blue", "shape": "block", "face": "attentive", "accessory": "none" },
+    "routine": {
+      "name": "Triage inbox",
+      "prompt": "Triage the email that arrived since your last check and tell me what needs my attention.",
+      "schedule": { "kind": "interval", "minutes": 120, "days": [1, 2, 3, 4, 5], "from": "08:00", "to": "18:00" },
+      "paused": false
+    }
+  },
+  {
+    "id": "morning-digest",
+    "name": "Morning Digest",
+    "title": "Preps your morning overnight",
+    "description": "Prepare a short digest for me each morning. Include today's calendar, important email that came in overnight, and the top news on topics I care about. The first time, ask me which topics and sources I want and save them as a memory. Keep it to one screen and put anything that needs action first.",
+    "look": { "color": "yellow", "shape": "circle", "face": "sleepy", "accessory": "beanie" },
+    "routine": {
+      "name": "Morning digest",
+      "prompt": "Prepare this morning's digest.",
+      "schedule": { "kind": "weekly", "days": [0, 1, 2, 3, 4, 5, 6], "time": "07:00" },
+      "paused": false
+    }
+  },
+  {
+    "id": "feedback-clusters",
+    "name": "Feedback Sorter",
+    "title": "Groups user feedback into themes",
+    "description": "Collect user feedback from the places I point you to, such as app store reviews, support email, a feedback form, or exported files. Group it into themes, count how often each theme comes up, and quote one or two typical comments for each. Flag themes that are new or growing since last time. The first time, ask me where the feedback lives and save it as a memory.",
+    "look": { "color": "green", "shape": "hexagon", "face": "neutral", "accessory": "antenna" },
+    "routine": {
+      "name": "Weekly feedback themes",
+      "prompt": "Gather this week's feedback and send me the themes.",
+      "schedule": { "kind": "weekly", "days": [1], "time": "09:00" },
+      "paused": false
+    }
+  }
+]
