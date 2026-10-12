@@ -204,6 +204,10 @@ export function clock(ts: number): string {
   return formatDate(ts, { hour: "2-digit", minute: "2-digit" });
 }
 
+export function shortWhen(ts: number, now = Date.now()): string {
+  return new Date(ts).toDateString() === new Date(now).toDateString() ? clock(ts) : formatDate(ts, { month: "short", day: "numeric" });
+}
+
 export function shortPath(path: string, home: string): string {
   if (home && path.startsWith(home)) return `~${path.slice(home.length)}`;
   return path;

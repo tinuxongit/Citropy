@@ -64,7 +64,7 @@ export function Composer({
   );
   const connected = useApp((state) => state.connected);
   const providers = useApp((state) => state.providers);
-  const projectName = useApp((state) => state.projects.find((entry) => entry.id === thread?.projectId)?.name);
+  const startSubject = useApp((state) => thread?.botId ? state.bots[thread.botId]?.name : state.projects.find((entry) => entry.id === thread?.projectId)?.name);
   const hasMessages = useApp((state) => Boolean(threadId && state.order[threadId]?.length));
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
   const { value, setValue, attachments, setAttachments, quotes, setQuotes, clearDraft } = useComposerDraft(threadId, scope);
@@ -242,7 +242,7 @@ export function Composer({
 
   return (
     <div className="composer" ref={composerRef} data-start={starting || undefined}>
-      {starting && <h1 className="composer-start-heading truncate">{projectName ? `${START_QUESTION} for ${projectName}?` : `${START_QUESTION}?`}</h1>}
+      {starting && <h1 className="composer-start-heading truncate">{startSubject ? `${START_QUESTION} for ${startSubject}?` : `${START_QUESTION}?`}</h1>}
       {thread.parentThreadId && (
         <div className="subagent-managed">
           Subagent conversation

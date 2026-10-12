@@ -1,7 +1,7 @@
 import { environmentStorage } from "./environment.ts";
 import { defaultAssistance } from "../../../shared/assistance.ts";
 import type { Project } from "../../../shared/protocol.ts";
-import { useApp, readOffline, type Confirmation } from "./app-state.ts";
+import { useApp, readOffline, type AppState, type Confirmation } from "./app-state.ts";
 import { trimHistories } from "./history-cache.ts";
 import { readTabs, saveTabs, withPreviewTab } from "./thread-tabs.ts";
 import type { EnvironmentSlice } from "./live-environments.ts";
@@ -17,6 +17,7 @@ export {
   setScheme,
   toggleInspector,
   toggleThreadDetails,
+  toggleBotPanel,
   toggleSidebar,
   setSidebarGroupOpen,
   setUiSize,
@@ -63,6 +64,9 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     providers: [],
     threads: {},
     threadOrder: [],
+    bots: {},
+    activeBotId: environmentStorage.getItem("citropy.bot", id),
+    chatThreadId: null,
     messages: {},
     parts: new Map(),
     reveals: {},
@@ -92,25 +96,44 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
   };
 }
 
+function withActiveThread(state: AppState, id: string | null): AppState {
+  const next = { ...state, activeThreadId: id, searchShellId: null };
+  if (id && state.loaded[id]) {
+    next.loaded = { ...state.loaded };
+    delete next.loaded[id];
+    next.loaded[id] = true;
+  }
+  trimHistories(next);
+  return next;
+}
+
 export function selectThread(id: string | null): void {
+  const botId = id ? useApp.getState().threads[id]?.botId : undefined;
+  if (botId) return selectBot(botId);
   useApp.setState((state) => {
     const tabs = id ? withPreviewTab(state, id) : state;
     if (state.activeThreadId === id) return tabs === state ? state : { ...state, ...tabs };
     const git = { ...state.git };
     const projectId = id ? state.threads[id]?.projectId : state.activeProjectId;
     if (projectId) delete git[projectId];
-    const next = { ...state, ...tabs, activeThreadId: id, searchShellId: null, git };
-    if (id && state.loaded[id]) {
-      next.loaded = { ...state.loaded };
-      delete next.loaded[id];
-      next.loaded[id] = true;
-    }
-    trimHistories(next);
-    return next;
+    return { ...withActiveThread(state, id), ...tabs, git };
   });
   if (id) environmentStorage.setItem("citropy.thread", id);
   else environmentStorage.removeItem("citropy.thread");
   saveTabs(useApp.getState());
+}
+
+export function selectBot(id: string): void {
+  useApp.setState({ activeBotId: id, activeView: "bots" });
+  environmentStorage.setItem("citropy.bot", id);
+}
+
+export function showBotThread(id: string | null): void {
+  useApp.setState((state) => {
+    if (state.activeThreadId === id) return state;
+    const current = state.threads[state.activeThreadId ?? ""];
+    return { ...withActiveThread(state, id), chatThreadId: current && !current.botId ? current.id : state.chatThreadId };
+  });
 }
 
 export function selectProject(id: string): void {

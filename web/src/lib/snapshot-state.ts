@@ -51,6 +51,8 @@ function restoreThreads(state: AppState, snapshot: Snapshot): void {
   state.threads = Object.fromEntries(
     snapshot.threads.map((thread) => [thread.id, thread]),
   );
+  state.bots = Object.fromEntries((snapshot.bots ?? []).map((bot) => [bot.id, bot]));
+  if (state.activeBotId && !state.bots[state.activeBotId]) state.activeBotId = null;
   state.messages = {};
   state.parts = new Map();
   state.reveals = {};

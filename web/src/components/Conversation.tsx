@@ -364,6 +364,7 @@ export function Conversation() {
                     replyIds={row.replyIds}
                     latestStep={row.latestStep}
                     step={row.step}
+                    stamp={row.stamp}
                     transitionActivity={transitionActivity}
                     last={row.last}
                     streaming={

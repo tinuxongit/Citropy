@@ -29,6 +29,7 @@ function messageShell(message: Message, partIds: string[]): AppState["messages"]
     provider: message.provider,
     attachments: message.attachments,
     mentions: message.mentions,
+    origin: message.origin,
     partIds,
   };
 }

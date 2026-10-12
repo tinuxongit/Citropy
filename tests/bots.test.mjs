@@ -116,6 +116,16 @@ test("renaming a bot renames its conversation and logs the change", async t => {
   assert.throws(() => botStore.update(bot.id, { name: " " }), /Name cannot be empty/);
 });
 
+test("a bot shows its latest reply as a preview once the turn ends", async t => {
+  const { makeBot } = await fixture(t);
+  const bot = makeBot({ name: "Writer" });
+  store.patchThread(bot.threadId, { running: true });
+  store.addMessage(bot.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "  Draft is ready.  " }] });
+  assert.equal(botStore.get(bot.id).preview, undefined);
+  store.patchThread(bot.threadId, { running: false });
+  assert.equal(botStore.get(bot.id).preview, "Draft is ready.");
+});
+
 test("weekly schedules find the next matching day and read naturally", () => {
   const schedule = { kind: "weekly", days: [1, 2, 3, 4, 5], time: "08:00" };
   const friday = new Date(2026, 9, 9, 9, 0).getTime();

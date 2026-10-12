@@ -38,6 +38,7 @@ export function applyEvents(
 
 function sortThreads(state: AppState): void {
   state.threadOrder = Object.values(state.threads)
+    .filter((thread) => !thread.botId)
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .map((thread) => thread.id);
 }
@@ -418,6 +419,17 @@ export function applyEvent(state: AppState, event: ServerEvent, focused = true):
             : undefined),
       );
       return;
+    case "bot.upsert":
+      state.bots = { ...state.bots, [event.bot.id]: event.bot };
+      if (event.requestId) resolveResponse(event.requestId, event.bot);
+      return;
+    case "bot.remove": {
+      const bots = { ...state.bots };
+      delete bots[event.id];
+      state.bots = bots;
+      if (state.activeBotId === event.id) state.activeBotId = null;
+      return;
+    }
     case "hello":
       applySnapshot(state, event.snapshot, focused);
       sortThreads(state);

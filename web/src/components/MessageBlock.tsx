@@ -8,7 +8,12 @@ import { MessageActions } from "./MessageActions.tsx";
 import { UserBubble } from "./UserBubble.tsx";
 import type { TimelineRow } from "../lib/timeline.ts";
 import { useApp } from "../lib/store.ts";
-import { clock } from "../lib/format.ts";
+import { clock, day } from "../lib/format.ts";
+import type { MessageOrigin } from "../../../shared/bots.ts";
+
+function originLabel(origin: MessageOrigin): string {
+  return origin.kind === "bot" ? `From ${origin.name}` : `Routine: ${origin.name}`;
+}
 
 interface Props extends Omit<TimelineRow, "key"> {
   streaming: boolean;
@@ -24,6 +29,7 @@ export const MessageBlock = memo(function MessageBlock({
   replyIds,
   latestStep,
   step,
+  stamp,
   transitionActivity,
 }: Props) {
   const shell = useApp((state) => messageId ? state.messages[messageId] : undefined);
@@ -34,14 +40,25 @@ export const MessageBlock = memo(function MessageBlock({
     const thread = state.threads[threadId ?? ""];
     return shell ? shell.ts : thread?.runStartedAt ?? thread?.updatedAt ?? 0;
   });
+  const eventText = useApp((state) => shell?.role === "system" ? shell.partIds.map((id) => {
+    const part = state.parts.get(id);
+    return part?.kind === "notice" || part?.kind === "text" ? part.text : "";
+  }).join(" ") : undefined);
   const [fresh] = useState(() => first ? Date.now() - timestamp < 2000 : streaming);
 
   if (!shell && (messageId !== undefined || !threadId)) return null;
 
+  const stampLine = stamp !== undefined && <time className="turn-stamp" dateTime={new Date(stamp).toISOString()}>{day(stamp)} {clock(stamp)}</time>;
+
+  if (eventText !== undefined) {
+    return <>{stampLine}<p id={`message-${messageId}`} className="turn-event">{eventText}</p></>;
+  }
+
   if (shell?.role === "user") {
     return (
-      <article id={`message-${messageId}`} className="turn turn-user" data-fresh={fresh || undefined}>
+      <>{stampLine}<article id={`message-${messageId}`} className="turn turn-user" data-fresh={fresh || undefined}>
         <div className="message-content">
+          {shell.origin && <span className="turn-origin">{originLabel(shell.origin)}</span>}
           {shell.attachments?.length && threadId && projectId ? (
             <Attachments
               files={shell.attachments}
@@ -55,14 +72,14 @@ export const MessageBlock = memo(function MessageBlock({
             {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} user />}
           </div>
         </div>
-      </article>
+      </article></>
     );
   }
 
   const activity = Boolean(row && row.kind !== "part") || Boolean(partKind && partKind !== "text");
 
   return (
-    <article
+    <>{stampLine}<article
       id={first && messageId ? `message-${messageId}` : undefined}
       className="turn turn-agent"
       data-fresh={fresh || undefined}
@@ -92,6 +109,6 @@ export const MessageBlock = memo(function MessageBlock({
           </div>
         )}
       </div>
-    </article>
+    </article></>
   );
 });

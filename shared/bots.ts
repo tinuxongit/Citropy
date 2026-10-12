@@ -10,6 +10,7 @@ export const BOT_LIMITS = {
   promptLength: 20_000,
   messageLength: 20_000,
   handoffDepth: 8,
+  previewLength: 160,
 };
 
 export const BOT_COLORS = ["purple", "blue", "teal", "green", "yellow", "orange", "red", "pink"] as const;
@@ -60,6 +61,7 @@ export interface Bot {
   profileUpdatedAt: number;
   briefedAt?: number;
   createdAt: number;
+  preview?: string;
   routines: Routine[];
 }
 

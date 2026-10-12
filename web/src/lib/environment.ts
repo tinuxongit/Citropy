@@ -71,7 +71,7 @@ export function rememberWorkspaces(id: string, projects: Project[], home: string
   const entry = {
     home,
     projects: projects.map(({ id, name, path, isGit, lastOpened }) => ({ id, name, path, isGit, lastOpened })),
-    threads: threads.filter(thread => !thread.parentThreadId && projects.some(project => project.id === thread.projectId)).map(workspaceThread),
+    threads: threads.filter(thread => !thread.parentThreadId && !thread.botId && projects.some(project => project.id === thread.projectId)).map(workspaceThread),
     connected,
   };
   if (JSON.stringify(entry) === JSON.stringify(workspaces[id])) return;

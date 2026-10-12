@@ -3,6 +3,8 @@ import type { AppState } from "./app-state.ts";
 import { buildRows, type Row } from "./group.ts";
 import { normalizeTodos } from "../../../shared/todos.ts";
 
+const STAMP_GAP_MS = 30 * 60_000;
+
 export interface TimelineRow {
   key: string;
   messageId?: string;
@@ -12,6 +14,7 @@ export interface TimelineRow {
   replyIds?: string[];
   latestStep?: boolean;
   step?: boolean;
+  stamp?: number;
 }
 
 export type FoldRow = { kind: "fold"; id: string; ids: string[]; messageIds: string[]; open: boolean; active: boolean; since: number };
@@ -127,7 +130,9 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     const messageId = messageIds[0]!;
     const message = state.messages[messageId];
     if (!message) return [];
-    if (message.role === "user") return [{ key: messageId, messageId, first: true, last: true }];
+    const previousTs = state.messages[turns[turnIndex - 1]?.at(-1) ?? ""]?.ts;
+    const stamp = thread?.botId && (previousTs === undefined || message.ts - previousTs > STAMP_GAP_MS) ? message.ts : undefined;
+    if (message.role !== "assistant") return [{ key: messageId, messageId, first: true, last: true, stamp }];
     const owners = new Map<string, string>();
     for (const id of messageIds) {
       for (const partId of state.messages[id]!.partIds) owners.set(partId, id);
@@ -170,6 +175,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       row,
       first: index === 0,
       last: index === visible.length - 1,
+      stamp: index === 0 ? stamp : undefined,
       replyIds: index === visible.length - 1 ? messageIds : undefined,
       latestStep: row === latestStep || undefined,
       step: (row.kind !== "fold" && row.kind !== "live" && steps.includes(row)) || undefined,
@@ -187,7 +193,7 @@ function sameIds(ids: string[] | undefined, other: string[] | undefined): boolea
 
 function sameTimelineRow(item: TimelineRow, other: TimelineRow): boolean {
   if (item.key !== other.key || item.messageId !== other.messageId ||
-    item.first !== other.first || item.last !== other.last || item.latestStep !== other.latestStep || item.step !== other.step || !sameIds(item.replyIds, other.replyIds) || item.row?.kind !== other.row?.kind) return false;
+    item.first !== other.first || item.last !== other.last || item.latestStep !== other.latestStep || item.step !== other.step || item.stamp !== other.stamp || !sameIds(item.replyIds, other.replyIds) || item.row?.kind !== other.row?.kind) return false;
   const row = item.row;
   const next = other.row;
   if (!row || !next || row.kind === "part") return true;

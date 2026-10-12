@@ -4,6 +4,7 @@ import { AgentsPanel } from "./AgentsPanel.tsx";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
 import { GitHubIcon, GitIcon } from "./BrandIcon.tsx";
 import { ConversationsIcon } from "./ConversationsIcon.tsx";
+import { BotsIcon } from "./icons/bots.tsx";
 import { NotificationCenter } from "./NotificationCenter.tsx";
 import { SettingsIcon } from "./SettingsIcon.tsx";
 import { UsageIcon } from "./UsageIcon.tsx";
@@ -22,6 +23,7 @@ interface StripButton {
 
 export function NavigationStrip({
   onChat,
+  onBots,
   onGit,
   onGitHub,
   onSettings,
@@ -30,6 +32,7 @@ export function NavigationStrip({
   activeView,
 }: {
   onChat: () => void;
+  onBots: () => void;
   onGit: () => void;
   onGitHub: () => void;
   onSettings: () => void;
@@ -41,6 +44,7 @@ export function NavigationStrip({
   const { activeId: environment } = useEnvironments();
   const [accountOpen, setAccountOpen] = useState(true);
   const conversations: StripButton = { name: "Conversations", icon: ConversationsIcon, run: onChat, view: "chat" };
+  const bots: StripButton = { name: "Bots", icon: BotsIcon, run: onBots, view: "bots" };
   const code = [
     { name: "Source control", icon: GitIcon, run: onGit, view: "git" },
     { name: "GitHub", icon: GitHubIcon, run: onGitHub, view: "github" },
@@ -68,6 +72,7 @@ export function NavigationStrip({
       <div className="navigation-strip-brand" aria-hidden="true" />
       <SelectionHighlight value={activeView} layout={String(accountOpen)} selector='.strip-action[aria-current="page"] > .strip-action-face' />
       {button(conversations)}
+      {button(bots)}
       {code.map(button)}
       <div className="navigation-strip-group" key={environment}>
         <AgentsPanel />

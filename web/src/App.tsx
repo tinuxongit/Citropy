@@ -32,9 +32,15 @@ import { ConfirmationDialog } from "./components/ConfirmationDialog.tsx";
 import { RemoteFolderDialog } from "./components/RemoteFolderDialog.tsx";
 import type { NotificationTarget } from "../../shared/protocol.ts";
 import { Welcome } from "./components/Welcome.tsx";
+import { BotRoster } from "./components/bots/BotRoster.tsx";
+import { BotPanel } from "./components/bots/BotPanel.tsx";
+import { BotsEmpty } from "./components/bots/BotsEmpty.tsx";
+import { orderedBots } from "./components/bots/bot-order.ts";
+import { createBot } from "./lib/bots.ts";
 import {
   useApp,
   viewportWidth,
+  selectBot,
   selectThread,
   toggleInspector,
   toggleSidebar,
@@ -75,6 +81,7 @@ export function App() {
   const narrow = useSyncExternalStore(subscribeResize, () => viewportWidth() <= NARROW_VIEWPORT);
   const stageBackground = useApp((state) => state.stageBackground);
   const inspectorOpen = useApp((state) => state.inspectorOpen);
+  const botPanelOpen = useApp((state) => state.botPanelOpen && Boolean(state.bots[state.activeBotId ?? ""]));
   const panelWidths = useApp((state) => state.panelWidths);
   const uiScale = useApp((state) => state.uiScale);
   const uiTransparency = useApp((state) => state.uiTransparency);
@@ -96,6 +103,7 @@ export function App() {
   });
   const hasProject = useApp((state) => state.projects.length > 0);
   const panelsShown = view === "chat";
+  const conversationShown = view === "chat" || view === "bots";
   const navigationOpen = view === "chat" ? sidebarOpen : sectionSidebarOpen;
   const shellBody = useRef<HTMLDivElement>(null);
   useDrawerGestures(shellBody, {
@@ -185,7 +193,7 @@ export function App() {
     }
     if (target.threadId && state.threads[target.threadId])
       selectThread(target.threadId);
-    openView(target.view);
+    openView(state.threads[target.threadId ?? ""]?.botId ? "bots" : target.view);
   };
 
   useEffect(
@@ -258,8 +266,20 @@ export function App() {
         setView("chat");
         if (!useApp.getState().sidebarOpen) toggleSidebar();
         useApp.setState({ threadSearchFocusPending: true });
+      } else if (view === "bots" && !inTextEntry(event.target) && (event.altKey ? key === "arrowup" || key === "arrowdown" : /^[1-9]$/.test(key))) {
+        const state = useApp.getState();
+        const { shown } = orderedBots(state.bots, state.threads);
+        const current = shown.findIndex((bot) => bot.id === state.activeBotId);
+        const next = event.altKey ? shown[(current + (key === "arrowup" ? -1 : 1) + shown.length) % shown.length] : shown[Number(key) - 1];
+        if (!next) return;
+        event.preventDefault();
+        selectBot(next.id);
       } else if (key === "n" && !event.shiftKey) {
         event.preventDefault();
+        if (view === "bots") {
+          void createBot().catch(reportError);
+          return;
+        }
         setView("chat");
         createThread();
       } else if (view === "chat" && !event.altKey && !inTerminal(event.target) && (key === "w" || key === "t" || key === "tab")) {
@@ -279,7 +299,7 @@ export function App() {
     <div
       className="shell"
       data-inspector={inspectorOpen && panelsShown}
-      data-composer={view === "chat" && hasProject && hasActiveThread}
+      data-composer={conversationShown && hasProject && hasActiveThread}
       data-section={view !== "chat" && !backgroundEverywhere || undefined}
       data-backdrop={stageBackground !== "default" ? stageBackground : undefined}
       style={{
@@ -297,6 +317,7 @@ export function App() {
       <NavigationStrip
         activeView={view}
         onChat={() => (view === "chat" ? toggleSidebar() : openView("chat"))}
+        onBots={() => (view === "bots" ? toggleNavigation() : openView("bots"))}
         onGit={() => (view === "git" ? toggleNavigation() : openView("git"))}
         onGitHub={() => (view === "github" ? toggleNavigation() : openView("github"))}
         onSettings={() => (view === "settings" ? toggleNavigation() : openSettings())}
@@ -326,6 +347,9 @@ export function App() {
           <Sidebar
             onConversation={() => openView("chat")}
           />
+        </SlidingPanel>}
+        {view === "bots" && <SlidingPanel open={sectionSidebarOpen} side="left" keepMounted pauseHidden>
+          <BotRoster onOpen={closeSectionSidebarOnNarrow} />
         </SlidingPanel>}
         <main className="stage">
           <Suspense
@@ -360,10 +384,12 @@ export function App() {
                 sidebarOpen={sectionSidebarOpen}
                 onNavigate={closeSectionSidebarOnNarrow}
               />
+            ) : view === "bots" && !activeThreadId ? (
+              <BotsEmpty />
             ) : hasProject && activeThreadId ? (
               <Fragment key={`${environment}:${activeThreadId}`}>
                 <Conversation />
-                <ThreadDetailsPanel />
+                {view === "chat" && <ThreadDetailsPanel />}
                 <Composer
                   onUsage={() => openView("usage")}
                   onSkills={() => {
@@ -379,6 +405,9 @@ export function App() {
         </main>
         {hasProject && <SlidingPanel open={inspectorOpen && panelsShown} side="right" keepMounted>
           <Inspector key={environment} visible={inspectorOpen && panelsShown} />
+        </SlidingPanel>}
+        {view === "bots" && <SlidingPanel open={botPanelOpen} side="right" keepMounted>
+          <BotPanel />
         </SlidingPanel>}
       </div>
       <AnimatePresence>{newThreadProvider && (

@@ -59,6 +59,12 @@ export function toggleThreadDetails(): void {
   environmentStorage.setItem("citropy.threadDetails", next ? "1" : "0");
 }
 
+export function toggleBotPanel(): void {
+  const next = !useApp.getState().botPanelOpen;
+  useApp.setState({ botPanelOpen: next });
+  environmentStorage.setItem("citropy.botPanel", next ? "1" : "0");
+}
+
 export function toggleSidebar(): void {
   const next = !useApp.getState().sidebarOpen;
   useApp.setState({ sidebarOpen: next });

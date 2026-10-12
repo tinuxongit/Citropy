@@ -8,6 +8,7 @@ import { isProviderId } from "../../../shared/protocol.ts";
 import { create } from "zustand";
 import { defaultAssistance, type AssistanceSettings, type WritingModel } from "../../../shared/assistance.ts";
 import type { GitHubUser } from "../../../shared/github.ts";
+import type { Bot } from "../../../shared/bots.ts";
 import type {
   BrowserState,
   PanelTab,
@@ -39,6 +40,7 @@ interface MessageShell {
   partIds: string[];
   attachments?: Message["attachments"];
   mentions?: Message["mentions"];
+  origin?: Message["origin"];
 }
 
 export interface Toast {
@@ -80,7 +82,7 @@ export interface AppState {
   shells: Record<string, ShellProcess>;
   projectDefaults: ProjectSettings;
   assistance: AssistanceSettings;
-  activeView: "chat" | "git" | "github" | "settings" | "usage";
+  activeView: "chat" | "bots" | "git" | "github" | "settings" | "usage";
   newThreadProvider: import("../../../shared/protocol.ts").ProviderId | null;
   whatsNew: import("../../../shared/app-update.ts").ReleaseNotes | null;
   setupOpen: boolean;
@@ -112,6 +114,9 @@ export interface AppState {
   providers: ProviderInfo[];
   threads: Record<string, ThreadMeta>;
   threadOrder: string[];
+  bots: Record<string, Bot>;
+  activeBotId: string | null;
+  chatThreadId: string | null;
   messages: Record<string, MessageShell>;
   parts: Map<string, Part>;
   reveals: Record<string, true>;
@@ -143,6 +148,7 @@ export interface AppState {
   inspectorOpen: boolean;
   sidebarOpen: boolean;
   threadDetailsOpen: boolean;
+  botPanelOpen: boolean;
   searchEngine: SearchEngine;
   stageBackground: StageBackground;
   chatWidth: ChatWidth;
@@ -273,6 +279,9 @@ export const useApp = create<AppState>(() => ({
   providers: [],
   threads: {},
   threadOrder: [],
+  bots: {},
+  activeBotId: typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.bot"),
+  chatThreadId: null,
   messages: {},
   parts: new Map(),
   reveals: {},
@@ -306,6 +315,7 @@ export const useApp = create<AppState>(() => ({
       window.innerWidth / (initialScale / 100) > 1150,
   ),
   threadDetailsOpen: readFlag("citropy.threadDetails", false),
+  botPanelOpen: readFlag("citropy.botPanel", true),
   sidebarOpen: readFlag(
     "citropy.sidebar",
     typeof window !== "undefined" &&

@@ -61,6 +61,7 @@ export function ComposerInput({
   const [selected, setSelected] = useState(0);
   const [dismissed, setDismissed] = useState<string>();
   const connected = useApp((state) => state.connected);
+  const botName = useApp((state) => state.bots[thread.botId ?? ""]?.name);
   const mention = /(?:^|\s)@([^\s\[\]]*)$/.exec(value.slice(0, caret));
   const slash = /^\/[\w.:-]*$/.test(value) ? value : undefined;
   const query = mention ? `@${mention[1]}` : slash;
@@ -233,7 +234,9 @@ export function ComposerInput({
             ? "Citropy is reconnecting. Your message will wait…"
             : thread.running
               ? "Queue a follow-up…"
-              : "Ask a question or describe a change…"
+              : botName
+                ? `Message ${botName}`
+                : "Ask a question or describe a change…"
         }
         onKey={(event) => {
           if (visible && event.key === "Escape") {

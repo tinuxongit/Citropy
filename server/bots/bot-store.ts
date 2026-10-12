@@ -7,6 +7,7 @@ import { saveJson } from "../save-json.ts";
 import { store } from "../store.ts";
 import { BOT_COLORS, BOT_LIMITS, BOT_SHAPES, checkSchedule, nextRunAfter } from "../../shared/bots.ts";
 import type { Bot, BotProfile, Routine, RoutineDraft, RoutineRun, RoutineRunStatus } from "../../shared/bots.ts";
+import type { Message } from "../../shared/protocol.ts";
 
 const NEW_BOT = { name: "New bot", title: "", description: "", notifications: true };
 
@@ -20,6 +21,13 @@ function loadBots(): Bot[] {
       for (const run of routine.runs)
         if (run.status === "running") Object.assign(run, { status: "stopped", finishedAt: run.startedAt, error: "Citropy closed during this run." });
   return bots;
+}
+
+function latestText(messages: Message[]): string | undefined {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const part = messages[index]!.parts.findLast(entry => entry.kind === "text" && entry.text.trim());
+    if (part?.kind === "text") return part.text.trim().slice(0, BOT_LIMITS.previewLength);
+  }
 }
 
 function text(value: unknown, label: string, max: number, allowEmpty = true): string {
@@ -61,12 +69,16 @@ function checkProfile(input: Partial<BotProfile>): Partial<BotProfile> {
 
 class BotStore {
   bots = new Map(loadBots().map(bot => [bot.id, bot]));
+  #stalePreviews = new Set<string>();
 
   constructor() {
     bus.subscribe(event => {
-      if (event.t !== "thread.remove") return;
-      const bot = this.byThread(event.id);
-      if (bot) this.#forget(bot.id);
+      if (event.t === "thread.remove") {
+        const bot = this.byThread(event.id);
+        if (bot) this.#forget(bot.id);
+      }
+      if (event.t === "message.add" && this.byThread(event.threadId)) this.#stalePreviews.add(event.threadId);
+      if (event.t === "thread.upsert" && !event.thread.running && this.#stalePreviews.delete(event.thread.id)) this.#refreshPreview(event.thread.id);
     });
   }
 
@@ -186,6 +198,14 @@ class BotStore {
     const run = bot?.routines.find(entry => entry.id === routineId)?.runs.find(entry => entry.id === runId);
     if (!bot || run?.status !== "running") return;
     Object.assign(run, { status, finishedAt: Date.now() }, error ? { error } : {});
+    this.#changed(bot);
+  }
+
+  #refreshPreview(threadId: string): void {
+    const bot = this.byThread(threadId);
+    const preview = latestText(store.readMessages(threadId));
+    if (!bot || preview === undefined || preview === bot.preview) return;
+    bot.preview = preview;
     this.#changed(bot);
   }
 

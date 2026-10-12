@@ -134,16 +134,11 @@ export function rememberThreadSettings(thread: Pick<ThreadMeta, "provider" | "mo
   environmentStorage.setItem("citropy.threadDefaults", JSON.stringify(threadDefaults));
 }
 
-export async function createThread(provider?: ProviderId, options = false): Promise<void> {
-  const signal = environmentSignal();
+function chooseProvider(provider?: ProviderId) {
   const state = useApp.getState();
-  const projectId = state.activeProjectId;
-  if (!projectId || !state.connected || state.creatingThread) return;
   const available = state.providers.filter(hasUsableAccount);
-  const previous = state.activeThreadId
-    ? state.threads[state.activeThreadId]
-    : undefined;
-  const project = state.projects.find((entry) => entry.id === projectId);
+  const previous = state.activeThreadId ? state.threads[state.activeThreadId] : undefined;
+  const project = state.projects.find((entry) => entry.id === state.activeProjectId);
   const defaults = resolveProjectSettings(state.projectDefaults, project?.settings);
   const chosen =
     provider ??
@@ -162,37 +157,56 @@ export async function createThread(provider?: ProviderId, options = false): Prom
         },
       ],
     }));
-    return;
+    return undefined;
   }
-  if (options) {
-    useApp.setState({ newThreadProvider: chosen });
-    return;
-  }
+  return { chosen, available, previous, defaults };
+}
+
+export function newThreadSettings(provider?: ProviderId) {
+  const { activeProjectId: projectId, threadDefaults } = useApp.getState();
+  const choice = chooseProvider(provider);
+  if (!projectId || !choice) return undefined;
+  const { chosen, available, previous, defaults } = choice;
   const catalog = available.find((entry) => entry.id === chosen)!;
   const last = defaults.provider === chosen
     ? defaults
-    : state.threadDefaults?.provider === chosen
-    ? state.threadDefaults
+    : threadDefaults?.provider === chosen
+    ? threadDefaults
     : previous?.provider === chosen
       ? previous
       : undefined;
   const providerInstanceId = activeAccountId(catalog);
   const models = providerAccount(catalog, providerInstanceId).models;
   const model = selectedModel(models, last?.model) ?? selectedModel(models);
+  return {
+    projectId, provider: chosen, providerInstanceId,
+    ...modelSettings(models, {
+      model: model?.id,
+      effort: last?.effort,
+      contextWindow: last && "contextWindow" in last ? last.contextWindow : undefined,
+      fastMode: last && "fastMode" in last ? last.fastMode : undefined,
+    }),
+    workspace: { kind: defaults.workspace ?? "current" },
+  };
+}
+
+export async function createThread(provider?: ProviderId, options = false): Promise<void> {
+  const signal = environmentSignal();
+  const state = useApp.getState();
+  const projectId = state.activeProjectId;
+  if (!projectId || !state.connected || state.creatingThread) return;
+  if (options) {
+    const choice = chooseProvider(provider);
+    if (choice) useApp.setState({ newThreadProvider: choice.chosen });
+    return;
+  }
+  const settings = newThreadSettings(provider);
+  if (!settings) return;
   useApp.setState({ creatingThread: true });
   try {
     const thread = await api<ThreadMeta>("threads", {
       method: "POST",
-      body: JSON.stringify({
-        projectId, provider: chosen, providerInstanceId,
-        ...modelSettings(models, {
-          model: model?.id,
-          effort: last?.effort,
-          contextWindow: last && "contextWindow" in last ? last.contextWindow : undefined,
-          fastMode: last && "fastMode" in last ? last.fastMode : undefined,
-        }),
-        workspace: { kind: defaults.workspace ?? "current" },
-      }),
+      body: JSON.stringify(settings),
     });
     useApp.setState((state) => ({
       threads: { ...state.threads, [thread.id]: thread },
@@ -220,7 +234,7 @@ export function showThread(id: string): void {
   }
   selectThread(id);
   loadThread(id);
-  useApp.setState({ activeView: "chat" });
+  if (!thread.botId) useApp.setState({ activeView: "chat" });
 }
 
 function updateTabs(change: (state: AppState) => Tabs): void {
@@ -229,6 +243,7 @@ function updateTabs(change: (state: AppState) => Tabs): void {
 }
 
 export function keepTab(id: string): void {
+  if (useApp.getState().threads[id]?.botId) return;
   updateTabs((state) => withKeptTab(state, id));
 }
 

@@ -4,7 +4,10 @@ import { environmentName, isRemote } from "../lib/environment.ts";
 import { BranchIcon } from "./icons/git.tsx";
 import { PanelLeftIcon, PanelRightIcon } from "./icons/squares.tsx";
 import { ComposeIcon } from "./icons/pencil.tsx";
-import { toggleInspector, useApp } from "../lib/store.ts";
+import { toggleBotPanel, toggleInspector, useApp } from "../lib/store.ts";
+import type { AppState } from "../lib/app-state.ts";
+import { BotAvatar } from "./bots/BotAvatar.tsx";
+import { botMood } from "./bots/bot-order.ts";
 import { createThread } from "../lib/actions.ts";
 import { WindowControls } from "./WindowControls.tsx";
 import { ThreadTabs } from "./ThreadTabs.tsx";
@@ -17,7 +20,7 @@ export function Titlebar({
   sidebarToggle,
   onToggleSidebar,
 }: {
-  view: "chat" | "git" | "github" | "settings" | "usage";
+  view: AppState["activeView"];
   sidebarOpen: boolean;
   sidebarToggle: boolean;
   onToggleSidebar: () => void;
@@ -29,6 +32,8 @@ export function Titlebar({
     activeThreadId ? state.threads[activeThreadId] : undefined,
   );
   const inspectorOpen = useApp((state) => state.inspectorOpen);
+  const bot = useApp((state) => state.bots[state.activeBotId ?? ""]);
+  const botPanelOpen = useApp((state) => state.botPanelOpen);
   const panelActivity = useApp((state) => state.panels.some((panel) => panel.projectId === state.activeProjectId && state.unseenPanels[panel.id]));
   const canCreateThread = useApp((state) => state.connected && !state.creatingThread && Boolean(state.activeProjectId));
 
@@ -88,6 +93,13 @@ export function Titlebar({
             <span className="thread-title truncate">{thread.title}</span>
           </>
         )}
+        {view === "bots" && bot && (
+          <span className="bot-heading">
+            <BotAvatar bot={bot} size={22} mood={botMood(thread)} />
+            <span className="thread-title truncate">{bot.name}</span>
+            {bot.title && <span className="topbar-subtitle"><span className="truncate">{bot.title}</span></span>}
+          </span>
+        )}
         {view === "chat" && project && <span className="topbar-subtitle">
           <span className="truncate">{project.name}</span>
           {branch && <><BranchIcon size={11} /><span className="truncate">{branch}</span></>}
@@ -122,6 +134,19 @@ export function Titlebar({
               <PanelRightIcon size={16} />
               {panelActivity && <span className="unseen-dot" aria-label="New panel activity" />}
             </span>
+          </button>
+        )}
+        {view === "bots" && bot && (
+          <button
+            className="icon-btn inspector-toggle"
+            type="button"
+            onClick={toggleBotPanel}
+            data-active={botPanelOpen}
+            aria-expanded={botPanelOpen}
+            aria-label="Toggle bot panel"
+            title="Toggle bot panel"
+          >
+            <PanelRightIcon size={16} />
           </button>
         )}
       </div>
