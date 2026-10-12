@@ -5,7 +5,7 @@ import { ChevronRightIcon } from "../icons/chevrons.tsx";
 import { PlusIcon } from "../icons/marks.tsx";
 import { SettingsIcon } from "../SettingsIcon.tsx";
 import { BotAvatar } from "./BotAvatar.tsx";
-import { botMood } from "./bot-order.ts";
+import { botMood } from "../../lib/roster.ts";
 import type { BotPage } from "./BotPanel.tsx";
 
 export function BotOverview({ bot, onPage }: { bot: Bot; onPage: (page: BotPage) => void }) {

@@ -39,6 +39,7 @@ import { store } from "./store.ts";
 import { logFile, setLogging, writeLog } from "./logs.ts";
 import { startUsageResume } from "./usage-resume.ts";
 import { botStore } from "./bots/bot-store.ts";
+import { groupStore } from "./bots/group-store.ts";
 import { startRoutines } from "./bots/routines.ts";
 import * as terminals from "./terminals.ts";
 import type { ClientEvent, ServerEvent, Snapshot } from "../shared/protocol.ts";
@@ -94,6 +95,7 @@ function snapshot(): Snapshot {
     projects: [...store.projects.values()].sort((a, b) => b.lastOpened - a.lastOpened),
     threads: store.allMeta().sort((a, b) => b.updatedAt - a.updatedAt),
     bots: botStore.list(),
+    botGroups: groupStore.list(),
     providers: providerInfo(),
     home: homedir(),
   };

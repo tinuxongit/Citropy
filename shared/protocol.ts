@@ -304,9 +304,21 @@ export interface ThreadMeta {
   nativeAgentId?: string;
   nativeLaunchId?: string;
   botId?: string;
+  groupId?: string;
   error?: string;
   usageLimit?: UsageLimitState;
   queue?: QueuedMessage[];
+}
+
+export interface BotThreadSettings {
+  projectId: string;
+  provider: ProviderId;
+  providerInstanceId?: string;
+  model?: string;
+  effort?: string;
+  contextWindow?: number;
+  fastMode?: boolean;
+  permissionMode?: PermissionMode;
 }
 
 export interface UsageLimitState {
@@ -445,6 +457,7 @@ export interface Snapshot {
   projects: Project[];
   threads: ThreadMeta[];
   bots?: import("./bots.ts").Bot[];
+  botGroups?: import("./bots.ts").BotGroup[];
   providers: ProviderInfo[];
   activeProjectId?: string;
   home: string;
@@ -481,6 +494,8 @@ export type ServerEvent = (
   | { t: "thread.remove"; id: string }
   | { t: "bot.upsert"; bot: import("./bots.ts").Bot; requestId?: string }
   | { t: "bot.remove"; id: string }
+  | { t: "group.upsert"; group: import("./bots.ts").BotGroup; requestId?: string }
+  | { t: "group.remove"; id: string }
   | { t: "thread.messages"; threadId: string; messages: Message[]; page?: HistoryPage; requestId?: string }
   | { t: "message.add"; threadId: string; message: Message }
   | { t: "part.add"; threadId: string; messageId: string; part: Part }
@@ -566,10 +581,13 @@ export type ClientEvent = (
   | { t: "queue.move"; threadId: string; id: string; index: number }
   | { t: "queue.edit"; requestId: string; threadId: string; id: string }
   | { t: "thread.remove"; id: string }
-  | { t: "bot.create"; requestId: string; thread: { projectId: string; provider: ProviderId; providerInstanceId?: string; model?: string; effort?: string; contextWindow?: number; fastMode?: boolean }; profile?: Partial<import("./bots.ts").BotProfile> }
+  | { t: "bot.create"; requestId: string; thread: BotThreadSettings; profile?: Partial<import("./bots.ts").BotProfile> }
   | { t: "bot.update"; requestId?: string; id: string; profile: Partial<import("./bots.ts").BotProfile> }
   | { t: "bot.duplicate"; requestId: string; id: string }
   | { t: "bot.remove"; id: string }
+  | { t: "group.create"; requestId: string; thread: BotThreadSettings; botIds: string[] }
+  | { t: "group.update"; requestId?: string; id: string; patch: import("./bots.ts").BotGroupPatch }
+  | { t: "group.remove"; id: string }
   | { t: "routine.save"; requestId: string; botId: string; routine: import("./bots.ts").RoutineDraft }
   | { t: "routine.remove"; botId: string; id: string }
   | { t: "routine.run"; botId: string; id: string }

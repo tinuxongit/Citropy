@@ -31,6 +31,7 @@ import type { PanelKind } from "../../../shared/workbench.ts";
 import { movePanelTab } from "../../../shared/workbench.ts";
 import type { DropEdge } from "../../../shared/move-beside.ts";
 import { randomId } from "./random-id.ts";
+import { inBotsView } from "../../../shared/bots.ts";
 
 export async function saveProjectDefaults(settings: ProjectSettings): Promise<void> {
   const desktop = window.citropyDesktop ?? window.loomDesktop;
@@ -234,7 +235,7 @@ export function showThread(id: string): void {
   }
   selectThread(id);
   loadThread(id);
-  if (!thread.botId) useApp.setState({ activeView: "chat" });
+  if (!inBotsView(thread)) useApp.setState({ activeView: "chat" });
 }
 
 function updateTabs(change: (state: AppState) => Tabs): void {
@@ -243,7 +244,7 @@ function updateTabs(change: (state: AppState) => Tabs): void {
 }
 
 export function keepTab(id: string): void {
-  if (useApp.getState().threads[id]?.botId) return;
+  if (inBotsView(useApp.getState().threads[id])) return;
   updateTabs((state) => withKeptTab(state, id));
 }
 

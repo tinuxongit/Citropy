@@ -2,6 +2,7 @@ import type { Part } from "../../../shared/protocol.ts";
 import type { AppState } from "./app-state.ts";
 import { buildRows, type Row } from "./group.ts";
 import { normalizeTodos } from "../../../shared/todos.ts";
+import { inBotsView, type MessageOrigin } from "../../../shared/bots.ts";
 
 const STAMP_GAP_MS = 30 * 60_000;
 
@@ -112,6 +113,10 @@ function finalAnswerRange(rows: Row[], parts: AppState["parts"]): { start: numbe
   return { start, end };
 }
 
+function sameAuthor(a: MessageOrigin | undefined, b: MessageOrigin | undefined): boolean {
+  return (a?.kind === "bot" ? a.botId : undefined) === (b?.kind === "bot" ? b.botId : undefined);
+}
+
 export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
   const order = state.order[threadId] ?? [];
   const thread = state.threads[threadId];
@@ -123,7 +128,8 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
   for (const messageId of order) {
     const assistant = state.messages[messageId]?.role === "assistant";
     const previous = turns.at(-1);
-    if (assistant && previous && state.messages[previous[0]!]?.role === "assistant") previous.push(messageId);
+    const leading = state.messages[previous?.[0] ?? ""];
+    if (assistant && previous && leading?.role === "assistant" && sameAuthor(leading.origin, state.messages[messageId]!.origin)) previous.push(messageId);
     else turns.push([messageId]);
   }
   const timeline = turns.flatMap<TimelineRow>((messageIds, turnIndex) => {
@@ -131,7 +137,7 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     const message = state.messages[messageId];
     if (!message) return [];
     const previousTs = state.messages[turns[turnIndex - 1]?.at(-1) ?? ""]?.ts;
-    const stamp = thread?.botId && (previousTs === undefined || message.ts - previousTs > STAMP_GAP_MS) ? message.ts : undefined;
+    const stamp = inBotsView(thread) && (previousTs === undefined || message.ts - previousTs > STAMP_GAP_MS) ? message.ts : undefined;
     if (message.role !== "assistant") return [{ key: messageId, messageId, first: true, last: true, stamp }];
     const owners = new Map<string, string>();
     for (const id of messageIds) {

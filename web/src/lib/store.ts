@@ -5,6 +5,7 @@ import { useApp, readOffline, type AppState, type Confirmation } from "./app-sta
 import { trimHistories } from "./history-cache.ts";
 import { readTabs, saveTabs, withPreviewTab } from "./thread-tabs.ts";
 import type { EnvironmentSlice } from "./live-environments.ts";
+import { inBotsView } from "../../../shared/bots.ts";
 
 export { useApp } from "./app-state.ts";
 export { applyEvent, applyEvents } from "./server-events.ts";
@@ -65,7 +66,8 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     threads: {},
     threadOrder: [],
     bots: {},
-    activeBotId: environmentStorage.getItem("citropy.bot", id),
+    botGroups: {},
+    activeRosterId: environmentStorage.getItem("citropy.bot", id),
     chatThreadId: null,
     messages: {},
     parts: new Map(),
@@ -108,8 +110,9 @@ function withActiveThread(state: AppState, id: string | null): AppState {
 }
 
 export function selectThread(id: string | null): void {
-  const botId = id ? useApp.getState().threads[id]?.botId : undefined;
-  if (botId) return selectBot(botId);
+  const thread = id ? useApp.getState().threads[id] : undefined;
+  const rosterId = thread?.botId ?? thread?.groupId;
+  if (rosterId) return selectRosterEntry(rosterId);
   useApp.setState((state) => {
     const tabs = id ? withPreviewTab(state, id) : state;
     if (state.activeThreadId === id) return tabs === state ? state : { ...state, ...tabs };
@@ -123,8 +126,8 @@ export function selectThread(id: string | null): void {
   saveTabs(useApp.getState());
 }
 
-export function selectBot(id: string): void {
-  useApp.setState({ activeBotId: id, activeView: "bots" });
+export function selectRosterEntry(id: string): void {
+  useApp.setState({ activeRosterId: id, activeView: "bots" });
   environmentStorage.setItem("citropy.bot", id);
 }
 
@@ -132,7 +135,7 @@ export function showBotThread(id: string | null): void {
   useApp.setState((state) => {
     if (state.activeThreadId === id) return state;
     const current = state.threads[state.activeThreadId ?? ""];
-    return { ...withActiveThread(state, id), chatThreadId: current && !current.botId ? current.id : state.chatThreadId };
+    return { ...withActiveThread(state, id), chatThreadId: current && !inBotsView(current) ? current.id : state.chatThreadId };
   });
 }
 

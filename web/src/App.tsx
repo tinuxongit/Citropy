@@ -35,12 +35,14 @@ import { Welcome } from "./components/Welcome.tsx";
 import { BotRoster } from "./components/bots/BotRoster.tsx";
 import { BotPanel } from "./components/bots/BotPanel.tsx";
 import { BotsEmpty } from "./components/bots/BotsEmpty.tsx";
-import { orderedBots } from "./components/bots/bot-order.ts";
-import { createBot } from "./lib/bots.ts";
+import { NewChatDialog } from "./components/bots/NewChatDialog.tsx";
+import { orderedRoster, rosterItem } from "./lib/roster.ts";
+import { inBotsView } from "../../shared/bots.ts";
+import { openNewBotChat } from "./lib/bots.ts";
 import {
   useApp,
   viewportWidth,
-  selectBot,
+  selectRosterEntry,
   selectThread,
   toggleInspector,
   toggleSidebar,
@@ -77,11 +79,12 @@ export function App() {
     viewportWidth() > NARROW_VIEWPORT,
   );
   const newThreadProvider = useApp((state) => state.newThreadProvider);
+  const newBotChatOpen = useApp((state) => state.newBotChatOpen);
   const sidebarOpen = useApp((state) => state.sidebarOpen);
   const narrow = useSyncExternalStore(subscribeResize, () => viewportWidth() <= NARROW_VIEWPORT);
   const stageBackground = useApp((state) => state.stageBackground);
   const inspectorOpen = useApp((state) => state.inspectorOpen);
-  const botPanelOpen = useApp((state) => state.botPanelOpen && Boolean(state.bots[state.activeBotId ?? ""]));
+  const botPanelOpen = useApp((state) => state.botPanelOpen && Boolean(rosterItem(state, state.activeRosterId)));
   const panelWidths = useApp((state) => state.panelWidths);
   const uiScale = useApp((state) => state.uiScale);
   const uiTransparency = useApp((state) => state.uiTransparency);
@@ -193,7 +196,7 @@ export function App() {
     }
     if (target.threadId && state.threads[target.threadId])
       selectThread(target.threadId);
-    openView(state.threads[target.threadId ?? ""]?.botId ? "bots" : target.view);
+    openView(inBotsView(state.threads[target.threadId ?? ""]) ? "bots" : target.view);
   };
 
   useEffect(
@@ -268,16 +271,16 @@ export function App() {
         useApp.setState({ threadSearchFocusPending: true });
       } else if (view === "bots" && !inTextEntry(event.target) && (event.altKey ? key === "arrowup" || key === "arrowdown" : /^[1-9]$/.test(key))) {
         const state = useApp.getState();
-        const { shown } = orderedBots(state.bots, state.threads);
-        const current = shown.findIndex((bot) => bot.id === state.activeBotId);
+        const shown = orderedRoster(state).shown.map((entry) => entry.item);
+        const current = shown.findIndex((item) => item.id === state.activeRosterId);
         const next = event.altKey ? shown[(current + (key === "arrowup" ? -1 : 1) + shown.length) % shown.length] : shown[Number(key) - 1];
         if (!next) return;
         event.preventDefault();
-        selectBot(next.id);
+        selectRosterEntry(next.id);
       } else if (key === "n" && !event.shiftKey) {
         event.preventDefault();
         if (view === "bots") {
-          void createBot().catch(reportError);
+          openNewBotChat();
           return;
         }
         setView("chat");
@@ -413,6 +416,7 @@ export function App() {
       <AnimatePresence>{newThreadProvider && (
         <NewConversation key={`${environment}:${activeProjectId}:${newThreadProvider}`} />
       )}</AnimatePresence>
+      <AnimatePresence>{newBotChatOpen && <NewChatDialog key={environment} />}</AnimatePresence>
       <ConfirmationDialog />
       <RemoteFolderDialog />
       <LinkActions />

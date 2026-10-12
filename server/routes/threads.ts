@@ -1,3 +1,4 @@
+import { postFromUser } from "../bots/group-chat.ts";
 import { checkUsageResume } from "../usage-resume.ts";
 import { answer as answerPermission } from "../permissions.ts";
 import { providerInfo } from "../provider-registry.ts";
@@ -107,7 +108,8 @@ export const threadRoutes: Routes = {
     send({ t: "thread.messages", threadId: thread.id, messages: thread.messages });
   },
   "thread.send": async (event, send) => {
-    await runtimeFor(event.threadId).send(event.text, event.attachments);
+    if (store.threads.get(event.threadId)?.groupId) await postFromUser(event.threadId, event.text, event.attachments);
+    else await runtimeFor(event.threadId).send(event.text, event.attachments);
     if (event.requestId) send({ t: "thread.accepted", requestId: event.requestId });
   },
   "thread.stop": (event) => {

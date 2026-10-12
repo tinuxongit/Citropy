@@ -7,6 +7,10 @@ export function threadStarted(thread: ThreadMeta, hasMessages: boolean, loaded: 
   return hasMessages || (!loaded && Boolean(thread.usage.turns || thread.externalId || thread.branchedFrom || thread.transfers?.length));
 }
 
+export function hasConversation(state: AppState, id: string): boolean {
+  return Boolean(state.order[id]?.some((messageId) => state.messages[messageId]?.role !== "system"));
+}
+
 export function isUnusedThread(state: AppState, id: string): boolean {
   const thread = state.threads[id];
   if (!thread || !state.loaded[id] || thread.parentThreadId || thread.running || thread.queue?.length) return false;

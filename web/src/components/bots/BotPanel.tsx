@@ -4,6 +4,7 @@ import { ChevronLeftIcon } from "../icons/chevrons.tsx";
 import { CloseIcon } from "../icons/marks.tsx";
 import { BotOverview } from "./BotOverview.tsx";
 import { BotSettings } from "./BotSettings.tsx";
+import { GroupPanel } from "./GroupPanel.tsx";
 import { RoutineEditor } from "./RoutineEditor.tsx";
 
 export type BotPage = { kind: "overview" } | { kind: "settings" } | { kind: "routine"; id?: string };
@@ -11,18 +12,20 @@ export type BotPage = { kind: "overview" } | { kind: "settings" } | { kind: "rou
 const OVERVIEW: BotPage = { kind: "overview" };
 
 export function BotPanel() {
-  const bot = useApp((state) => state.bots[state.activeBotId ?? ""]);
+  const bot = useApp((state) => state.bots[state.activeRosterId ?? ""]);
+  const group = useApp((state) => state.botGroups[state.activeRosterId ?? ""]);
+  const item = bot ?? group;
   const [page, setPage] = useState<BotPage>(OVERVIEW);
-  const [pageBot, setPageBot] = useState(bot?.id);
-  if (pageBot !== bot?.id) {
-    setPageBot(bot?.id);
+  const [pageItem, setPageItem] = useState(item?.id);
+  if (pageItem !== item?.id) {
+    setPageItem(item?.id);
     setPage(OVERVIEW);
   }
-  if (!bot) return <aside className="inspector bot-panel" aria-label="Bot" />;
-  const routine = page.kind === "routine" && page.id ? bot.routines.find((entry) => entry.id === page.id) : undefined;
-  const title = page.kind === "settings" ? "Settings" : page.kind === "routine" ? routine?.name ?? "New routine" : bot.name;
+  if (!item) return <aside className="inspector bot-panel" aria-label="Bot" />;
+  const routine = bot && page.kind === "routine" && page.id ? bot.routines.find((entry) => entry.id === page.id) : undefined;
+  const title = page.kind === "settings" ? "Settings" : page.kind === "routine" ? routine?.name ?? "New routine" : item.name;
   return (
-    <aside className="inspector bot-panel" aria-label={`${bot.name} details`}>
+    <aside className="inspector bot-panel" aria-label={`${item.name} details`}>
       <header className="bot-panel-head">
         {page.kind !== "overview" && (
           <button type="button" className="icon-btn" aria-label="Back" title="Back" onClick={() => setPage(OVERVIEW)}>
@@ -35,9 +38,10 @@ export function BotPanel() {
         </button>
       </header>
       <div className="bot-panel-body scroll">
-        {page.kind === "overview" && <BotOverview bot={bot} onPage={setPage} />}
-        {page.kind === "settings" && <BotSettings key={bot.id} bot={bot} />}
-        {page.kind === "routine" && <RoutineEditor key={page.id ?? "new"} bot={bot} routine={routine} onDone={() => setPage(OVERVIEW)} onSaved={(id) => setPage({ kind: "routine", id })} />}
+        {group && <GroupPanel key={group.id} group={group} />}
+        {bot && page.kind === "overview" && <BotOverview bot={bot} onPage={setPage} />}
+        {bot && page.kind === "settings" && <BotSettings key={bot.id} bot={bot} />}
+        {bot && page.kind === "routine" && <RoutineEditor key={page.id ?? "new"} bot={bot} routine={routine} onDone={() => setPage(OVERVIEW)} onSaved={(id) => setPage({ kind: "routine", id })} />}
       </div>
     </aside>
   );

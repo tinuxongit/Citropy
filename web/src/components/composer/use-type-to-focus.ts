@@ -57,7 +57,7 @@ export function useTypeToFocus({
     const insert = (text: string) => {
       const node = box.current!;
       node.focus();
-      document.getSelection()!.selectAllChildren(node);
+      document.getSelection()!.selectAllChildren(node.lastChild ?? node);
       document.getSelection()!.collapseToEnd();
       document.execCommand("insertText", false, text);
     };

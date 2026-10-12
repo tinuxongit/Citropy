@@ -2,13 +2,15 @@ import { required } from "../mcp-workspace.ts";
 import { runtimeFor } from "../runtime.ts";
 import { store } from "../store.ts";
 import { botStore } from "./bot-store.ts";
-import { BOT_LIMITS, describeSchedule } from "../../shared/bots.ts";
+import { postFromBot } from "./group-chat.ts";
+import { groupStore } from "./group-store.ts";
+import { BOT_LIMITS, botHandle, describeSchedule } from "../../shared/bots.ts";
 import type { Bot, RoutineSchedule } from "../../shared/bots.ts";
 import type { Thread } from "../../shared/protocol.ts";
 
 const LIST_DESCRIPTION_LENGTH = 500;
 const LISTED_RUNS = 5;
-const CHANGES = new Set(["bots_message", "bots_routine_save", "bots_routine_remove"]);
+const CHANGES = new Set(["bots_message", "bots_group_post", "bots_routine_save", "bots_routine_remove"]);
 
 function summary(bot: Bot) {
   const thread = store.threads.get(bot.threadId);
@@ -29,13 +31,37 @@ function targetBot(thread: Thread, args: Record<string, unknown>): Bot {
   return botStore.get(thread.botId);
 }
 
+function messageText(args: Record<string, unknown>): string {
+  const text = required(args, "text");
+  if (text.length > BOT_LIMITS.messageLength) throw new Error(`Keep bot messages under ${BOT_LIMITS.messageLength} characters.`);
+  return text;
+}
+
+function currentDepth(thread: Thread): number {
+  const origin = thread.messages.findLast(entry => entry.role === "user")?.origin;
+  return origin?.kind === "bot" || origin?.kind === "group" ? origin.depth : 0;
+}
+
+function groups(bot: Bot) {
+  return groupStore.list().filter(group => group.botIds.includes(bot.id)).map(group => ({
+    id: group.id,
+    name: group.name,
+    members: groupStore.members(group).map(member => ({ botId: member.id, name: member.name, handle: `@${botHandle(member.name)}`, title: member.title })),
+  }));
+}
+
+async function postToGroup(thread: Thread, args: Record<string, unknown>) {
+  const bot = targetBot(thread, {});
+  const group = groupStore.get(required(args, "groupId"));
+  await postFromBot(group, bot, messageText(args), currentDepth(thread));
+  return "Posted.";
+}
+
 async function message(thread: Thread, args: Record<string, unknown>) {
   const target = botStore.get(required(args, "botId"));
   if (target.threadId === thread.id) throw new Error("A bot cannot message itself.");
-  const text = required(args, "text");
-  if (text.length > BOT_LIMITS.messageLength) throw new Error(`Keep bot messages under ${BOT_LIMITS.messageLength} characters.`);
-  const current = thread.messages.findLast(entry => entry.role === "user")?.origin;
-  const depth = current?.kind === "bot" ? current.depth + 1 : 1;
+  const text = messageText(args);
+  const depth = currentDepth(thread) + 1;
   if (depth > BOT_LIMITS.handoffDepth) throw new Error(`This chain of bot messages reached ${BOT_LIMITS.handoffDepth} handoffs. Report back to the user instead.`);
   const sender = thread.botId ? botStore.get(thread.botId) : undefined;
   await runtimeFor(target.threadId).send(text, [], {
@@ -64,6 +90,10 @@ export async function callBotTool(thread: Thread, name: string, args: Record<str
       return botStore.list().map(summary);
     case "bots_message":
       return message(thread, args);
+    case "bots_group_list":
+      return groups(targetBot(thread, {}));
+    case "bots_group_post":
+      return postToGroup(thread, args);
     case "bots_routine_list":
       return routines(targetBot(thread, args));
     case "bots_routine_save": {

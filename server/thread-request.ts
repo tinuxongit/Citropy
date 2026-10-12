@@ -5,7 +5,7 @@ import { modelSettings } from "../shared/model-options.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
 import type { ProviderInfo, Thread, ThreadMeta } from "../shared/protocol.ts";
 
-export async function createRequestedThread(input: Record<string, any>, providers: ProviderInfo[], extra: Pick<ThreadMeta, "title" | "botId"> = { title: "New thread" }): Promise<Thread> {
+export async function createRequestedThread(input: Record<string, any>, providers: ProviderInfo[], extra: Pick<ThreadMeta, "title" | "botId" | "groupId"> = { title: "New thread" }): Promise<Thread> {
   const project = store.projects.get(input.projectId);
   if (!project) throw new Error("Workspace not found");
   const defaults = resolveProjectSettings(store.projectDefaults, project.settings);

@@ -14,6 +14,8 @@ import {
 } from "./history-cache.ts";
 import { applyNotificationEvent, playAlert } from "./notification-state.ts";
 import { applySnapshot } from "./snapshot-state.ts";
+import { neighborOf, rosterItem } from "./roster.ts";
+import { inBotsView } from "../../../shared/bots.ts";
 
 export function applyEvents(
   previous: AppState,
@@ -38,7 +40,7 @@ export function applyEvents(
 
 function sortThreads(state: AppState): void {
   state.threadOrder = Object.values(state.threads)
-    .filter((thread) => !thread.botId)
+    .filter((thread) => !inBotsView(thread))
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .map((thread) => thread.id);
 }
@@ -255,6 +257,7 @@ function applyThreadEvent(
       return;
     }
     case "thread.remove": {
+      if (rosterItem(state, state.activeRosterId)?.threadId === event.id) state.activeRosterId = neighborOf(state, state.activeRosterId!);
       const { [event.id]: removed, ...rest } = state.threads;
       void removed;
       state.threads = rest;
@@ -427,7 +430,16 @@ export function applyEvent(state: AppState, event: ServerEvent, focused = true):
       const bots = { ...state.bots };
       delete bots[event.id];
       state.bots = bots;
-      if (state.activeBotId === event.id) state.activeBotId = null;
+      return;
+    }
+    case "group.upsert":
+      state.botGroups = { ...state.botGroups, [event.group.id]: event.group };
+      if (event.requestId) resolveResponse(event.requestId, event.group);
+      return;
+    case "group.remove": {
+      const groups = { ...state.botGroups };
+      delete groups[event.id];
+      state.botGroups = groups;
       return;
     }
     case "hello":

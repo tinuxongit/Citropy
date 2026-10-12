@@ -1,7 +1,5 @@
-import { useState } from "react";
 import { hasUsableAccount } from "../../../../shared/provider-account.ts";
-import { reportError } from "../../lib/api.ts";
-import { createBot } from "../../lib/bots.ts";
+import { openNewBotChat } from "../../lib/bots.ts";
 import { useApp } from "../../lib/store.ts";
 import { BotAvatar } from "./BotAvatar.tsx";
 
@@ -10,17 +8,12 @@ const SAMPLE = { color: "purple", shape: "cloud" } as const;
 export function BotsEmpty() {
   const hasBots = useApp((state) => Object.keys(state.bots).length > 0);
   const canCreate = useApp((state) => state.connected && Boolean(state.activeProjectId) && state.providers.some(hasUsableAccount));
-  const [creating, setCreating] = useState(false);
-  const create = () => {
-    setCreating(true);
-    void createBot().catch(reportError).finally(() => setCreating(false));
-  };
   return (
     <div className="bots-empty">
       <BotAvatar bot={SAMPLE} size={72} />
       <h2>{hasBots ? "Pick a bot" : "Make your first bot"}</h2>
       <p>Bots are agents with their own name, memory and routines. Give one a job and it keeps working on a schedule.</p>
-      {!hasBots && <button type="button" className="btn" data-variant="primary" disabled={!canCreate || creating} onClick={create}>Create a bot</button>}
+      {!hasBots && <button type="button" className="btn" data-variant="primary" disabled={!canCreate} onClick={openNewBotChat}>Create a bot</button>}
     </div>
   );
 }

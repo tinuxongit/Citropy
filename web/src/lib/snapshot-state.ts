@@ -2,6 +2,7 @@ import { defaultAssistance } from "../../../shared/assistance.ts";
 import type { ServerEvent } from "../../../shared/protocol.ts";
 import type { AppState } from "./app-state.ts";
 import { restoreSnapshotNotifications } from "./notification-state.ts";
+import { rosterItem } from "./roster.ts";
 
 type Snapshot = Extract<ServerEvent, { t: "hello" }>["snapshot"];
 
@@ -52,7 +53,8 @@ function restoreThreads(state: AppState, snapshot: Snapshot): void {
     snapshot.threads.map((thread) => [thread.id, thread]),
   );
   state.bots = Object.fromEntries((snapshot.bots ?? []).map((bot) => [bot.id, bot]));
-  if (state.activeBotId && !state.bots[state.activeBotId]) state.activeBotId = null;
+  state.botGroups = Object.fromEntries((snapshot.botGroups ?? []).map((group) => [group.id, group]));
+  if (!rosterItem(state, state.activeRosterId)) state.activeRosterId = null;
   state.messages = {};
   state.parts = new Map();
   state.reveals = {};

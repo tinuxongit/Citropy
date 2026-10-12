@@ -5,7 +5,8 @@ import { uid } from "../ids.ts";
 import { dataRoot } from "../paths.ts";
 import { saveJson } from "../save-json.ts";
 import { store } from "../store.ts";
-import { BOT_COLORS, BOT_LIMITS, BOT_SHAPES, checkSchedule, nextRunAfter } from "../../shared/bots.ts";
+import { addNotice, flag, text } from "./fields.ts";
+import { BOT_COLORS, BOT_LIMITS, BOT_SHAPES, checkSchedule, defaultLook, nextRunAfter } from "../../shared/bots.ts";
 import type { Bot, BotProfile, Routine, RoutineDraft, RoutineRun, RoutineRunStatus } from "../../shared/bots.ts";
 import type { Message } from "../../shared/protocol.ts";
 
@@ -28,19 +29,6 @@ function latestText(messages: Message[]): string | undefined {
     const part = messages[index]!.parts.findLast(entry => entry.kind === "text" && entry.text.trim());
     if (part?.kind === "text") return part.text.trim().slice(0, BOT_LIMITS.previewLength);
   }
-}
-
-function text(value: unknown, label: string, max: number, allowEmpty = true): string {
-  if (typeof value !== "string") throw new Error(`${label} must be text.`);
-  const trimmed = value.trim();
-  if (!allowEmpty && !trimmed) throw new Error(`${label} cannot be empty.`);
-  if (trimmed.length > max) throw new Error(`${label} can be at most ${max} characters.`);
-  return trimmed;
-}
-
-function flag(value: unknown, label: string): boolean {
-  if (typeof value !== "boolean") throw new Error(`${label} must be on or off.`);
-  return value;
 }
 
 function checkProfile(input: Partial<BotProfile>): Partial<BotProfile> {
@@ -112,12 +100,10 @@ class BotStore {
 
   create(id: string, threadId: string, input: Partial<BotProfile> = {}): Bot {
     this.assertRoom();
-    const count = this.bots.size;
     const bot: Bot = {
       id,
       ...NEW_BOT,
-      color: BOT_COLORS[count % BOT_COLORS.length]!,
-      shape: BOT_SHAPES[count % BOT_SHAPES.length]!,
+      ...defaultLook(this.bots.size),
       pinned: false,
       hidden: false,
       ...checkProfile(input),
@@ -140,7 +126,7 @@ class BotStore {
     Object.assign(bot, profile, briefChanged ? { profileUpdatedAt: Date.now() } : {});
     if (renamed) {
       store.patchThread(bot.threadId, { title: bot.name });
-      this.#event(bot, `Renamed to ${bot.name}`);
+      addNotice(bot.threadId, `Renamed to ${bot.name}`);
     }
     this.#changed(bot);
     return bot;
@@ -170,16 +156,29 @@ class BotStore {
     if (bot.routines.length >= BOT_LIMITS.routinesPerBot) throw new Error(`A bot can have up to ${BOT_LIMITS.routinesPerBot} routines.`);
     const routine: Routine = { id: uid("rtn"), ...fields, nextRunAt, createdAt: Date.now(), runs: [] };
     bot.routines.push(routine);
-    this.#event(bot, `Created routine ${routine.name}`);
+    addNotice(bot.threadId, `Created routine ${routine.name}`);
     this.#changed(bot);
     return routine;
+  }
+
+  copyRoutines(fromId: string, toId: string): Bot {
+    const bot = this.get(toId);
+    bot.routines = this.get(fromId).routines.map(routine => ({
+      ...structuredClone(routine),
+      id: uid("rtn"),
+      createdAt: Date.now(),
+      runs: [],
+      nextRunAt: routine.paused ? undefined : nextRunAfter(routine.schedule, Date.now()),
+    }));
+    this.#changed(bot);
+    return bot;
   }
 
   removeRoutine(botId: string, id: string): void {
     const bot = this.get(botId);
     const routine = this.routine(botId, id);
     bot.routines = bot.routines.filter(entry => entry !== routine);
-    this.#event(bot, `Deleted routine ${routine.name}`);
+    addNotice(bot.threadId, `Deleted routine ${routine.name}`);
     this.#changed(bot);
   }
 
@@ -207,10 +206,6 @@ class BotStore {
     if (!bot || preview === undefined || preview === bot.preview) return;
     bot.preview = preview;
     this.#changed(bot);
-  }
-
-  #event(bot: Bot, line: string): void {
-    store.addMessage(bot.threadId, { id: uid("msg"), role: "system", ts: Date.now(), parts: [{ id: uid("prt"), kind: "notice", level: "info", text: line }] });
   }
 
   #forget(id: string): void {

@@ -1,8 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Bot } from "../../../../shared/bots.ts";
+import type { BotMood } from "../../lib/roster.ts";
 import { BOT_VIEWBOX, BotBody, BotEyes } from "./bot-shapes.tsx";
-
-export type BotMood = "idle" | "working" | "awaiting";
 
 const PHASE_SPAN_S = 12;
 const PHASE_STEPS = 97;

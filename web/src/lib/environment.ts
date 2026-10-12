@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { EnvironmentState } from "../../../shared/environments.ts";
 import type { Project, ThreadMeta } from "../../../shared/protocol.ts";
 import { workspaceThread, type WorkspaceCatalog as WorkspaceSnapshot, type WorkspaceThread } from "../../../shared/workspace-catalog.ts";
+import { inBotsView } from "../../../shared/bots.ts";
 
 let initial: EnvironmentState = { activeId: "local", endpoint: "", connections: [] };
 let controller = new AbortController();
@@ -71,7 +72,7 @@ export function rememberWorkspaces(id: string, projects: Project[], home: string
   const entry = {
     home,
     projects: projects.map(({ id, name, path, isGit, lastOpened }) => ({ id, name, path, isGit, lastOpened })),
-    threads: threads.filter(thread => !thread.parentThreadId && !thread.botId && projects.some(project => project.id === thread.projectId)).map(workspaceThread),
+    threads: threads.filter(thread => !thread.parentThreadId && !inBotsView(thread) && projects.some(project => project.id === thread.projectId)).map(workspaceThread),
     connected,
   };
   if (JSON.stringify(entry) === JSON.stringify(workspaces[id])) return;

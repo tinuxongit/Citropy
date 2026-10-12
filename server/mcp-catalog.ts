@@ -332,6 +332,17 @@ export const workspaceTools = ([
     inputSchema: { type: "object", properties: { botId: string, text: string }, required: ["botId", "text"] },
   },
   {
+    name: "bots_group_list",
+    description: "List the group chats this bot is in, with each group's id, name, and members. Members mention each other with @handle.",
+    inputSchema: { type: "object", properties: {} },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "bots_group_post",
+    description: "Post a message into one of your group chats, for example to share a routine's result. @mention a member's handle to hand them work. When you are answering a group message, just reply normally instead, because your final reply is posted to the group for you.",
+    inputSchema: { type: "object", properties: { groupId: string, text: string }, required: ["groupId", "text"] },
+  },
+  {
     name: "bots_routine_list",
     description: "List a bot's routines, which are tasks it runs on a schedule, with their recent runs. Omit botId to list this bot's own routines.",
     inputSchema: { type: "object", properties: { botId: string } },

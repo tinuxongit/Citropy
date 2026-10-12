@@ -306,15 +306,14 @@ async function behindCover(tab, work) {
   const still = (await capture(tab))?.toDataURL();
   if (!still) return work();
   await showCover(tab, still);
-  const shown = tab.view.getBounds();
-  tab.view.setBounds({ ...shown, x: window.getContentSize()[0] + 20 });
+  tab.view.setBounds(parkedBounds());
   try {
     return await work();
   } finally {
     if (tab.metricsParams) await cdp(tab, "Emulation.setDeviceMetricsOverride", tab.metricsParams).catch(logFailure("Restoring the browser viewport", id));
     await waitForPaint(tab);
     if (tab.visible) {
-      tab.view.setBounds(shown);
+      await applyViewport(tab).catch(logFailure("Restoring the browser viewport", id));
       await new Promise((resolve) => setTimeout(resolve, 34));
       if (tab.visible) window.webContents.send("browser:cover", id, undefined);
     }
@@ -336,27 +335,6 @@ async function showCover(tab, still) {
 
 async function waitForPaint(tab) {
   await cdp(tab, "Runtime.evaluate", { expression: "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))", awaitPromise: true, timeout: 500 }).catch(logFailure("Waiting for the browser to paint", tab.state.id));
-}
-
-async function loadDetached(tab, load) {
-  const content = tab.view.webContents;
-  const focused = content.isFocused();
-  const visible = tab.visible && window.isVisible() && !window.isMinimized();
-  const still = visible ? (await capture(tab))?.toDataURL() : undefined;
-  if (still) await showCover(tab, still);
-  window.contentView.removeChildView(tab.view);
-  try {
-    await load();
-  } finally {
-    window.contentView.addChildView(tab.view);
-    tab.view.setVisible(true);
-    if (focused) content.focus();
-    if (still) {
-      await waitForPaint(tab);
-      await new Promise((resolve) => setTimeout(resolve, 34));
-      window.webContents.send("browser:cover", tab.state.id, undefined);
-    }
-  }
 }
 
 async function capture(tab) {
@@ -844,7 +822,7 @@ async function performAction(tab, input) {
   try {
   switch (input.action) {
     case "navigate":
-      await loadDetached(tab, () =>
+      await behindCover(tab, () =>
         content.loadURL(address(input.url)).catch((error) => {
           if (error.code !== "ERR_ABORTED" && error.errno !== -3) throw error;
         }),
@@ -853,20 +831,20 @@ async function performAction(tab, input) {
     case "back":
       if (tab.state.mobile && (await closeTopLayer(tab))) break;
       if (content.navigationHistory.canGoBack())
-        await loadDetached(tab, async () => {
+        await behindCover(tab, async () => {
           content.navigationHistory.goBack();
           await settle(tab, () => true);
         });
       break;
     case "forward":
       if (content.navigationHistory.canGoForward())
-        await loadDetached(tab, async () => {
+        await behindCover(tab, async () => {
           content.navigationHistory.goForward();
           await settle(tab, () => true);
         });
       break;
     case "reload":
-      await loadDetached(tab, async () => {
+      await behindCover(tab, async () => {
         content.reload();
         await settle(tab, () => true);
       });

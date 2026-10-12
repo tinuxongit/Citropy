@@ -7,7 +7,9 @@ import { ComposeIcon } from "./icons/pencil.tsx";
 import { toggleBotPanel, toggleInspector, useApp } from "../lib/store.ts";
 import type { AppState } from "../lib/app-state.ts";
 import { BotAvatar } from "./bots/BotAvatar.tsx";
-import { botMood } from "./bots/bot-order.ts";
+import { botMood, workingLine } from "../lib/roster.ts";
+import { GroupAvatar } from "./bots/GroupAvatar.tsx";
+import { useGroupMembers } from "./bots/use-group-members.ts";
 import { createThread } from "../lib/actions.ts";
 import { WindowControls } from "./WindowControls.tsx";
 import { ThreadTabs } from "./ThreadTabs.tsx";
@@ -32,7 +34,9 @@ export function Titlebar({
     activeThreadId ? state.threads[activeThreadId] : undefined,
   );
   const inspectorOpen = useApp((state) => state.inspectorOpen);
-  const bot = useApp((state) => state.bots[state.activeBotId ?? ""]);
+  const bot = useApp((state) => state.bots[state.activeRosterId ?? ""]);
+  const group = useApp((state) => state.botGroups[state.activeRosterId ?? ""]);
+  const members = useGroupMembers(group);
   const botPanelOpen = useApp((state) => state.botPanelOpen);
   const panelActivity = useApp((state) => state.panels.some((panel) => panel.projectId === state.activeProjectId && state.unseenPanels[panel.id]));
   const canCreateThread = useApp((state) => state.connected && !state.creatingThread && Boolean(state.activeProjectId));
@@ -100,6 +104,15 @@ export function Titlebar({
             {bot.title && <span className="topbar-subtitle"><span className="truncate">{bot.title}</span></span>}
           </span>
         )}
+        {view === "bots" && group && (
+          <span className="bot-heading">
+            <GroupAvatar group={group} size={22} />
+            <span className="thread-title truncate">{group.name}</span>
+            <span className="topbar-subtitle"><span className="truncate">
+              {group.working.length ? workingLine(members.filter((member) => group.working.includes(member.id)).map((member) => member.name)) : `${members.length} bots`}
+            </span></span>
+          </span>
+        )}
         {view === "chat" && project && <span className="topbar-subtitle">
           <span className="truncate">{project.name}</span>
           {branch && <><BranchIcon size={11} /><span className="truncate">{branch}</span></>}
@@ -136,15 +149,15 @@ export function Titlebar({
             </span>
           </button>
         )}
-        {view === "bots" && bot && (
+        {view === "bots" && (bot || group) && (
           <button
             className="icon-btn inspector-toggle"
             type="button"
             onClick={toggleBotPanel}
             data-active={botPanelOpen}
             aria-expanded={botPanelOpen}
-            aria-label="Toggle bot panel"
-            title="Toggle bot panel"
+            aria-label="Toggle details panel"
+            title="Toggle details panel"
           >
             <PanelRightIcon size={16} />
           </button>

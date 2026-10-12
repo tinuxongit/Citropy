@@ -40,7 +40,7 @@ import {
   type TuningSettings,
 } from "./composer/ComposerOptions.tsx";
 import { useComposerDraft } from "./composer/use-composer-draft.ts";
-import { threadStarted } from "../lib/thread-started.ts";
+import { hasConversation, threadStarted } from "../lib/thread-started.ts";
 import { onComposerDelivery, takeComposerDeliveries, type ComposerDelivery } from "../lib/composer-inbox.ts";
 import { useAttachmentUpload } from "./composer/use-attachment-upload.ts";
 import { useComposerCommands } from "./composer/use-composer-commands.tsx";
@@ -64,8 +64,9 @@ export function Composer({
   );
   const connected = useApp((state) => state.connected);
   const providers = useApp((state) => state.providers);
-  const startSubject = useApp((state) => thread?.botId ? state.bots[thread.botId]?.name : state.projects.find((entry) => entry.id === thread?.projectId)?.name);
+  const startSubject = useApp((state) => thread?.groupId ? state.botGroups[thread.groupId]?.name : thread?.botId ? state.bots[thread.botId]?.name : state.projects.find((entry) => entry.id === thread?.projectId)?.name);
   const hasMessages = useApp((state) => Boolean(threadId && state.order[threadId]?.length));
+  const conversing = useApp((state) => Boolean(threadId && hasConversation(state, threadId)));
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
   const { value, setValue, attachments, setAttachments, quotes, setQuotes, clearDraft } = useComposerDraft(threadId, scope);
   const message = withQuotes(quotes, value);
@@ -186,10 +187,10 @@ export function Composer({
       buttonRef={modelButton}
       className="composer-select composer-model"
       disabled={!connected || sending || transferring}
-      lockedProvider={running || hasMessages || thread.externalId || thread.usage.turns || thread.queue?.length ? thread.provider : undefined}
+      lockedProvider={running || conversing || thread.externalId || thread.usage.turns || thread.queue?.length ? thread.provider : undefined}
       instanceId={thread.providerInstanceId}
       onTransfer={thread.parentThreadId ? undefined : (choice) => void transfer(choice)}
-      transferDisabled={Boolean(!hasMessages || running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
+      transferDisabled={Boolean(!conversing || running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
       onChange={(choice) => { if (choice) configureThread(thread.id, { ...choice, providerInstanceId: choice.providerInstanceId ?? null, effort: null }); }}
       menuClearOf=".composer-shell"
       tuning={(target) => target && <ModelTuning key={transferKey(target)} settings={settingsFor(target)} model={modelFor(target)} onChange={(patch) => setTransferSettings({ key: transferKey(target), settings: { ...settingsFor(target), ...patch } })} />}
@@ -198,13 +199,13 @@ export function Composer({
     <ContextMenu thread={configuredThread!} model={model} disabled={!connected || sending || transferring} />
 
     <EffortMenu thread={configuredThread!} model={model} disabled={!connected || sending || transferring} buttonRef={effortButton} />
-  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, hasMessages, transferSettings, scopeSignal]);
+  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, conversing, transferSettings, scopeSignal]);
 
   const submit = async () => {
     const text = message;
     if ((!text && !attachments.length) || !threadId || !canSend) return;
     playUiSound("send");
-    const command = commands.find((entry) => entry.label === text);
+    const command = thread?.groupId ? undefined : commands.find((entry) => entry.label === text);
     if (command) {
       if (running && command.idleOnly) return;
       command.run();
@@ -410,16 +411,16 @@ export function Composer({
           >
             <AttachIcon size={18} />
           </button>
-          <PermissionMenu
+          {!thread.groupId && <PermissionMenu
             thread={configuredThread!}
             disabled={!connected || sending || transferring}
             buttonRef={permissionButton}
-          />
+          />}
         </div>
-        <div className="composer-bar-group">
+        {!thread.groupId && <div className="composer-bar-group">
           {settingsBar}
           <ContextUsage onCompact={compact} draft={message} />
-        </div>
+        </div>}
       </div>
       </div>
     </div>

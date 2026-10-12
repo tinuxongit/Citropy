@@ -19,11 +19,17 @@ import { useComposerCatalog } from "./composer/use-composer-catalog.ts";
 import { useTypeToFocus } from "./composer/use-type-to-focus.ts";
 import { MessageEditor, type MessageEditorHandle } from "./composer/MessageEditor.tsx";
 import type { MentionLook } from "./composer/mention-node.tsx";
+import { BotAvatar } from "./bots/BotAvatar.tsx";
+import { GroupAvatar } from "./bots/GroupAvatar.tsx";
+import { useGroupMembers } from "./bots/use-group-members.ts";
+import { EVERYONE_HANDLE, botHandle } from "../../../shared/bots.ts";
 
 const CITROPY_MARK = <span className="citropy-mark" aria-hidden="true" />;
 
 const tagIcon = (tag: MentionTag) =>
   tag.icon === "site" ? <SiteIcon url={tag.url!} /> : tag.icon === "citropy" ? CITROPY_MARK : <BookIcon size={16} />;
+
+const MENTION_AVATAR_SIZE = 16;
 
 const SECTION_NOTES: Record<string, string> = { Files: "Add #L10-L20 for specific lines" };
 
@@ -62,17 +68,21 @@ export function ComposerInput({
   const [dismissed, setDismissed] = useState<string>();
   const connected = useApp((state) => state.connected);
   const botName = useApp((state) => state.bots[thread.botId ?? ""]?.name);
+  const group = useApp((state) => state.botGroups[thread.groupId ?? ""]);
+  const members = useGroupMembers(group);
   const mention = /(?:^|\s)@([^\s\[\]]*)$/.exec(value.slice(0, caret));
-  const slash = /^\/[\w.:-]*$/.test(value) ? value : undefined;
+  const slash = !group && /^\/[\w.:-]*$/.test(value) ? value : undefined;
   const query = mention ? `@${mention[1]}` : slash;
-  const mode = mention ? "skills" : slash ? "commands" : undefined;
+  const mode = mention ? group ? "members" : "skills" : slash ? "commands" : undefined;
   const hasMentions = /(?:^|\s)@([\w.:-]+)/.test(value);
-  const catalogMode = mode === "commands"
-    ? "commands"
-    : mode === "skills" || hasMentions ? "skills" : undefined;
+  const catalogMode = group
+    ? undefined
+    : mode === "commands"
+      ? "commands"
+      : mode === "skills" || hasMentions ? "skills" : undefined;
   const { skills, tools, nativeCommands, paths, loading, error } = useComposerCatalog({
     thread,
-    mode,
+    mode: mode === "members" ? undefined : mode,
     catalogMode,
     mentionText: mention?.[1] ?? "",
   });
@@ -91,13 +101,20 @@ export function ComposerInput({
         entries.findIndex((entry) => entry.name === skill.name) === index,
     );
   const citropyTools = tools.filter((tool) => !enabled.some((skill) => skill.name === tool.name));
-  const mentions = new Map<string, MentionLook>([
-    ...[...enabled.map(skillTag), ...citropyTools.map(toolTag)].map((tag) => [tag.name, { label: tag.title, icon: tagIcon(tag) }] as const),
-  ]);
+  const everyone = group && { id: EVERYONE_HANDLE, section: "Bots", label: `@${EVERYONE_HANDLE}`, title: "Everyone", hint: "Every bot in this group", icon: <GroupAvatar group={group} size={MENTION_AVATAR_SIZE} /> };
+  const memberOptions: SuggestionOption[] = [
+    ...members.map((bot) => ({ id: bot.id, section: "Bots", label: `@${botHandle(bot.name)}`, title: bot.name, hint: bot.title, icon: <BotAvatar bot={bot} size={MENTION_AVATAR_SIZE} /> })),
+    ...(everyone ? [everyone] : []),
+  ];
+  const mentions = new Map<string, MentionLook>(group
+    ? memberOptions.map((option) => [option.label.slice(1), { label: option.title ?? option.label, icon: option.icon }] as const)
+    : [...enabled.map(skillTag), ...citropyTools.map(toolTag)].map((tag) => [tag.name, { label: tag.title, icon: tagIcon(tag) }] as const));
   const localCommandNames = new Set(commands.map((command) => command.label.slice(1)));
   const lines = (mention?.[1] ?? "").match(/#L\d+(?:-L?\d+)?$/)?.[0] ?? "";
   const options: SuggestionOption[] =
-    mode === "skills"
+    mode === "members"
+      ? memberOptions.filter((option) => option.label.toLowerCase().startsWith(`@${mention?.[1] ?? ""}`.toLowerCase()))
+      : mode === "skills"
       ? [...paths.map(entry => {
           const slash = entry.path.lastIndexOf("/");
           return {
@@ -184,7 +201,7 @@ export function ComposerInput({
             className="composer-suggestion-list scroll"
             id="composer-suggestions"
             role="listbox"
-            aria-label={mode === "skills" ? "Files and skills" : "Commands"}
+            aria-label={mode === "members" ? "Bots" : mode === "skills" ? "Files and skills" : "Commands"}
           >
             {options.map((option, i) => (
               <Fragment key={option.id}>
@@ -211,7 +228,7 @@ export function ComposerInput({
             ))}
             {loading && <p role="status">{mode === "skills" ? "Loading skills…" : "Loading commands…"}</p>}
             {!options.length && !loading && !error && (
-              <p>{mode === "skills" ? "No matching files, skills, Citropy tools, or connections." : "No matching commands."}</p>
+              <p>{mode === "members" ? "No matching bots in this group." : mode === "skills" ? "No matching files, skills, Citropy tools, or connections." : "No matching commands."}</p>
             )}
             {error && <p role="status">{error}</p>}
           </div>
@@ -234,8 +251,8 @@ export function ComposerInput({
             ? "Citropy is reconnecting. Your message will wait…"
             : thread.running
               ? "Queue a follow-up…"
-              : botName
-                ? `Message ${botName}`
+              : group || botName
+                ? `Message ${group?.name ?? botName}`
                 : "Ask a question or describe a change…"
         }
         onKey={(event) => {
@@ -257,7 +274,7 @@ export function ComposerInput({
               event.key === "Tab" ||
               (event.key === "Enter" &&
                 !event.shiftKey &&
-                (mode === "skills" || activeOption.label !== value.trim()))
+                (mode !== "commands" || activeOption.label !== value.trim()))
             ) {
               choose(activeOption.label);
               return true;

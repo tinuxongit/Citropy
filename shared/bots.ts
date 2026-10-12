@@ -11,13 +11,24 @@ export const BOT_LIMITS = {
   messageLength: 20_000,
   handoffDepth: 8,
   previewLength: 160,
+  groups: 50,
+  groupNameLength: 80,
+  groupMembersMin: 2,
+  groupMembersMax: 6,
 };
+
+export const EVERYONE_HANDLE = "everyone";
+export const PASS_REPLY = "PASS";
 
 export const BOT_COLORS = ["purple", "blue", "teal", "green", "yellow", "orange", "red", "pink"] as const;
 export type BotColor = typeof BOT_COLORS[number];
 
 export const BOT_SHAPES = ["cloud", "drop", "pebble", "block"] as const;
 export type BotShape = typeof BOT_SHAPES[number];
+
+export function defaultLook(count: number): Pick<Bot, "color" | "shape"> {
+  return { color: BOT_COLORS[count % BOT_COLORS.length]!, shape: BOT_SHAPES[count % BOT_SHAPES.length]! };
+}
 
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
@@ -65,13 +76,42 @@ export interface Bot {
   routines: Routine[];
 }
 
+export interface BotGroup {
+  id: string;
+  name: string;
+  botIds: string[];
+  threadId: string;
+  pinned: boolean;
+  hidden: boolean;
+  createdAt: number;
+  preview?: string;
+  working: string[];
+}
+
+export type BotGroupPatch = Partial<Pick<BotGroup, "name" | "botIds" | "pinned" | "hidden">>;
+
 export type BotProfile = Pick<Bot, "name" | "title" | "description" | "color" | "shape" | "notifications" | "pinned" | "hidden">;
 
 export type RoutineDraft = Pick<Routine, "name" | "prompt" | "schedule" | "paused"> & { id?: string };
 
 export type MessageOrigin =
   | { kind: "bot"; threadId: string; botId?: string; name: string; depth: number }
-  | { kind: "routine"; routineId: string; runId: string; name: string };
+  | { kind: "routine"; routineId: string; runId: string; name: string }
+  | { kind: "group"; groupId: string; deliveryId: string; group: string; name: string; botId?: string; depth: number; addressed: GroupAddress };
+
+export type GroupAddress = "you" | "everyone" | "open";
+
+export function inBotsView(thread: { botId?: string; groupId?: string } | undefined): boolean {
+  return Boolean(thread?.botId || thread?.groupId);
+}
+
+export function botHandle(name: string): string {
+  return name.replace(/[^\w.-]/g, "");
+}
+
+export function mentionedHandles(text: string): Set<string> {
+  return new Set([...text.matchAll(/(?:^|\s)@([\w.-]+)/g)].map((match) => match[1]!.toLowerCase()));
+}
 
 const TIME = /^([01]\d|2[0-3]):([0-5]\d)$/;
 

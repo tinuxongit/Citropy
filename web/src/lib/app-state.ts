@@ -8,7 +8,7 @@ import { isProviderId } from "../../../shared/protocol.ts";
 import { create } from "zustand";
 import { defaultAssistance, type AssistanceSettings, type WritingModel } from "../../../shared/assistance.ts";
 import type { GitHubUser } from "../../../shared/github.ts";
-import type { Bot } from "../../../shared/bots.ts";
+import type { Bot, BotGroup } from "../../../shared/bots.ts";
 import type {
   BrowserState,
   PanelTab,
@@ -115,7 +115,8 @@ export interface AppState {
   threads: Record<string, ThreadMeta>;
   threadOrder: string[];
   bots: Record<string, Bot>;
-  activeBotId: string | null;
+  botGroups: Record<string, BotGroup>;
+  activeRosterId: string | null;
   chatThreadId: string | null;
   messages: Record<string, MessageShell>;
   parts: Map<string, Part>;
@@ -149,6 +150,7 @@ export interface AppState {
   sidebarOpen: boolean;
   threadDetailsOpen: boolean;
   botPanelOpen: boolean;
+  newBotChatOpen: boolean;
   searchEngine: SearchEngine;
   stageBackground: StageBackground;
   chatWidth: ChatWidth;
@@ -280,7 +282,8 @@ export const useApp = create<AppState>(() => ({
   threads: {},
   threadOrder: [],
   bots: {},
-  activeBotId: typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.bot"),
+  botGroups: {},
+  activeRosterId: typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.bot"),
   chatThreadId: null,
   messages: {},
   parts: new Map(),
@@ -316,6 +319,7 @@ export const useApp = create<AppState>(() => ({
   ),
   threadDetailsOpen: readFlag("citropy.threadDetails", false),
   botPanelOpen: readFlag("citropy.botPanel", true),
+  newBotChatOpen: false,
   sidebarOpen: readFlag(
     "citropy.sidebar",
     typeof window !== "undefined" &&

@@ -10,8 +10,12 @@ import type { TimelineRow } from "../lib/timeline.ts";
 import { useApp } from "../lib/store.ts";
 import { clock, day } from "../lib/format.ts";
 import type { MessageOrigin } from "../../../shared/bots.ts";
+import { BotAvatar } from "./bots/BotAvatar.tsx";
+
+const AUTHOR_AVATAR_SIZE = 20;
 
 function originLabel(origin: MessageOrigin): string {
+  if (origin.kind === "group") return `From ${origin.botId ? origin.name : "you"} in ${origin.group}`;
   return origin.kind === "bot" ? `From ${origin.name}` : `Routine: ${origin.name}`;
 }
 
@@ -44,6 +48,8 @@ export const MessageBlock = memo(function MessageBlock({
     const part = state.parts.get(id);
     return part?.kind === "notice" || part?.kind === "text" ? part.text : "";
   }).join(" ") : undefined);
+  const authorOrigin = shell?.role === "assistant" && shell.origin?.kind === "bot" ? shell.origin : undefined;
+  const author = useApp((state) => authorOrigin ? state.bots[authorOrigin.botId ?? ""] : undefined);
   const [fresh] = useState(() => first ? Date.now() - timestamp < 2000 : streaming);
 
   if (!shell && (messageId !== undefined || !threadId)) return null;
@@ -89,6 +95,12 @@ export const MessageBlock = memo(function MessageBlock({
       data-step={step || undefined}
     >
       <div className="message-content">
+        {first && authorOrigin && (
+          <header className="turn-author">
+            {author && <BotAvatar bot={author} size={AUTHOR_AVATAR_SIZE} />}
+            <span>{author?.name ?? authorOrigin.name}</span>
+          </header>
+        )}
         {row && (
           <div className={activity ? "agent-activity" : "message-bubble agent-card"}>
             {row.kind === "fold" ? (

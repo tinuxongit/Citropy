@@ -17,7 +17,7 @@ import { providers } from "./providers/index.ts";
 import { providerInfo } from "./provider-registry.ts";
 import { resolveProviderAccount, usableProviderAccount } from "./provider-account.ts";
 import { receiveAgentEvent } from "./providers/events.ts";
-import { beginCheckpoint, finishCheckpoint, checkpointBusy, historyPrompt } from "./checkpoints.ts";
+import { beginCheckpoint, finishCheckpoint, checkpointBusy, checkpointsSettled, historyPrompt } from "./checkpoints.ts";
 import { prepareContext, prepareTransferContext, transferPrompt } from "./context.ts";
 import { assertProviderReady } from "./providers/maintenance.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../shared/model-options.ts";
@@ -314,7 +314,8 @@ class ThreadRuntime {
     if (this.#checkpointCompletion) await this.#checkpointCompletion;
     this.#checkSession(generation);
     if (!this.#thread.running) await this.#applyPendingConfig(generation);
-    if (checkpointBusy(this.#cwd)) throw new Error("Wait for workspace review or recovery to finish.");
+    await checkpointsSettled(this.#cwd);
+    this.#checkSession(generation);
     if (workspaceGitBusy(this.#cwd)) throw new Error("Wait for the Git action to finish before sending a message.");
     this.#check(text, files);
     if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");

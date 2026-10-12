@@ -26,6 +26,10 @@ function directory(cwd: string): string { return join(root, createHash("sha256")
 
 export function checkpointBusy(cwd: string): boolean { return jobs.has(cwd); }
 
+export async function checkpointsSettled(cwd: string): Promise<void> {
+  while (jobs.has(cwd)) await jobs.get(cwd)!.catch(() => {});
+}
+
 export async function checkpointLock<T>(cwd: string, action: () => Promise<T>): Promise<T> {
   const previous = jobs.get(cwd) ?? Promise.resolve();
   const next = previous.then(action, action);
