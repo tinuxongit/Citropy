@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 
-const rim = 2;
+const rim = 1;
 
 type Box = { left: number; top: number; width: number; height: number; radius: number };
 type Tab = Box & { fillet: number };
