@@ -21,11 +21,11 @@ export const workspaceTools = ([
     name: "browser_open",
     description:
       "Open a real Chromium tab in Citropy's browser panel at a fixed 1920 × 1080 desktop resolution, scaled to fit the panel. The user sees and can interact with the same page. Use browser_snapshot to inspect it, or browser_action resize to test another resolution.",
-    inputSchema: { type: "object", properties: { url: string } },
+    inputSchema: { type: "object", properties: { url: string, account: { type: "string", description: "Account id from browser_connections. Opens the page with that account's sign-in." } } },
   },
   {
     name: "browser_connections",
-    description: "List the websites the user connected under Settings > Connections, with each site's address and whether the user finished signing in. browser_open on a URL inside a connected site opens it with that sign-in. If signedIn is false, or the page still asks to sign in, ask the user to sign in from Settings > Connections.",
+    description: "List the websites the user connected under Settings > Connections, with each site's address and accounts. Each account has an id, a label and whether the user finished signing in. browser_open on a URL inside a connected site opens it with the site's first account. When a site has several accounts, pass the id of the one you need as account to browser_open. If signedIn is false, or the page still asks to sign in, ask the user to sign in from Settings > Connections.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
   },

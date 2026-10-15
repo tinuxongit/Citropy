@@ -1,9 +1,12 @@
 import { invocation, resolveCommand } from "./binary.ts";
 import { providerControl } from "./control.ts";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { execFile, type ExecFileException } from "node:child_process";
+import { tmpdir } from "node:os";
+import { promisify, stripVTControlCharacters } from "node:util";
 import type { ProviderLaunch } from "./types.ts";
 import type { ModelOption } from "../../shared/protocol.ts";
+
+const OPENCODE_MODELS_TIMEOUT_MS = 20_000;
 
 const run = promisify(execFile);
 
@@ -156,6 +159,10 @@ function openCodeModels(output: string): ModelOption[] {
 
 export async function discoverOpenCodeModels(launch?: ProviderLaunch): Promise<ModelOption[]> {
   const call = invocation(resolveCommand(launch?.binary ?? "opencode"), ["models", "--verbose", "--refresh"]);
-  const { stdout } = await run(call.file, call.args, { timeout: 20_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, ...launch?.environment }, windowsVerbatimArguments: call.verbatim });
+  const { stdout } = await run(call.file, call.args, { cwd: tmpdir(), timeout: OPENCODE_MODELS_TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, ...launch?.environment }, windowsVerbatimArguments: call.verbatim })
+    .catch((error: ExecFileException & { stderr?: string }) => {
+      if (error.killed) throw new Error(`OpenCode took longer than ${OPENCODE_MODELS_TIMEOUT_MS / 1000} seconds to list its models.`);
+      throw new Error(stripVTControlCharacters(error.stderr ?? "").trim() || error.message);
+    });
   return openCodeModels(stdout);
 }

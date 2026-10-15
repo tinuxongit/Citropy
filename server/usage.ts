@@ -4,6 +4,8 @@ import { providerControl } from "./providers/control.ts";
 import { USAGE_TOTAL_KEYS, promptTokens } from "../shared/usage-metrics.ts";
 import { providerLogUsage } from "./provider-log-usage.ts";
 import { resolveProviderAccount } from "./provider-account.ts";
+import { readMuseUsage } from "./providers/muse/limits.ts";
+import type { SubscriptionUsage } from "@muse-code/sdk/dist/src/msp.js";
 import { costByType, costOf, isUnpriced, priceTable } from "./usage-pricing.ts";
 import type { ProviderId } from "../shared/protocol.ts";
 import type {
@@ -73,6 +75,19 @@ function claudeWindows(limits: Record<string, any>): UsageWindow[] {
   return windows;
 }
 
+function museLimits(usage: SubscriptionUsage | undefined): ProviderUsage {
+  if (!usage) return { provider: "muse", windows: [], updatedAt: Date.now(), error: "Muse Code reports its allowance after its first reply. Send a message, then check again." };
+  return {
+    provider: "muse",
+    windows: [
+      { label: durationLabel(usage.window.windowDurationMins), usedPercent: clampPercent(usage.window.usedPercent), resetsAt: usage.window.resetsAtMs },
+      { label: durationLabel(WEEK_MINUTES), usedPercent: clampPercent(usage.weekly.usedPercent), resetsAt: usage.weekly.resetsAtMs },
+    ],
+    plan: usage.tier,
+    updatedAt: usage.observedAtMs,
+  };
+}
+
 function parseProviderLimits(
   provider: ProviderId,
   result: Record<string, any>,
@@ -99,6 +114,7 @@ export async function providerLimits(provider: ProviderId, instanceId?: string):
     try {
       if (provider === "opencode" || provider === "antigravity")
         return { provider, windows: [], updatedAt: Date.now(), error: UNREPORTED_LIMITS[provider] };
+      if (provider === "muse") return museLimits(await readMuseUsage(launch));
       return parseProviderLimits(
         provider,
         await providerControl(

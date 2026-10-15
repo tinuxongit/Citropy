@@ -89,13 +89,14 @@ export interface AgentSession {
   dispose(): void;
 }
 
-export interface TerminalSignIn {
+export type TerminalSignIn = {
   kind: "terminal";
   login: string[];
-  status: string[];
-  signedIn(output: string): boolean;
   home: AccountHome;
-}
+} & (
+  | { status: string[]; signedIn(output: string): boolean }
+  | { credentials(launch: ProviderLaunch): Promise<boolean> }
+);
 
 export interface AccountHome {
   variable: string;

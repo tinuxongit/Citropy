@@ -66,23 +66,27 @@ test("Turned-off features are not offered or hinted", async () => {
 test("Connection names become mentions", () => {
   assert.equal(connectionMention({ name: "My Bank", site: "bank.example" }), "my-bank");
   assert.equal(connectionMention({ name: "Почта", site: "mail.ru" }), "mail.ru");
+  assert.equal(connectionMention({ name: "My Bank", site: "bank.example" }, "Joint account"), "my-bank-joint-account");
 });
 
 test("Mentioning a connection opens it with the user's sign-in, or asks them to sign in", async (t) => {
   fakeDesktop(t, [
-    { id: "g", name: "Gmail", url: "https://mail.google.com/", site: "mail.google.com", sites: ["mail.google.com"], signedIn: true },
-    { id: "b", name: "My Bank", url: "https://bank.example/", site: "bank.example", sites: ["bank.example"], signedIn: false },
-    { id: "x", name: "Browser", url: "https://browser.example/", site: "browser.example", sites: ["browser.example"], signedIn: true },
+    { id: "gmail", name: "Gmail", url: "https://mail.google.com/", site: "mail.google.com", accounts: [
+      { id: "g", name: "Gmail", label: "", mention: "gmail", signedIn: true },
+      { id: "w", name: "Gmail Work", label: "Work", mention: "gmail-work", signedIn: true },
+    ] },
+    { id: "bank", name: "My Bank", url: "https://bank.example/", site: "bank.example", accounts: [{ id: "b", name: "My Bank", label: "", mention: "my-bank", signedIn: false }] },
+    { id: "browser", name: "Browser", url: "https://browser.example/", site: "browser.example", accounts: [{ id: "x", name: "Browser", label: "", mention: "browser", signedIn: true }] },
   ]);
   const mentions = await listToolMentions();
   assert.deepEqual(mentions.filter((mention) => mention.section === "Connections"), [
     { name: "gmail", title: "Gmail", description: "mail.google.com", section: "Connections", url: "https://mail.google.com/" },
+    { name: "gmail-work", title: "Gmail Work", description: "mail.google.com", section: "Connections", url: "https://mail.google.com/" },
     { name: "my-bank", title: "My Bank", description: "bank.example, not signed in yet", section: "Connections", url: "https://bank.example/" },
   ]);
-  const [gmail, bank] = (await hinted("Summarize @gmail and pay @my-bank", "Summarize @gmail and pay @my-bank", [])).split("\n");
-  assert.match(gmail, /"url":"https:\/\/mail\.google\.com\/"/);
-  assert.match(gmail, /open with their sign-in/);
-  assert.match(bank, /not finished signing in to bank\.example.*ask_user/);
+  const [gmail, bank] = (await hinted("Summarize @gmail-work and pay @my-bank", "Summarize @gmail-work and pay @my-bank", [])).split("\n");
+  assert.match(gmail, /Gmail Work account.*"url":"https:\/\/mail\.google\.com\/","account":"w"/);
+  assert.match(bank, /not finished signing in to bank\.example.*"account":"b".*ask_user/);
   assert.deepEqual((await mentionedTools("Summarize @gmail with @terminal", [])).map(toolTag), [
     { name: "terminal", title: "Terminal", icon: "citropy" },
     { name: "gmail", title: "Gmail", icon: "site", url: "https://mail.google.com/" },

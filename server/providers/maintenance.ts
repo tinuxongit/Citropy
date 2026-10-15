@@ -17,6 +17,8 @@ import { installAntigravity, antigravityInstallation } from "./antigravity/insta
 import { ANTIGRAVITY_RELEASE } from "./antigravity/release.ts";
 import type { ProviderMaintenance } from "../../shared/provider-settings.ts";
 import { claudeHome, codexHome } from "./config-folders.ts";
+import { installMuse, isMuseLauncher, latestMuseVersion, MUSE_INSTALL_DIRECTORY, MUSE_INSTALL_METHOD, museInstallable, MUSE_UPDATE_ARGS, MUSE_UPDATE_ENVIRONMENT, MUSE_UPDATE_METHOD } from "./muse/update.ts";
+import { comparableMuseVersion } from "./muse/version.ts";
 
 const run = promisify(execFile);
 const WHERE_NOT_FOUND = 1;
@@ -25,11 +27,11 @@ const plans = new Map<
   ProviderId,
   { time: number; value: Promise<UpdatePlan> }
 >();
-const packages: Record<Exclude<ProviderId, "opencode" | "antigravity">, string> = {
+const packages: Record<Exclude<ProviderId, "opencode" | "antigravity" | "muse">, string> = {
   claude: "@anthropic-ai/claude-code",
   codex: "@openai/codex",
 };
-function packageFor(provider: Exclude<ProviderId, "antigravity">): string {
+function packageFor(provider: Exclude<ProviderId, "antigravity" | "muse">): string {
   return provider === "opencode" ? openCodePackage() : packages[provider];
 }
 
@@ -51,6 +53,7 @@ interface UpdatePlan {
   installer?: string;
   install?: boolean;
   latestVersion?: string;
+  environment?: Record<string, string>;
   download?: (progress: (message: string) => void) => Promise<unknown>;
 }
 
@@ -112,8 +115,18 @@ async function antigravityPlan(): Promise<UpdatePlan> {
   };
 }
 
+async function musePlan(binaryPath: string | undefined): Promise<UpdatePlan> {
+  if (!binaryPath) return museInstallable()
+    ? { install: true, method: MUSE_INSTALL_METHOD, download: installMuse }
+    : { install: true, reason: "Muse Code runs on macOS and Linux." };
+  if (!await isMuseLauncher(await realpath(binaryPath)))
+    return { binaryPath, reason: "This installation is managed outside Citropy. Update it with its original installer, then refresh models." };
+  return { binaryPath, method: MUSE_UPDATE_METHOD, executable: binaryPath, args: MUSE_UPDATE_ARGS, environment: MUSE_UPDATE_ENVIRONMENT };
+}
+
 async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
   if (provider === "antigravity") return antigravityPlan();
+  if (provider === "muse") return musePlan(await executablePath(providers.muse.binary));
   const binaryPath = await executablePath(provider === "opencode" ? openCodeBinary() : providers[provider].binary);
   if (!binaryPath) {
     const packageName = packageFor(provider);
@@ -162,7 +175,7 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
       claude: "claude-code",
       codex: "codex",
       opencode: "opencode",
-    } satisfies Record<Exclude<ProviderId, "antigravity">, string>)[provider];
+    } satisfies Record<Exclude<ProviderId, "antigravity" | "muse">, string>)[provider];
     if (
       brew[3] === name &&
       command &&
@@ -264,9 +277,10 @@ function versionNumber(value?: string): string | undefined {
   );
 }
 
-function updateAvailable(installed?: string, latest?: string): boolean | undefined {
-  const current = versionNumber(installed);
-  const target = versionNumber(latest);
+function updateAvailable(provider: ProviderId, installed?: string, latest?: string): boolean | undefined {
+  const comparable = (value?: string) => versionNumber(value && provider === "muse" ? comparableMuseVersion(value) : value);
+  const current = comparable(installed);
+  const target = comparable(latest);
   return current && target ? gt(target, current) : undefined;
 }
 
@@ -280,6 +294,7 @@ async function latestVersion(
     return cached.value;
   const value = (async () => {
     if (provider === "antigravity") return plan.latestVersion;
+    if (provider === "muse") return latestMuseVersion();
     if (plan.method === "Homebrew" && plan.executable) {
       const info = JSON.parse(
         await probe(plan.executable, [
@@ -359,7 +374,7 @@ export async function providerMaintenance(
         plan.binaryPath ? latestVersion(provider.id, plan, fresh) : undefined,
       ]);
       const target = versionNumber(latest);
-      const newer = updateAvailable(version, latest);
+      const newer = updateAvailable(provider.id, version, latest);
       if (newer && target) notifyUpdateAvailable(provider.label, target, "Providers");
       return {
         provider: provider.id,
@@ -428,7 +443,7 @@ async function runUpdate(
         cwd: homedir(),
         stdio: ["ignore", "pipe", "pipe"],
         detached: process.platform !== "win32",
-        env: { ...process.env, CI: "1", NO_COLOR: "1", TERM: "dumb", ...(plan.installer ? { CODEX_NON_INTERACTIVE: "1", CODEX_INSTALL_DIR: dirname(plan.binaryPath!) } : {}) },
+        env: { ...process.env, CI: "1", NO_COLOR: "1", TERM: "dumb", ...plan.environment, ...(plan.installer ? { CODEX_NON_INTERACTIVE: "1", CODEX_INSTALL_DIR: dirname(plan.binaryPath!) } : {}) },
       });
       const append = (chunk: Buffer) => {
         state.output = stripVTControlCharacters(
@@ -538,10 +553,10 @@ async function performProviderUpdate(
     state.message = plan.install ? "Installing provider…" : "Checking for updates and installing…";
     if (plan.download) await plan.download(message => { state.message = message; });
     else await runUpdate(plan, state);
-    if (plan.install && plan.method === "npm") {
-      const bin = plan.method === "npm" && process.platform === "win32"
-        ? plan.args![3]!
-        : join(homedir(), ".local", "bin");
+    if (plan.install && (plan.method === "npm" || plan.method === MUSE_INSTALL_METHOD)) {
+      const bin = plan.method === MUSE_INSTALL_METHOD
+        ? MUSE_INSTALL_DIRECTORY
+        : process.platform === "win32" ? plan.args![3]! : join(homedir(), ".local", "bin");
       if (!(process.env.PATH || "").split(delimiter).includes(bin))
         process.env.PATH = `${bin}${delimiter}${process.env.PATH || ""}`;
     }
@@ -556,7 +571,7 @@ async function performProviderUpdate(
     versions.delete(provider);
     if (!plan.install && before.version === after.version) {
       const latest = await latestVersion(provider, plan, true);
-      if (updateAvailable(after.version, latest))
+      if (updateAvailable(provider, after.version, latest))
         throw new Error(`The updater finished, but ${providers[provider].label} still reports ${after.version}; ${latest} is available for this installation. Check the update details and CLI path.`);
     }
     state.message =

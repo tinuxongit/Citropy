@@ -150,7 +150,17 @@ export interface Connection {
   url: string;
   site: string;
   sites: string[];
+  description: string;
+  accounts: ConnectionAccount[];
+}
+
+export interface ConnectionAccount {
+  id: string;
+  name: string;
+  label: string;
+  mention: string;
   signedIn: boolean;
+  profileId: string;
 }
 
 export interface ImportBrowser {

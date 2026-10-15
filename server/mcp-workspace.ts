@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { workspacePath } from "./workspaces.ts";
 import { saveToolImageFile } from "./tool-images.ts";
 import { appendVisualDraft, editVisual, readToolVisual, removeVisualDraft, saveToolVisual, type VisualEdit } from "./tool-visuals.ts";
-import { listConnections } from "./connections.ts";
+import { accountProfileId, listConnections } from "./connections.ts";
 import { answerQuestion, askQuestion, hasPendingQuestion, pendingQuestions } from "./questions.ts";
 import { ask } from "./permissions.ts";
 import { store } from "./store.ts";
@@ -203,6 +203,7 @@ export async function callWorkspaceTool(
             panel.id,
             threadId,
             typeof args.url === "string" ? args.url : undefined,
+            typeof args.account === "string" ? await accountProfileId(args.account) : undefined,
           ),
         );
       } catch (error) {

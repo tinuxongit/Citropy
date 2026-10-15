@@ -5,7 +5,6 @@ import type { ProviderId } from "../shared/protocol.ts";
 import { invocation, resolveCommand } from "./providers/binary.ts";
 import { providers } from "./providers/index.ts";
 import { resolveProviderAccount } from "./provider-account.ts";
-import { refreshProvidersNow } from "./provider-registry.ts";
 import { store } from "./store.ts";
 import type { AppSignIn, Provider, TerminalSignIn } from "./providers/types.ts";
 
@@ -17,7 +16,7 @@ function accounts(provider: Provider): Array<string | undefined> {
   return [undefined, ...[...store.providerInstances.values()].filter(instance => instance.provider === provider.id).map(instance => instance.id)];
 }
 
-function statusOutput(binary: string, signIn: TerminalSignIn, launch: Launch): Promise<string> {
+function statusOutput(binary: string, signIn: Extract<TerminalSignIn, { status: string[] }>, launch: Launch): Promise<string> {
   const call = invocation(resolveCommand(binary), signIn.status);
   return new Promise((resolve, reject) => {
     execFile(call.file, call.args, { timeout: STATUS_TIMEOUT, windowsHide: true, windowsVerbatimArguments: call.verbatim, env: { ...process.env, ...launch.environment } }, (error, stdout, stderr) => {
@@ -31,7 +30,7 @@ async function terminalStatus(provider: Provider, signIn: TerminalSignIn, launch
   const binary = launch.binary ?? provider.binary;
   if (!resolveCommand(binary).path) return {};
   try {
-    return { signedIn: signIn.signedIn(await statusOutput(binary, signIn, launch)) };
+    return { signedIn: "credentials" in signIn ? await signIn.credentials(launch) : signIn.signedIn(await statusOutput(binary, signIn, launch)) };
   } catch (error) {
     return { error: `Could not check sign-in: ${(error as Error).message}` };
   }
@@ -60,7 +59,7 @@ export function appSignIn(providerId: ProviderId, instanceId?: string): { signIn
   return { signIn: provider.signIn, launch: resolveProviderAccount(providerId, instanceId).launch };
 }
 
-export function startAppSignIn(providerId: ProviderId, instanceId?: string) {
+export function startAppSignIn(providerId: ProviderId, instanceId: string | undefined, onSignedIn: () => void) {
   const { signIn, launch } = appSignIn(providerId, instanceId);
-  return signIn.start(launch, () => void refreshProvidersNow());
+  return signIn.start(launch, onSignedIn);
 }

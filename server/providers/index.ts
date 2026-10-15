@@ -2,6 +2,7 @@ import { claudeProvider } from "./claude.ts";
 import { codexProvider } from "./codex.ts";
 import { openCodeVersionInfo, opencodeProvider } from "./opencode.ts";
 import { antigravityProvider } from "./antigravity/index.ts";
+import { museProvider } from "./muse/index.ts";
 import { commandIdentity } from "./binary.ts";
 import type { Provider, ProviderLaunch } from "./types.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../shared/protocol.ts";
@@ -11,6 +12,7 @@ export const providers: Record<ProviderId, Provider> = {
   codex: codexProvider,
   opencode: opencodeProvider,
   antigravity: antigravityProvider,
+  muse: museProvider,
 };
 
 import { store } from "../store.ts";

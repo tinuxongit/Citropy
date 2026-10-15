@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { providerControl } from "./providers/control.ts";
 import { discoverOpenCodeCommands } from "./providers/opencode.ts";
+import { listMuseCommands } from "./providers/muse/skills.ts";
 import type { ProviderCommand } from "../shared/features.ts";
 import type { ProviderId } from "../shared/protocol.ts";
 import { codexHome } from "./providers/config-folders.ts";
@@ -65,6 +66,7 @@ export function listCommands(
         ...(await codexPrompts()).map(({ template, ...command }) => command),
       ];
     if (provider === "antigravity") return [];
+    if (provider === "muse") return listMuseCommands(cwd);
     const result =
       provider === "claude"
         ? (await providerControl("claude", "initialize", {}, cwd)).commands

@@ -7,6 +7,7 @@ import { stripVTControlCharacters } from "node:util";
 import { providers } from "./providers/index.ts";
 import { generateOpenCodeText } from "./providers/opencode.ts";
 import { generateAntigravityText } from "./providers/antigravity/text.ts";
+import { generateMuseText } from "./providers/muse/text.ts";
 import { assertProviderReady } from "./providers/maintenance.ts";
 import { stopProcess } from "./providers/process.ts";
 import { assertApplicationReady } from "./update-lock.ts";
@@ -99,6 +100,8 @@ export async function generateText(selection: WritingModel, instruction: string,
     } else {
       const raw = selection.provider === "antigravity"
         ? await generateAntigravityText(cwd, selection.model, selection.effort, prompt, controller.signal, launch)
+        : selection.provider === "muse"
+        ? await generateMuseText(cwd, selection.model, selection.effort, prompt, controller.signal, launch)
         : await generateOpenCodeText(cwd, selection.model, selection.effort, prompt, controller.signal, launch);
       result = JSON.parse(raw.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```$/, ""));
     }

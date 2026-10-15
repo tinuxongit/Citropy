@@ -5,8 +5,7 @@ import { desktopConnected } from "./desktop.ts";
 import { listConnections } from "./connections.ts";
 import { withInstructions } from "./providers/skill-prompt.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
-import { connectionMention } from "../shared/connection-sites.mjs";
-import type { Connection, ToolMention } from "../shared/features.ts";
+import type { Connection, ConnectionAccount, ToolMention } from "../shared/features.ts";
 
 type Settings = ReturnType<typeof resolveProjectSettings>;
 type Mention = ToolMention & { instruction: string };
@@ -51,22 +50,24 @@ const TOOLS: Array<Omit<Mention, "section"> & { available: (settings: Settings) 
   },
 ];
 
-function connectionInstruction(connection: Connection): string {
-  const open = `Load tool_help with {"category":"browser"}, then call run_tool with {"name":"browser_open","arguments":{"url":${JSON.stringify(connection.url)}}}`;
-  return connection.signedIn
-    ? `Use the user's ${connection.name} account for this request. ${open}. Pages on ${connection.sites.join(", ")} open with their sign-in.`
-    : `Use the user's ${connection.name} account for this request. They have not finished signing in to ${connection.site}. ${open}, then use ask_user to have them sign in on that page and choose Finish sign-in before you continue.`;
+function accountInstruction(connection: Connection, account: ConnectionAccount): string {
+  const open = `Load tool_help with {"category":"browser"}, then call run_tool with {"name":"browser_open","arguments":{"url":${JSON.stringify(connection.url)},"account":${JSON.stringify(account.id)}}}`;
+  return account.signedIn
+    ? `Use the user's ${account.name} account for this request. ${open}. Pass this account to every browser_open for this request.`
+    : `Use the user's ${account.name} account for this request. They have not finished signing in to ${connection.site}. ${open}, then use ask_user to have them sign in on that page and choose Finish sign-in before you continue.`;
 }
 
 function connectionMentions(connections: Connection[]): Mention[] {
-  return connections.map((connection) => ({
-    name: connectionMention(connection),
-    title: connection.name,
-    description: connection.signedIn ? connection.site : `${connection.site}, not signed in yet`,
-    section: "Connections",
-    url: connection.url,
-    instruction: connectionInstruction(connection),
-  }));
+  return connections.flatMap((connection) =>
+    connection.accounts.map((account) => ({
+      name: account.mention,
+      title: account.name,
+      description: account.signedIn ? connection.site : `${connection.site}, not signed in yet`,
+      section: "Connections",
+      url: connection.url,
+      instruction: accountInstruction(connection, account),
+    })),
+  );
 }
 
 async function availableMentions(): Promise<Mention[]> {

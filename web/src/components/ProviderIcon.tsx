@@ -4,6 +4,8 @@ import codexDark from "../assets/providers/chatgpt-dark.svg";
 import opencodeLight from "../assets/providers/opencode-light.svg";
 import opencodeDark from "../assets/providers/opencode-dark.svg";
 import antigravity from "../assets/providers/antigravity.png";
+import museLight from "../assets/providers/muse-light.svg";
+import museDark from "../assets/providers/muse-dark.svg";
 import { useApp } from "../lib/store.ts";
 import type { ProviderId } from "../../../shared/protocol.ts";
 
@@ -12,6 +14,7 @@ const logos: Partial<Record<string, Record<"light" | "dark", string>>> = {
   codex: { light: codexLight, dark: codexDark },
   opencode: { light: opencodeLight, dark: opencodeDark },
   antigravity: { light: antigravity, dark: antigravity },
+  muse: { light: museLight, dark: museDark },
 };
 
 export function ProviderIcon({ provider }: { provider: ProviderId }) {

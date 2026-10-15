@@ -14,6 +14,7 @@ export const providerLabels: Record<ProviderId, string> = {
   codex: "Codex",
   opencode: "OpenCode",
   antigravity: "Antigravity",
+  muse: "Muse Code",
 };
 
 export function modelLabel(models: ModelOption[], modelId?: string): string {

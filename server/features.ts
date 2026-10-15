@@ -9,7 +9,7 @@ import { createEditorFile, readEditorFile, saveEditorFile } from "./editor.ts";
 import { tree } from "./files.ts";
 import { store } from "./store.ts";
 import { listToolMentions } from "./tool-mentions.ts";
-import { refreshProvidersNow } from "./provider-registry.ts";
+import { refreshProvidersNow, refreshSignIns } from "./provider-registry.ts";
 import { removeProviderAccount } from "./provider-account.ts";
 import { createRequestedThread } from "./thread-request.ts";
 import { prepareAccountHome, withAccountHome } from "./provider-account-home.ts";
@@ -25,7 +25,7 @@ import type { ReviewScope } from "../shared/review.ts";
 import { changeHunk, reviewWithModel } from "./review.ts";
 import { findContextPaths, findWorkspacePaths } from "./context.ts";
 import { copyToWorktree, removeWorktree } from "./worktree-actions.ts";
-import { appSignIn, providerSignIns, startAppSignIn } from "./provider-sign-in.ts";
+import { appSignIn, startAppSignIn } from "./provider-sign-in.ts";
 import { providerMaintenance, startProviderUpdate, startProviderUpdates, assertProviderReady } from "./providers/maintenance.ts";
 import { readGlobalInstructions, saveGlobalInstructions } from "./providers/instructions.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
@@ -310,10 +310,10 @@ export async function handleFeatures(
       await refreshProvidersNow();
       respond({ ok: true });
     } else if (url.pathname === "/api/providers/maintenance" && req.method === "GET") respond(await providerMaintenance(url.searchParams.get("refresh") === "1"));
-    else if (url.pathname === "/api/providers/sign-in" && req.method === "GET") respond(await providerSignIns());
+    else if (url.pathname === "/api/providers/sign-in" && req.method === "GET") respond(await refreshSignIns());
     else if (url.pathname === "/api/providers/sign-in" && req.method === "POST") {
       const { input } = await appSignInRequest(req);
-      respond(startAppSignIn(input.provider, input.instanceId));
+      respond(startAppSignIn(input.provider, input.instanceId, () => void refreshProvidersNow()));
     } else if (url.pathname === "/api/providers/sign-in" && req.method === "DELETE") {
       const { signIn, launch } = await appSignInRequest(req);
       signIn.cancel(launch);

@@ -152,10 +152,10 @@ export function BrowserPane({
           )}
         </form>
       </div>
-      {native && state?.connection && !state.connection.signedIn && (
+      {native && state?.account && !state.account.signedIn && (
         <div className="browser-notice browser-sign-in">
           <span>Sign in to {state.profileName} below, then finish.</span>
-          <button className="btn" data-variant="primary" disabled={finishing || !connected} onClick={() => void finishSignIn(state.connection!.id)}>Finish sign-in</button>
+          <button className="btn" data-variant="primary" disabled={finishing || !connected} onClick={() => void finishSignIn(state.account!.id)}>Finish sign-in</button>
         </div>
       )}
       {signInError && <ActionError className="browser-notice" message={signInError} onDismiss={() => setSignInError("")} />}

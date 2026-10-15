@@ -64,7 +64,7 @@ function resolveConfig(thread: Thread, event: ConfigEvent): { changedProvider: b
   const changedInstance = instanceId !== thread.providerInstanceId;
   const account = providerAccount(provider, instanceId);
   if (changedProvider || changedInstance) {
-    if (!account.usable) throw new Error("Select an enabled, installed provider account.");
+    if (!account.usable) throw new Error("Select an enabled, installed, signed-in provider account.");
     if (hasHistory(thread) || runtimeIfExists(thread.id)?.turnActive) throw new Error("Start a new thread to use a different provider after sending a message.");
   }
   const model = selectedModel(account.models, event.model ?? (changedProvider || changedInstance ? undefined : selection.model));

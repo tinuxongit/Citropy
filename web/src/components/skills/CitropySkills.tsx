@@ -96,7 +96,7 @@ export function CitropySkills() {
             toggle={{
               checked: skill.enabled,
               label: `Enable ${skill.name}, ${SOURCE}`,
-              busy,
+              disabled: busy,
               onChange: () => void perform("skills", "PATCH", { id: skill.id, action: skill.enabled ? "disable" : "enable" }),
             }}
             onOpen={() => setOpenId(skill.id)}

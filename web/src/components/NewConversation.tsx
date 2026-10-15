@@ -54,7 +54,7 @@ export function NewConversation() {
     return () => controller.abort();
   }, [project?.id]);
   if (!project || !provider) return null;
-  const { instance, models } = providerAccount(provider, providerInstanceId);
+  const { models, usable } = providerAccount(provider, providerInstanceId);
   const currentModel = selectedModel(models, model) ?? selectedModel(models);
   const close = () => useApp.setState({ newThreadProvider: null });
   const create = async () => {
@@ -115,8 +115,7 @@ export function NewConversation() {
             disabled={
               busy ||
               !connected ||
-              !(instance ? instance.available : provider.available) ||
-              !provider.enabled ||
+              !usable ||
               !options ||
               (kind === "existing" && !path) ||
               (kind === "new" && !options.hasCommits)

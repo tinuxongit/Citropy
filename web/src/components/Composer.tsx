@@ -277,6 +277,11 @@ export function Composer({
           {`${provider.label} is disabled. Enable it in Settings > Providers to continue this conversation.`}
         </div>
       )}
+      {provider?.enabled && (instance ?? provider).signedIn === false && (
+        <div className="models-warning" role="status">
+          {`${provider.label} is not signed in. Sign in from Settings > Providers to continue this conversation.`}
+        </div>
+      )}
       {(instance?.modelsError ?? provider?.modelsError) && (
         <div className="models-warning" role="status">
           {instance?.modelsError ?? provider?.modelsError}

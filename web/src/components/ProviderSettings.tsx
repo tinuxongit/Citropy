@@ -12,6 +12,7 @@ import { ProviderInstructions } from "./ProviderInstructions.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { confirmStop } from "./providers/confirm-stop.ts";
 import { ProviderDialog } from "./providers/ProviderDialog.tsx";
+import { hasReadyAccount } from "../../../shared/provider-account.ts";
 import { accountSummary, versionSummary } from "./providers/provider-summary.ts";
 import { useProviderMaintenance } from "./providers/use-provider-maintenance.ts";
 import { useTerminalSignIns } from "./providers/use-provider-sign-ins.ts";
@@ -102,9 +103,9 @@ export function ProviderSettings() {
               description={accountSummary(provider, signIns.signIns)}
               icon={<ProviderIcon provider={provider.id} />}
               toggle={{
-                checked: provider.enabled,
+                checked: provider.enabled && hasReadyAccount(provider),
                 label: `Use ${provider.label}`,
-                busy: disabled || state?.status === "updating",
+                disabled: disabled || state?.status === "updating" || !hasReadyAccount(provider),
                 onChange: async () => {
                   const enabled = !provider.enabled;
                   if (!enabled && !await confirmStop(activeCount(provider.id), `Turn off ${provider.label}?`, "Turn off")) return;

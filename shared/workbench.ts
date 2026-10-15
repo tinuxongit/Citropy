@@ -21,7 +21,7 @@ export function movePanelTab(panels: PanelTab[], id: string, targetId: string, e
 export interface BrowserState {
   profileId?: string;
   profileName?: string;
-  connection?: { id: string; signedIn: boolean };
+  account?: { id: string; signedIn: boolean };
   id: string;
   projectId: string;
   threadId?: string;

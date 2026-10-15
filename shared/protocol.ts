@@ -3,7 +3,7 @@ import type { QuestionPart, QuestionRequest } from "./questions.ts";
 import type { GitHubRequest, GitHubResponse } from "./github.ts";
 import type { BrowserAction, BrowserState, PanelKind, PanelTab, ToolConnection, ToolDefinition } from "./workbench.ts";
 
-export const PROVIDER_IDS = ["claude", "codex", "opencode", "antigravity"] as const;
+export const PROVIDER_IDS = ["claude", "codex", "opencode", "antigravity", "muse"] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
@@ -373,6 +373,7 @@ export interface ProviderInfo {
   label: string;
   available: boolean;
   enabled: boolean;
+  signedIn?: boolean;
   version?: string;
   binary?: string;
   models: ModelOption[];
@@ -382,7 +383,7 @@ export interface ProviderInfo {
   steerHint?: string;
   modelsError?: string;
   modelsUpdatedAt?: number;
-  instances?: Array<{ id: string; name: string; available: boolean; version?: string; models: ModelOption[]; modelsError?: string }>;
+  instances?: Array<{ id: string; name: string; available: boolean; signedIn?: boolean; version?: string; models: ModelOption[]; modelsError?: string }>;
   activeInstanceId?: string;
   openCodeVersion?: { setting: OpenCodeVersionSetting; active?: OpenCodeMajor };
 }

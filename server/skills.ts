@@ -16,7 +16,7 @@ import { store } from "./store.ts";
 import { providerControl } from "./providers/control.ts";
 import { PROVIDER_IDS, type ProviderId, type Thread } from "../shared/protocol.ts";
 import type { SkillInfo } from "../shared/features.ts";
-import { claudeHome, codexHome } from "./providers/config-folders.ts";
+import { claudeHome, codexHome, museHome } from "./providers/config-folders.ts";
 
 export const MAX_SKILL_BYTES = 100_000;
 const disabledName = "SKILL.md.citropy-disabled";
@@ -65,6 +65,11 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
         "opencode/skills",
       ),
       provider: "opencode",
+      scope: "personal",
+    },
+    {
+      path: join(museHome(), "skills"),
+      provider: "muse",
       scope: "personal",
     },
   ];

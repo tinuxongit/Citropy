@@ -8,6 +8,6 @@ function slug(text) {
   return text.toLowerCase().replace(/[^a-z\d.-]+/g, "-").replace(/^[-.]+|[-.]+$/g, "");
 }
 
-export function connectionMention(connection) {
-  return slug(connection.name) || slug(connection.site);
+export function connectionMention(connection, label = "") {
+  return [slug(connection.name) || slug(connection.site), slug(label)].filter(Boolean).join("-");
 }

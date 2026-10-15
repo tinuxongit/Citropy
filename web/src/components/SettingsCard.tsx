@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 export interface CardToggle {
   checked: boolean;
   label: string;
-  busy: boolean;
+  disabled: boolean;
   onChange: () => void;
 }
 
@@ -29,7 +29,7 @@ export function SettingsCard({ title, subtitle, description, icon, toggle, onOpe
         role="switch"
         aria-label={toggle.label}
         checked={toggle.checked}
-        disabled={toggle.busy}
+        disabled={toggle.disabled}
         onChange={toggle.onChange}
       />}
     </article>

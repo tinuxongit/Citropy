@@ -26,7 +26,7 @@ export function pendingRequests(): PermissionRequest[] {
 }
 
 function settle(entry: Pending, decision: Decision): void {
-  pending.delete(entry.request.id);
+  if (!pending.delete(entry.request.id)) return;
   clearTimeout(entry.timer);
   bus.emit({ t: "permission.close", id: entry.request.id });
   resumeIfAnswered(entry.request.threadId);
@@ -50,9 +50,9 @@ export function cancelThread(threadId: string, forgetAllowed = true): void {
   if (forgetAllowed) alwaysAllowed.delete(threadId);
 }
 
-export function ask(threadId: string, tool: string, input: unknown): Promise<Decision> {
+export function ask(threadId: string, tool: string, input: unknown, options: { signal?: AbortSignal } = {}): Promise<Decision> {
   const thread = store.threads.get(threadId);
-  if (!thread || thread.status === "stopped") return Promise.resolve("deny");
+  if (!thread || thread.status === "stopped" || options.signal?.aborted) return Promise.resolve("deny");
   if (alwaysAllowed.get(threadId)?.has(tool)) return Promise.resolve("allow");
   const project = store.projects.get(thread.projectId);
   const root = project?.path ?? "";
@@ -73,6 +73,7 @@ export function ask(threadId: string, tool: string, input: unknown): Promise<Dec
     pending.set(request.id, entry);
     if (thread.running) store.patchThread(threadId, { status: "awaiting", activeTool: undefined });
     bus.emit({ t: "permission.request", request });
+    options.signal?.addEventListener("abort", () => settle(entry, "deny"), { once: true });
   });
 }
 

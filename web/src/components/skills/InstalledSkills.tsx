@@ -143,7 +143,7 @@ export function InstalledSkills() {
             toggle={{
               checked: skill.enabled,
               label: `Enable ${skill.name}, ${source(skill)}`,
-              busy: Boolean(busy),
+              disabled: Boolean(busy),
               onChange: () => void change(skill, skill.enabled ? "disable" : "enable"),
             }}
             onOpen={() => setOpenId(skill.id)}

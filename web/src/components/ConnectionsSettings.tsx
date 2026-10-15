@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { SiteIcon } from "./SiteIcon.tsx";
 import { PlusIcon } from "./icons/marks.tsx";
-import { TrashIcon } from "./icons/actions.tsx";
 import { api } from "../lib/api.ts";
 import { confirmAction } from "../lib/store.ts";
-import type { Connection } from "../../../shared/features.ts";
-import { connectionMention, siteOf } from "../../../shared/connection-sites.mjs";
+import type { Connection, ConnectionAccount } from "../../../shared/features.ts";
+import { siteOf } from "../../../shared/connection-sites.mjs";
 import suggestions from "../../../shared/connection-suggestions.json";
 import { ActionError } from "./ActionError.tsx";
 import { SignInDialog } from "./SignInDialog.tsx";
+import { ConnectionRow } from "./connections/ConnectionRow.tsx";
 import { AnimatePresence } from "motion/react";
 
 export function ConnectionsSettings() {
@@ -16,7 +16,7 @@ export function ConnectionsSettings() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
-  const [signingIn, setSigningIn] = useState<Connection>();
+  const [signingIn, setSigningIn] = useState<{ connection: Connection; account: ConnectionAccount }>();
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
@@ -31,71 +31,68 @@ export function ConnectionsSettings() {
     setBusy(true);
     setError("");
     try {
-      setConnections(await api<Connection[]>(path, { method, body: JSON.stringify(input) }));
-      return true;
+      const list = await api<Connection[]>(path, { method, body: JSON.stringify(input) });
+      setConnections(list);
+      return list;
     } catch (error) {
       setError((error as Error).message);
-      return false;
+      return undefined;
     } finally {
       setBusy(false);
     }
   };
   const suggested = suggestions.filter((suggestion) => !connections?.some((connection) => connection.site === siteOf(suggestion.url)));
-  const signIn = async (connection: Connection) => {
-    setSigningIn(connection);
+  const signIn = async (connection: Connection, account: ConnectionAccount) => {
+    setSigningIn({ connection, account });
     setError("");
     try {
       if (!window.citropyDesktop) throw new Error("Open Citropy desktop to sign in.");
-      setConnections(await window.citropyDesktop.signIn(connection.id));
+      setConnections(await window.citropyDesktop.signIn(account.id));
     } catch (error) {
       setError((error as Error).message);
     } finally {
       setSigningIn(undefined);
     }
   };
-  const signOut = async (connection: Connection) => {
+  const addAccount = async (connection: Connection, label: string) => {
+    const list = await perform("connections/accounts", "POST", { id: connection.id, label });
+    if (list) void signIn(connection, list.find((entry) => entry.id === connection.id)!.accounts.at(-1)!);
+    return Boolean(list);
+  };
+  const signOut = async (account: ConnectionAccount) => {
     if (await confirmAction({
-      title: `Sign out of ${connection.name}?`,
+      title: `Sign out of ${account.name}?`,
       description: "This also closes its open browser tabs. Agents can't use your account there until you sign in again.",
       label: "Sign out",
       danger: true,
-    })) await perform("connections/status", "POST", { id: connection.id, signedIn: false });
+    })) await perform("connections/status", "POST", { id: account.id, signedIn: false });
   };
-  const remove = async (connection: Connection) => {
+  const remove = async (account: ConnectionAccount) => {
     if (await confirmAction({
-      title: `Remove ${connection.name}?`,
+      title: `Remove ${account.name}?`,
       description: "This also signs you out of it in Citropy's browser and closes its open tabs.",
       label: "Remove",
       danger: true,
-    })) await perform("connections", "DELETE", { id: connection.id });
+    })) await perform("connections", "DELETE", { id: account.id });
   };
   return (
     <div className="feature-stack">
       <p className="feature-note">
-        Sign in to a website once in Citropy. Agents can then open it with your account, and they ask you before buying, sending, posting, or deleting anything there. Each site keeps its own sign-in.
+        Sign in to a website once in Citropy. Agents can then open it with your account, and they ask you before buying, sending, posting, or deleting anything there. Each account keeps its own sign-in, and Add account signs in to another account on the same site.
       </p>
       {connections && connections.length > 0 && (
         <section className="settings-group" aria-label="Connected websites">
           {connections.map((connection) => (
-            <div className="setting-row connection-row" key={connection.id}>
-              <span className="connection-site">
-                <span className="connection-icon"><SiteIcon url={connection.url} /></span>
-                <span>
-                  <strong>{connection.name}</strong>
-                  <small>{connection.sites.join(", ")} · @{connectionMention(connection)}</small>
-                </span>
-              </span>
-              <span className="row-actions">
-                {connection.signedIn ? (
-                  <button className="btn" data-variant="ghost" disabled={busy} onClick={() => void signOut(connection)}>Sign out</button>
-                ) : (
-                  <button className="btn" data-variant="primary" disabled={busy || Boolean(signingIn)} onClick={() => void signIn(connection)}>Sign in</button>
-                )}
-                <button className="icon-btn" disabled={busy} aria-label={`Remove ${connection.name}`} title="Remove" onClick={() => void remove(connection)}>
-                  <TrashIcon size={15} />
-                </button>
-              </span>
-            </div>
+            <ConnectionRow
+              key={connection.id}
+              connection={connection}
+              disabled={busy}
+              signInDisabled={Boolean(signingIn)}
+              onSignIn={(account) => void signIn(connection, account)}
+              onSignOut={(account) => void signOut(account)}
+              onRemove={(account) => void remove(account)}
+              onAddAccount={(label) => addAccount(connection, label)}
+            />
           ))}
         </section>
       )}
@@ -144,7 +141,7 @@ export function ConnectionsSettings() {
         </form>
       </section>
       <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
-      <AnimatePresence>{signingIn && <SignInDialog key={signingIn.id} connection={signingIn} />}</AnimatePresence>
+      <AnimatePresence>{signingIn && <SignInDialog key={signingIn.account.id} connection={signingIn.connection} account={signingIn.account} />}</AnimatePresence>
     </div>
   );
 }

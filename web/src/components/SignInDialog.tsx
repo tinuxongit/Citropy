@@ -5,7 +5,7 @@ import { SiteIcon } from "./SiteIcon.tsx";
 import { ArrowLeftIcon } from "./icons/arrows.tsx";
 import { RotateCwIcon } from "./icons/rotation.tsx";
 import type { SignInState } from "../desktop.d.ts";
-import type { Connection } from "../../../shared/features.ts";
+import type { Connection, ConnectionAccount } from "../../../shared/features.ts";
 
 function pageAddress(state: SignInState | undefined, connection: Connection): string {
   if (state?.error) return state.error;
@@ -13,7 +13,7 @@ function pageAddress(state: SignInState | undefined, connection: Connection): st
   return new URL(state.url).host;
 }
 
-export function SignInDialog({ connection }: { connection: Connection }) {
+export function SignInDialog({ connection, account }: { connection: Connection; account: ConnectionAccount }) {
   const desktop = window.citropyDesktop!;
   const present = useIsPresent();
   const page = useRef<HTMLDivElement>(null);
@@ -47,7 +47,7 @@ export function SignInDialog({ connection }: { connection: Connection }) {
   return (
     <Modal
       className="sign-in-dialog"
-      title={`Sign in to ${connection.name}`}
+      title={`Sign in to ${account.name}`}
       description={pageAddress(state, connection)}
       icon={<SiteIcon url={connection.url} />}
       onShown={() => setShown(true)}

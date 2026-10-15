@@ -20,13 +20,13 @@ export function versionSummary(provider: ProviderInfo, state: ProviderMaintenanc
 
 export function accountSummary(provider: ProviderInfo, signIns: ProviderSignIn[]): string {
   if (!isInstalled(provider)) return "Install it to use it in chats.";
-  if (!provider.enabled) return "Off. Not offered in new chats.";
   const ids = [undefined, ...(provider.instances ?? []).map(instance => instance.id)];
   const statuses = ids.map(id => signInFor(signIns, provider.id, id));
   if (statuses.some(status => !status)) return "Checking sign-in…";
   const signedIn = statuses.filter(status => status?.signedIn).length;
+  if (!signedIn) return "Not signed in. Sign in to use it in chats.";
+  if (!provider.enabled) return "Off. Not offered in new chats.";
   if (ids.length > 1) return `Using ${activeAccountName(provider)} · ${signedIn === ids.length ? "all" : signedIn} of ${ids.length} signed in`;
-  if (!signedIn) return "Not signed in";
   return provider.models.length === 1 ? "Signed in · 1 model" : `Signed in · ${provider.models.length} models`;
 }
 

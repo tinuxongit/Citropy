@@ -15,7 +15,7 @@ export function resolveProviderAccount(provider: ProviderId, instanceId?: string
 
 export function usableProviderAccount(provider: ProviderInfo | undefined, instanceId?: string | null): ReturnType<typeof providerAccount> & { provider: ProviderInfo } {
   const account = providerAccount(provider, instanceId);
-  if (!provider || !account.usable) throw new Error("Select an enabled, installed provider account.");
+  if (!provider || !account.usable) throw new Error("Select an enabled, installed, signed-in provider account.");
   return { ...account, provider };
 }
 

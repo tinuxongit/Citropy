@@ -111,7 +111,8 @@
 .connection-site > span:last-child {
   min-width: 0;
 }
-.connection-site small {
+.connection-site small,
+.connection-account small {
   margin-top: 0;
   overflow-wrap: anywhere;
 }
@@ -130,6 +131,10 @@
 .connection-icon > .link-site-icon {
   margin: 0;
   vertical-align: 0;
+}
+.settings-group > .connection-account {
+  min-height: 52px;
+  padding-left: calc(var(--settings-inset) + 32px + var(--space-12));
 }
 .citropy-skill-form {
   display: grid;

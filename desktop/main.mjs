@@ -13,7 +13,7 @@ import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-
 import { packagedBackend } from "./backend.mjs";
 import { desktopDiagnostics } from "./diagnostics.mjs";
 import { initializeProfiles, browserProfile, handleProfiles } from "./browser-profiles.mjs";
-import { initializeConnections, connectionProfile, connectionOfProfile, handleConnections, signInTarget } from "./connections.mjs";
+import { initializeConnections, connectionProfile, accountOfProfile, handleConnections, signInTarget } from "./connections.mjs";
 import { createSignInView } from "./sign-in-view.mjs";
 import { keepSessionCookies } from "./session-cookies.mjs";
 import { browserActivity } from "./browser-activity.mjs";
@@ -166,7 +166,7 @@ function address(raw) {
 function state(tab) {
   const content = tab.contents;
   if (!content || content.isDestroyed())
-    return { ...tab.state, loading: true, connection: connectionOfProfile(tab.state.profileId) };
+    return { ...tab.state, loading: true, account: accountOfProfile(tab.state.profileId) };
   return {
     ...tab.state,
     url: content.getURL() || "about:blank",
@@ -177,7 +177,7 @@ function state(tab) {
     loading: content.isLoadingMainFrame(),
     canGoBack: content.navigationHistory.canGoBack(),
     canGoForward: content.navigationHistory.canGoForward(),
-    connection: connectionOfProfile(tab.state.profileId),
+    account: accountOfProfile(tab.state.profileId),
   };
 }
 
@@ -357,7 +357,7 @@ async function open(input) {
   input = { ...input, profileId: profile.id, profileName: profile.name };
   const browserSession = session.fromPartition(profile.partition);
   watchDownloads(browserSession);
-  if (connectionOfProfile(profile.id)) keepSessionCookies(browserSession);
+  if (accountOfProfile(profile.id)) keepSessionCookies(browserSession);
   browserSession.setPermissionRequestHandler((_, __, callback) =>
     callback(false),
   );
@@ -1124,7 +1124,7 @@ async function request(method, params) {
   if (method.startsWith("profiles.")) return handleProfiles(method.slice(9), params, session, tabs);
   if (method.startsWith("connections.")) {
     const result = await handleConnections(method.slice(12), params, session, tabs);
-    for (const tab of tabs.values()) if (connectionOfProfile(tab.state.profileId)) publish(tab);
+    for (const tab of tabs.values()) if (accountOfProfile(tab.state.profileId)) publish(tab);
     return result;
   }
   if (method === "diagnostics") return app.getAppMetrics().map((entry) => ({

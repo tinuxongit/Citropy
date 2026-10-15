@@ -7,7 +7,7 @@ import { prepareAccountHome, withAccountHome } from '../server/provider-account-
 import { lstat, mkdir, mkdtemp, readlink, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { activeAccountId, hasUsableAccount, providerAccount } from '../shared/provider-account.ts';
+import { activeAccountId, hasReadyAccount, hasUsableAccount, providerAccount } from '../shared/provider-account.ts';
 
 const defaultModels = [{ id: 'default-model', label: 'Default' }];
 const accountModels = [{ id: 'account-model', label: 'Account' }];
@@ -16,11 +16,13 @@ const provider = (overrides = {}) => ({
   label: 'Codex',
   available: true,
   enabled: true,
+  signedIn: true,
   models: defaultModels,
   supportsPermissionPrompt: true,
   instances: [
-    { id: 'work', name: 'Work', available: true, models: accountModels },
+    { id: 'work', name: 'Work', available: true, signedIn: true, models: accountModels },
     { id: 'offline', name: 'Offline', available: false, models: accountModels },
+    { id: 'signed-out', name: 'Signed out', available: true, signedIn: false, models: accountModels },
   ],
   ...overrides,
 });
@@ -46,6 +48,15 @@ test('providerAccount treats a missing account as unusable with no models', () =
   assert.deepEqual(account.models, []);
   assert.equal(account.usable, false);
   assert.deepEqual(providerAccount(undefined), { instance: undefined, models: [], usable: false });
+});
+
+test('providerAccount treats a signed-out account as unusable', () => {
+  assert.equal(providerAccount(provider({ signedIn: false })).usable, false);
+  assert.equal(providerAccount(provider({ signedIn: undefined })).usable, false);
+  assert.equal(providerAccount(provider(), 'signed-out').usable, false);
+  assert.equal(activeAccountId(provider({ signedIn: false })), 'work');
+  assert.equal(hasReadyAccount(provider({ signedIn: false, instances: [] })), false);
+  assert.equal(hasReadyAccount(provider({ signedIn: false })), true);
 });
 
 test('providerAccount treats a disabled provider as unusable', () => {
@@ -80,8 +91,8 @@ test('the chosen account is saved per provider and cleared when the account is r
 
 test('usableProviderAccount rejects unusable accounts', () => {
   assert.equal(usableProviderAccount(provider(), 'work').models, accountModels);
-  assert.throws(() => usableProviderAccount(provider(), 'offline'), /enabled, installed provider account/);
-  assert.throws(() => usableProviderAccount(undefined), /enabled, installed provider account/);
+  assert.throws(() => usableProviderAccount(provider(), 'offline'), /enabled, installed, signed-in provider account/);
+  assert.throws(() => usableProviderAccount(undefined), /enabled, installed, signed-in provider account/);
 });
 
 test('resolveProviderAccount checks the stored account against the provider', t => {
