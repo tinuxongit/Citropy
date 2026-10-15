@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { RefreshIcon } from "./icons/rotation.tsx";
-import { isRemote, useEnvironments } from "../lib/environment.ts";
+import { useEnvironments } from "../lib/environment.ts";
 import { send } from "../lib/socket.ts";
 import { useApp } from "../lib/store.ts";
 import { AppearanceSettings } from "./AppearanceSettings.tsx";
