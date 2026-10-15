@@ -3,7 +3,7 @@
   <p>
     <a href="https://github.com/tinuxongit/Citropy/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/tinuxongit/Citropy?label=release&color=0a0a09&labelColor=2a2826"></a>
     <a href="https://github.com/tinuxongit/Citropy/actions/workflows/checks.yml"><img alt="Checks" src="https://github.com/tinuxongit/Citropy/actions/workflows/checks.yml/badge.svg?branch=main"></a>
-    <img alt="Linux, macOS, and Windows" src="https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-0a0a09.svg?labelColor=2a2826">
+    <img alt="Linux and Android" src="https://img.shields.io/badge/platforms-Linux%20%7C%20Android-0a0a09.svg?labelColor=2a2826">
     <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0a0a09.svg?labelColor=2a2826"></a>
   </p>
   <p>
@@ -21,19 +21,15 @@ Citropy runs the coding agents you already pay for in one desktop app. Each conv
 
 ## Install
 
-**Linux and macOS**
+**Linux**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.sh | sh
 ```
 
-**Windows** in PowerShell
+macOS and Windows builds are paused for now. Releases up to 0.11.0 still have them.
 
-```powershell
-irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps1 | iex
-```
-
-You need Git and one coding agent. On first launch the setup guide installs and signs in to [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), [OpenCode](https://opencode.ai) or Google Antigravity. Antigravity downloads from Google. The other three install through npm, so they need Node.js. Citropy itself needs no Node.js or admin password, and updates itself from Settings.
+You need Git and one coding agent. On first launch the setup guide installs and signs in to [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), [OpenCode](https://opencode.ai), Google Antigravity or Muse Code. Antigravity downloads from Google and Muse Code from Meta. The other three install through npm, so they need Node.js. Citropy itself needs no Node.js or admin password, and updates itself from Settings.
 
 <details>
 <summary>Where it installs</summary>
@@ -41,8 +37,6 @@ You need Git and one coding agent. On first launch the setup guide installs and 
 | System | Build | Installed to |
 | --- | --- | --- |
 | Linux | x86_64 AppImage | `~/.local/bin/citropy`, plus an application menu entry |
-| macOS | Apple Silicon and Intel | `~/Applications/Citropy.app` |
-| Windows | x64 | `%LOCALAPPDATA%\Programs\citropy`, plus a Start menu entry |
 
 </details>
 
@@ -88,6 +82,8 @@ Conversations and settings live in `~/.citropy` and are kept.
 ```sh
 curl -fsSL https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.sh | sh -s -- --uninstall
 ```
+
+On Windows, in PowerShell:
 
 ```powershell
 $s = irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps1; & ([scriptblock]::Create($s)) -Uninstall

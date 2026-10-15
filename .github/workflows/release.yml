@@ -72,121 +72,6 @@ jobs:
             release/*.AppImage
             release/latest-linux.yml
 
-  mac:
-    needs: validate
-    runs-on: macos-26
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22.18.0'
-          cache: npm
-      - run: npm ci
-      - name: Set version
-        env:
-          VERSION: ${{ inputs.version }}
-        run: npm version "$VERSION" --no-git-tag-version
-      - name: Package the macOS app
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npm run desktop:package -- --mac
-      - run: node desktop/smoke-mac.mjs
-      - name: Test the installer
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          mkdir -p "macdist/v$VERSION"
-          cp release/*.zip "macdist/v$VERSION/"
-          (cd "macdist/v$VERSION" && shasum -a 256 *.zip > SHA256SUMS)
-          cd macdist
-          python3 -m http.server 8791 --bind 127.0.0.1 >/dev/null 2>&1 &
-          for attempt in $(seq 1 40); do
-            curl -fsS --connect-timeout 2 --max-time 5 -o /dev/null "http://127.0.0.1:8791/" && break
-            sleep 0.5
-          done
-          curl -fsS --connect-timeout 2 --max-time 5 -o /dev/null "http://127.0.0.1:8791/" || { echo "The local release server did not answer on port 8791." >&2; exit 1; }
-          cd ..
-          HOME="$RUNNER_TEMP/install-home" CITROPY_VERSION="$VERSION" CITROPY_BASE_URL="http://127.0.0.1:8791" sh scripts/install.sh
-          APP="$RUNNER_TEMP/install-home/Applications/Citropy.app"
-          test -x "$APP/Contents/MacOS/Citropy"
-          codesign --verify --deep --strict "$APP"
-      - run: test -f release/latest-mac.yml
-      - uses: actions/upload-artifact@v7
-        with:
-          name: mac-release
-          compression-level: 0
-          if-no-files-found: error
-          path: |
-            release/*.zip
-            release/latest-mac.yml
-
-  windows:
-    needs: validate
-    runs-on: windows-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22.18.0'
-          cache: npm
-      - run: npm ci
-      - name: Set version
-        shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
-        run: npm version "$VERSION" --no-git-tag-version
-      - name: Package the Windows app
-        run: npm run desktop:package -- --win
-      - run: node desktop/smoke-win.mjs
-      - name: Test the installer
-        shell: pwsh
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          $dir = "windist/v$env:VERSION"
-          New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          Copy-Item "release/*.exe" $dir
-          $lines = Get-ChildItem "$dir/*.exe" | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" }
-          Set-Content -Path "$dir/SHA256SUMS" -Value $lines
-          $server = Start-Process python -ArgumentList "-m","http.server","8794","--directory","windist" -PassThru
-          $ready = $false
-          for ($attempt = 0; $attempt -lt 40 -and -not $ready; $attempt++) {
-            if ($server.HasExited) { throw "The local release server exited with code $($server.ExitCode)." }
-            try { Invoke-WebRequest -Uri "http://127.0.0.1:8794/" -UseBasicParsing -TimeoutSec 2 | Out-Null; $ready = $true } catch { Start-Sleep -Milliseconds 500 }
-          }
-          if (-not $ready) { throw "The local release server did not answer on port 8794." }
-          try {
-            $env:CITROPY_VERSION = $env:VERSION
-            $env:CITROPY_BASE_URL = "http://127.0.0.1:8794"
-            ./scripts/install.ps1
-            $installed = Join-Path $env:LOCALAPPDATA "Programs\citropy\Citropy.exe"
-            if (-not (Test-Path $installed)) { throw "The installer finished but $installed is missing." }
-            $version = (Get-Item $installed).VersionInfo.ProductVersion
-            if ($version -and -not $version.StartsWith($env:VERSION)) { throw "Installed version $version does not match $env:VERSION." }
-          }
-          finally {
-            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
-          }
-      - run: |
-          if (-not (Test-Path release/latest.yml)) { throw "latest.yml is missing." }
-          if (-not (Get-ChildItem release/*.exe.blockmap)) { throw "The installer blockmap is missing." }
-        shell: pwsh
-      - uses: actions/upload-artifact@v7
-        with:
-          name: windows-release
-          compression-level: 0
-          if-no-files-found: error
-          path: |
-            release/*.exe
-            release/*.exe.blockmap
-            release/latest.yml
-
   android:
     needs: validate
     runs-on: ubuntu-22.04
@@ -224,7 +109,7 @@ jobs:
           path: release/*.apk
 
   publish:
-    needs: [validate, check, linux, mac, windows, android]
+    needs: [validate, check, linux, android]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     permissions:
@@ -263,4 +148,4 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           node scripts/release-notes.mjs "$VERSION" > "$RUNNER_TEMP/notes.md"
-          gh release create "v$VERSION" dist/SHA256SUMS dist/*.AppImage dist/latest-linux.yml dist/*.zip dist/latest-mac.yml dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.apk --verify-tag --draft --title "Citropy $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+          gh release create "v$VERSION" dist/SHA256SUMS dist/*.AppImage dist/latest-linux.yml dist/*.apk --verify-tag --draft --title "Citropy $VERSION" --notes-file "$RUNNER_TEMP/notes.md"

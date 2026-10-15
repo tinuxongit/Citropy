@@ -1,4 +1,4 @@
-# Installs or updates Citropy on Windows.
+# Uninstalls Citropy on Windows. Windows builds are paused, so installing stops with a message.
 #
 #   irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps1 | iex
 #   $s = irm https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.ps1; & ([scriptblock]::Create($s)) -Uninstall
@@ -59,6 +59,7 @@ function Invoke-CitropyInstall {
       Say "Your conversations and settings stay in $stateHint and the $name profile."
       return
     }
+    Fail "Citropy does not ship Windows builds right now. -Uninstall still removes an installed copy."
 
     if (-not $BaseUrl) { $BaseUrl = "$github/releases/download" }
     if ($BaseUrl -match "@") { Fail "Refusing to download from an address with embedded credentials." }

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs or updates Citropy on Linux and macOS.
+# Installs or updates Citropy on Linux. On macOS it only uninstalls, since there is no macOS build right now.
 #
 #   curl -fsSL https://raw.githubusercontent.com/tinuxongit/Citropy/main/scripts/install.sh | sh
 #   sh scripts/install.sh --uninstall
@@ -20,7 +20,7 @@ main() {
       --uninstall) UNINSTALL=1 ;;
       --version=*) VERSION="${argument#--version=}" ;;
       --help|-h)
-        say "Installs or updates Citropy on Linux and macOS."
+        say "Installs or updates Citropy on Linux."
         say "  --version=X.Y.Z   install a specific release"
         say "  --uninstall       remove the installed app"
         exit 0
@@ -31,8 +31,11 @@ main() {
   case "$(uname -s)" in
     Linux) os=linux ;;
     Darwin) os=macos ;;
-    *) fail "This installer supports Linux and macOS. Download releases for other systems from ${GITHUB}/releases." ;;
+    *) fail "This installer supports Linux. Download releases for other systems from ${GITHUB}/releases." ;;
   esac
+  if [ "$os" = macos ] && [ "$UNINSTALL" = 0 ]; then
+    fail "Citropy does not ship macOS builds right now. --uninstall still removes an installed copy."
+  fi
   case "${os}:$(uname -m)" in
     linux:x86_64 | linux:amd64) arch=x86_64 ;;
     linux:aarch64 | linux:arm64) arch=arm64 ;;

@@ -2,6 +2,17 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.12.0
+
+### Added
+- Muse Code is now a provider. The setup guide downloads it from Meta and signs you in, and you can pick its models, steer a turn in progress and see its usage like the other agents.
+- Connections can hold several accounts. Add account in Settings > Connections signs in another account under a name you choose, such as Work, and each account keeps its own sign-in.
+
+### Changed
+- Each connection lists its services, such as Gmail and Drive for Google.
+- Each connection account has its own mention name, such as `@my-bank-joint`, so mentioning it tells the agent which account to use. Connections from earlier versions become a connection with one account and stay signed in.
+- Citropy is released for Linux and Android only for now. macOS and Windows builds are paused because they can't be tested reliably, so 0.11.0 is the last release for those systems.
+
 ## 0.11.0
 
 ### Added
