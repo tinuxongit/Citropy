@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.13.1
+
+### Fixed
+- Signing in with Google, Apple or a company SSO inside the browser now works. The sign-in popup these providers open was being blocked, so the window never reported back and the login stalled on its first screen.
+
 ## 0.13.0
 
 ### Added

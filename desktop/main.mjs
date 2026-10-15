@@ -449,7 +449,24 @@ async function bind(tab, content) {
       event.preventDefault();
     }
   });
-  content.setWindowOpenHandler(({ url }) => {
+  content.setWindowOpenHandler(({ url, disposition }) => {
+    // Sign-in popups (Google, Apple, SSO) open through window.open with window
+    // features, which Electron reports as the "new-window" disposition. They
+    // need a real child window that keeps window.opener live so the provider
+    // can post the result back to the page. Denying them returns null from
+    // window.open and the flow dies with "Failed to open popup window". Let
+    // those through; the child inherits this tab's session so cookies match.
+    if (disposition === "new-window") {
+      try {
+        address(url);
+      } catch {
+        return { action: "deny" };
+      }
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: { width: 520, height: 640, autoHideMenuBar: true },
+      };
+    }
     try {
       const opened = address(url);
       emit({ t: "browser.popup", parentId: id, url: opened });
