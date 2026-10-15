@@ -1,10 +1,9 @@
 import { onAnimationTick } from "./animation-clock.ts";
 
-const GLYPHS = "0123456789ABCDEFGHJKLMNPRSTUVWXYZ?#$%&@=+-*:.";
-const LEVELS = [0.22, 0.4, 0.62, 0.9];
-const CELL_HEIGHT = 13;
-export const ASCII_FONT = '11px "Citropy Mono", monospace';
-const THRESHOLD = 0.54;
+const GLYPHS = "0123456789abcdefghijkmnopqrstuvwxyz#$%&=+-*:.";
+const CELL_HEIGHT = 12;
+export const ASCII_FONT = '9px "Citropy Mono", monospace';
+const THRESHOLD = 0.62;
 const STAR_AREA = 26000;
 const FADE_FLOOR = 0.45;
 const FADE_RADIUS = { x: 0.36, y: 0.6 };
@@ -32,6 +31,8 @@ const CELL_STATE = `#version 300 es
 precision highp float;
 precision highp int;
 uniform float time;
+uniform vec2 cell;
+uniform vec2 heading;
 out vec4 state;
 
 float hash(int x, int y, int z) {
@@ -53,17 +54,29 @@ float valueNoise(vec3 point) {
   return mix(near, far, w);
 }
 
+// Long streaks: stretched along the drift, narrow across it.
+float streak(vec2 flow) {
+  return valueNoise(vec3(flow.x * 0.0025, flow.y * 0.009, time * 0.05));
+}
+
 void main() {
   state = vec4(0.0);
   int column = int(gl_FragCoord.x), row = int(gl_FragCoord.y);
-  float density = valueNoise(vec3(float(column) * 0.032, float(row) * 0.058, time * 0.04)) * 0.7
-    + valueNoise(vec3(float(column) * 0.12, float(row) * 0.2, time * 0.11 + 17.0)) * 0.3;
+  vec2 point = vec2(column, row) * cell;
+  vec2 flow = vec2(dot(point, heading), dot(point, vec2(-heading.y, heading.x)));
+  flow.y += (valueNoise(vec3(flow * 0.0012, time * 0.03 + 5.0)) - 0.5) * 220.0;
+  flow.x -= time * 14.0;
+  float body = streak(flow);
+  // Cells just ahead of a streak catch more light than the trail behind it.
+  float front = max(0.0, body - streak(flow + vec2(30.0, 0.0)));
+  float density = body * 0.88 + valueNoise(vec3(point * 0.04, time * 0.2 + 17.0)) * 0.12;
   float strength = (density - ${THRESHOLD}) / (1.0 - ${THRESHOLD});
   float seed = hash(column, row, 3);
-  if (strength <= 0.0 || seed > 0.35 + strength) return;
+  if (strength <= 0.0 || seed < 0.1) return;
   float glyph = floor(hash(column, row, int(floor(time * 0.6 + seed * 9.0))) * ${GLYPHS.length}.0);
-  float level = min(${LEVELS.length - 1}.0, floor(strength * ${LEVELS.length}.0 * 1.4));
-  state = vec4(glyph, level, 0.0, 255.0) / 255.0;
+  // Fade cells in from nothing at the edge of a streak so they never pop on.
+  float light = smoothstep(0.0, 0.3, strength) * min(0.7, 0.1 + strength * 0.35 + front * 4.0);
+  state = vec4(glyph / 255.0, light, 0.0, 1.0);
 }`;
 
 const CELLS = `#version 300 es
@@ -82,8 +95,8 @@ void main() {
   vec2 index = floor(pixel / cell);
   vec4 state = texelFetch(cellState, ivec2(index), 0);
   if (state.a == 0.0 || fade == 0.0) discard;
-  vec2 glyph = floor(state.xy * 255.0 + 0.5);
-  color = texelFetch(atlas, ivec2(glyph * cell + pixel - index * cell), 0) * fade;
+  float glyph = floor(state.x * 255.0 + 0.5);
+  color = texelFetch(atlas, ivec2(vec2(glyph * cell.x, 0.0) + pixel - index * cell), 0) * state.y * fade;
 }`;
 
 const STAR_SHAPE = `#version 300 es
@@ -137,18 +150,14 @@ function measureCellWidth(): number {
 }
 
 function glyphAtlas(color: string, width: number, height: number, scale: number): OffscreenCanvas {
-  const atlas = new OffscreenCanvas(Math.ceil(width * GLYPHS.length * scale), Math.ceil(height * LEVELS.length * scale));
+  const atlas = new OffscreenCanvas(Math.ceil(width * GLYPHS.length * scale), Math.ceil(height * scale));
   const context = atlas.getContext("2d")!;
   context.scale(scale, scale);
   context.font = ASCII_FONT;
   context.fillStyle = color;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  LEVELS.forEach((alpha, level) => {
-    context.globalAlpha = alpha;
-    for (let index = 0; index < GLYPHS.length; index++)
-      context.fillText(GLYPHS[index]!, width * (index + 0.5), height * (level + 0.5));
-  });
+  for (let index = 0; index < GLYPHS.length; index++) context.fillText(GLYPHS[index]!, width * (index + 0.5), height / 2);
   return atlas;
 }
 
@@ -194,6 +203,8 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, stage: in
   if (!gl) throw new Error("The ASCII background needs WebGL 2, which this display doesn't provide. Choose another background in Appearance settings.");
   const cellWidth = measureCellWidth();
   const star = rgba(starColor);
+  // Each start picks its own diagonal for the streaks to drift along.
+  const heading = (0.26 + Math.random() * 0.44) * (Math.random() < 0.5 ? 1 : -1) + (Math.random() < 0.5 ? 0 : Math.PI);
   let stage = initialStage;
   let scale = 1;
   let width = 0;
@@ -222,7 +233,7 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, stage: in
     cellState = compile(gl, FULL_SCREEN, CELL_STATE);
     cells = compile(gl, FULL_SCREEN, CELLS);
     starProgram = compile(gl, STAR_SHAPE, STAR_FILL);
-    stateUniforms = Object.fromEntries(["time"].map((name) => [name, gl.getUniformLocation(cellState, name)]));
+    stateUniforms = Object.fromEntries(["time", "cell", "heading"].map((name) => [name, gl.getUniformLocation(cellState, name)]));
     cellUniforms = Object.fromEntries(["atlas", "cellState", "cell", "height", ...FADE_UNIFORMS].map((name) => [name, gl.getUniformLocation(cells, name)]));
     starUniforms = Object.fromEntries(["size", "time", "starColor", "height", ...FADE_UNIFORMS].map((name) => [name, gl.getUniformLocation(starProgram, name)]));
     atlas = gl.createTexture();
@@ -258,6 +269,8 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, stage: in
     gl.viewport(0, 0, columns, rows);
     gl.useProgram(cellState);
     gl.uniform1f(stateUniforms.time!, time);
+    gl.uniform2f(stateUniforms.cell!, cellWidth, CELL_HEIGHT);
+    gl.uniform2f(stateUniforms.heading!, Math.cos(heading), Math.sin(heading));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.enable(gl.BLEND);

@@ -1,4 +1,4 @@
-const FRAME_MS = 120;
+const FRAME_MS = 40;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | undefined;
