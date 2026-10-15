@@ -1,0 +1,65 @@
+name: Back up the Android key
+
+# One-time workflow. Encrypts the signing keystore and its password to a
+# certificate whose private key stays on the maintainer's machine.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Encrypt the keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CITROPY_ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.CITROPY_ANDROID_KEYSTORE_PASSWORD }}
+          CERT: |
+            -----BEGIN CERTIFICATE-----
+            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
+            hUXm2S0xHPL4eFzg2vJ7
+            -----END CERTIFICATE-----
+        run: |
+          umask 077
+          mkdir "$RUNNER_TEMP/key" out
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/key/citropy.keystore"
+          printf '%s' "$KEYSTORE_PASSWORD" > "$RUNNER_TEMP/key/password.txt"
+          sha256sum "$RUNNER_TEMP/key/citropy.keystore" | cut -d' ' -f1
+          printf '%s' "$CERT" > cert.pem
+          tar -C "$RUNNER_TEMP/key" -cf - citropy.keystore password.txt | openssl cms -encrypt -binary -aes-256-cbc -outform DER -out out/android-key.p7m cert.pem
+          rm -rf "$RUNNER_TEMP/key"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-key
+          retention-days: 1
+          if-no-files-found: error
+          path: out/android-key.p7m
