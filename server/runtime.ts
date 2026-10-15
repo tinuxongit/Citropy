@@ -48,6 +48,8 @@ import type {
 
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
 const SHELL_TOOLS = new Set(["Bash", "Shell", "Monitor"]);
+// Claude keeps these jobs in memory only, so closing the process cancels them.
+const SCHEDULE_TOOLS = new Set(["CronCreate", "ScheduleWakeup"]);
 
 interface Prepared {
   messageId: string;
@@ -89,6 +91,8 @@ class ThreadRuntime {
   #transcript: ThreadTranscript;
   #subagents: SubagentTranscripts;
   #sessionStarted = 0;
+  #scheduleCalls = new Set<string>();
+  #scheduledSession: AgentSession | null = null;
 
   constructor(thread: Thread) {
     this.#thread = thread;
@@ -111,6 +115,10 @@ class ThreadRuntime {
       shell.threadId === this.id && !shell.panelId &&
       (shell.status === "running" || shell.status === "stopping"),
     );
+  }
+
+  get scheduled(): boolean {
+    return this.#session !== null && this.#scheduledSession === this.#session;
   }
 
   get session(): { started: number; pid?: number } | undefined {
@@ -772,6 +780,7 @@ class ThreadRuntime {
   #onToolStart(event: Extract<AgentEvent, { type: "tool.start" }>): void {
     if (PLAN_TOOLS.has(event.name)) return;
     if (SHELL_TOOLS.has(event.name)) this.#trackShell(event.callId, event.input);
+    if (SCHEDULE_TOOLS.has(event.name)) this.#scheduleCalls.add(event.callId);
     this.#transcript.startTool(event);
   }
 
@@ -782,6 +791,7 @@ class ThreadRuntime {
   }
 
   #onToolEnd(event: Extract<AgentEvent, { type: "tool.end" }>): void {
+    if (this.#scheduleCalls.delete(event.callId) && event.ok) this.#scheduledSession = this.#session;
     if (event.output) shellOutput(this.#shellId(event.callId), event.output);
     endShell(this.#shellId(event.callId), event.ok ? "finished" : "failed", true);
     this.#transcript.endTool(event);
@@ -814,6 +824,7 @@ class ThreadRuntime {
       activeTool: undefined,
       error: stopped ? undefined : event.error,
       usageLimit,
+      ...(completed && !this.#thread.parentThreadId && !usageLimit && !event.error ? { unread: true } : {}),
     });
     if (completed && !this.#thread.parentThreadId) {
       if (usageLimit) this.#notifyChat("error", "Usage limit reached", this.#thread.title);
@@ -868,6 +879,7 @@ class ThreadRuntime {
     clearTimeout(this.#compactionTimer);
     this.#resume = false;
     this.#buildPlan = false;
+    const replied = this.#thread.running && this.#thread.status !== "stopped" && !this.#thread.parentThreadId && !event.code;
     if (this.#thread.running && this.#thread.status !== "stopped" && !this.#thread.parentThreadId) {
       if (event.code) this.#notifyChat("error", "Provider stopped unexpectedly", this.#thread.title);
       else this.#notifyChat("success", "Response finished", this.#thread.title);
@@ -883,6 +895,7 @@ class ThreadRuntime {
     this.#transcript.closeMessage();
     const status = event.code === 0 ? "idle" : "error";
     store.patchThread(this.#thread.id, {
+      ...(replied ? { unread: true } : {}),
       status: this.#thread.status === "stopped" ? "stopped" : status,
       running: false,
       compacting: undefined,
@@ -940,13 +953,13 @@ export function providerBusy(providerId: string): boolean {
   return textGenerationBusy(providerId) || [...store.threads.values()].some((thread) => thread.provider === providerId && (thread.running || thread.status === "awaiting" || runtimes.get(thread.id)?.busy));
 }
 
-const IDLE_SESSION_MS = 60 * 60_000;
+const IDLE_SESSION_MS = 10 * 60_000;
 const idleSince = new WeakMap<ThreadRuntime, number>();
 
 export function closeIdleSessions(now = Date.now()): void {
   for (const [id, runtime] of runtimes) {
     const thread = store.threads.get(id);
-    const waiting = !thread || runtime.busy ||
+    const waiting = !thread || runtime.busy || runtime.scheduled ||
       store.subagentsOf(id).some(child => child.running || child.status === "awaiting");
     if (waiting) { idleSince.delete(runtime); continue; }
     const since = idleSince.get(runtime) ?? now;
@@ -964,6 +977,8 @@ export interface LiveAgent {
   title: string;
   projectId: string;
   projectName: string;
+  /** The bot or bot group this agent works for, so bots list apart from conversations. */
+  rosterId?: string;
   provider: string;
   model?: string;
   status: "working" | "waiting" | "idle";
@@ -983,12 +998,16 @@ export function liveAgents(): LiveAgent[] {
     const thread = store.threads.get(id);
     if (!session || !thread) continue;
     const busy = runtime.busy || childrenBusy(id);
+    let root = thread;
+    while (root.parentThreadId && store.threads.has(root.parentThreadId)) root = store.threads.get(root.parentThreadId)!;
+    const rosterId = root.botId ?? root.groupId;
     agents.push({
       threadId: id,
       ...(thread.parentThreadId ? { parentThreadId: thread.parentThreadId } : {}),
       title: thread.title,
       projectId: thread.projectId,
       projectName: store.projects.get(thread.projectId)?.name ?? "",
+      ...(rosterId ? { rosterId } : {}),
       provider: thread.provider,
       ...(thread.model ? { model: thread.model } : {}),
       status: thread.status === "awaiting" ? "waiting" : busy ? "working" : "idle",

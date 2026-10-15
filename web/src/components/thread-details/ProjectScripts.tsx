@@ -2,47 +2,24 @@ import { useState, type FormEvent } from "react";
 import { AnimatePresence } from "motion/react";
 import { EditIcon } from "../icons/pencil.tsx";
 import { PlayIcon } from "../icons/media.tsx";
-import { PlusIcon } from "../icons/marks.tsx";
 import { TerminalIcon } from "../icons/squares.tsx";
 import { TrashIcon } from "../icons/actions.tsx";
 import { Modal } from "../Modal.tsx";
-import type { MenuItem } from "../Menu.tsx";
-import { DetailRow, DetailSplitRow } from "./DetailRow.tsx";
+import { DetailActionRow, DetailSection } from "./DetailRow.tsx";
 import { runProjectScript, saveProjectScripts } from "../../lib/actions.ts";
 import { randomId } from "../../lib/random-id.ts";
 import { PROJECT_SCRIPT_LIMITS } from "../../../../shared/project-scripts.ts";
 import type { Project, ProjectScript } from "../../../../shared/protocol.ts";
 
-const lastScriptKey = (projectId: string) => `citropy.lastScript.${projectId}`;
-
 export function ProjectScripts({ project, threadId, disabled }: { project: Project; threadId: string; disabled: boolean }) {
   const scripts = project.scripts ?? [];
   const [editing, setEditing] = useState<ProjectScript>();
-  const [lastId, setLastId] = useState(() => localStorage.getItem(lastScriptKey(project.id)));
-  const primary = scripts.find((script) => script.id === lastId) ?? scripts[0];
-  const run = (script: ProjectScript) => {
-    localStorage.setItem(lastScriptKey(project.id), script.id);
-    setLastId(script.id);
-    runProjectScript(project.id, threadId, script.id);
-  };
-  const full = scripts.length >= PROJECT_SCRIPT_LIMITS.count;
-  const add = () => setEditing({ id: randomId(), name: "", command: "" });
-  const menu: MenuItem[] = [
-    ...scripts.map((script) => ({
-      id: script.id,
-      label: script.name,
-      hint: script.command,
-      icon: <PlayIcon size={14} />,
-      disabled,
-      onSelect: () => run(script),
-      action: { label: `Edit ${script.name}`, icon: <EditIcon size={13} />, onSelect: () => setEditing(script) },
-    })),
-    { id: "add", label: "Add script", icon: <PlusIcon size={14} />, section: "Manage", disabled: full, onSelect: add },
-  ];
   return <>
-    {primary
-      ? <DetailSplitRow icon={<PlayIcon size={16} />} label={`Run ${primary.name}`} title={primary.command} disabled={disabled} onClick={() => run(primary)} menu={menu} menuLabel="Project scripts" />
-      : <DetailRow icon={<TerminalIcon size={16} />} label="Add project script" onClick={add} />}
+    <DetailSection icon={<TerminalIcon size={16} />} title="Scripts" addLabel="Add project script" addDisabled={scripts.length >= PROJECT_SCRIPT_LIMITS.count} onAdd={() => setEditing({ id: randomId(), name: "", command: "" })}>
+      {scripts.map((script) => (
+        <DetailActionRow key={script.id} icon={<PlayIcon size={14} />} label={script.name} title={script.command} disabled={disabled} onClick={() => runProjectScript(project.id, threadId, script.id)} actionLabel={`Edit ${script.name}`} actionIcon={<EditIcon size={13} />} onAction={() => setEditing(script)} />
+      ))}
+    </DetailSection>
     <AnimatePresence>{editing && <ScriptEditor script={editing} scripts={scripts} onClose={() => setEditing(undefined)} onSave={(next) => { saveProjectScripts(project.id, next); setEditing(undefined); }} />}</AnimatePresence>
   </>;
 }

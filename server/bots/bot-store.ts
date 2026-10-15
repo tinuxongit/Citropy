@@ -10,13 +10,13 @@ import { BOT_LIMITS, BOT_LOOK_OPTIONS, NEW_BOT_LOOK, defaultLook, isPass, previe
 import type { Bot, BotMemory, BotProfile } from "../../shared/bots.ts";
 import type { Message } from "../../shared/protocol.ts";
 
-const NEW_BOT = { name: "New bot", title: "", description: "", notifications: true };
+const NEW_BOT = { name: "New bot", title: "", description: "", notifications: true, connections: [] as string[] };
 
 const botsFile = join(dataRoot, "bots.json");
 
 function loadBots(): Bot[] {
   if (!existsSync(botsFile)) return [];
-  return (JSON.parse(readFileSync(botsFile, "utf8")) as Bot[]).map(bot => ({ ...NEW_BOT_LOOK, ...bot }));
+  return (JSON.parse(readFileSync(botsFile, "utf8")) as Bot[]).map(bot => ({ ...NEW_BOT_LOOK, ...bot, connections: bot.connections ?? [] }));
 }
 
 function answersGroup(messages: Message[], index: number): boolean {
@@ -48,6 +48,10 @@ function checkProfile(input: Partial<BotProfile>): Partial<BotProfile> {
         break;
       }
       case "notifications": profile.notifications = flag(value, "Notifications"); break;
+      case "connections":
+        if (!Array.isArray(value) || value.length > BOT_LIMITS.connections || value.some(id => typeof id !== "string" || !id || id.length > 100)) throw new Error("Choose connections from Settings > Connections.");
+        profile.connections = [...new Set(value as string[])];
+        break;
       case "pinned": profile.pinned = flag(value, "Pinned"); break;
       case "hidden": profile.hidden = flag(value, "Hidden"); break;
       case "unread": profile.unread = flag(value, "Unread"); break;

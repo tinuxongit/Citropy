@@ -136,4 +136,34 @@ test("sidebar bounds rows and loads history only when a conversation opens", { t
       await page.screenshot({ path: `/tmp/citropy-sidebar-optimized-${width}.png` });
     }
   });
+
+  await t.test("finished chats show a tick until they are read", async () => {
+    await page.setViewportSize({ width: 1280, height: 860 });
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.evaluate(() => window.setup(2));
+    const tick = id => page.locator(`.thread-entry[data-thread-id="${id}"] .thread-row [aria-label="Finished, not opened yet"]`);
+    await page.evaluate(() => window.updateThread('t1', { unread: true }));
+    await tick('t1').waitFor();
+    assert.equal(await tick('t1').locator('svg').getAttribute('data-animate'), 'false');
+
+    await page.evaluate(() => window.updateThread('t0', { status: 'working', running: true }));
+    await page.evaluate(() => window.updateThread('t0', { status: 'idle', running: false, unread: true }));
+    assert.equal(await tick('t0').locator('svg').getAttribute('data-animate'), 'true');
+    await page.waitForFunction(() => document.querySelector('.thread-entry[data-thread-id="t0"] .thread-done').getAnimations().length === 0);
+
+    await page.evaluate(() => window.updateThread('t0', { unread: undefined }));
+    await tick('t0').waitFor({ state: 'detached' });
+    assert.equal(await page.locator('.thread-entry[data-thread-id="t0"] .thread-row time').count(), 1);
+  });
+
+  await t.test("snoozed chats count down to when they wake", async () => {
+    await page.evaluate(() => window.setup(2));
+    await page.evaluate(() => {
+      window.sidebarStore.setState({ sidebarGroups: { snoozed: true } });
+      window.updateThread('t1', { snoozedUntil: Date.now() + (2 * 60 + 30) * 60_000 });
+    });
+    const time = page.locator('.thread-entry[data-thread-id="t1"] .thread-row-time');
+    assert.equal(await time.textContent(), "2h 30m");
+    assert.match(await page.locator('.thread-entry[data-thread-id="t1"] .thread-row').getAttribute("aria-description"), /^Wakes /);
+  });
 });

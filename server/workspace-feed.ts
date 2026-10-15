@@ -15,7 +15,7 @@ export function attachWorkspaceFeed(socket: WebSocket): void {
   };
   const threads = store.allMeta().filter(thread => !thread.parentThreadId).map(workspaceThread);
   for (const thread of threads) fingerprints.set(thread.id, fingerprint(thread));
-  send({ t: "workspace.snapshot", snapshot: { home: homedir(), projects: [...store.projects.values()].sort((a, b) => b.lastOpened - a.lastOpened), threads } });
+  send({ t: "workspace.snapshot", snapshot: { home: homedir(), projects: store.visibleProjects(), threads } });
   const unsubscribe = bus.subscribe(event => {
     if (event.t === "thread.upsert" && !event.thread.parentThreadId) {
       const thread = workspaceThread(event.thread);

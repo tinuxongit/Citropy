@@ -120,6 +120,7 @@ export const threadRoutes: Routes = {
   "thread.finish": (event) => {
     store.setThreadFinished(event.id, event.finished);
   },
+  "thread.read": (event) => store.readThread(event.id),
   "thread.search": async (event, send) => {
     cancelThreadSearch(send);
     const controller = new AbortController();

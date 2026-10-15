@@ -187,7 +187,7 @@ test("terminal panes reuse successful WebGL detection while preserving per-pane 
       await page.waitForFunction(index => window.terminals.length === index + 1 && document.querySelectorAll(".term .xterm-screen canvas").length === index * 2, index);
     }
     assert.equal(await page.evaluate(() => window.probes), 2);
-    assert.deepEqual(await page.evaluate(() => window.terminals.map(terminal => ({ text: terminal.buffer.active.getLine(0).translateToString(true), color: terminal.buffer.active.getLine(0).getCell(0).getFgColor(), fontSize: terminal.options.fontSize, fontFamily: terminal.options.fontFamily, green: terminal.options.theme.green, scrollback: terminal.options.scrollback }))), Array.from({ length: 3 }, () => ({ text: "colored █▓▒░ ┌─┐ text", color: 2, fontSize: 13, fontFamily: "monospace", green: "#3ecf8e", scrollback: 8000 })));
+    assert.deepEqual(await page.evaluate(() => window.terminals.map(terminal => ({ text: terminal.buffer.active.getLine(0).translateToString(true), color: terminal.buffer.active.getLine(0).getCell(0).getFgColor(), fontSize: terminal.options.fontSize, fontFamily: terminal.options.fontFamily, green: terminal.options.theme.green, scrollback: terminal.options.scrollback }))), Array.from({ length: 3 }, () => ({ text: "colored █▓▒░ ┌─┐ text", color: 2, fontSize: 13, fontFamily: "\"Citropy Mono\", monospace", green: "#3ecf8e", scrollback: 8000 })));
     await page.evaluate(() => { window.terminals[2].focus(); });
     await page.keyboard.type("pwd");
     await page.keyboard.press("Enter");

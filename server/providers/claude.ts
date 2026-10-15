@@ -43,7 +43,14 @@ interface ClaudeUsage {
   output_tokens?: number;
   cache_read_input_tokens?: number;
   cache_creation_input_tokens?: number;
+  cache_creation?: { ephemeral_5m_input_tokens?: number; ephemeral_1h_input_tokens?: number };
   iterations?: Array<ClaudeUsage & { type?: string }>;
+}
+
+// Claude reports which cache lifetime it wrote, so reads keep the last known one.
+function cacheTtlMs(usage: ClaudeUsage): number | undefined {
+  if ((usage.cache_creation?.ephemeral_1h_input_tokens ?? 0) > 0) return 60 * 60_000;
+  if ((usage.cache_creation?.ephemeral_5m_input_tokens ?? 0) > 0) return 5 * 60_000;
 }
 
 function currentContextTokens(usage: ClaudeUsage): number | undefined {
@@ -84,6 +91,9 @@ class ClaudeSession implements AgentSession {
   #initialUsage: MessageUsage["totals"];
   #model?: string;
   #contextTokens = 0;
+  #requestStarted = 0;
+  #cacheTtl?: number;
+  #cacheExpiresAt?: number;
   #manualCompaction = false;
   #compacted = false;
   #effort?: string;
@@ -408,8 +418,11 @@ class ClaudeSession implements AgentSession {
           if (response.model) this.#model = response.model;
           const contextTokens = currentContextTokens(usage);
           if (contextTokens !== undefined) this.#contextTokens = contextTokens;
+          this.#cacheTtl = cacheTtlMs(usage) ?? this.#cacheTtl;
+          // The cache lifetime counts from the start of the request that read or wrote it.
+          if (this.#cacheTtl && current.cacheRead + current.cacheWrite > 0) this.#cacheExpiresAt = (this.#requestStarted || Date.now()) + this.#cacheTtl;
         }
-        this.#emit({ type: "usage", usage: { ...this.#usage.totals, contextTokens: this.#contextTokens, contextMax: this.#reportedContextMax } });
+        this.#emit({ type: "usage", usage: { ...this.#usage.totals, contextTokens: this.#contextTokens, contextMax: this.#reportedContextMax, ...(this.#cacheExpiresAt ? { cacheExpiresAt: this.#cacheExpiresAt } : {}) } });
       }
     }
     if (type === "system" && message.subtype === "compact_boundary") {
@@ -484,6 +497,7 @@ class ClaudeSession implements AgentSession {
     }
 
     if (type === "stream_event") {
+      if ((message.event as StreamEvent | undefined)?.type === "message_start" && !message.parent_tool_use_id) this.#requestStarted = Date.now();
       this.#stream(message.event as StreamEvent);
       return;
     }

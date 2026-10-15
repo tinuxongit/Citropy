@@ -1,5 +1,6 @@
 import "./fixtures/isolated-data.mjs";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,12 +11,16 @@ import { postFromUser } from "../server/bots/group-chat.ts";
 import { groupStore } from "../server/bots/group-store.ts";
 import { react } from "../server/bots/reactions.ts";
 import { uid } from "../server/ids.ts";
+import { attachDesktop } from "../server/desktop.ts";
 import { callWorkspaceTool } from "../server/mcp-workspace.ts";
 import { refreshProvidersNow } from "../server/provider-registry.ts";
 import { providers } from "../server/providers/index.ts";
+import { disposeRuntime, liveAgents, runtimeFor } from "../server/runtime.ts";
 import { botRoutes } from "../server/routes/bots.ts";
 import { removeThread } from "../server/routes/threads.ts";
-import { store } from "../server/store.ts";
+import { closeProject } from "../server/routes/projects.ts";
+import { Store, store } from "../server/store.ts";
+import { workspacePath } from "../server/workspaces.ts";
 import { BOT_TEMPLATES } from "../shared/bot-templates.ts";
 
 async function fixture(t) {
@@ -88,6 +93,37 @@ test("deleting a bot's conversation deletes the bot", async t => {
   assert.equal(botStore.bots.has(bot.id), false);
 });
 
+test("a new bot runs in its own folder outside the open folders", async t => {
+  await fixture(t);
+  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  await refreshProvidersNow();
+  const sent = [];
+  await botRoutes["bot.create"]({ requestId: "apart", thread: { provider: "claude" }, profile: { name: "Apart" } }, message => sent.push(message));
+  const thread = store.threads.get(sent[0].bot.threadId);
+  t.after(() => removeThread(thread.id));
+  const bots = store.botsProject;
+  assert.equal(thread.projectId, bots.id);
+  assert.equal(workspacePath(thread.projectId, thread.id), join(process.env.CITROPY_DATA_DIR, "bots", sent[0].bot.id));
+  assert.ok(existsSync(workspacePath(thread.projectId, thread.id)));
+  assert.ok(!store.visibleProjects().includes(bots));
+  await assert.rejects(closeProject(bots.id), /Workspace not found/);
+  assert.ok(store.threads.has(thread.id));
+});
+
+test("a bot made inside an open folder moves to its own folder and drops that folder's file changes", async t => {
+  const { makeBot } = await fixture(t);
+  const bot = makeBot({ name: "Mover" });
+  const message = store.addMessage(bot.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Done." }] });
+  store.addPart(bot.threadId, message.id, { id: uid("prt"), kind: "changes", checkpoint: message.id, files: [{ path: "web/src/App.tsx", added: 1, removed: 1 }] });
+  store.patchThread(bot.threadId, { externalId: "old-session", workspaceBranch: "main" });
+  const reloaded = new Store().threads.get(bot.threadId);
+  assert.equal(reloaded.projectId, store.botsProject.id);
+  assert.equal(reloaded.workspacePath, join(process.env.CITROPY_DATA_DIR, "bots", bot.id));
+  assert.deepEqual([reloaded.externalId, reloaded.workspaceBranch, reloaded.rebuildContext], [undefined, undefined, true]);
+  assert.deepEqual(reloaded.messages.at(-1).parts.map(part => part.kind), ["text"]);
+});
+
 test("renaming a bot renames its conversation and logs the change", async t => {
   const { makeBot } = await fixture(t);
   const bot = makeBot({ name: "Old" });
@@ -150,6 +186,18 @@ test("a bot shows its latest reply as a preview once the turn ends", async t => 
   store.patchThread(bot.threadId, { running: false });
   assert.equal(botStore.get(bot.id).unread, false);
   assert.match(botStore.get(bot.id).preview, /^word word .*word…$/);
+});
+
+test("running agents say which bot they work for, subagents included", async t => {
+  const { makeBot, sessions } = await fixture(t);
+  const bot = makeBot({ name: "Scout" });
+  const helper = store.createThread({ projectId: store.threads.get(bot.threadId).projectId, provider: "claude", permissionMode: "manual", title: "Helper", parentThreadId: bot.threadId });
+  const chat = store.createThread({ projectId: store.threads.get(bot.threadId).projectId, provider: "claude", permissionMode: "manual", title: "Chat" });
+  t.after(() => { for (const id of [bot.threadId, helper.id, chat.id]) disposeRuntime(id); });
+  for (const id of [bot.threadId, helper.id, chat.id]) await runtimeFor(id).send("hello");
+  assert.equal(sessions.size, 3);
+  const rosterIds = Object.fromEntries(liveAgents().map(agent => [agent.threadId, agent.rosterId]));
+  assert.deepEqual([rosterIds[bot.threadId], rosterIds[helper.id], rosterIds[chat.id]], [bot.id, bot.id, undefined]);
 });
 
 function groupTexts(group) {
@@ -237,6 +285,47 @@ test("a bot creates a focused bot with its own provider settings", async t => {
   assert.equal(thread.messages.at(-1).parts[0].text, "Created by Scout");
   store.patchThread(scout.threadId, { permissionMode: "plan" });
   await assert.rejects(callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_create", arguments: { name: "Another" } }), /Plan only/);
+});
+
+test("each bot browses in its own profile, signed in only to its connections", async t => {
+  const { makeBot } = await fixture(t);
+  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  await refreshProvidersNow();
+  const connection = (id, name, site) => ({ id, name, url: `https://${site}/`, site, sites: [site], description: site, accounts: [{ id: `${id}-account`, name, label: "", mention: id, signedIn: true, profileId: `connection-${id}-account` }] });
+  const connections = [connection("mail", "Mail", "mail.example"), connection("bank", "Bank", "bank.example")];
+  const listeners = {};
+  const opened = [];
+  const forgotten = [];
+  attachDesktop({ OPEN: 1, readyState: 1, on: (event, listener) => { listeners[event] = listener; }, close() {}, send(raw) {
+    const { id, method, params } = JSON.parse(raw);
+    if (method === "browser.open") opened.push(params);
+    if (method === "profiles.forget-bot") forgotten.push(params.profileId);
+    const result = method === "connections.list" ? connections : method === "browser.open" ? params : method === "focus" || method === "profiles.forget-bot" ? {} : undefined;
+    queueMicrotask(() => listeners.message(JSON.stringify(result ? { id, result } : { id, error: `Unexpected ${method}` })));
+  } });
+  t.after(() => listeners.close());
+  const run = (bot, name, args = {}) => callWorkspaceTool(bot.threadId, "run_tool", { name, arguments: args });
+  const open = makeBot({ name: "Open" });
+  assert.deepEqual(JSON.parse((await run(open, "browser_connections"))[0].text).map(entry => entry.id), ["mail", "bank"]);
+  const mailer = makeBot({ name: "Mailer" });
+  botStore.update(mailer.id, { connections: ["mail"] });
+  assert.deepEqual(JSON.parse((await run(mailer, "browser_connections"))[0].text).map(entry => entry.id), ["mail"]);
+  await run(mailer, "browser_open", { url: "https://www.bank.example/login" });
+  await run(mailer, "browser_open", { url: "https://mail.example/inbox" });
+  await run(open, "browser_open", { url: "https://www.bank.example/login" });
+  await run(open, "browser_open", { url: "https://example.org/" });
+  assert.deepEqual(opened.map(tab => tab.profileId), [`bot-${mailer.id}`, "connection-mail-account", "connection-bank-account", `bot-${open.id}`]);
+  const tabs = async bot => JSON.parse((await run(bot, "browser_tabs"))[0].text).map(tab => tab.id);
+  assert.deepEqual(await tabs(mailer), opened.slice(0, 2).map(tab => tab.id));
+  assert.deepEqual(await tabs(open), opened.slice(2).map(tab => tab.id));
+  await assert.rejects(run(mailer, "browser_snapshot", { tabId: opened[2].id }), /does not belong/);
+  await assert.rejects(run(mailer, "browser_open", { url: "https://mail.example/", account: "bank-account" }), /No account bank-account/);
+  const result = JSON.parse((await callWorkspaceTool(mailer.threadId, "run_tool", { name: "bots_create", arguments: { name: "Helper" } }))[0].text);
+  assert.deepEqual(botStore.get(result.id).connections, ["mail"]);
+  assert.throws(() => botStore.update(mailer.id, { connections: "mail" }), /Choose connections/);
+  await removeThread(open.threadId);
+  assert.deepEqual(forgotten, [`bot-${open.id}`]);
 });
 
 test("a reaction reaches the bot that wrote the message right away", async t => {

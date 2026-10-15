@@ -17,7 +17,7 @@ import type { Routes } from "./types.ts";
 async function createGroup(thread: BotThreadSettings, botIds: string[]) {
   groupStore.assertRoom(botIds);
   const id = uid("grp");
-  const created = await createRequestedThread({ ...thread, workspace: { kind: "current" } }, providerInfo(), { title: "Group", groupId: id });
+  const created = await createRequestedThread({ ...thread, projectId: store.botsProject!.id, workspace: { kind: "current" } }, providerInfo(), { title: "Group", groupId: id, workspacePath: store.botFolder(id) });
   try {
     return groupStore.create(id, created.id, botIds);
   } catch (error) {
@@ -41,8 +41,8 @@ export const botRoutes: Routes = {
     const source = botStore.get(event.id);
     const thread = store.threads.get(source.threadId);
     if (!thread) throw new Error("This bot's conversation is missing.");
-    const { name, title, description, notifications } = source;
-    const bot = await createBot(settingsOf(thread), { name: `${name} copy`, title, description, notifications, ...lookOf(source) });
+    const { name, title, description, notifications, connections } = source;
+    const bot = await createBot(settingsOf(thread), { name: `${name} copy`, title, description, notifications, connections, ...lookOf(source) });
     routines.copy(source.threadId, bot.threadId);
     send({ t: "bot.upsert", bot, requestId: event.requestId });
   },

@@ -65,9 +65,9 @@ test("idle sessions with paused queues release their process and retain resumabl
       const { queue, status, usageLimit, messages } = thread;
       const now = Date.now();
       closeIdleSessions(now);
-      closeIdleSessions(now + 60 * 60_000 - 1);
+      closeIdleSessions(now + 10 * 60_000 - 1);
       assert.equal(runtimeIfExists(thread.id), runtime);
-      closeIdleSessions(now + 60 * 60_000);
+      closeIdleSessions(now + 10 * 60_000);
       assert.equal(runtimeIfExists(thread.id), undefined);
       assert.equal(provider.disposed, true);
       assert.notEqual(thread.messages, messages);
@@ -83,6 +83,38 @@ test("idle sessions with paused queues release their process and retain resumabl
       assert.deepEqual(texts(thread), []);
     });
   }
+});
+
+test("finished replies stay unread until the conversation is read", async t => {
+  const { thread, runtime, provider } = await fixture(t);
+  await runtime.send("Answer this");
+  provider.emit({ type: "turn.end" });
+  await until(() => !runtime.busy);
+  assert.equal(thread.unread, true);
+  await threadRoutes["thread.read"]({ t: "thread.read", id: thread.id }, () => {});
+  assert.equal(thread.unread, undefined);
+  await runtime.send("Fail this");
+  provider.emit({ type: "turn.end", error: "Provider failed" });
+  await until(() => !runtime.busy);
+  assert.equal(thread.unread, undefined);
+  await runtime.send("Stop this");
+  runtime.stop();
+  await until(() => !runtime.busy);
+  assert.equal(thread.unread, undefined);
+});
+
+test("idle sessions with scheduled jobs keep their process until it restarts", async t => {
+  const { thread, runtime, provider } = await fixture(t);
+  await runtime.send("Check the deploy every hour");
+  provider.emit({ type: "tool.start", callId: "cron", name: "CronCreate", input: { cron: "7 * * * *", prompt: "Check the deploy" } });
+  provider.emit({ type: "tool.end", callId: "cron", ok: true, output: "Scheduled job 1" });
+  provider.emit({ type: "turn.end" });
+  await until(() => !runtime.busy);
+  const now = Date.now();
+  closeIdleSessions(now);
+  closeIdleSessions(now + 24 * 60 * 60_000);
+  assert.equal(runtimeIfExists(thread.id), runtime);
+  assert.notEqual(provider.disposed, true);
 });
 
 test("automatic compaction shows while it runs and still lets messages queue", async t => {

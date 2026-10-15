@@ -193,7 +193,7 @@ export function until(ts: number, now = Date.now()): string {
     ? `${Math.floor(minutes / 60)}h ${minutes % 60}m`
     : `${minutes / 60}h`;
   const hours = Math.round(delta / 3_600_000);
-  if (hours < 7 * 24) return hours % 24
+  if (hours <= 7 * 24) return hours % 24
     ? `${Math.floor(hours / 24)}d ${hours % 24}h`
     : `${hours / 24}d`;
   return formatDate(ts, { month: "short", day: "numeric" });

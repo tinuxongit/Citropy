@@ -1,15 +1,18 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { useVisibleInterval } from "../lib/use-visible-interval.ts";
 import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "./icons/chevrons.tsx";
 import { CollapseIcon } from "./icons/media.tsx";
-import { cost, decimal, tokenRate, tokens } from "../lib/format.ts";
+import { cost, decimal, since, tokenRate, tokens, until } from "../lib/format.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { estimateTokensFromChars, newInputTokens, reportedContext, uncachedInput } from "../../../shared/usage-metrics.ts";
 
 const PANEL_WIDTH = 304;
+// Above this, re-reading the whole context uncached costs more than compacting it first.
+const COMPACT_SUGGESTION_TOKENS = 100_000;
 
 function percentage(value: number): string {
   const percent = Math.max(0, Math.min(value * 100, 100));
@@ -62,6 +65,13 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
       : 0;
   const contextPercent = percentage(fill);
   const cachePercent = percentage(cacheRate);
+  const [, tick] = useState(0);
+  const now = Date.now();
+  const cacheExpiresAt = usage?.cacheExpiresAt;
+  const cacheWarm = cacheExpiresAt !== undefined && cacheExpiresAt > now;
+  useVisibleInterval(() => tick((value) => value + 1), 1000, open && cacheWarm);
+  const cacheState = cacheExpiresAt === undefined ? undefined : cacheWarm ? "warm" : "cold";
+  const suggestCompact = cacheState === "cold" && contextTokens >= COMPACT_SUGGESTION_TOKENS && canCompact && Boolean(onCompact);
   const label = known
     ? `${contextPercent}% context used`
     : "Context usage";
@@ -211,6 +221,21 @@ export const ContextUsage = memo(function ContextUsage({ onCompact, draft = "" }
             )}
             {estimatedNote && <p className="context-estimate">Estimated from conversation</p>}
           </section>
+          {cacheState && (
+            <section className="context-section context-cache-timer" aria-labelledby={`${id}-cache-timer`}>
+              <div className="context-heading">
+                <strong id={`${id}-cache-timer`}>Prompt cache</strong>
+                <span className="context-stat-value" data-cache={cacheState}>
+                  {cacheWarm ? `Warm · ${until(cacheExpiresAt!, now)} left` : `Expired ${since(cacheExpiresAt!, now)} ago`}
+                </span>
+              </div>
+              <p className="context-cache-note">
+                {cacheWarm
+                  ? "Your next message reuses the saved context at a fraction of the price."
+                  : `Your next message re-reads ${tokens(contextTokens)} tokens at full price.${suggestCompact ? " Compacting first makes that smaller." : ""}`}
+              </p>
+            </section>
+          )}
           {hasCache && (
             <section className="context-section context-cache" aria-labelledby={`${id}-cache`}>
               <div className="context-heading">

@@ -12,13 +12,14 @@ import { refreshMenuIcon } from "./menu-icon.mjs";
 import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-reveal.mjs";
 import { packagedBackend } from "./backend.mjs";
 import { desktopDiagnostics } from "./diagnostics.mjs";
-import { initializeProfiles, browserProfile, handleProfiles } from "./browser-profiles.mjs";
+import { initializeProfiles, botProfile, browserProfile, handleProfiles } from "./browser-profiles.mjs";
 import { initializeConnections, connectionProfile, accountOfProfile, handleConnections, signInTarget } from "./connections.mjs";
 import { createSignInView } from "./sign-in-view.mjs";
 import { keepSessionCookies } from "./session-cookies.mjs";
 import { browserActivity } from "./browser-activity.mjs";
 import { formatTree } from "./browser-snapshot.mjs";
 import { createPointer } from "./browser-pointer.mjs";
+import { pressKey } from "./browser-keys.mjs";
 import {
   app,
   dialog,
@@ -353,7 +354,7 @@ async function open(input) {
   const existing = tabs.get(input.id);
   if (existing) return state(existing);
   const url = address(input.url ?? "about:blank");
-  const profile = connectionProfile(input.profileId, input.url) ?? browserProfile(input.projectId, input.profileId);
+  const profile = connectionProfile(input.profileId, input.url) ?? botProfile(input.profileId) ?? browserProfile(input.projectId, input.profileId);
   input = { ...input, profileId: profile.id, profileName: profile.name };
   const browserSession = session.fromPartition(profile.partition);
   watchDownloads(browserSession);
@@ -798,13 +799,7 @@ async function closeTopLayer(tab) {
     returnByValue: true,
   });
   if (!result.value) return false;
-  for (const type of ["rawKeyDown", "keyUp"])
-    await cdp(tab, "Input.dispatchKeyEvent", {
-      type,
-      key: "Escape",
-      code: "Escape",
-      windowsVirtualKeyCode: 27,
-    });
+  pressKey(tab.contents, "Escape");
   return true;
 }
 
@@ -883,82 +878,17 @@ async function performAction(tab, input) {
       }
       if (tab.pointer.watched() && input.text.length <= 200)
         for (const character of input.text) {
-          await cdp(tab, "Input.insertText", { text: character });
+          await content.insertText(character);
           await new Promise((resolve) => setTimeout(resolve, 18));
         }
-      else await cdp(tab, "Input.insertText", { text: input.text });
+      else await content.insertText(input.text);
       break;
     }
-    case "press": {
+    case "press":
       if (typeof input.key !== "string" || input.key.length > 100)
         throw new Error("Invalid key");
-      const keys = input.key.split("+");
-      const key = keys.pop();
-      const modifiers = keys.reduce(
-        (value, modifier) =>
-          value | ({ Control: 2, Meta: 4, Alt: 1, Shift: 8 }[modifier] ?? 0),
-        0,
-      );
-      const codes = {
-        Enter: 13,
-        Tab: 9,
-        Backspace: 8,
-        Delete: 46,
-        Escape: 27,
-        ArrowLeft: 37,
-        ArrowUp: 38,
-        ArrowRight: 39,
-        ArrowDown: 40,
-        Home: 36,
-        End: 35,
-        PageUp: 33,
-        PageDown: 34,
-        Space: 32,
-      };
-      const code =
-        codes[key] ??
-        (key.length === 1 ? key.toUpperCase().charCodeAt(0) : undefined);
-      if (
-        !code ||
-        keys.some(
-          (modifier) => !["Control", "Meta", "Alt", "Shift"].includes(modifier),
-        )
-      )
-        throw new Error(
-          "Use a standard key name such as Enter, Tab, ArrowDown, or Control+A",
-        );
-      const previous = webContents.getFocusedWebContents();
-      const event = {
-        key: key === "Space" ? " " : key,
-        windowsVirtualKeyCode: code,
-        modifiers,
-      };
-      try {
-        content.focus();
-        await cdp(tab, "Emulation.setFocusEmulationEnabled", { enabled: true });
-        await cdp(tab, "Input.dispatchKeyEvent", {
-          ...event,
-          type: "keyDown",
-          text:
-            key === "Enter"
-              ? "\r"
-              : !(modifiers & 7) && (key.length === 1 || key === "Space")
-                ? event.key
-                : undefined,
-        });
-      } finally {
-        await cdp(tab, "Input.dispatchKeyEvent", {
-          ...event,
-          type: "keyUp",
-        }).catch(logFailure("Releasing a browser key"));
-        await cdp(tab, "Emulation.setFocusEmulationEnabled", {
-          enabled: false,
-        }).catch(logFailure("Ending browser focus emulation"));
-        if (previous && previous !== content && !previous.isDestroyed())
-          previous.focus();
-      }
+      pressKey(content, input.key);
       break;
-    }
     case "scroll": {
       if (!Number.isFinite(input.x) || !Number.isFinite(input.y))
         throw new Error("Invalid scroll distance");

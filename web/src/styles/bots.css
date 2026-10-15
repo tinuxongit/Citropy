@@ -423,6 +423,8 @@
 .bot-notify strong { font-size: var(--text-sm); font-weight: 500; }
 .bot-notify small { color: var(--text-3); font-size: var(--text-xs); line-height: 1.4; }
 
+.bot-connection-list { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-10); }
+
 .bot-memory-list { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
 .bot-memory-row {
   display: flex;

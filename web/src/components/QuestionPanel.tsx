@@ -6,7 +6,7 @@ import { QuestionMessageIcon } from "./icons/messages.tsx";
 import type { QuestionRequest } from "../../../shared/questions.ts";
 import { useApp, type AppState } from "../lib/store.ts";
 import { api } from "../lib/api.ts";
-import { ComposerWideTab } from "./composer/ComposerWideTab.tsx";
+import { ComposerWideTab, LowerButton } from "./composer/ComposerWideTab.tsx";
 import "../styles/questions.css";
 import { ActionError } from "./ActionError.tsx";
 import { GlobeIcon } from "./GlobeIcon.tsx";
@@ -61,12 +61,19 @@ export function QuestionForm({ request }: { request: QuestionRequest }) {
     }
   };
 
-  return <ComposerWideTab className="question-panel" aria-label="Your input">
+  const summary = <>
+    <QuestionMessageIcon size={16} aria-hidden="true" />
+    <strong>Your input</strong>
+    <span className="truncate">{question.question}</span>
+  </>;
+
+  return <ComposerWideTab className="question-panel" aria-label="Your input" summary={summary}>
     <form className="question-form" onSubmit={event => { event.preventDefault(); if (!ready) return; if (last) void submit(); else navigate(draft.index + 1); }}>
       <header className="question-heading">
         <QuestionMessageIcon size={16} aria-hidden="true" />
         <span>Your input</span>
         {request.questions.length > 1 && <span className="question-progress">{draft.index + 1} of {request.questions.length}</span>}
+        <LowerButton />
       </header>
       <div className="question-body">
         <fieldset disabled={submitting || !connected}>

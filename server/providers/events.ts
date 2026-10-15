@@ -15,7 +15,7 @@ export interface ProtocolEntry {
 const entries: ProtocolEntry[] = [];
 const statuses = new Set(["idle", "queued", "thinking", "working", "awaiting", "error", "stopped"]);
 const transcriptTypes = new Set(["block.start", "block.delta", "block.end", "tool.start", "tool.input", "tool.end"]);
-const usageKeys = new Set(["input", "output", "cacheRead", "cacheWrite", "costUsd", "contextTokens", "contextMax", "turns", "tokensPerSecond"]);
+const usageKeys = new Set(["input", "output", "cacheRead", "cacheWrite", "costUsd", "contextTokens", "contextMax", "turns", "tokensPerSecond", "cacheExpiresAt"]);
 
 export function protocolLog(): ProtocolEntry[] { return [...entries]; }
 

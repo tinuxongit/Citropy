@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
-import { startAsciiNoise } from "../lib/ascii-noise.ts";
+import { ASCII_FONT, startAsciiNoise } from "../lib/ascii-noise.ts";
 import { useBackgroundFile } from "../lib/background-files.ts";
 import { colorLight, lightMap, regionLight, type LightMap } from "../lib/backdrop-contrast.ts";
 import { reportError } from "../lib/api.ts";
@@ -71,8 +71,14 @@ function AsciiNoise({ metrics }: { metrics: RefObject<StageMetrics> }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const colors = useLayerColors(canvas);
   const reducedMotion = useReducedMotion();
+  // The cell width is measured once at start, so the font has to be loaded first.
+  const [fontReady, setFontReady] = useState(() => document.fonts.check(ASCII_FONT));
   useEffect(() => {
-    if (!colors) return;
+    if (fontReady) return;
+    void document.fonts.load(ASCII_FONT).catch(reportError).finally(() => setFontReady(true));
+  }, [fontReady]);
+  useEffect(() => {
+    if (!colors || !fontReady) return;
     try {
       return startAsciiNoise(canvas.current!, {
         color: colors.color,
@@ -83,7 +89,7 @@ function AsciiNoise({ metrics }: { metrics: RefObject<StageMetrics> }) {
     } catch (error) {
       reportError(error);
     }
-  }, [colors, reducedMotion, metrics]);
+  }, [colors, fontReady, reducedMotion, metrics]);
   const dim = useApp((state) => state.asciiDim);
   const blur = useApp((state) => state.asciiBlur);
   const focus = useApp((state) => state.asciiFocus);

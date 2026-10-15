@@ -5,7 +5,7 @@ import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import { MessageBlock } from "./MessageBlock.tsx";
 import { MessageNavigator } from "./MessageNavigator.tsx";
 import { scaled, useApp } from "../lib/store.ts";
-import { loadOlderThread, loadThread, readThreadNotifications, refreshGit } from "../lib/actions.ts";
+import { loadOlderThread, loadThread, readThread, readThreadNotifications, refreshGit } from "../lib/actions.ts";
 import { reportError } from "../lib/api.ts";
 import { trimOlderMessages } from "../lib/history-cache.ts";
 import { useStickToBottom } from "../lib/use-stick.ts";
@@ -41,6 +41,7 @@ export function Conversation() {
     threadId ? state.threads[threadId]?.error : undefined,
   );
   const usageLimited = useApp((state) => Boolean(threadId && state.threads[threadId]?.usageLimit));
+  const readingUnread = useApp((state) => Boolean(threadId && state.readingThreadId === threadId && state.threads[threadId]?.unread));
   const connected = useApp((state) => state.connected);
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
   const olderCursor = useApp((state) => threadId ? state.historyPages[threadId]?.next : undefined);
@@ -246,6 +247,10 @@ export function Conversation() {
         useApp.setState({ readingThreadId: null });
     };
   }, [threadId, nearBottom]);
+
+  useEffect(() => {
+    if (readingUnread && threadId) readThread(threadId);
+  }, [readingUnread, threadId]);
 
   useEffect(() => {
     if (!searchMessageId && !searchShellId) return;

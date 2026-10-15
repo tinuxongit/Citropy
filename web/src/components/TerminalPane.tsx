@@ -60,6 +60,10 @@ const LIGHT = {
 
 let webgl2Available = false;
 
+function terminalFont(): string {
+  return getComputedStyle(document.documentElement).getPropertyValue("--font-terminal").trim() || "monospace";
+}
+
 function hasWebgl2(): boolean {
   if (webgl2Available) return true;
   try {
@@ -95,6 +99,7 @@ export function TerminalPane({
   const connected = useApp((state) => state.connected);
   const scheme = useApp((state) => state.scheme);
   const uiScale = useApp((state) => state.uiScale);
+  const codeFont = useApp((state) => state.codeFont);
 
   useEffect(() => {
     if (!connected) attached.current = false;
@@ -111,6 +116,7 @@ export function TerminalPane({
     if (term.current) {
       term.current.options.theme = useApp.getState().scheme === "light" ? LIGHT : DARK;
       term.current.options.fontSize = 13 * useApp.getState().uiScale / 100;
+      term.current.options.fontFamily = terminalFont();
       fit.current?.fit();
       if (!attached.current) {
         attached.current = true;
@@ -130,16 +136,18 @@ export function TerminalPane({
     let disposed = false;
 
     void (async () => {
+      const fontFamily = terminalFont();
       const [{ Terminal: Xterm }, { FitAddon: Fit }, { WebLinksAddon }] =
         await Promise.all([
           import("@xterm/xterm"),
           import("@xterm/addon-fit"),
           import("@xterm/addon-web-links"),
+          document.fonts.load(`13px ${fontFamily}`),
         ]);
       if (disposed || signal.aborted || !host.current) return;
 
       const instance = new Xterm({
-        fontFamily: getComputedStyle(document.documentElement).getPropertyValue("--font-terminal").trim(),
+        fontFamily,
         fontSize: 13 * useApp.getState().uiScale / 100,
         lineHeight: 1.35,
         letterSpacing: 0,
@@ -299,6 +307,16 @@ export function TerminalPane({
     term.current.options.fontSize = 13 * uiScale / 100;
     fit.current?.fit();
   }, [uiScale]);
+
+  useEffect(() => {
+    if (!active || !term.current) return;
+    const fontFamily = terminalFont();
+    void document.fonts.load(`13px ${fontFamily}`).then(() => {
+      if (!term.current) return;
+      term.current.options.fontFamily = fontFamily;
+      fit.current?.fit();
+    });
+  }, [codeFont]);
 
   useEffect(() => {
     if (!active || !connected || !host.current) return;

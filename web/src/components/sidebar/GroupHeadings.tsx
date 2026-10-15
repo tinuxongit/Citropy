@@ -104,19 +104,6 @@ export function ProjectHeading({ group, project, searching, picked, canCreateThr
   </>;
 }
 
-export function StatusHeading({ group, searching }: { group: ThreadGroup; searching: boolean }) {
-  const label = group.label;
-  const expanded = group.open || searching;
-  return (
-    <div className={`global-project-heading global-status-heading global-${group.id}-heading`}>
-      <button className="global-project-toggle" type="button" aria-label={`${group.open ? "Collapse" : "Expand"} ${label}`} aria-expanded={expanded} onClick={group.toggle}>
-        <group.icon size={15} />
-        <span className="truncate">{label}</span>
-      </button>
-    </div>
-  );
-}
-
 export function SectionHeading({ group, searching, onDialog }: { group: ThreadGroup; searching: boolean; onDialog: (dialog: WorkspaceDialog) => void }) {
   return (
     <div className="rail-section-heading">

@@ -731,6 +731,26 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.deepEqual((await answered).postDataJSON(), { id: "request", answers: { scope: ["Single player"] } });
   });
 
+  check("questions lower to a bar and keep their answer", async t => {
+    const { page } = await app(t, {
+      messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("intro", "Pick a scope.")] }],
+      questions: [{ id: "request", threadId: "chat", messageId: "answer", questions, createdAt: 1 }],
+    });
+    const question = page.getByRole("region", { name: "Your input", exact: true });
+    await question.waitFor();
+    await question.getByText("Multiplayer", { exact: true }).click();
+    const full = await question.evaluate(node => node.offsetHeight);
+    await question.getByRole("button", { name: "Lower", exact: true }).click();
+    const raise = question.getByRole("button", { name: /How should the world start\?/ });
+    await raise.waitFor();
+    await question.getByText("Single player", { exact: true }).waitFor({ state: "hidden" });
+    assert.ok(await question.evaluate(node => node.offsetHeight) < full / 2);
+    await raise.click();
+    const answered = page.waitForRequest("**/api/threads/question*");
+    await question.getByRole("button", { name: "Send answers", exact: true }).click();
+    assert.deepEqual((await answered).postDataJSON(), { id: "request", answers: { scope: ["Multiplayer"] } });
+  });
+
   check("permission requests are answered from their composer tab", async (t) => {
     const { page, sent } = await app(t, {
       messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("intro", "I need to run a command.")] }],
@@ -746,6 +766,27 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.deepEqual(sent.find((event) => event.t === "permission.answer"), { t: "permission.answer", id: "permission", decision: "allow" });
   });
 
+  check("conversation details keep scripts and routines in their own sections", async (t) => {
+    const scripts = [{ id: "dev", name: "Dev server", command: "npm run dev" }];
+    const routines = [{ id: "nightly", name: "Nightly check", prompt: "Check", schedule: { kind: "weekly", days: [1], time: "08:00" }, paused: false, createdAt: 1, nextRunAt: Date.now() + 3_600_000, runs: [{ id: "r1", startedAt: 1, finishedAt: 2, status: "error" }] }];
+    const { page, sent } = await app(t, { messages: [], preferences: { threadDetails: "1" }, threadPatch: { routines }, snapshotPatch: { projects: [{ ...project, scripts }] } });
+    const panel = page.locator(".thread-details-panel");
+    const scriptSection = panel.locator(".details-section", { has: page.getByRole("heading", { name: "Scripts" }) });
+    const routineSection = panel.locator(".details-section", { has: page.getByRole("heading", { name: "Routines" }) });
+    await routineSection.waitFor();
+    await scriptSection.getByRole("button", { name: "Edit Dev server" }).click();
+    const editor = page.getByRole("dialog", { name: "Edit project script" });
+    await editor.getByRole("button", { name: "Cancel" }).click();
+    await editor.waitFor({ state: "detached" });
+    await routineSection.getByRole("button", { name: /Nightly check/ }).waitFor();
+    assert.equal(await routineSection.locator(".bot-run-dot").getAttribute("data-status"), "error");
+    await routineSection.getByRole("button", { name: "Add routine" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
+    assert.equal(await panel.locator(".details-section", { has: page.getByRole("button", { name: "Open in editor" }) }).getByRole("button", { name: "Dev server", exact: true }).count(), 0);
+    await scriptSection.getByRole("button", { name: "Dev server", exact: true }).click();
+    await expect(() => sent.some((event) => event.t === "project.runScript" && event.scriptId === "dev"));
+  });
+
   check("code blocks copy and images close on any outside click", async (t) => {
     const { page } = await app(t, { messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("code", `Here:\n\n\`\`\`ts\nexport const answer = 42;\n\`\`\`\n\n![Red square](${square})`)] }] });
     await page.getByRole("button", { name: "Copy code", exact: true }).click();
@@ -759,6 +800,17 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       await page.mouse.click(point.x, point.y);
       await viewer.waitFor({ state: "detached" });
     }
+  });
+
+  check("strip peeks keep their own width when the shared styles load later", async (t) => {
+    const page = await fixture(t, `
+      import '/web/src/styles/overlays.css';
+      import '/web/src/styles/strip-peek.css';
+      document.getElementById('fixture').innerHTML = '<div class="strip-peek usage-peek"></div><div class="strip-peek inbox-peek"></div>';
+    `);
+    await page.locator(".usage-peek").waitFor({ state: "attached" });
+    const widths = await page.$$eval(".strip-peek", (peeks) => peeks.map((peek) => peek.getBoundingClientRect().width));
+    assert.deepEqual(widths, [464, 380]);
   });
 
   check("release notes page through history without closing or moving the arrows", async (t) => {

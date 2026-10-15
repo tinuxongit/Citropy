@@ -211,6 +211,7 @@ export interface Usage {
   contextMax: number;
   turns: number;
   tokensPerSecond?: number;
+  cacheExpiresAt?: number;
 }
 
 export const emptyUsage = (): Usage => ({
@@ -231,6 +232,7 @@ export interface Project {
   isGit: boolean;
   branch?: string;
   lastOpened: number;
+  bots?: boolean;
   settings?: FolderSettings;
   scripts?: ProjectScript[];
 }
@@ -293,6 +295,7 @@ export interface ThreadMeta {
   runCount?: number;
   gitAction?: import("./assistance.ts").GitActionState;
   finished?: boolean;
+  unread?: boolean;
   pinned?: boolean;
   position?: number;
   snoozedUntil?: number;
@@ -315,7 +318,6 @@ export interface ThreadMeta {
 }
 
 export interface BotThreadSettings {
-  projectId: string;
   provider: ProviderId;
   providerInstanceId?: string;
   model?: string;
@@ -549,6 +551,7 @@ export type ClientEvent = (
   | { t: "server.restart" }
   | { t: "server.useAppData"; enabled: boolean }
   | { t: "thread.finish"; id: string; finished: boolean }
+  | { t: "thread.read"; id: string }
   | { t: "github.request"; requestId: string; request: GitHubRequest }
   | { t: "git.manage"; requestId: string; projectId: string; threadId?: string; operation: GitOperation; value?: string; offset?: number; remote?: string }
   | { t: "thread.search"; query: string }

@@ -115,3 +115,34 @@ test("Claude reporting a smaller context window does not change the configured w
   await session.configure({ contextMax: 1_000_000 });
   await assert.rejects(session.configure({ contextMax: 200_000 }), /restart/);
 });
+
+test("Claude reports when its prompt cache expires, counted from the request start", async t => {
+  const { session, events, receive } = fixture(t);
+  await session.send("Hello");
+  const cacheExpiry = () => events.findLast(event => event.type === "usage").usage.cacheExpiresAt;
+  const request = (id, usage) => {
+    receive({ type: "stream_event", event: { type: "message_start", message: {} } });
+    const started = Date.now();
+    receive({ type: "assistant", message: { id, usage: { input_tokens: 2, output_tokens: 5, ...usage } } });
+    return started;
+  };
+  const written = request("msg-1", { cache_read_input_tokens: 9_000, cache_creation_input_tokens: 1_000, cache_creation: { ephemeral_1h_input_tokens: 1_000, ephemeral_5m_input_tokens: 0 } });
+  await new Promise(resolve => setImmediate(resolve));
+  const first = cacheExpiry();
+  assert.ok(first >= written + 60 * 60_000 - 1_000);
+  await new Promise(resolve => setTimeout(resolve, 5));
+  request("msg-2", { cache_read_input_tokens: 10_000, cache_creation_input_tokens: 0 });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(cacheExpiry() > first, "a cache read keeps the last known lifetime and refreshes it");
+  request("msg-3", { cache_read_input_tokens: 10_000, cache_creation_input_tokens: 500, cache_creation: { ephemeral_1h_input_tokens: 0, ephemeral_5m_input_tokens: 500 } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(cacheExpiry() <= Date.now() + 5 * 60_000);
+});
+
+test("Claude does not report a cache expiry before it knows the cache lifetime", async t => {
+  const { session, events, receive } = fixture(t);
+  await session.send("Hello");
+  receive({ type: "assistant", message: { id: "msg-1", usage: { input_tokens: 20, output_tokens: 5, cache_read_input_tokens: 9_000 } } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(events.findLast(event => event.type === "usage").usage.cacheExpiresAt, undefined);
+});

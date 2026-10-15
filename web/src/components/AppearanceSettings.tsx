@@ -7,9 +7,10 @@ import {
   setTypingAnimation,
   setTypingSpeed,
   setChatWidth,
+  setCodeFont,
   useApp,
 } from "../lib/store.ts";
-import { CHAT_WIDTHS, type ChatWidth } from "../lib/app-state.ts";
+import { CHAT_WIDTHS, CODE_FONTS, type ChatWidth, type CodeFont } from "../lib/app-state.ts";
 import { Select } from "./Select.tsx";
 import { Range } from "./Range.tsx";
 import { InterfaceSize } from "./appearance/InterfaceSize.tsx";
@@ -34,6 +35,7 @@ export function AppearanceSettings() {
   const showFailedTools = useApp((state) => state.showFailedTools);
   const projectDefaults = useApp((state) => state.projectDefaults);
   const chatWidth = useApp((state) => state.chatWidth);
+  const codeFont = useApp((state) => state.codeFont);
 
   return (
     <>
@@ -120,6 +122,14 @@ export function AppearanceSettings() {
           </span>
           <Select value={chatWidth} onChange={(value) => setChatWidth(value as ChatWidth)}
             options={Object.entries(CHAT_WIDTHS).map(([value, { label }]) => ({ value, label }))} />
+        </label>
+        <label className="setting-row">
+          <span>
+            <strong>Code font</strong>
+            <small>The font for code in messages, the editor, diffs, and terminals.</small>
+          </span>
+          <Select value={codeFont} onChange={(value) => setCodeFont(value as CodeFont)}
+            options={Object.entries(CODE_FONTS).map(([value, label]) => ({ value, label }))} />
         </label>
         <label className="setting-row">
           <span>

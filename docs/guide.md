@@ -4,7 +4,7 @@ How each part of Citropy behaves, for users and contributors. For setup, see the
 
 ## Interface
 
-The interface uses Citropy Sans, a modified Google Sans Flex bundled in `public/fonts` under the SIL Open Font License. To rebuild it, run `scripts/font/build-citropy-sans.py` from the repository root in a Python venv with `fonttools` and `brotli` installed. Code uses Droid Sans Mono when installed, or the system monospace font. Text size is adjustable in Settings > Appearance.
+The interface uses Citropy Sans, a modified Google Sans Flex bundled in `public/fonts` under the SIL Open Font License. To rebuild it, run `scripts/font/build-citropy-sans.py` from the repository root in a Python venv with `fonttools` and `brotli` installed. Code and terminals use Citropy Mono, a monospaced font made from the same source with box drawing, block, braille and Powerline glyphs drawn to fill the cell. `scripts/font/build-citropy-mono.py` rebuilds it and also needs `skia-pathops` and `ttfautohint-py`; it writes installable TTF files to `release/fonts`. Settings > Appearance > Code font switches code to JetBrains Mono or the system monospace font. Text size is adjustable in Settings > Appearance.
 
 Press Ctrl+, to open Settings or Ctrl+O to choose a project folder in the current environment. On macOS, use Cmd+, and Cmd+O. Both stay out of the way while typing in a text field or terminal.
 

@@ -16,7 +16,7 @@ import { ThreadPreview } from "./ThreadPreview.tsx";
 import { canConnectServers, WorkspaceDialogs, type WorkspaceDialog, type WorkspaceScope } from "./WorkspaceSelector.tsx";
 import { CachedThreadRow } from "./sidebar/CachedThreadRow.tsx";
 import { PickedActions } from "./sidebar/PickedActions.tsx";
-import { ProjectHeading, SectionHeading, StatusHeading } from "./sidebar/GroupHeadings.tsx";
+import { ProjectHeading, SectionHeading } from "./sidebar/GroupHeadings.tsx";
 import { shownThreads, threadKey, threadOrderAfterMove, useThreadGroups, type EnvironmentFolders, type SidebarThread, type ThreadGroup } from "./sidebar/thread-groups.ts";
 import { ThreadRow } from "./sidebar/ThreadRow.tsx";
 import { useProjectDrag } from "./sidebar/use-project-drag.ts";
@@ -194,8 +194,8 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
   const renderHeading = (group: ThreadGroup) => {
     const searching = Boolean(query);
     const project = group.project;
-    if (group.heading === "section") return <SectionHeading group={group} searching={searching} onDialog={setDialog} />;
-    if (project) return <ProjectHeading
+    if (!project) return <SectionHeading group={group} searching={searching} onDialog={setDialog} />;
+    return <ProjectHeading
       group={group}
       project={project}
       searching={searching}
@@ -206,7 +206,6 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
       onNewThread={() => startThread(group)}
       onConversation={onConversation}
     />;
-    return <StatusHeading group={group} searching={searching} />;
   };
 
   const renderThread = (item: SidebarThread & { thread: ThreadMeta; cached?: false }) => <ThreadRow

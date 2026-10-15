@@ -15,6 +15,7 @@ export const BOT_LIMITS = {
   groupMembersMax: 6,
   memoryEntries: 40,
   memoryLength: 600,
+  connections: 50,
 };
 
 export function previewText(text: string): string {
@@ -95,6 +96,8 @@ export interface Bot {
   accessory: BotAccessory;
   threadId: string;
   notifications: boolean;
+  /** Connection ids this bot is signed in to. Empty means every connection. */
+  connections: string[];
   pinned: boolean;
   hidden: boolean;
   profileUpdatedAt: number;
@@ -120,7 +123,7 @@ export interface BotGroup {
 
 export type BotGroupPatch = Partial<Pick<BotGroup, "name" | "botIds" | "pinned" | "hidden" | "unread">>;
 
-export type BotProfile = Pick<Bot, "name" | "title" | "description" | keyof BotLook | "notifications" | "pinned" | "hidden" | "unread">;
+export type BotProfile = Pick<Bot, "name" | "title" | "description" | keyof BotLook | "notifications" | "connections" | "pinned" | "hidden" | "unread">;
 
 export type MessageOrigin =
   | { kind: "bot"; threadId: string; botId?: string; name: string; depth: number }

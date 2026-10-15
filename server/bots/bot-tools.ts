@@ -71,13 +71,15 @@ async function message(thread: Thread, args: Record<string, unknown>) {
 }
 
 async function create(thread: Thread, args: Record<string, unknown>) {
-  const creator = thread.botId ? botStore.get(thread.botId).name : thread.title;
+  const creator = thread.botId ? botStore.get(thread.botId) : undefined;
   const bot = await createBot(settingsOf(thread), {
+    // A bot cannot hand a new bot sign-ins it doesn't have itself.
+    ...(creator ? { connections: creator.connections } : {}),
     name: required(args, "name"),
     ...(args.title === undefined ? {} : { title: required(args, "title") }),
     ...(args.description === undefined ? {} : { description: required(args, "description") }),
   });
-  addNotice(bot.threadId, `Created by ${creator}`);
+  addNotice(bot.threadId, `Created by ${creator?.name ?? thread.title}`);
   return summary(bot);
 }
 

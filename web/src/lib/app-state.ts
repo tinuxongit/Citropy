@@ -76,6 +76,12 @@ export const CHAT_WIDTHS = {
   wider: { label: "Extra wide", pixels: 1400 },
 } as const;
 export type ChatWidth = keyof typeof CHAT_WIDTHS;
+export const CODE_FONTS = {
+  citropy: "Citropy Mono",
+  jetbrains: "JetBrains Mono",
+  system: "System",
+} as const;
+export type CodeFont = keyof typeof CODE_FONTS;
 export type PanelId = "sidebar" | "inspector" | "git" | "github";
 export const WINDOW_SHARE_PANELS: readonly PanelId[] = ["inspector"];
 
@@ -156,6 +162,7 @@ export interface AppState {
   searchEngine: SearchEngine;
   stageBackground: StageBackground;
   chatWidth: ChatWidth;
+  codeFont: CodeFont;
   backgroundDim: number;
   backgroundBlur: number;
   backgroundFocus: number;
@@ -331,6 +338,7 @@ export const useApp = create<AppState>(() => ({
   searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
   stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "default"), "default"),
   chatWidth: oneOf(Object.keys(CHAT_WIDTHS) as ChatWidth[], readPref<string>("citropy.chatWidth", "comfortable"), "comfortable"),
+  codeFont: oneOf(Object.keys(CODE_FONTS) as CodeFont[], readPref<string>("citropy.codeFont", "citropy"), "citropy"),
   backgroundDim: Number.isFinite(storedDim) ? Math.max(0, Math.min(90, storedDim)) : 68,
   backgroundBlur: readLevel("citropy.backgroundBlur", 0, 40, 0),
   backgroundFocus: readLevel("citropy.backgroundFocus", 0, 100, 70),

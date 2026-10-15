@@ -1,13 +1,14 @@
-import { memo, type CSSProperties } from "react";
+import { memo, useEffect, useRef, type CSSProperties } from "react";
 import { PullRequestIcon } from "../icons/git.tsx";
 import { CheckIcon } from "../icons/marks.tsx";
 import { RotateCcwIcon } from "../icons/rotation.tsx";
+import { CircleCheckIcon, HourglassIcon } from "../icons/status.tsx";
 import { TrashIcon } from "../icons/actions.tsx";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
 import { finishThread, loadThread, openOnEnvironment, removeThread } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { opensContextMenu } from "../../lib/context-menu-key.ts";
-import { dateTime, since, threadActivity } from "../../lib/format.ts";
+import { dateTime, since, threadActivity, until } from "../../lib/format.ts";
 import { environmentId, useEnvironments } from "../../lib/environment.ts";
 import { environmentSlice } from "../../lib/live-environments.ts";
 import { selectProject, selectThread, useApp } from "../../lib/store.ts";
@@ -49,6 +50,10 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
   const active = current && selected;
   const key = threadKey(environment, thread.id);
   const { status, label } = threadActivity(thread);
+  const working = status !== "idle" && status !== "stopped";
+  const wasWorking = useRef(false);
+  useEffect(() => { if (working) wasWorking.current = true; }, [working]);
+  const snoozedUntil = thread.snoozedUntil && !thread.archived ? thread.snoozedUntil : undefined;
   const busy = thread.running || thread.status === "awaiting";
   const blocked = finishBlocked(thread, tree);
   const finishLabel = `${thread.finished ? "Reopen" : "Finish"} ${thread.title}`;
@@ -119,7 +124,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
           className="thread-row"
           data-active={active}
           aria-label={thread.title}
-          aria-description={dateTime(thread.updatedAt)}
+          aria-description={snoozedUntil ? `Wakes ${dateTime(snoozedUntil)}` : dateTime(thread.updatedAt)}
           aria-describedby={describedBy}
           aria-current={active ? "page" : undefined}
           onPointerEnter={(event) => {
@@ -133,10 +138,18 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
         >
           <ProviderIcon provider={thread.provider} />
           <span className="thread-row-title">{thread.title}</span>
-          {status !== "idle" && status !== "stopped" ? (
+          {working ? (
             <span className="thread-status" data-status={status} role="img" aria-label={label}>
               <ThreadPulse status={status} />
             </span>
+          ) : thread.unread ? (
+            <span className="thread-status" data-status="unread" role="img" aria-label="Finished, not opened yet">
+              <CircleCheckIcon size={14} className="thread-done" data-animate={wasWorking.current} />
+            </span>
+          ) : snoozedUntil ? (
+            <time className="thread-row-time thread-row-wake" dateTime={new Date(snoozedUntil).toISOString()} title={`Wakes ${dateTime(snoozedUntil)}`}>
+              <HourglassIcon size={11} />{until(Math.max(snoozedUntil, now + 60_000), now)}
+            </time>
           ) : <time className="thread-row-time" dateTime={new Date(thread.updatedAt).toISOString()}>{since(thread.updatedAt, now)}</time>}
         </button>
         <div className="thread-row-actions" onPointerEnter={preview.hide}>

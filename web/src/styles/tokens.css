@@ -19,8 +19,8 @@
 
   --font-ui:
     "Citropy Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Droid Sans Mono", monospace;
-  --font-terminal: monospace;
+  --font-mono: "Citropy Mono", monospace;
+  --font-terminal: "Citropy Mono", monospace;
 
   --text-2xs: 11px;
   --text-xs: 12px;

@@ -6,6 +6,45 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Citropy Mono";
+  src: url("/fonts/CitropyMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Citropy Mono";
+  src: url("/fonts/CitropyMono-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Citropy Mono";
+  src: url("/fonts/CitropyMono-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Citropy Mono";
+  src: url("/fonts/CitropyMono-BoldItalic.woff2") format("woff2");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
@@ -398,7 +437,6 @@ kbd {
 }
 
 :where(.btn, .composer-select, .selection-quote, button.details-row):not(:disabled) {
-  will-change: scale;
   @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
     &:hover { scale: var(--hover-grow); }
     &:hover > :where(svg, .provider-icon):first-child { scale: calc(var(--icon-hover-grow) / var(--hover-grow)); }

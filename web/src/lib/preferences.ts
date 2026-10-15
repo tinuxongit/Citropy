@@ -1,5 +1,5 @@
 import { environmentStorage } from "./environment.ts";
-import { CHAT_WIDTHS, WINDOW_SHARE_PANELS, useApp, type ChatWidth, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
+import { CHAT_WIDTHS, CODE_FONTS, WINDOW_SHARE_PANELS, useApp, type ChatWidth, type CodeFont, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import { applyCustomColor } from "./custom-theme.ts";
 import type { SearchEngine } from "./web-search.ts";
@@ -134,6 +134,30 @@ export function setChatWidth(width: ChatWidth): void {
   useApp.setState({ chatWidth: width });
   environmentStorage.setItem("citropy.chatWidth", width);
   applyChatWidth(width);
+}
+
+function systemMonospace(): string {
+  if (/Mac|iPhone|iPad/.test(navigator.platform)) return 'Menlo, Monaco, "Courier New", monospace';
+  if (/Win/.test(navigator.platform)) return 'Consolas, "Courier New", monospace';
+  return '"Droid Sans Mono", monospace';
+}
+
+export function applyCodeFont(font: CodeFont): void {
+  const style = document.documentElement.style;
+  if (font === "system") {
+    style.setProperty("--font-mono", systemMonospace());
+    style.setProperty("--font-terminal", "monospace");
+    return;
+  }
+  const family = `"${CODE_FONTS[font]}", monospace`;
+  style.setProperty("--font-mono", family);
+  style.setProperty("--font-terminal", family);
+}
+
+export function setCodeFont(font: CodeFont): void {
+  applyCodeFont(font);
+  useApp.setState({ codeFont: font });
+  environmentStorage.setItem("citropy.codeFont", font);
 }
 
 export function setSidebarGroupOpen(id: string, open: boolean): void {

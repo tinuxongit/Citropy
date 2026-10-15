@@ -1,4 +1,4 @@
-import { startAsciiNoise } from "../../web/src/lib/ascii-noise.ts";
+import { ASCII_FONT, startAsciiNoise } from "../../web/src/lib/ascii-noise.ts";
 
 declare global {
   interface Window { paintArt(html: string): Promise<void> }
@@ -6,7 +6,7 @@ declare global {
 
 window.paintArt = async (html) => {
   document.body.innerHTML = html;
-  await document.fonts.ready;
+  await Promise.all([document.fonts.ready, document.fonts.load(ASCII_FONT)]);
   for (const canvas of document.querySelectorAll<HTMLCanvasElement>("canvas.ascii-field")) {
     const { color, star, center } = canvas.dataset;
     if (!color || !star || !center) throw new Error("An ASCII field needs data-color, data-star and data-center.");

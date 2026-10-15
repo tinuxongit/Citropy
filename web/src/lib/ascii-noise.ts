@@ -3,7 +3,7 @@ import { onAnimationTick } from "./animation-clock.ts";
 const GLYPHS = "0123456789ABCDEFGHJKLMNPRSTUVWXYZ?#$%&@=+-*:.";
 const LEVELS = [0.22, 0.4, 0.62, 0.9];
 const CELL_HEIGHT = 13;
-const FONT = '11px "Droid Sans Mono", ui-monospace, monospace';
+export const ASCII_FONT = '11px "Citropy Mono", monospace';
 const THRESHOLD = 0.54;
 const STAR_AREA = 26000;
 const FADE_FLOOR = 0.45;
@@ -132,7 +132,7 @@ function hash(x: number, y: number, z: number): number {
 
 function measureCellWidth(): number {
   const context = new OffscreenCanvas(1, 1).getContext("2d")!;
-  context.font = FONT;
+  context.font = ASCII_FONT;
   return Math.ceil(context.measureText("M").width) + 1;
 }
 
@@ -140,7 +140,7 @@ function glyphAtlas(color: string, width: number, height: number, scale: number)
   const atlas = new OffscreenCanvas(Math.ceil(width * GLYPHS.length * scale), Math.ceil(height * LEVELS.length * scale));
   const context = atlas.getContext("2d")!;
   context.scale(scale, scale);
-  context.font = FONT;
+  context.font = ASCII_FONT;
   context.fillStyle = color;
   context.textAlign = "center";
   context.textBaseline = "middle";

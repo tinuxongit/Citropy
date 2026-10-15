@@ -38,27 +38,19 @@ import { applyCustomColor } from "./lib/custom-theme.ts";
 import { followVisualViewport } from "./lib/visual-viewport.ts";
 
 async function start() {
-  if (/Mac|iPhone|iPad/.test(navigator.platform)) {
-    document.documentElement.style.setProperty(
-      "--font-mono", 'Menlo, Monaco, "Courier New", monospace',
-    );
-  } else if (/Win/.test(navigator.platform)) {
-    document.documentElement.style.setProperty(
-      "--font-mono", 'Consolas, "Courier New", monospace',
-    );
-  }
   followVisualViewport();
   await initializeEnvironment();
   applyReleaseDefaults();
-  const [{ App }, { connect, logClientError }, { useApp, applyUiScale, followWindowSize }, { hideBootScreenWhenConnected }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts"), import("./lib/boot-screen.ts")]);
+  const [{ App }, { connect, logClientError }, { useApp, applyUiScale, applyCodeFont, followWindowSize }, { hideBootScreenWhenConnected }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts"), import("./lib/boot-screen.ts")]);
 
   if (!window.citropyDesktop && window.loomDesktop)
     window.citropyDesktop = window.loomDesktop;
 
-  const { theme, scheme, customColor } = useApp.getState();
+  const { theme, scheme, customColor, codeFont } = useApp.getState();
   document.documentElement.dataset.theme = theme;
   document.documentElement.dataset.scheme = scheme;
   applyCustomColor(customColor, scheme);
+  applyCodeFont(codeFont);
   applyUiScale();
   followWindowSize();
   hideBootScreenWhenConnected();

@@ -46,6 +46,7 @@ import { onComposerDelivery, takeComposerDeliveries, type ComposerDelivery } fro
 import { useAttachmentUpload } from "./composer/use-attachment-upload.ts";
 import { useComposerCommands } from "./composer/use-composer-commands.tsx";
 import { ComposerFrame } from "./composer/ComposerFrame.tsx";
+import { CacheTab } from "./composer/CacheTab.tsx";
 import { PlanTab } from "./composer/PlanTab.tsx";
 
 const START_QUESTION = "What's next";
@@ -179,6 +180,7 @@ export function Composer({
     <ComposerRequest />
     <UsageLimitTab threadId={thread.id} />
     <PlanTab threadId={thread.id} />
+    <CacheTab threadId={thread.id} />
     <QueueList thread={thread} provider={provider} onEdit={restore} />
   </>, [thread, provider, restore]);
   const settingsBar = useMemo(() => thread && <>

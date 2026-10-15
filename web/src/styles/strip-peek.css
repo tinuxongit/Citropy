@@ -4,13 +4,12 @@
   initial-value: 0px;
 }
 .strip-peek {
-  --strip-peek-width: 340px;
   --strip-peek-fillet: var(--r-lg);
   --strip-peek-edge: var(--space-8);
   --strip-peek-slide: var(--dur-base);
   position: fixed;
   inset: var(--strip-peek-top) auto auto var(--strip-peek-left);
-  width: var(--strip-peek-width);
+  width: var(--strip-peek-width, 340px);
   margin: 0;
   padding: 0;
   border: 0;

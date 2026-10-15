@@ -1,4 +1,9 @@
 @font-face {
+  font-family: "Citropy Mono";
+  src: url("/fonts/CitropyMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
   font-family: "Citropy Sans";
   src: url("/fonts/CitropySans.woff2") format("woff2");
   font-weight: 300 800;

@@ -174,3 +174,11 @@ test("browser profiles isolate imported cookies and preserve source databases", 
     null,
   );
 });
+
+test("each bot gets its own browser profile and other ids are refused", async () => {
+  const { botProfile } = await import("../desktop/browser-profiles.mjs");
+  assert.deepEqual(botProfile("bot-bot_abc"), { id: "bot-bot_abc", name: "Bot", partition: "persist:citropy-bot-bot_abc" });
+  assert.equal(botProfile("workspace"), undefined);
+  assert.equal(botProfile("bot-../x"), undefined);
+  assert.equal(botProfile(undefined), undefined);
+});

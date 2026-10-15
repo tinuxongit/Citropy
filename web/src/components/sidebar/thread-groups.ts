@@ -28,7 +28,6 @@ export interface ThreadGroup {
   environment?: string;
   offline?: boolean;
   section?: WorkspaceScope;
-  heading?: "section";
   parent?: string;
 }
 
@@ -39,8 +38,8 @@ export interface ThreadListRow {
   empty: boolean;
 }
 
-const CATEGORIES: { id: Category; label: string; icon: ThreadGroup["icon"]; heading?: "section" }[] = [
-  { id: "pinned", label: "Pinned", icon: PinIcon, heading: "section" },
+const CATEGORIES: { id: Category; label: string; icon: ThreadGroup["icon"] }[] = [
+  { id: "pinned", label: "Pinned", icon: PinIcon },
   { id: "snoozed", label: "Snoozed", icon: ClockIcon },
   { id: "finished", label: "Finished", icon: CircleCheckIcon },
 ];
@@ -172,7 +171,7 @@ export function useThreadGroups({ threads, query, environments, sections, active
     });
     const folders = SECTIONS.flatMap(({ id, label, icon, server }): ThreadGroup[] => {
       if (searching || !sections.includes(id)) return foldersOf(server);
-      const heading = group({ id: `section:${id}`, label, icon, threads: [], section: id, heading: "section" }, `section:${id}`);
+      const heading = group({ id: `section:${id}`, label, icon, threads: [], section: id }, `section:${id}`);
       return [heading, ...(heading.open ? foldersOf(server).map((folder) => ({ ...folder, parent: heading.id })) : [])];
     });
     return [

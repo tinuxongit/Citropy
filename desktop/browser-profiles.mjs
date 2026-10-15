@@ -39,6 +39,12 @@ function projectProfiles(projectId) {
   return preferences[projectId];
 }
 
+// Each bot browses in its own profile, so one bot's sign-ins never reach another.
+export function botProfile(profileId) {
+  if (typeof profileId !== "string" || !/^bot-[a-zA-Z0-9_-]+$/.test(profileId)) return undefined;
+  return { id: profileId, name: "Bot", partition: `persist:citropy-${profileId}` };
+}
+
 export function browserProfile(projectId, profileId) {
   const settings = projectProfiles(projectId);
   const profile = settings.profiles.find(
@@ -282,6 +288,12 @@ export async function clearProfileData(target) {
 }
 
 async function applyProfiles(operation, input, session, tabs) {
+  if (operation === "forget-bot") {
+    const profile = botProfile(input.profileId);
+    if (!profile) throw new Error("Bot profile not found");
+    await clearProfileData(session.fromPartition(profile.partition));
+    return { ok: true };
+  }
   const settings = projectProfiles(input.projectId);
   const getSession = (id) =>
     session.fromPartition(browserProfile(input.projectId, id).partition);

@@ -36,6 +36,7 @@ async function runInTerminal(projectId: string, threadId: string | undefined, na
 }
 
 export async function closeProject(id: string): Promise<void> {
+  if (store.projects.get(id)?.bots) throw new Error("Workspace not found");
   for (const panel of panelList()) {
     if (panel.projectId !== id) continue;
     await terminals.close(panel.id);

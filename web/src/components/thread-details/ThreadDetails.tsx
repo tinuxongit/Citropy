@@ -103,8 +103,6 @@ function ThreadDetails({ thread, project }: { thread: ThreadMeta; project: Proje
       <div className="details-section" aria-label="Workspace">
         <DetailRow icon={<ComposeIcon size={16} />} label="Open in editor" disabled={!connected} onClick={() => showInChat(() => openWorkbenchPanel("files"))} />
         {openFolder && <DetailRow icon={<FolderOpenIcon size={16} />} label="Open folder" title={folder} onClick={() => void openFolder(folder).catch(reportError)} />}
-        <ProjectScripts project={project} threadId={thread.id} disabled={!connected} />
-        <ThreadRoutines threadId={thread.id} />
       </div>
       {isGit && <div className="details-section" aria-label="Version control">
         <GitSection thread={thread} git={git} branch={branch} onReview={() => setReviewing(true)} onSourceControl={openSourceControl} onChanges={() => showInChat(() => openWorkbenchPanel("changes"))} />
@@ -113,6 +111,8 @@ function ThreadDetails({ thread, project }: { thread: ThreadMeta; project: Proje
         <DetailRow icon={git.busy ? <Loader size={14} /> : <NewBranchIcon size={16} />} label={git.busy ? git.activity : "Initialize Git"} title="Start tracking this folder's history with Git" disabled={!connected || git.busy} onClick={() => void git.manage("init")} />
         <ActionError className="details-error" message={git.failed ? git.error : ""} onDismiss={git.dismissError} />
       </div>}
+      <ProjectScripts project={project} threadId={thread.id} disabled={!connected} />
+      <ThreadRoutines threadId={thread.id} />
       <ShellsSection threadId={thread.id} disabled={!connected} />
       {!connected && <p className="details-note">Disconnected from Citropy</p>}
     </section>

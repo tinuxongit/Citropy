@@ -2,6 +2,26 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.13.0
+
+### Added
+- Citropy Mono, a code font made from Citropy Sans, is now used for code and terminals. It keeps `l`, `I`, `1`, `0` and `O` apart, gives cramped letters like `m` room next to narrow ones, and draws box lines and Powerline symbols that meet across lines. Settings > Appearance > Code font switches to JetBrains Mono or the system monospace font.
+- A flame with a burning fuse above the composer counts down the last 5 minutes of Claude's prompt cache. Replying before it burns out reuses the saved context at a fraction of the price. The context ring's panel also shows how long the cache has left, or how long ago it expired, and suggests compacting first when a large chat went cold.
+- Bots can be signed in to only the connections you pick. Each bot browses in its own browser profile, so it visits other sites signed out and never shares sign-ins with another bot. A bot that creates a new bot passes on only its own connections.
+- Chats that finished while you were elsewhere show a check in the sidebar until you open them.
+- Questions and other panels above the composer can be lowered to a single bar, so you can read the chat behind them before answering.
+
+### Changed
+- Chats idle for 10 minutes instead of an hour close their agent process to free memory. Coming back to one starts it again where it left off.
+- Bots work in their own private folders instead of a project. They no longer see your project's files or report its changes, and making a bot no longer needs an open project.
+- The Agents panel lists bots apart from conversations, and clicking a bot opens it.
+- Thread details list every project script and routine under their own headings, with a + to add one. Routines show whether their last run worked.
+- Snoozed chats show in the sidebar how long until they wake.
+
+### Fixed
+- Citropy no longer closes an idle Claude chat that has scheduled jobs or a loop, which would have cancelled them.
+- An agent typing or pressing keys in the browser no longer lands in the message you're writing. Its keys could select and replace your whole draft.
+
 ## 0.12.0
 
 ### Added

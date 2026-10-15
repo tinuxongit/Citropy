@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Bot, BotProfile } from "../../../../shared/bots.ts";
 import { reportError } from "../../lib/api.ts";
 import { updateBot } from "../../lib/bots.ts";
+import { BotConnections } from "./BotConnections.tsx";
 import { BotLookPicker } from "./BotLookPicker.tsx";
 import { BotMemory } from "./BotMemory.tsx";
 import { BotProfileFields, type ProfileDraft, type TextField } from "./BotProfileFields.tsx";
@@ -28,6 +29,7 @@ export function BotSettings({ bot }: { bot: Bot }) {
         </span>
         <input className="setting-switch" type="checkbox" role="switch" checked={bot.notifications} onChange={(event) => save({ notifications: event.target.checked })} />
       </label>
+      <BotConnections bot={bot} onChange={save} />
       <BotMemory bot={bot} />
     </div>
   );

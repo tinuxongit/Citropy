@@ -5,6 +5,7 @@ import { workspacePath } from "./workspaces.ts";
 import { saveToolImageFile } from "./tool-images.ts";
 import { appendVisualDraft, editVisual, readToolVisual, removeVisualDraft, saveToolVisual, type VisualEdit } from "./tool-visuals.ts";
 import { accountProfileId, listConnections } from "./connections.ts";
+import { botOf, botProfileId, botTabs, connectionForUrl, signIns } from "./bots/bot-connections.ts";
 import { answerQuestion, askQuestion, hasPendingQuestion, pendingQuestions } from "./questions.ts";
 import { ask } from "./permissions.ts";
 import { store } from "./store.ts";
@@ -153,13 +154,10 @@ export async function callWorkspaceTool(
     if (args[key] === undefined || args[key] === null)
       throw new Error(`Missing ${key}`);
   }
+  const bot = name.startsWith("browser_") ? botOf(thread) : undefined;
   if (name.startsWith("browser_") && args.tabId) {
-    if (
-      !browser
-        .browserStates()
-        .some((tab) => tab.id === args.tabId && tab.projectId === project.id)
-    )
-      throw new Error("Browser tab does not belong to this workspace");
+    const tabs = browser.browserStates().filter((tab) => tab.id === args.tabId && tab.projectId === project.id);
+    if (!(bot ? await botTabs(bot, tabs) : tabs).length) throw new Error("Browser tab does not belong to this workspace");
   }
   if (name.startsWith("terminal_") && args.tabId) {
     if (
@@ -195,6 +193,15 @@ export async function callWorkspaceTool(
       return text(await askQuestion(threadId, args.questions, { signal }));
     }
     case "browser_open": {
+      const account = typeof args.account === "string" ? args.account : undefined;
+      let profileId = account ? await accountProfileId(account) : undefined;
+      if (bot) {
+        const { all, connections, accounts } = await signIns(bot);
+        if (account && !accounts.has(account)) throw new Error(`No account ${account}. Check browser_connections.`);
+        // Sites outside the bot's connections open in its own profile, signed out.
+        const match = !account && typeof args.url === "string" ? connectionForUrl(all, args.url) : undefined;
+        if (!account) profileId = match && connections.includes(match) ? match.accounts[0]!.profileId : botProfileId(bot.id);
+      }
       const panel = openPanel(project.id, "browser", threadId);
       try {
         return text(
@@ -203,7 +210,7 @@ export async function callWorkspaceTool(
             panel.id,
             threadId,
             typeof args.url === "string" ? args.url : undefined,
-            typeof args.account === "string" ? await accountProfileId(args.account) : undefined,
+            profileId,
           ),
         );
       } catch (error) {
@@ -213,11 +220,11 @@ export async function callWorkspaceTool(
       }
     }
     case "browser_connections":
-      return text(await listConnections());
-    case "browser_tabs":
-      return text(
-        browser.browserStates().filter((tab) => tab.projectId === project.id),
-      );
+      return text(bot ? (await signIns(bot)).connections : await listConnections());
+    case "browser_tabs": {
+      const tabs = browser.browserStates().filter((tab) => tab.projectId === project.id);
+      return text(bot ? await botTabs(bot, tabs) : tabs);
+    }
     case "browser_snapshot": {
       if (args.screenshot !== undefined && typeof args.screenshot !== "boolean") throw new Error("screenshot must be a boolean");
       if (args.tree !== undefined && typeof args.tree !== "boolean") throw new Error("tree must be a boolean");

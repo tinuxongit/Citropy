@@ -27,8 +27,8 @@ async function request<T>(event: (id: string) => Parameters<typeof send>[0]): Pr
 
 function threadSettings(): BotThreadSettings {
   const settings = newThreadSettings();
-  if (!settings) throw new Error("Open a project with a signed-in provider first.");
-  const { workspace: _workspace, ...thread } = settings;
+  if (!settings) throw new Error("Sign in to a provider first.");
+  const { workspace: _workspace, projectId: _projectId, ...thread } = settings;
   return thread;
 }
 

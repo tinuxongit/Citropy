@@ -513,6 +513,15 @@
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
+.thread-row-wake {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
 .thread-row-title {
   flex: 1;
   min-width: 0;
@@ -535,6 +544,20 @@
 }
 .thread-status[data-status="awaiting"] {
   color: var(--warn);
+}
+.thread-status[data-status="unread"] {
+  color: var(--ok);
+}
+.thread-done[data-animate="true"] {
+  animation: thread-done-pop 420ms var(--ease-out);
+}
+@keyframes thread-done-pop {
+  from { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thread-done[data-animate="true"] { animation: none; }
 }
 
 .thread-preview {
@@ -641,13 +664,13 @@
   border-radius: var(--rail-tab-shape);
   transition: background var(--dur-instant);
 }
-.global-project-heading:not(.global-status-heading):is(:hover, :has(:focus-visible), :has(.global-project-more[aria-expanded="true"]))::after { background: var(--hover); }
+.global-project-heading:is(:hover, :has(:focus-visible), :has(.global-project-more[aria-expanded="true"]))::after { background: var(--hover); }
 .global-project-heading:is(:hover, :has(:focus-visible), :has(.global-project-more[aria-expanded="true"]), [data-active="true"]) { color: var(--text); }
 .thread-list { position: relative; }
 .global-project-toggle { display: flex; align-items: center; gap: var(--tree-gap); flex: 1; min-width: 0; height: 100%; padding: 0 var(--rail-pad); color: inherit; text-align: left; font-size: var(--text-sm); font-weight: 500; }
 .global-project-toggle > svg { flex: none; }
 .global-project-offline { display: inline-flex; flex: none; margin-left: -3px; color: var(--text-3); }
-.global-project-heading:not(.global-status-heading):is(:hover, :has(:focus-visible), :has(.global-project-more[aria-expanded="true"])) .global-project-toggle { --row-fade: calc(2 * var(--rail-heading-action)); mask: var(--row-fade-mask); }
+.global-project-heading:is(:hover, :has(:focus-visible), :has(.global-project-more[aria-expanded="true"])) .global-project-toggle { --row-fade: calc(2 * var(--rail-heading-action)); mask: var(--row-fade-mask); }
 .global-project-heading > .menu-wrap { position: absolute; top: 0; right: calc(var(--rail-tab-gap) + var(--rail-heading-action)); }
 .global-project-more,
 .global-project-new { display: grid; place-items: center; flex: none; width: var(--rail-heading-action); height: var(--rail-heading); color: var(--text-3); opacity: 0; transition: background var(--dur-instant), color var(--dur-instant); }
@@ -676,7 +699,6 @@
 .global-project-empty:disabled { cursor: default; }
 @media (hover: none) {
   .global-project-toggle { padding-right: calc(2 * var(--rail-heading-action)); }
-  .global-status-heading .global-project-toggle { padding-right: var(--rail-pad); }
   .global-project-new,
   .global-project-more { opacity: 1; }
   .global-project-new:disabled { opacity: 0.35; }

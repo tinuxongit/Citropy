@@ -27,6 +27,8 @@ export {
   panelWidthValue,
   applyChatWidth,
   setChatWidth,
+  applyCodeFont,
+  setCodeFont,
   setTextStreaming,
   setShowGitHubIdentity,
   setClock24,

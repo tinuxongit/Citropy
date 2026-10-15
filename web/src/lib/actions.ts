@@ -166,7 +166,7 @@ function chooseProvider(provider?: ProviderId) {
 export function newThreadSettings(provider?: ProviderId) {
   const { activeProjectId: projectId, threadDefaults } = useApp.getState();
   const choice = chooseProvider(provider);
-  if (!projectId || !choice) return undefined;
+  if (!choice) return undefined;
   const { chosen, available, previous, defaults } = choice;
   const catalog = available.find((entry) => entry.id === chosen)!;
   const last = defaults.provider === chosen
@@ -410,6 +410,10 @@ export function confirmRemoveProjects(names: string[]): Promise<boolean> {
 
 export function finishThread(id: string, finished: boolean, environment = environmentId()): void {
   sendTo(environment, { t: "thread.finish", id, finished });
+}
+
+export function readThread(id: string): void {
+  send({ t: "thread.read", id });
 }
 
 export async function reorderThreads(projectId: string, ids: string[], environment = environmentId()): Promise<void> {

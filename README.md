@@ -121,4 +121,4 @@ Packaging and publishing are in [docs/release.md](docs/release.md).
 
 Issues and pull requests are welcome.
 
-MIT licensed. See [LICENSE](LICENSE). The Citropy Sans font, a modified Google Sans Flex, is bundled under the SIL Open Font License.
+MIT licensed. See [LICENSE](LICENSE). The Citropy Sans and Citropy Mono fonts, modified from Google Sans Flex, and JetBrains Mono are bundled under the SIL Open Font License.

@@ -13,6 +13,7 @@ import { ConversationSearch } from "./conversation-search.ts";
 import { onShutdown } from "./lifecycle.ts";
 import { subagentFinishedNotification } from "./subagent-notifications.ts";
 import { emptyUsage, isProviderId } from "../shared/protocol.ts";
+import { inBotsView } from "../shared/bots.ts";
 import { defaultAssistance, gitActionBusy, type AssistanceSettings } from "../shared/assistance.ts";
 import type {
   ProviderId,
@@ -47,6 +48,7 @@ const threadsDir = join(root, "threads");
 const settingsFile = join(root, "settings.json");
 const projectsFile = join(root, "projects.json");
 const notificationsFile = join(root, "notifications.json");
+const botsDir = join(root, "bots");
 
 mkdirSync(threadsDir, { recursive: true });
 
@@ -146,6 +148,37 @@ export class Store {
       return [thread.id, thread];
     }));
     for (const project of [...this.projects.values()]) if ((project as Project & { chat?: boolean }).chat) this.closeProject(project.id);
+    this.#separateBots();
+  }
+
+  // Bots run in their own folders under a hidden workspace, so they never see or report another conversation's files.
+  #separateBots(): void {
+    let bots = this.botsProject;
+    if (!bots) {
+      bots = { id: uid("prj"), path: botsDir, name: "Bots", isGit: false, lastOpened: 0, bots: true };
+      this.projects.set(bots.id, bots);
+    }
+    bots.path = botsDir;
+    this.flush();
+    for (const thread of this.threads.values()) {
+      if (!inBotsView(thread) || thread.projectId === bots.id) continue;
+      this.replaceMessages(thread.id, thread.messages.map(message => ({ ...message, parts: message.parts.filter(part => part.kind !== "changes" && part.kind !== "images") })));
+      this.patchThread(thread.id, { projectId: bots.id, workspacePath: this.botFolder(thread.botId ?? thread.groupId!), workspaceBranch: undefined, externalId: undefined, rebuildContext: true, checkpoints: [], canRedo: false });
+    }
+  }
+
+  get botsProject(): Project | undefined {
+    return [...this.projects.values()].find(project => project.bots);
+  }
+
+  botFolder(id: string): string {
+    const path = join(botsDir, id);
+    mkdirSync(path, { recursive: true, mode: 0o700 });
+    return path;
+  }
+
+  visibleProjects(): Project[] {
+    return [...this.projects.values()].filter(project => !project.bots).sort((a, b) => b.lastOpened - a.lastOpened);
   }
 
   #track(record: Omit<Thread, "messages">): Thread {
@@ -437,7 +470,7 @@ export class Store {
 
   openProject(path: string): Project {
     const abs = resolve(path.replace(/^~(?=$|[/\\])/, homedir()));
-    const existing = [...this.projects.values()].find((p) => p.path === abs);
+    const existing = this.visibleProjects().find((p) => p.path === abs);
     if (existing) {
       existing.lastOpened = Date.now();
       bus.emit({ t: "project.upsert", project: existing });
@@ -459,7 +492,7 @@ export class Store {
 
   updateProject(id: string, patch: Pick<Partial<Project>, "name" | "settings" | "scripts">): Project {
     const project = this.projects.get(id);
-    if (!project) throw new Error("Workspace not found");
+    if (!project || project.bots) throw new Error("Workspace not found");
     Object.assign(project, patch);
     this.flush();
     bus.emit({ t: "project.upsert", project });
@@ -525,6 +558,13 @@ export class Store {
     thread.finished = finished;
     thread.snoozedUntil = undefined;
     if (finished) thread.pinned = false;
+    bus.emit({ t: "thread.upsert", thread: meta(thread) });
+  }
+
+  readThread(id: string): void {
+    const thread = this.threads.get(id);
+    if (!thread?.unread) return;
+    thread.unread = undefined;
     bus.emit({ t: "thread.upsert", thread: meta(thread) });
   }
 

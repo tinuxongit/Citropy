@@ -75,6 +75,7 @@ export function CodeEditor({
   const clearBackground = useApp((state) => state.stageBackground !== "default");
   const surfaceAlpha = useApp((state) => state.stageBackground === "default" ? 1 : 1 - state.uiTransparency / 100);
   const scale = useApp((state) => state.uiScale);
+  const codeFont = useApp((state) => state.codeFont);
   const reducedMotion = useReducedMotion();
   const [problems, setProblems] = useState(0);
   const [menu, setMenu] = useState<{ x: number; y: number }>();
@@ -85,7 +86,8 @@ export function CodeEditor({
       model: null,
       automaticLayout: true,
       minimap: { enabled: false },
-      fontFamily: getComputedStyle(container.current).getPropertyValue("--font-mono").trim(),
+      fontFamily: getComputedStyle(container.current).getPropertyValue("--font-mono").trim() || "monospace",
+      fontLigatures: '"calt"',
       fontSize: scaled(13),
       lineHeight: scaled(22),
       padding: { top: 12, bottom: 12 },
@@ -150,6 +152,14 @@ export function CodeEditor({
     editor.focus();
     return () => listener.dispose();
   }, [document]);
+
+  useEffect(() => {
+    const editor = instance.current;
+    if (!editor || !container.current) return;
+    const fontFamily = getComputedStyle(container.current).getPropertyValue("--font-mono").trim() || "monospace";
+    editor.updateOptions({ fontFamily });
+    void window.document.fonts.load(`13px ${fontFamily}`).then(() => monaco.editor.remeasureFonts());
+  }, [codeFont]);
 
   useEffect(() => {
     if (!container.current) return;

@@ -216,13 +216,35 @@
   margin: 0;
   padding: var(--space-6);
 }
+.agents-sections {
+  display: grid;
+  gap: var(--space-8);
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
+}
+.agents-sections h3 {
+  display: flex;
+  align-items: center;
+  /* Lines the icon and label up with each row's provider icon and title below. */
+  gap: calc(var(--space-8) + var(--space-6));
+  margin: 0;
+  padding: var(--space-2) 0;
+  color: var(--text-3);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+.agents-sections h3::after {
+  content: "";
+  flex: 1;
+  min-width: var(--space-16);
+  height: 1px;
+  background: linear-gradient(to right, var(--line), transparent);
+}
 .agents-list {
   display: grid;
   gap: var(--space-2);
-  max-height: min(420px, 60vh);
   margin: 0;
   padding: 0;
-  overflow-y: auto;
   list-style: none;
 }
 .agents-list li {
@@ -514,8 +536,8 @@
   bottom: 154px;
 }
 .usage-peek {
-  --strip-peek-width: 440px;
-  --usage-peek-name-width: 168px;
+  --strip-peek-width: 464px;
+  --usage-peek-name-width: 192px;
   --usage-peek-reset-width: 112px;
   --usage-peek-row-height: 32px;
   --usage-peek-bar-height: 6px;
