@@ -23,6 +23,9 @@ async function fixture(t) {
   const project = store.openProject(directory);
   const sessions = new Map();
   t.mock.method(providers.claude, "detect", async () => ({ available: true }));
+  const signIn = providers.claude.signIn;
+  providers.claude.signIn = { kind: "app", status: async () => ({ signedIn: true }) };
+  t.after(() => { providers.claude.signIn = signIn; });
   t.mock.method(providers.claude, "start", options => {
     const session = { emit: options.emit, sent: [], send(prompt) { this.sent.push(prompt); }, dispose() {} };
     sessions.set(options.threadId, session);
