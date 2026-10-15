@@ -109,13 +109,23 @@ export function ComposerInput({
   const mentions = new Map<string, MentionLook>(group
     ? memberOptions.map((option) => [option.label.slice(1), { label: option.title ?? option.label, icon: option.icon }] as const)
     : [...enabled.map(skillTag), ...citropyTools.map(toolTag)].map((tag) => [tag.name, { label: tag.title, icon: tagIcon(tag) }] as const));
+  const toolOptions: SuggestionOption[] = citropyTools
+    .filter((tool) => tool.name.includes((mention?.[1] ?? "").toLowerCase()))
+    .map((tool) => ({
+      id: `tool:${tool.name}`,
+      section: tool.section,
+      label: `@${tool.name}`,
+      title: tool.title,
+      hint: tool.description,
+      icon: tagIcon(toolTag(tool)),
+    }));
   const localCommandNames = new Set(commands.map((command) => command.label.slice(1)));
   const lines = (mention?.[1] ?? "").match(/#L\d+(?:-L?\d+)?$/)?.[0] ?? "";
   const options: SuggestionOption[] =
     mode === "members"
       ? memberOptions.filter((option) => option.label.toLowerCase().startsWith(`@${mention?.[1] ?? ""}`.toLowerCase()))
       : mode === "skills"
-      ? [...paths.map(entry => {
+      ? [...toolOptions.filter((option) => option.section === "Citropy"), ...paths.map(entry => {
           const slash = entry.path.lastIndexOf("/");
           return {
             id: `context:${entry.path}`,
@@ -139,16 +149,7 @@ export function ComposerInput({
             hint: skill.description,
             tag: skill.scope,
             icon: tagIcon(skillTag(skill)),
-          })), ...citropyTools
-          .filter((tool) => tool.name.includes((mention?.[1] ?? "").toLowerCase()))
-          .map((tool) => ({
-            id: `tool:${tool.name}`,
-            section: tool.section,
-            label: `@${tool.name}`,
-            title: tool.title,
-            hint: tool.description,
-            icon: tagIcon(toolTag(tool)),
-          }))]
+          })), ...toolOptions.filter((option) => option.section !== "Citropy")]
       : [
           ...commands.map((command) => ({ ...command, section: "Citropy" })),
           ...nativeCommands

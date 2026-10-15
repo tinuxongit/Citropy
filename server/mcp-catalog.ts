@@ -375,6 +375,22 @@ export const workspaceTools = ([
     inputSchema: { type: "object", properties: { botId: string, id: string }, required: ["id"] },
   },
   {
+    name: "script_list",
+    description: "List this workspace's project scripts, the saved commands the user runs from Scripts in the conversation details.",
+    inputSchema: { type: "object", properties: {} },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: "script_save",
+    description: "Add a project script to this workspace, or update one by passing its id. The user runs it from Scripts in the conversation details, in a new terminal in the conversation's workspace folder, so write the full shell command.",
+    inputSchema: { type: "object", properties: { id: string, name: string, command: string }, required: ["name", "command"] },
+  },
+  {
+    name: "script_remove",
+    description: "Delete a project script from this workspace.",
+    inputSchema: { type: "object", properties: { id: string }, required: ["id"] },
+  },
+  {
     name: "bots_memory_list",
     description: "List this bot's memories, the lasting notes it keeps across its conversation.",
     inputSchema: { type: "object", properties: {} },
@@ -405,11 +421,11 @@ export const approvalTool: ToolDefinition = {
     required: ["tool_name", "input"],
   },
 };
-export const toolCategories = remoteId ? ["terminal", "workspace", "subagent", "routine", "bots"] : ["browser", "terminal", "workspace", "subagent", "routine", "bots"];
+export const toolCategories = remoteId ? ["terminal", "workspace", "subagent", "routine", "script", "bots"] : ["browser", "terminal", "workspace", "subagent", "routine", "script", "bots"];
 export const discoveryTools: ToolDefinition[] = [
   {
     name: "tool_help",
-    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, and OpenCode accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, visual replies, and panels; terminal has visible commands; routine has tasks this conversation runs on a schedule, from every minute to once at a set time; bots has the user's long-running bots and handoffs between them.${remoteId ? "" : " Browser has the shared browser and the sites the user signed in to under Connections."}`,
+    description: `Discover Citropy tools, including cross-provider subagents using available Claude Code, Codex, and OpenCode accounts. Native collaboration's model list does not limit Citropy subagents. Before declaring a requested model or provider unavailable or substituting another model, load category "subagent" and call subagent_providers through run_tool to check available accounts, model IDs, and supported efforts. Load a category once, then pass a returned name and arguments to run_tool; returned tools are not directly callable. Workspace has files, image sharing, visual replies, and panels; terminal has visible commands; routine has tasks this conversation runs on a schedule, from every minute to once at a set time; script has the saved commands under Scripts in the conversation details; bots has the user's long-running bots and handoffs between them.${remoteId ? "" : " Browser has the shared browser and the sites the user signed in to under Connections."}`,
     inputSchema: { type: "object", properties: { category: { type: "string", enum: toolCategories } }, required: ["category"], additionalProperties: false },
     annotations: { readOnlyHint: true },
   },

@@ -33,6 +33,12 @@ test("Mentioning a Citropy tool adds its hint before the message", async () => {
   assert.deepEqual([gap, request], ["", "Check the page with @browser and @visual"]);
 });
 
+test("Mentioning a routine or script points the agent at its tools", async () => {
+  const prompt = await hinted("Save this with @script and check it daily with @routine", "Save this with @script and check it daily with @routine", []);
+  assert.match(prompt, /category":"routine".*routine_save/);
+  assert.match(prompt, /category":"script".*script_save/);
+});
+
 test("The server answers the mention list request", async () => {
   let status, value;
   const res = { writeHead(code) { status = code; return this; }, end(body) { value = JSON.parse(body); } };
@@ -60,7 +66,7 @@ test("Turned-off features are not offered or hinted", async () => {
   } finally {
     store.projectDefaults = {};
   }
-  assert.deepEqual((await listToolMentions()).map((mention) => mention.name), ["browser", "terminal", "subagents", "visual", "image"]);
+  assert.deepEqual((await listToolMentions()).map((mention) => mention.name), ["browser", "terminal", "subagents", "visual", "image", "routine", "script"]);
 });
 
 test("Connection names become mentions", () => {

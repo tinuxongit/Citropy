@@ -11,7 +11,7 @@ import { PROJECT_SCRIPT_LIMITS as SCRIPT_LIMITS } from "../../shared/project-scr
 import type { ProjectScript } from "../../shared/protocol.ts";
 import type { Routes } from "./types.ts";
 
-function validScripts(scripts: unknown): ProjectScript[] {
+export function validScripts(scripts: unknown): ProjectScript[] {
   if (!Array.isArray(scripts) || scripts.length > SCRIPT_LIMITS.count) throw new Error(`Keep between 0 and ${SCRIPT_LIMITS.count} project scripts.`);
   return scripts.map((script: Partial<ProjectScript>) => {
     const name = typeof script?.name === "string" ? script.name.trim() : "";

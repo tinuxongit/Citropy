@@ -72,7 +72,7 @@ test("composer resource usage", { timeout: 120_000 }, async (t) => {
     await input.fill("Check @");
     const menu = page.getByRole("listbox", { name: "Files and skills" });
     await menu.getByRole("option", { name: /Browser/ }).waitFor();
-    assert.deepEqual(await menu.locator(".composer-suggestion-section").allInnerTexts(), ["Skills", "Citropy", "Connections"]);
+    assert.deepEqual(await menu.locator(".composer-suggestion-section").allInnerTexts(), ["Citropy", "Skills", "Connections"]);
     assert.equal(await menu.getByRole("option").count(), 3);
     await input.fill("Check @browser and @gmail now");
     assert.deepEqual(await input.locator(".mention-chip").allInnerTexts(), ["Browser", "Gmail"]);

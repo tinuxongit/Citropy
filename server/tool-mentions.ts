@@ -48,6 +48,20 @@ const TOOLS: Array<Omit<Mention, "section"> & { available: (settings: Settings) 
     instruction: 'Show the relevant screenshots or images in your reply. Load tool_help with {"category":"workspace"}, call run_tool with {"name":"workspace_image","arguments":{"path":"/absolute/path/to/image.png"}}, and use the returned markdown verbatim.',
     available: () => true,
   },
+  {
+    name: "routine",
+    title: "Routine",
+    description: "Run a task on a schedule in this conversation",
+    instruction: 'Set this up as a Citropy routine that runs on a schedule in this conversation. Load tool_help with {"category":"routine"}, check routine_list for one to update, then call run_tool with {"name":"routine_save","arguments":{...}}.',
+    available: () => true,
+  },
+  {
+    name: "script",
+    title: "Script",
+    description: "Save a command under Scripts in this workspace",
+    instruction: 'Save the command for this request as a Citropy project script the user runs from Scripts in the conversation details. Load tool_help with {"category":"script"}, check script_list for one to update, then call run_tool with {"name":"script_save","arguments":{"name":"...","command":"..."}}.',
+    available: () => true,
+  },
 ];
 
 function accountInstruction(connection: Connection, account: ConnectionAccount): string {

@@ -29,6 +29,7 @@ import type {
 import { workspaceTools, toolCategories } from "./mcp-catalog.ts";
 import { callBotTool } from "./bots/bot-tools.ts";
 import { callRoutineTool } from "./routines/routine-tools.ts";
+import { callScriptTool } from "./script-tools.ts";
 
 type Content =
   | { type: "text"; text: string }
@@ -186,6 +187,7 @@ export async function callWorkspaceTool(
   }
   if (name.startsWith("bots_")) return text(await callBotTool(thread, name, args));
   if (name.startsWith("routine_")) return text(callRoutineTool(thread, name, args));
+  if (name.startsWith("script_")) return text(callScriptTool(thread, name, args));
   switch (name) {
     case "ask_user": {
       const missing = normalizeQuestions(args.questions).find((question) => question.browserTab && !browser.browserStates().some((tab) => tab.id === question.browserTab && tab.projectId === project.id));
