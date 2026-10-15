@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, request } from "node:http";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
@@ -28,7 +28,11 @@ test.after(async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-const fakeState = (state) => writeFileSync(stateFile, JSON.stringify({ running: true, backend: "Running", dns: "laptop.tail.ts.net.", approved: true, denied: false, calls: [], ...state }));
+const writeFake = (state) => {
+  writeFileSync(`${stateFile}.tmp`, JSON.stringify(state));
+  renameSync(`${stateFile}.tmp`, stateFile);
+};
+const fakeState = (state) => writeFake({ running: true, backend: "Running", dns: "laptop.tail.ts.net.", approved: true, denied: false, calls: [], ...state });
 const readFake = () => JSON.parse(readFileSync(stateFile, "utf8"));
 
 function installFake() {

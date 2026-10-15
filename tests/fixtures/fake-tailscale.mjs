@@ -1,9 +1,14 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const file = process.env.FAKE_TAILSCALE_STATE;
 const read = () => JSON.parse(readFileSync(file, "utf8"));
-const write = (state) => writeFileSync(file, JSON.stringify(state));
+// The test and other fake commands read this file while it changes, so replace it whole.
+const write = (state) => {
+  const temporary = `${file}.${process.pid}.tmp`;
+  writeFileSync(temporary, JSON.stringify(state));
+  renameSync(temporary, file);
+};
 const args = process.argv.slice(2);
 const state = read();
 write({ ...state, calls: [...state.calls, args.join(" ")] });
