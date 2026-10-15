@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.13.2
+
+### Fixed
+- Citropy no longer crashes when you close a browser tab or the window. Electron freed the debugger it uses to drive each tab while the tab was still attached, so tearing the tab down could crash the whole app. Electron 44.7.2 fixes this.
+
 ## 0.13.1
 
 ### Fixed
