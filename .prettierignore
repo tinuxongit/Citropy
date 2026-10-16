@@ -1,0 +1,10 @@
+dist/
+release/
+.desktop-build/
+mobile/android/
+test-results/
+*.md
+*.json
+*.yml
+*.yaml
+*.html
