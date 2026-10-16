@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { browserActivity } from "../desktop/browser-activity.ts";
+import { browserActivity } from "../desktop/browser/activity.ts";
 
 function fixture(t) {
   t.mock.timers.enable({ apis: ["setTimeout"] });

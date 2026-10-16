@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatTree } from "../desktop/browser-snapshot.ts";
+import { formatTree } from "../desktop/browser/snapshot-tree.ts";
 
 const node = (nodeId, role, name, childIds = [], extra = {}) => ({
   nodeId,

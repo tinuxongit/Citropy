@@ -3,14 +3,7 @@ import { test } from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  initializeConnections,
-  handleConnections,
-  connectionProfile,
-  accountOfProfile,
-  matchConnection,
-  signInTarget,
-} from "../desktop/connections.ts";
+import { Connections, matchConnection } from "../desktop/browser/connections.ts";
 import { siteOf } from "../shared/connection-sites.mjs";
 
 test("connected sites match their own subdomains and prefer the most specific site", () => {
@@ -57,11 +50,10 @@ function fakeSession(cleared) {
 test("each account keeps its own sign-in and signing out clears only that account", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-connections-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  await initializeConnections(directory);
   const cleared = [];
-  const tabs = new Map();
-  const action = (operation, input = {}) =>
-    handleConnections(operation, input, fakeSession(cleared), tabs);
+  const connections = await Connections.load(directory, fakeSession(cleared));
+  const openTabs = [];
+  const action = (operation, input = {}) => connections.handle(operation, input, openTabs);
 
   const [amazon] = await action("add", { name: "Amazon", url: "www.amazon.com" });
   const [main] = amazon.accounts;
@@ -106,41 +98,41 @@ test("each account keeps its own sign-in and signing out clears only that accoun
     action("add-account", { id: amazon.id, label: "work" }),
     /already uses @amazon-work/,
   );
-  const workProfile = connectionProfile(work.profileId, "https://www.amazon.com/");
+  const workProfile = connections.profileFor(work.profileId, "https://www.amazon.com/");
   assert.deepEqual(workProfile, {
     id: work.profileId,
     name: "Amazon Work",
     partition: `persist:citropy-connection-${work.id}`,
   });
 
-  const profile = connectionProfile(undefined, "https://smile.amazon.com/");
+  const profile = connections.profileFor(undefined, "https://smile.amazon.com/");
   assert.equal(profile.partition, `persist:citropy-connection-${main.id}`);
   assert.deepEqual((await action("remove", { id: work.id }))[0].accounts, [main]);
   assert.deepEqual(cleared, [workProfile.partition]);
   cleared.length = 0;
-  assert.equal(connectionProfile(undefined, "https://example.com/"), undefined);
-  assert.equal(connectionProfile("personal", "https://www.amazon.com/"), undefined);
-  assert.deepEqual(connectionProfile(profile.id, "https://example.com/"), profile);
+  assert.equal(connections.profileFor(undefined, "https://example.com/"), undefined);
+  assert.equal(connections.profileFor("personal", "https://www.amazon.com/"), undefined);
+  assert.deepEqual(connections.profileFor(profile.id, "https://example.com/"), profile);
 
-  assert.deepEqual(accountOfProfile(profile.id), { id: main.id, signedIn: false });
-  assert.deepEqual(signInTarget(main.id), {
+  assert.deepEqual(connections.accountOf(profile.id), { id: main.id, signedIn: false });
+  assert.deepEqual(connections.signInTarget(main.id), {
     ...profile,
     id: main.id,
     url: "https://www.amazon.com/",
   });
-  assert.throws(() => signInTarget("missing"), /Account not found/);
-  assert.equal(accountOfProfile("personal"), undefined);
+  assert.throws(() => connections.signInTarget("missing"), /Account not found/);
+  assert.equal(connections.accountOf("personal"), undefined);
   assert.equal(
     (await action("status", { id: main.id, signedIn: true }))[0].accounts[0].signedIn,
     true,
   );
-  assert.deepEqual(accountOfProfile(profile.id), { id: main.id, signedIn: true });
-  tabs.set("tab", { state: { profileId: profile.id } });
+  assert.deepEqual(connections.accountOf(profile.id), { id: main.id, signedIn: true });
+  openTabs.push({ profileId: profile.id });
   await assert.rejects(
     action("status", { id: main.id, signedIn: false }),
     /Close Amazon's browser tabs first/,
   );
-  tabs.clear();
+  openTabs.length = 0;
   assert.equal(
     (await action("status", { id: main.id, signedIn: false }))[0].accounts[0].signedIn,
     false,
@@ -148,7 +140,7 @@ test("each account keeps its own sign-in and signing out clears only that accoun
   assert.deepEqual(cleared, [profile.partition]);
 
   assert.deepEqual(await action("remove", { id: main.id }), []);
-  assert.throws(() => connectionProfile(profile.id, "https://www.amazon.com/"), /removed/);
+  assert.throws(() => connections.profileFor(profile.id, "https://www.amazon.com/"), /removed/);
   assert.equal(await readFile(join(directory, "connections.json"), "utf8"), "[]");
 });
 
@@ -159,8 +151,8 @@ test("connections saved before accounts keep their sign-in and browser storage",
     join(directory, "connections.json"),
     JSON.stringify([{ id: "old", name: "Google", url: "https://www.google.com/", signedIn: true }]),
   );
-  await initializeConnections(directory);
-  const [google] = await handleConnections("list", {}, fakeSession([]), new Map());
+  const connections = await Connections.load(directory, fakeSession([]));
+  const [google] = await connections.handle("list", {}, []);
   assert.equal(google.description, "Gmail, Calendar, Drive, Docs, YouTube");
   assert.deepEqual(google.accounts, [
     {
@@ -173,7 +165,7 @@ test("connections saved before accounts keep their sign-in and browser storage",
     },
   ]);
   assert.equal(
-    connectionProfile(undefined, "https://mail.google.com/").partition,
+    connections.profileFor(undefined, "https://mail.google.com/").partition,
     "persist:citropy-connection-old",
   );
 });

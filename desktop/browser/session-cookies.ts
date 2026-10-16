@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Cookie, CookiesSetDetails, Session } from "electron";
-import { ifMissing, logFailure } from "../shared/expected-errors.mjs";
+import { ifMissing, logFailure } from "../../shared/expected-errors.mjs";
 
 const BROWSER_LONGEST_COOKIE_DAYS = 400;
 const DAY_SECONDS = 86_400;

@@ -1,4 +1,4 @@
-import { logFailure } from "../shared/expected-errors.mjs";
+import { logFailure } from "../../shared/expected-errors.mjs";
 
 export function browserActivity(
   render: (rendering: boolean) => void,

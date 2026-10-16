@@ -1,4 +1,4 @@
-import { logFailure } from "../shared/expected-errors.mjs";
+import { logFailure } from "../../shared/expected-errors.mjs";
 
 type Send = (method: string, params?: Record<string, unknown>) => Promise<unknown>;
 

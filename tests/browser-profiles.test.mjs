@@ -17,9 +17,8 @@ test("browser profiles isolate imported cookies and preserve source databases", 
     syncBuiltinESMExports();
     fs.rmSync(directory, { recursive: true, force: true });
   });
-  const { initializeProfiles, handleProfiles, browserProfile, decryptCookie } =
-    await import("../desktop/browser-profiles.ts");
-  await initializeProfiles(directory);
+  const { BrowserProfiles } = await import("../desktop/browser/profiles.ts");
+  const { decryptCookie } = await import("../desktop/browser/cookie-import.ts");
   const partitions = new Map();
   const session = {
     fromPartition: (id) => {
@@ -41,12 +40,13 @@ test("browser profiles isolate imported cookies and preserve source databases", 
       return partitions.get(id);
     },
   };
-  const tabs = new Map();
+  const profiles = await BrowserProfiles.load(directory, session);
+  const openTabs = [];
   const action = (operation, input = {}) =>
-    handleProfiles(operation, { projectId: "fixture", method: "POST", ...input }, session, tabs);
+    profiles.handle(operation, { projectId: "fixture", method: "POST", ...input }, openTabs);
   const initial = await action("profiles", { method: "GET" });
   assert.equal(initial.selected, "workspace");
-  assert.equal(browserProfile("fixture").partition, "persist:citropy-fixture");
+  assert.equal(profiles.forTab("fixture").partition, "persist:citropy-fixture");
   const parallel = await Promise.all([
     action("profiles", { name: "Personal" }),
     action("profiles", { name: "Testing" }),
@@ -58,8 +58,8 @@ test("browser profiles isolate imported cookies and preserve source databases", 
     3,
   );
   assert.notEqual(
-    browserProfile("fixture", profileId).partition,
-    browserProfile("fixture", "workspace").partition,
+    profiles.forTab("fixture", profileId).partition,
+    profiles.forTab("fixture", "workspace").partition,
   );
   const root = join(directory, ".mozilla/firefox/fixture.default");
   fs.mkdirSync(root, { recursive: true });
@@ -97,20 +97,20 @@ test("browser profiles isolate imported cookies and preserve source databases", 
   assert.equal(state.profiles.find((entry) => entry.id === "workspace").cookies, 0);
   assert.equal(state.profiles.find((entry) => entry.id === profileId).cookies, 1);
   const cookie = (
-    await session.fromPartition(browserProfile("fixture", profileId).partition).cookies.get({})
+    await session.fromPartition(profiles.forTab("fixture", profileId).partition).cookies.get({})
   )[0];
   assert.equal(cookie.httpOnly, true);
   assert.equal(cookie.secure, true);
   assert.equal(cookie.sameSite, "lax");
-  tabs.set("open", { state: { projectId: "fixture", profileId } });
+  openTabs.push({ projectId: "fixture", profileId });
   await assert.rejects(action("profiles", { method: "DELETE", id: profileId }), /Close/);
-  tabs.clear();
+  openTabs.length = 0;
   await action("clear", { profileId, kind: "cookies" });
   await action("profiles", { method: "DELETE", id: profileId });
-  assert.equal(browserProfile("fixture").id, "workspace");
+  assert.equal(profiles.forTab("fixture").id, "workspace");
   await action("import", { sourceId: sources[0].id });
   assert.equal(
-    (await session.fromPartition(browserProfile("fixture").partition).cookies.get({})).length,
+    (await session.fromPartition(profiles.forTab("fixture").partition).cookies.get({})).length,
     1,
   );
   await action("forget");
@@ -138,7 +138,7 @@ test("browser profiles isolate imported cookies and preserve source databases", 
 });
 
 test("each bot gets its own browser profile and other ids are refused", async () => {
-  const { botProfile } = await import("../desktop/browser-profiles.ts");
+  const { botProfile } = await import("../desktop/browser/profiles.ts");
   assert.deepEqual(botProfile("bot-bot_abc"), {
     id: "bot-bot_abc",
     name: "Bot",

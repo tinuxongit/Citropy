@@ -12,16 +12,10 @@ import { refreshMenuIcon } from "./menu-icon.ts";
 import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-reveal.ts";
 import { packagedBackend } from "./backend.ts";
 import { desktopDiagnostics } from "./diagnostics.ts";
-import { initializeProfiles, handleProfiles, type ProfileInput } from "./browser-profiles.ts";
-import {
-  initializeConnections,
-  accountOfProfile,
-  handleConnections,
-  signInTarget,
-  type ConnectionInput,
-} from "./connections.ts";
-import { createSignInView } from "./sign-in-view.ts";
-import { initializeBrowserTabs, tabs, publish, handleBrowser } from "./browser-tabs.ts";
+import { BrowserProfiles, type ProfileInput } from "./browser/profiles.ts";
+import { Connections, type ConnectionInput } from "./browser/connections.ts";
+import { createSignInView } from "./browser/sign-in-view.ts";
+import { BrowserTabs } from "./browser/tabs.ts";
 import {
   app,
   dialog,
@@ -134,6 +128,8 @@ const backend = app.isPackaged ? packagedBackend({ ...process.env }, diagnose) :
 let updates: ReturnType<typeof createAppUpdater> | undefined;
 let environments: SshEnvironments | undefined;
 let folderChoice: AbortController | undefined;
+// Set once the window exists and the browser profiles and connections are loaded.
+let browser: { profiles: BrowserProfiles; connections: Connections; tabs: BrowserTabs } | undefined;
 let applyingUpdate = false;
 let connectDesktop: () => void;
 const base = new URL(process.env.CITROPY_URL ?? `http://127.0.0.1:${defaultPort()}`);
@@ -164,9 +160,7 @@ app.on("before-quit", (event) => {
     .finally(() => {
       updates?.dispose();
       for (const notification of notifications) notification.close();
-      for (const tab of tabs.values())
-        if (tab.contents && !tab.contents.isDestroyed())
-          tab.contents.close({ waitForBeforeUnload: false });
+      browser?.tabs.closeAll();
       socket?.close();
       app.quit();
     });
@@ -218,16 +212,17 @@ async function request(method: string, body: unknown) {
     window.focus();
     return;
   }
+  if (!browser) throw new Error("Citropy is still starting");
+  const { profiles, connections, tabs } = browser;
   if (method.startsWith("profiles."))
-    return handleProfiles(method.slice(9), body as ProfileInput, session, tabs);
+    return profiles.handle(method.slice(9), body as ProfileInput, tabs.states());
   if (method.startsWith("connections.")) {
-    const result = await handleConnections(
+    const result = await connections.handle(
       method.slice(12),
       body as ConnectionInput,
-      session,
-      tabs,
+      tabs.states(),
     );
-    for (const tab of tabs.values()) if (accountOfProfile(tab.state.profileId)) publish(tab);
+    tabs.publishAccounts();
     return result;
   }
   if (method === "diagnostics")
@@ -245,7 +240,7 @@ async function request(method: string, body: unknown) {
         : {}),
       memory: entry.memory.workingSetSize * 1024,
     }));
-  return handleBrowser(method, body);
+  return tabs.request(method, body);
 }
 
 app
@@ -328,8 +323,8 @@ app
     secondInstance.flush();
     const started = backend?.start() ?? Promise.resolve();
     void started.catch(() => {});
-    await initializeProfiles(app.getPath("userData"));
-    await initializeConnections(app.getPath("userData"));
+    const profiles = await BrowserProfiles.load(app.getPath("userData"), session);
+    const connections = await Connections.load(app.getPath("userData"), session);
     Menu.setApplicationMenu(null);
     const trusted = (event: IpcMainEvent | IpcMainInvokeEvent) =>
       event.sender === window.webContents &&
@@ -541,7 +536,9 @@ app
         diagnose("app.update-preparing");
         for (const profile of new Set([
           session.defaultSession,
-          ...[...tabs.values()].map((tab) => session.fromPartition(tab.partition)),
+          ...(browser?.tabs.partitions() ?? []).map((partition) =>
+            session.fromPartition(partition),
+          ),
         ])) {
           await profile.cookies.flushStore();
           profile.flushStorageData();
@@ -597,7 +594,7 @@ app
     const signIn = createSignInView(window);
     ipcMain.handle("connections:sign-in", async (event, id) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
-      const signedIn = await signIn.open(signInTarget(id));
+      const signedIn = await signIn.open(connections.signInTarget(id));
       return request(signedIn ? "connections.status" : "connections.list", { id, signedIn });
     });
     ipcMain.on("connections:sign-in-bounds", (event, bounds) => {
@@ -674,13 +671,16 @@ app
       } catch {}
       return { action: "deny" };
     });
-    initializeBrowserTabs({
+    const tabs = new BrowserTabs({
       window,
       emit,
       trusted,
       activeEnvironment: () => sshEnvironments.activeId,
       closing: () => quitting,
+      profiles,
+      connections,
     });
+    browser = { profiles, connections, tabs };
     connectDesktop = () => {
       const wsUrl = new URL("/socket", base);
       wsUrl.protocol = "ws:";
