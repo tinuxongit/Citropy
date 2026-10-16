@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import { AnimatePresence } from "motion/react";
-import { PlanIcon } from "../PlanIcon.tsx";
+import { PlanIcon } from "../icons/PlanIcon.tsx";
 import { send } from "../../lib/socket.ts";
 import { normalizeTodos } from "../../../../shared/todos.ts";
 import type { TodoItem } from "../../../../shared/protocol.ts";

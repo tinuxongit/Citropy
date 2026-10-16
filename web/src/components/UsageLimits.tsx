@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { ProviderUsage, UsageWindow } from "../../../shared/features.ts";
 import { formatDate, providerLabels, until } from "../lib/format.ts";
-import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 
 const DAY_MS = 86_400_000;
 

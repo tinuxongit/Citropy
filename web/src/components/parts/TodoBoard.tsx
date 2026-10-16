@@ -1,7 +1,7 @@
 import { CheckIcon, MinusIcon } from "../icons/marks.tsx";
 import { ChevronRightIcon } from "../icons/chevrons.tsx";
 import { CircleDotIcon, CircleIcon } from "../icons/status.tsx";
-import { PlanIcon } from "../PlanIcon.tsx";
+import { PlanIcon } from "../icons/PlanIcon.tsx";
 import type { CSSProperties } from "react";
 import type { TodoItem } from "../../../../shared/protocol.ts";
 import { normalizeTodos } from "../../../../shared/todos.ts";

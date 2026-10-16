@@ -5,7 +5,7 @@ import { ScanSearchIcon } from "./icons/actions.tsx";
 import { CloseIcon } from "./icons/marks.tsx";
 import { Modal } from "./Modal.tsx";
 import { DiffView } from "./DiffView.tsx";
-import { FileIcon } from "./FileIcon.tsx";
+import { FileIcon } from "./icons/FileIcon.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { api } from "../lib/api.ts";
 import { sendMessage, refreshGit } from "../lib/actions.ts";

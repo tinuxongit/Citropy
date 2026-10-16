@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { ChevronDownIcon } from "./icons/chevrons.tsx";
 import { MonitorIcon, TabletIcon } from "./icons/hardware.tsx";
 import { RotatePhoneIcon } from "./icons/rotation.tsx";
-import { PhoneIcon } from "./PhoneIcon.tsx";
-import { SlidersIcon } from "./SlidersIcon.tsx";
+import { PhoneIcon } from "./icons/PhoneIcon.tsx";
+import { SlidersIcon } from "./icons/SlidersIcon.tsx";
 import { Menu } from "./Menu.tsx";
 import type { BrowserAction, BrowserState } from "../../../shared/workbench.ts";
 

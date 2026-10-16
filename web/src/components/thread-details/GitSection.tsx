@@ -3,7 +3,7 @@ import { ArrowDownToLineIcon, ArrowUpFromLineIcon, ExternalLinkIcon } from "../i
 import { CircleAlertIcon, CircleCheckIcon, CircleDotIcon, CircleXIcon } from "../icons/status.tsx";
 import { FileDiffIcon } from "../icons/files.tsx";
 import { BranchIcon, CommitIcon, PullRequestIcon } from "../icons/git.tsx";
-import { GlobeIcon } from "../GlobeIcon.tsx";
+import { GlobeIcon } from "../icons/GlobeIcon.tsx";
 import { RowsIcon } from "../icons/squares.tsx";
 import { DetailRow, DetailSplitRow } from "./DetailRow.tsx";
 import type { GitActions } from "./use-git-actions.ts";

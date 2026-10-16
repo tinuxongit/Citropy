@@ -3,7 +3,7 @@ import { AnimatePresence } from "motion/react";
 import { ArrowUpIcon } from "./icons/arrows.tsx";
 import { FolderIcon, FolderOpenIcon } from "./icons/folders.tsx";
 import { Loader } from "./Loader.tsx";
-import { ServerIcon } from "./ServerIcon.tsx";
+import { ServerIcon } from "./icons/ServerIcon.tsx";
 import { Modal } from "./Modal.tsx";
 import { VirtualList } from "./VirtualList.tsx";
 import { finishRemoteFolder, useRemoteFolderRequest, type RemoteFolderRequest as Request } from "../lib/remote-folder.ts";

@@ -7,7 +7,7 @@ import { RefreshIcon } from "./icons/rotation.tsx";
 import { ReleaseNoteFold } from "./ReleaseNoteFold.tsx";
 import { ReleaseNoteList, type SectionLook } from "./ReleaseNoteList.tsx";
 import { ReleaseNoteText } from "./ReleaseNoteText.tsx";
-import { SparkleIcon } from "./SparkleIcon.tsx";
+import { SparkleIcon } from "./icons/SparkleIcon.tsx";
 
 const TILE_SECTION = "Added";
 const PREVIEW_TILES = 5;

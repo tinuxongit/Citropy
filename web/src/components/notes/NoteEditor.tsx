@@ -3,7 +3,7 @@ import { BoldIcon, CodeIcon, HeadingTwoIcon, ItalicIcon, LinkIcon, ListIcon, Lis
 import { ChevronLeftIcon } from "../icons/chevrons.tsx";
 import { CopyIcon, CopyPlusIcon, TrashIcon } from "../icons/actions.tsx";
 import { DownloadIcon } from "../icons/arrows.tsx";
-import { PlanIcon } from "../PlanIcon.tsx";
+import { PlanIcon } from "../icons/PlanIcon.tsx";
 import { MinusIcon, MoreIcon } from "../icons/marks.tsx";
 import { confirmAction } from "../../lib/store.ts";
 import { reportError } from "../../lib/api.ts";

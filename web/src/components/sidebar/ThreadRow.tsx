@@ -15,7 +15,7 @@ import { selectProject, selectThread, useApp } from "../../lib/store.ts";
 import { useTouchInput } from "../../lib/use-touch-input.ts";
 import { ConversationMenu } from "../ConversationMenu.tsx";
 import type { MenuItem } from "../Menu.tsx";
-import { ProviderIcon } from "../ProviderIcon.tsx";
+import { ProviderIcon } from "../icons/ProviderIcon.tsx";
 import { ThreadChildren } from "../ThreadChildren.tsx";
 import { ThreadPulse } from "../ThreadPulse.tsx";
 import type { ThreadDrag } from "./use-thread-drag.ts";

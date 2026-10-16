@@ -1,7 +1,7 @@
 import { ArchiveIcon, TrashIcon } from "../icons/actions.tsx";
 import { ArrowLeftIcon } from "../icons/arrows.tsx";
 import { ChevronRightIcon } from "../icons/chevrons.tsx";
-import { StashIcon } from "../StashIcon.tsx";
+import { StashIcon } from "../icons/StashIcon.tsx";
 import { ResizeHandle } from "../ResizeHandle.tsx";
 import { GitReview } from "../GitReview.tsx";
 import type { GitSelection } from "./selection.ts";

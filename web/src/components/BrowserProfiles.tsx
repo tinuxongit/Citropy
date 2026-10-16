@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { GlobeIcon } from "./GlobeIcon.tsx";
+import { GlobeIcon } from "./icons/GlobeIcon.tsx";
 import { CheckIcon, PlusIcon } from "./icons/marks.tsx";
 import { DownloadIcon } from "./icons/arrows.tsx";
 import { TrashIcon } from "./icons/actions.tsx";

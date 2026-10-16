@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { ChevronUpIcon } from "./icons/chevrons.tsx";
 import { ClockIcon } from "./icons/status.tsx";
-import { AttachIcon } from "./AttachIcon.tsx";
+import { AttachIcon } from "./icons/AttachIcon.tsx";
 import { EditIcon } from "./icons/pencil.tsx";
 import { CloseIcon } from "./icons/marks.tsx";
 import { editQueued } from "../lib/actions.ts";

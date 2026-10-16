@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SiteIcon } from "../SiteIcon.tsx";
+import { SiteIcon } from "../icons/SiteIcon.tsx";
 import { PlusIcon } from "../icons/marks.tsx";
 import { TrashIcon } from "../icons/actions.tsx";
 import type { Connection, ConnectionAccount } from "../../../../shared/features.ts";

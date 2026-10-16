@@ -3,7 +3,7 @@ import { AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { CloseIcon } from "./icons/marks.tsx";
 import { DownloadIcon } from "./icons/arrows.tsx";
-import { FileIcon } from "./FileIcon.tsx";
+import { FileIcon } from "./icons/FileIcon.tsx";
 import { MediaThumb } from "./MediaThumb.tsx";
 import { Modal } from "./Modal.tsx";
 import { FilePreview } from "./FilePreview.tsx";

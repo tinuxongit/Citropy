@@ -1,5 +1,5 @@
 import { MinusIcon, PlusIcon } from "../icons/marks.tsx";
-import { FileIcon } from "../FileIcon.tsx";
+import { FileIcon } from "../icons/FileIcon.tsx";
 import { VirtualList } from "../VirtualList.tsx";
 import { fileLabel } from "./files.ts";
 import { groupGitFiles } from "../../lib/git-files.ts";

@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode, type Ref } from "react";
 import { SwapIcon } from "./icons/arrows.tsx";
 import { CheckIcon } from "./icons/marks.tsx";
 import { ChevronDownIcon } from "./icons/chevrons.tsx";
-import { LockIcon } from "./LockIcon.tsx";
+import { LockIcon } from "./icons/LockIcon.tsx";
 import { StarIcon } from "./icons/actions.tsx";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import type { ModelOption, ProviderId, ProviderInfo } from "../../../shared/protocol.ts";
@@ -14,7 +14,7 @@ import { effortLabel, modelLabel, modelSource } from "../lib/format.ts";
 import { byFamily } from "../lib/model-order.ts";
 import { send } from "../lib/socket.ts";
 import { Menu } from "./Menu.tsx";
-import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 import { ModelTuning, type TuningSettings, type TuningTab } from "./composer/ComposerOptions.tsx";
 
 const MENU_WIDTH = 480;

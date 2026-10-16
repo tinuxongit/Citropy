@@ -1,5 +1,5 @@
 import { CheckIcon } from "../icons/marks.tsx";
-import { GitHubIcon } from "../BrandIcon.tsx";
+import { GitHubIcon } from "../icons/BrandIcon.tsx";
 import { RefreshIcon } from "../icons/rotation.tsx";
 import { github } from "../../lib/actions.ts";
 import { GitHubLink } from "./GitHubShared.tsx";

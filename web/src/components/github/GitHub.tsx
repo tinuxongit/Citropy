@@ -1,6 +1,6 @@
 import { AnimatePresence } from "motion/react";
 import { useEffect, useState } from "react";
-import { BookIcon } from "../BookIcon.tsx";
+import { BookIcon } from "../icons/BookIcon.tsx";
 import { CheckIcon } from "../icons/marks.tsx";
 import { DownloadIcon } from "../icons/arrows.tsx";
 import { BranchIcon, ForkIcon, PullRequestIcon } from "../icons/git.tsx";
@@ -9,8 +9,8 @@ import { UserIcon } from "../icons/people.tsx";
 import { CircleDotIcon } from "../icons/status.tsx";
 import { PlayCircleIcon } from "../icons/media.tsx";
 import { SectionLink, SectionSidebar } from "../SectionSidebar.tsx";
-import { BellIcon } from "../BellIcon.tsx";
-import { TagIcon } from "../TagIcon.tsx";
+import { BellIcon } from "../icons/BellIcon.tsx";
+import { TagIcon } from "../icons/TagIcon.tsx";
 import { useApp, selectProject } from "../../lib/store.ts";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";

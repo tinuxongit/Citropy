@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { SiteIcon } from "./SiteIcon.tsx";
+import { SiteIcon } from "./icons/SiteIcon.tsx";
 import { PlusIcon } from "./icons/marks.tsx";
 import { api } from "../lib/api.ts";
 import { confirmAction } from "../lib/store.ts";

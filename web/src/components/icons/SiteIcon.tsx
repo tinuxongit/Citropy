@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { GlobeIcon } from "./GlobeIcon.tsx";
-import { faviconUrl } from "../lib/favicon.ts";
+import { faviconUrl } from "../../lib/favicon.ts";
 
 export function SiteIcon({ url }: { url: string }) {
   const [loaded, setLoaded] = useState(false);

@@ -4,7 +4,7 @@ import { CloseIcon } from "./icons/marks.tsx";
 import { DownloadIcon } from "./icons/arrows.tsx";
 import { CodeIcon } from "./icons/editing.tsx";
 import { EyeIcon } from "./icons/actions.tsx";
-import { FileIcon } from "./FileIcon.tsx";
+import { FileIcon } from "./icons/FileIcon.tsx";
 import { VideoPlayer } from "./VideoPlayer.tsx";
 import { SourceView } from "./SourceView.tsx";
 import { useApp } from "../lib/store.ts";

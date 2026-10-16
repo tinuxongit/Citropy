@@ -3,7 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronRightIcon } from "./icons/chevrons.tsx";
 import { FileCodeIcon } from "./icons/files.tsx";
 import { RotateCcwIcon } from "./icons/rotation.tsx";
-import { FileIcon } from "./FileIcon.tsx";
+import { FileIcon } from "./icons/FileIcon.tsx";
 import { fetchDiff, manageGit } from "../lib/actions.ts";
 import { DiffView } from "./DiffView.tsx";
 import type { FilePatch } from "../../../shared/protocol.ts";

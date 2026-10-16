@@ -5,8 +5,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { BookIcon } from "./BookIcon.tsx";
-import { SiteIcon } from "./SiteIcon.tsx";
+import { BookIcon } from "./icons/BookIcon.tsx";
+import { SiteIcon } from "./icons/SiteIcon.tsx";
 import { TerminalIcon } from "./icons/squares.tsx";
 import { FolderIcon } from "./icons/folders.tsx";
 import { FileTextIcon } from "./icons/files.tsx";

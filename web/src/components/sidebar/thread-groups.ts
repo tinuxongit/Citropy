@@ -9,7 +9,7 @@ import { moveBeside, type DropEdge } from "../../../../shared/move-beside.ts";
 import type { CachedThread } from "../../lib/environment.ts";
 import { threadIsActive } from "../../lib/format.ts";
 import { setSidebarGroupOpen, useApp } from "../../lib/store.ts";
-import { ServerIcon } from "../ServerIcon.tsx";
+import { ServerIcon } from "../icons/ServerIcon.tsx";
 import type { WorkspaceScope } from "../WorkspaceSelector.tsx";
 
 type Category = "pinned" | "snoozed" | "finished";

@@ -15,7 +15,7 @@ import { scrollTabIntoView } from "../../lib/tab-strip.ts";
 import { EditorTerminal } from "./EditorTerminal.tsx";
 import { EditorResizeHandle } from "./EditorResizeHandle.tsx";
 import { FilePreview } from "../FilePreview.tsx";
-import { FileIcon } from "../FileIcon.tsx";
+import { FileIcon } from "../icons/FileIcon.tsx";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { FileExplorer } from "./FileExplorer.tsx";
 import {

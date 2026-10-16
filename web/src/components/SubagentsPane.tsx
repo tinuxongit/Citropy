@@ -11,7 +11,7 @@ import { VirtualList } from "./VirtualList.tsx";
 import { loadThread } from "../lib/actions.ts";
 import { selectThread, useApp, type AppState } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
-import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 import { ThreadPulse } from "./ThreadPulse.tsx";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { modelLabel } from "../lib/format.ts";

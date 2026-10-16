@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { GitHubIcon } from "../BrandIcon.tsx";
+import { GitHubIcon } from "../icons/BrandIcon.tsx";
 import { RefreshIcon } from "../icons/rotation.tsx";
 import { Modal } from "../Modal.tsx";
 import { Select } from "../Select.tsx";

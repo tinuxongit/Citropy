@@ -3,7 +3,7 @@ import { PlusIcon } from "../icons/marks.tsx";
 import { RefreshIcon } from "../icons/rotation.tsx";
 import { TrashIcon } from "../icons/actions.tsx";
 import { BranchIcon } from "../icons/git.tsx";
-import { RemoteIcon } from "../RemoteIcon.tsx";
+import { RemoteIcon } from "../icons/RemoteIcon.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import type { GitDialogAction } from "../GitDialog.tsx";
 import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";

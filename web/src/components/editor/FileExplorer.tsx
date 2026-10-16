@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { ChevronRightIcon } from "../icons/chevrons.tsx";
 import { FolderIcon, FolderOpenIcon } from "../icons/folders.tsx";
 import { VirtualList } from "../VirtualList.tsx";
-import { FileIcon } from "../FileIcon.tsx";
+import { FileIcon } from "../icons/FileIcon.tsx";
 import { api, assetQuery } from "../../lib/api.ts";
 import { useApp } from "../../lib/store.ts";
 import type { FileEntry } from "../../../../shared/protocol.ts";

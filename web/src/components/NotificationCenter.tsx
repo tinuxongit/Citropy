@@ -7,9 +7,9 @@ import { DownloadIcon } from "./icons/arrows.tsx";
 import { useApp } from "../lib/store.ts";
 import { send } from "../lib/socket.ts";
 import { ago, dateTime, day } from "../lib/format.ts";
-import { ConversationsIcon } from "./ConversationsIcon.tsx";
-import { GitHubIcon, GitIcon } from "./BrandIcon.tsx";
-import { InboxIcon } from "./InboxIcon.tsx";
+import { ConversationsIcon } from "./icons/ConversationsIcon.tsx";
+import { GitHubIcon, GitIcon } from "./icons/BrandIcon.tsx";
+import { InboxIcon } from "./icons/InboxIcon.tsx";
 import { StripPeek } from "./StripPeek.tsx";
 import type { AppNotification, NotificationTarget } from "../../../shared/protocol.ts";
 

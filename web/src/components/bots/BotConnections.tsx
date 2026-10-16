@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Bot, BotProfile } from "../../../../shared/bots.ts";
 import type { Connection } from "../../../../shared/features.ts";
 import { api } from "../../lib/api.ts";
-import { SiteIcon } from "../SiteIcon.tsx";
+import { SiteIcon } from "../icons/SiteIcon.tsx";
 
 export function BotConnections({ bot, onChange }: { bot: Pick<Bot, "name" | "connections">; onChange: (profile: Partial<BotProfile>) => void }) {
   const [connections, setConnections] = useState<Connection[]>();

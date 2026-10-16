@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { BookIcon } from "../BookIcon.tsx";
+import { BookIcon } from "../icons/BookIcon.tsx";
 import { PlusIcon } from "../icons/marks.tsx";
 import { TrashIcon } from "../icons/actions.tsx";
 import { api } from "../../lib/api.ts";

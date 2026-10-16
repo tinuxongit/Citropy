@@ -1,6 +1,6 @@
 import { NewMessageIcon } from "./icons/messages.tsx";
 import { FolderIcon, FolderOpenIcon } from "./icons/folders.tsx";
-import { ConversationsIcon } from "./ConversationsIcon.tsx";
+import { ConversationsIcon } from "./icons/ConversationsIcon.tsx";
 import { createChat, createThread, openProject, chooseWorkspace } from "../lib/actions.ts";
 import { shortPath } from "../lib/format.ts";
 import { useApp } from "../lib/store.ts";

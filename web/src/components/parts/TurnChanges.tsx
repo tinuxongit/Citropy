@@ -4,7 +4,7 @@ import { ChevronRightIcon } from "../icons/chevrons.tsx";
 import { FileDiffIcon } from "../icons/files.tsx";
 import { useApp } from "../../lib/store.ts";
 import type { ChangesPart } from "../../../../shared/protocol.ts";
-import { FileIcon } from "../FileIcon.tsx";
+import { FileIcon } from "../icons/FileIcon.tsx";
 import { LineCounts } from "../LineCounts.tsx";
 import { TaskReview } from "../TaskReview.tsx";
 

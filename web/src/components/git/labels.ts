@@ -1,9 +1,9 @@
 import type { ComponentType } from "react";
 import { BranchIcon } from "../icons/git.tsx";
 import { HistoryIcon } from "../icons/rotation.tsx";
-import { ChangesIcon } from "../ChangesIcon.tsx";
-import { RemoteIcon } from "../RemoteIcon.tsx";
-import { StashIcon } from "../StashIcon.tsx";
+import { ChangesIcon } from "../icons/ChangesIcon.tsx";
+import { RemoteIcon } from "../icons/RemoteIcon.tsx";
+import { StashIcon } from "../icons/StashIcon.tsx";
 import type { GitOperation } from "../../../../shared/protocol.ts";
 
 export type Section = "Changes" | "History" | "Branches" | "Stashes" | "Remotes";

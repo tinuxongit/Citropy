@@ -5,7 +5,7 @@ import { BoxIcon, MonitorIcon } from "./icons/hardware.tsx";
 import type { MenuItem } from "./Menu.tsx";
 import { EnvironmentRow, type RowState } from "./environments/EnvironmentRow.tsx";
 import { connectionAddress, connectionStatus, type Connection } from "./environments/environment-status.ts";
-import { ServerIcon } from "./ServerIcon.tsx";
+import { ServerIcon } from "./icons/ServerIcon.tsx";
 import { ContainerEnvironment } from "./ContainerEnvironment.tsx";
 import { Modal } from "./Modal.tsx";
 import { selectEnvironment, useEnvironments } from "../lib/environment.ts";

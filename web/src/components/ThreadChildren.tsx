@@ -7,7 +7,7 @@ import { environmentId } from "../lib/environment.ts";
 import { selectThread } from "../lib/store.ts";
 import { groupSubagents } from "../lib/subagents.ts";
 import { Collapsible } from "./Collapsible.tsx";
-import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 import { ThreadPulse } from "./ThreadPulse.tsx";
 import { VirtualList } from "./VirtualList.tsx";
 

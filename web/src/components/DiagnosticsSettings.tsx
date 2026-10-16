@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PulseIcon } from "./PulseIcon.tsx";
+import { PulseIcon } from "./icons/PulseIcon.tsx";
 import { CopyIcon } from "./icons/actions.tsx";
 import { CpuIcon, MemoryIcon } from "./icons/hardware.tsx";
 import { RefreshIcon } from "./icons/rotation.tsx";

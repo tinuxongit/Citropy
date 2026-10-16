@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckIcon } from "./icons/marks.tsx";
-import { AttachIcon } from "./AttachIcon.tsx";
+import { AttachIcon } from "./icons/AttachIcon.tsx";
 import { useApp } from "../lib/store.ts";
 import { reportError } from "../lib/api.ts";
 import { attachToComposer } from "../lib/composer-inbox.ts";

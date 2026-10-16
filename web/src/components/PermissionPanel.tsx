@@ -6,7 +6,7 @@ import { BanIcon } from "./icons/status.tsx";
 import { CheckCheckIcon, CheckIcon } from "./icons/marks.tsx";
 import { ChevronDownIcon } from "./icons/chevrons.tsx";
 import { shapeIcon } from "./icons/tool-shapes.ts";
-import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 import { ComposerWideTab } from "./composer/ComposerWideTab.tsx";
 
 function lines(value: unknown): string[] {

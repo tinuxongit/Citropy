@@ -1,11 +1,11 @@
 import { CircleCheckIcon, CircleXIcon, ClockIcon, HourglassIcon, InfoIcon, ShieldHelpIcon, WarningIcon } from "./icons/status.tsx";
 import { FlaskIcon } from "./icons/objects.tsx";
 import { BranchIcon, MergeIcon } from "./icons/git.tsx";
-import { BellIcon } from "./BellIcon.tsx";
-import { UpdateIcon } from "./UpdateIcon.tsx";
+import { BellIcon } from "./icons/BellIcon.tsx";
+import { UpdateIcon } from "./icons/UpdateIcon.tsx";
 import { QuestionMessageIcon } from "./icons/messages.tsx";
-import { SparkleIcon } from "./SparkleIcon.tsx";
-import { SettingsIcon } from "./SettingsIcon.tsx";
+import { SparkleIcon } from "./icons/SparkleIcon.tsx";
+import { SettingsIcon } from "./icons/SettingsIcon.tsx";
 import { TerminalIcon } from "./icons/squares.tsx";
 import { TrashIcon } from "./icons/actions.tsx";
 import { Menu } from "./Menu.tsx";

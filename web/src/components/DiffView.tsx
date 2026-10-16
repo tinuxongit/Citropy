@@ -4,7 +4,7 @@ import { escapeHtml } from "../lib/escape-html.ts";
 import { langFor } from "../lib/format.ts";
 import { useHighlightedLines } from "../lib/use-highlighted-lines.ts";
 import { useDisclosure } from "../lib/use-disclosure.ts";
-import { FileIcon } from "./FileIcon.tsx";
+import { FileIcon } from "./icons/FileIcon.tsx";
 import { NewMessageIcon } from "./icons/messages.tsx";
 import type { FilePatch, PatchLine } from "../../../shared/protocol.ts";
 import { scaled } from "../lib/store.ts";

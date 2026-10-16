@@ -1,6 +1,6 @@
 import { BugIcon, LightbulbIcon, TargetIcon } from "../icons/objects.tsx";
 import { FileTextIcon } from "../icons/files.tsx";
-import { PlanIcon } from "../PlanIcon.tsx";
+import { PlanIcon } from "../icons/PlanIcon.tsx";
 import { NotebookPenIcon } from "../icons/pencil.tsx";
 import { SearchCheckIcon } from "../icons/actions.tsx";
 import { UsersIcon } from "../icons/people.tsx";

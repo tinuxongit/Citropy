@@ -2,7 +2,7 @@ import { AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { DownloadIcon } from "../icons/arrows.tsx";
 import { FolderGitIcon } from "../icons/folders.tsx";
-import { LockIcon } from "../LockIcon.tsx";
+import { LockIcon } from "../icons/LockIcon.tsx";
 import { PlusIcon } from "../icons/marks.tsx";
 import { RefreshIcon } from "../icons/rotation.tsx";
 import { SearchIcon } from "../icons/actions.tsx";

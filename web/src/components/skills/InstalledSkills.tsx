@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { BookIcon } from "../BookIcon.tsx";
+import { BookIcon } from "../icons/BookIcon.tsx";
 import { RefreshIcon } from "../icons/rotation.tsx";
 import { SearchIcon, TrashIcon } from "../icons/actions.tsx";
 import { api } from "../../lib/api.ts";
 import { confirmAction, useApp } from "../../lib/store.ts";
-import { ProviderIcon } from "../ProviderIcon.tsx";
+import { ProviderIcon } from "../icons/ProviderIcon.tsx";
 import type { SkillInfo } from "../../../../shared/features.ts";
 import { PROVIDER_IDS } from "../../../../shared/protocol.ts";
 import { providerLabels } from "../../lib/format.ts";

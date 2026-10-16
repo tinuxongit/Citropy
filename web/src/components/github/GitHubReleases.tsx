@@ -3,7 +3,7 @@ import { useState } from "react";
 import { DownloadIcon } from "../icons/arrows.tsx";
 import { PlusIcon } from "../icons/marks.tsx";
 import { RefreshIcon } from "../icons/rotation.tsx";
-import { TagIcon } from "../TagIcon.tsx";
+import { TagIcon } from "../icons/TagIcon.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
 import { Prose } from "../parts/Prose.tsx";

@@ -6,10 +6,10 @@ import { loadThread } from "../lib/actions.ts";
 import { ago, duration } from "../lib/format.ts";
 import { selectProject, selectRosterEntry, selectThread, useApp } from "../lib/store.ts";
 import { useVisibleInterval } from "../lib/use-visible-interval.ts";
-import { AgentsIcon } from "./AgentsIcon.tsx";
-import { ConversationsIcon } from "./ConversationsIcon.tsx";
+import { AgentsIcon } from "./icons/AgentsIcon.tsx";
+import { ConversationsIcon } from "./icons/ConversationsIcon.tsx";
 import { BotsIcon } from "./icons/bots.tsx";
-import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 import { StripPeek } from "./StripPeek.tsx";
 
 const SETTINGS = { pollMs: 5000, openPollMs: 2000 };

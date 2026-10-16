@@ -1,4 +1,4 @@
-import { ServerIcon } from "./ServerIcon.tsx";
+import { ServerIcon } from "./icons/ServerIcon.tsx";
 import { useEffect, useRef } from "react";
 import { environmentName, isRemote } from "../lib/environment.ts";
 import { BranchIcon } from "./icons/git.tsx";

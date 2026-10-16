@@ -2,14 +2,14 @@ import {
   useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type CSSProperties, type KeyboardEvent, type PointerEvent,
 } from "react";
 import { JustifyIcon } from "../icons/editing.tsx";
-import { WindowIcon } from "../WindowIcon.tsx";
+import { WindowIcon } from "../icons/WindowIcon.tsx";
 import { ChevronDownIcon } from "../icons/chevrons.tsx";
 import { DownloadIcon } from "../icons/arrows.tsx";
 import { GridIcon, SquareDashedIcon, SquareIcon } from "../icons/squares.tsx";
 import { GripIcon, MoreIcon } from "../icons/marks.tsx";
-import { LayersIcon } from "../LayersIcon.tsx";
+import { LayersIcon } from "../icons/LayersIcon.tsx";
 import { MoonIcon, SunIcon } from "../icons/nature.tsx";
-import { PhoneIcon } from "../PhoneIcon.tsx";
+import { PhoneIcon } from "../icons/PhoneIcon.tsx";
 import { TrashIcon } from "../icons/actions.tsx";
 import { ImageIcon } from "../icons/media.tsx";
 import { reportError } from "../../lib/api.ts";

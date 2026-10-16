@@ -4,7 +4,7 @@ import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { isRemote } from "../lib/environment.ts";
 import { nextTabIndex } from "../lib/tab-strip.ts";
 import { lazy, Suspense, type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { GlobeIcon } from "./GlobeIcon.tsx";
+import { GlobeIcon } from "./icons/GlobeIcon.tsx";
 import { TerminalIcon } from "./icons/squares.tsx";
 import { FileDiffIcon, FilesIcon } from "./icons/files.tsx";
 import { NetworkIcon, PlugIcon } from "./icons/hardware.tsx";

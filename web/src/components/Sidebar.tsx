@@ -12,7 +12,7 @@ import { useNarrowViewport } from "../lib/use-narrow-viewport.ts";
 import { Collapsible } from "./Collapsible.tsx";
 import { ResizeHandle } from "./ResizeHandle.tsx";
 import { NewMessageIcon } from "./icons/messages.tsx";
-import { GitHubIcon, GitIcon } from "./BrandIcon.tsx";
+import { GitHubIcon, GitIcon } from "./icons/BrandIcon.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { ThreadPreview } from "./ThreadPreview.tsx";
 import { canConnectServers, WorkspaceDialogs, type WorkspaceDialog, type WorkspaceScope } from "./WorkspaceSelector.tsx";

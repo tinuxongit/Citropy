@@ -4,7 +4,7 @@ import { CloseIcon, PlusIcon } from "./icons/marks.tsx";
 import { useApp } from "../lib/store.ts";
 import { closeTab, createChat, createThread, keepTab, moveTab, showThread } from "../lib/actions.ts";
 import { Menu } from "./Menu.tsx";
-import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 import { useTabDrag } from "./use-tab-drag.tsx";
 
 const MIDDLE_BUTTON = 1;

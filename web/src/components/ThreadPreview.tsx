@@ -4,7 +4,7 @@ import { providerAccount } from "../../../shared/provider-account.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { environmentSlice } from "../lib/live-environments.ts";
 import { formatDate, modelLabel, providerLabels, shortPath, threadActivity } from "../lib/format.ts";
-import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 
 export function ThreadPreview({ id, thread, environment, anchor, onClose, onPointerEnter, onPointerLeave }: {
   id: string;

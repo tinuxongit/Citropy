@@ -3,7 +3,7 @@ import { CheckIcon, MoreIcon, PlusIcon } from "../icons/marks.tsx";
 import { BranchIcon, MergeIcon } from "../icons/git.tsx";
 import { SearchIcon, TrashIcon } from "../icons/actions.tsx";
 import { Menu } from "../Menu.tsx";
-import { RemoteIcon } from "../RemoteIcon.tsx";
+import { RemoteIcon } from "../icons/RemoteIcon.tsx";
 import { EmptyState } from "./GitEmptyState.tsx";
 import { dateTime, formatDate } from "../../lib/format.ts";
 import type { Section } from "./labels.ts";

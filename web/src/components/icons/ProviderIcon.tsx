@@ -1,13 +1,13 @@
-import claude from "../assets/providers/claude-light.svg";
-import codexLight from "../assets/providers/chatgpt-light.svg";
-import codexDark from "../assets/providers/chatgpt-dark.svg";
-import opencodeLight from "../assets/providers/opencode-light.svg";
-import opencodeDark from "../assets/providers/opencode-dark.svg";
-import antigravity from "../assets/providers/antigravity.png";
-import museLight from "../assets/providers/muse-light.svg";
-import museDark from "../assets/providers/muse-dark.svg";
-import { useApp } from "../lib/store.ts";
-import type { ProviderId } from "../../../shared/protocol.ts";
+import claude from "../../assets/providers/claude-light.svg";
+import codexLight from "../../assets/providers/chatgpt-light.svg";
+import codexDark from "../../assets/providers/chatgpt-dark.svg";
+import opencodeLight from "../../assets/providers/opencode-light.svg";
+import opencodeDark from "../../assets/providers/opencode-dark.svg";
+import antigravity from "../../assets/providers/antigravity.png";
+import museLight from "../../assets/providers/muse-light.svg";
+import museDark from "../../assets/providers/muse-dark.svg";
+import { useApp } from "../../lib/store.ts";
+import type { ProviderId } from "../../../../shared/protocol.ts";
 
 const logos: Partial<Record<string, Record<"light" | "dark", string>>> = {
   claude: { light: claude, dark: claude },

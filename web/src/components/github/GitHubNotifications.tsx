@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BellIcon } from "../BellIcon.tsx";
+import { BellIcon } from "../icons/BellIcon.tsx";
 import { CheckIcon } from "../icons/marks.tsx";
 import { RefreshIcon } from "../icons/rotation.tsx";
 import { useGitHub } from "../../lib/use-github.ts";

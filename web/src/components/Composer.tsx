@@ -16,7 +16,7 @@ import { PlusIcon } from "./icons/marks.tsx";
 import { StopIcon } from "./icons/squares.tsx";
 import { CircleCheckIcon } from "./icons/status.tsx";
 import { ArrowUpIcon } from "./icons/arrows.tsx";
-import { AttachIcon } from "./AttachIcon.tsx";
+import { AttachIcon } from "./icons/AttachIcon.tsx";
 import { nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { ContextUsage } from "./ContextUsage.tsx";

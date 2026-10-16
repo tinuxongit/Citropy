@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useIsPresent } from "motion/react";
 import { Modal } from "./Modal.tsx";
-import { SiteIcon } from "./SiteIcon.tsx";
+import { SiteIcon } from "./icons/SiteIcon.tsx";
 import { ArrowLeftIcon } from "./icons/arrows.tsx";
 import { RotateCwIcon } from "./icons/rotation.tsx";
 import type { SignInState } from "../desktop.d.ts";

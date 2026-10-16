@@ -1,11 +1,11 @@
 import type { RefObject } from "react";
-import { ChartIcon } from "../ChartIcon.tsx";
-import { BookIcon } from "../BookIcon.tsx";
+import { ChartIcon } from "../icons/ChartIcon.tsx";
+import { BookIcon } from "../icons/BookIcon.tsx";
 import { CollapseIcon } from "../icons/media.tsx";
 import { BrainIcon } from "../icons/objects.tsx";
-import { PlanIcon } from "../PlanIcon.tsx";
+import { PlanIcon } from "../icons/PlanIcon.tsx";
 import { ShieldCheckIcon } from "../icons/status.tsx";
-import { BoltIcon } from "../BoltIcon.tsx";
+import { BoltIcon } from "../icons/BoltIcon.tsx";
 import { configureThread } from "../../lib/actions.ts";
 import type {
   ModelOption,

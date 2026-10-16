@@ -4,7 +4,7 @@ import type { ToolPart } from "../../../shared/protocol.ts";
 import { PartView } from "./PartView.tsx";
 import { ChevronRightIcon } from "./icons/chevrons.tsx";
 import { shapeIcon } from "./icons/tool-shapes.ts";
-import { FileIcon } from "./FileIcon.tsx";
+import { FileIcon } from "./icons/FileIcon.tsx";
 import { useApp } from "../lib/store.ts";
 import { useDisclosure } from "../lib/use-disclosure.ts";
 import { groupStats, summarize } from "../lib/group.ts";

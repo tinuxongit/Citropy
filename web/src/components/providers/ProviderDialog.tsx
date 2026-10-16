@@ -6,7 +6,7 @@ import { ArrowUpToLineIcon, DownloadIcon } from "../icons/arrows.tsx";
 import { CheckIcon } from "../icons/marks.tsx";
 import { Loader } from "../Loader.tsx";
 import { Modal } from "../Modal.tsx";
-import { ProviderIcon } from "../ProviderIcon.tsx";
+import { ProviderIcon } from "../icons/ProviderIcon.tsx";
 import { AccountDialog } from "./AccountDialog.tsx";
 import { AccountList } from "./AccountList.tsx";
 import { ProviderDetails } from "./ProviderDetails.tsx";

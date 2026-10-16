@@ -9,7 +9,7 @@ import type { ReleaseNotes } from "../../../shared/app-update.ts";
 import { useAppUpdate } from "../lib/use-app-update.ts";
 import { Loader } from "./Loader.tsx";
 import { StripPeek } from "./StripPeek.tsx";
-import { UpdateIcon } from "./UpdateIcon.tsx";
+import { UpdateIcon } from "./icons/UpdateIcon.tsx";
 
 const notesMotion = {
   enter: ({ step, reducedMotion }: { step: number; reducedMotion: boolean }) => ({ opacity: 0, transform: reducedMotion ? "none" : `translateX(${-8 * step}px)` }),

@@ -1,14 +1,14 @@
 import type { ComponentType } from "react";
-import type { IconProps } from "./icons/kit.tsx";
-import { AtomIcon, PresentationIcon } from "./icons/objects.tsx";
-import { BracesIcon, CodeXmlIcon } from "./icons/editing.tsx";
-import { BoxIcon, DatabaseIcon, PackageIcon } from "./icons/hardware.tsx";
-import { FileArchiveIcon, FileAudioIcon, FileCodeIcon, FileCogIcon, FileImageIcon, FileKeyIcon, FileLockIcon, FileSpreadsheetIcon, FileTextIcon, FileTypeIcon, FileVideoIcon, PageIcon } from "./icons/files.tsx";
-import { BranchIcon } from "./icons/git.tsx";
-import { HashIcon } from "./icons/marks.tsx";
-import { PenNibIcon } from "./icons/drawing.tsx";
-import { TerminalIcon } from "./icons/squares.tsx";
-import { fileTypeFor, type FileType } from "../lib/file-type.ts";
+import type { IconProps } from "./kit.tsx";
+import { AtomIcon, PresentationIcon } from "./objects.tsx";
+import { BracesIcon, CodeXmlIcon } from "./editing.tsx";
+import { BoxIcon, DatabaseIcon, PackageIcon } from "./hardware.tsx";
+import { FileArchiveIcon, FileAudioIcon, FileCodeIcon, FileCogIcon, FileImageIcon, FileKeyIcon, FileLockIcon, FileSpreadsheetIcon, FileTextIcon, FileTypeIcon, FileVideoIcon, PageIcon } from "./files.tsx";
+import { BranchIcon } from "./git.tsx";
+import { HashIcon } from "./marks.tsx";
+import { PenNibIcon } from "./drawing.tsx";
+import { TerminalIcon } from "./squares.tsx";
+import { fileTypeFor, type FileType } from "../../lib/file-type.ts";
 
 const icons: Record<FileType, { icon?: ComponentType<IconProps>; mark?: string; tone: string }> = {
   typescript: { mark: "TS", tone: "blue" },

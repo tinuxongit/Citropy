@@ -13,7 +13,7 @@ import { duration } from "../../lib/format.ts";
 import type { ToolPart } from "../../../../shared/protocol.ts";
 import { ImageStrip } from "./ImageStrip.tsx";
 import { Loader } from "../Loader.tsx";
-import { FileIcon } from "../FileIcon.tsx";
+import { FileIcon } from "../icons/FileIcon.tsx";
 import { LineCounts } from "../LineCounts.tsx";
 import { useHighlightedLines } from "../../lib/use-highlighted-lines.ts";
 import { escapeHtml } from "../../lib/escape-html.ts";

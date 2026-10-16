@@ -5,7 +5,7 @@ import { ChevronRightIcon } from "./icons/chevrons.tsx";
 import { CommitVerticalIcon } from "./icons/git.tsx";
 import { RotateCcwIcon } from "./icons/rotation.tsx";
 import { DiffView } from "./DiffView.tsx";
-import { FileIcon } from "./FileIcon.tsx";
+import { FileIcon } from "./icons/FileIcon.tsx";
 import { LineCounts } from "./LineCounts.tsx";
 import { groupGitFiles } from "../lib/git-files.ts";
 import { commitAll, discardFile, fetchDiff, refreshGit } from "../lib/actions.ts";

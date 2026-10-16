@@ -2,7 +2,7 @@ import { openOnEnvironment } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import type { CachedThread } from "../../lib/environment.ts";
 import { dateTime, since } from "../../lib/format.ts";
-import { ProviderIcon } from "../ProviderIcon.tsx";
+import { ProviderIcon } from "../icons/ProviderIcon.tsx";
 import { DisconnectedIcon } from "../icons/hardware.tsx";
 
 export function CachedThreadRow({ thread, now, environment, showDisconnected, onConversation }: {

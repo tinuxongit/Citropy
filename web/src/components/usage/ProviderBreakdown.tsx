@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { cost, providerLabels, tokens } from "../../lib/format.ts";
-import { ProviderIcon } from "../ProviderIcon.tsx";
+import { ProviderIcon } from "../icons/ProviderIcon.tsx";
 import { formatMeasure, measureOf, type UsageMeasure } from "./usage-series.ts";
 import { uncachedInput, type UsageTotals } from "../../../../shared/usage-metrics.ts";
 import type { ProviderId } from "../../../../shared/protocol.ts";

@@ -1,10 +1,10 @@
 import { useEffect, useState, type ComponentType, type PointerEvent, type ReactNode, type Ref } from "react";
-import { BoltIcon } from "../BoltIcon.tsx";
+import { BoltIcon } from "../icons/BoltIcon.tsx";
 import { EditIcon } from "../icons/pencil.tsx";
-import { EffortIcon } from "../EffortIcon.tsx";
-import { LayersIcon } from "../LayersIcon.tsx";
-import { LockIcon, UnlockIcon } from "../LockIcon.tsx";
-import { PlanIcon } from "../PlanIcon.tsx";
+import { EffortIcon } from "../icons/EffortIcon.tsx";
+import { LayersIcon } from "../icons/LayersIcon.tsx";
+import { LockIcon, UnlockIcon } from "../icons/LockIcon.tsx";
+import { PlanIcon } from "../icons/PlanIcon.tsx";
 import { Menu } from "../Menu.tsx";
 import { configureThread } from "../../lib/actions.ts";
 import { effortLabel as formatEffort, tokens } from "../../lib/format.ts";

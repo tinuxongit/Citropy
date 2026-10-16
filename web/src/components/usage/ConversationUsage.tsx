@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { ago, cost, tokens } from "../../lib/format.ts";
-import { ProviderIcon } from "../ProviderIcon.tsx";
+import { ProviderIcon } from "../icons/ProviderIcon.tsx";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { Select } from "../Select.tsx";
 import { FolderIcon } from "../icons/folders.tsx";

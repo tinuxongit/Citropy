@@ -1,8 +1,8 @@
 import { createElement, type ComponentType } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { BookIcon } from "../components/BookIcon.tsx";
-import { GlobeIcon } from "../components/GlobeIcon.tsx";
+import { BookIcon } from "../components/icons/BookIcon.tsx";
+import { GlobeIcon } from "../components/icons/GlobeIcon.tsx";
 import { CopyIcon } from "../components/icons/actions.tsx";
 import type { IconProps } from "../components/icons/kit.tsx";
 import { CheckIcon } from "../components/icons/marks.tsx";

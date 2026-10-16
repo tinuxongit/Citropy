@@ -2,7 +2,7 @@ import type { ProviderInfo } from "../../../../shared/protocol.ts";
 import type { ProviderMaintenance } from "../../../../shared/provider-settings.ts";
 import { DownloadIcon } from "../icons/arrows.tsx";
 import { Loader } from "../Loader.tsx";
-import { ProviderIcon } from "../ProviderIcon.tsx";
+import { ProviderIcon } from "../icons/ProviderIcon.tsx";
 import { AccountRow } from "../providers/AccountRow.tsx";
 import { signInFor, type useTerminalSignIns } from "../providers/use-provider-sign-ins.ts";
 

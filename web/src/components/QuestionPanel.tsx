@@ -9,7 +9,7 @@ import { api } from "../lib/api.ts";
 import { ComposerWideTab, LowerButton } from "./composer/ComposerWideTab.tsx";
 import "../styles/questions.css";
 import { ActionError } from "./ActionError.tsx";
-import { GlobeIcon } from "./GlobeIcon.tsx";
+import { GlobeIcon } from "./icons/GlobeIcon.tsx";
 import { collapseForQuestion, expandBrowser } from "../lib/browser-takeover.ts";
 
 const emptyDraft: AppState["questionDrafts"][string] = { index: 0, choices: {}, text: {} };

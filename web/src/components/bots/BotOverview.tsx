@@ -4,7 +4,7 @@ import { useApp } from "../../lib/store.ts";
 import { ChevronRightIcon } from "../icons/chevrons.tsx";
 import { ExpandIcon } from "../icons/media.tsx";
 import { expandBrowser } from "../../lib/browser-takeover.ts";
-import { SettingsIcon } from "../SettingsIcon.tsx";
+import { SettingsIcon } from "../icons/SettingsIcon.tsx";
 import { BotAvatar } from "./BotAvatar.tsx";
 import { botMood } from "../../lib/roster.ts";
 import type { BotPage } from "./BotPanel.tsx";

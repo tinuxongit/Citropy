@@ -9,7 +9,7 @@ import { ArrowUpToLineIcon } from "./icons/arrows.tsx";
 import { RefreshIcon } from "./icons/rotation.tsx";
 import { Loader } from "./Loader.tsx";
 import { ProviderInstructions } from "./ProviderInstructions.tsx";
-import { ProviderIcon } from "./ProviderIcon.tsx";
+import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 import { confirmStop } from "./providers/confirm-stop.ts";
 import { ProviderDialog } from "./providers/ProviderDialog.tsx";
 import { hasReadyAccount } from "../../../shared/provider-account.ts";

@@ -2,12 +2,12 @@
 import { AccountMenu } from "./AccountMenu.tsx";
 import { AgentsPanel } from "./AgentsPanel.tsx";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
-import { ConversationsIcon } from "./ConversationsIcon.tsx";
+import { ConversationsIcon } from "./icons/ConversationsIcon.tsx";
 import { BotsIcon } from "./icons/bots.tsx";
 import { CodeSectionIcon } from "./icons/editing.tsx";
 import { NotificationCenter } from "./NotificationCenter.tsx";
-import { SettingsIcon } from "./SettingsIcon.tsx";
-import { UsageIcon } from "./UsageIcon.tsx";
+import { SettingsIcon } from "./icons/SettingsIcon.tsx";
+import { UsageIcon } from "./icons/UsageIcon.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useUsagePeek } from "./UsagePeek.tsx";
 import { useState, type ComponentType } from "react";

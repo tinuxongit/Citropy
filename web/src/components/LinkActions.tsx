@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ExternalLinkIcon } from "./icons/arrows.tsx";
-import { GlobeIcon } from "./GlobeIcon.tsx";
+import { GlobeIcon } from "./icons/GlobeIcon.tsx";
 import { Menu } from "./Menu.tsx";
 import { openWorkbenchPanel } from "../lib/actions.ts";
 import { isRemote } from "../lib/environment.ts";
