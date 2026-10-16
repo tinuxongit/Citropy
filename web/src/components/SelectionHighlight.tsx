@@ -8,7 +8,11 @@ const WATCHED_CHILDREN = 24;
 function visibleBounds(host: HTMLElement, selected: HTMLElement): Bounds {
   const origin = host.getBoundingClientRect();
   let { top, right, bottom, left } = selected.getBoundingClientRect();
-  for (let parent = selected.parentElement; parent && parent !== host; parent = parent.parentElement) {
+  for (
+    let parent = selected.parentElement;
+    parent && parent !== host;
+    parent = parent.parentElement
+  ) {
     if (getComputedStyle(parent).overflow === "visible") continue;
     const clip = parent.getBoundingClientRect();
     top = Math.max(top, clip.top);
@@ -26,7 +30,11 @@ function visibleBounds(host: HTMLElement, selected: HTMLElement): Bounds {
   ];
 }
 
-export function SelectionHighlight({ value, layout, selector = SELECTED }: {
+export function SelectionHighlight({
+  value,
+  layout,
+  selector = SELECTED,
+}: {
   value: string | undefined;
   layout?: string;
   selector?: string;
@@ -69,7 +77,8 @@ export function SelectionHighlight({ value, layout, selector = SELECTED }: {
     };
     const mutations = new MutationObserver(track);
     resize.observe(host);
-    if (host.children.length <= WATCHED_CHILDREN) for (const child of host.children) if (child !== pill) resize.observe(child);
+    if (host.children.length <= WATCHED_CHILDREN)
+      for (const child of host.children) if (child !== pill) resize.observe(child);
     mutations.observe(host, { childList: true, subtree: true });
     track();
     return () => {

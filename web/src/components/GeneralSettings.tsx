@@ -19,12 +19,16 @@ export function GeneralSettings() {
 
   return (
     <>
-      <h2 className="settings-group-heading">{" "}Chat identity{" "}</h2>
+      <h2 className="settings-group-heading"> Chat identity </h2>
       <div className="settings-group">
         <label className="setting-row">
           <span>
             <strong>Use GitHub profile in chat</strong>
-            <small>{" "}Show your connected GitHub username on your messages in the message navigator. Turn off to show 'You'.{" "}</small>
+            <small>
+              {" "}
+              Show your connected GitHub username on your messages in the message navigator. Turn
+              off to show 'You'.{" "}
+            </small>
           </span>
           <input
             className="setting-switch"
@@ -56,7 +60,7 @@ export function GeneralSettings() {
         <label className="setting-row">
           <span>
             <strong>Interface sounds</strong>
-            <small>{" "}A quiet click when you press a button, a switch, or a tab.{" "}</small>
+            <small> A quiet click when you press a button, a switch, or a tab. </small>
           </span>
           <span className="sound-row-controls">
             <button
@@ -64,7 +68,9 @@ export function GeneralSettings() {
               type="button"
               data-ui-sound="off"
               onClick={() => void previewUiSound("click")}
-            >Preview</button>
+            >
+              Preview
+            </button>
             <input
               className="setting-switch"
               type="checkbox"
@@ -98,7 +104,7 @@ export function GeneralSettings() {
           />
         </div>
       </div>
-      <p className="settings-note">{" "}Volume also applies to the Citropy chime chosen in Inbox.{" "}</p>
+      <p className="settings-note"> Volume also applies to the Citropy chime chosen in Inbox. </p>
     </>
   );
 }

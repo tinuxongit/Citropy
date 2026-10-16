@@ -11,7 +11,12 @@ export interface PanelTab {
   threadId?: string;
 }
 
-export function movePanelTab(panels: PanelTab[], id: string, targetId: string, edge: DropEdge): PanelTab[] {
+export function movePanelTab(
+  panels: PanelTab[],
+  id: string,
+  targetId: string,
+  edge: DropEdge,
+): PanelTab[] {
   const panel = panels.find((entry) => entry.id === id);
   const target = panels.find((entry) => entry.id === targetId);
   if (!panel || !target || panel.projectId !== target.projectId) return panels;
@@ -58,11 +63,37 @@ export type BrowserAction =
       name?: string;
     }
   | { action: "wait"; selector?: string; text?: string; timeout?: number }
-  | { action: "upload"; paths: string[]; ref?: string; selector?: string; role?: string; name?: string }
-  | { action: "select"; option: string; ref?: string; selector?: string; role?: string; name?: string }
-  | { action: "emulate"; colorScheme?: "light" | "dark" | "none"; reducedMotion?: "reduce" | "no-preference" | "none" }
+  | {
+      action: "upload";
+      paths: string[];
+      ref?: string;
+      selector?: string;
+      role?: string;
+      name?: string;
+    }
+  | {
+      action: "select";
+      option: string;
+      ref?: string;
+      selector?: string;
+      role?: string;
+      name?: string;
+    }
+  | {
+      action: "emulate";
+      colorScheme?: "light" | "dark" | "none";
+      reducedMotion?: "reduce" | "no-preference" | "none";
+    }
   | { action: "press"; key: string }
-  | { action: "scroll"; x: number; y: number; ref?: string; selector?: string; role?: string; name?: string }
+  | {
+      action: "scroll";
+      x: number;
+      y: number;
+      ref?: string;
+      selector?: string;
+      role?: string;
+      name?: string;
+    }
   | { action: "swipe"; x: number; y: number; toX: number; toY: number; duration?: number }
   | { action: "evaluate"; expression: string }
   | { action: "resize"; width: number; height: number; mobile?: boolean }

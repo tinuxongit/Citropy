@@ -13,7 +13,13 @@ function pageAddress(state: SignInState | undefined, connection: Connection): st
   return new URL(state.url).host;
 }
 
-export function SignInDialog({ connection, account }: { connection: Connection; account: ConnectionAccount }) {
+export function SignInDialog({
+  connection,
+  account,
+}: {
+  connection: Connection;
+  account: ConnectionAccount;
+}) {
   const desktop = window.citropyDesktop!;
   const present = useIsPresent();
   const page = useRef<HTMLDivElement>(null);
@@ -54,19 +60,49 @@ export function SignInDialog({ connection, account }: { connection: Connection; 
       onClose={() => desktop.signInCommand("cancel")}
       actions={
         <span className="sign-in-navigation">
-          <button className="icon-btn" type="button" aria-label="Back" title="Back" disabled={!state?.canGoBack} onClick={() => desktop.signInCommand("back")}>
+          <button
+            className="icon-btn"
+            type="button"
+            aria-label="Back"
+            title="Back"
+            disabled={!state?.canGoBack}
+            onClick={() => desktop.signInCommand("back")}
+          >
             <ArrowLeftIcon size={15} />
           </button>
-          <button className="icon-btn" type="button" aria-label="Reload" title="Reload" disabled={state?.loading} onClick={() => desktop.signInCommand("reload")}>
+          <button
+            className="icon-btn"
+            type="button"
+            aria-label="Reload"
+            title="Reload"
+            disabled={state?.loading}
+            onClick={() => desktop.signInCommand("reload")}
+          >
             <RotateCwIcon size={14} />
           </button>
         </span>
       }
       footer={
         <>
-          <span className="dialog-footer-start sign-in-hint">Sign in on the page, then choose Done.</span>
-          <button className="btn" type="button" data-cancel onClick={() => desktop.signInCommand("cancel")}>Cancel</button>
-          <button className="btn" type="button" data-variant="primary" onClick={() => desktop.signInCommand("done")}>Done</button>
+          <span className="dialog-footer-start sign-in-hint">
+            Sign in on the page, then choose Done.
+          </span>
+          <button
+            className="btn"
+            type="button"
+            data-cancel
+            onClick={() => desktop.signInCommand("cancel")}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn"
+            type="button"
+            data-variant="primary"
+            onClick={() => desktop.signInCommand("done")}
+          >
+            Done
+          </button>
         </>
       }
     >

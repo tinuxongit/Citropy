@@ -1,21 +1,52 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { applyEvents } from "../web/src/lib/server-events.ts";
-import { claimHistoryRequest, trimHistories, trimOlderMessages } from "../web/src/lib/history-cache.ts";
+import {
+  claimHistoryRequest,
+  trimHistories,
+  trimOlderMessages,
+} from "../web/src/lib/history-cache.ts";
 import { createTimelineSelector, timelineRows } from "../web/src/lib/timeline.ts";
 import { useApp } from "../web/src/lib/app-state.ts";
 
-const text = (id, value = "Original", complete = true) => ({ id, kind: "text", text: value, complete });
+const text = (id, value = "Original", complete = true) => ({
+  id,
+  kind: "text",
+  text: value,
+  complete,
+});
 const message = (id, parts = [text(`${id}-text`)]) => ({ id, role: "assistant", ts: 1, parts });
 const history = (threadId, messages) => ({ t: "thread.messages", threadId, messages });
-const append = (partId, value = " appended", threadId = "chat") => ({ t: "part.append", threadId, messageId: "reply", partId, text: value });
-const patch = (partId, value) => ({ t: "part.patch", threadId: "chat", messageId: "reply", partId, patch: value });
-const initial = () => ({ ...useApp.getInitialState(), threads: { chat: { id: "chat", running: true, status: "working" } }, activeThreadId: "chat" });
+const append = (partId, value = " appended", threadId = "chat") => ({
+  t: "part.append",
+  threadId,
+  messageId: "reply",
+  partId,
+  text: value,
+});
+const patch = (partId, value) => ({
+  t: "part.patch",
+  threadId: "chat",
+  messageId: "reply",
+  partId,
+  patch: value,
+});
+const initial = () => ({
+  ...useApp.getInitialState(),
+  threads: { chat: { id: "chat", running: true, status: "working" } },
+  activeThreadId: "chat",
+});
 
 test("stream batches preserve snapshots and unchanged part subscriptions", () => {
-  const original = applyEvents(initial(), [history("chat", [message("reply", [text("live"), text("stable")])])]);
+  const original = applyEvents(initial(), [
+    history("chat", [message("reply", [text("live"), text("stable")])]),
+  ]);
   const bytes = original.historyBytes.chat;
-  const next = applyEvents(original, [append("live", " one"), append("live", " two"), patch("live", { complete: false })]);
+  const next = applyEvents(original, [
+    append("live", " one"),
+    append("live", " two"),
+    patch("live", { complete: false }),
+  ]);
   assert.notStrictEqual(next.parts, original.parts);
   assert.equal(original.parts.get("live").text, "Original");
   assert.equal(original.parts.get("live").complete, true);
@@ -29,14 +60,27 @@ test("stream batches preserve snapshots and unchanged part subscriptions", () =>
 });
 
 test("partial patch byte accounting matches a complete replacement without changing retained content", () => {
-  const tool = { id: "tool", kind: "tool", callId: "call", name: "Read", shape: "read", headline: "source.ts", input: { paths: ["a.ts", "b.ts"], options: { nested: [{ keep: true }] } }, status: "running", output: "first" };
+  const tool = {
+    id: "tool",
+    kind: "tool",
+    callId: "call",
+    name: "Read",
+    shape: "read",
+    headline: "source.ts",
+    input: { paths: ["a.ts", "b.ts"], options: { nested: [{ keep: true }] } },
+    status: "running",
+    output: "first",
+  };
   const originalInput = structuredClone(tool.input);
   const original = applyEvents(initial(), [history("chat", [message("reply", [tool])])]);
   let next = original;
   let expected = tool;
   for (const value of [
     { output: "extended output", status: "ok" },
-    { images: ["image one", "image two"], detail: { lines: [1, null, true], nested: { text: "é🙂" } } },
+    {
+      images: ["image one", "image two"],
+      detail: { lines: [1, null, true], nested: { text: "é🙂" } },
+    },
     { output: undefined, images: [] },
     { detail: null, status: "ok" },
     { input: { paths: ["shorter.ts"] } },
@@ -51,19 +95,30 @@ test("partial patch byte accounting matches a complete replacement without chang
     assert.equal(next.historyBytes.chat, replacement.historyBytes.chat);
     assert.deepEqual(next.parts.get("tool"), expected);
     assert.deepEqual(previous.parts.get("tool"), previousPart);
-    if (!Object.hasOwn(value, "input")) assert.strictEqual(next.parts.get("tool").input, previous.parts.get("tool").input);
+    if (!Object.hasOwn(value, "input"))
+      assert.strictEqual(next.parts.get("tool").input, previous.parts.get("tool").input);
     assert.equal(original.parts.get("tool").output, "first");
     assert.deepEqual(original.parts.get("tool").input, originalInput);
   }
 });
 
 test("timeline caching follows grouping, visibility, and activity changes", () => {
-  const tool = { id: "tool", kind: "tool", name: "Read", callId: "call", shape: "read", headline: "app.ts", status: "running" };
+  const tool = {
+    id: "tool",
+    kind: "tool",
+    name: "Read",
+    callId: "call",
+    shape: "read",
+    headline: "app.ts",
+    status: "running",
+  };
   const other = { ...tool, id: "other", callId: "other-call", headline: "main.ts" };
-  let state = applyEvents(initial(), [history("chat", [message("reply", [tool, other, text("live", "", false)])])]);
+  let state = applyEvents(initial(), [
+    history("chat", [message("reply", [tool, other, text("live", "", false)])]),
+  ]);
   const select = createTimelineSelector("chat");
   let previousRows = select(state);
-  const verify = event => {
+  const verify = (event) => {
     state = applyEvents(state, [event]);
     const rows = select(state);
     assert.deepEqual(rows, timelineRows(state, "chat"));
@@ -76,64 +131,122 @@ test("timeline caching follows grouping, visibility, and activity changes", () =
   state = { ...state, disclosures: { tool: { activity: true } } };
   const openRows = select(state);
   assert.deepEqual(openRows, timelineRows(state, "chat"));
-  assert.deepEqual(openRows.map(entry => entry.row.kind), ["fold", "group", "part", "live"]);
-  assert.ok(openRows.every(entry => !entry.latestStep));
+  assert.deepEqual(
+    openRows.map((entry) => entry.row.kind),
+    ["fold", "group", "part", "live"],
+  );
+  assert.ok(openRows.every((entry) => !entry.latestStep));
   previousRows = verify(patch("tool", { images: ["data:image/png;base64,a"] }));
   assert.notDeepEqual(previousRows, openRows);
   verify(patch("live", { complete: true }));
-  verify({ t: "message.add", threadId: "chat", message: message("next", [text("next-text", "", false)]) });
-  verify({ t: "part.add", threadId: "chat", messageId: "next", part: { id: "plan", kind: "todo", items: [] } });
+  verify({
+    t: "message.add",
+    threadId: "chat",
+    message: message("next", [text("next-text", "", false)]),
+  });
+  verify({
+    t: "part.add",
+    threadId: "chat",
+    messageId: "next",
+    part: { id: "plan", kind: "todo", items: [] },
+  });
   verify(patch("plan", { items: [{ text: "Finish", status: "pending" }] }));
   verify({ t: "thread.upsert", thread: { ...state.threads.chat, running: false, status: "idle" } });
 });
 
 test("timeline fallback observes changed parts without version metadata", () => {
-  const loaded = applyEvents(initial(), [history("chat", [message("reply", [text("live", "", false)])])]);
+  const loaded = applyEvents(initial(), [
+    history("chat", [message("reply", [text("live", "", false)])]),
+  ]);
   const { timelineVersions, ...state } = loaded;
   const select = createTimelineSelector("chat");
   const rows = select(state);
-  const next = { ...state, parts: new Map(state.parts).set("live", text("live", "Visible", false)) };
+  const next = {
+    ...state,
+    parts: new Map(state.parts).set("live", text("live", "Visible", false)),
+  };
   assert.notStrictEqual(select(next), rows);
   assert.deepEqual(select(next), timelineRows(next, "chat"));
-  const continued = { ...next, parts: new Map(next.parts).set("live", text("live", "Visible text", false)) };
+  const continued = {
+    ...next,
+    parts: new Map(next.parts).set("live", text("live", "Visible text", false)),
+  };
   assert.strictEqual(select(continued), select(next));
 });
 
 test("work folds above the latest step while running and above the final answer once settled", () => {
-  const tool = { id: "tool", kind: "tool", name: "Read", callId: "call", shape: "read", headline: "app.ts", status: "ok" };
-  let state = applyEvents(initial(), [history("chat", [message("reply", [tool, text("answer", "Answer", false)])])]);
+  const tool = {
+    id: "tool",
+    kind: "tool",
+    name: "Read",
+    callId: "call",
+    shape: "read",
+    headline: "app.ts",
+    status: "ok",
+  };
+  let state = applyEvents(initial(), [
+    history("chat", [message("reply", [tool, text("answer", "Answer", false)])]),
+  ]);
   const select = createTimelineSelector("chat");
   const live = select(state);
-  assert.deepEqual(live.map(entry => entry.row.kind), ["fold", "part", "live"]);
+  assert.deepEqual(
+    live.map((entry) => entry.row.kind),
+    ["fold", "part", "live"],
+  );
   assert.equal(live[0].row.active, true);
   assert.equal(live[1].row.id, "answer");
-  assert.deepEqual(live.map(entry => entry.latestStep), [undefined, true, undefined]);
+  assert.deepEqual(
+    live.map((entry) => entry.latestStep),
+    [undefined, true, undefined],
+  );
   state = applyEvents(state, [append("answer", " continues")]);
   assert.strictEqual(select(state), live);
-  state = applyEvents(state, [patch("answer", { complete: true }), { t: "thread.upsert", thread: { ...state.threads.chat, running: false, status: "idle" } }]);
+  state = applyEvents(state, [
+    patch("answer", { complete: true }),
+    { t: "thread.upsert", thread: { ...state.threads.chat, running: false, status: "idle" } },
+  ]);
   const folded = select(state);
-  assert.deepEqual(folded.map(entry => entry.row.kind), ["fold", "part"]);
+  assert.deepEqual(
+    folded.map((entry) => entry.row.kind),
+    ["fold", "part"],
+  );
   assert.equal(folded[0].first, true);
   assert.equal(folded[1].row.id, "answer");
   assert.equal(folded[1].latestStep, undefined);
   assert.deepEqual(folded[1].replyIds, ["reply"]);
   state = { ...state, disclosures: { tool: { activity: true } } };
   const expanded = select(state);
-  assert.deepEqual(expanded.map(entry => entry.row.kind === "part" ? entry.row.id : entry.row.kind), ["fold", "tool", "answer"]);
+  assert.deepEqual(
+    expanded.map((entry) => (entry.row.kind === "part" ? entry.row.id : entry.row.kind)),
+    ["fold", "tool", "answer"],
+  );
   assert.equal(expanded.at(-1).last, true);
 });
 
 test("one fold covers every assistant message in a turn", () => {
-  const tool = { id: "tool", kind: "tool", name: "Read", callId: "call", shape: "read", headline: "app.ts", status: "ok" };
-  const state = applyEvents(initial(), [history("chat", [
-    { id: "ask", role: "user", ts: 1, parts: [text("ask-text", "Question")] },
-    { ...message("first", [text("note", "Checking"), tool]), ts: 2 },
-    { ...message("second", [text("answer", "First answer")]), ts: 5 },
-    { id: "follow-up", role: "user", ts: 6, parts: [text("request", "Next question")] },
-    { ...message("third", [text("next-answer", "Next answer", false)]), ts: 7 },
-  ])]);
+  const tool = {
+    id: "tool",
+    kind: "tool",
+    name: "Read",
+    callId: "call",
+    shape: "read",
+    headline: "app.ts",
+    status: "ok",
+  };
+  const state = applyEvents(initial(), [
+    history("chat", [
+      { id: "ask", role: "user", ts: 1, parts: [text("ask-text", "Question")] },
+      { ...message("first", [text("note", "Checking"), tool]), ts: 2 },
+      { ...message("second", [text("answer", "First answer")]), ts: 5 },
+      { id: "follow-up", role: "user", ts: 6, parts: [text("request", "Next question")] },
+      { ...message("third", [text("next-answer", "Next answer", false)]), ts: 7 },
+    ]),
+  ]);
   const rows = timelineRows(state, "chat");
-  assert.deepEqual(rows.map(entry => entry.row?.kind ?? "user"), ["user", "fold", "part", "user", "part", "live"]);
+  assert.deepEqual(
+    rows.map((entry) => entry.row?.kind ?? "user"),
+    ["user", "fold", "part", "user", "part", "live"],
+  );
   assert.deepEqual(rows[1].row.messageIds, ["first", "second"]);
   assert.deepEqual(rows[1].row.ids, ["note", "tool"]);
   assert.equal(rows[1].row.since, 1);
@@ -141,8 +254,15 @@ test("one fold covers every assistant message in a turn", () => {
 });
 
 test("replacing and removing history releases only its parts and disclosure state", () => {
-  let state = applyEvents(initial(), [history("chat", [message("reply")]), history("other", [message("other-reply")])]);
-  state = { ...state, reveals: { "reply-text": true, "other-reply-text": true }, disclosures: { "reply-text": { activity: true } } };
+  let state = applyEvents(initial(), [
+    history("chat", [message("reply")]),
+    history("other", [message("other-reply")]),
+  ]);
+  state = {
+    ...state,
+    reveals: { "reply-text": true, "other-reply-text": true },
+    disclosures: { "reply-text": { activity: true } },
+  };
   const replaced = applyEvents(state, [history("chat", [message("replacement")])]);
   assert.equal(replaced.parts.has("reply-text"), false);
   assert.equal(replaced.messages.reply, undefined);
@@ -162,7 +282,8 @@ test("replacing and removing history releases only its parts and disclosure stat
 
 test("history count eviction preserves the active conversation and older snapshots", () => {
   let state = applyEvents(initial(), [history("chat", [message("reply")])]);
-  for (let index = 0; index < 4; index++) state = applyEvents(state, [history(`thread${index}`, [message(`reply${index}`)])]);
+  for (let index = 0; index < 4; index++)
+    state = applyEvents(state, [history(`thread${index}`, [message(`reply${index}`)])]);
   const next = applyEvents(state, [history("new", [message("new-reply")])]);
   assert.equal(Object.keys(next.loaded).length, 5);
   assert.equal(next.loaded.chat, true);
@@ -175,7 +296,9 @@ test("history count eviction preserves the active conversation and older snapsho
 
 test("byte eviction drops background histories while retaining the active history", () => {
   const huge = "x".repeat(8 * 1024 * 1024);
-  const state = applyEvents(initial(), [{ ...history("other", [message("other-reply")]), page: { revision: 1, next: "older" } }]);
+  const state = applyEvents(initial(), [
+    { ...history("other", [message("other-reply")]), page: { revision: 1, next: "older" } },
+  ]);
   const next = applyEvents(state, [history("chat", [message("reply", [text("huge", huge)])])]);
   assert.equal(next.loaded.chat, true);
   assert.equal(next.loaded.other, undefined);
@@ -187,7 +310,9 @@ test("byte eviction drops background histories while retaining the active histor
 });
 
 test("selection-triggered eviction copies history shared with the previous snapshot", () => {
-  const state = applyEvents(initial(), [history("chat", [message("reply", [text("huge", "x".repeat(8 * 1024 * 1024))])])]);
+  const state = applyEvents(initial(), [
+    history("chat", [message("reply", [text("huge", "x".repeat(8 * 1024 * 1024))])]),
+  ]);
   const next = { ...state, activeThreadId: null };
   trimHistories(next);
   assert.equal(next.parts.size, 0);
@@ -197,11 +322,13 @@ test("selection-triggered eviction copies history shared with the previous snaps
   assert.equal(state.messages.reply.partIds[0], "huge");
 });
 
-test("a conversation evicted right after loading can be requested again", t => {
+test("a conversation evicted right after loading can be requested again", (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   assert.equal(claimHistoryRequest("old"), true);
   assert.equal(claimHistoryRequest("old"), false);
-  const state = applyEvents(initial(), [history("old", [message("reply", [text("huge", "x".repeat(8 * 1024 * 1024))])])]);
+  const state = applyEvents(initial(), [
+    history("old", [message("reply", [text("huge", "x".repeat(8 * 1024 * 1024))])]),
+  ]);
   trimHistories(state);
   assert.deepEqual(state.loaded, {});
   assert.equal(claimHistoryRequest("old"), true);
@@ -209,7 +336,10 @@ test("a conversation evicted right after loading can be requested again", t => {
 
 test("hello replaces the history map without mutating the previous snapshot", () => {
   const state = applyEvents(initial(), [history("chat", [message("reply")])]);
-  const event = { t: "hello", snapshot: { home: "/workspace", projects: [], threads: [], providers: [], permissions: [] } };
+  const event = {
+    t: "hello",
+    snapshot: { home: "/workspace", projects: [], threads: [], providers: [], permissions: [] },
+  };
   const next = applyEvents(state, [event]);
   assert.ok(next.parts instanceof Map);
   assert.equal(next.parts.size, 0);
@@ -237,7 +367,10 @@ test("older pages prepend unique messages without overwriting live parts or snap
   const newest = { ...history("chat", [message("reply")]), page: { revision: 2, next: "older" } };
   const original = applyEvents(initial(), [newest, append("reply-text", " streamed")]);
   const previousBytes = original.historyBytes.chat;
-  const page = { ...history("chat", [message("first"), message("second"), message("reply")]), page: { before: "older", revision: 2, next: "oldest" } };
+  const page = {
+    ...history("chat", [message("first"), message("second"), message("reply")]),
+    page: { before: "older", revision: 2, next: "oldest" },
+  };
   const next = applyEvents(original, [page]);
   assert.deepEqual(next.order.chat, ["first", "second", "reply"]);
   assert.equal(next.parts.get("reply-text").text, "Original streamed");
@@ -251,8 +384,13 @@ test("older pages prepend unique messages without overwriting live parts or snap
 });
 
 test("late cursor pages are rejected and revision resets replace obsolete history", () => {
-  const original = applyEvents(initial(), [{ ...history("chat", [message("reply")]), page: { revision: 2, next: "older" } }]);
-  for (const page of [{ before: "older", revision: 1 }, { before: "oldest", revision: 2 }]) {
+  const original = applyEvents(initial(), [
+    { ...history("chat", [message("reply")]), page: { revision: 2, next: "older" } },
+  ]);
+  for (const page of [
+    { before: "older", revision: 1 },
+    { before: "oldest", revision: 2 },
+  ]) {
     const rejected = applyEvents(original, [{ ...history("chat", [message("late")]), page }]);
     assert.deepEqual(rejected.order.chat, ["reply"]);
     assert.equal(rejected.messages.late, undefined);
@@ -260,7 +398,9 @@ test("late cursor pages are rejected and revision resets replace obsolete histor
     assert.deepEqual(rejected.historyPages.chat, original.historyPages.chat);
     assert.equal(rejected.historyBytes.chat, original.historyBytes.chat);
   }
-  const reset = applyEvents(original, [{ ...history("chat", [message("reset")]), page: { revision: 3, next: "restart" } }]);
+  const reset = applyEvents(original, [
+    { ...history("chat", [message("reset")]), page: { revision: 3, next: "restart" } },
+  ]);
   assert.deepEqual(reset.order.chat, ["reset"]);
   assert.equal(reset.parts.has("reply-text"), false);
   assert.equal(original.parts.has("reply-text"), true);
@@ -276,7 +416,10 @@ test("a long open conversation drops its oldest turns and can page them back", (
     message(`answer${index}`, [text(`answer${index}-text`, "x".repeat(512 * 1024))]),
   ];
   const turns = Array.from({ length: 12 }, (_, index) => turn(index)).flat();
-  const state = { ...applyEvents(initial(), [{ ...history("chat", turns), page: { revision: 4 } }]), historyPaging: true };
+  const state = {
+    ...applyEvents(initial(), [{ ...history("chat", turns), page: { revision: 4 } }]),
+    historyPaging: true,
+  };
   const trimmed = trimOlderMessages(state, "chat");
   assert.deepEqual(trimmed.order.chat, ["ask10", "answer10", "ask11", "answer11"]);
   assert.deepEqual(trimmed.historyPages.chat, { revision: 4, next: "ask10" });
@@ -286,8 +429,13 @@ test("a long open conversation drops its oldest turns and can page them back", (
   assert.equal(state.order.chat.length, 24);
   assert.equal(state.parts.has("answer9-text"), true);
   assert.strictEqual(trimOlderMessages(trimmed, "chat"), trimmed);
-  assert.strictEqual(trimOlderMessages({ ...state, historyPaging: false }, "chat").order.chat, state.order.chat);
-  const older = applyEvents(trimmed, [{ ...history("chat", turns.slice(0, 20)), page: { before: "ask10", revision: 4 } }]);
+  assert.strictEqual(
+    trimOlderMessages({ ...state, historyPaging: false }, "chat").order.chat,
+    state.order.chat,
+  );
+  const older = applyEvents(trimmed, [
+    { ...history("chat", turns.slice(0, 20)), page: { before: "ask10", revision: 4 } },
+  ]);
   assert.equal(older.order.chat.length, 24);
   assert.equal(older.historyPages.chat.next, undefined);
 });

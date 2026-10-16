@@ -11,8 +11,13 @@ import {
   syncConnections,
 } from "../web/src/lib/socket.ts";
 
-test("background socket batches publish changes while preserving ignored events and responses", async t => {
-  const globals = new Map(["location", "requestAnimationFrame", "cancelAnimationFrame"].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+test("background socket batches publish changes while preserving ignored events and responses", async (t) => {
+  const globals = new Map(
+    ["location", "requestAnimationFrame", "cancelAnimationFrame"].map((key) => [
+      key,
+      Object.getOwnPropertyDescriptor(globalThis, key),
+    ]),
+  );
   Object.assign(globalThis, {
     location: { origin: "http://127.0.0.1" },
     requestAnimationFrame: () => 1,
@@ -31,11 +36,22 @@ test("background socket batches publish changes while preserving ignored events 
       else delete globalThis[key];
     }
   });
-  const remote = pickEnvironmentSlice({ ...useApp.getInitialState(), connected: true, activeThreadId: "chat" });
+  const remote = pickEnvironmentSlice({
+    ...useApp.getInitialState(),
+    connected: true,
+    activeThreadId: "chat",
+  });
   connectEnvironment("remote", "http://127.0.0.1:43210", { socket, events: [] }, remote);
-  const receive = event => socket.onmessage({ data: JSON.stringify(event) });
+  const receive = (event) => socket.onmessage({ data: JSON.stringify(event) });
   const flush = () => switchConnection("local", "remote");
-  const append = (sequence, text) => ({ t: "part.append", threadId: "chat", messageId: "reply", partId: "text", sequence, text });
+  const append = (sequence, text) => ({
+    t: "part.append",
+    threadId: "chat",
+    messageId: "reply",
+    partId: "text",
+    sequence,
+    text,
+  });
   const initialBackgrounds = backgroundEnvironments();
   const initialPublications = publications;
 
@@ -54,7 +70,19 @@ test("background socket batches publish changes while preserving ignored events 
   assert.equal(publications, initialPublications);
   assert.strictEqual(backgroundEnvironments(), initialBackgrounds);
 
-  receive({ t: "thread.messages", threadId: "chat", sequence: 4, messages: [{ id: "reply", role: "assistant", ts: 1, parts: [{ id: "text", kind: "text", text: "Loaded", complete: false }] }] });
+  receive({
+    t: "thread.messages",
+    threadId: "chat",
+    sequence: 4,
+    messages: [
+      {
+        id: "reply",
+        role: "assistant",
+        ts: 1,
+        parts: [{ id: "text", kind: "text", text: "Loaded", complete: false }],
+      },
+    ],
+  });
   receive(append(5, " and appended"));
   const loaded = flush();
   assert.equal(publications, initialPublications + 1);

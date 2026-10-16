@@ -1,6 +1,9 @@
 import { logFailure } from "../shared/expected-errors.mjs";
 
-export function browserActivity(render: (rendering: boolean) => void, activate: (focused: boolean) => unknown) {
+export function browserActivity(
+  render: (rendering: boolean) => void,
+  activate: (focused: boolean) => unknown,
+) {
   let presented = false;
   let rendering = false;
   let operations = 0;
@@ -11,9 +14,11 @@ export function browserActivity(render: (rendering: boolean) => void, activate: 
   const focus = (value: boolean) => {
     if (value === focused) return activation;
     focused = value;
-    activation = activation.catch(() => {}).then(() => {
-      if (!disposed) return activate(value);
-    });
+    activation = activation
+      .catch(() => {})
+      .then(() => {
+        if (!disposed) return activate(value);
+      });
     return activation;
   };
   const update = () => {

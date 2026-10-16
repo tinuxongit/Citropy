@@ -29,8 +29,7 @@ export function FilePreview({
 }) {
   const active = useApp((state) => state.threads[state.activeThreadId ?? ""]);
   const connected = useApp((state) => state.connected);
-  const threadId =
-    selectedThread ?? (active?.projectId === projectId ? active.id : undefined);
+  const threadId = selectedThread ?? (active?.projectId === projectId ? active.id : undefined);
   const [file, setFile] = useState<FilePreviewData>();
   const [error, setError] = useState("");
   const [source, setSource] = useState(false);
@@ -52,28 +51,17 @@ export function FilePreview({
       });
     return () => controller.abort();
   }, [query, connected]);
-  const renderedDocument =
-    file?.mime === "text/html" || file?.mime === "text/markdown";
+  const renderedDocument = file?.mime === "text/html" || file?.mime === "text/markdown";
   return (
     <div className="preview rich-preview">
       {!hideHeader && (
         <div className="preview-head">
           <FileIcon path={file?.name ?? path} mime={file?.mime} />
           <span className="truncate">{file?.name ?? path}</span>
-          <a
-            className="icon-btn"
-            aria-label="Download file"
-            href={`${url}&download=1`}
-            download
-          >
+          <a className="icon-btn" aria-label="Download file" href={`${url}&download=1`} download>
             <DownloadIcon size={15} />
           </a>
-          <button
-            className="icon-btn"
-            type="button"
-            onClick={onClose}
-            aria-label="Close preview"
-          >
+          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close preview">
             <CloseIcon size={15} />
           </button>
         </div>
@@ -90,11 +78,7 @@ export function FilePreview({
               : `${Math.ceil(file.size / 1024)} KB`}
           </span>
           {renderedDocument && (
-            <button
-              className="btn"
-              type="button"
-              onClick={() => setSource((value) => !value)}
-            >
+            <button className="btn" type="button" onClick={() => setSource((value) => !value)}>
               {source ? <EyeIcon size={14} /> : <CodeIcon size={14} />}
               {source ? "Preview" : "Source"}
             </button>
@@ -143,12 +127,15 @@ export function FilePreview({
             <div className="pane-empty">
               <FileIcon path={file.name} mime={file.mime} size={30} />
               <p>This file can be downloaded to open in another application.</p>
-              <a className="btn" href={`${url}&download=1`} download>Download {file.name}
+              <a className="btn" href={`${url}&download=1`} download>
+                Download {file.name}
               </a>
             </div>
           )}
           {file.truncated && (
-            <p className="feature-note">Showing the first 512 KB. Download the file to read it in full.</p>
+            <p className="feature-note">
+              Showing the first 512 KB. Download the file to read it in full.
+            </p>
           )}
         </>
       )}

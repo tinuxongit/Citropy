@@ -53,18 +53,11 @@ export function GitDialog({
       initialFocus={action.fields ? "input" : "[data-cancel]"}
       onClose={onClose}
       onSubmit={() => {
-        if (valid && !busy && connected)
-          void onSubmit(value.trim(), remote.trim());
+        if (valid && !busy && connected) void onSubmit(value.trim(), remote.trim());
       }}
       footer={
         <>
-          <button
-            className="btn"
-            type="button"
-            disabled={busy}
-            onClick={onClose}
-            data-cancel
-          >
+          <button className="btn" type="button" disabled={busy} onClick={onClose} data-cancel>
             Cancel
           </button>
           <button
@@ -72,11 +65,7 @@ export function GitDialog({
             data-variant={action.danger ? "danger" : "primary"}
             disabled={busy || !valid || !connected}
           >
-            {busy ? (
-              <Loader size={15} />
-            ) : (
-              !action.danger && <ArrowRightIcon size={15} />
-            )}
+            {busy ? <Loader size={15} /> : !action.danger && <ArrowRightIcon size={15} />}
             {busy ? "Working…" : action.label}
           </button>
         </>

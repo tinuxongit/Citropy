@@ -15,7 +15,11 @@ export function settingsOf(thread: Thread): BotThreadSettings {
 export async function createBot(thread: BotThreadSettings, profile: Partial<BotProfile>) {
   botStore.assertRoom();
   const id = uid("bot");
-  const created = await createRequestedThread({ ...thread, projectId: store.botsProject!.id, workspace: { kind: "current" } }, providerInfo(), { title: profile.name ?? "New bot", botId: id, workspacePath: store.botFolder(id) });
+  const created = await createRequestedThread(
+    { ...thread, projectId: store.botsProject!.id, workspace: { kind: "current" } },
+    providerInfo(),
+    { title: profile.name ?? "New bot", botId: id, workspacePath: store.botFolder(id) },
+  );
   try {
     return botStore.create(id, created.id, profile);
   } catch (error) {

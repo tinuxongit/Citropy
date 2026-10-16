@@ -2,7 +2,12 @@ import { commandVersion, resolveCommand, spawnCommand } from "./binary.ts";
 import { stopProcess, waitForStoppedProcesses } from "./process.ts";
 import { MessageUsage } from "./message-usage.ts";
 import { discoverOpenCodeModels } from "./models.ts";
-import { OpenCode2Session, generateOpenCode2Text, openCode2Commands, openCode2Models } from "./opencode2.ts";
+import {
+  OpenCode2Session,
+  generateOpenCode2Text,
+  openCode2Commands,
+  openCode2Models,
+} from "./opencode2.ts";
 import { withSkills } from "./skill-prompt.ts";
 import { store } from "../store.ts";
 import type { ChildProcess } from "node:child_process";
@@ -30,18 +35,72 @@ interface Instance {
 
 function launch(options: StartOptions, signal: AbortSignal, textOnly = false): Promise<Instance> {
   return new Promise((resolve, reject) => {
-    const inherited = JSON.parse(options.environment?.OPENCODE_CONFIG_CONTENT ?? process.env.OPENCODE_CONFIG_CONTENT ?? "{}");
+    const inherited = JSON.parse(
+      options.environment?.OPENCODE_CONFIG_CONTENT ?? process.env.OPENCODE_CONFIG_CONTENT ?? "{}",
+    );
     // Chats can read and look things up but nothing else. Attachments sit outside the chat folder, so those reads ask first.
-    const permission = options.readOnly ? { "*": "deny", read: "allow", glob: "allow", grep: "allow", list: "allow", question: "allow", webfetch: "allow", websearch: "allow", external_directory: "ask", "citropy_*": "allow" }
-      : options.permissionMode === "bypass" ? { "*": "allow" } : { "*": options.permissionMode === "plan" ? "deny" : "ask", read: "allow", glob: "allow", grep: "allow", list: "allow", task: "allow", question: "allow", edit: options.permissionMode === "acceptEdits" ? "allow" : options.permissionMode === "plan" ? "deny" : "ask", "citropy_*": "allow" };
-    const citropy = options.mcp ? { citropy: { type: "remote", ...options.mcp, oauth: false, enabled: true, timeout: 1_860_000 } } : {};
-    const config = { ...inherited, permission: textOnly ? { "*": "deny" } : permission, mcp: { ...inherited.mcp, ...citropy } };
-    const child = spawnCommand(options.binary ?? "opencode", ["serve", "--port", "0", "--hostname", "127.0.0.1"], {
-      detached: process.platform !== "win32",
-      cwd: options.cwd,
-      env: { ...process.env, ...options.environment, NO_COLOR: "1", OPENCODE_CONFIG_CONTENT: JSON.stringify(config) },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const permission = options.readOnly
+      ? {
+          "*": "deny",
+          read: "allow",
+          glob: "allow",
+          grep: "allow",
+          list: "allow",
+          question: "allow",
+          webfetch: "allow",
+          websearch: "allow",
+          external_directory: "ask",
+          "citropy_*": "allow",
+        }
+      : options.permissionMode === "bypass"
+        ? { "*": "allow" }
+        : {
+            "*": options.permissionMode === "plan" ? "deny" : "ask",
+            read: "allow",
+            glob: "allow",
+            grep: "allow",
+            list: "allow",
+            task: "allow",
+            question: "allow",
+            edit:
+              options.permissionMode === "acceptEdits"
+                ? "allow"
+                : options.permissionMode === "plan"
+                  ? "deny"
+                  : "ask",
+            "citropy_*": "allow",
+          };
+    const citropy = options.mcp
+      ? {
+          citropy: {
+            type: "remote",
+            ...options.mcp,
+            oauth: false,
+            enabled: true,
+            timeout: 1_860_000,
+          },
+        }
+      : {};
+    const config = {
+      ...inherited,
+      permission: textOnly ? { "*": "deny" } : permission,
+      mcp: { ...inherited.mcp, ...citropy },
+    };
+    const child = spawnCommand(
+      options.binary ?? "opencode",
+      ["serve", "--port", "0", "--hostname", "127.0.0.1"],
+      {
+        detached: process.platform !== "win32",
+        cwd: options.cwd,
+        env: {
+          ...process.env,
+          ...options.environment,
+          NO_COLOR: "1",
+          OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
     let settled = false;
     const fail = (error: Error) => {
       if (settled) return;
@@ -51,7 +110,10 @@ function launch(options: StartOptions, signal: AbortSignal, textOnly = false): P
       stopProcess(child, true);
       reject(error);
     };
-    const abort = () => fail(signal.reason instanceof Error ? signal.reason : new Error("OpenCode startup cancelled"));
+    const abort = () =>
+      fail(
+        signal.reason instanceof Error ? signal.reason : new Error("OpenCode startup cancelled"),
+      );
     const timer = setTimeout(() => fail(new Error("opencode server did not start in 30s")), 30_000);
     signal.addEventListener("abort", abort, { once: true });
     child.once("error", fail);
@@ -71,20 +133,41 @@ function launch(options: StartOptions, signal: AbortSignal, textOnly = false): P
   });
 }
 
-export async function generateOpenCodeText(cwd: string, modelId: string, effort: string | undefined, prompt: string, signal: AbortSignal, launchOptions?: import("./types.ts").ProviderLaunch): Promise<string> {
+export async function generateOpenCodeText(
+  cwd: string,
+  modelId: string,
+  effort: string | undefined,
+  prompt: string,
+  signal: AbortSignal,
+  launchOptions?: import("./types.ts").ProviderLaunch,
+): Promise<string> {
   const resolved = await resolveOpenCode(launchOptions);
-  if (resolved.major === 2) return generateOpenCode2Text(cwd, modelId, effort, prompt, signal, resolved.launch);
+  if (resolved.major === 2)
+    return generateOpenCode2Text(cwd, modelId, effort, prompt, signal, resolved.launch);
   const model = parseModelRef(modelId);
-  const instance = await launch({ cwd, threadId: "writing", permissionMode: "plan", emit: () => {}, ...launchOptions }, signal, true);
+  const instance = await launch(
+    { cwd, threadId: "writing", permissionMode: "plan", emit: () => {}, ...launchOptions },
+    signal,
+    true,
+  );
   let sessionId: string | undefined;
   try {
     const request = async (path: string, value: unknown) => {
-      const response = await fetch(`${instance.base}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(value), signal });
+      const response = await fetch(`${instance.base}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(value),
+        signal,
+      });
       if (!response.ok) throw new Error(`OpenCode text generation failed (${response.status}).`);
       return response.json();
     };
-    const session = await request("/session", { title: "Citropy writing", permission: [{ permission: "*", pattern: "*", action: "deny" }] });
-    if (typeof session.id !== "string") throw new Error("OpenCode did not create a writing session.");
+    const session = await request("/session", {
+      title: "Citropy writing",
+      permission: [{ permission: "*", pattern: "*", action: "deny" }],
+    });
+    if (typeof session.id !== "string")
+      throw new Error("OpenCode did not create a writing session.");
     sessionId = session.id;
     const result = await request(`/session/${encodeURIComponent(sessionId!)}/message`, {
       model,
@@ -92,10 +175,18 @@ export async function generateOpenCodeText(cwd: string, modelId: string, effort:
       parts: [{ type: "text", text: prompt }],
       tools: { "*": false },
     });
-    if (result.info?.error) throw new Error(result.info.error.data?.message || "OpenCode could not generate text.");
-    return (result.parts ?? []).filter((part: OcPart) => part.type === "text").map((part: OcPart) => part.text ?? "").join("\n");
+    if (result.info?.error)
+      throw new Error(result.info.error.data?.message || "OpenCode could not generate text.");
+    return (result.parts ?? [])
+      .filter((part: OcPart) => part.type === "text")
+      .map((part: OcPart) => part.text ?? "")
+      .join("\n");
   } finally {
-    if (sessionId) await fetch(`${instance.base}/session/${encodeURIComponent(sessionId)}`, { method: "DELETE", signal: AbortSignal.timeout(2000) }).catch(logFailure("Deleting the OpenCode text session", sessionId));
+    if (sessionId)
+      await fetch(`${instance.base}/session/${encodeURIComponent(sessionId)}`, {
+        method: "DELETE",
+        signal: AbortSignal.timeout(2000),
+      }).catch(logFailure("Deleting the OpenCode text session", sessionId));
     stopProcess(instance.child, true);
     await waitForStoppedProcesses();
   }
@@ -105,11 +196,16 @@ export async function discoverOpenCodeCommands(cwd: string): Promise<ProviderCom
   const resolved = await resolveOpenCode();
   if (resolved.major === 2) return openCode2Commands(cwd, resolved.launch);
   const controller = new AbortController();
-  const instance = await launch({ cwd, threadId: "commands", permissionMode: "manual", emit: () => {} }, controller.signal);
+  const instance = await launch(
+    { cwd, threadId: "commands", permissionMode: "manual", emit: () => {} },
+    controller.signal,
+  );
   try {
-    const response = await fetch(`${instance.base}/command`, { signal: AbortSignal.timeout(10000) });
+    const response = await fetch(`${instance.base}/command`, {
+      signal: AbortSignal.timeout(10000),
+    });
     if (!response.ok) throw new Error("OpenCode could not load its commands.");
-    return await response.json() as ProviderCommand[];
+    return (await response.json()) as ProviderCommand[];
   } finally {
     controller.abort();
     stopProcess(instance.child, true);
@@ -123,7 +219,13 @@ interface OcPart {
   text?: string;
   callID?: string;
   tool?: string;
-  state?: { status?: string; input?: unknown; output?: string; title?: string; metadata?: Record<string, unknown> };
+  state?: {
+    status?: string;
+    input?: unknown;
+    output?: string;
+    title?: string;
+    metadata?: Record<string, unknown>;
+  };
 }
 
 class OpenCodeSession implements AgentSession {
@@ -159,19 +261,31 @@ class OpenCodeSession implements AgentSession {
 
   async #boot(): Promise<void> {
     const instance = await launch(this.#options, this.#abort.signal);
-    if (this.#abort.signal.aborted) { stopProcess(instance.child, true); return; }
+    if (this.#abort.signal.aborted) {
+      stopProcess(instance.child, true);
+      return;
+    }
     this.#instance = instance;
     let sessionId = this.#options.externalId;
     if (sessionId) {
-      const response = await fetch(`${instance.base}/session/${encodeURIComponent(sessionId)}`, { signal: this.#abort.signal });
+      const response = await fetch(`${instance.base}/session/${encodeURIComponent(sessionId)}`, {
+        signal: this.#abort.signal,
+      });
       if (response.status === 404) {
-        this.#options.emit({ type: "notice", level: "warn", text: "The saved OpenCode session is unavailable. Starting a new session." });
+        this.#options.emit({
+          type: "notice",
+          level: "warn",
+          text: "The saved OpenCode session is unavailable. Starting a new session.",
+        });
         sessionId = undefined;
       } else {
         if (!response.ok) throw new Error(`OpenCode session lookup failed: ${response.status}`);
-        const saved = await response.json() as { directory?: string };
+        const saved = (await response.json()) as { directory?: string };
         if (saved.directory && !(await sameDirectory(saved.directory, this.#options.cwd))) {
-          const forked = await this.#post(`/session/${encodeURIComponent(sessionId)}/fork?directory=${encodeURIComponent(this.#options.cwd)}`, {});
+          const forked = await this.#post(
+            `/session/${encodeURIComponent(sessionId)}/fork?directory=${encodeURIComponent(this.#options.cwd)}`,
+            {},
+          );
           sessionId = String((forked as { id?: string }).id ?? "");
           if (!sessionId) throw new Error("OpenCode did not return a forked session ID.");
         }
@@ -186,10 +300,17 @@ class OpenCodeSession implements AgentSession {
       headers: { accept: "text/event-stream" },
       signal: this.#abort.signal,
     });
-    if (!response.ok || !response.body) throw new Error(`OpenCode event stream failed: ${response.status}`);
+    if (!response.ok || !response.body)
+      throw new Error(`OpenCode event stream failed: ${response.status}`);
     this.#sessionId = sessionId;
-    this.#options.emit({ type: "session", externalId: this.#sessionId, model: this.#options.model });
-    void readServerEvents(response, (event) => this.#handle(event as Record<string, unknown>)).catch((error: Error) => {
+    this.#options.emit({
+      type: "session",
+      externalId: this.#sessionId,
+      model: this.#options.model,
+    });
+    void readServerEvents(response, (event) =>
+      this.#handle(event as Record<string, unknown>),
+    ).catch((error: Error) => {
       if (this.#abort.signal.aborted) return;
       this.#finish(error.message);
       this.#options.emit({ type: "exit", code: -1 });
@@ -204,32 +325,51 @@ class OpenCodeSession implements AgentSession {
     const base = this.#instance?.base;
     if (!base) throw new Error("opencode server not ready");
     return new Promise((resolve, reject) => {
-      const req = request(`${base}${path}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        signal: this.#abort.signal,
-      }, response => {
-        let text = "";
-        response.setEncoding("utf8");
-        response.on("data", chunk => { text += chunk; });
-        response.once("error", reject);
-        response.once("end", () => {
-          const status = response.statusCode ?? 0;
-          if (status < 200 || status >= 300) {
-            reject(new Error(`${path} failed: ${status} ${text}`));
-            return;
-          }
-          try { resolve(text ? JSON.parse(text) : {}); }
-          catch (error) { reject(error); }
-        });
-      });
+      const req = request(
+        `${base}${path}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          signal: this.#abort.signal,
+        },
+        (response) => {
+          let text = "";
+          response.setEncoding("utf8");
+          response.on("data", (chunk) => {
+            text += chunk;
+          });
+          response.once("error", reject);
+          response.once("end", () => {
+            const status = response.statusCode ?? 0;
+            if (status < 200 || status >= 300) {
+              reject(new Error(`${path} failed: ${status} ${text}`));
+              return;
+            }
+            try {
+              resolve(text ? JSON.parse(text) : {});
+            } catch (error) {
+              reject(error);
+            }
+          });
+        },
+      );
       req.once("error", reject);
       req.end(JSON.stringify(body));
     });
   }
 
   #body(text: string, attachments: Attachment[]): Record<string, unknown> {
-    const body: Record<string, unknown> = { parts: [{ type: "text", text: text || "Please inspect the attached files." }, ...attachments.map((file) => ({ type: "file", mime: file.mime ?? "application/octet-stream", filename: file.label, url: pathToFileURL(file.path).href }))] };
+    const body: Record<string, unknown> = {
+      parts: [
+        { type: "text", text: text || "Please inspect the attached files." },
+        ...attachments.map((file) => ({
+          type: "file",
+          mime: file.mime ?? "application/octet-stream",
+          filename: file.label,
+          url: pathToFileURL(file.path).href,
+        })),
+      ],
+    };
     if (this.#options.effort) body.variant = this.#options.effort;
     if (this.#options.model) body.model = parseModelRef(this.#options.model);
     return body;
@@ -244,23 +384,33 @@ class OpenCodeSession implements AgentSession {
       const body = this.#body(text, attachments);
       const command = /^\/([\w.:-]+)(?:\s+([\s\S]*))?$/.exec(text.trim());
       if (command) {
-        const response = await fetch(`${this.#instance!.base}/command`, { signal: this.#abort.signal });
+        const response = await fetch(`${this.#instance!.base}/command`, {
+          signal: this.#abort.signal,
+        });
         if (!response.ok) throw new Error("OpenCode could not load its commands.");
-        const available = await response.json() as ProviderCommand[];
-        if (!available.some(entry => entry.name === command[1])) throw new Error(`OpenCode does not provide /${command[1]}.`);
+        const available = (await response.json()) as ProviderCommand[];
+        if (!available.some((entry) => entry.name === command[1]))
+          throw new Error(`OpenCode does not provide /${command[1]}.`);
         await this.#post(`/session/${this.#sessionId}/command`, {
-          command: command[1], arguments: command[2] ?? "", model: this.#options.model,
+          command: command[1],
+          arguments: command[2] ?? "",
+          model: this.#options.model,
           variant: this.#options.effort,
-          parts: (body.parts as Array<{ type: string }>).filter(part => part.type === "file"),
+          parts: (body.parts as Array<{ type: string }>).filter((part) => part.type === "file"),
         });
       } else await this.#post(`/session/${this.#sessionId}/message`, body);
     } catch (error) {
-      if (this.#abort.signal.aborted || generation !== this.#promptGeneration || this.#busySeen) return;
+      if (this.#abort.signal.aborted || generation !== this.#promptGeneration || this.#busySeen)
+        return;
       this.#finish((error as Error).message);
     }
   }
 
-  send(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): void {
+  send(
+    text: string,
+    attachments: Attachment[] = [],
+    skills: Array<{ name: string; path: string }> = [],
+  ): void {
     text = withSkills(text, skills);
     if (!this.#sessionId) {
       this.#queue.push({ text, attachments });
@@ -269,14 +419,23 @@ class OpenCodeSession implements AgentSession {
     }
     const pending = this.#prompt(text, attachments);
     this.#prompting = pending;
-    void pending.finally(() => { if (this.#prompting === pending) this.#prompting = null; });
+    void pending.finally(() => {
+      if (this.#prompting === pending) this.#prompting = null;
+    });
   }
 
-  async steer(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): Promise<void> {
+  async steer(
+    text: string,
+    attachments: Attachment[] = [],
+    skills: Array<{ name: string; path: string }> = [],
+  ): Promise<void> {
     await this.#ready;
     if (!this.#sessionId) throw new Error("OpenCode is still starting. Try again in a moment.");
     if (!this.#busy) throw new Error("OpenCode already finished this run.");
-    await this.#post(`/session/${this.#sessionId}/prompt_async`, this.#body(withSkills(text, skills), attachments));
+    await this.#post(
+      `/session/${this.#sessionId}/prompt_async`,
+      this.#body(withSkills(text, skills), attachments),
+    );
   }
 
   async compact(): Promise<void> {
@@ -285,15 +444,28 @@ class OpenCodeSession implements AgentSession {
     this.#compacting = true;
     this.#compactionError = "";
     try {
-      const result = await this.#post(`/session/${this.#sessionId}/summarize`, { ...model, auto: false });
+      const result = await this.#post(`/session/${this.#sessionId}/summarize`, {
+        ...model,
+        auto: false,
+      });
       if (this.#compactionError) throw new Error(this.#compactionError);
       if (result !== true) throw new Error("OpenCode did not complete context compaction.");
       this.#options.emit({ type: "compacted" });
-    } finally { this.#compacting = false; }
+    } finally {
+      this.#compacting = false;
+    }
   }
 
   async interrupt(): Promise<void> {
-    if (this.#queue.length) this.#options.emit({ type: "notice", level: "warn", text: this.#queue.length === 1 ? "Stopped before OpenCode started your latest message. Send it again to run it." : `Stopped before OpenCode started your last ${this.#queue.length} messages. Send them again to run them.` });
+    if (this.#queue.length)
+      this.#options.emit({
+        type: "notice",
+        level: "warn",
+        text:
+          this.#queue.length === 1
+            ? "Stopped before OpenCode started your latest message. Send it again to run it."
+            : `Stopped before OpenCode started your last ${this.#queue.length} messages. Send them again to run them.`,
+      });
     this.#queue = [];
     if (this.#compacting) this.#compactionError = "Context compaction was stopped.";
     cancelThread(this.#options.threadId, false);
@@ -325,14 +497,32 @@ class OpenCodeSession implements AgentSession {
     const type = String(event.type ?? "");
     const props = (event.properties ?? {}) as Record<string, unknown>;
     const info = props.info as { id?: string; parentID?: string } | undefined;
-    if (type === "session.created" && info?.parentID === this.#sessionId && info.id) this.#agentSessions.add(info.id);
-    const sessionID = props.sessionID ?? (props.part as { sessionID?: string } | undefined)?.sessionID ?? (props.info as { sessionID?: string } | undefined)?.sessionID;
-    if (sessionID && sessionID !== this.#sessionId && !(["permission.asked", "permission.v2.asked", "question.asked", "question.replied", "question.rejected"].includes(type) && this.#agentSessions.has(String(sessionID)))) return;
+    if (type === "session.created" && info?.parentID === this.#sessionId && info.id)
+      this.#agentSessions.add(info.id);
+    const sessionID =
+      props.sessionID ??
+      (props.part as { sessionID?: string } | undefined)?.sessionID ??
+      (props.info as { sessionID?: string } | undefined)?.sessionID;
+    if (
+      sessionID &&
+      sessionID !== this.#sessionId &&
+      !(
+        [
+          "permission.asked",
+          "permission.v2.asked",
+          "question.asked",
+          "question.replied",
+          "question.rejected",
+        ].includes(type) && this.#agentSessions.has(String(sessionID))
+      )
+    )
+      return;
     const emit = this.#options.emit;
 
     if (type === "session.status" || type === "session.idle") {
       if (this.#compacting || !this.#busy) return;
-      const status = type === "session.idle" ? "idle" : (props.status as { type?: string } | undefined)?.type;
+      const status =
+        type === "session.idle" ? "idle" : (props.status as { type?: string } | undefined)?.type;
       if (status === "busy") this.#busySeen = true;
       if (status === "idle" && this.#busySeen) this.#finish();
       return;
@@ -343,7 +533,8 @@ class OpenCodeSession implements AgentSession {
       return;
     }
     if (type === "todo.updated") {
-      if (!this.#compacting && this.#busy && Array.isArray(props.todos)) emit({ type: "todos", items: normalizeTodos(props.todos) });
+      if (!this.#compacting && this.#busy && Array.isArray(props.todos))
+        emit({ type: "todos", items: normalizeTodos(props.todos) });
       return;
     }
     if (type === "message.part.delta" || type === "message.part.updated") {
@@ -373,7 +564,20 @@ class OpenCodeSession implements AgentSession {
 
     if (type === "message.updated") {
       const info = props.info as
-        | { id?: string; role?: string; finish?: string; tokens?: { input: number; output: number; reasoning?: number; total?: number; cache?: { read: number; write: number } }; cost?: number; time?: { completed?: number } }
+        | {
+            id?: string;
+            role?: string;
+            finish?: string;
+            tokens?: {
+              input: number;
+              output: number;
+              reasoning?: number;
+              total?: number;
+              cache?: { read: number; write: number };
+            };
+            cost?: number;
+            time?: { completed?: number };
+          }
         | undefined;
       if (info?.id && info.role) this.#roles.set(info.id, info.role);
       if (!info || info.role !== "assistant") return;
@@ -381,13 +585,20 @@ class OpenCodeSession implements AgentSession {
         const input = info.tokens.input ?? 0;
         const output = (info.tokens.output ?? 0) + (info.tokens.reasoning ?? 0);
         const total = info.tokens.total;
-        const contextTokens = typeof total === "number" && Number.isFinite(total) && total > 0
-          ? total
-          : input + output + (info.tokens.cache?.read ?? 0) + (info.tokens.cache?.write ?? 0);
+        const contextTokens =
+          typeof total === "number" && Number.isFinite(total) && total > 0
+            ? total
+            : input + output + (info.tokens.cache?.read ?? 0) + (info.tokens.cache?.write ?? 0);
         emit({
           type: "usage",
           usage: {
-            ...this.#usage.update(info.id, { input, output, cacheRead: info.tokens.cache?.read ?? 0, cacheWrite: info.tokens.cache?.write ?? 0, costUsd: info.cost ?? 0 }),
+            ...this.#usage.update(info.id, {
+              input,
+              output,
+              cacheRead: info.tokens.cache?.read ?? 0,
+              cacheWrite: info.tokens.cache?.write ?? 0,
+              costUsd: info.cost ?? 0,
+            }),
             ...(contextTokens > 0 ? { contextTokens } : {}),
             contextMax: this.#options.contextMax ?? 0,
           },
@@ -426,18 +637,45 @@ class OpenCodeSession implements AgentSession {
       if (!this.#questions.has(id)) return;
       this.#questions.set(id, true);
       try {
-        answerQuestion(this.#options.threadId, `${this.#options.threadId}:opencode:${id}`, type === "question.rejected" ? null : Object.fromEntries((props.answers as string[][]).map((answers, index) => [`question_${index + 1}`, answers])));
+        answerQuestion(
+          this.#options.threadId,
+          `${this.#options.threadId}:opencode:${id}`,
+          type === "question.rejected"
+            ? null
+            : Object.fromEntries(
+                (props.answers as string[][]).map((answers, index) => [
+                  `question_${index + 1}`,
+                  answers,
+                ]),
+              ),
+        );
       } catch (error) {
-        emit({ type: "notice", level: "warn", text: `Could not apply the answer to the OpenCode question: ${(error as Error).message}` });
+        emit({
+          type: "notice",
+          level: "warn",
+          text: `Could not apply the answer to the OpenCode question: ${(error as Error).message}`,
+        });
       }
       return;
     }
     if (type === "permission.v2.asked" || type === "permission.asked") {
       if (!this.#busy) return;
       emit({ type: "status", status: "awaiting" });
-      void ask(this.#options.threadId, mapTool(String(props.permission ?? "Tool")), { ...((props.metadata ?? {}) as Record<string, unknown>), patterns: props.patterns }).then((decision) => this.#post(`/permission/${encodeURIComponent(String(props.id))}/reply`, { reply: decision === "deny" ? "reject" : decision === "allow_always" ? "always" : "once" })).then(() => {
-        if (this.#busy) emit({ type: "status", status: "working" });
-      }).catch((error: Error) => { if (!this.#abort.signal.aborted) this.#finish(error.message); });
+      void ask(this.#options.threadId, mapTool(String(props.permission ?? "Tool")), {
+        ...((props.metadata ?? {}) as Record<string, unknown>),
+        patterns: props.patterns,
+      })
+        .then((decision) =>
+          this.#post(`/permission/${encodeURIComponent(String(props.id))}/reply`, {
+            reply: decision === "deny" ? "reject" : decision === "allow_always" ? "always" : "once",
+          }),
+        )
+        .then(() => {
+          if (this.#busy) emit({ type: "status", status: "working" });
+        })
+        .catch((error: Error) => {
+          if (!this.#abort.signal.aborted) this.#finish(error.message);
+        });
     }
   }
 
@@ -445,14 +683,24 @@ class OpenCodeSession implements AgentSession {
     try {
       let result;
       try {
-        result = await askQuestion(this.#options.threadId, questions, { id: `${this.#options.threadId}:opencode:${id}`, signal: this.#abort.signal });
+        result = await askQuestion(this.#options.threadId, questions, {
+          id: `${this.#options.threadId}:opencode:${id}`,
+          signal: this.#abort.signal,
+        });
       } catch (error) {
         await this.#post(`/question/${encodeURIComponent(id)}/reject`, {});
-        this.#options.emit({ type: "notice", level: "warn", text: `Could not display the question: ${(error as Error).message}` });
+        this.#options.emit({
+          type: "notice",
+          level: "warn",
+          text: `Could not display the question: ${(error as Error).message}`,
+        });
         return;
       }
       if (this.#abort.signal.aborted || !this.#busy || this.#questions.get(id)) return;
-      await this.#post(`/question/${encodeURIComponent(id)}/${result.cancelled ? "reject" : "reply"}`, result.cancelled ? {} : { answers: Object.values(result.answers) });
+      await this.#post(
+        `/question/${encodeURIComponent(id)}/${result.cancelled ? "reject" : "reply"}`,
+        result.cancelled ? {} : { answers: Object.values(result.answers) },
+      );
     } finally {
       this.#questions.delete(id);
     }
@@ -498,7 +746,14 @@ class OpenCodeSession implements AgentSession {
       const childSession = part.state?.metadata?.sessionId;
       if (typeof childSession === "string") this.#agentSessions.add(childSession);
       const task = input as Record<string, unknown>;
-      emit({ type: "subagent", id: callId, title: String(task.description ?? task.subagent_type ?? "Subagent"), prompt: typeof task.prompt === "string" ? task.prompt : undefined, status: status === "completed" ? "idle" : status === "error" ? "error" : "working", result: part.state?.output });
+      emit({
+        type: "subagent",
+        id: callId,
+        title: String(task.description ?? task.subagent_type ?? "Subagent"),
+        prompt: typeof task.prompt === "string" ? task.prompt : undefined,
+        status: status === "completed" ? "idle" : status === "error" ? "error" : "working",
+        result: part.state?.output,
+      });
     }
 
     if (name === "TodoWrite") {
@@ -516,7 +771,8 @@ class OpenCodeSession implements AgentSession {
       this.#tools.set(callId, serializedInput);
       emit({ type: "tool.input", callId, input });
     }
-    if (name === "Bash" && typeof part.state?.metadata?.output === "string") emit({ type: "tool.output", callId, output: part.state.metadata.output });
+    if (name === "Bash" && typeof part.state?.metadata?.output === "string")
+      emit({ type: "tool.output", callId, output: part.state.metadata.output });
     if (status === "completed" || status === "error") {
       emit({
         type: "tool.end",
@@ -562,7 +818,8 @@ function majorOf(version: string | undefined): OpenCodeMajor | undefined {
 }
 
 function selectedLaunch<T extends ProviderLaunch>(launch: T): T {
-  if (store.openCodeVersion !== 2 || launch.binary || !resolveCommand("opencode2").path) return launch;
+  if (store.openCodeVersion !== 2 || launch.binary || !resolveCommand("opencode2").path)
+    return launch;
   return { ...launch, binary: "opencode2" };
 }
 
@@ -573,20 +830,34 @@ async function detectOpenCode(launch: ProviderLaunch): Promise<string | undefine
   return version;
 }
 
-async function resolveOpenCode(launch: ProviderLaunch = {}): Promise<{ major: OpenCodeMajor; launch: ProviderLaunch }> {
+async function resolveOpenCode(
+  launch: ProviderLaunch = {},
+): Promise<{ major: OpenCodeMajor; launch: ProviderLaunch }> {
   const selected = selectedLaunch(launch);
   const version = await detectOpenCode(selected);
   const detected = majorOf(version);
   const major = store.openCodeVersion === "auto" ? detected : store.openCodeVersion;
-  if (!major) throw new Error(`Citropy could not tell which OpenCode version "${version ?? "no output"}" is. Choose OpenCode 1 or 2 in Settings > Providers.`);
-  if (detected && detected !== major) throw new Error(`The ${selected.binary ?? "opencode"} command is OpenCode ${version}, not OpenCode ${major}. Install OpenCode ${major}, or set the OpenCode version to Detect automatically in Settings > Providers.`);
+  if (!major)
+    throw new Error(
+      `Citropy could not tell which OpenCode version "${version ?? "no output"}" is. Choose OpenCode 1 or 2 in Settings > Providers.`,
+    );
+  if (detected && detected !== major)
+    throw new Error(
+      `The ${selected.binary ?? "opencode"} command is OpenCode ${version}, not OpenCode ${major}. Install OpenCode ${major}, or set the OpenCode version to Detect automatically in Settings > Providers.`,
+    );
   return { major, launch: selected };
 }
 
 function startedOpenCode<T extends ProviderLaunch>(launch: T): { major: OpenCodeMajor; launch: T } {
   const selected = selectedLaunch(launch);
-  const major = store.openCodeVersion === "auto" ? detectedMajors.get(launchKey(selected)) : store.openCodeVersion;
-  if (!major) throw new Error("Citropy has not detected the OpenCode version yet. Refresh Settings > Providers, or choose OpenCode 1 or 2 there.");
+  const major =
+    store.openCodeVersion === "auto"
+      ? detectedMajors.get(launchKey(selected))
+      : store.openCodeVersion;
+  if (!major)
+    throw new Error(
+      "Citropy has not detected the OpenCode version yet. Refresh Settings > Providers, or choose OpenCode 1 or 2 there.",
+    );
   return { major, launch: selected };
 }
 
@@ -611,12 +882,19 @@ export const opencodeProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "http", steer: true, compact: true, stopShell: false },
   steerHint: "OpenCode adds it to the run in progress.",
-  signIn: { kind: "terminal", login: ["auth", "login"], status: ["auth", "list"], signedIn: (output) => /\b[1-9]\d* (credentials?|environment variables?)\b/.test(output),
-    home: { variable: "XDG_DATA_HOME" } },
+  signIn: {
+    kind: "terminal",
+    login: ["auth", "login"],
+    status: ["auth", "list"],
+    signedIn: (output) => /\b[1-9]\d* (credentials?|environment variables?)\b/.test(output),
+    home: { variable: "XDG_DATA_HOME" },
+  },
   models: [],
   async listModels(launch) {
     const resolved = await resolveOpenCode(launch);
-    return resolved.major === 2 ? openCode2Models(resolved.launch) : discoverOpenCodeModels(resolved.launch);
+    return resolved.major === 2
+      ? openCode2Models(resolved.launch)
+      : discoverOpenCodeModels(resolved.launch);
   },
   async detect(launch) {
     const version = await detectOpenCode(selectedLaunch(launch ?? {}));
@@ -624,6 +902,8 @@ export const opencodeProvider: Provider = {
   },
   start(options) {
     const started = startedOpenCode(options);
-    return started.major === 2 ? new OpenCode2Session(started.launch) : new OpenCodeSession(started.launch);
+    return started.major === 2
+      ? new OpenCode2Session(started.launch)
+      : new OpenCodeSession(started.launch);
   },
 };

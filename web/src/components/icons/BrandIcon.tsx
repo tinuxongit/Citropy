@@ -7,7 +7,14 @@ function brandIcon(icon: SimpleIcon, inset: number) {
   const viewBox = `${-inset} ${-inset} ${24 + inset * 2} ${24 + inset * 2}`;
   return function BrandIcon({ size = 24 }: { size?: number }) {
     return (
-      <svg className="solid-icon" width={size} height={size} viewBox={viewBox} fill="currentColor" aria-hidden="true">
+      <svg
+        className="solid-icon"
+        width={size}
+        height={size}
+        viewBox={viewBox}
+        fill="currentColor"
+        aria-hidden="true"
+      >
         <path d={icon.path} />
       </svg>
     );

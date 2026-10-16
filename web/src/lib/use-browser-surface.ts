@@ -12,7 +12,11 @@ function stackingLayer(element: Element): number {
   return layer;
 }
 
-export function useBrowserSurface(id: string, frame: RefObject<HTMLElement | null>, shown: boolean): void {
+export function useBrowserSurface(
+  id: string,
+  frame: RefObject<HTMLElement | null>,
+  shown: boolean,
+): void {
   const uiScale = useApp((store) => store.uiScale);
   const reposition = useRef<() => void>(undefined);
   useEffect(() => reposition.current?.());
@@ -23,7 +27,13 @@ export function useBrowserSurface(id: string, frame: RefObject<HTMLElement | nul
     const update = () => {
       const box = element.getBoundingClientRect();
       if (box.width > 0 && box.height > 0)
-        showSurface(id, { x: box.x, y: box.y, width: box.width, height: box.height, layer: stackingLayer(element) });
+        showSurface(id, {
+          x: box.x,
+          y: box.y,
+          width: box.width,
+          height: box.height,
+          layer: stackingLayer(element),
+        });
       else hideSurface(id);
     };
     const schedule = () => {

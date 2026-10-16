@@ -92,13 +92,18 @@ function oneByte(text: string): string {
   let copy = "";
   for (let start = 0; start < text.length; start += ASCII_CHUNK) {
     const codes: number[] = [];
-    for (let index = start; index < Math.min(text.length, start + ASCII_CHUNK); index++) codes.push(text.charCodeAt(index));
+    for (let index = start; index < Math.min(text.length, start + ASCII_CHUNK); index++)
+      codes.push(text.charCodeAt(index));
     copy += String.fromCharCode(...codes);
   }
   return copy;
 }
 
-export async function highlight(code: string, lang: string | undefined, theme: "dark" | "light"): Promise<string | null> {
+export async function highlight(
+  code: string,
+  lang: string | undefined,
+  theme: "dark" | "light",
+): Promise<string | null> {
   const resolved = resolveLang(lang);
   if (!resolved || code.length > HTML_CODE_LIMIT) return rawCode(code);
   try {
@@ -130,7 +135,10 @@ export async function highlightTokens(
     });
     return result.tokens.map((line) =>
       line
-        .map((token) => `<span style="color:${token.color ?? "inherit"}">${escapeHtml(token.content)}</span>`)
+        .map(
+          (token) =>
+            `<span style="color:${token.color ?? "inherit"}">${escapeHtml(token.content)}</span>`,
+        )
         .join(""),
     );
   } catch (error) {

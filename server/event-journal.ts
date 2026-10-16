@@ -21,7 +21,10 @@ function readPart(row: Record<string, unknown>): Part {
   return part;
 }
 
-export function pageMessages(messages: Message[], revision: number): { messages: Message[]; page: HistoryPage } {
+export function pageMessages(
+  messages: Message[],
+  revision: number,
+): { messages: Message[]; page: HistoryPage } {
   const selected: Message[] = [];
   let bytes = 0;
   for (let index = messages.length - 1; index >= Math.max(0, messages.length - 80); index--) {
@@ -32,7 +35,10 @@ export function pageMessages(messages: Message[], revision: number): { messages:
     bytes += size;
   }
   selected.reverse();
-  return { messages: selected, page: { ...(messages.length > selected.length ? { next: selected[0]!.id } : {}), revision } };
+  return {
+    messages: selected,
+    page: { ...(messages.length > selected.length ? { next: selected[0]!.id } : {}), revision },
+  };
 }
 
 export class EventJournal {
@@ -50,7 +56,8 @@ export class EventJournal {
 
   get #db(): DatabaseSync {
     if (this.#connection) return this.#connection;
-    if (this.#readOnly) return this.#connection = new DatabaseSync(this.#path, { readOnly: true });
+    if (this.#readOnly)
+      return (this.#connection = new DatabaseSync(this.#path, { readOnly: true }));
     if (this.#path !== ":memory:") mkdirSync(dirname(this.#path), { recursive: true, mode: 0o700 });
     const database = new DatabaseSync(this.#path);
     if (this.#path !== ":memory:") chmodSync(this.#path, 0o600);
@@ -69,18 +76,32 @@ export class EventJournal {
       database.exec("BEGIN IMMEDIATE");
       try {
         const update = database.prepare("UPDATE documents SET data=? WHERE kind='part' AND id=?");
-        for (const row of database.prepare("SELECT id,data FROM documents WHERE kind='part' AND json_extract(data,'$.kind')='todo'").all()) {
+        for (const row of database
+          .prepare(
+            "SELECT id,data FROM documents WHERE kind='part' AND json_extract(data,'$.kind')='todo'",
+          )
+          .all()) {
           const normalized = JSON.stringify(normalizePart(readPart(row)));
           if (normalized !== row.data) update.run(normalized, String(row.id));
         }
         database.exec("PRAGMA user_version=1; COMMIT");
-      } catch (error) { database.exec("ROLLBACK"); database.close(); throw error; }
+      } catch (error) {
+        database.exec("ROLLBACK");
+        database.close();
+        throw error;
+      }
     }
     if (Number(database.prepare("PRAGMA user_version").get()?.user_version) < 2) {
       database.exec("BEGIN IMMEDIATE");
       try {
-        database.exec("INSERT INTO search_generation SELECT lower(hex(randomblob(16))) WHERE NOT EXISTS (SELECT 1 FROM search_generation); INSERT OR IGNORE INTO search_revisions SELECT id, coalesce((SELECT seq FROM sqlite_sequence WHERE name='events'),0) FROM documents WHERE kind='thread'; PRAGMA user_version=2; COMMIT");
-      } catch (error) { database.exec("ROLLBACK"); database.close(); throw error; }
+        database.exec(
+          "INSERT INTO search_generation SELECT lower(hex(randomblob(16))) WHERE NOT EXISTS (SELECT 1 FROM search_generation); INSERT OR IGNORE INTO search_revisions SELECT id, coalesce((SELECT seq FROM sqlite_sequence WHERE name='events'),0) FROM documents WHERE kind='thread'; PRAGMA user_version=2; COMMIT",
+        );
+      } catch (error) {
+        database.exec("ROLLBACK");
+        database.close();
+        throw error;
+      }
     }
     this.#connection = database;
     return database;
@@ -96,7 +117,9 @@ export class EventJournal {
   }
 
   get sequence(): number {
-    return Number(this.#statement("SELECT seq FROM sqlite_sequence WHERE name='events'").get()?.seq ?? 0);
+    return Number(
+      this.#statement("SELECT seq FROM sqlite_sequence WHERE name='events'").get()?.seq ?? 0,
+    );
   }
 
   #put(kind: string, id: string, parent: string, data: unknown): void {
@@ -104,67 +127,108 @@ export class EventJournal {
       data = normalizePart(data as Part);
       this.#statement("DELETE FROM text_deltas WHERE part=?").run(id);
     }
-    this.#statement("INSERT INTO documents VALUES (?,?,?,(SELECT coalesce(max(position),-1)+1 FROM documents WHERE kind=? AND parent=?),?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data").run(kind, id, parent, kind, parent, JSON.stringify(data));
+    this.#statement(
+      "INSERT INTO documents VALUES (?,?,?,(SELECT coalesce(max(position),-1)+1 FROM documents WHERE kind=? AND parent=?),?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data",
+    ).run(kind, id, parent, kind, parent, JSON.stringify(data));
   }
 
   #message(threadId: string, message: Message): void {
     const { parts, ...meta } = message;
     this.#put("message", message.id, threadId, meta);
-    parts.forEach(part => this.#put("part", part.id, message.id, part));
+    parts.forEach((part) => this.#put("part", part.id, message.id, part));
   }
 
   #clearMessages(threadId: string): void {
-    this.#statement("DELETE FROM text_deltas WHERE part IN (SELECT id FROM documents WHERE kind='part' AND parent IN (SELECT id FROM documents WHERE kind='message' AND parent=?))").run(threadId);
-    this.#statement("DELETE FROM documents WHERE kind='part' AND parent IN (SELECT id FROM documents WHERE kind='message' AND parent=?)").run(threadId);
+    this.#statement(
+      "DELETE FROM text_deltas WHERE part IN (SELECT id FROM documents WHERE kind='part' AND parent IN (SELECT id FROM documents WHERE kind='message' AND parent=?))",
+    ).run(threadId);
+    this.#statement(
+      "DELETE FROM documents WHERE kind='part' AND parent IN (SELECT id FROM documents WHERE kind='message' AND parent=?)",
+    ).run(threadId);
     this.#statement("DELETE FROM documents WHERE kind='message' AND parent=?").run(threadId);
   }
 
   #searchChanged(threadId: string, sequence: number): void {
-    this.#statement("INSERT INTO search_revisions VALUES (?,?) ON CONFLICT(thread) DO UPDATE SET sequence=excluded.sequence").run(threadId, sequence);
+    this.#statement(
+      "INSERT INTO search_revisions VALUES (?,?) ON CONFLICT(thread) DO UPDATE SET sequence=excluded.sequence",
+    ).run(threadId, sequence);
   }
 
   append(event: ServerEvent): number {
     this.#db.exec("BEGIN IMMEDIATE");
     try {
-      const sequence = Number(this.#statement("INSERT INTO events(payload) VALUES (?)").run(JSON.stringify(event)).lastInsertRowid);
+      const sequence = Number(
+        this.#statement("INSERT INTO events(payload) VALUES (?)").run(JSON.stringify(event))
+          .lastInsertRowid,
+      );
       let searchThread: string | undefined;
       if (event.t === "thread.upsert") this.#put("thread", event.thread.id, "", event.thread);
       else if (event.t === "message.add") {
         this.#message(event.threadId, event.message);
         searchThread = event.threadId;
       } else if (event.t === "message.patch") {
-        this.#statement("UPDATE documents SET data=json_patch(data,?) WHERE kind='message' AND id=?").run(JSON.stringify(event.patch), event.messageId);
+        this.#statement(
+          "UPDATE documents SET data=json_patch(data,?) WHERE kind='message' AND id=?",
+        ).run(JSON.stringify(event.patch), event.messageId);
       } else if (event.t === "part.add") {
-        if (event.part.kind === "text" || this.#statement("SELECT 1 FROM documents WHERE kind='part' AND id=? AND json_extract(data,'$.kind')='text'").get(event.part.id)) searchThread = event.threadId;
+        if (
+          event.part.kind === "text" ||
+          this.#statement(
+            "SELECT 1 FROM documents WHERE kind='part' AND id=? AND json_extract(data,'$.kind')='text'",
+          ).get(event.part.id)
+        )
+          searchThread = event.threadId;
         this.#put("part", event.part.id, event.messageId, event.part);
       } else if (event.t === "part.append") {
-        this.#statement("INSERT INTO text_deltas SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM documents WHERE kind='part' AND id=?)").run(event.partId, sequence, event.text, event.partId);
-        this.#statement("INSERT INTO search_revisions SELECT ?,? WHERE EXISTS (SELECT 1 FROM documents WHERE kind='part' AND id=? AND json_extract(data,'$.kind')='text') ON CONFLICT(thread) DO UPDATE SET sequence=excluded.sequence").run(event.threadId, sequence, event.partId);
+        this.#statement(
+          "INSERT INTO text_deltas SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM documents WHERE kind='part' AND id=?)",
+        ).run(event.partId, sequence, event.text, event.partId);
+        this.#statement(
+          "INSERT INTO search_revisions SELECT ?,? WHERE EXISTS (SELECT 1 FROM documents WHERE kind='part' AND id=? AND json_extract(data,'$.kind')='text') ON CONFLICT(thread) DO UPDATE SET sequence=excluded.sequence",
+        ).run(event.threadId, sequence, event.partId);
       } else if (event.t === "part.patch") {
-        const row = this.#statement("SELECT data,(SELECT json_quote(group_concat(text,'')) FROM (SELECT text FROM text_deltas WHERE part=? ORDER BY sequence)) AS delta FROM documents WHERE kind='part' AND id=?").get(event.partId, event.partId);
+        const row = this.#statement(
+          "SELECT data,(SELECT json_quote(group_concat(text,'')) FROM (SELECT text FROM text_deltas WHERE part=? ORDER BY sequence)) AS delta FROM documents WHERE kind='part' AND id=?",
+        ).get(event.partId, event.partId);
         if (row) {
           const part = readPart(row);
-          if ((part.kind === "text" && (Object.hasOwn(event.patch, "text") || Object.hasOwn(event.patch, "kind"))) || event.patch.kind === "text") searchThread = event.threadId;
-          this.#statement("UPDATE documents SET data=? WHERE kind='part' AND id=?").run(JSON.stringify(normalizePart({ ...part, ...event.patch } as Part)), event.partId);
+          if (
+            (part.kind === "text" &&
+              (Object.hasOwn(event.patch, "text") || Object.hasOwn(event.patch, "kind"))) ||
+            event.patch.kind === "text"
+          )
+            searchThread = event.threadId;
+          this.#statement("UPDATE documents SET data=? WHERE kind='part' AND id=?").run(
+            JSON.stringify(normalizePart({ ...part, ...event.patch } as Part)),
+            event.partId,
+          );
           this.#statement("DELETE FROM text_deltas WHERE part=?").run(event.partId);
         }
       } else if (event.t === "thread.messages") {
         searchThread = event.threadId;
         this.#clearMessages(event.threadId);
-        event.messages.forEach(message => this.#message(event.threadId, message));
-        this.#statement("INSERT INTO history_revisions VALUES (?,?) ON CONFLICT(thread) DO UPDATE SET revision=excluded.revision").run(event.threadId, sequence);
+        event.messages.forEach((message) => this.#message(event.threadId, message));
+        this.#statement(
+          "INSERT INTO history_revisions VALUES (?,?) ON CONFLICT(thread) DO UPDATE SET revision=excluded.revision",
+        ).run(event.threadId, sequence);
       } else if (event.t === "thread.remove") {
         searchThread = event.id;
         this.#clearMessages(event.id);
         this.#statement("DELETE FROM documents WHERE kind='thread' AND id=?").run(event.id);
         this.#statement("INSERT OR IGNORE INTO deleted_threads VALUES (?)").run(event.id);
-        this.#statement("INSERT INTO history_revisions VALUES (?,?) ON CONFLICT(thread) DO UPDATE SET revision=excluded.revision").run(event.id, sequence);
+        this.#statement(
+          "INSERT INTO history_revisions VALUES (?,?) ON CONFLICT(thread) DO UPDATE SET revision=excluded.revision",
+        ).run(event.id, sequence);
       }
       if (searchThread) this.#searchChanged(searchThread, sequence);
       if (sequence % 500 === 0) {
         this.#statement("DELETE FROM events WHERE sequence < ?").run(sequence - 5000);
-        this.#db.exec("DELETE FROM events WHERE sequence IN (SELECT sequence FROM (SELECT sequence, sum(length(CAST(payload AS BLOB))) OVER (ORDER BY sequence DESC) AS bytes FROM events) WHERE bytes > 8388608)");
-        this.#statement("DELETE FROM receipts WHERE created < ?").run(Date.now() - SETTINGS.receiptRetentionMs);
+        this.#db.exec(
+          "DELETE FROM events WHERE sequence IN (SELECT sequence FROM (SELECT sequence, sum(length(CAST(payload AS BLOB))) OVER (ORDER BY sequence DESC) AS bytes FROM events) WHERE bytes > 8388608)",
+        );
+        this.#statement("DELETE FROM receipts WHERE created < ?").run(
+          Date.now() - SETTINGS.receiptRetentionMs,
+        );
       }
       this.#db.exec("COMMIT");
       this.#forgetToolImageFiles(event);
@@ -176,7 +240,11 @@ export class EventJournal {
   }
 
   hasThread(id: string): boolean {
-    return Boolean(this.#statement("SELECT id FROM documents WHERE kind='thread' AND id=? UNION ALL SELECT id FROM deleted_threads WHERE id=?").get(id, id));
+    return Boolean(
+      this.#statement(
+        "SELECT id FROM documents WHERE kind='thread' AND id=? UNION ALL SELECT id FROM deleted_threads WHERE id=?",
+      ).get(id, id),
+    );
   }
 
   importThreads(threads: Iterable<Thread>): void {
@@ -186,21 +254,31 @@ export class EventJournal {
         if (this.hasThread(thread.id)) continue;
         const { messages, ...meta } = thread;
         this.#put("thread", thread.id, "", meta);
-        messages.forEach(message => this.#message(thread.id, message));
+        messages.forEach((message) => this.#message(thread.id, message));
         this.#searchChanged(thread.id, this.sequence);
       }
       this.#db.exec("COMMIT");
-    } catch (error) { this.#db.exec("ROLLBACK"); throw error; }
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   threadRecords(): Omit<Thread, "messages">[] {
-    return this.#statement("SELECT data FROM documents WHERE kind='thread'").all().map(row => JSON.parse(String(row.data)));
+    return this.#statement("SELECT data FROM documents WHERE kind='thread'")
+      .all()
+      .map((row) => JSON.parse(String(row.data)));
   }
 
-  #readMessage(message: Record<string, unknown>, measure = false): { message: Message; bytes: number } {
+  #readMessage(
+    message: Record<string, unknown>,
+    measure = false,
+  ): { message: Message; bytes: number } {
     const parts: Message["parts"] = [];
     let bytes = measure ? Number(message.bytes) : 0;
-    for (const part of this.#statement("SELECT data,(SELECT json_quote(group_concat(text,'')) FROM (SELECT text FROM text_deltas WHERE part=documents.id ORDER BY sequence)) AS delta FROM documents WHERE kind='part' AND parent=? ORDER BY position").iterate(String(message.id))) {
+    for (const part of this.#statement(
+      "SELECT data,(SELECT json_quote(group_concat(text,'')) FROM (SELECT text FROM text_deltas WHERE part=documents.id ORDER BY sequence)) AS delta FROM documents WHERE kind='part' AND parent=? ORDER BY position",
+    ).iterate(String(message.id))) {
       if (measure && part.delta !== "null") bytes += Buffer.byteLength(String(part.delta));
       parts.push(readPart(part));
     }
@@ -209,34 +287,53 @@ export class EventJournal {
 
   messages(threadId: string): Message[] {
     const messages: Message[] = [];
-    for (const message of this.#statement("SELECT id,data FROM documents WHERE kind='message' AND parent=? ORDER BY position").iterate(threadId))
+    for (const message of this.#statement(
+      "SELECT id,data FROM documents WHERE kind='message' AND parent=? ORDER BY position",
+    ).iterate(threadId))
       messages.push(this.#readMessage(message).message);
     return messages;
   }
 
-  messagePage(threadId: string, page: { before?: string; revision?: number } = {}): { messages: Message[]; page: HistoryPage } {
-    if (!page || typeof page !== "object" || Array.isArray(page) ||
-      (page.before !== undefined && (typeof page.before !== "string" || !page.before || page.before.length > 200)) ||
-      (page.revision !== undefined && (!Number.isSafeInteger(page.revision) || page.revision < 0)))
+  messagePage(
+    threadId: string,
+    page: { before?: string; revision?: number } = {},
+  ): { messages: Message[]; page: HistoryPage } {
+    if (
+      !page ||
+      typeof page !== "object" ||
+      Array.isArray(page) ||
+      (page.before !== undefined &&
+        (typeof page.before !== "string" || !page.before || page.before.length > 200)) ||
+      (page.revision !== undefined && (!Number.isSafeInteger(page.revision) || page.revision < 0))
+    )
       throw new Error("Invalid conversation history page.");
-    if (!this.#statement("SELECT 1 FROM documents WHERE kind='thread' AND id=?").get(threadId)) throw new Error("This conversation no longer exists.");
-    const revision = Number(this.#statement("SELECT revision FROM history_revisions WHERE thread=?").get(threadId)?.revision ?? 0);
+    if (!this.#statement("SELECT 1 FROM documents WHERE kind='thread' AND id=?").get(threadId))
+      throw new Error("This conversation no longer exists.");
+    const revision = Number(
+      this.#statement("SELECT revision FROM history_revisions WHERE thread=?").get(threadId)
+        ?.revision ?? 0,
+    );
     const before = page.before && page.revision === revision ? page.before : undefined;
     let position = Number.MAX_SAFE_INTEGER;
     if (before) {
-      const cursor = this.#statement("SELECT position FROM documents WHERE kind='message' AND parent=? AND id=?").get(threadId, before);
+      const cursor = this.#statement(
+        "SELECT position FROM documents WHERE kind='message' AND parent=? AND id=?",
+      ).get(threadId, before);
       if (!cursor) throw new Error("This conversation history cursor is unavailable.");
       position = Number(cursor.position);
     }
     const messages: Message[] = [];
     let bytes = 0;
     let firstPosition = position;
-    for (const row of this.#statement(`SELECT m.id,m.position,m.data,
+    for (const row of this.#statement(
+      `SELECT m.id,m.position,m.data,
         length(CAST(m.data AS BLOB)) + 64 +
         (SELECT coalesce(sum(length(CAST(p.data AS BLOB)) + 32),0) FROM documents p WHERE p.kind='part' AND p.parent=m.id) AS bytes,
         (SELECT coalesce(sum(length(CAST(d.text AS BLOB))),0) FROM documents p JOIN text_deltas d ON d.part=p.id WHERE p.kind='part' AND p.parent=m.id) AS deltaBytes
-      FROM documents m WHERE m.kind='message' AND m.parent=? AND m.position<? ORDER BY m.position DESC LIMIT 80`).iterate(threadId, position)) {
-      if (messages.length && bytes + Number(row.bytes) + Number(row.deltaBytes) > 1024 * 1024) break;
+      FROM documents m WHERE m.kind='message' AND m.parent=? AND m.position<? ORDER BY m.position DESC LIMIT 80`,
+    ).iterate(threadId, position)) {
+      if (messages.length && bytes + Number(row.bytes) + Number(row.deltaBytes) > 1024 * 1024)
+        break;
       const entry = this.#readMessage(row, true);
       if (messages.length && bytes + entry.bytes > 1024 * 1024) break;
       messages.push(entry.message);
@@ -244,15 +341,30 @@ export class EventJournal {
       firstPosition = Number(row.position);
     }
     messages.reverse();
-    const next = messages.length && this.#statement("SELECT 1 FROM documents WHERE kind='message' AND parent=? AND position<? LIMIT 1").get(threadId, firstPosition) ? messages[0]!.id : undefined;
-    return { messages, page: { ...(before ? { before } : {}), ...(next ? { next } : {}), revision } };
+    const next =
+      messages.length &&
+      this.#statement(
+        "SELECT 1 FROM documents WHERE kind='message' AND parent=? AND position<? LIMIT 1",
+      ).get(threadId, firstPosition)
+        ? messages[0]!.id
+        : undefined;
+    return {
+      messages,
+      page: { ...(before ? { before } : {}), ...(next ? { next } : {}), revision },
+    };
   }
 
   hasToolImageFile(threadId: string, path: string): boolean {
     let paths = this.#toolImageFiles.get(threadId);
     if (!paths) {
-      paths = new Set(this.#statement(`SELECT json_extract(file.value,'$.path') AS path FROM documents m CROSS JOIN documents p ON p.kind='part' AND p.parent=m.id, json_each(p.data,'$.imageFiles') file
-        WHERE m.kind='message' AND m.parent=? AND instr(p.data,'"imageFiles"') AND json_extract(p.data,'$.kind')='tool'`).all(threadId).map(row => String(row.path)));
+      paths = new Set(
+        this.#statement(
+          `SELECT json_extract(file.value,'$.path') AS path FROM documents m CROSS JOIN documents p ON p.kind='part' AND p.parent=m.id, json_each(p.data,'$.imageFiles') file
+        WHERE m.kind='message' AND m.parent=? AND instr(p.data,'"imageFiles"') AND json_extract(p.data,'$.kind')='tool'`,
+        )
+          .all(threadId)
+          .map((row) => String(row.path)),
+      );
       this.#toolImageFiles.set(threadId, paths);
     }
     return paths.has(path);
@@ -260,16 +372,21 @@ export class EventJournal {
 
   #forgetToolImageFiles(event: ServerEvent): void {
     if (event.t === "thread.remove") this.#toolImageFiles.delete(event.id);
-    else if (event.t === "thread.messages" ||
-      (event.t === "message.add" && event.message.parts.some(part => part.kind === "tool" && part.imageFiles)) ||
+    else if (
+      event.t === "thread.messages" ||
+      (event.t === "message.add" &&
+        event.message.parts.some((part) => part.kind === "tool" && part.imageFiles)) ||
       (event.t === "part.add" && event.part.kind === "tool" && event.part.imageFiles) ||
-      (event.t === "part.patch" && Object.hasOwn(event.patch, "imageFiles")))
+      (event.t === "part.patch" && Object.hasOwn(event.patch, "imageFiles"))
+    )
       this.#toolImageFiles.delete(event.threadId);
   }
 
   messageTexts(threadId: string): Array<{ id: string; text: string }> {
     const texts: Array<{ id: string; text: string }> = [];
-    for (const row of this.#statement("SELECT m.id AS id, json_quote(json_extract(p.data,'$.text') || coalesce((SELECT group_concat(text,'') FROM (SELECT text FROM text_deltas WHERE part=p.id ORDER BY sequence)),'')) AS text FROM documents m CROSS JOIN documents p ON p.kind='part' AND p.parent=m.id WHERE m.kind='message' AND m.parent=? AND json_extract(p.data,'$.kind')='text' ORDER BY m.position, p.position").iterate(threadId)) {
+    for (const row of this.#statement(
+      "SELECT m.id AS id, json_quote(json_extract(p.data,'$.text') || coalesce((SELECT group_concat(text,'') FROM (SELECT text FROM text_deltas WHERE part=p.id ORDER BY sequence)),'')) AS text FROM documents m CROSS JOIN documents p ON p.kind='part' AND p.parent=m.id WHERE m.kind='message' AND m.parent=? AND json_extract(p.data,'$.kind')='text' ORDER BY m.position, p.position",
+    ).iterate(threadId)) {
       const text = String(JSON.parse(String(row.text)));
       const last = texts.at(-1);
       if (last && last.id === row.id) last.text += ` ${text}`;
@@ -281,56 +398,108 @@ export class EventJournal {
   searchState(): { generation: string; revisions: Map<string, number> } {
     return {
       generation: String(this.#statement("SELECT id FROM search_generation").get()!.id),
-      revisions: new Map(this.#statement("SELECT thread,sequence FROM search_revisions").all().map(row => [String(row.thread), Number(row.sequence)])),
+      revisions: new Map(
+        this.#statement("SELECT thread,sequence FROM search_revisions")
+          .all()
+          .map((row) => [String(row.thread), Number(row.sequence)]),
+      ),
     };
   }
 
   lastMessageTimes(): Map<string, number> {
-    return new Map(this.#statement("SELECT parent, json_extract(data,'$.ts') AS ts, max(position) FROM documents WHERE kind='message' GROUP BY parent").all().map(row => [String(row.parent), Number(row.ts)]));
+    return new Map(
+      this.#statement(
+        "SELECT parent, json_extract(data,'$.ts') AS ts, max(position) FROM documents WHERE kind='message' GROUP BY parent",
+      )
+        .all()
+        .map((row) => [String(row.parent), Number(row.ts)]),
+    );
   }
 
   changedFileCounts(): Map<string, number> {
-    return new Map(this.#statement(`WITH edits AS (
+    return new Map(
+      this.#statement(
+        `WITH edits AS (
         SELECT m.parent AS thread, p.data AS data FROM documents m JOIN documents p ON p.kind='part' AND p.parent=m.id
         WHERE m.kind='message' AND json_extract(p.data,'$.kind')='tool' AND json_extract(p.data,'$.status')='ok' AND json_extract(p.data,'$.shape') IN ('edit','write'))
       SELECT thread, count(DISTINCT path) AS count FROM (
         SELECT thread, j.value AS path FROM edits, json_each(edits.data,'$.input.paths') j WHERE json_type(edits.data,'$.input.paths')='array'
         UNION ALL
         SELECT thread, coalesce(json_extract(data,'$.input.file_path'), json_extract(data,'$.input.filePath'), json_extract(data,'$.input.path')) FROM edits WHERE json_type(data,'$.input.paths') IS NOT 'array')
-      WHERE typeof(path)='text' AND path!='' GROUP BY thread`).all().map(row => [String(row.thread), Number(row.count)]));
+      WHERE typeof(path)='text' AND path!='' GROUP BY thread`,
+      )
+        .all()
+        .map((row) => [String(row.thread), Number(row.count)]),
+    );
   }
 
   unsettledThreads(): Set<string> {
-    return new Set(this.#statement([
-      "json_extract(p.data,'$.kind')='question' AND json_extract(p.data,'$.status')='pending'",
-      "json_extract(p.data,'$.kind')='text' AND json_extract(p.data,'$.complete') IS NOT 1",
-      "json_extract(p.data,'$.kind')='reasoning' AND json_extract(p.data,'$.complete') IS NOT 1",
-      "json_extract(p.data,'$.kind')='tool' AND json_extract(p.data,'$.status')='running'",
-    ].map(unsettled => `SELECT m.parent AS thread FROM documents p JOIN documents m ON m.kind='message' AND m.id=p.parent WHERE p.kind='part' AND ${unsettled}`).join(" UNION ")).all().map(row => String(row.thread)));
+    return new Set(
+      this.#statement(
+        [
+          "json_extract(p.data,'$.kind')='question' AND json_extract(p.data,'$.status')='pending'",
+          "json_extract(p.data,'$.kind')='text' AND json_extract(p.data,'$.complete') IS NOT 1",
+          "json_extract(p.data,'$.kind')='reasoning' AND json_extract(p.data,'$.complete') IS NOT 1",
+          "json_extract(p.data,'$.kind')='tool' AND json_extract(p.data,'$.status')='running'",
+        ]
+          .map(
+            (unsettled) =>
+              `SELECT m.parent AS thread FROM documents p JOIN documents m ON m.kind='message' AND m.id=p.parent WHERE p.kind='part' AND ${unsettled}`,
+          )
+          .join(" UNION "),
+      )
+        .all()
+        .map((row) => String(row.thread)),
+    );
   }
 
   replay(after: number): ServerEvent[] | null {
-    const first = Number(this.#statement("SELECT min(sequence) AS value FROM events").get()!.value ?? this.sequence + 1);
+    const first = Number(
+      this.#statement("SELECT min(sequence) AS value FROM events").get()!.value ??
+        this.sequence + 1,
+    );
     if (!Number.isSafeInteger(after) || after < first - 1 || after > this.sequence) return null;
-    return this.#statement("SELECT sequence,payload FROM events WHERE sequence > ? ORDER BY sequence").all(after).map(row => ({ ...JSON.parse(String(row.payload)), sequence: Number(row.sequence) }));
+    return this.#statement(
+      "SELECT sequence,payload FROM events WHERE sequence > ? ORDER BY sequence",
+    )
+      .all(after)
+      .map((row) => ({ ...JSON.parse(String(row.payload)), sequence: Number(row.sequence) }));
   }
 
-  async request(id: string, input: unknown, execute: () => Promise<ServerEvent[]>): Promise<ServerEvent[]> {
+  async request(
+    id: string,
+    input: unknown,
+    execute: () => Promise<ServerEvent[]>,
+  ): Promise<ServerEvent[]> {
     if (!id || id.length > 200) throw new Error("Invalid request identifier.");
     const fingerprint = createHash("sha256").update(JSON.stringify(input)).digest("hex");
-    const previous = this.#statement("SELECT fingerprint,response FROM receipts WHERE id=?").get(id);
+    const previous = this.#statement("SELECT fingerprint,response FROM receipts WHERE id=?").get(
+      id,
+    );
     if (previous) {
-      if (previous.fingerprint !== fingerprint) throw new Error("This request identifier was already used for another action.");
+      if (previous.fingerprint !== fingerprint)
+        throw new Error("This request identifier was already used for another action.");
       if (previous.response) return JSON.parse(String(previous.response));
       const pending = this.#pending.get(id);
       if (pending) return pending;
-      throw new Error("Citropy restarted during this request. Check its result before trying again.");
+      throw new Error(
+        "Citropy restarted during this request. Check its result before trying again.",
+      );
     }
     this.#statement("INSERT INTO receipts VALUES (?,?,NULL,?)").run(id, fingerprint, Date.now());
-    const pending = Promise.resolve().then(execute).catch(error => [{ t: "request.error" as const, requestId: id, error: (error as Error).message }]).then(events => {
-      this.#statement("UPDATE receipts SET response=? WHERE id=?").run(JSON.stringify(events), id);
-      return events;
-    }).finally(() => this.#pending.delete(id));
+    const pending = Promise.resolve()
+      .then(execute)
+      .catch((error) => [
+        { t: "request.error" as const, requestId: id, error: (error as Error).message },
+      ])
+      .then((events) => {
+        this.#statement("UPDATE receipts SET response=? WHERE id=?").run(
+          JSON.stringify(events),
+          id,
+        );
+        return events;
+      })
+      .finally(() => this.#pending.delete(id));
     this.#pending.set(id, pending);
     return pending;
   }

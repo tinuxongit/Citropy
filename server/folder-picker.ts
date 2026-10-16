@@ -8,7 +8,9 @@ let pending: Promise<string | null> | null = null;
 
 export function chooseFolder(title = "Open workspace in Citropy"): Promise<string | null> {
   if (pending) return pending;
-  pending = run("kdialog", ["--getexistingdirectory", homedir(), "--title", title], { maxBuffer: 64 * 1024 })
+  pending = run("kdialog", ["--getexistingdirectory", homedir(), "--title", title], {
+    maxBuffer: 64 * 1024,
+  })
     .then(async ({ stdout }) => {
       const path = stdout.replace(/\r?\n$/, "");
       if (!path) return null;
@@ -17,9 +19,12 @@ export function chooseFolder(title = "Open workspace in Citropy"): Promise<strin
     })
     .catch((error: Error & { code?: string | number }) => {
       if (error.code === 1) return null;
-      if (error.code === "ENOENT") throw new Error("The system folder chooser (kdialog) is not installed.");
+      if (error.code === "ENOENT")
+        throw new Error("The system folder chooser (kdialog) is not installed.");
       throw error;
     })
-    .finally(() => { pending = null; });
+    .finally(() => {
+      pending = null;
+    });
   return pending;
 }

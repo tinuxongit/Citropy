@@ -23,7 +23,12 @@ export function SkillsSettings() {
   };
   return (
     <div className="feature-stack">
-      <div className="segmented-tabs sliding-selection" role="tablist" aria-label="Skill types" onKeyDown={moveFocus}>
+      <div
+        className="segmented-tabs sliding-selection"
+        role="tablist"
+        aria-label="Skill types"
+        onKeyDown={moveFocus}
+      >
         <SelectionHighlight value={tabId} />
         {TABS.map((entry) => (
           <button
@@ -40,7 +45,12 @@ export function SkillsSettings() {
           </button>
         ))}
       </div>
-      <div className="feature-stack" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tabId}`}>
+      <div
+        className="feature-stack"
+        role="tabpanel"
+        id={`${id}-panel`}
+        aria-labelledby={`${id}-${tabId}`}
+      >
         <Panel />
       </div>
     </div>

@@ -9,11 +9,25 @@ const LINE_WIDTH = 1.75;
 export function GlobeIcon({ size = 24 }: { size?: number }) {
   const id = useId();
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <defs>
         <mask id={id}>
           <rect width="24" height="24" fill="white" />
-          <ellipse cx={CENTER} cy={CENTER} {...MERIDIAN} fill="none" stroke="black" strokeWidth={LINE_WIDTH} />
+          <ellipse
+            cx={CENTER}
+            cy={CENTER}
+            {...MERIDIAN}
+            fill="none"
+            stroke="black"
+            strokeWidth={LINE_WIDTH}
+          />
           <path d={LATITUDE} stroke="black" strokeWidth={LINE_WIDTH} />
         </mask>
       </defs>

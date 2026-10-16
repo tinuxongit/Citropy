@@ -18,8 +18,14 @@ export function useTabMotion(): Pick<MotionProps, "initial" | "animate" | "exit"
     exit: {
       ...hidden,
       pointerEvents: "none",
-      transition: { duration: reducedMotion ? 0 : TAB_MOTION.exitSeconds, ease: TAB_MOTION.exitEase },
+      transition: {
+        duration: reducedMotion ? 0 : TAB_MOTION.exitSeconds,
+        ease: TAB_MOTION.exitEase,
+      },
     },
-    transition: { duration: reducedMotion ? 0 : TAB_MOTION.enterSeconds, ease: TAB_MOTION.enterEase },
+    transition: {
+      duration: reducedMotion ? 0 : TAB_MOTION.enterSeconds,
+      ease: TAB_MOTION.enterEase,
+    },
   };
 }

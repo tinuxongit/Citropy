@@ -1,4 +1,11 @@
-import { useEffect, useImperativeHandle, useRef, type AriaAttributes, type Ref, type RefObject } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  type AriaAttributes,
+  type Ref,
+  type RefObject,
+} from "react";
 import {
   COMMAND_PRIORITY_HIGH,
   KEY_ARROW_DOWN_COMMAND,
@@ -18,9 +25,21 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { MentionLooks, MentionNode, type MentionLook } from "./mention-node.tsx";
-import { $chipMentions, $markMessageDirty, $messageCaret, $messageText, $setMessage, $unchipMention } from "./message-text.ts";
+import {
+  $chipMentions,
+  $markMessageDirty,
+  $messageCaret,
+  $messageText,
+  $setMessage,
+  $unchipMention,
+} from "./message-text.ts";
 
-const KEY_COMMANDS = [KEY_ARROW_DOWN_COMMAND, KEY_ARROW_UP_COMMAND, KEY_ESCAPE_COMMAND, KEY_TAB_COMMAND];
+const KEY_COMMANDS = [
+  KEY_ARROW_DOWN_COMMAND,
+  KEY_ARROW_UP_COMMAND,
+  KEY_ESCAPE_COMMAND,
+  KEY_TAB_COMMAND,
+];
 
 export type MessageEditorHandle = { setMessage: (text: string, caret: number) => void };
 
@@ -43,12 +62,16 @@ function MessageBehavior(props: Behavior) {
   const emitted = useRef(props.value);
   const mentionNames = [...props.mentions.keys()].join("\n");
 
-  useImperativeHandle(props.handle, () => ({
-    setMessage: (text, caret) => {
-      editor.focus();
-      editor.update(() => $setMessage(text, caret));
-    },
-  }), [editor]);
+  useImperativeHandle(
+    props.handle,
+    () => ({
+      setMessage: (text, caret) => {
+        editor.focus();
+        editor.update(() => $setMessage(text, caret));
+      },
+    }),
+    [editor],
+  );
 
   useEffect(() => {
     const known = (name: string) => latest.current.mentions.has(name);
@@ -60,23 +83,31 @@ function MessageBehavior(props: Behavior) {
     return mergeRegister(
       editor.registerNodeTransform(TextNode, (node) => $chipMentions(node, known)),
       editor.registerNodeTransform(MentionNode, (node) => $unchipMention(node, known)),
-      editor.registerUpdateListener(({ editorState }) => editorState.read(() => {
-        const text = $messageText();
-        latest.current.onCaret($messageCaret());
-        if (text === emitted.current) return;
-        emitted.current = text;
-        latest.current.onChange(text);
-      })),
-      editor.registerCommand(PASTE_COMMAND, (event) => {
-        if (!(event instanceof ClipboardEvent) || !event.clipboardData) return false;
-        const files = latest.current.pastedFiles(event.clipboardData);
-        if (!files.length) return false;
-        event.preventDefault();
-        latest.current.onFiles(files);
-        return true;
-      }, COMMAND_PRIORITY_HIGH),
+      editor.registerUpdateListener(({ editorState }) =>
+        editorState.read(() => {
+          const text = $messageText();
+          latest.current.onCaret($messageCaret());
+          if (text === emitted.current) return;
+          emitted.current = text;
+          latest.current.onChange(text);
+        }),
+      ),
+      editor.registerCommand(
+        PASTE_COMMAND,
+        (event) => {
+          if (!(event instanceof ClipboardEvent) || !event.clipboardData) return false;
+          const files = latest.current.pastedFiles(event.clipboardData);
+          if (!files.length) return false;
+          event.preventDefault();
+          latest.current.onFiles(files);
+          return true;
+        },
+        COMMAND_PRIORITY_HIGH,
+      ),
       editor.registerCommand(KEY_ENTER_COMMAND, handleKey, COMMAND_PRIORITY_HIGH),
-      ...KEY_COMMANDS.map((command) => editor.registerCommand(command, handleKey, COMMAND_PRIORITY_HIGH)),
+      ...KEY_COMMANDS.map((command) =>
+        editor.registerCommand(command, handleKey, COMMAND_PRIORITY_HIGH),
+      ),
     );
   }, [editor]);
 
@@ -88,7 +119,10 @@ function MessageBehavior(props: Behavior) {
     if (props.value === emitted.current) return;
     emitted.current = props.value;
     const focused = editor.getRootElement() === document.activeElement;
-    editor.update(() => $setMessage(props.value, focused ? props.value.length : undefined), focused ? {} : { tag: SKIP_DOM_SELECTION_TAG });
+    editor.update(
+      () => $setMessage(props.value, focused ? props.value.length : undefined),
+      focused ? {} : { tag: SKIP_DOM_SELECTION_TAG },
+    );
   }, [editor, props.value]);
 
   useEffect(() => {
@@ -116,7 +150,9 @@ export function MessageEditor({
         nodes: [MentionNode],
         editable: !props.disabled,
         editorState: () => $setMessage(props.value),
-        onError: (error) => { throw error; },
+        onError: (error) => {
+          throw error;
+        },
       }}
     >
       <MentionLooks value={props.mentions}>

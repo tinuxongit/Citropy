@@ -55,7 +55,9 @@
   overflow-wrap: anywhere;
 }
 
-.question-browser { margin: 0 0 var(--space-12); }
+.question-browser {
+  margin: 0 0 var(--space-12);
+}
 
 .question-hint {
   margin: 0 0 var(--space-10);
@@ -90,7 +92,9 @@
   background: var(--highlight);
 }
 
-.question-option input { margin: var(--space-2) 0 0; }
+.question-option input {
+  margin: var(--space-2) 0 0;
+}
 
 .question-option > span {
   min-width: 0;
@@ -169,7 +173,9 @@
   list-style: none;
 }
 
-.question-history summary > svg { flex: none; }
+.question-history summary > svg {
+  flex: none;
+}
 
 .question-history-asked {
   min-width: 0;
@@ -179,7 +185,9 @@
   color: var(--text-2);
 }
 
-.question-history-state { flex: none; }
+.question-history-state {
+  flex: none;
+}
 
 .question-history[open] summary > svg:first-child {
   transform: rotate(90deg);
@@ -204,8 +212,16 @@
 }
 
 @container conversation (max-width: 600px) {
-  .question-panel { padding: var(--space-8) var(--space-16) 0; }
-  .question-heading { padding: var(--space-16) var(--space-16) var(--space-10); }
-  .question-body { padding: 0 var(--space-16); }
-  .question-footer { padding: var(--space-10) var(--space-12); }
+  .question-panel {
+    padding: var(--space-8) var(--space-16) 0;
+  }
+  .question-heading {
+    padding: var(--space-16) var(--space-16) var(--space-10);
+  }
+  .question-body {
+    padding: 0 var(--space-16);
+  }
+  .question-footer {
+    padding: var(--space-10) var(--space-12);
+  }
 }

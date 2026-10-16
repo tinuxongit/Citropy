@@ -20,9 +20,12 @@ function windowLabel(entry: ProviderUsage, window: UsageWindow): string {
 
 function resetMoment(resetsAt: number): string {
   const soon = resetsAt - Date.now() < DAY_MS;
-  return formatDate(resetsAt, soon
-    ? { hour: "2-digit", minute: "2-digit" }
-    : { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return formatDate(
+    resetsAt,
+    soon
+      ? { hour: "2-digit", minute: "2-digit" }
+      : { weekday: "short", hour: "2-digit", minute: "2-digit" },
+  );
 }
 
 function LimitWindow({ entry, window }: { entry: ProviderUsage; window: UsageWindow }) {
@@ -32,15 +35,23 @@ function LimitWindow({ entry, window }: { entry: ProviderUsage; window: UsageWin
   return (
     <div className="limit-window" data-level={level}>
       <div className="limit-line">
-        <span className="truncate" title={label}>{label}</span>
-        <strong>{left}%<span> left</span></strong>
+        <span className="truncate" title={label}>
+          {label}
+        </span>
+        <strong>
+          {left}%<span> left</span>
+        </strong>
       </div>
       <i style={{ "--left": `${left}%` } as CSSProperties} />
       <div className="limit-line limit-reset">
-        {window.resetsAt ? <>
-          <span>Resets in {until(window.resetsAt)}</span>
-          <span>{resetMoment(window.resetsAt)}</span>
-        </> : <span>No reset time reported</span>}
+        {window.resetsAt ? (
+          <>
+            <span>Resets in {until(window.resetsAt)}</span>
+            <span>{resetMoment(window.resetsAt)}</span>
+          </>
+        ) : (
+          <span>No reset time reported</span>
+        )}
       </div>
     </div>
   );
@@ -54,7 +65,9 @@ export function ProviderLimits({ entry }: { entry: ProviderUsage }) {
         <span className="truncate">{providerLabels[entry.provider]}</span>
         {entry.plan && <span className="limit-plan">{entry.plan}</span>}
       </h3>
-      {entry.windows.map((window) => <LimitWindow key={window.label} entry={entry} window={window} />)}
+      {entry.windows.map((window) => (
+        <LimitWindow key={window.label} entry={entry} window={window} />
+      ))}
     </section>
   );
 }

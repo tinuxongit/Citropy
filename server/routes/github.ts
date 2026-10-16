@@ -13,12 +13,18 @@ export const githubRoutes: Routes = {
   "github.request": async (event, send) => {
     const { request, requestId } = event;
     const mutating = MUTATING.includes(request.operation);
-    const target = { view: "github" as const, projectId: "projectId" in request ? request.projectId : undefined };
+    const target = {
+      view: "github" as const,
+      projectId: "projectId" in request ? request.projectId : undefined,
+    };
     try {
       const result = await handleGitHub(request);
       send({ t: "github.result", requestId, result });
       const clonedNothing =
-        request.operation === "clone" && typeof result === "object" && "project" in result && !result.project;
+        request.operation === "clone" &&
+        typeof result === "object" &&
+        "project" in result &&
+        !result.project;
       if (!mutating || clonedNothing) return;
       store.notify({
         kind: "github",

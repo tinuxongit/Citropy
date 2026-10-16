@@ -153,7 +153,9 @@
   border-radius: 50%;
   pointer-events: none;
   opacity: 0;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 0 2px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 0 0 2px rgba(0, 0, 0, 0.35);
 }
 .drawing-stage:hover .drawing-cursor {
   opacity: 1;

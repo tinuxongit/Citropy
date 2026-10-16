@@ -8,7 +8,13 @@ import { uploadAttachment } from "./composer/use-attachment-upload.ts";
 
 const CONFIRMATION_MS = 1800;
 
-export function AttachToChatButton({ disabled, file }: { disabled: boolean; file: () => Promise<File> }) {
+export function AttachToChatButton({
+  disabled,
+  file,
+}: {
+  disabled: boolean;
+  file: () => Promise<File>;
+}) {
   const threadId = useApp((state) => state.activeThreadId);
   const [state, setState] = useState<"idle" | "busy" | "attached">("idle");
   useEffect(() => {
@@ -40,7 +46,9 @@ export function AttachToChatButton({ disabled, file }: { disabled: boolean; file
       {state === "attached" ? <CheckIcon size={15} /> : <AttachIcon size={15} />}
       <span className="attach-to-chat-label">
         <span data-shown={state !== "attached"}>Attach to chat</span>
-        <span data-shown={state === "attached"} aria-live="polite">{state === "attached" ? "Attached" : ""}</span>
+        <span data-shown={state === "attached"} aria-live="polite">
+          {state === "attached" ? "Attached" : ""}
+        </span>
       </span>
     </button>
   );

@@ -7,11 +7,7 @@ import { PlanIcon } from "../icons/PlanIcon.tsx";
 import { ShieldCheckIcon } from "../icons/status.tsx";
 import { BoltIcon } from "../icons/BoltIcon.tsx";
 import { configureThread } from "../../lib/actions.ts";
-import type {
-  ModelOption,
-  ProviderInfo,
-  ThreadMeta,
-} from "../../../../shared/protocol.ts";
+import type { ModelOption, ProviderInfo, ThreadMeta } from "../../../../shared/protocol.ts";
 
 export function useComposerCommands({
   thread,
@@ -109,8 +105,7 @@ export function useComposerCommands({
             icon: <BoltIcon size={16} />,
             idleOnly: false,
             run: () => {
-              if (threadId)
-                configureThread(threadId, { fastMode: !thread?.fastMode });
+              if (threadId) configureThread(threadId, { fastMode: !thread?.fastMode });
             },
           },
         ]

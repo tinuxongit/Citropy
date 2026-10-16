@@ -22,7 +22,23 @@ function statusLabel(file: GitFile): string {
   return "changed";
 }
 
-function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { file: GitFile; projectId: string; active: boolean; open: boolean; onToggle: () => void; expanded: boolean; onExpand: () => void }) {
+function Row({
+  file,
+  projectId,
+  active,
+  open,
+  onToggle,
+  expanded,
+  onExpand,
+}: {
+  file: GitFile;
+  projectId: string;
+  active: boolean;
+  open: boolean;
+  onToggle: () => void;
+  expanded: boolean;
+  onExpand: () => void;
+}) {
   const [patch, setPatch] = useState<FilePatch | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,17 +48,22 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
     let cancelled = false;
     setError("");
     setLoading(true);
-    void fetchDiff(projectId, file.path, file.staged).then((result) => {
-      if (!cancelled) setPatch(result);
-    }).catch((error: Error) => {
-      if (!cancelled) {
-        setPatch(null);
-        setError(error.message);
-      }
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => { cancelled = true; };
+    void fetchDiff(projectId, file.path, file.staged)
+      .then((result) => {
+        if (!cancelled) setPatch(result);
+      })
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setPatch(null);
+          setError(error.message);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [active, open, projectId, file.path, file.staged, file.added, file.removed]);
 
   const name = file.path.split("/").pop() ?? file.path;
@@ -51,7 +72,13 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
   return (
     <div className="change" data-open={open}>
       <div className="change-heading">
-        <button className="change-head" type="button" title={`${file.path} · ${statusLabel(file)}`} aria-expanded={open} onClick={onToggle}>
+        <button
+          className="change-head"
+          type="button"
+          title={`${file.path} · ${statusLabel(file)}`}
+          aria-expanded={open}
+          onClick={onToggle}
+        >
           <ChevronRightIcon size={12} className="change-chevron" />
           <span className="change-file">
             <FileIcon path={file.path} />
@@ -77,9 +104,17 @@ function Row({ file, projectId, active, open, onToggle, expanded, onExpand }: { 
       <Collapsible open={open} className="change-body">
         <div className="change-body-inner">
           {patch ? (
-            <DiffView patch={patch} showHeader={false} limit={40} expanded={expanded} onExpand={onExpand} />
+            <DiffView
+              patch={patch}
+              showHeader={false}
+              limit={40}
+              expanded={expanded}
+              onExpand={onExpand}
+            />
           ) : (
-            <div className="change-loading">{loading ? "Reading diff…" : error || "No textual diff"}</div>
+            <div className="change-loading">
+              {loading ? "Reading diff…" : error || "No textual diff"}
+            </div>
           )}
         </div>
       </Collapsible>
@@ -95,10 +130,14 @@ export function Changes({ active = true }: { active?: boolean }) {
   const [openFiles, setOpenFiles] = useState<Set<string>>(new Set());
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const viewport = useRef<HTMLDivElement>(null);
-  const rows = useMemo(() => groupGitFiles(git?.files ?? []).flatMap((group) => [
-    { key: `group:${group.kind}`, group, file: undefined as GitFile | undefined },
-    ...group.files.map((file) => ({ key: file.path, group: undefined, file })),
-  ]), [git]);
+  const rows = useMemo(
+    () =>
+      groupGitFiles(git?.files ?? []).flatMap((group) => [
+        { key: `group:${group.kind}`, group, file: undefined as GitFile | undefined },
+        ...group.files.map((file) => ({ key: file.path, group: undefined, file })),
+      ]),
+    [git],
+  );
   const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);
   const list = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: rows.length,
@@ -124,13 +163,40 @@ export function Changes({ active = true }: { active?: boolean }) {
           {list.getVirtualItems().map((item) => {
             const { file, group } = rows[item.index]!;
             return (
-              <div className="changes-row" key={item.key} data-index={item.index} ref={list.measureElement} style={{ transform: `translateY(${item.start}px)` }}>
-                {group ? <h3 className="change-category" data-kind={group.kind}>{group.label}<span>{group.files.length}</span></h3> : file && <Row file={file} projectId={projectId} active={active} open={openFiles.has(file.path)} expanded={expandedFiles.has(file.path)} onExpand={() => setExpandedFiles((previous) => new Set(previous).add(file.path))} onToggle={() => setOpenFiles((previous) => {
-                  const next = new Set(previous);
-                  if (next.has(file.path)) next.delete(file.path);
-                  else next.add(file.path);
-                  return next;
-                })} />}
+              <div
+                className="changes-row"
+                key={item.key}
+                data-index={item.index}
+                ref={list.measureElement}
+                style={{ transform: `translateY(${item.start}px)` }}
+              >
+                {group ? (
+                  <h3 className="change-category" data-kind={group.kind}>
+                    {group.label}
+                    <span>{group.files.length}</span>
+                  </h3>
+                ) : (
+                  file && (
+                    <Row
+                      file={file}
+                      projectId={projectId}
+                      active={active}
+                      open={openFiles.has(file.path)}
+                      expanded={expandedFiles.has(file.path)}
+                      onExpand={() =>
+                        setExpandedFiles((previous) => new Set(previous).add(file.path))
+                      }
+                      onToggle={() =>
+                        setOpenFiles((previous) => {
+                          const next = new Set(previous);
+                          if (next.has(file.path)) next.delete(file.path);
+                          else next.add(file.path);
+                          return next;
+                        })
+                      }
+                    />
+                  )
+                )}
               </div>
             );
           })}
@@ -160,8 +226,16 @@ export function Changes({ active = true }: { active?: boolean }) {
             Commit
           </button>
           <details className="commit-description">
-            <summary>Description <span>Optional</span></summary>
-            <textarea aria-label="Commit description" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Explain why this change was made." />
+            <summary>
+              Description <span>Optional</span>
+            </summary>
+            <textarea
+              aria-label="Commit description"
+              rows={3}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Explain why this change was made."
+            />
           </details>
         </form>
       )}

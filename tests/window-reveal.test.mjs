@@ -89,9 +89,7 @@ test("a destroyed window is left alone", () => {
 
 test("a second launch after the window exists focuses it immediately", () => {
   const window = fakeWindow({ minimized: true });
-  const second = createSecondInstanceFocus(
-    () => () => revealDesktopWindow(window),
-  );
+  const second = createSecondInstanceFocus(() => () => revealDesktopWindow(window));
   second.focus();
   assert.deepEqual(window.calls, ["restore", "show", "focus"]);
   second.flush();

@@ -17,11 +17,7 @@ export function GitHubSignIn({
   return (
     <div className="github-connect">
       <GitHubIcon size={38} />
-      <h2>
-        {status.installed
-          ? "Connect your GitHub account"
-          : "Install GitHub CLI"}
-      </h2>
+      <h2>{status.installed ? "Connect your GitHub account" : "Install GitHub CLI"}</h2>
       <p>
         {status.installed
           ? "Citropy uses the GitHub account signed in on this computer. Sign in, then refresh the connection."
@@ -38,12 +34,16 @@ export function GitHubSignIn({
               onMessage((error as Error).message);
             }
           }}
-        >{" "}Sign in to GitHub{" "}</button>
+        >
+          {" "}
+          Sign in to GitHub{" "}
+        </button>
       ) : (
-        <GitHubLink href="https://cli.github.com/">{" "}Get GitHub CLI{" "}</GitHubLink>
+        <GitHubLink href="https://cli.github.com/"> Get GitHub CLI </GitHubLink>
       )}
       <button className="btn" onClick={onRefresh}>
-        <RefreshIcon size={15} />{" "}Refresh connection{" "}</button>
+        <RefreshIcon size={15} /> Refresh connection{" "}
+      </button>
       <details>
         <summary>Connection details</summary>
         <pre>{status.error}</pre>
@@ -72,7 +72,8 @@ export function GitHubAccount({
           <p>@{account.login}</p>
         </div>
         <span className="github-state" data-tone="good">
-          <CheckIcon size={16} />{" "}Connected{" "}</span>
+          <CheckIcon size={16} /> Connected{" "}
+        </span>
       </div>
       <div className="github-account-details">
         <div>
@@ -88,11 +89,16 @@ export function GitHubAccount({
           <span>{workspaceRepo ?? "No GitHub remote connected"}</span>
         </div>
       </div>
-      <p className="github-meta">{" "}Citropy uses your existing GitHub permissions. Credentials stay on this computer and are never sent to the browser.{" "}</p>
+      <p className="github-meta">
+        {" "}
+        Citropy uses your existing GitHub permissions. Credentials stay on this computer and are
+        never sent to the browser.{" "}
+      </p>
       <div className="github-detail-actions">
         <button className="btn" onClick={onRefresh} disabled={loading}>
-          <RefreshIcon size={14} />{" "}Refresh connection{" "}</button>
-        <GitHubLink href="https://github.com/settings/profile">{" "}Manage account{" "}</GitHubLink>
+          <RefreshIcon size={14} /> Refresh connection{" "}
+        </button>
+        <GitHubLink href="https://github.com/settings/profile"> Manage account </GitHubLink>
       </div>
     </div>
   );

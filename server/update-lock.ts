@@ -3,9 +3,7 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 
 export function assertApplicationReady(): void {
   if (locked)
-    throw new Error(
-      "Citropy is restarting to apply an update. Try again after it opens.",
-    );
+    throw new Error("Citropy is restarting to apply an update. Try again after it opens.");
 }
 
 export function lockForAppUpdate(): void {

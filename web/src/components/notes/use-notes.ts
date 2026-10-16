@@ -26,7 +26,11 @@ export function useNotes(projectId: string) {
     return note.id;
   };
   const update = (id: string, patch: Partial<Pick<Note, "title" | "body">>) =>
-    setNotes((previous) => previous.map((note) => (note.id === id ? { ...note, ...patch, updatedAt: Date.now() } : note)));
+    setNotes((previous) =>
+      previous.map((note) =>
+        note.id === id ? { ...note, ...patch, updatedAt: Date.now() } : note,
+      ),
+    );
   const remove = (id: string) => setNotes((previous) => previous.filter((note) => note.id !== id));
 
   return { notes, create, update, remove };
@@ -37,6 +41,10 @@ export function noteMarkdown(note: Note): string {
 }
 
 export function noteFileName(note: Note): string {
-  const slug = note.title.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
+  const slug = note.title
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-|-$/g, "");
   return `${slug || "note"}.md`;
 }

@@ -17,11 +17,7 @@ import {
 } from "./GitHubShared.tsx";
 import type { GitHubRepository } from "../../../../shared/github.ts";
 
-export function GitHubReleases({
-  repository,
-}: {
-  repository: GitHubRepository;
-}) {
+export function GitHubReleases({ repository }: { repository: GitHubRepository }) {
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState("");
@@ -56,9 +52,7 @@ export function GitHubReleases({
       <GitHubFeedback
         error={releases.error}
         loading={releases.loading && !releases.data}
-        empty={
-          releases.data?.items.length === 0 ? "No releases yet" : undefined
-        }
+        empty={releases.data?.items.length === 0 ? "No releases yet" : undefined}
       />
       <div className="github-releases">
         {releases.data?.items.map((release) => (
@@ -95,65 +89,61 @@ export function GitHubReleases({
         ))}
       </div>
       {releases.data && (
-        <GitHubPagination
-          page={page}
-          more={releases.data.more}
-          onChange={setPage}
-        />
+        <GitHubPagination page={page} more={releases.data.more} onChange={setPage} />
       )}
-      <AnimatePresence>{creating && (
-        <GitHubDialog
-          title="Create a release"
-          description={`Create a release in ${repository.full_name}. Saving a draft keeps it unpublished.`}
-          submitLabel="Save release"
-          onClose={() => setCreating(false)}
-          onSubmit={async (data) => {
-            const result = await github("mutate", {
-              repo: repository.full_name,
-              mutation: {
-                action: "createRelease",
-                name: formText(data, "name"),
-                tag: formText(data, "tag"),
-                target: formText(data, "target"),
-                body: formText(data, "body"),
-                draft: data.has("draft"),
-                prerelease: data.has("prerelease"),
-              },
-            });
-            setMessage(result.message);
-            releases.refresh();
-          }}
-        >
-          <label className="git-field">
-            Release name
-            <input name="name" required />
-          </label>
-          <div className="github-form-columns">
-            <label className="git-field">{" "}Tag{" "}<input name="tag" placeholder="v1.0.0" required />
-            </label>
+      <AnimatePresence>
+        {creating && (
+          <GitHubDialog
+            title="Create a release"
+            description={`Create a release in ${repository.full_name}. Saving a draft keeps it unpublished.`}
+            submitLabel="Save release"
+            onClose={() => setCreating(false)}
+            onSubmit={async (data) => {
+              const result = await github("mutate", {
+                repo: repository.full_name,
+                mutation: {
+                  action: "createRelease",
+                  name: formText(data, "name"),
+                  tag: formText(data, "tag"),
+                  target: formText(data, "target"),
+                  body: formText(data, "body"),
+                  draft: data.has("draft"),
+                  prerelease: data.has("prerelease"),
+                },
+              });
+              setMessage(result.message);
+              releases.refresh();
+            }}
+          >
             <label className="git-field">
-              Target branch or commit
-              <input
-                name="target"
-                defaultValue={repository.default_branch}
-                required
-              />
+              Release name
+              <input name="name" required />
             </label>
-          </div>
-          <label className="git-field">
-            Release notes
-            <textarea name="body" rows={6} />
-          </label>
-          <label className="github-checkbox">
-            <input name="draft" type="checkbox" defaultChecked />
-            Save as a draft
-          </label>
-          <label className="github-checkbox">
-            <input name="prerelease" type="checkbox" />
-            Mark as a pre-release
-          </label>
-        </GitHubDialog>
-      )}</AnimatePresence>
+            <div className="github-form-columns">
+              <label className="git-field">
+                {" "}
+                Tag <input name="tag" placeholder="v1.0.0" required />
+              </label>
+              <label className="git-field">
+                Target branch or commit
+                <input name="target" defaultValue={repository.default_branch} required />
+              </label>
+            </div>
+            <label className="git-field">
+              Release notes
+              <textarea name="body" rows={6} />
+            </label>
+            <label className="github-checkbox">
+              <input name="draft" type="checkbox" defaultChecked />
+              Save as a draft
+            </label>
+            <label className="github-checkbox">
+              <input name="prerelease" type="checkbox" />
+              Mark as a pre-release
+            </label>
+          </GitHubDialog>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -7,7 +7,15 @@ import { saveToolImages } from "./tools/tool-images.ts";
 import { describeTool } from "./tools/tools.ts";
 import { workspacePath } from "./workspaces.ts";
 import type { AgentEvent } from "./providers/types.ts";
-import type { FilePatch, ImageFile, Message, Part, Thread, TodoItem, ToolPart } from "../shared/protocol.ts";
+import type {
+  FilePatch,
+  ImageFile,
+  Message,
+  Part,
+  Thread,
+  TodoItem,
+  ToolPart,
+} from "../shared/protocol.ts";
 
 type Event<T extends AgentEvent["type"]> = Extract<AgentEvent, { type: T }>;
 
@@ -25,7 +33,10 @@ function clip(text: string): string {
 }
 
 function imageFilesFor(name: string, raw: unknown, cwd: string): ImageFile[] | undefined {
-  if (["workspace_image", "citropy_workspace_image", "mcp__citropy__workspace_image"].includes(name)) return undefined;
+  if (
+    ["workspace_image", "citropy_workspace_image", "mcp__citropy__workspace_image"].includes(name)
+  )
+    return undefined;
   const input = (raw ?? {}) as Record<string, unknown>;
   for (const key of ["file_path", "filePath", "path", "notebook_path"]) {
     const value = input[key];
@@ -37,12 +48,14 @@ function imageFilesFor(name: string, raw: unknown, cwd: string): ImageFile[] | u
 
 function previewPatch(name: string, rawInput: unknown): FilePatch | undefined {
   const input = (rawInput ?? {}) as Record<string, unknown>;
-  const text = (...keys: string[]) => keys.map((key) => input[key]).find((value): value is string => typeof value === "string");
+  const text = (...keys: string[]) =>
+    keys.map((key) => input[key]).find((value): value is string => typeof value === "string");
   const path = text("file_path", "filePath", "path");
   if (!path) return undefined;
   const before = text("old_string", "oldString");
   const after = text("new_string", "newString");
-  if (name === "Edit" && before !== undefined && after !== undefined) return diffLines(before, after, basename(path));
+  if (name === "Edit" && before !== undefined && after !== undefined)
+    return diffLines(before, after, basename(path));
   const content = text("content");
   if (name === "Write" && content !== undefined) return diffLines("", content, basename(path));
   return undefined;
@@ -95,7 +108,11 @@ export class ThreadTranscript {
 
   endBlock(event: Event<"block.end">): void {
     const ref = this.#blocks.get(event.blockId);
-    if (ref) store.patchPart(this.#thread.id, ref.messageId, ref.partId, { complete: true, endedAt: Date.now() });
+    if (ref)
+      store.patchPart(this.#thread.id, ref.messageId, ref.partId, {
+        complete: true,
+        endedAt: Date.now(),
+      });
     this.#blocks.delete(event.blockId);
   }
 
@@ -130,10 +147,14 @@ export class ThreadTranscript {
     const active = this.#tools.get(event.callId);
     const message = active
       ? thread?.messages.findLast((entry) => entry.id === active.messageId)
-      : thread?.messages.findLast((entry) => entry.parts.some((part) => part.kind === "tool" && part.callId === event.callId));
-    const part = (active
-      ? message?.parts.findLast((entry) => entry.id === active.partId)
-      : message?.parts.findLast((entry) => entry.kind === "tool" && entry.callId === event.callId)) as ToolPart | undefined;
+      : thread?.messages.findLast((entry) =>
+          entry.parts.some((part) => part.kind === "tool" && part.callId === event.callId),
+        );
+    const part = (
+      active
+        ? message?.parts.findLast((entry) => entry.id === active.partId)
+        : message?.parts.findLast((entry) => entry.kind === "tool" && entry.callId === event.callId)
+    ) as ToolPart | undefined;
     if (!message || !part) return;
     const name = event.name ?? part.name;
     const described = describeTool(name, event.input, this.#cwd);
@@ -160,10 +181,12 @@ export class ThreadTranscript {
       ...(event.patch && !part?.patch ? { patch: event.patch } : {}),
     });
     if (event.images?.length) {
-      void saveToolImages(this.#thread.id, event.images, () => store.threads.has(this.#thread.id)).then((images) => {
-        if (!images.length) return;
-        store.patchPart(this.#thread.id, ref.messageId, ref.partId, { images });
-      }).catch((error) => console.error("Saving tool images failed:", this.#thread.id, error));
+      void saveToolImages(this.#thread.id, event.images, () => store.threads.has(this.#thread.id))
+        .then((images) => {
+          if (!images.length) return;
+          store.patchPart(this.#thread.id, ref.messageId, ref.partId, { images });
+        })
+        .catch((error) => console.error("Saving tool images failed:", this.#thread.id, error));
     }
     this.#tools.delete(event.callId);
   }
@@ -178,11 +201,23 @@ export class ThreadTranscript {
 
   finish(stopped: boolean): void {
     for (const ref of this.#blocks.values())
-      store.patchPart(this.#thread.id, ref.messageId, ref.partId, { complete: true, endedAt: Date.now() });
+      store.patchPart(this.#thread.id, ref.messageId, ref.partId, {
+        complete: true,
+        endedAt: Date.now(),
+      });
     for (const ref of this.#tools.values())
-      store.patchPart(this.#thread.id, ref.messageId, ref.partId, stopped
-        ? { status: "stopped", endedAt: Date.now() }
-        : { status: "error", output: "The provider stopped before returning a tool result.", endedAt: Date.now() });
+      store.patchPart(
+        this.#thread.id,
+        ref.messageId,
+        ref.partId,
+        stopped
+          ? { status: "stopped", endedAt: Date.now() }
+          : {
+              status: "error",
+              output: "The provider stopped before returning a tool result.",
+              endedAt: Date.now(),
+            },
+      );
     this.#tools.clear();
     this.#blocks.clear();
     this.#todo = null;
@@ -198,7 +233,9 @@ export class ThreadTranscript {
 
   #findTool(messageId: string, partId: string): ToolPart | undefined {
     const thread = store.threads.get(this.#thread.id);
-    return thread?.messages.findLast((message) => message.id === messageId)?.parts.findLast((entry) => entry.id === partId) as ToolPart | undefined;
+    return thread?.messages
+      .findLast((message) => message.id === messageId)
+      ?.parts.findLast((entry) => entry.id === partId) as ToolPart | undefined;
   }
 
   #message(): string {

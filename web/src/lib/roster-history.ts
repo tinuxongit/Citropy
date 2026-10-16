@@ -8,7 +8,8 @@ const forward: string[] = [];
 let travelling = false;
 
 useApp.subscribe((state, previous) => {
-  if (travelling || !previous.activeRosterId || state.activeRosterId === previous.activeRosterId) return;
+  if (travelling || !previous.activeRosterId || state.activeRosterId === previous.activeRosterId)
+    return;
   back.push(previous.activeRosterId);
   if (back.length > HISTORY_LIMIT) back.shift();
   forward.length = 0;

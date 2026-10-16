@@ -32,7 +32,9 @@ async function resumeWhenAvailable(thread: ThreadMeta): Promise<void> {
   const current = store.threads.get(thread.id);
   if (!current?.usageLimit?.resume || current.running) return;
   if (until !== null) {
-    store.patchThread(thread.id, { usageLimit: { ...current.usageLimit, resetsAt: until, checkedAt: now } });
+    store.patchThread(thread.id, {
+      usageLimit: { ...current.usageLimit, resetsAt: until, checkedAt: now },
+    });
     return;
   }
   writeLog("info", "usage", `Resuming "${current.title}" after its usage limit reset`);
@@ -49,10 +51,19 @@ async function resumeWhenAvailable(thread: ThreadMeta): Promise<void> {
 export function checkUsageResume(): void {
   const now = Date.now();
   for (const thread of store.threads.values()) {
-    if (!thread.usageLimit?.resume || thread.running || thread.parentThreadId || checking.has(thread.id) || !due(thread, now)) continue;
+    if (
+      !thread.usageLimit?.resume ||
+      thread.running ||
+      thread.parentThreadId ||
+      checking.has(thread.id) ||
+      !due(thread, now)
+    )
+      continue;
     checking.add(thread.id);
     void resumeWhenAvailable(thread)
-      .catch((error: Error) => writeLog("error", "usage", `Could not resume "${thread.title}": ${error.message}`))
+      .catch((error: Error) =>
+        writeLog("error", "usage", `Could not resume "${thread.title}": ${error.message}`),
+      )
       .finally(() => checking.delete(thread.id));
   }
 }

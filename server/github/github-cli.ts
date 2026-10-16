@@ -25,15 +25,10 @@ export function command(
       (error, stdout, stderr) => {
         if (!error) return resolve(stdout);
         if ((error as NodeJS.ErrnoException).code === "ENOENT")
-          return reject(
-            new Error(`${binary} is not installed on this computer.`),
-          );
+          return reject(new Error(`${binary} is not installed on this computer.`));
         const detail = stderr
           .trim()
-          .replace(
-            /gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+/g,
-            "[redacted]",
-          );
+          .replace(/gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+/g, "[redacted]");
         reject(
           new Error(
             error.killed
@@ -48,11 +43,7 @@ export function command(
   });
 }
 
-export async function api<T>(
-  endpoint: string,
-  method = "GET",
-  body?: unknown,
-): Promise<T> {
+export async function api<T>(endpoint: string, method = "GET", body?: unknown): Promise<T> {
   const output = await command(
     "gh",
     [

@@ -116,11 +116,23 @@
   font-size: var(--text-xs);
   font-weight: 500;
 }
-.change-category span { color: var(--text-4); font-weight: 400; font-variant-numeric: tabular-nums; }
-.change-category[data-kind="added"] { color: var(--ok); }
-.change-category[data-kind="deleted"] { color: var(--bad); }
-.git-change-category + .git-change-category { margin-top: var(--space-8); }
-.git-change-category .change-category { padding: var(--space-10) var(--space-4) var(--space-6); }
+.change-category span {
+  color: var(--text-4);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.change-category[data-kind="added"] {
+  color: var(--ok);
+}
+.change-category[data-kind="deleted"] {
+  color: var(--bad);
+}
+.git-change-category + .git-change-category {
+  margin-top: var(--space-8);
+}
+.git-change-category .change-category {
+  padding: var(--space-10) var(--space-4) var(--space-6);
+}
 
 .change-name {
   max-width: calc(100% - 23px);

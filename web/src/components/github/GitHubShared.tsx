@@ -19,12 +19,7 @@ export function GitHubLink({
 }) {
   if (!href || !/^https:\/\//i.test(href)) return null;
   return (
-    <a
-      className={className}
-      href={href}
-      target="_blank"
-      rel="noreferrer noopener"
-    >
+    <a className={className} href={href} target="_blank" rel="noreferrer noopener">
       {children}
       <ExternalLinkIcon size={13} />
     </a>
@@ -65,25 +60,13 @@ export function GitHubFeedback({
   return null;
 }
 
-export function GitHubState({
-  state,
-  pull = false,
-}: {
-  state: string | null;
-  pull?: boolean;
-}) {
+export function GitHubState({ state, pull = false }: { state: string | null; pull?: boolean }) {
   const value = (state ?? "pending").toLowerCase();
   const tone = ["merged"].includes(value)
     ? "merged"
     : ["open", "success", "completed", "approved"].includes(value)
       ? "good"
-      : [
-            "failure",
-            "error",
-            "timed_out",
-            "changes_requested",
-            "closed",
-          ].includes(value)
+      : ["failure", "error", "timed_out", "changes_requested", "closed"].includes(value)
         ? "bad"
         : "pending";
   const Icon =
@@ -116,20 +99,12 @@ export function GitHubPagination({
   if (page === 1 && !more) return null;
   return (
     <div className="github-pagination">
-      <button
-        className="btn"
-        disabled={page === 1}
-        onClick={() => onChange(page - 1)}
-      >
+      <button className="btn" disabled={page === 1} onClick={() => onChange(page - 1)}>
         <ArrowLeftIcon size={14} />
         Previous
       </button>
       <span>Page {page}</span>
-      <button
-        className="btn"
-        disabled={!more}
-        onClick={() => onChange(page + 1)}
-      >
+      <button className="btn" disabled={!more} onClick={() => onChange(page + 1)}>
         Next
         <ArrowRightIcon size={14} />
       </button>
@@ -186,13 +161,7 @@ export function GitHubDialog({
       onSubmit={(event) => void submit(event)}
       footer={
         <>
-          <button
-            type="button"
-            className="btn"
-            disabled={busy}
-            data-cancel
-            onClick={onClose}
-          >
+          <button type="button" className="btn" disabled={busy} data-cancel onClick={onClose}>
             {onSubmit ? "Cancel" : "Close"}
           </button>
           {onSubmit && (
@@ -211,9 +180,7 @@ export function GitHubDialog({
       <fieldset disabled={busy || !connected}>{children}</fieldset>
       <GitHubFeedback error={error} />
       {!connected && (
-        <p role="status">
-          Reconnecting to Citropy… You can continue when the connection returns.
-        </p>
+        <p role="status">Reconnecting to Citropy… You can continue when the connection returns.</p>
       )}
     </Modal>
   );

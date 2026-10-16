@@ -36,12 +36,18 @@ export function inside(root: string, path: string): string | null {
   return abs;
 }
 
-export function sameFile(left: { dev: number; ino: number }, right: { dev: number; ino: number }): boolean {
+export function sameFile(
+  left: { dev: number; ino: number },
+  right: { dev: number; ino: number },
+): boolean {
   return left.dev === right.dev && left.ino === right.ino;
 }
 
 /** Capture every canonical directory component so ABA path replacement is detectable. */
-export async function directoryState(root: string, target: string): Promise<DirectoryState[] | null> {
+export async function directoryState(
+  root: string,
+  target: string,
+): Promise<DirectoryState[] | null> {
   const rel = relative(root, target);
   if (isAbsolute(rel) || rel === ".." || rel.startsWith(`..${sep}`)) return null;
   const paths = [root];
@@ -69,8 +75,14 @@ export async function directoryState(root: string, target: string): Promise<Dire
 export async function sameDirectoryState(states: DirectoryState[]): Promise<boolean> {
   for (const expected of states) {
     const info = await stat(expected.path, { bigint: true });
-    if (!info.isDirectory() || info.dev !== expected.dev || info.ino !== expected.ino ||
-        info.ctimeNs !== expected.ctimeNs || info.mtimeNs !== expected.mtimeNs) return false;
+    if (
+      !info.isDirectory() ||
+      info.dev !== expected.dev ||
+      info.ino !== expected.ino ||
+      info.ctimeNs !== expected.ctimeNs ||
+      info.mtimeNs !== expected.mtimeNs
+    )
+      return false;
   }
   return true;
 }
@@ -169,13 +181,19 @@ export interface FoundFile {
 /** Walk every folder under a contained path without following symlinks and keep the top matches. */
 export async function find(
   root: string,
-  options: { path: string; name?: string; sort: "size" | "modified"; limit: number; signal?: AbortSignal },
+  options: {
+    path: string;
+    name?: string;
+    sort: "size" | "modified";
+    limit: number;
+    signal?: AbortSignal;
+  },
 ): Promise<{ files: FoundFile[]; scanned: number; complete: boolean }> {
   const start = inside(root, options.path);
   if (!start) throw new Error("Choose a folder inside this workspace.");
   if (!(await stat(start)).isDirectory()) throw new Error(`Not a folder: ${options.path}`);
   const name = options.name?.toLowerCase();
-  const rank = (file: FoundFile) => options.sort === "size" ? file.size : file.modified;
+  const rank = (file: FoundFile) => (options.sort === "size" ? file.size : file.modified);
   const files: FoundFile[] = [];
   const pending = [start];
   const deadline = Date.now() + FIND_TIME_LIMIT_MS;
@@ -187,21 +205,32 @@ export async function find(
     if (files.length > options.limit) files.pop();
   };
   const visit = async (directory: string) => {
-    const entries = await readdir(directory, { withFileTypes: true }).catch(unlessCode(UNREADABLE, []));
+    const entries = await readdir(directory, { withFileTypes: true }).catch(
+      unlessCode(UNREADABLE, []),
+    );
     scanned += entries.length;
     const matches: string[] = [];
     for (const entry of entries) {
       const path = join(directory, entry.name);
       if (entry.isDirectory()) {
         if (!PSEUDO_FILESYSTEMS.has(path)) pending.push(path);
-      } else if (entry.isFile() && (!name || entry.name.toLowerCase().includes(name))) matches.push(path);
+      } else if (entry.isFile() && (!name || entry.name.toLowerCase().includes(name)))
+        matches.push(path);
     }
-    for (const info of await Promise.all(matches.map((path) => lstat(path).then((stats) => ({ path, size: stats.size, modified: stats.mtimeMs }), () => null))))
+    for (const info of await Promise.all(
+      matches.map((path) =>
+        lstat(path).then(
+          (stats) => ({ path, size: stats.size, modified: stats.mtimeMs }),
+          () => null,
+        ),
+      ),
+    ))
       if (info) keep(info);
   };
   while (pending.length) {
     options.signal?.throwIfAborted();
-    if (scanned >= FIND_ENTRY_LIMIT || Date.now() > deadline) return { files, scanned, complete: false };
+    if (scanned >= FIND_ENTRY_LIMIT || Date.now() > deadline)
+      return { files, scanned, complete: false };
     await Promise.all(pending.splice(-FIND_PARALLEL_FOLDERS).map(visit));
   }
   return { files, scanned, complete: true };

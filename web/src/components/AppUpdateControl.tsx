@@ -12,13 +12,18 @@ import { StripPeek } from "./StripPeek.tsx";
 import { UpdateIcon } from "./icons/UpdateIcon.tsx";
 
 const notesMotion = {
-  enter: ({ step, reducedMotion }: { step: number; reducedMotion: boolean }) => ({ opacity: 0, transform: reducedMotion ? "none" : `translateX(${-8 * step}px)` }),
+  enter: ({ step, reducedMotion }: { step: number; reducedMotion: boolean }) => ({
+    opacity: 0,
+    transform: reducedMotion ? "none" : `translateX(${-8 * step}px)`,
+  }),
   shown: { opacity: 1, transform: "none" },
-  leave: ({ step, reducedMotion }: { step: number; reducedMotion: boolean }) => ({ opacity: 0, transform: reducedMotion ? "none" : `translateX(${8 * step}px)` }),
+  leave: ({ step, reducedMotion }: { step: number; reducedMotion: boolean }) => ({
+    opacity: 0,
+    transform: reducedMotion ? "none" : `translateX(${8 * step}px)`,
+  }),
 };
 
-const size = (bytes?: number) =>
-  bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : "";
+const size = (bytes?: number) => (bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : "");
 
 export function AppUpdateControl({ variant }: { variant: "strip" | "settings" }) {
   const reducedMotion = useReducedMotion();
@@ -50,11 +55,8 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
     return () => clearTimeout(reset);
   }, [state]);
   const downloading = state.status === "downloading";
-  const busy =
-    downloading || state.status === "checking" || state.status === "installing";
-  const ready =
-    state.status === "ready" ||
-    (state.status === "error" && state.retry === "install");
+  const busy = downloading || state.status === "checking" || state.status === "installing";
+  const ready = state.status === "ready" || (state.status === "error" && state.retry === "install");
   const action = ready
     ? "install"
     : state.status === "available"
@@ -84,10 +86,12 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
           : ready
             ? "Your update is ready"
             : label;
-  const notesVersion = state.version && state.status !== "current" ? state.version : state.currentVersion;
+  const notesVersion =
+    state.version && state.status !== "current" ? state.version : state.currentVersion;
   const latestNotes = state.notes?.version === notesVersion ? state.notes : undefined;
   const notes = browsed === undefined ? latestNotes : history?.[browsed];
-  const position = history && notes ? history.findIndex((release) => release.version === notes.version) : -1;
+  const position =
+    history && notes ? history.findIndex((release) => release.version === notes.version) : -1;
   const browse = async (step: 1 | -1) => {
     let releases = history;
     if (!releases) {
@@ -109,7 +113,10 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
     setDirection(step);
     setBrowsed(next);
     const last = step === 1 ? next === releases.length - 1 : next === 0;
-    if (last) requestAnimationFrame(() => (step === 1 ? newerArrow : olderArrow).current?.focus({ preventScroll: true }));
+    if (last)
+      requestAnimationFrame(() =>
+        (step === 1 ? newerArrow : olderArrow).current?.focus({ preventScroll: true }),
+      );
   };
   const show = () => {
     clearTimeout(timer.current);
@@ -129,8 +136,28 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
   };
   const releaseArrows = (
     <>
-      <button ref={olderArrow} type="button" className="icon-btn" aria-label="Older release" title="Older release" disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)} onClick={() => void browse(1)}><ChevronLeftIcon size={15} /></button>
-      <button ref={newerArrow} type="button" className="icon-btn" aria-label="Newer release" title="Newer release" disabled={!history || position <= 0} onClick={() => void browse(-1)}><ChevronRightIcon size={15} /></button>
+      <button
+        ref={olderArrow}
+        type="button"
+        className="icon-btn"
+        aria-label="Older release"
+        title="Older release"
+        disabled={Boolean(history) && (position < 0 || position >= history!.length - 1)}
+        onClick={() => void browse(1)}
+      >
+        <ChevronLeftIcon size={15} />
+      </button>
+      <button
+        ref={newerArrow}
+        type="button"
+        className="icon-btn"
+        aria-label="Newer release"
+        title="Newer release"
+        disabled={!history || position <= 0}
+        onClick={() => void browse(-1)}
+      >
+        <ChevronRightIcon size={15} />
+      </button>
     </>
   );
   const Icon =
@@ -144,7 +171,9 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
   const face = (
     <>
       {state.status !== "error" && busy && !downloading ? <Loader size={17} /> : <Icon size={17} />}
-      {variant === "settings" ? label : downloading && <small>{Math.floor(state.percent || 0)}%</small>}
+      {variant === "settings"
+        ? label
+        : downloading && <small>{Math.floor(state.percent || 0)}%</small>}
     </>
   );
   const content = (
@@ -152,7 +181,9 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
       <div className="app-update-heading">
         {state.status === "current" ? <CheckIcon size={16} /> : <Icon size={16} />}
         <strong>{title}</strong>
-        {notes && variant !== "settings" && <span className="app-update-arrows">{releaseArrows}</span>}
+        {notes && variant !== "settings" && (
+          <span className="app-update-arrows">{releaseArrows}</span>
+        )}
       </div>
       {state.currentVersion && (
         <small>
@@ -183,9 +214,9 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
             <div style={{ width: `${state.percent || 0}%` }} />
           </div>
           <p>
-            {state.bytesPerSecond
-              ? `${size(state.bytesPerSecond)}/s · `
-              : ""}You can keep working while it downloads.</p>
+            {state.bytesPerSecond ? `${size(state.bytesPerSecond)}/s · ` : ""}You can keep working
+            while it downloads.
+          </p>
         </>
       ) : ready ? (
         <p>Download verified. Click again to restart Citropy and apply it.</p>
@@ -202,8 +233,20 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
         <div className="app-update-notes">
           <div className="app-update-notes-heading">
             <span className="app-update-notes-title">
-              <AnimatePresence initial={false} mode="popLayout" custom={{ step: direction, reducedMotion }}>
-                <motion.strong key={notes.version} custom={{ step: direction, reducedMotion }} variants={notesMotion} initial="enter" animate="shown" exit="leave" transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}>
+              <AnimatePresence
+                initial={false}
+                mode="popLayout"
+                custom={{ step: direction, reducedMotion }}
+              >
+                <motion.strong
+                  key={notes.version}
+                  custom={{ step: direction, reducedMotion }}
+                  variants={notesMotion}
+                  initial="enter"
+                  animate="shown"
+                  exit="leave"
+                  transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                >
                   What's in {notes.version}
                 </motion.strong>
               </AnimatePresence>
@@ -212,20 +255,38 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
           </div>
           {historyError && <p className="app-update-notes-error">Could not load older releases.</p>}
           <div className="app-update-notes-body">
-            <AnimatePresence initial={false} mode="popLayout" custom={{ step: direction, reducedMotion }}>
-              <motion.div key={notes.version} custom={{ step: direction, reducedMotion }} variants={notesMotion} initial="enter" animate="shown" exit="leave" transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}>
+            <AnimatePresence
+              initial={false}
+              mode="popLayout"
+              custom={{ step: direction, reducedMotion }}
+            >
+              <motion.div
+                key={notes.version}
+                custom={{ step: direction, reducedMotion }}
+                variants={notesMotion}
+                initial="enter"
+                animate="shown"
+                exit="leave"
+                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+              >
                 {notes.sections.map((section) => (
                   <section key={section.title}>
                     {section.title && <span>{section.title}</span>}
-                    <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>
+                    <ul>
+                      {section.items.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
                   </section>
                 ))}
               </motion.div>
             </AnimatePresence>
           </div>
         </div>
-      ) : state.notesError && (
-        <p className="app-update-notes-error">Could not load what this release includes.</p>
+      ) : (
+        state.notesError && (
+          <p className="app-update-notes-error">Could not load what this release includes.</p>
+        )
       )}
     </>
   );
@@ -236,7 +297,11 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
       onPointerLeave={hide}
       onFocus={show}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget) && !event.currentTarget.matches(":hover")) hide();
+        if (
+          !event.currentTarget.contains(event.relatedTarget) &&
+          !event.currentTarget.matches(":hover")
+        )
+          hide();
       }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
@@ -249,27 +314,48 @@ export function AppUpdateControl({ variant }: { variant: "strip" | "settings" })
       <button
         ref={button}
         type="button"
-        className={variant === "settings" ? "btn app-update-button" : "rail-action app-update-button"}
+        className={
+          variant === "settings" ? "btn app-update-button" : "rail-action app-update-button"
+        }
         data-state={state.status}
         aria-label={label}
         aria-describedby={open ? id : undefined}
         aria-disabled={busy || state.status === "unsupported"}
         onClick={() => void run()}
       >
-        {variant === "strip" ? (
-          <span className="strip-action-face">{face}</span>
-        ) : face}
+        {variant === "strip" ? <span className="strip-action-face">{face}</span> : face}
       </button>
       {variant === "strip" ? (
-        <StripPeek anchor={button.current} open={open} className="update-peek" id={id} role="dialog" aria-label={title}>
-          <div ref={popover} className="app-update-popover">{content}</div>
+        <StripPeek
+          anchor={button.current}
+          open={open}
+          className="update-peek"
+          id={id}
+          role="dialog"
+          aria-label={title}
+        >
+          <div ref={popover} className="app-update-popover">
+            {content}
+          </div>
         </StripPeek>
       ) : (
-        <AnimatePresence>{open && (
-          <motion.div ref={popover} initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="app-update-popover" id={id} role="dialog" aria-label={title}>
-            {content}
-          </motion.div>
-        )}</AnimatePresence>
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              ref={popover}
+              initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }}
+              transition={{ duration: reducedMotion ? 0 : 0.16 }}
+              className="app-update-popover"
+              id={id}
+              role="dialog"
+              aria-label={title}
+            >
+              {content}
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
     </div>
   );

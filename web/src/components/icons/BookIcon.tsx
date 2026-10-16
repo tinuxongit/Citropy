@@ -9,7 +9,14 @@ const LINE_WIDTH = 1.75;
 export function BookIcon({ size = 24 }: { size?: number }) {
   const id = useId();
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <defs>
         <mask id={id}>
           <rect width="24" height="24" fill="white" />

@@ -15,14 +15,12 @@ const memory = (bytes: number) =>
     : `${Math.round(bytes / 1024 ** 2)} MB`;
 
 export function DiagnosticsSettings() {
-  const development = useApp(state => state.development);
-  const providers = useApp(state => state.providers);
-  const connected = useApp(state => state.connected);
-  const logging = useApp(state => state.logging);
+  const development = useApp((state) => state.development);
+  const providers = useApp((state) => state.providers);
+  const connected = useApp((state) => state.connected);
+  const logging = useApp((state) => state.logging);
   const [data, setData] = useState<DiagnosticReport>();
-  const [history, setHistory] = useState<
-    Array<{ time: number; memory: number }>
-  >([]);
+  const [history, setHistory] = useState<Array<{ time: number; memory: number }>>([]);
   const [error, setError] = useState("");
   const [live, setLive] = useState(true);
   const [revision, setRevision] = useState(0);
@@ -54,15 +52,22 @@ export function DiagnosticsSettings() {
   }, [live, revision]);
   const max = Math.max(...history.map((sample) => sample.memory), 1);
   const measuredCpu = data?.processes.filter((entry) => entry.cpu !== null) ?? [];
-  const totalMemory = memory(data?.processes.reduce((total, entry) => total + entry.memory, 0) ?? 0);
-  const totalCpu = measuredCpu.length ? `${measuredCpu.reduce((total, entry) => total + entry.cpu!, 0).toFixed(1)}%` : undefined;
+  const totalMemory = memory(
+    data?.processes.reduce((total, entry) => total + entry.memory, 0) ?? 0,
+  );
+  const totalCpu = measuredCpu.length
+    ? `${measuredCpu.reduce((total, entry) => total + entry.cpu!, 0).toFixed(1)}%`
+    : undefined;
   return (
     <div className="feature-stack">
       <div className="settings-group">
         <label className="setting-row">
           <span>
             <strong>Save logs</strong>
-            <small>Write errors and app events to a file on this computer so problems are easier to trace. Conversation content is not saved.</small>
+            <small>
+              Write errors and app events to a file on this computer so problems are easier to
+              trace. Conversation content is not saved.
+            </small>
           </span>
           <input
             className="setting-switch"
@@ -77,14 +82,17 @@ export function DiagnosticsSettings() {
           <div className="setting-row">
             <span>
               <strong>Log file</strong>
-              <small><code>{logging.file}</code></small>
+              <small>
+                <code>{logging.file}</code>
+              </small>
             </span>
             <button
               type="button"
               className="btn"
               onClick={() => void copyText(logging.file).catch(reportError)}
             >
-              <CopyIcon size={14} />Copy path
+              <CopyIcon size={14} />
+              Copy path
             </button>
           </div>
         )}
@@ -98,10 +106,7 @@ export function DiagnosticsSettings() {
           />
           Live updates every 3 seconds
         </label>
-        <button
-          className="btn"
-          onClick={() => setRevision((value) => value + 1)}
-        >
+        <button className="btn" onClick={() => setRevision((value) => value + 1)}>
           <RefreshIcon size={15} />
           Refresh
         </button>
@@ -113,46 +118,113 @@ export function DiagnosticsSettings() {
       )}
       {data ? (
         <>
-          <details className="feature-section"><summary>Provider capabilities</summary><div className="feature-table-wrap scroll"><table className="feature-table"><thead><tr><th>Provider</th><th>Transport</th><th>Steering</th><th>Compaction</th><th>Stop individual shell</th></tr></thead><tbody>{providers.map(provider => <tr key={provider.id}><td>{provider.label}</td><td>{provider.capabilities?.transport ?? "Unknown"}</td>{["steer", "compact", "stopShell"].map(key => <td key={key}>{provider.capabilities ? (provider.capabilities[key as "steer" | "compact" | "stopShell"] ? "Supported" : "Unavailable") : "Unknown"}</td>)}</tr>)}</tbody></table></div></details>
-          {development && <details className="feature-section">
-            <summary>Provider events · {data.protocol?.length ?? 0}</summary>
-            <p className="feature-note">Recent event types and validation errors. Message content and credentials are not recorded here.</p>
-            <div className="feature-table-wrap scroll"><table className="feature-table"><thead><tr><th>Provider</th><th>Event</th><th>Status</th></tr></thead><tbody>{data.protocol?.slice().reverse().map((entry, index) => <tr key={`${entry.at}-${index}`}><td>{entry.provider}</td><td>{entry.type}</td><td>{entry.issue || "Accepted"}</td></tr>)}</tbody></table></div>
-          </details>}
+          <details className="feature-section">
+            <summary>Provider capabilities</summary>
+            <div className="feature-table-wrap scroll">
+              <table className="feature-table">
+                <thead>
+                  <tr>
+                    <th>Provider</th>
+                    <th>Transport</th>
+                    <th>Steering</th>
+                    <th>Compaction</th>
+                    <th>Stop individual shell</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {providers.map((provider) => (
+                    <tr key={provider.id}>
+                      <td>{provider.label}</td>
+                      <td>{provider.capabilities?.transport ?? "Unknown"}</td>
+                      {["steer", "compact", "stopShell"].map((key) => (
+                        <td key={key}>
+                          {provider.capabilities
+                            ? provider.capabilities[key as "steer" | "compact" | "stopShell"]
+                              ? "Supported"
+                              : "Unavailable"
+                            : "Unknown"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+          {development && (
+            <details className="feature-section">
+              <summary>Provider events · {data.protocol?.length ?? 0}</summary>
+              <p className="feature-note">
+                Recent event types and validation errors. Message content and credentials are not
+                recorded here.
+              </p>
+              <div className="feature-table-wrap scroll">
+                <table className="feature-table">
+                  <thead>
+                    <tr>
+                      <th>Provider</th>
+                      <th>Event</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.protocol
+                      ?.slice()
+                      .reverse()
+                      .map((entry, index) => (
+                        <tr key={`${entry.at}-${index}`}>
+                          <td>{entry.provider}</td>
+                          <td>{entry.type}</td>
+                          <td>{entry.issue || "Accepted"}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
           <div className="metric-grid">
             <div>
               <CpuIcon size={20} />
               <span>Citropy total</span>
               <strong>{totalMemory}</strong>
-              <small>{totalCpu ? `${totalCpu} CPU` : "Measuring CPU"} · {data.processes.length}{" "}processes</small>
+              <small>
+                {totalCpu ? `${totalCpu} CPU` : "Measuring CPU"} · {data.processes.length} processes
+              </small>
             </div>
             <div>
               <MemoryIcon size={20} />
               <span>Server memory</span>
               <strong>{memory(data.server.rss)}</strong>
-              <small>{memory(data.server.heapUsed)}{" "}JavaScript heap</small>
+              <small>{memory(data.server.heapUsed)} JavaScript heap</small>
             </div>
             <div>
               <CpuIcon size={20} />
               <span>System memory</span>
-              <strong>
-                {memory(data.system.memoryTotal - data.system.memoryFree)}
-              </strong>
-              <small>{" "}of{" "}{memory(data.system.memoryTotal)} · {data.system.cores}{" "}CPU cores{" "}</small>
+              <strong>{memory(data.system.memoryTotal - data.system.memoryFree)}</strong>
+              <small>
+                {" "}
+                of {memory(data.system.memoryTotal)} · {data.system.cores} CPU cores{" "}
+              </small>
             </div>
             <div>
               <PulseIcon size={20} />
               <span>Active work</span>
-              <strong>{data.running}{" "}conversations</strong>
+              <strong>{data.running} conversations</strong>
               <small>
-                {data.terminals}{" "}terminals ·{" "}{data.browsers}{" "}browser tabs{" "}</small>
+                {data.terminals} terminals · {data.browsers} browser tabs{" "}
+              </small>
             </div>
           </div>
           <section className="resource-chart">
             <div className="feature-section-heading">
               <h2>Server memory</h2>
-              {history.length > 1 && <span>{" "}Last{" "}
-                {Math.round((history.at(-1)!.time - history[0]!.time) / 1000)}{" "}{" "}seconds{" "}</span>}
+              {history.length > 1 && (
+                <span>
+                  {" "}
+                  Last {Math.round((history.at(-1)!.time - history[0]!.time) / 1000)} seconds{" "}
+                </span>
+              )}
             </div>
             <svg
               viewBox="0 0 600 90"
@@ -160,9 +232,7 @@ export function DiagnosticsSettings() {
               aria-label="Recent server memory usage"
               preserveAspectRatio="none"
             >
-              {history.length === 1 && (
-                <circle cx="3" cy="10" r="3" fill="var(--text-2)" />
-              )}
+              {history.length === 1 && <circle cx="3" cy="10" r="3" fill="var(--text-2)" />}
               <polyline
                 points={history
                   .map(
@@ -180,7 +250,7 @@ export function DiagnosticsSettings() {
           <section>
             <div className="feature-section-heading">
               <h2>Citropy processes</h2>
-              <span>{data.processes.length}{" "}processes</span>
+              <span>{data.processes.length} processes</span>
             </div>
             <div className="feature-table-wrap scroll">
               <table className="feature-table">
@@ -188,8 +258,12 @@ export function DiagnosticsSettings() {
                   <tr>
                     <th>Process</th>
                     <th>PID</th>
-                    <th>CPU{totalCpu && <span className="feature-table-total">{totalCpu}</span>}</th>
-                    <th>Memory<span className="feature-table-total">{totalMemory}</span></th>
+                    <th>
+                      CPU{totalCpu && <span className="feature-table-total">{totalCpu}</span>}
+                    </th>
+                    <th>
+                      Memory<span className="feature-table-total">{totalMemory}</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -204,8 +278,11 @@ export function DiagnosticsSettings() {
                 </tbody>
               </table>
             </div>
-            <p className="feature-note">{" "}CPU is measured between updates. One fully used core is 100%. Server uptime:{" "}
-              {Math.floor(data.uptime / 60)}{" "}minutes. Updates stop when this view closes.{" "}</p>
+            <p className="feature-note">
+              {" "}
+              CPU is measured between updates. One fully used core is 100%. Server uptime:{" "}
+              {Math.floor(data.uptime / 60)} minutes. Updates stop when this view closes.{" "}
+            </p>
           </section>
         </>
       ) : (

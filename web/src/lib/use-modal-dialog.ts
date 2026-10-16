@@ -12,7 +12,11 @@ export function useModalDialog(initialFocus: string, returnFocus?: HTMLElement |
     dialog?.querySelector<HTMLElement>(initialFocus)?.focus();
     return () => {
       dialog?.close();
-      if (previous instanceof HTMLElement && previous.isConnected && !document.querySelector("dialog[open]"))
+      if (
+        previous instanceof HTMLElement &&
+        previous.isConnected &&
+        !document.querySelector("dialog[open]")
+      )
         previous.focus();
     };
   }, [present]);

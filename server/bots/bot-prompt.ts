@@ -8,10 +8,14 @@ function profile(bot: Bot): string {
   return [
     `You are ${bot.name}${bot.title ? `, ${bot.title}` : ""}, a Citropy bot with its own long-running conversation.`,
     bot.description ? `Standing instructions from the user:\n${bot.description}` : "",
-    bot.memory.length ? `Your memories, saved by you earlier:\n${bot.memory.map(entry => `- [${entry.id}] ${entry.text}`).join("\n")}` : "",
+    bot.memory.length
+      ? `Your memories, saved by you earlier:\n${bot.memory.map((entry) => `- [${entry.id}] ${entry.text}`).join("\n")}`
+      : "",
     'Load tool_help with {"category":"bots"} to see the other bots, hand work to them with bots_message, post into your group chats with bots_group_post, and create a new bot with bots_create when a job needs its own long-lived owner.',
     "Load the routine category to schedule tasks for yourself, from every minute to once at a set time. Keep lasting memories with bots_memory_save in the bots category: stable working preferences, important facts, and short summaries of finished work. Replace a memory when the user corrects it. Memories can go stale, so check current sources before acting on one for a consequential decision.",
-  ].filter(Boolean).join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 const ADDRESSED: Record<GroupAddress, string> = {
@@ -22,7 +26,10 @@ const ADDRESSED: Record<GroupAddress, string> = {
 
 function groupSender(origin: Extract<MessageOrigin, { kind: "group" }>): string {
   const group = groupStore.get(origin.groupId);
-  const members = groupStore.members(group).map(bot => `${bot.name} (@${botHandle(bot.name)})`).join(", ");
+  const members = groupStore
+    .members(group)
+    .map((bot) => `${bot.name} (@${botHandle(bot.name)})`)
+    .join(", ");
   return [
     `This message is from ${origin.botId ? `${origin.name}, another bot,` : "the user"} in the group chat "${group.name}" (groupId ${group.id}). Members: ${members}.`,
     ADDRESSED[origin.addressed],
@@ -53,8 +60,12 @@ function sender(origin: MessageOrigin): string {
 export function withBotContext(thread: Thread, prompt: string, origin?: MessageOrigin): string {
   if (!thread.botId) return prompt;
   const bot = botStore.get(thread.botId);
-  const briefed = thread.externalId && (bot.briefedAt ?? 0) >= Math.max(bot.profileUpdatedAt, thread.compactedAt ?? 0);
+  const briefed =
+    thread.externalId &&
+    (bot.briefedAt ?? 0) >= Math.max(bot.profileUpdatedAt, thread.compactedAt ?? 0);
   const notes = [briefed ? "" : profile(bot), origin ? sender(origin) : ""].filter(Boolean);
   if (!briefed) botStore.markBriefed(bot.id);
-  return notes.length ? `<citropy-bot>\n${notes.join("\n\n")}\n</citropy-bot>\n\n${prompt}` : prompt;
+  return notes.length
+    ? `<citropy-bot>\n${notes.join("\n\n")}\n</citropy-bot>\n\n${prompt}`
+    : prompt;
 }

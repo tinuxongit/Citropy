@@ -13,7 +13,14 @@ export const MessageNavigator = memo(function MessageNavigator({
   activeMessageId?: string;
   onSelect: (messageId: string) => void;
 }) {
-  const messages = useMemo(() => rows.filter((row): row is TimelineRow & { messageId: string } => row.first && row.messageId !== undefined), [rows]);
+  const messages = useMemo(
+    () =>
+      rows.filter(
+        (row): row is TimelineRow & { messageId: string } =>
+          row.first && row.messageId !== undefined,
+      ),
+    [rows],
+  );
   const [preview, setPreview] = useState<string>();
   const [focused, setFocused] = useState<string>();
   const track = useRef<HTMLDivElement>(null);
@@ -27,13 +34,20 @@ export const MessageNavigator = memo(function MessageNavigator({
   const stops = Array.from({ length: Math.ceil(messages.length / groupSize) }, (_, group) => {
     const start = group * groupSize;
     const end = Math.min(start + groupSize, messages.length);
-    const index = focusedIndex >= start && focusedIndex < end ? focusedIndex
-      : activeIndex >= start && activeIndex < end ? activeIndex : start;
+    const index =
+      focusedIndex >= start && focusedIndex < end
+        ? focusedIndex
+        : activeIndex >= start && activeIndex < end
+          ? activeIndex
+          : start;
     return { group, index, messageId: messages[index]!.messageId };
   });
   useLayoutEffect(() => {
     if (focusedIndex < 0) return;
-    track.current?.querySelector<HTMLButtonElement>(`[data-message-group="${Math.floor(focusedIndex / groupSize)}"]`)
+    track.current
+      ?.querySelector<HTMLButtonElement>(
+        `[data-message-group="${Math.floor(focusedIndex / groupSize)}"]`,
+      )
       ?.focus({ preventScroll: true });
   }, [focusedIndex, groupSize]);
   if (messages.length < 2) return null;
@@ -54,19 +68,18 @@ export const MessageNavigator = memo(function MessageNavigator({
           }
         }}
         onKeyDown={(event) => {
-          const index = Number(
-            (event.target as HTMLElement).dataset.messageIndex,
-          );
+          const index = Number((event.target as HTMLElement).dataset.messageIndex);
           let next: number | undefined;
           if (event.key === "Home") next = 0;
           if (event.key === "End") next = messages.length - 1;
           if (event.key === "ArrowUp") next = Math.max(0, index - 1);
-          if (event.key === "ArrowDown")
-            next = Math.min(messages.length - 1, index + 1);
+          if (event.key === "ArrowDown") next = Math.min(messages.length - 1, index + 1);
           if (next !== undefined) {
             event.preventDefault();
             event.currentTarget
-              .querySelector<HTMLButtonElement>(`[data-message-group="${Math.floor(next / groupSize)}"]`)
+              .querySelector<HTMLButtonElement>(
+                `[data-message-group="${Math.floor(next / groupSize)}"]`,
+              )
               ?.focus({ preventScroll: true });
             setFocused(messages[next]!.messageId);
             setPreview(messages[next]!.messageId);
@@ -83,9 +96,7 @@ export const MessageNavigator = memo(function MessageNavigator({
             data-message-group={group}
             aria-label={`Go to message ${index + 1}`}
             aria-current={index === activeIndex ? "location" : undefined}
-            aria-describedby={
-              messageId === preview ? "message-nav-preview" : undefined
-            }
+            aria-describedby={messageId === preview ? "message-nav-preview" : undefined}
             tabIndex={group === Math.floor(activeIndex / groupSize) ? 0 : -1}
             onMouseEnter={() => setPreview(messageId)}
             onFocus={() => {
@@ -105,7 +116,11 @@ export const MessageNavigator = memo(function MessageNavigator({
             className="message-nav-preview"
             id="message-nav-preview"
             role="tooltip"
-            style={{ "--position": `${((previewIndex + 0.5) / messages.length) * 100}%` } as CSSProperties}
+            style={
+              {
+                "--position": `${((previewIndex + 0.5) / messages.length) * 100}%`,
+              } as CSSProperties
+            }
           >
             <MessagePreview messageId={preview} index={previewIndex} />
           </div>
@@ -115,23 +130,18 @@ export const MessageNavigator = memo(function MessageNavigator({
   );
 });
 
-function MessagePreview({
-  messageId,
-  index,
-}: {
-  messageId: string;
-  index: number;
-}) {
+function MessagePreview({ messageId, index }: { messageId: string; index: number }) {
   const message = useApp((state) => state.messages[messageId]);
   const author = useApp((state) => {
     const message = state.messages[messageId];
     if (message?.role === "user")
-      return state.showGitHubIdentity ? state.githubAccount?.login ?? "You" : "You";
+      return state.showGitHubIdentity ? (state.githubAccount?.login ?? "You") : "You";
     const thread = state.threads[state.activeThreadId ?? ""];
-    const provider = state.providers.find(
-      (entry) => entry.id === thread?.provider,
+    const provider = state.providers.find((entry) => entry.id === thread?.provider);
+    return modelLabel(
+      providerAccount(provider, thread?.providerInstanceId).models,
+      message?.model ?? thread?.model,
     );
-    return modelLabel(providerAccount(provider, thread?.providerInstanceId).models, message?.model ?? thread?.model);
   });
   const excerpt = useApp((state) => {
     const shell = state.messages[messageId];
@@ -141,17 +151,22 @@ function MessagePreview({
       if (part?.kind === "text" && part.text.trim()) {
         const threadId = state.activeThreadId;
         if (
-          !state.textStreaming && part.complete !== true && threadId &&
+          !state.textStreaming &&
+          part.complete !== true &&
+          threadId &&
           state.threads[threadId]?.running &&
-          state.order[threadId]?.at(-1) === messageId && shell.role !== "user"
+          state.order[threadId]?.at(-1) === messageId &&
+          shell.role !== "user"
         )
           return "Response in progress…";
         return part.text.slice(0, 240);
       }
     }
     return (
-      shell.attachments?.map((file) => file.label).join(", ").slice(0, 240) ||
-      "Tool activity"
+      shell.attachments
+        ?.map((file) => file.label)
+        .join(", ")
+        .slice(0, 240) || "Tool activity"
     );
   });
   if (!message) return null;

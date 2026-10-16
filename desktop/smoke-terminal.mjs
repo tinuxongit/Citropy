@@ -22,6 +22,10 @@ export async function checkPackagedTerminal(executable, appRoot, env = {}) {
     timeout: 30000,
   });
   const result = JSON.parse(stdout.trim().split("\n").at(-1));
-  assert.equal(result.exitCode, 0, `The packaged terminal exited with ${result.exitCode}: ${result.output}`);
+  assert.equal(
+    result.exitCode,
+    0,
+    `The packaged terminal exited with ${result.exitCode}: ${result.output}`,
+  );
   assert.match(result.output, new RegExp(marker), "The packaged terminal did not run its command.");
 }

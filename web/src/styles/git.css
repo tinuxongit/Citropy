@@ -250,11 +250,9 @@
   display: grid;
   column-gap: calc(var(--git-pane-gap) / 2);
   padding: 0 var(--git-pane-inset) var(--git-pane-inset);
-  grid-template-columns: clamp(
-      240px,
-      var(--git-width, clamp(290px, 29%, 390px)),
-      min(640px, calc(100% - 360px))
-    ) 0 minmax(0, 1fr);
+  grid-template-columns:
+    clamp(240px, var(--git-width, clamp(290px, 29%, 390px)), min(640px, calc(100% - 360px)))
+    0 minmax(0, 1fr);
   height: 100%;
   min-width: 0;
   min-height: 0;
@@ -385,7 +383,9 @@
 .git-file-row[data-selected="true"] {
   background: transparent;
 }
-.git-file-groups { --selection-fill: var(--highlight); }
+.git-file-groups {
+  --selection-fill: var(--highlight);
+}
 .git-file-name {
   display: flex;
   align-items: center;
@@ -611,7 +611,9 @@
   background: var(--code-bg);
 }
 
-.git-review-scroll[data-kind="file"] { overflow: hidden; }
+.git-review-scroll[data-kind="file"] {
+  overflow: hidden;
+}
 .git-single-patch {
   display: flex;
   flex-direction: column;
@@ -629,7 +631,11 @@
   overflow: hidden;
   background: var(--code-bg);
 }
-.git-single-patch .diff-body { flex: 1; min-height: 0; max-height: none; }
+.git-single-patch .diff-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
 .git-patch-heading {
   display: flex;
   align-items: center;
@@ -746,7 +752,9 @@
 .git-history-row[aria-pressed="true"] {
   background: transparent;
 }
-:is(.git-commits, .git-stash-list) { --selection-fill: var(--highlight); }
+:is(.git-commits, .git-stash-list) {
+  --selection-fill: var(--highlight);
+}
 .git-history-row[aria-pressed="true"] > svg {
   color: var(--accent-text);
 }

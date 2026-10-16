@@ -20,7 +20,10 @@ function clipboardItems(editor: monaco.editor.IStandaloneCodeEditor): Item[] {
   const selection = editor.getSelection()!;
   const empty = selection.isEmpty();
   const readOnly = editor.getOption(monaco.editor.EditorOption.readOnly);
-  const replaceSelection = (text: string) => editor.executeEdits("context-menu", [{ range: editor.getSelection()!, text, forceMoveMarkers: true }]);
+  const replaceSelection = (text: string) =>
+    editor.executeEdits("context-menu", [
+      { range: editor.getSelection()!, text, forceMoveMarkers: true },
+    ]);
   return [
     {
       id: "cut",
@@ -45,14 +48,22 @@ function clipboardItems(editor: monaco.editor.IStandaloneCodeEditor): Item[] {
       shortcut: `${MOD}V`,
       disabled: readOnly,
       run: async () => {
-        if (!navigator.clipboard) throw new Error(`Could not read the clipboard here. Paste with ${MOD}V instead.`);
+        if (!navigator.clipboard)
+          throw new Error(`Could not read the clipboard here. Paste with ${MOD}V instead.`);
         replaceSelection(await navigator.clipboard.readText());
       },
     },
   ];
 }
 
-export function EditorContextMenu({ editor, file, threadId, x, y, onClose }: {
+export function EditorContextMenu({
+  editor,
+  file,
+  threadId,
+  x,
+  y,
+  onClose,
+}: {
   editor: monaco.editor.IStandaloneCodeEditor;
   file: TextDocument;
   threadId?: string;
@@ -65,13 +76,38 @@ export function EditorContextMenu({ editor, file, threadId, x, y, onClose }: {
   const selection = editor.getSelection()!;
   const groups: Item[][] = [
     ...(threadId && !selection.isEmpty()
-      ? [[{ id: "chat", label: "Add to chat", run: () => sendToComposer(threadId, { text: selectionForChat(selection, file), attachments: [], placement: "after" }) }]]
+      ? [
+          [
+            {
+              id: "chat",
+              label: "Add to chat",
+              run: () =>
+                sendToComposer(threadId, {
+                  text: selectionForChat(selection, file),
+                  attachments: [],
+                  placement: "after",
+                }),
+            },
+          ],
+        ]
       : []),
     clipboardItems(editor),
     [
-      { id: "select", label: "Select all", shortcut: `${MOD}A`, run: () => editor.trigger("context-menu", "editor.action.selectAll", null) },
-      { id: "find", label: "Find and replace", shortcut: `${MOD}F`, run: () => editor.trigger("context-menu", "editor.action.startFindReplaceAction", null) },
-      ...(format?.isSupported() ? [{ id: "format", label: "Format document", run: () => format.run() }] : []),
+      {
+        id: "select",
+        label: "Select all",
+        shortcut: `${MOD}A`,
+        run: () => editor.trigger("context-menu", "editor.action.selectAll", null),
+      },
+      {
+        id: "find",
+        label: "Find and replace",
+        shortcut: `${MOD}F`,
+        run: () => editor.trigger("context-menu", "editor.action.startFindReplaceAction", null),
+      },
+      ...(format?.isSupported()
+        ? [{ id: "format", label: "Format document", run: () => format.run() }]
+        : []),
     ],
   ];
 
@@ -117,11 +153,25 @@ export function EditorContextMenu({ editor, file, threadId, x, y, onClose }: {
   };
 
   return (
-    <div ref={menu} className="menu editor-context-menu" popover="manual" role="menu" aria-label="Editor actions" onKeyDown={navigate}>
+    <div
+      ref={menu}
+      className="menu editor-context-menu"
+      popover="manual"
+      role="menu"
+      aria-label="Editor actions"
+      onKeyDown={navigate}
+    >
       {groups.map((items, index) => (
         <div className="editor-context-group" role="group" key={index}>
           {items.map((item) => (
-            <button key={item.id} type="button" role="menuitem" className="menu-item" disabled={item.disabled} onClick={() => choose(item)}>
+            <button
+              key={item.id}
+              type="button"
+              role="menuitem"
+              className="menu-item"
+              disabled={item.disabled}
+              onClick={() => choose(item)}
+            >
               <span>{item.label}</span>
               {item.shortcut && <kbd>{item.shortcut}</kbd>}
             </button>

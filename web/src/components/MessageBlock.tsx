@@ -17,10 +17,14 @@ const AUTHOR_AVATAR_SIZE = 20;
 
 function originLabel(origin: MessageOrigin): string {
   switch (origin.kind) {
-    case "group": return `From ${origin.botId ? origin.name : "you"} in ${origin.group}`;
-    case "bot": return `From ${origin.name}`;
-    case "routine": return `Routine: ${origin.name}`;
-    case "reaction": throw new Error("Reactions are hidden from the conversation.");
+    case "group":
+      return `From ${origin.botId ? origin.name : "you"} in ${origin.group}`;
+    case "bot":
+      return `From ${origin.name}`;
+    case "routine":
+      return `Routine: ${origin.name}`;
+    case "reaction":
+      throw new Error("Reactions are hidden from the conversation.");
   }
 }
 
@@ -41,92 +45,151 @@ export const MessageBlock = memo(function MessageBlock({
   stamp,
   transitionActivity,
 }: Props) {
-  const shell = useApp((state) => messageId ? state.messages[messageId] : undefined);
-  const partKind = useApp((state) => row?.kind === "part" ? state.parts.get(row.id)?.kind : undefined);
-  const threadId = useApp((state) => state.activeThreadId && state.threads[state.activeThreadId] ? state.activeThreadId : undefined);
+  const shell = useApp((state) => (messageId ? state.messages[messageId] : undefined));
+  const partKind = useApp((state) =>
+    row?.kind === "part" ? state.parts.get(row.id)?.kind : undefined,
+  );
+  const threadId = useApp((state) =>
+    state.activeThreadId && state.threads[state.activeThreadId] ? state.activeThreadId : undefined,
+  );
   const projectId = useApp((state) => state.threads[threadId ?? ""]?.projectId);
   const timestamp = useApp((state) => {
     const thread = state.threads[threadId ?? ""];
-    return shell ? shell.ts : thread?.runStartedAt ?? thread?.updatedAt ?? 0;
+    return shell ? shell.ts : (thread?.runStartedAt ?? thread?.updatedAt ?? 0);
   });
-  const eventText = useApp((state) => shell?.role === "system" ? shell.partIds.map((id) => {
-    const part = state.parts.get(id);
-    return part?.kind === "notice" || part?.kind === "text" ? part.text : "";
-  }).join(" ") : undefined);
-  const authorOrigin = shell?.role === "assistant" && shell.origin?.kind === "bot" ? shell.origin : undefined;
-  const author = useApp((state) => authorOrigin ? state.bots[authorOrigin.botId ?? ""] : undefined);
-  const [fresh] = useState(() => first ? Date.now() - timestamp < 2000 : streaming);
+  const eventText = useApp((state) =>
+    shell?.role === "system"
+      ? shell.partIds
+          .map((id) => {
+            const part = state.parts.get(id);
+            return part?.kind === "notice" || part?.kind === "text" ? part.text : "";
+          })
+          .join(" ")
+      : undefined,
+  );
+  const authorOrigin =
+    shell?.role === "assistant" && shell.origin?.kind === "bot" ? shell.origin : undefined;
+  const author = useApp((state) =>
+    authorOrigin ? state.bots[authorOrigin.botId ?? ""] : undefined,
+  );
+  const [fresh] = useState(() => (first ? Date.now() - timestamp < 2000 : streaming));
 
   if (!shell && (messageId !== undefined || !threadId)) return null;
 
-  const stampLine = stamp !== undefined && <time className="turn-stamp" dateTime={new Date(stamp).toISOString()}>{day(stamp)} {clock(stamp)}</time>;
+  const stampLine = stamp !== undefined && (
+    <time className="turn-stamp" dateTime={new Date(stamp).toISOString()}>
+      {day(stamp)} {clock(stamp)}
+    </time>
+  );
 
   if (eventText !== undefined) {
-    return <>{stampLine}<p id={`message-${messageId}`} className="turn-event">{eventText}</p></>;
+    return (
+      <>
+        {stampLine}
+        <p id={`message-${messageId}`} className="turn-event">
+          {eventText}
+        </p>
+      </>
+    );
   }
 
   if (shell?.role === "user") {
     return (
-      <>{stampLine}<article id={`message-${messageId}`} className="turn turn-user" data-fresh={fresh || undefined}>
-        <div className="message-content">
-          {shell.origin && <span className="turn-origin">{originLabel(shell.origin)}</span>}
-          {shell.attachments?.length && threadId && projectId ? (
-            <Attachments
-              files={shell.attachments}
-              projectId={projectId}
-              threadId={threadId}
-            />
-          ) : null}
-          <UserBubble partIds={shell.partIds} mentions={shell.mentions} />
-          <div className="turn-meta">
-            <time>{clock(shell.ts)}</time>
-            {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} user />}
+      <>
+        {stampLine}
+        <article
+          id={`message-${messageId}`}
+          className="turn turn-user"
+          data-fresh={fresh || undefined}
+        >
+          <div className="message-content">
+            {shell.origin && <span className="turn-origin">{originLabel(shell.origin)}</span>}
+            {shell.attachments?.length && threadId && projectId ? (
+              <Attachments files={shell.attachments} projectId={projectId} threadId={threadId} />
+            ) : null}
+            <UserBubble partIds={shell.partIds} mentions={shell.mentions} />
+            <div className="turn-meta">
+              <time>{clock(shell.ts)}</time>
+              {threadId && messageId && (
+                <MessageActions threadId={threadId} messageId={messageId} user />
+              )}
+            </div>
           </div>
-        </div>
-      </article></>
+        </article>
+      </>
     );
   }
 
   const activity = Boolean(row && row.kind !== "part") || Boolean(partKind && partKind !== "text");
 
   return (
-    <>{stampLine}<article
-      id={first && messageId ? `message-${messageId}` : undefined}
-      className="turn turn-agent"
-      data-fresh={fresh || undefined}
-      data-continuation={!first || undefined}
-      data-last={last}
-      data-activity={activity || undefined}
-      data-step={step || undefined}
-    >
-      <div className="message-content">
-        {first && authorOrigin && (
-          <header className="turn-author">
-            {author && <BotAvatar bot={author} size={AUTHOR_AVATAR_SIZE} />}
-            <span>{author?.name ?? authorOrigin.name}</span>
-          </header>
-        )}
-        {row && (
-          <div className={activity ? "agent-activity" : "message-bubble agent-card"}>
-            {row.kind === "fold" ? (
-              <WorkDetails id={row.id} ids={row.ids} messageIds={row.messageIds} open={row.open} active={row.active} since={row.since} transitionActivity={transitionActivity} />
-            ) : row.kind === "live" ? (
-              <Working messageIds={row.messageIds} />
-            ) : row.kind === "group" ? (
-              <WorkGroup key={row.ids[0]} ids={row.ids} live={streaming} latestStep={latestStep} />
-            ) : (
-              <PartView key={row.id} partId={row.id} live={streaming} mentions={shell?.mentions} />
-            )}
-          </div>
-        )}
-        {last && messageId && threadId && !streaming && <MessageReactions threadId={threadId} messageId={messageId} />}
-        {last && messageId && !streaming && (
-          <div className="turn-meta">
-            <time>{clock(timestamp)}</time>
-            {threadId && messageId && <MessageActions threadId={threadId} messageId={messageId} replyIds={replyIds} user={false} />}
-          </div>
-        )}
-      </div>
-    </article></>
+    <>
+      {stampLine}
+      <article
+        id={first && messageId ? `message-${messageId}` : undefined}
+        className="turn turn-agent"
+        data-fresh={fresh || undefined}
+        data-continuation={!first || undefined}
+        data-last={last}
+        data-activity={activity || undefined}
+        data-step={step || undefined}
+      >
+        <div className="message-content">
+          {first && authorOrigin && (
+            <header className="turn-author">
+              {author && <BotAvatar bot={author} size={AUTHOR_AVATAR_SIZE} />}
+              <span>{author?.name ?? authorOrigin.name}</span>
+            </header>
+          )}
+          {row && (
+            <div className={activity ? "agent-activity" : "message-bubble agent-card"}>
+              {row.kind === "fold" ? (
+                <WorkDetails
+                  id={row.id}
+                  ids={row.ids}
+                  messageIds={row.messageIds}
+                  open={row.open}
+                  active={row.active}
+                  since={row.since}
+                  transitionActivity={transitionActivity}
+                />
+              ) : row.kind === "live" ? (
+                <Working messageIds={row.messageIds} />
+              ) : row.kind === "group" ? (
+                <WorkGroup
+                  key={row.ids[0]}
+                  ids={row.ids}
+                  live={streaming}
+                  latestStep={latestStep}
+                />
+              ) : (
+                <PartView
+                  key={row.id}
+                  partId={row.id}
+                  live={streaming}
+                  mentions={shell?.mentions}
+                />
+              )}
+            </div>
+          )}
+          {last && messageId && threadId && !streaming && (
+            <MessageReactions threadId={threadId} messageId={messageId} />
+          )}
+          {last && messageId && !streaming && (
+            <div className="turn-meta">
+              <time>{clock(timestamp)}</time>
+              {threadId && messageId && (
+                <MessageActions
+                  threadId={threadId}
+                  messageId={messageId}
+                  replyIds={replyIds}
+                  user={false}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </article>
+    </>
   );
 });

@@ -15,8 +15,8 @@ import { collapseForQuestion, expandBrowser } from "../lib/browser-takeover.ts";
 const emptyDraft: AppState["questionDrafts"][string] = { index: 0, choices: {}, text: {} };
 
 export function QuestionForm({ request }: { request: QuestionRequest }) {
-  const connected = useApp(state => state.connected);
-  const draft = useApp(state => state.questionDrafts[request.id] ?? emptyDraft);
+  const connected = useApp((state) => state.connected);
+  const draft = useApp((state) => state.questionDrafts[request.id] ?? emptyDraft);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const heading = useRef<HTMLLegendElement>(null);
@@ -28,16 +28,26 @@ export function QuestionForm({ request }: { request: QuestionRequest }) {
   useEffect(() => () => collapseForQuestion(request.id), [request.id]);
   const update = (patch: Partial<typeof draft>) => {
     setError("");
-    useApp.setState(state => ({ questionDrafts: { ...state.questionDrafts, [request.id]: { ...draft, ...patch } } }));
+    useApp.setState((state) => ({
+      questionDrafts: { ...state.questionDrafts, [request.id]: { ...draft, ...patch } },
+    }));
   };
   const choose = (value: string) => {
     const selected = question.multiple
-      ? choices.includes(value) ? choices.filter(choice => choice !== value) : [...choices, value]
+      ? choices.includes(value)
+        ? choices.filter((choice) => choice !== value)
+        : [...choices, value]
       : [value];
-    update({ choices: { ...draft.choices, [question.id]: selected }, ...(!question.multiple ? { text: { ...draft.text, [question.id]: "" } } : {}) });
+    update({
+      choices: { ...draft.choices, [question.id]: selected },
+      ...(!question.multiple ? { text: { ...draft.text, [question.id]: "" } } : {}),
+    });
   };
   const write = (value: string) => {
-    update({ text: { ...draft.text, [question.id]: value }, ...(!question.multiple ? { choices: { ...draft.choices, [question.id]: [] } } : {}) });
+    update({
+      text: { ...draft.text, [question.id]: value },
+      ...(!question.multiple ? { choices: { ...draft.choices, [question.id]: [] } } : {}),
+    });
   };
   const navigate = (index: number) => {
     update({ index });
@@ -45,62 +55,171 @@ export function QuestionForm({ request }: { request: QuestionRequest }) {
   };
   const submit = async (skip = false) => {
     if (!connected || submitting) return;
-    const answers = Object.fromEntries(request.questions.map(item => [item.id, [...(draft.choices[item.id] ?? []), ...(draft.text[item.id]?.trim() ? [draft.text[item.id]!.trim()] : [])]]));
+    const answers = Object.fromEntries(
+      request.questions.map((item) => [
+        item.id,
+        [
+          ...(draft.choices[item.id] ?? []),
+          ...(draft.text[item.id]?.trim() ? [draft.text[item.id]!.trim()] : []),
+        ],
+      ]),
+    );
     if (!skip) {
-      const unanswered = request.questions.findIndex(item => !answers[item.id]!.length);
-      if (unanswered !== -1) { navigate(unanswered); return; }
+      const unanswered = request.questions.findIndex((item) => !answers[item.id]!.length);
+      if (unanswered !== -1) {
+        navigate(unanswered);
+        return;
+      }
     }
     setSubmitting(true);
     setError("");
     try {
-      if (isDevFake(request.id)) { applyFake({ t: "question.close", id: request.id }); return; }
-      await api(`threads/question?threadId=${encodeURIComponent(request.threadId)}`, { method: "POST", body: JSON.stringify({ id: request.id, answers: skip ? null : answers }) });
+      if (isDevFake(request.id)) {
+        applyFake({ t: "question.close", id: request.id });
+        return;
+      }
+      await api(`threads/question?threadId=${encodeURIComponent(request.threadId)}`, {
+        method: "POST",
+        body: JSON.stringify({ id: request.id, answers: skip ? null : answers }),
+      });
     } catch (failure) {
       setError((failure as Error).message);
       setSubmitting(false);
     }
   };
 
-  const summary = <>
-    <QuestionMessageIcon size={16} aria-hidden="true" />
-    <strong>Your input</strong>
-    <span className="truncate">{question.question}</span>
-  </>;
+  const summary = (
+    <>
+      <QuestionMessageIcon size={16} aria-hidden="true" />
+      <strong>Your input</strong>
+      <span className="truncate">{question.question}</span>
+    </>
+  );
 
-  return <ComposerWideTab className="question-panel" aria-label="Your input" summary={summary}>
-    <form className="question-form" onSubmit={event => { event.preventDefault(); if (!ready) return; if (last) void submit(); else navigate(draft.index + 1); }}>
-      <header className="question-heading">
-        <QuestionMessageIcon size={16} aria-hidden="true" />
-        <span>Your input</span>
-        {request.questions.length > 1 && <span className="question-progress">{draft.index + 1} of {request.questions.length}</span>}
-        <LowerButton />
-      </header>
-      <div className="question-body">
-        <fieldset disabled={submitting || !connected}>
-          <legend ref={heading} tabIndex={-1}>{question.question}</legend>
-          {question.browserTab && <button type="button" className="btn question-browser" data-variant="primary" onClick={() => expandBrowser(question.browserTab!, request.id)}><GlobeIcon size={14} />Open browser</button>}
-          {question.multiple && <p className="question-hint">Select all that apply.</p>}
-          <div className="question-options">
-            {question.options.map(option => <label key={option.label} className="question-option" data-selected={choices.includes(option.label) || undefined}>
-              <input type={question.multiple ? "checkbox" : "radio"} name={`${request.id}:${question.id}`} value={option.label} checked={choices.includes(option.label)} onChange={() => choose(option.label)} />
-              <span><strong>{option.label}</strong>{option.description && <span className="question-option-description">{option.description}</span>}</span>
-            </label>)}
-          </div>
-          <label className="question-custom">
-            <span>{question.options.length ? "Or write your own answer" : "Your answer"}</span>
-            {question.secret ? <input type="password" autoComplete="off" value={text} maxLength={8000} onChange={event => write(event.target.value)} /> : <textarea rows={2} value={text} maxLength={8000} placeholder="Type your answer…" onChange={event => write(event.target.value)} />}
-          </label>
-        </fieldset>
-        <ActionError className="question-error" message={error} onDismiss={() => setError("")} />
-        {!connected && <p className="question-hint" role="status">Reconnecting. Your answers are saved here.</p>}
-      </div>
-      <footer className="question-footer">
-        <button type="button" className="btn" data-variant="ghost" disabled={submitting || !connected} onClick={() => void submit(true)}>Skip</button>
-        <div>
-          {draft.index > 0 && <button type="button" className="btn" data-variant="ghost" disabled={submitting} onClick={() => navigate(draft.index - 1)}><ChevronLeftIcon size={14} />Back</button>}
-          <button type="submit" className="btn" data-variant="primary" disabled={!ready || submitting || !connected}>{submitting ? "Sending…" : last ? "Send answers" : "Next"}<ArrowRightIcon size={14} /></button>
+  return (
+    <ComposerWideTab className="question-panel" aria-label="Your input" summary={summary}>
+      <form
+        className="question-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!ready) return;
+          if (last) void submit();
+          else navigate(draft.index + 1);
+        }}
+      >
+        <header className="question-heading">
+          <QuestionMessageIcon size={16} aria-hidden="true" />
+          <span>Your input</span>
+          {request.questions.length > 1 && (
+            <span className="question-progress">
+              {draft.index + 1} of {request.questions.length}
+            </span>
+          )}
+          <LowerButton />
+        </header>
+        <div className="question-body">
+          <fieldset disabled={submitting || !connected}>
+            <legend ref={heading} tabIndex={-1}>
+              {question.question}
+            </legend>
+            {question.browserTab && (
+              <button
+                type="button"
+                className="btn question-browser"
+                data-variant="primary"
+                onClick={() => expandBrowser(question.browserTab!, request.id)}
+              >
+                <GlobeIcon size={14} />
+                Open browser
+              </button>
+            )}
+            {question.multiple && <p className="question-hint">Select all that apply.</p>}
+            <div className="question-options">
+              {question.options.map((option) => (
+                <label
+                  key={option.label}
+                  className="question-option"
+                  data-selected={choices.includes(option.label) || undefined}
+                >
+                  <input
+                    type={question.multiple ? "checkbox" : "radio"}
+                    name={`${request.id}:${question.id}`}
+                    value={option.label}
+                    checked={choices.includes(option.label)}
+                    onChange={() => choose(option.label)}
+                  />
+                  <span>
+                    <strong>{option.label}</strong>
+                    {option.description && (
+                      <span className="question-option-description">{option.description}</span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <label className="question-custom">
+              <span>{question.options.length ? "Or write your own answer" : "Your answer"}</span>
+              {question.secret ? (
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={text}
+                  maxLength={8000}
+                  onChange={(event) => write(event.target.value)}
+                />
+              ) : (
+                <textarea
+                  rows={2}
+                  value={text}
+                  maxLength={8000}
+                  placeholder="Type your answer…"
+                  onChange={(event) => write(event.target.value)}
+                />
+              )}
+            </label>
+          </fieldset>
+          <ActionError className="question-error" message={error} onDismiss={() => setError("")} />
+          {!connected && (
+            <p className="question-hint" role="status">
+              Reconnecting. Your answers are saved here.
+            </p>
+          )}
         </div>
-      </footer>
-    </form>
-  </ComposerWideTab>;
+        <footer className="question-footer">
+          <button
+            type="button"
+            className="btn"
+            data-variant="ghost"
+            disabled={submitting || !connected}
+            onClick={() => void submit(true)}
+          >
+            Skip
+          </button>
+          <div>
+            {draft.index > 0 && (
+              <button
+                type="button"
+                className="btn"
+                data-variant="ghost"
+                disabled={submitting}
+                onClick={() => navigate(draft.index - 1)}
+              >
+                <ChevronLeftIcon size={14} />
+                Back
+              </button>
+            )}
+            <button
+              type="submit"
+              className="btn"
+              data-variant="primary"
+              disabled={!ready || submitting || !connected}
+            >
+              {submitting ? "Sending…" : last ? "Send answers" : "Next"}
+              <ArrowRightIcon size={14} />
+            </button>
+          </div>
+        </footer>
+      </form>
+    </ComposerWideTab>
+  );
 }

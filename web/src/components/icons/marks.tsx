@@ -13,41 +13,77 @@ const GRID_DOT_RADIUS = 1.9;
 const GRID_DOTS = [5.5, 12, 18.5];
 
 export function CheckIcon(props: IconProps) {
-  return <Icon {...props}><Line d={CHECK} width={BOLD_LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={CHECK} width={BOLD_LINE} />
+    </Icon>
+  );
 }
 
 export function CheckCheckIcon(props: IconProps) {
-  return <Icon {...props}><Line d={DOUBLE_CHECK} width={BOLD_LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={DOUBLE_CHECK} width={BOLD_LINE} />
+    </Icon>
+  );
 }
 
 export function CloseIcon(props: IconProps) {
-  return <Icon {...props}><Line d={CROSS} width={BOLD_LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={CROSS} width={BOLD_LINE} />
+    </Icon>
+  );
 }
 
 export function PlusIcon(props: IconProps) {
-  return <Icon {...props}><Line d={PLUS} width={BOLD_LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={PLUS} width={BOLD_LINE} />
+    </Icon>
+  );
 }
 
 export function MinusIcon(props: IconProps) {
-  return <Icon {...props}><Line d={MINUS} width={BOLD_LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={MINUS} width={BOLD_LINE} />
+    </Icon>
+  );
 }
 
 export function MenuIcon(props: IconProps) {
-  return <Icon {...props}><Line d={MENU} width={BOLD_LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={MENU} width={BOLD_LINE} />
+    </Icon>
+  );
 }
 
 export function HashIcon(props: IconProps) {
-  return <Icon {...props}><Line d={HASH} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={HASH} />
+    </Icon>
+  );
 }
 
 export function MoreIcon(props: IconProps) {
-  return <Icon {...props}>{ROW_DOTS.map((x) => <circle key={x} cx={x} cy={12} r={DOT_RADIUS} />)}</Icon>;
+  return (
+    <Icon {...props}>
+      {ROW_DOTS.map((x) => (
+        <circle key={x} cx={x} cy={12} r={DOT_RADIUS} />
+      ))}
+    </Icon>
+  );
 }
 
 export function GripIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      {GRID_DOTS.flatMap((y) => GRID_DOTS.map((x) => <circle key={`${x}:${y}`} cx={x} cy={y} r={GRID_DOT_RADIUS} />))}
+      {GRID_DOTS.flatMap((y) =>
+        GRID_DOTS.map((x) => <circle key={`${x}:${y}`} cx={x} cy={y} r={GRID_DOT_RADIUS} />),
+      )}
     </Icon>
   );
 }

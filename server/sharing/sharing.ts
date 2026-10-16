@@ -1,10 +1,26 @@
 import { port } from "../config.ts";
 import { onShutdown } from "../lifecycle.ts";
 import { remoteId } from "../remote.ts";
-import { clearPairingCodes, createPairingCode, forgetDevice, publicDevices, saveSharingSettings, sharingSettings, type PublicDevice, type Route } from "./devices.ts";
+import {
+  clearPairingCodes,
+  createPairingCode,
+  forgetDevice,
+  publicDevices,
+  saveSharingSettings,
+  sharingSettings,
+  type PublicDevice,
+  type Route,
+} from "./devices.ts";
 import { allowThroughFirewall } from "./firewall.ts";
 import { lanOrigin, lanState, primarySubnet, startLan, stopLan, type LanState } from "./lan.ts";
-import { allowTailscaleOperator, shutDownTailscale, startTailscale, stopTailscale, tailscaleState, type TailscaleState } from "./tailscale.ts";
+import {
+  allowTailscaleOperator,
+  shutDownTailscale,
+  startTailscale,
+  stopTailscale,
+  tailscaleState,
+  type TailscaleState,
+} from "./tailscale.ts";
 
 export { DEVICE_HEADER } from "./proxy.ts";
 

@@ -24,8 +24,12 @@
     grid-template-rows: minmax(0, 1fr);
     padding-bottom: var(--tabbar);
   }
-  :root[data-keyboard] .shell { --tabbar: 0px; }
-  :root[data-keyboard] .shell .navigation-strip { display: none; }
+  :root[data-keyboard] .shell {
+    --tabbar: 0px;
+  }
+  :root[data-keyboard] .shell .navigation-strip {
+    display: none;
+  }
 
   .shell .navigation-strip {
     --selection-fill: var(--phone-tab-selected);
@@ -41,12 +45,22 @@
   .shell .navigation-strip-end,
   .shell .navigation-strip-group,
   .shell .account-menu,
-  .shell .navigation-strip .account-menu > .account-menu-items { display: contents; }
-  .shell .navigation-strip .account-menu > .account-menu-items { visibility: visible; }
-  .shell .navigation-strip :is(.navigation-strip-group, .account-menu)::before { display: none; }
+  .shell .navigation-strip .account-menu > .account-menu-items {
+    display: contents;
+  }
+  .shell .navigation-strip .account-menu > .account-menu-items {
+    visibility: visible;
+  }
+  .shell .navigation-strip :is(.navigation-strip-group, .account-menu)::before {
+    display: none;
+  }
   .shell .account-menu-button,
-  .shell .navigation-strip-brand { display: none; }
-  .shell .navigation-strip-group > * { flex: 1; }
+  .shell .navigation-strip-brand {
+    display: none;
+  }
+  .shell .navigation-strip-group > * {
+    flex: 1;
+  }
   .shell .strip-action,
   .shell .navigation-strip .rail-action.app-update-button {
     flex: 1;
@@ -57,7 +71,9 @@
     height: var(--phone-tab-face-height);
     border-radius: var(--r-full);
   }
-  .shell .navigation-strip > .selection-highlight { border-radius: var(--r-full); }
+  .shell .navigation-strip > .selection-highlight {
+    border-radius: var(--r-full);
+  }
 
   .topbar {
     position: absolute;
@@ -71,9 +87,13 @@
     pointer-events: none;
   }
   .topbar > *,
-  .topbar-start > * { pointer-events: auto; }
+  .topbar-start > * {
+    pointer-events: auto;
+  }
   .topbar-left,
-  .topbar-start { display: contents; }
+  .topbar-start {
+    display: contents;
+  }
   .topbar .sidebar-toggle {
     grid-column: 1;
     width: var(--phone-button);
@@ -83,8 +103,12 @@
     box-shadow: var(--phone-float-shadow);
     color: var(--text);
   }
-  .sidebar-toggle-panel { display: none; }
-  .sidebar-toggle-menu { display: block; }
+  .sidebar-toggle-panel {
+    display: none;
+  }
+  .sidebar-toggle-menu {
+    display: block;
+  }
 
   .topbar-center {
     grid-column: 2;
@@ -100,9 +124,13 @@
     background: var(--phone-float);
     box-shadow: var(--phone-float-shadow);
   }
-  .topbar-center:empty { display: none; }
+  .topbar-center:empty {
+    display: none;
+  }
   .breadcrumb .workspace-breadcrumb,
-  .breadcrumb-separator { display: none; }
+  .breadcrumb-separator {
+    display: none;
+  }
   .breadcrumb .thread-title {
     max-width: 100%;
     font-size: var(--text-sm);
@@ -119,7 +147,10 @@
     font-size: var(--text-xs);
     line-height: 1.3;
   }
-  .topbar-subtitle svg { flex: none; margin-left: var(--space-4); }
+  .topbar-subtitle svg {
+    flex: none;
+    margin-left: var(--space-4);
+  }
 
   .topbar-center:has(> .bot-heading) {
     padding: 0;
@@ -130,7 +161,9 @@
     flex-direction: column;
     gap: 0;
   }
-  .topbar .bot-heading > :first-child { zoom: var(--phone-avatar-zoom); }
+  .topbar .bot-heading > :first-child {
+    zoom: var(--phone-avatar-zoom);
+  }
   .topbar .bot-heading > .thread-title {
     margin-top: calc(-1 * var(--phone-chip-overlap));
     padding: var(--space-4) var(--space-12);
@@ -138,7 +171,9 @@
     background: var(--phone-float);
     box-shadow: var(--phone-float-shadow);
   }
-  .topbar .bot-heading > .topbar-subtitle { display: none; }
+  .topbar .bot-heading > .topbar-subtitle {
+    display: none;
+  }
 
   .topbar-right {
     grid-column: 3;
@@ -148,25 +183,46 @@
     background: var(--phone-float);
     box-shadow: var(--phone-float-shadow);
   }
-  .topbar-right:empty { display: none; }
+  .topbar-right:empty {
+    display: none;
+  }
   .topbar .topbar-right .icon-btn {
     width: var(--phone-button);
     height: var(--phone-button);
     border-radius: var(--r-full);
   }
-  .topbar-new-thread { display: grid; }
-
-  .stage { padding-top: var(--phone-header); }
-  .stage:has(> .conversation-viewport) { padding-top: 0; }
-  .canvas {
-    --canvas-top-inset: calc(var(--phone-header) + var(--phone-fade) / 2);
-    mask-image: linear-gradient(transparent calc(var(--phone-header) - var(--phone-fade) / 2), #000 calc(var(--phone-header) + var(--phone-fade) / 2), #000 calc(100% - var(--edge-fade)), transparent);
+  .topbar-new-thread {
+    display: grid;
   }
 
-  .composer { padding: 0 var(--phone-edge) var(--phone-gap); }
-  .composer-shell { border-radius: calc(var(--phone-pill) / 2); }
-  .composer-shell::before { box-shadow: var(--phone-float-shadow); }
-  .composer-glass { background: var(--phone-float); }
+  .stage {
+    padding-top: var(--phone-header);
+  }
+  .stage:has(> .conversation-viewport) {
+    padding-top: 0;
+  }
+  .canvas {
+    --canvas-top-inset: calc(var(--phone-header) + var(--phone-fade) / 2);
+    mask-image: linear-gradient(
+      transparent calc(var(--phone-header) - var(--phone-fade) / 2),
+      #000 calc(var(--phone-header) + var(--phone-fade) / 2),
+      #000 calc(100% - var(--edge-fade)),
+      transparent
+    );
+  }
+
+  .composer {
+    padding: 0 var(--phone-edge) var(--phone-gap);
+  }
+  .composer-shell {
+    border-radius: calc(var(--phone-pill) / 2);
+  }
+  .composer-shell::before {
+    box-shadow: var(--phone-float-shadow);
+  }
+  .composer-glass {
+    background: var(--phone-float);
+  }
   .composer-row .composer-input,
   .composer-row .composer-placeholder {
     min-height: var(--phone-pill);
@@ -181,7 +237,9 @@
     border-radius: var(--r-full);
     color: var(--text-2);
   }
-  .composer-attach { display: none; }
+  .composer-attach {
+    display: none;
+  }
   .composer-actions {
     min-height: var(--phone-pill);
     padding: 0 calc((var(--phone-pill) - var(--phone-send)) / 2);
@@ -192,5 +250,7 @@
     height: var(--phone-send);
     border-radius: var(--r-full);
   }
-  .composer:not(:focus-within, :has(.composer-bar [aria-expanded="true"])) .composer-bar { display: none; }
+  .composer:not(:focus-within, :has(.composer-bar [aria-expanded="true"])) .composer-bar {
+    display: none;
+  }
 }

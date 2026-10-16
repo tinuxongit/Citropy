@@ -28,12 +28,15 @@ const keyOf = (cookie: Cookie) => JSON.stringify([cookie.domain, cookie.path, co
 
 export function keepSessionCookies(target: Session) {
   if (renewals.has(target)) return renewals.get(target);
-  if (!target.storagePath) throw new Error("Only a saved browser profile can keep sign-in cookies.");
+  if (!target.storagePath)
+    throw new Error("Only a saved browser profile can keep sign-in cookies.");
   const file = join(target.storagePath, KEPT_LIST_FILE);
   const keys = new Set<string>();
   let saving = Promise.resolve();
   const extend = (cookie: Cookie) =>
-    target.cookies.set(persistentCopy(cookie, Date.now() / 1000)).catch(logFailure("Keeping a sign-in cookie", cookie.domain, cookie.name));
+    target.cookies
+      .set(persistentCopy(cookie, Date.now() / 1000))
+      .catch(logFailure("Keeping a sign-in cookie", cookie.domain, cookie.name));
   const renewed = readFile(file, "utf8")
     .catch(ifMissing("[]"))
     .then(async (text) => {
@@ -49,7 +52,9 @@ export function keepSessionCookies(target: Session) {
     void renewed.then(() => {
       if (keys.has(keyOf(cookie))) return;
       keys.add(keyOf(cookie));
-      saving = saving.then(() => writeFile(file, JSON.stringify([...keys]))).catch(logFailure("Saving kept sign-in cookies", file));
+      saving = saving
+        .then(() => writeFile(file, JSON.stringify([...keys])))
+        .catch(logFailure("Saving kept sign-in cookies", file));
     });
   });
   return renewed;

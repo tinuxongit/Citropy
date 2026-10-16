@@ -15,7 +15,8 @@ export function nodeArchiveName(platform) {
 }
 
 export async function downloadNodeArchive(platform, signal) {
-  if (!Object.hasOwn(nodeChecksums, platform)) throw new Error("Automatic Node setup supports Linux and macOS, or Windows, on x64 and ARM64.");
+  if (!Object.hasOwn(nodeChecksums, platform))
+    throw new Error("Automatic Node setup supports Linux and macOS, or Windows, on x64 and ARM64.");
   return downloadVerified({
     url: `https://nodejs.org/download/release/v${nodeVersion}/${nodeArchiveName(platform)}`,
     sha256: nodeChecksums[platform],

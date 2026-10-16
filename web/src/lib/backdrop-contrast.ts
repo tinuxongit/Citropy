@@ -11,14 +11,18 @@ export async function lightMap(source: Blob | ImageBitmap): Promise<LightMap> {
   const bitmap = source instanceof Blob ? await createImageBitmap(source) : source;
   const width = Math.min(GRID_WIDTH, bitmap.width);
   const height = Math.max(1, Math.round((bitmap.height / bitmap.width) * width));
-  const context = new OffscreenCanvas(width, height).getContext("2d", { willReadFrequently: true })!;
+  const context = new OffscreenCanvas(width, height).getContext("2d", {
+    willReadFrequently: true,
+  })!;
   context.drawImage(bitmap, 0, 0, width, height);
   if (source instanceof Blob) bitmap.close();
   const pixels = context.getImageData(0, 0, width, height).data;
   const data = new Float32Array(width * height);
   for (let index = 0; index < data.length; index++) {
     const offset = index * 4;
-    data[index] = (0.2126 * pixels[offset]! + 0.7152 * pixels[offset + 1]! + 0.0722 * pixels[offset + 2]!) / 255;
+    data[index] =
+      (0.2126 * pixels[offset]! + 0.7152 * pixels[offset + 1]! + 0.0722 * pixels[offset + 2]!) /
+      255;
   }
   return { width, height, data };
 }

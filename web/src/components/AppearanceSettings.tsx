@@ -1,6 +1,15 @@
 import { saveProjectDefaults } from "../lib/actions.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
-import { setAsciiLook, setBackgroundBlur, setBackgroundEverywhere, setBackgroundDim, setBackgroundFocus, setBackgroundFocusSpread, setOpaquePopups, setUiTransparency } from "../lib/preferences.ts";
+import {
+  setAsciiLook,
+  setBackgroundBlur,
+  setBackgroundEverywhere,
+  setBackgroundDim,
+  setBackgroundFocus,
+  setBackgroundFocusSpread,
+  setOpaquePopups,
+  setUiTransparency,
+} from "../lib/preferences.ts";
 import {
   setShowFailedTools,
   setTextStreaming,
@@ -45,16 +54,71 @@ export function AppearanceSettings() {
       {(stageBackground === "ascii" || stageBackground === "image") && (
         <div className="settings-group settings-group-spaced">
           {[
-            ...(stageBackground === "image" ? [
-              { label: "Dim", hint: "Darken the background so text stays easy to read.", value: backgroundDim, max: 90, unit: "%", change: setBackgroundDim },
-              { label: "Blur", hint: "Soften the whole background. 0 keeps it sharp.", value: backgroundBlur, max: 40, unit: "px", change: setBackgroundBlur },
-              { label: "Reading area", hint: "Darken and blur the background behind the content column. 0 turns it off.", value: backgroundFocus, max: 100, unit: "%", change: setBackgroundFocus },
-            ] : [
-              { label: "Dim", hint: "Darken the background so text stays easy to read.", value: asciiDim, max: 90, unit: "%", change: (value: number) => setAsciiLook("asciiDim", value) },
-              { label: "Blur", hint: "Soften the whole background. 0 keeps it sharp.", value: asciiBlur, max: 12, unit: "px", change: (value: number) => setAsciiLook("asciiBlur", value) },
-              { label: "Reading area", hint: "Darken and blur the background behind the content column. 0 turns it off.", value: asciiFocus, max: 100, unit: "%", change: (value: number) => setAsciiLook("asciiFocus", value) },
-            ]),
-            ...((stageBackground === "image" ? backgroundFocus : asciiFocus) ? [{ label: "Reading area width", hint: "How far the reading area reaches past the conversation on each side.", value: backgroundFocusSpread, max: 400, unit: "px", change: setBackgroundFocusSpread }] : []),
+            ...(stageBackground === "image"
+              ? [
+                  {
+                    label: "Dim",
+                    hint: "Darken the background so text stays easy to read.",
+                    value: backgroundDim,
+                    max: 90,
+                    unit: "%",
+                    change: setBackgroundDim,
+                  },
+                  {
+                    label: "Blur",
+                    hint: "Soften the whole background. 0 keeps it sharp.",
+                    value: backgroundBlur,
+                    max: 40,
+                    unit: "px",
+                    change: setBackgroundBlur,
+                  },
+                  {
+                    label: "Reading area",
+                    hint: "Darken and blur the background behind the content column. 0 turns it off.",
+                    value: backgroundFocus,
+                    max: 100,
+                    unit: "%",
+                    change: setBackgroundFocus,
+                  },
+                ]
+              : [
+                  {
+                    label: "Dim",
+                    hint: "Darken the background so text stays easy to read.",
+                    value: asciiDim,
+                    max: 90,
+                    unit: "%",
+                    change: (value: number) => setAsciiLook("asciiDim", value),
+                  },
+                  {
+                    label: "Blur",
+                    hint: "Soften the whole background. 0 keeps it sharp.",
+                    value: asciiBlur,
+                    max: 12,
+                    unit: "px",
+                    change: (value: number) => setAsciiLook("asciiBlur", value),
+                  },
+                  {
+                    label: "Reading area",
+                    hint: "Darken and blur the background behind the content column. 0 turns it off.",
+                    value: asciiFocus,
+                    max: 100,
+                    unit: "%",
+                    change: (value: number) => setAsciiLook("asciiFocus", value),
+                  },
+                ]),
+            ...((stageBackground === "image" ? backgroundFocus : asciiFocus)
+              ? [
+                  {
+                    label: "Reading area width",
+                    hint: "How far the reading area reaches past the conversation on each side.",
+                    value: backgroundFocusSpread,
+                    max: 400,
+                    unit: "px",
+                    change: setBackgroundFocusSpread,
+                  },
+                ]
+              : []),
           ].map(({ label, hint, value, max, unit, change }) => (
             <div className="setting-row" key={label}>
               <span>
@@ -70,7 +134,10 @@ export function AppearanceSettings() {
                   aria-valuetext={`${value}${unit}`}
                   onChange={(event) => change(Number(event.target.value))}
                 />
-                <output>{value}{unit}</output>
+                <output>
+                  {value}
+                  {unit}
+                </output>
               </span>
             </div>
           ))}
@@ -81,7 +148,9 @@ export function AppearanceSettings() {
           <div className="setting-row">
             <span>
               <strong>Interface transparency</strong>
-              <small>Let the background show through the sidebar, chat box, panels and settings.</small>
+              <small>
+                Let the background show through the sidebar, chat box, panels and settings.
+              </small>
             </span>
             <span className="setting-range">
               <Range
@@ -98,18 +167,34 @@ export function AppearanceSettings() {
           <label className="setting-row">
             <span>
               <strong>Background on every page</strong>
-              <small>Show the background in Settings, Source control, GitHub and Usage too, not only in conversations.</small>
+              <small>
+                Show the background in Settings, Source control, GitHub and Usage too, not only in
+                conversations.
+              </small>
             </span>
-            <input className="setting-switch" type="checkbox" role="switch"
-              checked={backgroundEverywhere} onChange={event => setBackgroundEverywhere(event.target.checked)} />
+            <input
+              className="setting-switch"
+              type="checkbox"
+              role="switch"
+              checked={backgroundEverywhere}
+              onChange={(event) => setBackgroundEverywhere(event.target.checked)}
+            />
           </label>
           <label className="setting-row">
             <span>
               <strong>Opaque pop-ups</strong>
-              <small>Make menus, pop-ups, and question and permission cards fully solid instead of slightly see-through.</small>
+              <small>
+                Make menus, pop-ups, and question and permission cards fully solid instead of
+                slightly see-through.
+              </small>
             </span>
-            <input className="setting-switch" type="checkbox" role="switch"
-              checked={opaquePopups} onChange={event => setOpaquePopups(event.target.checked)} />
+            <input
+              className="setting-switch"
+              type="checkbox"
+              role="switch"
+              checked={opaquePopups}
+              onChange={(event) => setOpaquePopups(event.target.checked)}
+            />
           </label>
         </div>
       )}
@@ -120,38 +205,66 @@ export function AppearanceSettings() {
             <strong>Chat width</strong>
             <small>How wide messages and the chat box can grow on large screens.</small>
           </span>
-          <Select value={chatWidth} onChange={(value) => setChatWidth(value as ChatWidth)}
-            options={Object.entries(CHAT_WIDTHS).map(([value, { label }]) => ({ value, label }))} />
+          <Select
+            value={chatWidth}
+            onChange={(value) => setChatWidth(value as ChatWidth)}
+            options={Object.entries(CHAT_WIDTHS).map(([value, { label }]) => ({ value, label }))}
+          />
         </label>
         <label className="setting-row">
           <span>
             <strong>Code font</strong>
             <small>The font for code in messages, the editor, diffs, and terminals.</small>
           </span>
-          <Select value={codeFont} onChange={(value) => setCodeFont(value as CodeFont)}
-            options={Object.entries(CODE_FONTS).map(([value, label]) => ({ value, label }))} />
+          <Select
+            value={codeFont}
+            onChange={(value) => setCodeFont(value as CodeFont)}
+            options={Object.entries(CODE_FONTS).map(([value, label]) => ({ value, label }))}
+          />
         </label>
         <label className="setting-row">
           <span>
             <strong>Visual replies</strong>
-            <small>Let providers answer with interactive charts, tables, and diagrams inside the conversation.</small>
+            <small>
+              Let providers answer with interactive charts, tables, and diagrams inside the
+              conversation.
+            </small>
           </span>
-          <input className="setting-switch" type="checkbox" role="switch"
+          <input
+            className="setting-switch"
+            type="checkbox"
+            role="switch"
             checked={Boolean(resolveProjectSettings(projectDefaults).visualReplies)}
-            onChange={event => void saveProjectDefaults({ ...projectDefaults, visualReplies: event.target.checked }).catch(reportError)} />
+            onChange={(event) =>
+              void saveProjectDefaults({
+                ...projectDefaults,
+                visualReplies: event.target.checked,
+              }).catch(reportError)
+            }
+          />
         </label>
         <label className="setting-row">
           <span>
             <strong>Show failed-tools badge</strong>
-            <small>Show the failure count in work summaries. Tool results remain available when hidden.</small>
+            <small>
+              Show the failure count in work summaries. Tool results remain available when hidden.
+            </small>
           </span>
-          <input className="setting-switch" type="checkbox" role="switch"
-            checked={showFailedTools} onChange={event => setShowFailedTools(event.target.checked)} />
+          <input
+            className="setting-switch"
+            type="checkbox"
+            role="switch"
+            checked={showFailedTools}
+            onChange={(event) => setShowFailedTools(event.target.checked)}
+          />
         </label>
         <label className="setting-row">
           <span>
             <strong>Text streaming</strong>
-            <small>{" "}Show text as it arrives. Turn off to wait for each text block to finish.{" "}</small>
+            <small>
+              {" "}
+              Show text as it arrives. Turn off to wait for each text block to finish.{" "}
+            </small>
           </span>
           <input
             className="setting-switch"
@@ -164,7 +277,7 @@ export function AppearanceSettings() {
         <label className="setting-row" data-disabled={textStreaming}>
           <span>
             <strong>Typing animation</strong>
-            <small>{" "}Reveal finished text gradually. Available when text streaming is off.{" "}</small>
+            <small> Reveal finished text gradually. Available when text streaming is off. </small>
           </span>
           <input
             className="setting-switch"
@@ -178,8 +291,7 @@ export function AppearanceSettings() {
         <div className="typing-speed-setting" data-disabled={textStreaming || !typingAnimation}>
           <div>
             <label htmlFor="typing-speed">Typing speed</label>
-            <output htmlFor="typing-speed">
-              {typingSpeed}{" "}characters / second{" "}</output>
+            <output htmlFor="typing-speed">{typingSpeed} characters / second </output>
           </div>
           <Range
             id="typing-speed"

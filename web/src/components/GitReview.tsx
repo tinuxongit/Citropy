@@ -29,8 +29,15 @@ export function GitReview({
   const viewport = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const body = selection.kind === "commit" && message.includes("\n") ? message.slice(message.indexOf("\n")).trim() : "";
-  const getItemKey = useCallback((index: number) => body && index === 0 ? "message" : `file:${patches[index - Number(Boolean(body))]!.path}`, [patches, body]);
+  const body =
+    selection.kind === "commit" && message.includes("\n")
+      ? message.slice(message.indexOf("\n")).trim()
+      : "";
+  const getItemKey = useCallback(
+    (index: number) =>
+      body && index === 0 ? "message" : `file:${patches[index - Number(Boolean(body))]!.path}`,
+    [patches, body],
+  );
   const list = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: selection.kind === "file" ? 0 : patches.length + Number(Boolean(body)),
     getScrollElement: () => viewport.current,
@@ -52,11 +59,7 @@ export function GitReview({
     const load = async () => {
       try {
         if (selection.kind === "file") {
-          const patch = await fetchDiff(
-            projectId,
-            selection.path,
-            selection.staged,
-          );
+          const patch = await fetchDiff(projectId, selection.path, selection.staged);
           if (!cancelled) setPatches(patch ? [patch] : []);
         } else {
           const result = await manageGit(
@@ -99,7 +102,11 @@ export function GitReview({
         </div>
       ) : selection.kind === "file" ? (
         <div className="git-single-patch">
-          {patches[0]?.hunks.length ? <DiffView key={patches[0].path} patch={patches[0]} showHeader={false} expanded /> : <p className="git-no-lines">No text changes in this file.</p>}
+          {patches[0]?.hunks.length ? (
+            <DiffView key={patches[0].path} patch={patches[0]} showHeader={false} expanded />
+          ) : (
+            <p className="git-no-lines">No text changes in this file.</p>
+          )}
         </div>
       ) : (
         <div className="git-patches">
@@ -115,24 +122,53 @@ export function GitReview({
               const patch = patches[item.index - Number(Boolean(body))];
               const open = patch && !collapsed.has(patch.path);
               return (
-                <div key={item.key} data-index={item.index} ref={list.measureElement} className="git-patch-row" style={{ transform: `translateY(${item.start}px)` }}>
-                  {body && item.index === 0 ? <p className="git-commit-body">{body}</p> : patch && (
-                    <div className="git-patch" data-open={open}>
-                      <button className="git-patch-heading" type="button" aria-expanded={open} onClick={() => setCollapsed((previous) => {
-                          const next = new Set(previous);
-                          if (next.has(patch.path)) next.delete(patch.path);
-                          else next.add(patch.path);
-                          return next;
-                        })}>
+                <div
+                  key={item.key}
+                  data-index={item.index}
+                  ref={list.measureElement}
+                  className="git-patch-row"
+                  style={{ transform: `translateY(${item.start}px)` }}
+                >
+                  {body && item.index === 0 ? (
+                    <p className="git-commit-body">{body}</p>
+                  ) : (
+                    patch && (
+                      <div className="git-patch" data-open={open}>
+                        <button
+                          className="git-patch-heading"
+                          type="button"
+                          aria-expanded={open}
+                          onClick={() =>
+                            setCollapsed((previous) => {
+                              const next = new Set(previous);
+                              if (next.has(patch.path)) next.delete(patch.path);
+                              else next.add(patch.path);
+                              return next;
+                            })
+                          }
+                        >
                           <ChevronRightIcon size={13} className="git-patch-chevron" />
                           <FileIcon path={patch.path} />
                           <span>{patch.path}</span>
                           <LineCounts added={patch.added} removed={patch.removed} />
-                      </button>
-                      {open && (patch.hunks.length ? (
-                        <DiffView key={patch.path} patch={patch} showHeader={false} limit={160} expanded={expanded.has(patch.path)} onExpand={() => setExpanded((previous) => new Set(previous).add(patch.path))} />
-                      ) : <p className="git-no-lines">No text changes in this file.</p>)}
-                    </div>
+                        </button>
+                        {open &&
+                          (patch.hunks.length ? (
+                            <DiffView
+                              key={patch.path}
+                              patch={patch}
+                              showHeader={false}
+                              limit={160}
+                              expanded={expanded.has(patch.path)}
+                              onExpand={() =>
+                                setExpanded((previous) => new Set(previous).add(patch.path))
+                              }
+                            />
+                          ) : (
+                            <p className="git-no-lines">No text changes in this file.</p>
+                          ))}
+                      </div>
+                    )
                   )}
                 </div>
               );

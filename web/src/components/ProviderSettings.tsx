@@ -32,7 +32,15 @@ export function ProviderSettings() {
   const connected = useApp((state) => state.connected);
   const threads = useApp((state) => state.threads);
   const resumeAfterLimits = useApp((state) => state.resumeAfterLimits);
-  const { maintenance, error: maintenanceError, checking, updating, refresh: refreshMaintenance, update, updateAll } = useProviderMaintenance();
+  const {
+    maintenance,
+    error: maintenanceError,
+    checking,
+    updating,
+    refresh: refreshMaintenance,
+    update,
+    updateAll,
+  } = useProviderMaintenance();
   const signIns = useTerminalSignIns();
   const [error, setError] = useState("");
   const [editor, setEditor] = useState<ProviderInfo>();
@@ -41,18 +49,38 @@ export function ProviderSettings() {
   const disabled = !connected || switching;
 
   useEffect(() => {
-    if (!connected) { setInstances([]); return; }
+    if (!connected) {
+      setInstances([]);
+      return;
+    }
     const controller = new AbortController();
-    api<ProviderInstance[]>("providers/instances", { signal: controller.signal }).then(setInstances).catch(cause => { if (!controller.signal.aborted) setError((cause as Error).message); });
+    api<ProviderInstance[]>("providers/instances", { signal: controller.signal })
+      .then(setInstances)
+      .catch((cause) => {
+        if (!controller.signal.aborted) setError((cause as Error).message);
+      });
     return () => controller.abort();
   }, [connected, environments.activeId]);
 
-  const activeCount = (provider: string) => Object.values(threads).filter(thread => thread.provider === provider && (thread.running || thread.status === "awaiting")).length;
-  const eligible = maintenance.some(entry => entry.available && !entry.install && entry.binaryPath && entry.updateStatus !== "current" && !activeCount(entry.provider));
-  const available = maintenance.filter(entry => entry.updateStatus === "available").length;
-  const stateOf = (provider: ProviderInfo) => maintenance.find(entry => entry.provider === provider.id);
-  const opened = providers.find(provider => provider.id === openId);
-  const checked = maintenance.length > 0 && maintenance.every(entry => entry.install || entry.updateStatus === "current");
+  const activeCount = (provider: string) =>
+    Object.values(threads).filter(
+      (thread) => thread.provider === provider && (thread.running || thread.status === "awaiting"),
+    ).length;
+  const eligible = maintenance.some(
+    (entry) =>
+      entry.available &&
+      !entry.install &&
+      entry.binaryPath &&
+      entry.updateStatus !== "current" &&
+      !activeCount(entry.provider),
+  );
+  const available = maintenance.filter((entry) => entry.updateStatus === "available").length;
+  const stateOf = (provider: ProviderInfo) =>
+    maintenance.find((entry) => entry.provider === provider.id);
+  const opened = providers.find((provider) => provider.id === openId);
+  const checked =
+    maintenance.length > 0 &&
+    maintenance.every((entry) => entry.install || entry.updateStatus === "current");
 
   return (
     <>
@@ -63,41 +91,67 @@ export function ProviderSettings() {
               <strong>Environment</strong>
               <small>Manage the providers installed on this computer or on a connected one.</small>
             </span>
-            <Select aria-label="Provider environment" value={environments.activeId}
+            <Select
+              aria-label="Provider environment"
+              value={environments.activeId}
               disabled={switching || !window.citropyDesktop?.connectEnvironment}
-              onChange={async id => {
+              onChange={async (id) => {
                 if (id === environments.activeId) return;
                 setSwitching(true);
                 setEditor(undefined);
                 setOpenId("");
                 setInstances([]);
-                try { await selectEnvironment(id); } catch (cause) { reportError(cause); }
-                finally { setSwitching(false); }
+                try {
+                  await selectEnvironment(id);
+                } catch (cause) {
+                  reportError(cause);
+                } finally {
+                  setSwitching(false);
+                }
               }}
               options={[
                 { value: "local", label: "Local" },
-                ...environments.connections.map(connection => ({ value: connection.id, label: connection.name })),
-              ]} />
+                ...environments.connections.map((connection) => ({
+                  value: connection.id,
+                  label: connection.name,
+                })),
+              ]}
+            />
           </label>
-          {switching && <p className="provider-maintenance-note" role="status">Connecting…</p>}
+          {switching && (
+            <p className="provider-maintenance-note" role="status">
+              Connecting…
+            </p>
+          )}
         </div>
       )}
       <div className="providers-toolbar">
         <p role="status">{updateSummary(available, checked)}</p>
         {eligible && (
-          <button className="btn" disabled={disabled || updating || checking}
+          <button
+            className="btn"
+            disabled={disabled || updating || checking}
             title="Update installed providers. Providers with active conversations are skipped."
-            onClick={() => void updateAll()}><ArrowUpToLineIcon size={14} />Update all</button>
+            onClick={() => void updateAll()}
+          >
+            <ArrowUpToLineIcon size={14} />
+            Update all
+          </button>
         )}
-        <button className="btn" disabled={disabled || updating || checking} onClick={refreshMaintenance}>
+        <button
+          className="btn"
+          disabled={disabled || updating || checking}
+          onClick={refreshMaintenance}
+        >
           {checking ? <Loader size={14} /> : <RefreshIcon size={14} />}Check for updates
         </button>
       </div>
       <div className="settings-card-grid provider-grid">
-        {providers.map(provider => {
+        {providers.map((provider) => {
           const state = stateOf(provider);
           return (
-            <SettingsCard key={provider.id}
+            <SettingsCard
+              key={provider.id}
               title={provider.label}
               subtitle={versionSummary(provider, state)}
               description={accountSummary(provider, signIns.signIns)}
@@ -108,11 +162,20 @@ export function ProviderSettings() {
                 disabled: disabled || state?.status === "updating" || !hasReadyAccount(provider),
                 onChange: async () => {
                   const enabled = !provider.enabled;
-                  if (!enabled && !await confirmStop(activeCount(provider.id), `Turn off ${provider.label}?`, "Turn off")) return;
+                  if (
+                    !enabled &&
+                    !(await confirmStop(
+                      activeCount(provider.id),
+                      `Turn off ${provider.label}?`,
+                      "Turn off",
+                    ))
+                  )
+                    return;
                   send({ t: "providers.configure", provider: provider.id, enabled });
                 },
               }}
-              onOpen={() => setOpenId(provider.id)} />
+              onOpen={() => setOpenId(provider.id)}
+            />
           );
         })}
       </div>
@@ -120,7 +183,15 @@ export function ProviderSettings() {
       {(error || maintenanceError || signIns.error) && (
         <p className="dialog-error" role="alert">
           {error || maintenanceError || signIns.error}
-          <button className="btn" onClick={() => { refreshMaintenance(); signIns.reload(); }}>Retry</button>
+          <button
+            className="btn"
+            onClick={() => {
+              refreshMaintenance();
+              signIns.reload();
+            }}
+          >
+            Retry
+          </button>
         </p>
       )}
       <h2 className="settings-group-heading">Usage limits</h2>
@@ -128,29 +199,58 @@ export function ProviderSettings() {
         <label className="setting-row">
           <span>
             <strong>Resume after usage limits</strong>
-            <small>When a chat stops because a usage limit is reached, continue it automatically once the limit resets. You can also turn this on for a single chat.</small>
+            <small>
+              When a chat stops because a usage limit is reached, continue it automatically once the
+              limit resets. You can also turn this on for a single chat.
+            </small>
           </span>
-          <input className="setting-switch" type="checkbox" role="switch" checked={resumeAfterLimits} disabled={!connected}
-            onChange={event => send({ t: "limits.configure", resumeAfterLimits: event.target.checked })} />
+          <input
+            className="setting-switch"
+            type="checkbox"
+            role="switch"
+            checked={resumeAfterLimits}
+            disabled={!connected}
+            onChange={(event) =>
+              send({ t: "limits.configure", resumeAfterLimits: event.target.checked })
+            }
+          />
         </label>
       </div>
-      <p className="settings-note">Updates use each provider's own installer. Turning a provider off stops its active chats and hides it from new ones. Saved conversations stay available.</p>
-      <p className="settings-connection" role="status">{connected ? "Connected to Citropy" : "Disconnected from Citropy"}</p>
-      <AnimatePresence>{opened && (
-        <ProviderDialog provider={opened}
-          state={stateOf(opened)}
-          active={activeCount(opened.id)}
-          instances={instances.filter(instance => instance.provider === opened.id)}
-          signIns={signIns}
-          disabled={disabled}
-          updating={updating}
-          onUpdate={() => void update(opened)}
-          onEditInstructions={() => setEditor(opened)}
-          onSaved={saved => setInstances(previous => [...previous.filter(entry => entry.id !== saved.id), saved])}
-          onRemoved={id => setInstances(previous => previous.filter(entry => entry.id !== id))}
-          onClose={() => setOpenId("")} />
-      )}</AnimatePresence>
-      <AnimatePresence>{editor && <ProviderInstructions provider={editor} onClose={() => setEditor(undefined)} />}</AnimatePresence>
+      <p className="settings-note">
+        Updates use each provider's own installer. Turning a provider off stops its active chats and
+        hides it from new ones. Saved conversations stay available.
+      </p>
+      <p className="settings-connection" role="status">
+        {connected ? "Connected to Citropy" : "Disconnected from Citropy"}
+      </p>
+      <AnimatePresence>
+        {opened && (
+          <ProviderDialog
+            provider={opened}
+            state={stateOf(opened)}
+            active={activeCount(opened.id)}
+            instances={instances.filter((instance) => instance.provider === opened.id)}
+            signIns={signIns}
+            disabled={disabled}
+            updating={updating}
+            onUpdate={() => void update(opened)}
+            onEditInstructions={() => setEditor(opened)}
+            onSaved={(saved) =>
+              setInstances((previous) => [
+                ...previous.filter((entry) => entry.id !== saved.id),
+                saved,
+              ])
+            }
+            onRemoved={(id) =>
+              setInstances((previous) => previous.filter((entry) => entry.id !== id))
+            }
+            onClose={() => setOpenId("")}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {editor && <ProviderInstructions provider={editor} onClose={() => setEditor(undefined)} />}
+      </AnimatePresence>
     </>
   );
 }

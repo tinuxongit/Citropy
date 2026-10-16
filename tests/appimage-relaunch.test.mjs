@@ -105,10 +105,7 @@ test(
     const appImage = join(directory, "Citropy.AppImage");
     const launched = join(directory, "launched");
     const logFile = join(directory, "update.log");
-    await writeFile(
-      appImage,
-      `#!/bin/sh\nprintf relaunched > ${JSON.stringify(launched)}\n`,
-    );
+    await writeFile(appImage, `#!/bin/sh\nprintf relaunched > ${JSON.stringify(launched)}\n`);
     await chmod(appImage, 0o755);
     const parent = spawn("sleep", ["30"], { stdio: "ignore" });
     t.after(() => {

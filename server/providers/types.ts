@@ -17,15 +17,40 @@ export type TranscriptEvent =
   | { type: "block.end"; blockId: string }
   | { type: "tool.start"; callId: string; name: string; input: unknown }
   | { type: "tool.input"; callId: string; input: unknown; name?: string }
-  | { type: "tool.end"; callId: string; ok: boolean; output: string; images?: Array<{ mime: string; data: string }>; patch?: FilePatch };
+  | {
+      type: "tool.end";
+      callId: string;
+      ok: boolean;
+      output: string;
+      images?: Array<{ mime: string; data: string }>;
+      patch?: FilePatch;
+    };
 
 export type AgentEvent =
   | TranscriptEvent
   | { type: "compacting"; active: boolean }
   | { type: "compacted"; contextTokens?: number }
-  | { type: "subagent"; id: string; title?: string; prompt?: string; model?: string; status: ThreadStatus; result?: string; runPrompt?: string; parent?: string; launchId?: string }
+  | {
+      type: "subagent";
+      id: string;
+      title?: string;
+      prompt?: string;
+      model?: string;
+      status: ThreadStatus;
+      result?: string;
+      runPrompt?: string;
+      parent?: string;
+      launchId?: string;
+    }
   | { type: "subagent.activity"; id: string; event: TranscriptEvent }
-  | { type: "session"; externalId: string; model?: string; effort?: string; contextMax?: number; fastMode?: boolean }
+  | {
+      type: "session";
+      externalId: string;
+      model?: string;
+      effort?: string;
+      contextMax?: number;
+      fastMode?: boolean;
+    }
   /** The provider named the conversation itself. */
   | { type: "title"; title: string }
   | { type: "status"; status: ThreadStatus; tool?: string }
@@ -84,8 +109,16 @@ export interface AgentSession {
    */
   configure?(config: SessionConfig): Promise<void>;
   stopShell?(taskId: string): Promise<void>;
-  send(text: string, attachments?: Attachment[], skills?: Array<{ name: string; path: string }>): void | Promise<void>;
-  steer?(text: string, attachments?: Attachment[], skills?: Array<{ name: string; path: string }>): Promise<void>;
+  send(
+    text: string,
+    attachments?: Attachment[],
+    skills?: Array<{ name: string; path: string }>,
+  ): void | Promise<void>;
+  steer?(
+    text: string,
+    attachments?: Attachment[],
+    skills?: Array<{ name: string; path: string }>,
+  ): Promise<void>;
   compact?(): Promise<void>;
   interrupt(): void | Promise<void>;
   dispose(): void;
@@ -121,7 +154,12 @@ export interface Provider {
   models: ModelOption[];
   listModels(launch?: ProviderLaunch): Promise<ModelOption[]>;
   supportsPermissionPrompt: boolean;
-  capabilities: { transport: "stdio" | "rpc" | "http"; steer: boolean; compact: boolean; stopShell: boolean };
+  capabilities: {
+    transport: "stdio" | "rpc" | "http";
+    steer: boolean;
+    compact: boolean;
+    stopShell: boolean;
+  };
   steerHint?: string;
   detect(launch?: ProviderLaunch): Promise<{ available: boolean; version?: string }>;
   signIn: TerminalSignIn | AppSignIn;

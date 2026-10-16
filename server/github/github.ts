@@ -1,7 +1,14 @@
 import { all, api, command } from "./github-cli.ts";
 import { pageNumber, positive, repositoryName, text } from "./github-input.ts";
 import { mutate } from "./github-mutations.ts";
-import { branchPull, cloneRepository, connectRepository, githubStatus, openSignIn, publishRepository } from "./github-workspace.ts";
+import {
+  branchPull,
+  cloneRepository,
+  connectRepository,
+  githubStatus,
+  openSignIn,
+  publishRepository,
+} from "./github-workspace.ts";
 import type {
   GitHubRequest,
   GitHubResponse,
@@ -16,9 +23,7 @@ import type {
   GitHubNotification,
 } from "../../shared/github.ts";
 
-export async function handleGitHub(
-  request: GitHubRequest,
-): Promise<GitHubResponse> {
+export async function handleGitHub(request: GitHubRequest): Promise<GitHubResponse> {
   if ("repo" in request) repositoryName(request.repo);
   switch (request.operation) {
     case "status":
@@ -51,9 +56,7 @@ export async function handleGitHub(
           "user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member",
         );
         const matched = repos.filter((repo) =>
-          `${repo.full_name} ${repo.description ?? ""}`
-            .toLowerCase()
-            .includes(query),
+          `${repo.full_name} ${repo.description ?? ""}`.toLowerCase().includes(query),
         );
         return {
           items: matched.slice((page - 1) * 30, page * 30),
@@ -67,8 +70,7 @@ export async function handleGitHub(
       return { items, more: items.length === 30 };
     }
     case "items": {
-      if (!["open", "closed", "all"].includes(request.state))
-        throw new Error("Invalid filter.");
+      if (!["open", "closed", "all"].includes(request.state)) throw new Error("Invalid filter.");
       const page = pageNumber(request.page);
       const q = [
         `repo:${request.repo}`,
@@ -91,9 +93,7 @@ export async function handleGitHub(
       const prefix = `repos/${request.repo}`;
       const number = positive(request.number);
       const [item, comments] = await Promise.all([
-        api<GitHubItem>(
-          `${prefix}/${request.pull ? "pulls" : "issues"}/${number}`,
-        ),
+        api<GitHubItem>(`${prefix}/${request.pull ? "pulls" : "issues"}/${number}`),
         all<GitHubComment>(`${prefix}/issues/${number}/comments?per_page=100`),
       ]);
       if (!request.pull)
@@ -109,10 +109,7 @@ export async function handleGitHub(
       const [reviews, files, checks, statuses] = await Promise.all([
         all<GitHubComment>(`${prefix}/pulls/${number}/reviews?per_page=100`),
         all<GitHubFile>(`${prefix}/pulls/${number}/files?per_page=100`),
-        all<GitHubCheck>(
-          `${prefix}/commits/${sha}/check-runs?per_page=100`,
-          "check_runs",
-        ),
+        all<GitHubCheck>(`${prefix}/commits/${sha}/check-runs?per_page=100`, "check_runs"),
         all<{
           id: number;
           context: string;
@@ -139,10 +136,7 @@ export async function handleGitHub(
       const id = positive(request.id);
       const [run, jobs] = await Promise.all([
         api<GitHubRun>(`repos/${request.repo}/actions/runs/${id}`),
-        all<GitHubJob>(
-          `repos/${request.repo}/actions/runs/${id}/jobs?per_page=100`,
-          "jobs",
-        ),
+        all<GitHubJob>(`repos/${request.repo}/actions/runs/${id}/jobs?per_page=100`, "jobs"),
       ]);
       return { run, jobs };
     }
@@ -165,9 +159,7 @@ export async function handleGitHub(
         html_url: string;
       }>(`repos/${request.repo}/actions/workflows?per_page=100`, "workflows");
     case "branches": {
-      const branches = await all<{ name: string }>(
-        `repos/${request.repo}/branches?per_page=100`,
-      );
+      const branches = await all<{ name: string }>(`repos/${request.repo}/branches?per_page=100`);
       return branches.map((branch) => branch.name);
     }
     case "releases": {

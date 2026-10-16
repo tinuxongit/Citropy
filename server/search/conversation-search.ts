@@ -3,12 +3,17 @@ import type { Message, ThreadMeta } from "../../shared/protocol.ts";
 
 const QUERY_LENGTH = 300;
 
-type MessageTexts = (threadId: string) => Iterable<{ id: string; text: string; normalized?: boolean }>;
+type MessageTexts = (
+  threadId: string,
+) => Iterable<{ id: string; text: string; normalized?: boolean }>;
 export type SearchThread = Pick<ThreadMeta, "id" | "title" | "updatedAt">;
 export type SearchResult = { threadId: string; messageId?: string; snippet: string };
 
 export function normalizeSearchText(text: string): string {
-  return text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[`#*]/g, "").replace(/\s+/g, " ");
+  return text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[`#*]/g, "")
+    .replace(/\s+/g, " ");
 }
 
 function needleOf(query: string): string {
@@ -19,11 +24,24 @@ export function findInMessages(messages: Message[], query: string): string[] {
   const needle = needleOf(query);
   if (!needle) return [];
   return messages
-    .filter(message => message.role !== "system" && message.parts.some(part => part.kind === "text" && normalizeSearchText(part.text).toLocaleLowerCase().includes(needle)))
-    .map(message => message.id);
+    .filter(
+      (message) =>
+        message.role !== "system" &&
+        message.parts.some(
+          (part) =>
+            part.kind === "text" &&
+            normalizeSearchText(part.text).toLocaleLowerCase().includes(needle),
+        ),
+    )
+    .map((message) => message.id);
 }
 
-export function searchConversations(threads: Iterable<SearchThread>, messageTexts: MessageTexts, query: string, cancelled?: () => boolean): SearchResult[] {
+export function searchConversations(
+  threads: Iterable<SearchThread>,
+  messageTexts: MessageTexts,
+  query: string,
+  cancelled?: () => boolean,
+): SearchResult[] {
   const needle = needleOf(query);
   if (!needle) return [];
   const results: SearchResult[] = [];
@@ -36,11 +54,16 @@ export function searchConversations(threads: Iterable<SearchThread>, messageText
       const index = text.toLocaleLowerCase().indexOf(needle);
       if (index < 0) continue;
       const start = Math.max(0, index - 55);
-      match = { threadId: thread.id, messageId: message.id, snippet: `${start ? "…" : ""}${text.slice(start, index + needle.length + 100)}${text.length > index + needle.length + 100 ? "…" : ""}` };
+      match = {
+        threadId: thread.id,
+        messageId: message.id,
+        snippet: `${start ? "…" : ""}${text.slice(start, index + needle.length + 100)}${text.length > index + needle.length + 100 ? "…" : ""}`,
+      };
       break;
     }
     if (match) results.push(match);
-    else if (thread.title.toLocaleLowerCase().includes(needle)) results.push({ threadId: thread.id, snippet: thread.title });
+    else if (thread.title.toLocaleLowerCase().includes(needle))
+      results.push({ threadId: thread.id, snippet: thread.title });
     if (results.length === 100) break;
   }
   return results;
@@ -50,17 +73,33 @@ export class ConversationSearch {
   #path: string;
   #worker: Worker | undefined;
   #nextId = 0;
-  #pending = new Map<number, { resolve: (results: SearchResult[]) => void; reject: (error: Error) => void; cleanup: () => void; cancelled: Int32Array }>();
+  #pending = new Map<
+    number,
+    {
+      resolve: (results: SearchResult[]) => void;
+      reject: (error: Error) => void;
+      cleanup: () => void;
+      cancelled: Int32Array;
+    }
+  >();
   #idle: NodeJS.Timeout | undefined;
 
-  constructor(path: string) { this.#path = path; }
+  constructor(path: string) {
+    this.#path = path;
+  }
 
-  search(threads: Iterable<SearchThread>, query: string, signal?: AbortSignal): Promise<SearchResult[]> {
+  search(
+    threads: Iterable<SearchThread>,
+    query: string,
+    signal?: AbortSignal,
+  ): Promise<SearchResult[]> {
     if (signal?.aborted) return Promise.reject(signal.reason);
     if (!query.trim()) return Promise.resolve([]);
     clearTimeout(this.#idle);
     if (!this.#worker) {
-      const worker = new Worker(new URL("./conversation-search-worker.ts", import.meta.url), { workerData: { path: this.#path } });
+      const worker = new Worker(new URL("./conversation-search-worker.ts", import.meta.url), {
+        workerData: { path: this.#path },
+      });
       this.#worker = worker;
       worker.on("message", (message: { id: number; results?: SearchResult[]; error?: string }) => {
         const pending = this.#pending.get(message.id);
@@ -72,7 +111,10 @@ export class ConversationSearch {
       const failed = (error: Error) => {
         if (this.#worker !== worker) return;
         this.#worker = undefined;
-        for (const pending of this.#pending.values()) { pending.cleanup(); pending.reject(error); }
+        for (const pending of this.#pending.values()) {
+          pending.cleanup();
+          pending.reject(error);
+        }
       };
       worker.on("error", failed);
       worker.on("exit", () => failed(new Error("Conversation search stopped unexpectedly.")));
@@ -92,14 +134,24 @@ export class ConversationSearch {
         this.#pending.delete(id);
         if (!this.#pending.size && this.#worker === worker) {
           worker.unref();
-          this.#idle = setTimeout(() => { void this.close(); }, 30_000).unref();
+          this.#idle = setTimeout(() => {
+            void this.close();
+          }, 30_000).unref();
         }
       };
       this.#pending.set(id, { resolve, reject, cleanup, cancelled });
       signal?.addEventListener("abort", abort, { once: true });
       try {
-        worker.postMessage({ id, threads: [...threads].map(({ id, title, updatedAt }) => ({ id, title, updatedAt })), query, cancelled });
-      } catch (error) { cleanup(); reject(error); }
+        worker.postMessage({
+          id,
+          threads: [...threads].map(({ id, title, updatedAt }) => ({ id, title, updatedAt })),
+          query,
+          cancelled,
+        });
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
     });
   }
 

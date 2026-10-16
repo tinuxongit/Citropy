@@ -27,17 +27,22 @@ export function FileExplorer({
   const loadedRoot = useRef("");
   const loadedSearch = useRef("");
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const [directories, setDirectories] = useState<Map<string, { entries: FileEntry[]; error?: string }>>(() => new Map());
+  const [directories, setDirectories] = useState<
+    Map<string, { entries: FileEntry[]; error?: string }>
+  >(() => new Map());
 
   useEffect(() => {
     loadedRoot.current = "";
     loadedSearch.current = "";
   }, [projectId, threadId, connected]);
 
-  useEffect(() => () => {
-    for (const controller of requests.current.values()) controller.abort();
-    requests.current.clear();
-  }, [active, projectId, threadId, connected]);
+  useEffect(
+    () => () => {
+      for (const controller of requests.current.values()) controller.abort();
+      requests.current.clear();
+    },
+    [active, projectId, threadId, connected],
+  );
 
   useEffect(() => {
     if (!active || !connected) return;
@@ -45,14 +50,18 @@ export function FileExplorer({
       if (directories.has(path) || requests.current.has(path)) continue;
       const controller = new AbortController();
       requests.current.set(path, controller);
-      void api<FileEntry[]>(`editor/tree?${assetQuery(projectId, path, threadId)}`, { signal: controller.signal })
+      void api<FileEntry[]>(`editor/tree?${assetQuery(projectId, path, threadId)}`, {
+        signal: controller.signal,
+      })
         .then((entries) => {
           if (!controller.signal.aborted)
             setDirectories((previous) => new Map(previous).set(path, { entries }));
         })
         .catch((error: Error) => {
           if (!controller.signal.aborted)
-            setDirectories((previous) => new Map(previous).set(path, { entries: [], error: error.message }));
+            setDirectories((previous) =>
+              new Map(previous).set(path, { entries: [], error: error.message }),
+            );
         })
         .finally(() => {
           if (requests.current.get(path) === controller) requests.current.delete(path);
@@ -62,9 +71,7 @@ export function FileExplorer({
 
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
-  const [matches, setMatches] = useState<Array<{ path: string; dir: boolean }>>(
-    [],
-  );
+  const [matches, setMatches] = useState<Array<{ path: string; dir: boolean }>>([]);
   useEffect(() => {
     loadedSearch.current = "";
   }, [query]);
@@ -80,10 +87,7 @@ export function FileExplorer({
     setSearching(true);
     setError("");
     const timer = setTimeout(() => {
-      api<Array<{ path: string; dir: boolean }>>(
-        path,
-        { signal: controller.signal },
-      )
+      api<Array<{ path: string; dir: boolean }>>(path, { signal: controller.signal })
         .then((matches) => {
           if (!controller.signal.aborted) {
             loadedSearch.current = path;
@@ -137,11 +141,14 @@ export function FileExplorer({
   }, [active, projectId, threadId, connected]);
   const rows = useMemo(() => {
     const result: Array<{ path: string; entry: FileEntry; depth: number }> = [];
-    if (query) return matches.filter((entry) => !entry.dir).map((entry) => ({
-      path: entry.path,
-      entry: { ...entry, name: entry.path },
-      depth: 0,
-    }));
+    if (query)
+      return matches
+        .filter((entry) => !entry.dir)
+        .map((entry) => ({
+          path: entry.path,
+          entry: { ...entry, name: entry.path },
+          depth: 0,
+        }));
     const collect = (entries: FileEntry[], depth: number) => {
       for (const entry of entries) {
         result.push({ path: entry.path, entry, depth });
@@ -198,8 +205,16 @@ export function FileExplorer({
               >
                 {entry.dir ? (
                   <>
-                    <ChevronRightIcon size={11} className="tree-chevron" data-open={expanded.has(entry.path)} />
-                    {expanded.has(entry.path) ? <FolderOpenIcon size={12} className="tree-icon" /> : <FolderIcon size={12} className="tree-icon" />}
+                    <ChevronRightIcon
+                      size={11}
+                      className="tree-chevron"
+                      data-open={expanded.has(entry.path)}
+                    />
+                    {expanded.has(entry.path) ? (
+                      <FolderOpenIcon size={12} className="tree-icon" />
+                    ) : (
+                      <FolderIcon size={12} className="tree-icon" />
+                    )}
                   </>
                 ) : (
                   <>
@@ -210,7 +225,9 @@ export function FileExplorer({
                 <span className="truncate">{entry.name}</span>
               </button>
               {entry.dir && expanded.has(entry.path) && directories.get(entry.path)?.error && (
-                <div className="pane-empty" role="alert">{directories.get(entry.path)!.error}</div>
+                <div className="pane-empty" role="alert">
+                  {directories.get(entry.path)!.error}
+                </div>
               )}
             </>
           )}

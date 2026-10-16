@@ -1,13 +1,5 @@
 export type UiSound =
-  | "click"
-  | "nav"
-  | "toggle-on"
-  | "toggle-off"
-  | "send"
-  | "copy"
-  | "done"
-  | "attention"
-  | "error";
+  "click" | "nav" | "toggle-on" | "toggle-off" | "send" | "copy" | "done" | "attention" | "error";
 
 interface Recipe {
   asset: string;
@@ -79,8 +71,7 @@ function enabled(name: UiSound): boolean {
 
 function graphFor(): { context: AudioContext; master: GainNode } | null {
   if (graph) return graph;
-  if (typeof window === "undefined" || typeof window.AudioContext !== "function")
-    return null;
+  if (typeof window === "undefined" || typeof window.AudioContext !== "function") return null;
   const context = new window.AudioContext();
   const master = context.createGain();
   master.gain.value = level();

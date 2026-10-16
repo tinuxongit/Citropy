@@ -31,7 +31,7 @@ export function ImageGallery({ part }: { part: ImagesPart }) {
       </div>
       {preview !== null && part.files[preview] && (
         <ImageViewer
-          images={part.files.map(file => ({ src: url(file.path), name: file.label }))}
+          images={part.files.map((file) => ({ src: url(file.path), name: file.label }))}
           index={preview}
           onIndexChange={setPreview}
           onClose={() => setPreview(null)}

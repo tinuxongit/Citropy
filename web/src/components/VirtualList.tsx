@@ -24,9 +24,14 @@ export function VirtualList<T>({
   const [scrollMargin, setScrollMargin] = useState(0);
   const [focusedKey, setFocusedKey] = useState<string>();
   const virtualized = items.length > 40;
-  const focusedIndex = focusedKey === undefined ? -1 : items.findIndex((item) => String(item[itemKey]) === focusedKey);
-  const activeIndex = activeKey === undefined ? -1 : items.findIndex((item) => String(item[itemKey]) === activeKey);
-  const getItemKey = useCallback((index: number) => String(items[index]![itemKey]), [items, itemKey]);
+  const focusedIndex =
+    focusedKey === undefined ? -1 : items.findIndex((item) => String(item[itemKey]) === focusedKey);
+  const activeIndex =
+    activeKey === undefined ? -1 : items.findIndex((item) => String(item[itemKey]) === activeKey);
+  const getItemKey = useCallback(
+    (index: number) => String(items[index]![itemKey]),
+    [items, itemKey],
+  );
   const list = useVirtualizer<HTMLElement, HTMLDivElement>({
     count: items.length,
     enabled: virtualized,
@@ -37,13 +42,19 @@ export function VirtualList<T>({
     scrollMargin,
     overscan: 4,
     measureElement: (element) => element.offsetHeight,
-    rangeExtractor: useCallback((range: Range) => [...new Set([
-      ...defaultRangeExtractor(range),
-      ...(activeIndex < 0 ? [] : [activeIndex]),
-      ...[focusedIndex - 1, focusedIndex, focusedIndex + 1].filter(
-        (index) => focusedIndex >= 0 && index >= 0 && index < range.count,
-      ),
-    ])].sort((a, b) => a - b), [focusedIndex, activeIndex]),
+    rangeExtractor: useCallback(
+      (range: Range) =>
+        [
+          ...new Set([
+            ...defaultRangeExtractor(range),
+            ...(activeIndex < 0 ? [] : [activeIndex]),
+            ...[focusedIndex - 1, focusedIndex, focusedIndex + 1].filter(
+              (index) => focusedIndex >= 0 && index >= 0 && index < range.count,
+            ),
+          ]),
+        ].sort((a, b) => a - b),
+      [focusedIndex, activeIndex],
+    ),
   });
 
   useLayoutEffect(() => {
@@ -52,7 +63,11 @@ export function VirtualList<T>({
     const scroll = element.parentElement?.closest<HTMLElement>(".scroll");
     if (!scroll) return;
     const measure = () => {
-      const margin = element.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop - scroll.clientTop;
+      const margin =
+        element.getBoundingClientRect().top -
+        scroll.getBoundingClientRect().top +
+        scroll.scrollTop -
+        scroll.clientTop;
       setScrollMargin(margin);
     };
     measure();
@@ -65,15 +80,21 @@ export function VirtualList<T>({
   }, [virtualized]);
 
   const virtualItems = list.getVirtualItems();
-  const visibleItems = !virtualized ? items.map((_, index) => ({
-    index,
-    key: getItemKey(index),
-    start: 0,
-  })) : virtualItems.length || focusedIndex < 0 ? virtualItems : [{
-    index: focusedIndex,
-    key: getItemKey(focusedIndex),
-    start: scrollMargin + focusedIndex * (estimateSize + gap) * scale,
-  }];
+  const visibleItems = !virtualized
+    ? items.map((_, index) => ({
+        index,
+        key: getItemKey(index),
+        start: 0,
+      }))
+    : virtualItems.length || focusedIndex < 0
+      ? virtualItems
+      : [
+          {
+            index: focusedIndex,
+            key: getItemKey(focusedIndex),
+            start: scrollMargin + focusedIndex * (estimateSize + gap) * scale,
+          },
+        ];
 
   return (
     <div
@@ -82,7 +103,9 @@ export function VirtualList<T>({
       data-virtualized={virtualized}
       style={virtualized ? { height: list.getTotalSize() } : undefined}
       onFocusCapture={(event) => {
-        const row = Array.from(event.currentTarget.children).find(row => row.contains(event.target));
+        const row = Array.from(event.currentTarget.children).find((row) =>
+          row.contains(event.target),
+        );
         setFocusedKey(row?.getAttribute("data-virtual-key") ?? undefined);
       }}
       onBlurCapture={(event) => {
@@ -96,7 +119,9 @@ export function VirtualList<T>({
           data-index={item.index}
           data-virtual-key={item.key}
           ref={virtualized ? list.measureElement : undefined}
-          style={virtualized ? { transform: `translateY(${item.start - scrollMargin}px)` } : undefined}
+          style={
+            virtualized ? { transform: `translateY(${item.start - scrollMargin}px)` } : undefined
+          }
         >
           {children(items[item.index]!)}
         </div>

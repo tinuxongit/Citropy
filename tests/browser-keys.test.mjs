@@ -8,14 +8,23 @@ test("printable keys and Enter send text, shortcuts do not", () => {
     { type: "char", keyCode: "a", modifiers: [] },
     { type: "keyUp", keyCode: "a", modifiers: [] },
   ]);
-  assert.deepEqual(keyEvents("Enter").map((event) => event.keyCode), ["Enter", "\r", "Enter"]);
-  assert.deepEqual(keyEvents("Space").map((event) => event.keyCode), ["Space", " ", "Space"]);
+  assert.deepEqual(
+    keyEvents("Enter").map((event) => event.keyCode),
+    ["Enter", "\r", "Enter"],
+  );
+  assert.deepEqual(
+    keyEvents("Space").map((event) => event.keyCode),
+    ["Space", " ", "Space"],
+  );
   assert.deepEqual(keyEvents("Shift+A")[1], { type: "char", keyCode: "A", modifiers: ["shift"] });
   assert.deepEqual(keyEvents("Control+A"), [
     { type: "keyDown", keyCode: "A", modifiers: ["control"] },
     { type: "keyUp", keyCode: "A", modifiers: ["control"] },
   ]);
-  assert.deepEqual(keyEvents("ArrowDown").map((event) => event.keyCode), ["Down", "Down"]);
+  assert.deepEqual(
+    keyEvents("ArrowDown").map((event) => event.keyCode),
+    ["Down", "Down"],
+  );
 });
 
 test("unknown keys and modifiers are rejected", () => {
@@ -26,5 +35,8 @@ test("unknown keys and modifiers are rejected", () => {
 test("keys go to the page's own contents", () => {
   const sent = [];
   pressKey({ sendInputEvent: (event) => sent.push(event) }, "Escape");
-  assert.deepEqual(sent.map((event) => event.type), ["keyDown", "keyUp"]);
+  assert.deepEqual(
+    sent.map((event) => event.type),
+    ["keyDown", "keyUp"],
+  );
 });

@@ -29,15 +29,11 @@ import {
 import type { monaco } from "./monaco.ts";
 import "../../styles/editor.css";
 
-const CodeEditor = lazy(() => import("./CodeEditor.tsx").then((module) => ({ default: module.CodeEditor })));
+const CodeEditor = lazy(() =>
+  import("./CodeEditor.tsx").then((module) => ({ default: module.CodeEditor })),
+);
 
-export default function EditorWorkspace({
-  panelId,
-  active,
-}: {
-  panelId: string;
-  active: boolean;
-}) {
+export default function EditorWorkspace({ panelId, active }: { panelId: string; active: boolean }) {
   const projectId = useApp((state) => state.activeProjectId);
   const threadProjectId = useApp((state) => state.threads[state.activeThreadId ?? ""]?.projectId);
   const activeThreadId = useApp((state) => state.activeThreadId);
@@ -46,14 +42,16 @@ export default function EditorWorkspace({
     state.projects.find((project) => project.id === state.activeProjectId),
   );
   const environment = useEnvironments();
-  const threadId = threadProjectId !== undefined && threadProjectId === projectId ? activeThreadId ?? undefined : undefined;
+  const threadId =
+    threadProjectId !== undefined && threadProjectId === projectId
+      ? (activeThreadId ?? undefined)
+      : undefined;
   const scope = JSON.stringify([
     environment.activeId,
     projectId,
     threadId ? (workspacePath ?? project?.path) : project?.path,
   ]);
-  if (!projectId)
-    return <div className="pane-empty">Open a workspace first.</div>;
+  if (!projectId) return <div className="pane-empty">Open a workspace first.</div>;
   return (
     <Workspace
       key={scope}
@@ -90,23 +88,22 @@ function Workspace({
   const [explorer, setExplorer] = useState(true);
   const panels = useApp((state) => state.panels);
   const dock = useApp((state) => state.editorTerminals[panelId]);
-  const terminals = panels.filter((panel) => panel.kind === "terminal" &&
-    panel.projectId === projectId &&
-    (panel.threadId === threadId || panel.id === dock?.id));
+  const terminals = panels.filter(
+    (panel) =>
+      panel.kind === "terminal" &&
+      panel.projectId === projectId &&
+      (panel.threadId === threadId || panel.id === dock?.id),
+  );
   const terminalVisible = Boolean(dock?.visible && dock.threadId === (threadId ?? null));
   const [wrap, setWrap] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState("");
   const [error, setError] = useState("");
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const ready = useCallback(
-    (value: monaco.editor.IStandaloneCodeEditor | null) => {
-      editor.current = value;
-    },
-    [],
-  );
-  const current =
-    documents.find((document) => document.id === selected) ?? documents.at(-1);
+  const ready = useCallback((value: monaco.editor.IStandaloneCodeEditor | null) => {
+    editor.current = value;
+  }, []);
+  const current = documents.find((document) => document.id === selected) ?? documents.at(-1);
   const textDocument = current?.kind === "text" ? current : undefined;
   const showExplorer = explorer || !current;
   const request = useRef(0);
@@ -129,11 +126,7 @@ function Workspace({
     setLoading(path);
     setError("");
     try {
-      const document = await openDocument(
-        scope,
-        path,
-        assetQuery(projectId, path, threadId),
-      );
+      const document = await openDocument(scope, path, assetQuery(projectId, path, threadId));
       if (turn === request.current) {
         setSelected(document.id);
       }
@@ -146,7 +139,8 @@ function Workspace({
 
   async function discard(document: EditorDocument, reload = false) {
     if (
-      document.kind === "text" && document.dirty &&
+      document.kind === "text" &&
+      document.dirty &&
       !(await confirmAction({
         title: "Discard unsaved changes?",
         description: "Your edits to this file have not been saved.",
@@ -167,10 +161,7 @@ function Workspace({
   }
 
   return (
-    <section
-      className="editor-workspace"
-      aria-label="Code workspace"
-    >
+    <section className="editor-workspace" aria-label="Code workspace">
       <div className="editor-layout" data-explorer={showExplorer}>
         <aside className="editor-explorer" hidden={!showExplorer}>
           <div className="editor-explorer-heading">
@@ -204,10 +195,7 @@ function Workspace({
                 const path = newPath.trim();
                 setCreatingFile(true);
                 setError("");
-                void api(
-                  `editor/file?${assetQuery(projectId, path, threadId)}`,
-                  { method: "POST" },
-                )
+                void api(`editor/file?${assetQuery(projectId, path, threadId)}`, { method: "POST" })
                   .then(async () => {
                     setCreating(false);
                     setNewPath("");
@@ -248,50 +236,44 @@ function Workspace({
         {showExplorer && <EditorResizeHandle pane="explorer" />}
         <div className="editor-main">
           <div className="editor-tabbar">
-          {documents.length > 0 && (
-            <div className="editor-tabs sliding-selection" ref={tabStrip} aria-label="Open files">
-              <SelectionHighlight value={current?.id} selector='.editor-tab[data-active="true"]' />
-              {documents.map((document) => (
-                <div
-                  className="editor-tab"
-                  data-active={document === current}
-                  key={document.id}
-                >
-                  <button
-                    type="button"
-                    aria-pressed={document === current}
-                    title={document.path}
-                    onClick={() => {
-                      request.current++;
-                      setLoading("");
-                      setError("");
-                      setSelected(document.id);
-                    }}
-                  >
-                    <FileIcon path={document.path} />
-                    <span className="truncate">
-                      {document.path.split(/[\\/]/).at(-1)}
-                    </span>
-                    {document.kind === "text" && document.dirty && (
-                      <span
-                        className="editor-dirty"
-                        aria-label="Unsaved changes"
-                      />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label={`Close ${document.path}`}
-                    disabled={document.kind === "text" && document.saving}
-                    onClick={() => void discard(document)}
-                  >
-                    <CloseIcon size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+            {documents.length > 0 && (
+              <div className="editor-tabs sliding-selection" ref={tabStrip} aria-label="Open files">
+                <SelectionHighlight
+                  value={current?.id}
+                  selector='.editor-tab[data-active="true"]'
+                />
+                {documents.map((document) => (
+                  <div className="editor-tab" data-active={document === current} key={document.id}>
+                    <button
+                      type="button"
+                      aria-pressed={document === current}
+                      title={document.path}
+                      onClick={() => {
+                        request.current++;
+                        setLoading("");
+                        setError("");
+                        setSelected(document.id);
+                      }}
+                    >
+                      <FileIcon path={document.path} />
+                      <span className="truncate">{document.path.split(/[\\/]/).at(-1)}</span>
+                      {document.kind === "text" && document.dirty && (
+                        <span className="editor-dirty" aria-label="Unsaved changes" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label={`Close ${document.path}`}
+                      disabled={document.kind === "text" && document.saving}
+                      onClick={() => void discard(document)}
+                    >
+                      <CloseIcon size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="editor-tabbar-actions">
               <button
                 className="icon-btn"
@@ -340,7 +322,9 @@ function Workspace({
               <div className="editor-filebar">
                 <span className="editor-breadcrumb truncate" title={current.path}>
                   {current.path.split(/[\\/]/).map((part, index, parts) => (
-                    <span key={index} data-current={index === parts.length - 1 || undefined}>{part}</span>
+                    <span key={index} data-current={index === parts.length - 1 || undefined}>
+                      {part}
+                    </span>
                   ))}
                 </span>
                 {textDocument ? (
@@ -355,15 +339,17 @@ function Workspace({
                     >
                       <RefreshIcon size={13} />
                     </button>
-                    {(textDocument.dirty || textDocument.saving) && <button
-                      className="btn"
-                      type="button"
-                      disabled={!connected || textDocument.saving}
-                      onClick={() => void saveDocument(textDocument)}
-                    >
-                      <SaveIcon size={13} />
-                      {textDocument.saving ? "Saving…" : "Save"}
-                    </button>}
+                    {(textDocument.dirty || textDocument.saving) && (
+                      <button
+                        className="btn"
+                        type="button"
+                        disabled={!connected || textDocument.saving}
+                        onClick={() => void saveDocument(textDocument)}
+                      >
+                        <SaveIcon size={13} />
+                        {textDocument.saving ? "Saving…" : "Save"}
+                      </button>
+                    )}
                   </>
                 ) : (
                   <a
@@ -402,9 +388,17 @@ function Workspace({
                 onClose={() => void discard(current)}
               />
             ) : current ? (
-              (active || started) && <Suspense fallback={<div className="pane-empty" role="status">Loading editor…</div>}>
-                <CodeEditor document={current} threadId={threadId} wrap={wrap} onReady={ready} />
-              </Suspense>
+              (active || started) && (
+                <Suspense
+                  fallback={
+                    <div className="pane-empty" role="status">
+                      Loading editor…
+                    </div>
+                  }
+                >
+                  <CodeEditor document={current} threadId={threadId} wrap={wrap} onReady={ready} />
+                </Suspense>
+              )
             ) : (
               <div className="editor-empty">
                 <p>Open a file to start editing alongside your agent.</p>

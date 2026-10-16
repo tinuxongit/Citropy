@@ -6,7 +6,11 @@ import type { Attachment } from "../../../../shared/protocol.ts";
 const MAX_ATTACHMENTS = 8;
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
-export async function uploadAttachment(threadId: string, file: File, signal?: AbortSignal): Promise<Attachment> {
+export async function uploadAttachment(
+  threadId: string,
+  file: File,
+  signal?: AbortSignal,
+): Promise<Attachment> {
   const response = await fetch(
     serverUrl(`/api/attachments?${new URLSearchParams({ threadId, name: file.name })}`),
     { method: "POST", body: file, signal },
@@ -44,7 +48,11 @@ export function useAttachmentUpload({
         if (file.size > MAX_FILE_BYTES)
           throw new Error(`${file.name} exceeds the 50 MB file limit.`);
         setUploading(file.name);
-        const result = await uploadAttachment(threadId, file, AbortSignal.any([uploadAbort.current.signal, scopeSignal]));
+        const result = await uploadAttachment(
+          threadId,
+          file,
+          AbortSignal.any([uploadAbort.current.signal, scopeSignal]),
+        );
         scopeSignal.throwIfAborted();
         onUploaded(result);
       }

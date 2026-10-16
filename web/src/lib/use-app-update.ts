@@ -35,8 +35,7 @@ export function useAppUpdate() {
     try {
       const before = revision.current;
       const value = await window.citropyDesktop?.updateCommand(action);
-      if (value && mounted.current && revision.current === before)
-        setState(value);
+      if (value && mounted.current && revision.current === before) setState(value);
     } catch {
       if (mounted.current)
         setState((previous) => ({

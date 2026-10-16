@@ -6,12 +6,27 @@ const GLYPH_SIZE = 10;
 const glyphs = {
   minimize: <path d="M0 5.5H10" />,
   maximize: <rect x="0.5" y="0.5" width="9" height="9" />,
-  restore: <><rect x="0.5" y="2.5" width="7" height="7" /><path d="M2.5 2.5V0.5H9.5V7.5H7.5" /></>,
+  restore: (
+    <>
+      <rect x="0.5" y="2.5" width="7" height="7" />
+      <path d="M2.5 2.5V0.5H9.5V7.5H7.5" />
+    </>
+  ),
   close: <path d="M0.5 0.5L9.5 9.5M9.5 0.5L0.5 9.5" shapeRendering="geometricPrecision" />,
 };
 
 function Glyph({ name }: { name: keyof typeof glyphs }) {
-  return <svg className="window-glyph" width={GLYPH_SIZE} height={GLYPH_SIZE} viewBox="0 0 10 10" aria-hidden="true">{glyphs[name]}</svg>;
+  return (
+    <svg
+      className="window-glyph"
+      width={GLYPH_SIZE}
+      height={GLYPH_SIZE}
+      viewBox="0 0 10 10"
+      aria-hidden="true"
+    >
+      {glyphs[name]}
+    </svg>
+  );
 }
 
 export function WindowControls() {
@@ -24,8 +39,7 @@ export function WindowControls() {
     void window.citropyDesktop?.windowState?.().then(apply);
     return window.citropyDesktop?.onWindowState?.(apply);
   }, []);
-  if (!window.citropyDesktop?.windowCommand || state?.platform === "darwin")
-    return null;
+  if (!window.citropyDesktop?.windowCommand || state?.platform === "darwin") return null;
   return (
     <div className="window-controls" role="group" aria-label="Window controls">
       <button

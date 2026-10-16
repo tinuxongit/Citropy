@@ -42,13 +42,21 @@ let connections: Connection[] = [];
 let file = "";
 let operations = Promise.resolve();
 
-function fromSingleAccountFormat({ signedIn = false, ...connection }: StoredConnection): Connection {
-  return { ...connection, accounts: connection.accounts ?? [{ id: connection.id, label: "", signedIn }] };
+function fromSingleAccountFormat({
+  signedIn = false,
+  ...connection
+}: StoredConnection): Connection {
+  return {
+    ...connection,
+    accounts: connection.accounts ?? [{ id: connection.id, label: "", signedIn }],
+  };
 }
 
 export async function initializeConnections(userData: string) {
   file = join(userData, "connections.json");
-  connections = JSON.parse(await readFile(file, "utf8").catch(ifMissing("[]"))).map(fromSingleAccountFormat);
+  connections = JSON.parse(await readFile(file, "utf8").catch(ifMissing("[]"))).map(
+    fromSingleAccountFormat,
+  );
 }
 
 async function save() {
@@ -70,7 +78,12 @@ function longestMatch<T>(list: T[], host: string, sitesOf: (connection: T) => st
   return list
     .map((connection) => ({
       connection,
-      length: Math.max(0, ...sitesOf(connection).filter((site) => host === site || host.endsWith(`.${site}`)).map((site) => site.length)),
+      length: Math.max(
+        0,
+        ...sitesOf(connection)
+          .filter((site) => host === site || host.endsWith(`.${site}`))
+          .map((site) => site.length),
+      ),
     }))
     .filter((entry) => entry.length > 0)
     .sort((left, right) => right.length - left.length)[0]?.connection;
@@ -83,7 +96,10 @@ export function matchConnection<T extends { url: string }>(list: T[], address: s
   } catch {
     return undefined;
   }
-  return longestMatch(list, host, (connection) => [siteOf(connection.url)]) ?? longestMatch(list, host, extraSitesOf);
+  return (
+    longestMatch(list, host, (connection) => [siteOf(connection.url)]) ??
+    longestMatch(list, host, extraSitesOf)
+  );
 }
 
 function profileOf(connection: Connection, account: Account) {
@@ -99,11 +115,15 @@ function mentionOf(connection: Connection, account: Account) {
 }
 
 function allAccounts() {
-  return connections.flatMap((connection) => connection.accounts.map((account) => ({ connection, account })));
+  return connections.flatMap((connection) =>
+    connection.accounts.map((account) => ({ connection, account })),
+  );
 }
 
 function accountWithProfile(profileId: string | undefined) {
-  return allAccounts().find(({ connection, account }) => profileOf(connection, account).id === profileId);
+  return allAccounts().find(
+    ({ connection, account }) => profileOf(connection, account).id === profileId,
+  );
 }
 
 export function connectionProfile(profileId: string | undefined, address: string | undefined) {
@@ -140,7 +160,9 @@ function findAccount(id: unknown) {
 }
 
 function cleanName(value: unknown, missing: string) {
-  const name = String(value ?? "").trim().slice(0, MAX_NAME_LENGTH);
+  const name = String(value ?? "")
+    .trim()
+    .slice(0, MAX_NAME_LENGTH);
   if (!name) throw new Error(missing);
   return name;
 }
@@ -164,12 +186,24 @@ function view(connection: Connection) {
     description: suggestion?.description ?? site,
     accounts: connection.accounts.map((account) => {
       const profile = profileOf(connection, account);
-      return { id: account.id, name: profile.name, label: account.label, mention: mentionOf(connection, account), signedIn: account.signedIn, profileId: profile.id };
+      return {
+        id: account.id,
+        name: profile.name,
+        label: account.label,
+        mention: mentionOf(connection, account),
+        signedIn: account.signedIn,
+        profileId: profile.id,
+      };
     }),
   };
 }
 
-async function apply(operation: string, input: ConnectionInput, session: typeof sessions, tabs: ConnectionTabs) {
+async function apply(
+  operation: string,
+  input: ConnectionInput,
+  session: typeof sessions,
+  tabs: ConnectionTabs,
+) {
   if (operation === "add") {
     const name = cleanName(input.name, "Enter a name.");
     const typed = String(input.url ?? "").trim();
@@ -177,15 +211,21 @@ async function apply(operation: string, input: ConnectionInput, session: typeof 
     const site = siteOf(url);
     if (connections.some((entry) => siteOf(entry.url) === site))
       throw new Error(`${site} is already connected. Use Add account on it for another account.`);
-    if (connections.length >= MAX_CONNECTIONS) throw new Error(`Keep up to ${MAX_CONNECTIONS} connections.`);
+    if (connections.length >= MAX_CONNECTIONS)
+      throw new Error(`Keep up to ${MAX_CONNECTIONS} connections.`);
     const account = { id: randomUUID(), label: "", signedIn: false };
     const connection = { id: randomUUID(), name, url, accounts: [account] };
     assertMentionFree(connection, account);
     connections.push(connection);
   } else if (operation === "add-account") {
     const connection = findConnection(input.id);
-    const account = { id: randomUUID(), label: cleanName(input.label, "Enter an account name."), signedIn: false };
-    if (connection.accounts.length >= MAX_ACCOUNTS) throw new Error(`Keep up to ${MAX_ACCOUNTS} accounts per connection.`);
+    const account = {
+      id: randomUUID(),
+      label: cleanName(input.label, "Enter an account name."),
+      signedIn: false,
+    };
+    if (connection.accounts.length >= MAX_ACCOUNTS)
+      throw new Error(`Keep up to ${MAX_ACCOUNTS} accounts per connection.`);
     assertMentionFree(connection, account);
     connection.accounts.push(account);
   } else if (operation === "remove" || operation === "status") {
@@ -196,15 +236,24 @@ async function apply(operation: string, input: ConnectionInput, session: typeof 
       throw new Error(`Close ${profile.name}'s browser tabs first.`);
     if (signingOut) await clearProfileData(session.fromPartition(profile.partition));
     if (operation === "status") account.signedIn = input.signedIn === true;
-    else if (connection.accounts.length > 1) connection.accounts = connection.accounts.filter((entry) => entry !== account);
+    else if (connection.accounts.length > 1)
+      connection.accounts = connection.accounts.filter((entry) => entry !== account);
     else connections = connections.filter((entry) => entry !== connection);
   } else if (operation !== "list") throw new Error("Unknown connections action");
   if (operation !== "list") await save();
   return connections.map(view);
 }
 
-export function handleConnections(operation: string, input: ConnectionInput, session: typeof sessions, tabs: ConnectionTabs) {
+export function handleConnections(
+  operation: string,
+  input: ConnectionInput,
+  session: typeof sessions,
+  tabs: ConnectionTabs,
+) {
   const result = operations.then(() => apply(operation, input, session, tabs));
-  operations = result.then(() => {}, () => {});
+  operations = result.then(
+    () => {},
+    () => {},
+  );
   return result;
 }

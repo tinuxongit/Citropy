@@ -58,8 +58,7 @@ export function ProviderInstructions({
     !dirty ||
     confirmAction({
       title: "Discard your instruction changes?",
-      description:
-        "Your saved file will stay as it is. The unsaved draft will be discarded.",
+      description: "Your saved file will stay as it is. The unsaved draft will be discarded.",
       label: "Discard draft",
       danger: true,
     });
@@ -108,15 +107,10 @@ export function ProviderInstructions({
               })
             }
           >
-            <RotateCcwIcon size={14} />{" "}Reload file{" "}</button>
+            <RotateCcwIcon size={14} /> Reload file{" "}
+          </button>
           <span className="instruction-save-state" role="status">
-            {busy
-              ? "Working…"
-              : dirty
-                ? "Unsaved changes"
-                : saved
-                  ? "Saved"
-                  : ""}
+            {busy ? "Working…" : dirty ? "Unsaved changes" : saved ? "Saved" : ""}
           </span>
           <button
             className="btn"
@@ -128,19 +122,18 @@ export function ProviderInstructions({
                 if (ok) onClose();
               })
             }
-          >{" "}Close{" "}</button>
+          >
+            {" "}
+            Close{" "}
+          </button>
           <button
             className="btn"
             data-variant="primary"
             type="submit"
-            disabled={
-              busy ||
-              !file ||
-              (!dirty && file.exists) ||
-              (!file?.exists && !draft.trim())
-            }
+            disabled={busy || !file || (!dirty && file.exists) || (!file?.exists && !draft.trim())}
           >
-            <SaveIcon size={14} />{" "}Save instructions{" "}</button>
+            <SaveIcon size={14} /> Save instructions{" "}
+          </button>
         </>
       }
     >
@@ -158,13 +151,16 @@ export function ProviderInstructions({
         spellCheck={false}
         autoCapitalize="off"
         autoCorrect="off"
-            placeholder="Add your coding conventions, preferred workflows, and other guidance…"
+        placeholder="Add your coding conventions, preferred workflows, and other guidance…"
         onChange={(event) => {
           setDraft(event.target.value);
           setSaved(false);
         }}
       />
-      <p className="instruction-note">{" "}Saving keeps the previous file as a .citropy-backup beside the original.{" "}</p>
+      <p className="instruction-note">
+        {" "}
+        Saving keeps the previous file as a .citropy-backup beside the original.{" "}
+      </p>
       <ActionError className="dialog-error" message={error} onDismiss={() => setError("")} />
     </Modal>
   );

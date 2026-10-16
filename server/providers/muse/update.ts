@@ -24,7 +24,12 @@ const SUPPORTED_PLATFORMS = ["linux", "darwin"];
 export const MUSE_UPDATE_METHOD = "Muse Code launcher";
 export const MUSE_INSTALL_METHOD = "Download from Meta";
 export const MUSE_UPDATE_ARGS = ["--version"];
-export const MUSE_UPDATE_ENVIRONMENT = { MUSE_NO_AUTO_UPDATE: "0", MUSE_SYNC_UPDATE: "1", MUSE_UPDATE_INTERVAL_SECONDS: "0", MUSE_LOGIN: "0" };
+export const MUSE_UPDATE_ENVIRONMENT = {
+  MUSE_NO_AUTO_UPDATE: "0",
+  MUSE_SYNC_UPDATE: "1",
+  MUSE_UPDATE_INTERVAL_SECONDS: "0",
+  MUSE_LOGIN: "0",
+};
 export const MUSE_INSTALL_DIRECTORY = join(homedir(), ".local", "bin");
 
 const run = promisify(execFile);
@@ -56,17 +61,26 @@ function channel(): string {
 }
 
 export async function latestMuseVersion(): Promise<string | undefined> {
-  const response = await fetch(`${CHANNEL_URL}${channel()}`, { signal: AbortSignal.timeout(SETTINGS.fetchTimeoutMs) });
-  if (!response.ok) throw new Error(`Checking the latest Muse Code version failed (${response.status}).`);
+  const response = await fetch(`${CHANNEL_URL}${channel()}`, {
+    signal: AbortSignal.timeout(SETTINGS.fetchTimeoutMs),
+  });
+  if (!response.ok)
+    throw new Error(`Checking the latest Muse Code version failed (${response.status}).`);
   return ((await response.json()) as { version?: string }).version;
 }
 
 export async function installMuse(progress: (message: string) => void): Promise<void> {
   progress("Downloading the Muse Code launcher…");
-  const response = await fetch(LAUNCHER_URL, { signal: AbortSignal.timeout(SETTINGS.fetchTimeoutMs) });
-  if (!response.ok) throw new Error(`Could not download the Muse Code launcher (${response.status}). Check this computer's internet connection and retry.`);
+  const response = await fetch(LAUNCHER_URL, {
+    signal: AbortSignal.timeout(SETTINGS.fetchTimeoutMs),
+  });
+  if (!response.ok)
+    throw new Error(
+      `Could not download the Muse Code launcher (${response.status}). Check this computer's internet connection and retry.`,
+    );
   const script = await response.text();
-  if (script.length > SETTINGS.launcherMaxBytes || !isLauncher(script)) throw new Error("The Muse Code launcher download was invalid. Nothing was installed.");
+  if (script.length > SETTINGS.launcherMaxBytes || !isLauncher(script))
+    throw new Error("The Muse Code launcher download was invalid. Nothing was installed.");
   await mkdir(MUSE_INSTALL_DIRECTORY, { recursive: true });
   const launcher = join(MUSE_INSTALL_DIRECTORY, MUSE_BINARY);
   const staged = `${launcher}.citropy-${process.pid}`;

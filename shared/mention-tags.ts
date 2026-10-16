@@ -9,7 +9,11 @@ export interface MentionTag {
 }
 
 export function skillTag(skill: Pick<SkillInfo, "name" | "scope">): MentionTag {
-  return { name: skill.name, title: skill.name, icon: skill.scope === "citropy" ? "citropy" : "book" };
+  return {
+    name: skill.name,
+    title: skill.name,
+    icon: skill.scope === "citropy" ? "citropy" : "book",
+  };
 }
 
 export function toolTag(tool: ToolMention): MentionTag {

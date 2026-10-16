@@ -1,11 +1,21 @@
 import { useEffect, useId, useState } from "react";
 import { api } from "../../lib/api.ts";
-import { CITROPY_SKILL_LIMITS, type CitropySkillDraft, type SkillInfo } from "../../../../shared/features.ts";
+import {
+  CITROPY_SKILL_LIMITS,
+  type CitropySkillDraft,
+  type SkillInfo,
+} from "../../../../shared/features.ts";
 
 const EMPTY_DRAFT: CitropySkillDraft = { name: "", description: "", instructions: "" };
 const INSTRUCTION_ROWS = 14;
 
-export function CitropySkillForm({ skill, busy, onSave, onCancel, onError }: {
+export function CitropySkillForm({
+  skill,
+  busy,
+  onSave,
+  onCancel,
+  onError,
+}: {
   skill: SkillInfo | undefined;
   busy: boolean;
   onSave: (draft: CitropySkillDraft) => void;
@@ -27,7 +37,8 @@ export function CitropySkillForm({ skill, busy, onSave, onCancel, onError }: {
       });
     return () => controller.abort();
   }, [skill?.id]);
-  const update = (patch: Partial<CitropySkillDraft>) => setDraft((current) => ({ ...current!, ...patch }));
+  const update = (patch: Partial<CitropySkillDraft>) =>
+    setDraft((current) => ({ ...current!, ...patch }));
   const disabled = busy || !draft;
   return (
     <form
@@ -49,9 +60,13 @@ export function CitropySkillForm({ skill, busy, onSave, onCancel, onError }: {
           autoCapitalize="off"
           spellCheck={false}
           aria-describedby={nameHint}
-          onChange={(event) => update({ name: event.target.value.toLowerCase().replace(/\s+/g, "-") })}
+          onChange={(event) =>
+            update({ name: event.target.value.toLowerCase().replace(/\s+/g, "-") })
+          }
         />
-        <small id={nameHint}>Lowercase words joined by hyphens. Type @ and this name in a conversation to use it.</small>
+        <small id={nameHint}>
+          Lowercase words joined by hyphens. Type @ and this name in a conversation to use it.
+        </small>
       </label>
       <label className="feature-field">
         When to use it
@@ -75,8 +90,22 @@ export function CitropySkillForm({ skill, busy, onSave, onCancel, onError }: {
         />
       </label>
       <div className="feature-save">
-        <button className="btn" data-variant="ghost" type="button" disabled={busy} onClick={onCancel}>Cancel</button>
-        <button className="btn" data-variant="primary" disabled={disabled || !draft.name || !draft.description.trim() || !draft.instructions.trim()}>
+        <button
+          className="btn"
+          data-variant="ghost"
+          type="button"
+          disabled={busy}
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+        <button
+          className="btn"
+          data-variant="primary"
+          disabled={
+            disabled || !draft.name || !draft.description.trim() || !draft.instructions.trim()
+          }
+        >
           {skill ? "Save" : "Add skill"}
         </button>
       </div>

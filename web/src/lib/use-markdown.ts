@@ -24,31 +24,51 @@ function remember(key: string, html: string): void {
 const STREAM_INTERVAL = 70;
 
 function fallback(text: string): string {
-  return `<p>${escapeHtml(text).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br />")}</p>`;
+  return `<p>${escapeHtml(text)
+    .replace(/\n{2,}/g, "</p><p>")
+    .replace(/\n/g, "<br />")}</p>`;
 }
 
 const NO_MENTIONS: MentionTag[] = [];
 
-export function useMarkdown(text: string, live: boolean, images = true, commands = false, mentions = NO_MENTIONS): { html: string; blocks?: string[]; ready: boolean } {
+export function useMarkdown(
+  text: string,
+  live: boolean,
+  images = true,
+  commands = false,
+  mentions = NO_MENTIONS,
+): { html: string; blocks?: string[]; ready: boolean } {
   const theme = useApp((state) => state.scheme);
   const projectId = useApp((state) => state.activeProjectId);
   const threadId = useApp((state) => state.activeThreadId);
   const key = `${theme}:${projectId ?? ""}:${threadId ?? ""}:${images}:${commands}:${JSON.stringify(mentions)}:${text}`;
-  const [rendered, setRendered] = useState<{ html: string; blocks?: string[]; key: string | null }>(() => ({
-    html: cache.get(key) ?? fallback(text),
-    key: cache.has(key) ? key : null,
-  }));
+  const [rendered, setRendered] = useState<{ html: string; blocks?: string[]; key: string | null }>(
+    () => ({
+      html: cache.get(key) ?? fallback(text),
+      key: cache.has(key) ? key : null,
+    }),
+  );
   const latest = useRef(key);
   const settings = `${theme}:${projectId ?? ""}:${threadId ?? ""}:${images}`;
   const assets = projectId && threadId ? { projectId, threadId } : undefined;
   const request = useRef({ text, key, settings, theme, images, assets });
-  const stream = useRef<{ timer?: ReturnType<typeof setTimeout>; busy: boolean; last: number; generation: number; finished: FinishedBlocks; settings: string }>({ busy: false, last: 0, generation: 0, finished: { source: "", html: [] }, settings });
+  const stream = useRef<{
+    timer?: ReturnType<typeof setTimeout>;
+    busy: boolean;
+    last: number;
+    generation: number;
+    finished: FinishedBlocks;
+    settings: string;
+  }>({ busy: false, last: 0, generation: 0, finished: { source: "", html: [] }, settings });
 
-  useEffect(() => () => {
-    clearTimeout(stream.current.timer);
-    stream.current.timer = undefined;
-    stream.current.generation++;
-  }, []);
+  useEffect(
+    () => () => {
+      clearTimeout(stream.current.timer);
+      stream.current.timer = undefined;
+      stream.current.generation++;
+    },
+    [],
+  );
 
   useEffect(() => {
     latest.current = key;
@@ -61,37 +81,64 @@ export function useMarkdown(text: string, live: boolean, images = true, commands
     }
     const cached = cache.get(key);
     if (cached !== undefined) {
-      setRendered((current) => current.key === key ? current : { html: cached, key });
+      setRendered((current) => (current.key === key ? current : { html: cached, key }));
       return;
     }
     if (live) {
       const schedule = () => {
-        state.timer = setTimeout(async () => {
-          state.timer = undefined;
-          state.busy = true;
-          state.last = performance.now();
-          const generation = state.generation;
-          const target = request.current;
-          if (state.settings !== target.settings) state.finished = { source: "", html: [] };
-          state.settings = target.settings;
-          const streamed = await renderStreamingMarkdown(target.text, target.theme, undefined, target.assets, { images: target.images }, state.finished).catch((error) => { console.error("Rendering markdown failed:", error); return undefined; });
-          state.busy = false;
-          if (generation !== state.generation) return;
-          if (streamed) state.finished = streamed.finished;
-          setRendered(streamed ? { html: streamed.blocks.join(""), blocks: streamed.blocks, key: target.key } : { html: fallback(target.text), key: target.key });
-          if (request.current.key !== target.key) schedule();
-        }, Math.max(0, STREAM_INTERVAL - (performance.now() - state.last)));
+        state.timer = setTimeout(
+          async () => {
+            state.timer = undefined;
+            state.busy = true;
+            state.last = performance.now();
+            const generation = state.generation;
+            const target = request.current;
+            if (state.settings !== target.settings) state.finished = { source: "", html: [] };
+            state.settings = target.settings;
+            const streamed = await renderStreamingMarkdown(
+              target.text,
+              target.theme,
+              undefined,
+              target.assets,
+              { images: target.images },
+              state.finished,
+            ).catch((error) => {
+              console.error("Rendering markdown failed:", error);
+              return undefined;
+            });
+            state.busy = false;
+            if (generation !== state.generation) return;
+            if (streamed) state.finished = streamed.finished;
+            setRendered(
+              streamed
+                ? { html: streamed.blocks.join(""), blocks: streamed.blocks, key: target.key }
+                : { html: fallback(target.text), key: target.key },
+            );
+            if (request.current.key !== target.key) schedule();
+          },
+          Math.max(0, STREAM_INTERVAL - (performance.now() - state.last)),
+        );
       };
       if (state.timer === undefined && !state.busy) schedule();
       return;
     }
     let cancelled = false;
     const controller = new AbortController();
-    void renderMarkdown(text, theme, controller.signal, assets, { images, live, commands, mentions }).catch((error) => { console.error("Rendering markdown failed:", error); return fallback(text); }).then((result) => {
-      if (cancelled || latest.current !== key) return;
-      remember(key, result);
-      setRendered({ html: result, key });
-    });
+    void renderMarkdown(text, theme, controller.signal, assets, {
+      images,
+      live,
+      commands,
+      mentions,
+    })
+      .catch((error) => {
+        console.error("Rendering markdown failed:", error);
+        return fallback(text);
+      })
+      .then((result) => {
+        if (cancelled || latest.current !== key) return;
+        remember(key, result);
+        setRendered({ html: result, key });
+      });
     return () => {
       cancelled = true;
       controller.abort();

@@ -26,7 +26,10 @@ export interface TerminalOpenInput {
   env?: Record<string, string>;
 }
 
-export type TerminalEvent = { type: "data"; id: string; data: string; offset: number } | { type: "activity"; id: string; busy?: boolean; process?: string } | { type: "exit"; id: string; code: number };
+export type TerminalEvent =
+  | { type: "data"; id: string; data: string; offset: number }
+  | { type: "activity"; id: string; busy?: boolean; process?: string }
+  | { type: "exit"; id: string; code: number };
 
 export type TerminalRequest =
   | { op: "hello"; version: 1; token: string; activity?: boolean }
@@ -42,7 +45,10 @@ export function exitNotice(code: number): string {
   return `\r\n[process exited with code ${code}]\r\n`;
 }
 
-export function appendOutput(session: Pick<TerminalSession, "output" | "offset">, text: string): void {
+export function appendOutput(
+  session: Pick<TerminalSession, "output" | "offset">,
+  text: string,
+): void {
   session.output = (session.output + text).slice(-RETAINED_OUTPUT_LENGTH);
   session.offset += text.length;
 }

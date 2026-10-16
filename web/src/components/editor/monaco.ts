@@ -17,10 +17,8 @@ self.MonacoEnvironment = {
   getWorker(_moduleId, label) {
     if (label === "json") return new JsonWorker();
     if (["css", "scss", "less"].includes(label)) return new CssWorker();
-    if (["html", "handlebars", "razor"].includes(label))
-      return new HtmlWorker();
-    if (["typescript", "javascript"].includes(label))
-      return new TypeScriptWorker();
+    if (["html", "handlebars", "razor"].includes(label)) return new HtmlWorker();
+    if (["typescript", "javascript"].includes(label)) return new TypeScriptWorker();
     return new EditorWorker();
   },
 };

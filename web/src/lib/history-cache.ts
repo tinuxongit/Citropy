@@ -43,7 +43,13 @@ export function replaceHistory(
 ): void {
   releaseHistoryRequest(threadId);
   const prepend = page?.before !== undefined;
-  if (prepend && (!state.loaded[threadId] || state.historyPages[threadId]?.revision !== page.revision || state.historyPages[threadId]?.next !== page.before)) return;
+  if (
+    prepend &&
+    (!state.loaded[threadId] ||
+      state.historyPages[threadId]?.revision !== page.revision ||
+      state.historyPages[threadId]?.next !== page.before)
+  )
+    return;
   if (!prepend) removeMessages(state, threadId);
   const ids: string[] = [];
   const added: Message[] = [];
@@ -60,7 +66,8 @@ export function replaceHistory(
   }
   state.order[threadId] = prepend ? [...ids, ...(state.order[threadId] ?? [])] : ids;
   state.loaded[threadId] = true;
-  state.historyBytes[threadId] = (prepend ? state.historyBytes[threadId] ?? 0 : 0) + contentBytes(added);
+  state.historyBytes[threadId] =
+    (prepend ? (state.historyBytes[threadId] ?? 0) : 0) + contentBytes(added);
   state.timelineVersions[threadId] = (state.timelineVersions[threadId] ?? 0) + 1;
   state.historyPages ??= {};
   if (page) state.historyPages[threadId] = page;
@@ -70,8 +77,7 @@ export function replaceHistory(
 function contentBytes(value: unknown): number {
   if (typeof value === "string") return value.length * 2;
   if (!value || typeof value !== "object") return 8;
-  if (Array.isArray(value))
-    return value.reduce((size, item) => size + contentBytes(item), 24);
+  if (Array.isArray(value)) return value.reduce((size, item) => size + contentBytes(item), 24);
   return Object.entries(value).reduce(
     (size, [key, item]) => size + key.length * 2 + contentBytes(item),
     32,
@@ -94,9 +100,26 @@ export function removeMessages(state: AppState, threadId: string): void {
   if (state.historyPages) delete state.historyPages[threadId];
 }
 
-export type HistoryCollection = "messages" | "parts" | "order" | "loaded" | "reveals" | "historyBytes" | "historyPages" | "timelineVersions" | "disclosures";
+export type HistoryCollection =
+  | "messages"
+  | "parts"
+  | "order"
+  | "loaded"
+  | "reveals"
+  | "historyBytes"
+  | "historyPages"
+  | "timelineVersions"
+  | "disclosures";
 const allHistory: HistoryCollection[] = [
-  "messages", "parts", "order", "loaded", "reveals", "historyBytes", "historyPages", "timelineVersions", "disclosures",
+  "messages",
+  "parts",
+  "order",
+  "loaded",
+  "reveals",
+  "historyBytes",
+  "historyPages",
+  "timelineVersions",
+  "disclosures",
 ];
 export const historyChanges: Partial<Record<ServerEvent["t"], HistoryCollection[]>> = {
   "thread.remove": allHistory,
@@ -151,7 +174,13 @@ function messageBytes(state: AppState, id: string): number {
 export function trimOlderMessages(state: AppState, threadId: string): AppState {
   const page = state.historyPages[threadId];
   const ids = state.order[threadId];
-  if (!state.historyPaging || !page || !ids || (state.historyBytes[threadId] ?? 0) <= OPEN_HISTORY.trimAboveBytes) return state;
+  if (
+    !state.historyPaging ||
+    !page ||
+    !ids ||
+    (state.historyBytes[threadId] ?? 0) <= OPEN_HISTORY.trimAboveBytes
+  )
+    return state;
   let cut = ids.length;
   let kept = 0;
   while (cut > 0 && (kept < OPEN_HISTORY.keepBytes || state.messages[ids[cut]!]?.role !== "user")) {
@@ -181,8 +210,11 @@ export function trimOlderMessages(state: AppState, threadId: string): AppState {
 
 export function unloadedDelta(state: AppState, event: ServerEvent): boolean {
   return (
-    (event.t === "message.add" || event.t === "message.patch" || event.t === "part.add" ||
-      event.t === "part.append" || event.t === "part.patch") &&
+    (event.t === "message.add" ||
+      event.t === "message.patch" ||
+      event.t === "part.add" ||
+      event.t === "part.append" ||
+      event.t === "part.patch") &&
     !state.loaded[event.threadId]
   );
 }
@@ -191,12 +223,17 @@ export function applyMessageEvent(
   state: AppState,
   event: Extract<
     ServerEvent,
-    { t: "message.add" } | { t: "message.patch" } | { t: "part.add" } | { t: "part.append" } | { t: "part.patch" }
+    | { t: "message.add" }
+    | { t: "message.patch" }
+    | { t: "part.add" }
+    | { t: "part.append" }
+    | { t: "part.patch" }
   >,
 ): void {
   switch (event.t) {
     case "message.add": {
-      state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + contentBytes(event.message);
+      state.historyBytes[event.threadId] =
+        (state.historyBytes[event.threadId] ?? 0) + contentBytes(event.message);
       const partIds: string[] = [];
       for (const part of event.message.parts) {
         state.parts.set(part.id, part);
@@ -205,10 +242,7 @@ export function applyMessageEvent(
         partIds.push(part.id);
       }
       state.messages[event.message.id] = messageShell(event.message, partIds);
-      state.order[event.threadId] = [
-        ...(state.order[event.threadId] ?? []),
-        event.message.id,
-      ];
+      state.order[event.threadId] = [...(state.order[event.threadId] ?? []), event.message.id];
       return;
     }
     case "message.patch": {
@@ -219,7 +253,8 @@ export function applyMessageEvent(
     case "part.add": {
       const shell = state.messages[event.messageId];
       if (!shell) return;
-      state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + contentBytes(event.part);
+      state.historyBytes[event.threadId] =
+        (state.historyBytes[event.threadId] ?? 0) + contentBytes(event.part);
       state.parts.set(event.part.id, event.part);
       if (shell.role === "assistant" && event.part.kind === "text")
         state.reveals[event.part.id] = true;
@@ -232,10 +267,14 @@ export function applyMessageEvent(
     case "part.append": {
       const part = state.parts.get(event.partId);
       if (!part || (part.kind !== "text" && part.kind !== "reasoning")) return;
-      state.historyBytes[event.threadId] = (state.historyBytes[event.threadId] ?? 0) + event.text.length * 2;
+      state.historyBytes[event.threadId] =
+        (state.historyBytes[event.threadId] ?? 0) + event.text.length * 2;
       const updated = { ...part, text: part.text + event.text };
       if (partFingerprint(part) !== partFingerprint(updated))
-        state.timelineVersions = { ...state.timelineVersions, [event.threadId]: (state.timelineVersions[event.threadId] ?? 0) + 1 };
+        state.timelineVersions = {
+          ...state.timelineVersions,
+          [event.threadId]: (state.timelineVersions[event.threadId] ?? 0) + 1,
+        };
       state.parts.set(event.partId, updated);
       return;
     }
@@ -244,7 +283,10 @@ export function applyMessageEvent(
       if (!part) return;
       const updated = { ...part, ...event.patch } as Part;
       if (partFingerprint(part) !== partFingerprint(updated))
-        state.timelineVersions = { ...state.timelineVersions, [event.threadId]: (state.timelineVersions[event.threadId] ?? 0) + 1 };
+        state.timelineVersions = {
+          ...state.timelineVersions,
+          [event.threadId]: (state.timelineVersions[event.threadId] ?? 0) + 1,
+        };
       let bytes = state.historyBytes[event.threadId] ?? 0;
       for (const [key, value] of Object.entries(event.patch)) {
         if (Object.hasOwn(part, key)) bytes -= contentBytes(part[key as keyof Part]);

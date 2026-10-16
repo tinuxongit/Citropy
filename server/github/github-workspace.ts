@@ -46,37 +46,68 @@ export async function githubStatus(projectId?: string): Promise<GitHubStatus> {
         seen.add(repo);
       }
     }
-    result.repositories.sort(
-      (a, b) => Number(b.name === "origin") - Number(a.name === "origin"),
+    result.repositories.sort((a, b) => Number(b.name === "origin") - Number(a.name === "origin"));
+    result.hasCommits = Boolean(
+      (await tryGit(project.path, ["rev-parse", "--verify", "HEAD"])).trim(),
     );
-    result.hasCommits = Boolean((await tryGit(project.path, ["rev-parse", "--verify", "HEAD"])).trim());
     result.branch = (await git(project.path, ["branch", "--show-current"])).trim();
   }
   return result;
 }
 
-const FAILED_CHECKS = ["FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"];
+const FAILED_CHECKS = [
+  "FAILURE",
+  "ERROR",
+  "TIMED_OUT",
+  "CANCELLED",
+  "ACTION_REQUIRED",
+  "STARTUP_FAILURE",
+];
 
 type CheckRollup = Array<{ status?: string; conclusion?: string; state?: string }>;
 
 function summarizeChecks(rollup: CheckRollup): GitHubBranchPull["checks"] {
   if (!rollup.length) return "none";
-  if (rollup.some((check) => FAILED_CHECKS.includes(check.conclusion ?? check.state ?? ""))) return "failing";
-  if (rollup.some((check) => check.status ? check.status !== "COMPLETED" : check.state !== "SUCCESS")) return "pending";
+  if (rollup.some((check) => FAILED_CHECKS.includes(check.conclusion ?? check.state ?? "")))
+    return "failing";
+  if (
+    rollup.some((check) =>
+      check.status ? check.status !== "COMPLETED" : check.state !== "SUCCESS",
+    )
+  )
+    return "pending";
   return "passing";
 }
 
-export async function branchPull(projectId: string, threadId?: string): Promise<{ pull: GitHubBranchPull | null }> {
+export async function branchPull(
+  projectId: string,
+  threadId?: string,
+): Promise<{ pull: GitHubBranchPull | null }> {
   const cwd = workspacePath(projectId, threadId);
   let output: string;
   try {
-    output = await command("gh", ["pr", "view", "--json", "number,title,url,state,statusCheckRollup"], undefined, cwd);
+    output = await command(
+      "gh",
+      ["pr", "view", "--json", "number,title,url,state,statusCheckRollup"],
+      undefined,
+      cwd,
+    );
   } catch (error) {
     if ((error as Error).message.startsWith("no pull requests found")) return { pull: null };
     throw error;
   }
-  const pull = JSON.parse(output) as Omit<GitHubBranchPull, "checks"> & { statusCheckRollup: CheckRollup };
-  return { pull: { number: pull.number, title: pull.title, url: pull.url, state: pull.state, checks: summarizeChecks(pull.statusCheckRollup) } };
+  const pull = JSON.parse(output) as Omit<GitHubBranchPull, "checks"> & {
+    statusCheckRollup: CheckRollup;
+  };
+  return {
+    pull: {
+      number: pull.number,
+      title: pull.title,
+      url: pull.url,
+      state: pull.state,
+      checks: summarizeChecks(pull.statusCheckRollup),
+    },
+  };
 }
 
 export async function openSignIn(): Promise<{ message: string }> {
@@ -110,20 +141,18 @@ export async function openSignIn(): Promise<{ message: string }> {
     });
   });
   return {
-    message:
-      "Complete sign-in in the terminal window, then refresh the connection.",
+    message: "Complete sign-in in the terminal window, then refresh the connection.",
   };
 }
 
 export async function cloneRepository(request: Request<"clone">) {
   const repo = repositoryName(request.repo);
   if (remoteId && !request.parent) throw new Error("Choose a destination folder on the SSH host.");
-  const parent = request.parent ? await workspaceDirectory(request.parent) : await chooseFolder(
-    "Choose where to clone this repository",
-  );
+  const parent = request.parent
+    ? await workspaceDirectory(request.parent)
+    : await chooseFolder("Choose where to clone this repository");
   if (!parent) return { project: null };
-  if (!(await stat(parent)).isDirectory())
-    throw new Error("Choose a destination folder.");
+  if (!(await stat(parent)).isDirectory()) throw new Error("Choose a destination folder.");
   const destination = join(parent, repo.split("/")[1]!);
   await mkdir(destination).catch((error: NodeJS.ErrnoException) => {
     if (error.code === "EEXIST")
@@ -133,13 +162,7 @@ export async function cloneRepository(request: Request<"clone">) {
     throw error;
   });
   try {
-    await command(
-      "gh",
-      ["repo", "clone", repo, destination],
-      undefined,
-      parent,
-      180_000,
-    );
+    await command("gh", ["repo", "clone", repo, destination], undefined, parent, 180_000);
   } catch (error) {
     await rmdir(destination).catch(logFailure("Removing the unfinished clone", destination));
     throw error;
@@ -147,19 +170,16 @@ export async function cloneRepository(request: Request<"clone">) {
   return { project: store.openProject(destination) };
 }
 
-export async function connectRepository(request: Request<"connectRepository">): Promise<{ message: string }> {
+export async function connectRepository(
+  request: Request<"connectRepository">,
+): Promise<{ message: string }> {
   const project = projectFor(request.projectId);
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(request.remote))
     throw new Error("Enter a valid remote name.");
   await api<GitHubRepository>(`repos/${request.repo}`);
   await command(
     "git",
-    [
-      "remote",
-      "add",
-      request.remote,
-      `https://github.com/${request.repo}.git`,
-    ],
+    ["remote", "add", request.remote, `https://github.com/${request.repo}.git`],
     undefined,
     project.path,
   );
@@ -168,36 +188,23 @@ export async function connectRepository(request: Request<"connectRepository">): 
   };
 }
 
-export async function publishRepository(request: Request<"publishRepository">): Promise<GitHubRepository> {
+export async function publishRepository(
+  request: Request<"publishRepository">,
+): Promise<GitHubRepository> {
   const project = projectFor(request.projectId);
   const name = text(request.name, "repository name", true);
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name))
-    throw new Error("Enter a valid repository name.");
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) throw new Error("Enter a valid repository name.");
   if (!(await tryGit(project.path, ["rev-parse", "--verify", "HEAD"])).trim())
-    throw new Error(
-      "Create your first commit in Source control before publishing.",
-    );
-  const remotes = (
-    await command("git", ["remote"], undefined, project.path)
-  )
-    .trim()
-    .split("\n");
+    throw new Error("Create your first commit in Source control before publishing.");
+  const remotes = (await command("git", ["remote"], undefined, project.path)).trim().split("\n");
   if (remotes.includes("origin"))
     throw new Error(
       "This workspace already has an origin remote. Manage it in Source control before publishing a new repository.",
     );
   const branch = (
-    await command(
-      "git",
-      ["branch", "--show-current"],
-      undefined,
-      project.path,
-    )
+    await command("git", ["branch", "--show-current"], undefined, project.path)
   ).trim();
-  if (!branch)
-    throw new Error(
-      "Switch to a branch in Source control before publishing.",
-    );
+  if (!branch) throw new Error("Switch to a branch in Source control before publishing.");
   const account = await api<GitHubUser>("user");
   try {
     await command(

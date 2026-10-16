@@ -17,12 +17,20 @@ export function applyNotificationEvent(
   switch (event.t) {
     case "notification.add": {
       const { notification } = event;
-      if (state.notifications.some(entry => entry.id === notification.id)) return;
+      if (state.notifications.some((entry) => entry.id === notification.id)) return;
       const target = notification.target;
-      const focused = typeof document !== "undefined" && document.visibilityState === "visible" && document.hasFocus();
-      const readingChat = active && notification.kind === "chat" && target.threadId === state.readingThreadId;
-      const viewingWorkspace = active && focused && ["git", "github"].includes(notification.kind) &&
-        target.view === state.activeView && target.projectId === state.activeProjectId &&
+      const focused =
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible" &&
+        document.hasFocus();
+      const readingChat =
+        active && notification.kind === "chat" && target.threadId === state.readingThreadId;
+      const viewingWorkspace =
+        active &&
+        focused &&
+        ["git", "github"].includes(notification.kind) &&
+        target.view === state.activeView &&
+        target.projectId === state.activeProjectId &&
         (!target.threadId || target.threadId === state.activeThreadId);
       const seen = notification.level !== "error" && (readingChat || viewingWorkspace);
       state.notifications = [

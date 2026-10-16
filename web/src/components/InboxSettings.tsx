@@ -9,7 +9,11 @@ export function InboxSettings() {
   const connected = useApp((state) => state.connected);
   const notificationPreferences = useApp((state) => state.notificationPreferences);
   const uiAlertSounds = useApp((state) => state.uiAlertSounds);
-  const alertSound: AlertSound = uiAlertSounds ? "chime" : notificationPreferences.sound ? "system" : "off";
+  const alertSound: AlertSound = uiAlertSounds
+    ? "chime"
+    : notificationPreferences.sound
+      ? "system"
+      : "off";
   const chooseAlertSound = (next: AlertSound) => {
     setUiAlertSounds(next === "chime");
     if (notificationPreferences.sound !== (next === "system"))
@@ -35,7 +39,8 @@ export function InboxSettings() {
             {
               key: "subagents",
               label: "Subagent completions",
-              detail: "Add an inbox item when a subagent finishes or fails. Results remain available in the conversation.",
+              detail:
+                "Add an inbox item when a subagent finishes or fails. Results remain available in the conversation.",
             },
           ] as const
         ).map(({ key, label, detail }) => (
@@ -62,7 +67,10 @@ export function InboxSettings() {
         <label className="setting-row">
           <span>
             <strong>Alert sound</strong>
-            <small>Plays when an agent finishes or needs your answer. System sound plays with desktop notifications only.</small>
+            <small>
+              Plays when an agent finishes or needs your answer. System sound plays with desktop
+              notifications only.
+            </small>
           </span>
           <span className="sound-row-controls">
             {alertSound === "chime" && (
@@ -71,18 +79,28 @@ export function InboxSettings() {
                 type="button"
                 data-ui-sound="off"
                 onClick={() => void previewUiSound("done")}
-              >Preview</button>
+              >
+                Preview
+              </button>
             )}
-            <Select value={alertSound} disabled={!connected} onChange={(value) => chooseAlertSound(value as AlertSound)}
+            <Select
+              value={alertSound}
+              disabled={!connected}
+              onChange={(value) => chooseAlertSound(value as AlertSound)}
               options={[
                 { value: "chime", label: "Citropy chime" },
                 { value: "system", label: "System sound" },
                 { value: "off", label: "Off" },
-              ]} />
+              ]}
+            />
           </span>
         </label>
       </div>
-      <p className="settings-note">{" "}Your last 100 items stay in the inbox until you clear them. Desktop notifications require Citropy desktop and follow your system's notification settings.{" "}</p>
+      <p className="settings-note">
+        {" "}
+        Your last 100 items stay in the inbox until you clear them. Desktop notifications require
+        Citropy desktop and follow your system's notification settings.{" "}
+      </p>
     </>
   );
 }

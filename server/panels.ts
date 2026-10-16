@@ -31,9 +31,7 @@ export function openPanel(
   const existing =
     panels.get(id) ??
     (kind !== "browser" && kind !== "terminal"
-      ? [...panels.values()].find(
-          (panel) => panel.projectId === projectId && panel.kind === kind,
-        )
+      ? [...panels.values()].find((panel) => panel.projectId === projectId && panel.kind === kind)
       : undefined);
   if (existing) {
     if (existing.projectId !== projectId || existing.kind !== kind)
@@ -64,7 +62,11 @@ export function renamePanel(id: string, title: string): void {
   const panel = panels.get(id);
   if (!panel || panel.title === title) return;
   panel.title = title.slice(0, 100);
-  bus.emit({ t: "panel.upsert", panel: { ...panel }, ...(panel.kind === "terminal" ? { background: true } : {}) });
+  bus.emit({
+    t: "panel.upsert",
+    panel: { ...panel },
+    ...(panel.kind === "terminal" ? { background: true } : {}),
+  });
 }
 
 export function renameTerminal(id: string, title: string): void {
@@ -78,7 +80,8 @@ export function movePanel(id: string, targetId: string, edge: DropEdge): void {
   const panel = panels.get(id);
   const target = panels.get(targetId);
   if (!panel || !target) throw new Error("Panel not found");
-  if (panel.projectId !== target.projectId) throw new Error("Panels belong to different workspaces");
+  if (panel.projectId !== target.projectId)
+    throw new Error("Panels belong to different workspaces");
   if (edge !== "before" && edge !== "after") throw new Error("Invalid panel position");
   const ordered = movePanelTab(panelList(), id, targetId, edge);
   panels.clear();

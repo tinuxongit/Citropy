@@ -17,9 +17,16 @@ function orderProjects(projects: Project[], order: string[]): Project[] {
 
 export function useProjectOrder(projectsByEnvironment: Record<string, Project[]>) {
   const [orders, setOrders] = useState<Record<string, string[]>>({});
-  const orderedProjects = useMemo(() => Object.fromEntries(Object.entries(projectsByEnvironment).map(([environment, projects]) =>
-    [environment, orderProjects(projects, orders[environment] ?? readProjectOrder(environment))],
-  )), [projectsByEnvironment, orders]);
+  const orderedProjects = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(projectsByEnvironment).map(([environment, projects]) => [
+          environment,
+          orderProjects(projects, orders[environment] ?? readProjectOrder(environment)),
+        ]),
+      ),
+    [projectsByEnvironment, orders],
+  );
   const moveProject = (environment: string, source: string, target: string, edge: DropEdge) => {
     const order = (orderedProjects[environment] ?? []).map((project) => project.id);
     const ids = moveBeside(order, source, target, edge);

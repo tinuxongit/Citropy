@@ -8,7 +8,11 @@ const LOUPE_GAP = 20;
 const toHex = (channels: ArrayLike<number>) =>
   `#${Array.from({ length: 3 }, (_, index) => channels[index]!.toString(16).padStart(2, "0")).join("")}`;
 
-export function ScreenColorPicker({ capture, onPick, onCancel }: {
+export function ScreenColorPicker({
+  capture,
+  onPick,
+  onCancel,
+}: {
   capture: string;
   onPick: (color: string) => void;
   onCancel: () => void;
@@ -34,7 +38,8 @@ export function ScreenColorPicker({ capture, onPick, onCancel }: {
       context.drawImage(image, 0, 0);
       pixels.current = context;
     };
-    image.onerror = () => reportError(new Error("The window capture for the color picker could not be read."));
+    image.onerror = () =>
+      reportError(new Error("The window capture for the color picker could not be read."));
     image.src = capture;
   }, [capture]);
 
@@ -60,7 +65,17 @@ export function ScreenColorPicker({ capture, onPick, onCancel }: {
     const cell = LOUPE_SIZE / LOUPE_PIXELS;
     view.imageSmoothingEnabled = false;
     view.clearRect(0, 0, LOUPE_SIZE, LOUPE_SIZE);
-    view.drawImage(context.canvas, x - half, y - half, LOUPE_PIXELS, LOUPE_PIXELS, 0, 0, LOUPE_SIZE, LOUPE_SIZE);
+    view.drawImage(
+      context.canvas,
+      x - half,
+      y - half,
+      LOUPE_PIXELS,
+      LOUPE_PIXELS,
+      0,
+      0,
+      LOUPE_SIZE,
+      LOUPE_SIZE,
+    );
     view.strokeStyle = "#ffffff";
     view.lineWidth = 2;
     view.strokeRect(half * cell, half * cell, cell, cell);

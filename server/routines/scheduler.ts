@@ -17,17 +17,26 @@ interface ActiveRun {
 const active = new Map<string, ActiveRun>();
 
 function busy(thread: Thread): boolean {
-  return Boolean(active.has(thread.id) || thread.running || thread.queue?.length || runtimeIfExists(thread.id)?.busy);
+  return Boolean(
+    active.has(thread.id) ||
+    thread.running ||
+    thread.queue?.length ||
+    runtimeIfExists(thread.id)?.busy,
+  );
 }
 
-function finishThreadRun(threadId: string, status: "ok" | "error" | "stopped", error?: string): void {
+function finishThreadRun(
+  threadId: string,
+  status: "ok" | "error" | "stopped",
+  error?: string,
+): void {
   const run = active.get(threadId);
   if (!run) return;
   active.delete(threadId);
   routines.finishRun(threadId, run.routineId, run.runId, status, error);
 }
 
-bus.subscribe(event => {
+bus.subscribe((event) => {
   if (event.t === "thread.remove") active.delete(event.id);
   if (event.t !== "thread.upsert") return;
   const run = active.get(event.thread.id);
@@ -35,7 +44,11 @@ bus.subscribe(event => {
   if (event.thread.running) run.started = true;
   else if (run.started) {
     const { status, error } = event.thread;
-    finishThreadRun(event.thread.id, status === "error" ? "error" : status === "stopped" ? "stopped" : "ok", error);
+    finishThreadRun(
+      event.thread.id,
+      status === "error" ? "error" : status === "stopped" ? "stopped" : "ok",
+      error,
+    );
   }
 });
 
@@ -47,7 +60,9 @@ export async function runRoutine(threadId: string, routineId: string, test = fal
   const run = routines.startRun(threadId, routineId, test);
   active.set(threadId, { routineId, runId: run.id, started: false });
   try {
-    await runtimeFor(threadId).send(routine.prompt, [], { origin: { kind: "routine", routineId, runId: run.id, name: routine.name } });
+    await runtimeFor(threadId).send(routine.prompt, [], {
+      origin: { kind: "routine", routineId, runId: run.id, name: routine.name },
+    });
   } catch (error) {
     finishThreadRun(threadId, "error", (error as Error).message);
     throw error;
@@ -60,10 +75,15 @@ function due(routine: Routine, now: number): boolean {
 
 export function checkRoutines(now = Date.now()): void {
   for (const thread of store.threads.values()) {
-    const routine = thread.routines?.find(entry => due(entry, now));
+    const routine = thread.routines?.find((entry) => due(entry, now));
     if (!routine || busy(thread)) continue;
     void runRoutine(thread.id, routine.id).catch((error: Error) =>
-      writeLog("error", "routines", `Routine "${routine.name}" in ${thread.title} failed to start: ${error.message}`));
+      writeLog(
+        "error",
+        "routines",
+        `Routine "${routine.name}" in ${thread.title} failed to start: ${error.message}`,
+      ),
+    );
   }
 }
 

@@ -11,7 +11,10 @@ export async function pruneRemoteBuilds(directory, current, previous) {
     if (ready?.isFile()) builds.push({ name: entry.name, at: ready.mtimeMs });
   }
   builds.sort((left, right) => right.at - left.at);
-  const retained = new Set([current, previous || builds.find(build => build.name !== current)?.name]);
+  const retained = new Set([
+    current,
+    previous || builds.find((build) => build.name !== current)?.name,
+  ]);
   for (const build of builds) {
     if (retained.has(build.name) || build.at >= cutoff) continue;
     await rm(join(directory, build.name), { recursive: true, force: true });

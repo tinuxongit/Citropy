@@ -1,14 +1,35 @@
 import { applyFake, isDevFake } from "./dev-triggers.ts";
-import { connectionName, environmentId, environmentSignal, environmentStorage, selectEnvironment } from "./environment.ts";
+import {
+  connectionName,
+  environmentId,
+  environmentSignal,
+  environmentStorage,
+  selectEnvironment,
+} from "./environment.ts";
 import { environmentSlice, sendTo, updateEnvironmentSlice } from "./live-environments.ts";
 import { browseRemoteFolder } from "./remote-folder.ts";
-import type {
-  GitHubRequests,
-  GitHubResponses,
-  GitHubRequest,
-} from "../../../shared/github.ts";
-import { selectProject, selectThread, selectPanel, setEditorTerminal, useApp, confirmAction, threadView, type AppState } from "./store.ts";
-import { neighborTab, rememberClosedTab, saveTabs, stepTab, takeClosedTab, withKeptTab, withMovedTab, withoutTab, type Tabs } from "./thread-tabs.ts";
+import type { GitHubRequests, GitHubResponses, GitHubRequest } from "../../../shared/github.ts";
+import {
+  selectProject,
+  selectThread,
+  selectPanel,
+  setEditorTerminal,
+  useApp,
+  confirmAction,
+  threadView,
+  type AppState,
+} from "./store.ts";
+import {
+  neighborTab,
+  rememberClosedTab,
+  saveTabs,
+  stepTab,
+  takeClosedTab,
+  withKeptTab,
+  withMovedTab,
+  withoutTab,
+  type Tabs,
+} from "./thread-tabs.ts";
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { flushHeld, holdMessage } from "./offline.ts";
@@ -17,7 +38,11 @@ import { isUnusedThread } from "./thread-started.ts";
 import { api, reportError } from "./api.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
-import { activeAccountId, hasUsableAccount, providerAccount } from "../../../shared/provider-account.ts";
+import {
+  activeAccountId,
+  hasUsableAccount,
+  providerAccount,
+} from "../../../shared/provider-account.ts";
 import type {
   FilePatch,
   GitResult,
@@ -35,9 +60,12 @@ import { inBotsView } from "../../../shared/bots.ts";
 
 export async function saveProjectDefaults(settings: ProjectSettings): Promise<void> {
   const desktop = window.citropyDesktop ?? window.loomDesktop;
-  const result = desktop?.configureProjectDefaults ? await desktop.configureProjectDefaults(settings) : await api<ProjectSettings>("projects/defaults", {
-    method: "PATCH", body: JSON.stringify({ settings }),
-  });
+  const result = desktop?.configureProjectDefaults
+    ? await desktop.configureProjectDefaults(settings)
+    : await api<ProjectSettings>("projects/defaults", {
+        method: "PATCH",
+        body: JSON.stringify({ settings }),
+      });
   useApp.setState({ projectDefaults: result });
 }
 
@@ -56,9 +84,7 @@ export function moveWorkbenchPanel(id: string, targetId: string, edge: DropEdge)
 export function openWorkbenchPanel(kind: PanelKind, url?: string): void {
   const state = useApp.getState();
   if (!state.activeProjectId || !state.connected) return;
-  const tabs = state.panels.filter(
-    (panel) => panel.projectId === state.activeProjectId,
-  );
+  const tabs = state.panels.filter((panel) => panel.projectId === state.activeProjectId);
   const selectedId = state.activePanels[state.activeProjectId];
   const selected = tabs.find((panel) => panel.id === selectedId) ?? tabs[0];
   if (kind === "terminal" && selected?.kind === "files") {
@@ -67,10 +93,7 @@ export function openWorkbenchPanel(kind: PanelKind, url?: string): void {
   }
   const existing =
     !["browser", "terminal"].includes(kind) &&
-    state.panels.find(
-      (panel) =>
-        panel.projectId === state.activeProjectId && panel.kind === kind,
-    );
+    state.panels.find((panel) => panel.projectId === state.activeProjectId && panel.kind === kind);
   if (existing) {
     selectPanel(existing.id);
     return;
@@ -92,20 +115,19 @@ export function openWorkbenchPanel(kind: PanelKind, url?: string): void {
 
 export function openEditorTerminal(filesId: string, create = false): void {
   const state = useApp.getState();
-  const files = state.panels.find(
-    (panel) => panel.id === filesId && panel.kind === "files",
-  );
+  const files = state.panels.find((panel) => panel.id === filesId && panel.kind === "files");
   if (!files || !state.connected) return;
   const dock = state.editorTerminals[filesId];
   const previous = dock?.threadId === state.activeThreadId ? dock.id : undefined;
   const existing = create
     ? undefined
-    : state.panels.find((panel) => panel.id === previous) ??
-      state.panels.find((panel) =>
-        panel.kind === "terminal" &&
-        panel.projectId === files.projectId &&
-        (panel.threadId ?? null) === state.activeThreadId,
-      );
+    : (state.panels.find((panel) => panel.id === previous) ??
+      state.panels.find(
+        (panel) =>
+          panel.kind === "terminal" &&
+          panel.projectId === files.projectId &&
+          (panel.threadId ?? null) === state.activeThreadId,
+      ));
   const id = existing?.id ?? (create ? undefined : previous) ?? randomId();
   setEditorTerminal(filesId, id);
   if (!existing)
@@ -128,7 +150,9 @@ export async function closeProject(id: string, environment = environmentId()): P
   else await api(`projects?projectId=${encodeURIComponent(id)}`, { method: "DELETE" }, environment);
 }
 
-export function rememberThreadSettings(thread: Pick<ThreadMeta, "provider" | "model" | "effort" | "contextWindow" | "fastMode">): void {
+export function rememberThreadSettings(
+  thread: Pick<ThreadMeta, "provider" | "model" | "effort" | "contextWindow" | "fastMode">,
+): void {
   const { provider, model, effort, contextWindow, fastMode } = thread;
   const threadDefaults = { provider, model, effort, contextWindow, fastMode };
   useApp.setState({ threadDefaults });
@@ -169,18 +193,21 @@ export function newThreadSettings(provider?: ProviderId) {
   if (!choice) return undefined;
   const { chosen, available, previous, defaults } = choice;
   const catalog = available.find((entry) => entry.id === chosen)!;
-  const last = defaults.provider === chosen
-    ? defaults
-    : threadDefaults?.provider === chosen
-    ? threadDefaults
-    : previous?.provider === chosen
-      ? previous
-      : undefined;
+  const last =
+    defaults.provider === chosen
+      ? defaults
+      : threadDefaults?.provider === chosen
+        ? threadDefaults
+        : previous?.provider === chosen
+          ? previous
+          : undefined;
   const providerInstanceId = activeAccountId(catalog);
   const models = providerAccount(catalog, providerInstanceId).models;
   const model = selectedModel(models, last?.model) ?? selectedModel(models);
   return {
-    projectId, provider: chosen, providerInstanceId,
+    projectId,
+    provider: chosen,
+    providerInstanceId,
     ...modelSettings(models, {
       model: model?.id,
       effort: last?.effort,
@@ -211,7 +238,9 @@ export async function createThread(provider?: ProviderId, options = false): Prom
     });
     useApp.setState((state) => ({
       threads: { ...state.threads, [thread.id]: thread },
-      threadOrder: state.threadOrder.includes(thread.id) ? state.threadOrder : [thread.id, ...state.threadOrder],
+      threadOrder: state.threadOrder.includes(thread.id)
+        ? state.threadOrder
+        : [thread.id, ...state.threadOrder],
     }));
     rememberThreadSettings(thread);
     if (useApp.getState().activeProjectId === projectId) {
@@ -230,7 +259,11 @@ export async function createThread(provider?: ProviderId, options = false): Prom
 export async function createChat(): Promise<void> {
   // Chats always run on this machine, even while a server is active.
   if (environmentId() !== "local") {
-    try { await selectEnvironment("local"); } catch (error) { return reportError(error); }
+    try {
+      await selectEnvironment("local");
+    } catch (error) {
+      return reportError(error);
+    }
     if (environmentId() !== "local") return;
   }
   const signal = environmentSignal();
@@ -247,7 +280,9 @@ export async function createChat(): Promise<void> {
     if (signal.aborted) return;
     useApp.setState((state) => ({
       threads: { ...state.threads, [thread.id]: thread },
-      threadOrder: state.threadOrder.includes(thread.id) ? state.threadOrder : [thread.id, ...state.threadOrder],
+      threadOrder: state.threadOrder.includes(thread.id)
+        ? state.threadOrder
+        : [thread.id, ...state.threadOrder],
     }));
     rememberThreadSettings(thread);
     showThread(thread.id);
@@ -299,7 +334,12 @@ export function closeTab(id: string): void {
   if (id !== activeThreadId) return;
   // Stay in the closed tab's section.
   const chat = Boolean(threads[id]?.chat);
-  const next = neighborTab(openThreadIds.filter((open) => open === id || threads[open] && Boolean(threads[open].chat) === chat), id);
+  const next = neighborTab(
+    openThreadIds.filter(
+      (open) => open === id || (threads[open] && Boolean(threads[open].chat) === chat),
+    ),
+    id,
+  );
   if (next) return showThread(next);
   selectThread(null);
   useApp.setState(chat ? { chatsThreadId: null } : { chatThreadId: null });
@@ -313,7 +353,9 @@ export function reopenClosedTab(): void {
 
 export function showNextTab(step: number): void {
   const { threads, openThreadIds, activeThreadId, activeView } = useApp.getState();
-  const shown = openThreadIds.filter((open) => threads[open] && Boolean(threads[open].chat) === (activeView === "chats"));
+  const shown = openThreadIds.filter(
+    (open) => threads[open] && Boolean(threads[open].chat) === (activeView === "chats"),
+  );
   const next = stepTab(shown, activeThreadId, step);
   if (next && next !== activeThreadId) showThread(next);
 }
@@ -328,15 +370,25 @@ export async function loadOlderThread(id: string): Promise<void> {
   if (!page?.next) return;
   const key = requestId();
   const response = awaitResponse<void>(key);
-  send({ t: "thread.load", id, page: { before: page.next, revision: page.revision }, requestId: key });
+  send({
+    t: "thread.load",
+    id,
+    page: { before: page.next, revision: page.revision },
+    requestId: key,
+  });
   await response;
 }
 
-export async function openOnEnvironment(environment: string, projectId: string, threadId?: string): Promise<void> {
+export async function openOnEnvironment(
+  environment: string,
+  projectId: string,
+  threadId?: string,
+): Promise<void> {
   await selectEnvironment(environment, projectId, threadId);
   if (environmentId() !== environment) return;
   if (!threadId) return;
-  if (!useApp.getState().threads[threadId]) throw new Error("This conversation is no longer on that host.");
+  if (!useApp.getState().threads[threadId])
+    throw new Error("This conversation is no longer on that host.");
   selectThread(threadId);
   loadThread(threadId);
 }
@@ -358,7 +410,9 @@ export function readThreadNotifications(threadId: string, since = 0): void {
 export function readNotifications(ids: string[]): void {
   const pending = new Set(ids);
   const { notifications } = useApp.getState();
-  const unread = notifications.filter((entry) => !entry.read && pending.has(entry.id)).map((entry) => entry.id);
+  const unread = notifications
+    .filter((entry) => !entry.read && pending.has(entry.id))
+    .map((entry) => entry.id);
   if (!unread.length) return;
   const read = new Set(unread);
   useApp.setState({
@@ -410,13 +464,16 @@ export function removeThread(id: string, environment = environmentId()): Promise
   return removeThreads([{ id, environment }]);
 }
 
-export async function removeThreads(items: { id: string; environment: string }[]): Promise<boolean> {
+export async function removeThreads(
+  items: { id: string; environment: string }[],
+): Promise<boolean> {
   const live = items.filter(({ id, environment }) => {
     const slice = environmentSlice(environment);
     return slice?.connected && slice.threads[id];
   });
   if (!live.length) return false;
-  const single = live.length === 1 ? environmentSlice(live[0]!.environment)!.threads[live[0]!.id]! : undefined;
+  const single =
+    live.length === 1 ? environmentSlice(live[0]!.environment)!.threads[live[0]!.id]! : undefined;
   const confirmed = await confirmAction({
     title: single ? "Delete this conversation?" : `Delete ${live.length} conversations?`,
     context: single?.title,
@@ -452,24 +509,36 @@ export function readThread(id: string): void {
   send({ t: "thread.read", id });
 }
 
-export async function reorderThreads(projectId: string, ids: string[], environment = environmentId()): Promise<void> {
+export async function reorderThreads(
+  projectId: string,
+  ids: string[],
+  environment = environmentId(),
+): Promise<void> {
   const previous = environmentSlice(environment)?.threads;
   if (!previous) throw new Error(`No live environment: ${environment}`);
   updateEnvironmentSlice(environment, (slice) => {
     const threads = { ...slice.threads };
-    ids.forEach((id, position) => { threads[id] = { ...threads[id]!, position }; });
+    ids.forEach((id, position) => {
+      threads[id] = { ...threads[id]!, position };
+    });
     return { threads };
   });
   try {
-    await api(`threads/reorder?projectId=${projectId}`, {
-      method: "POST",
-      body: JSON.stringify({ ids }),
-    }, environment);
+    await api(
+      `threads/reorder?projectId=${projectId}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      },
+      environment,
+    );
   } catch (error) {
     updateEnvironmentSlice(environment, (slice) => {
       if (!ids.every((id, position) => slice.threads[id]?.position === position)) return {};
       const threads = { ...slice.threads };
-      ids.forEach((id) => { threads[id] = { ...threads[id]!, position: previous[id]?.position }; });
+      ids.forEach((id) => {
+        threads[id] = { ...threads[id]!, position: previous[id]?.position };
+      });
       return { threads };
     });
     reportError(error);
@@ -503,16 +572,24 @@ export async function configureThread(
   if (signal.aborted) return;
   const state = useApp.getState();
   const thread = state.threads[id];
-  if (thread && (patch.provider !== undefined || patch.providerInstanceId !== undefined || patch.model !== undefined || patch.effort !== undefined || patch.contextWindow !== undefined || patch.fastMode !== undefined)) {
+  if (
+    thread &&
+    (patch.provider !== undefined ||
+      patch.providerInstanceId !== undefined ||
+      patch.model !== undefined ||
+      patch.effort !== undefined ||
+      patch.contextWindow !== undefined ||
+      patch.fastMode !== undefined)
+  ) {
     rememberThreadSettings({ ...thread, ...nextTurnSettings(thread) });
   }
 }
 
-export function answerPermission(
-  id: string,
-  decision: "allow" | "allow_always" | "deny",
-): void {
-  if (isDevFake(id)) { applyFake({ t: "permission.close", id }); return; }
+export function answerPermission(id: string, decision: "allow" | "allow_always" | "deny"): void {
+  if (isDevFake(id)) {
+    applyFake({ t: "permission.close", id });
+    return;
+  }
   send({ t: "permission.answer", id, decision });
 }
 
@@ -567,8 +644,11 @@ export async function chooseWorkspaceOn(id: string): Promise<void> {
     if (!path) return;
     await selectEnvironment(id);
     send({ t: "project.choose", path });
-  } catch (error) { reportError(error); }
-  finally { useApp.setState({ choosingWorkspace: false }); }
+  } catch (error) {
+    reportError(error);
+  } finally {
+    useApp.setState({ choosingWorkspace: false });
+  }
 }
 
 export function manageGit(
@@ -607,15 +687,19 @@ export function runCommand(command: string): void {
   const { activeProjectId, activeThreadId } = useApp.getState();
   if (!activeProjectId) throw new Error("Open a workspace to run commands.");
   useApp.setState({ inspectorOpen: true });
-  send({ t: "project.runCommand", projectId: activeProjectId, threadId: activeThreadId ?? undefined, command });
+  send({
+    t: "project.runCommand",
+    projectId: activeProjectId,
+    threadId: activeThreadId ?? undefined,
+    command,
+  });
 }
 
 export async function github<K extends keyof GitHubRequests>(
   operation: K,
   input: GitHubRequests[K],
 ): Promise<GitHubResponses[K]> {
-  if (!useApp.getState().connected)
-    throw new Error("Reconnect to Citropy to use GitHub.");
+  if (!useApp.getState().connected) throw new Error("Reconnect to Citropy to use GitHub.");
   const signal = environmentSignal();
   if (operation === "clone" && window.citropyDesktop?.chooseWorkspaceFolder) {
     const parent = await pickWorkspaceFolder(environmentId());

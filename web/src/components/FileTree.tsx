@@ -2,13 +2,7 @@ import { lazy, Suspense } from "react";
 
 const EditorWorkspace = lazy(() => import("./editor/EditorWorkspace.tsx"));
 
-export function FileTree({
-  panelId,
-  active,
-}: {
-  panelId: string;
-  active: boolean;
-}) {
+export function FileTree({ panelId, active }: { panelId: string; active: boolean }) {
   return (
     <Suspense
       fallback={
@@ -17,10 +11,7 @@ export function FileTree({
         </div>
       }
     >
-      <EditorWorkspace
-        panelId={panelId}
-        active={active}
-      />
+      <EditorWorkspace panelId={panelId} active={active} />
     </Suspense>
   );
 }

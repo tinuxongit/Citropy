@@ -1,12 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-  readdir,
-  readFile,
-  open,
-  realpath,
-  rename,
-  mkdir,
-} from "node:fs/promises";
+import { readdir, readFile, open, realpath, rename, mkdir } from "node:fs/promises";
 import { citropySkillsRoot, dataRoot } from "./paths.ts";
 import { hasCode, ifMissing, unlessCode } from "../shared/expected-errors.mjs";
 import { homedir } from "node:os";
@@ -20,10 +13,7 @@ import { claudeHome, codexHome, museHome } from "./providers/config-folders.ts";
 
 export const MAX_SKILL_BYTES = 100_000;
 const disabledName = "SKILL.md.citropy-disabled";
-const inventories = new Map<
-  string,
-  { time: number; value: Promise<SkillInfo[]> }
->();
+const inventories = new Map<string, { time: number; value: Promise<SkillInfo[]> }>();
 
 type SkillRoot = { path: string; provider: ProviderId; scope: SkillInfo["scope"] };
 
@@ -36,34 +26,22 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
       scope: "personal",
     },
     {
-      path: join(
-        codexHome(),
-        "plugins/cache",
-      ),
+      path: join(codexHome(), "plugins/cache"),
       provider: "codex",
       scope: "plugin",
     },
     {
-      path: join(
-        claudeHome(),
-        "skills",
-      ),
+      path: join(claudeHome(), "skills"),
       provider: "claude",
       scope: "personal",
     },
     {
-      path: join(
-        claudeHome(),
-        "plugins/cache",
-      ),
+      path: join(claudeHome(), "plugins/cache"),
       provider: "claude",
       scope: "plugin",
     },
     {
-      path: join(
-        process.env.XDG_CONFIG_HOME || join(home, ".config"),
-        "opencode/skills",
-      ),
+      path: join(process.env.XDG_CONFIG_HOME || join(home, ".config"), "opencode/skills"),
       provider: "opencode",
       scope: "personal",
     },
@@ -94,10 +72,7 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
     }
   }
   const registryFile = await readFile(
-    join(
-      claudeHome(),
-      "plugins/installed_plugins.json",
-    ),
+    join(claudeHome(), "plugins/installed_plugins.json"),
     "utf8",
   ).catch(ifMissing(undefined));
   if (registryFile === undefined) return locations;
@@ -110,10 +85,7 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
     (root) => root.provider !== "claude" || root.scope !== "plugin",
   );
   for (const plugin of installed)
-    if (
-      plugin.installPath &&
-      (!plugin.projectPath || plugin.projectPath === projectPath)
-    )
+    if (plugin.installPath && (!plugin.projectPath || plugin.projectPath === projectPath))
       filtered.push({
         path: plugin.installPath,
         provider: "claude",
@@ -122,9 +94,7 @@ async function roots(projectPath?: string): Promise<SkillRoot[]> {
   return filtered;
 }
 
-async function codexSkills(
-  projectPath?: string,
-): Promise<SkillInfo[] | undefined> {
+async function codexSkills(projectPath?: string): Promise<SkillInfo[] | undefined> {
   const home = codexHome();
   if (!(await realpath(home).catch(ifMissing("")))) return;
   try {
@@ -145,10 +115,7 @@ async function codexSkills(
         }>;
       }) =>
         entry.skills.map((skill) => ({
-          id: createHash("sha256")
-            .update(`codex:${skill.path}`)
-            .digest("hex")
-            .slice(0, 24),
+          id: createHash("sha256").update(`codex:${skill.path}`).digest("hex").slice(0, 24),
           name: skill.name,
           description: skill.description.slice(0, 600),
           path: skill.path,
@@ -194,10 +161,7 @@ export async function readSkillFile(path: string): Promise<string> {
   }
 }
 
-export async function listSkills(
-  projectId?: string,
-  threadId?: string,
-): Promise<SkillInfo[]> {
+export async function listSkills(projectId?: string, threadId?: string): Promise<SkillInfo[]> {
   const project = projectId ? store.projects.get(projectId) : undefined;
   if (projectId && !project) throw new Error("Workspace not found");
   const path = project ? workspacePath(project.id, threadId) : "";
@@ -208,20 +172,21 @@ export async function listSkills(
     throw error;
   });
   inventories.set(path, { time: Date.now(), value });
-  if (inventories.size > 25)
-    inventories.delete(inventories.keys().next().value!);
+  if (inventories.size > 25) inventories.delete(inventories.keys().next().value!);
   return value;
 }
 
 export function mentionNames(text: string): Set<string> {
-  return new Set([...text.matchAll(/(?:^|\s)[@$]([\w.:-]+)(?![\w./:-])/g)].map((match) => match[1]!));
+  return new Set(
+    [...text.matchAll(/(?:^|\s)[@$]([\w.:-]+)(?![\w./:-])/g)].map((match) => match[1]!),
+  );
 }
 
 export async function mentionedSkills(thread: Thread, text: string): Promise<SkillInfo[]> {
   const requested = mentionNames(text);
   if (!requested.size) return [];
-  const matching = (await listSkills(thread.projectId, thread.id)).filter((skill) =>
-    skill.enabled && skill.provider === thread.provider && requested.has(skill.name),
+  const matching = (await listSkills(thread.projectId, thread.id)).filter(
+    (skill) => skill.enabled && skill.provider === thread.provider && requested.has(skill.name),
   );
   matching.sort((a, b) => Number(b.scope === "project") - Number(a.scope === "project"));
   const selected = new Map<string, SkillInfo>();
@@ -241,9 +206,7 @@ async function scanRoot(root: SkillRoot, found: Set<string>): Promise<SkillInfo[
     const entries = await readdir(entry.path, { withFileTypes: true }).catch(
       unlessCode(["ENOTDIR"], []),
     );
-    const skill = entries.find(
-      (file) => file.name === "SKILL.md" || file.name === disabledName,
-    );
+    const skill = entries.find((file) => file.name === "SKILL.md" || file.name === disabledName);
     if (skill) {
       const path = join(canonical, skill.name);
       const key = `${root.provider}:${join(canonical, "SKILL.md")}`;
@@ -265,15 +228,9 @@ async function scanRoot(root: SkillRoot, found: Set<string>): Promise<SkillInfo[
       for (const item of entries) {
         if (
           (item.isDirectory() || item.isSymbolicLink()) &&
-          ![
-            "node_modules",
-            ".git",
-            ".trash",
-            "dist",
-            "assets",
-            "references",
-            "scripts",
-          ].includes(item.name)
+          !["node_modules", ".git", ".trash", "dist", "assets", "references", "scripts"].includes(
+            item.name,
+          )
         )
           queue.push({
             path: join(entry.path, item.name),
@@ -298,10 +255,9 @@ async function scanSkills(projectPath?: string): Promise<SkillInfo[]> {
   const found = new Set<string>();
   for (const root of await roots(projectPath))
     if (!managed || root.provider !== "codex" || root.scope === "citropy")
-      skills.push(...await scanRoot(root, found));
+      skills.push(...(await scanRoot(root, found)));
   return skills.sort(
-    (a, b) =>
-      a.name.localeCompare(b.name) || a.provider.localeCompare(b.provider),
+    (a, b) => a.name.localeCompare(b.name) || a.provider.localeCompare(b.provider),
   );
 }
 
@@ -313,27 +269,16 @@ export async function changeSkill(
   inventories.clear();
   const skills = await listSkills(projectId);
   const skill = skills.find((entry) => entry.id === id);
-  if (!skill)
-    throw new Error("This skill is no longer installed. Refresh the list.");
+  if (!skill) throw new Error("This skill is no longer installed. Refresh the list.");
   const affected = new Set(
     skills
       .filter((entry) => dirname(entry.path) === dirname(skill.path))
       .map((entry) => entry.provider),
   );
-  if (
-    [...store.threads.values()].some(
-      (thread) => thread.running && affected.has(thread.provider),
-    )
-  )
-    throw new Error(
-      "Wait for this provider's conversations to finish before changing its skills.",
-    );
+  if ([...store.threads.values()].some((thread) => thread.running && affected.has(thread.provider)))
+    throw new Error("Wait for this provider's conversations to finish before changing its skills.");
   if (action === "delete") {
-    const trash = join(
-      dataRoot,
-      "deleted-skills",
-      `${Date.now()}-${id}`,
-    );
+    const trash = join(dataRoot, "deleted-skills", `${Date.now()}-${id}`);
     await mkdir(trash, { recursive: true, mode: 0o700 });
     await rename(skill.path, join(trash, basename(skill.path)));
   } else if (action === "enable" || action === "disable") {
@@ -346,20 +291,14 @@ export async function changeSkill(
     else
       await rename(
         skill.path,
-        join(
-          dirname(skill.path),
-          action === "enable" ? "SKILL.md" : disabledName,
-        ),
+        join(dirname(skill.path), action === "enable" ? "SKILL.md" : disabledName),
       );
   } else throw new Error("Unknown skill action");
   inventories.clear();
   return affected;
 }
 
-export async function readSkill(
-  projectId: string | undefined,
-  id: string,
-): Promise<string> {
+export async function readSkill(projectId: string | undefined, id: string): Promise<string> {
   const skill = (await listSkills(projectId)).find((entry) => entry.id === id);
   if (!skill) throw new Error("Skill not found");
   return skillInstructions(await readSkillFile(skill.path));

@@ -59,7 +59,13 @@ function ToastItem({
               dismissToast(toast.id);
             }}
           >
-            {toast.target.view === "chat" ? "Open conversation" : toast.target.view === "git" ? "Open source control" : toast.target.view === "settings" ? "Open settings" : "Open GitHub"}
+            {toast.target.view === "chat"
+              ? "Open conversation"
+              : toast.target.view === "git"
+                ? "Open source control"
+                : toast.target.view === "settings"
+                  ? "Open settings"
+                  : "Open GitHub"}
           </button>
         )}
       </div>
@@ -79,11 +85,7 @@ function ToastItem({
   );
 }
 
-export function Toasts({
-  onOpen,
-}: {
-  onOpen: (target: NotificationTarget) => void;
-}) {
+export function Toasts({ onOpen }: { onOpen: (target: NotificationTarget) => void }) {
   const toasts = useApp((state) => state.toasts);
   return (
     <div className="toasts" aria-label="Recent notifications">

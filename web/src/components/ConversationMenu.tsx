@@ -1,7 +1,13 @@
 import { AnimatePresence } from "motion/react";
 import { useId, useState } from "react";
 import { ForkIcon, PullRequestIcon } from "./icons/git.tsx";
-import { ArchiveIcon, ArchiveRestoreIcon, PinIcon, PinOffIcon, TrashIcon } from "./icons/actions.tsx";
+import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
+  PinIcon,
+  PinOffIcon,
+  TrashIcon,
+} from "./icons/actions.tsx";
 import { ClockIcon } from "./icons/status.tsx";
 import { MoreIcon } from "./icons/marks.tsx";
 import { EditIcon } from "./icons/pencil.tsx";
@@ -19,10 +25,14 @@ import { openInNewTab } from "../lib/actions.ts";
 import { ActionError } from "./ActionError.tsx";
 
 export async function organizeConversation(id: string, patch: object, environment?: string) {
-  await api(`threads/organize?threadId=${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(patch),
-  }, environment);
+  await api(
+    `threads/organize?threadId=${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    },
+    environment,
+  );
 }
 
 export function ConversationMenu({
@@ -34,15 +44,40 @@ export function ConversationMenu({
   environment?: string;
   rowActions?: MenuItem[];
 }) {
-  const projects = useApp(state => state.projects);
-  const tabbable = useApp(state => (environment ?? environmentId()) === environmentId() && !state.openThreadIds.includes(thread.id));
-  const project = (environment ? environmentSlice(environment)?.projects : projects)?.find(project => project.id === thread.projectId);
+  const projects = useApp((state) => state.projects);
+  const tabbable = useApp(
+    (state) =>
+      (environment ?? environmentId()) === environmentId() &&
+      !state.openThreadIds.includes(thread.id),
+  );
+  const project = (environment ? environmentSlice(environment)?.projects : projects)?.find(
+    (project) => project.id === thread.projectId,
+  );
   const worktree = async (action: "copy" | "remove") => {
-    if (!await confirmAction({ title: action === "copy" ? "Continue in a new worktree?" : "Remove this worktree?", description: action === "copy" ? "Copy the current changes to a new branch and continue this task there. Changes remain in the original folder. The copied changes start unstaged." : "Only a clean worktree unused by other tasks can be removed. The branch and conversation history stay available.", label: action === "copy" ? "Copy and continue" : "Remove worktree", danger: action === "remove" })) return;
+    if (
+      !(await confirmAction({
+        title: action === "copy" ? "Continue in a new worktree?" : "Remove this worktree?",
+        description:
+          action === "copy"
+            ? "Copy the current changes to a new branch and continue this task there. Changes remain in the original folder. The copied changes start unstaged."
+            : "Only a clean worktree unused by other tasks can be removed. The branch and conversation history stay available.",
+        label: action === "copy" ? "Copy and continue" : "Remove worktree",
+        danger: action === "remove",
+      }))
+    )
+      return;
     setBusy(true);
-    try { await api(`threads/worktree?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ action }) }, environment); }
-    catch (error) { reportError(error); }
-    finally { setBusy(false); }
+    try {
+      await api(
+        `threads/worktree?threadId=${thread.id}`,
+        { method: "POST", body: JSON.stringify({ action }) },
+        environment,
+      );
+    } catch (error) {
+      reportError(error);
+    } finally {
+      setBusy(false);
+    }
   };
   const [editing, setEditing] = useState<"title" | "pullRequest">();
   const [snoozeAnchor, setSnoozeAnchor] = useState<HTMLElement>();
@@ -54,7 +89,11 @@ export function ConversationMenu({
     setBusy(true);
     setError("");
     try {
-      await api(`threads/title?threadId=${encodeURIComponent(thread.id)}`, { method: "POST" }, environment);
+      await api(
+        `threads/title?threadId=${encodeURIComponent(thread.id)}`,
+        { method: "POST" },
+        environment,
+      );
       setEditing(undefined);
     } catch (error) {
       setError((error as Error).message);
@@ -75,8 +114,7 @@ export function ConversationMenu({
     try {
       if (editing === "title")
         await organizeConversation(thread.id, { title: value.trim() }, environment);
-      else
-        await organizeConversation(thread.id, { pullRequest: value.trim() }, environment);
+      else await organizeConversation(thread.id, { pullRequest: value.trim() }, environment);
       setEditing(undefined);
     } catch (error) {
       setError((error as Error).message);
@@ -94,10 +132,63 @@ export function ConversationMenu({
         sheet={viewportWidth() <= 600}
         triggerId={menuId}
         items={[
-          ...(tabbable ? [{ id: "open-tab", label: "Open in new tab", icon: <SquarePlusIcon size={15} />, onSelect: () => openInNewTab(thread.id) }] : []),
-          ...(project?.isGit ? [{ id: "worktree", label: "Continue in new worktree…", icon: <ForkIcon size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
-          ...(thread.archived && !thread.chat && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: "Remove worktree…", icon: <TrashIcon size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
-          ...(thread.canRedo ? [{ id: "redo", label: "Redo restored turn", icon: <RefreshIcon size={15} />, disabled: thread.running, onSelect: () => { void api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ redo: true }) }, environment).catch(reportError); } }] : []),
+          ...(tabbable
+            ? [
+                {
+                  id: "open-tab",
+                  label: "Open in new tab",
+                  icon: <SquarePlusIcon size={15} />,
+                  onSelect: () => openInNewTab(thread.id),
+                },
+              ]
+            : []),
+          ...(project?.isGit
+            ? [
+                {
+                  id: "worktree",
+                  label: "Continue in new worktree…",
+                  icon: <ForkIcon size={15} />,
+                  disabled: thread.running || busy,
+                  onSelect: () => {
+                    void worktree("copy");
+                  },
+                },
+              ]
+            : []),
+          ...(thread.archived &&
+          !thread.chat &&
+          thread.workspacePath &&
+          thread.workspacePath !== project?.path
+            ? [
+                {
+                  id: "remove-worktree",
+                  label: "Remove worktree…",
+                  icon: <TrashIcon size={15} />,
+                  danger: true,
+                  disabled: busy,
+                  onSelect: () => {
+                    void worktree("remove");
+                  },
+                },
+              ]
+            : []),
+          ...(thread.canRedo
+            ? [
+                {
+                  id: "redo",
+                  label: "Redo restored turn",
+                  icon: <RefreshIcon size={15} />,
+                  disabled: thread.running,
+                  onSelect: () => {
+                    void api(
+                      `threads/restore?threadId=${thread.id}`,
+                      { method: "POST", body: JSON.stringify({ redo: true }) },
+                      environment,
+                    ).catch(reportError);
+                  },
+                },
+              ]
+            : []),
           {
             id: "pin",
             label: thread.pinned ? "Unpin conversation" : "Pin conversation",
@@ -110,21 +201,21 @@ export function ConversationMenu({
             icon: <EditIcon size={15} />,
             onSelect: () => edit("title"),
           },
-          ...(!thread.chat ? [{
-            id: "pr",
-            label: thread.pullRequest
-              ? "Edit pull request link…"
-              : "Link pull request…",
-            icon: <PullRequestIcon size={15} />,
-            onSelect: () => edit("pullRequest"),
-          }] : []),
+          ...(!thread.chat
+            ? [
+                {
+                  id: "pr",
+                  label: thread.pullRequest ? "Edit pull request link…" : "Link pull request…",
+                  icon: <PullRequestIcon size={15} />,
+                  onSelect: () => edit("pullRequest"),
+                },
+              ]
+            : []),
           ...(!thread.running
             ? [
                 {
                   id: "snooze",
-                  label: thread.snoozedUntil
-                    ? "Wake conversation"
-                    : "Snooze…",
+                  label: thread.snoozedUntil ? "Wake conversation" : "Snooze…",
                   icon: <ClockIcon size={15} />,
                   onSelect: () =>
                     thread.snoozedUntil
@@ -133,9 +224,7 @@ export function ConversationMenu({
                 },
                 {
                   id: "archive",
-                  label: thread.archived
-                    ? "Restore conversation"
-                    : "Archive conversation",
+                  label: thread.archived ? "Restore conversation" : "Archive conversation",
                   icon: thread.archived ? (
                     <ArchiveRestoreIcon size={15} />
                   ) : (
@@ -161,63 +250,70 @@ export function ConversationMenu({
           </button>
         )}
       />
-      <AnimatePresence>{editing && (
-        <Modal
-          title={editing === "title" ? "Rename conversation" : "Link a pull request"}
-          onClose={() => setEditing(undefined)}
-          onSubmit={save}
-          busy={busy}
-          initialFocus="input"
-          footer={
-            <>
-              {editing === "title" && !thread.parentThreadId && (
+      <AnimatePresence>
+        {editing && (
+          <Modal
+            title={editing === "title" ? "Rename conversation" : "Link a pull request"}
+            onClose={() => setEditing(undefined)}
+            onSubmit={save}
+            busy={busy}
+            initialFocus="input"
+            footer={
+              <>
+                {editing === "title" && !thread.parentThreadId && (
+                  <button
+                    className="btn dialog-footer-start"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void generateTitle()}
+                  >
+                    <RefreshIcon size={15} />
+                    Generate
+                  </button>
+                )}
                 <button
-                  className="btn dialog-footer-start"
+                  className="btn"
+                  data-cancel
                   type="button"
                   disabled={busy}
-                  onClick={() => void generateTitle()}
+                  onClick={() => setEditing(undefined)}
                 >
-                  <RefreshIcon size={15} />
-                  Generate
+                  Cancel
                 </button>
-              )}
-              <button
-                className="btn"
-                data-cancel
-                type="button"
-                disabled={busy}
-                onClick={() => setEditing(undefined)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn"
-                data-variant="primary"
-                disabled={busy || (editing !== "pullRequest" && !value.trim())}
-              >
-                Save
-              </button>
-            </>
-          }
-        >
-          <label className="feature-field">
-            {editing === "title" ? "Name" : "GitHub pull request URL"}
-            <input
-              type="text"
-              value={value}
-              maxLength={editing === "title" ? 200 : 2000}
-              onChange={(event) => setValue(event.target.value)}
-              placeholder={
-                editing === "pullRequest"
-                  ? "https://github.com/owner/repo/pull/123"
-                  : undefined
-              }
-            />
-          </label>
-          <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
-        </Modal>
-      )}</AnimatePresence>
-      {snoozeAnchor && <SnoozeMenu thread={thread} environment={environment} anchor={snoozeAnchor} onClose={() => setSnoozeAnchor(undefined)} />}
+                <button
+                  className="btn"
+                  data-variant="primary"
+                  disabled={busy || (editing !== "pullRequest" && !value.trim())}
+                >
+                  Save
+                </button>
+              </>
+            }
+          >
+            <label className="feature-field">
+              {editing === "title" ? "Name" : "GitHub pull request URL"}
+              <input
+                type="text"
+                value={value}
+                maxLength={editing === "title" ? 200 : 2000}
+                onChange={(event) => setValue(event.target.value)}
+                placeholder={
+                  editing === "pullRequest" ? "https://github.com/owner/repo/pull/123" : undefined
+                }
+              />
+            </label>
+            <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
+          </Modal>
+        )}
+      </AnimatePresence>
+      {snoozeAnchor && (
+        <SnoozeMenu
+          thread={thread}
+          environment={environment}
+          anchor={snoozeAnchor}
+          onClose={() => setSnoozeAnchor(undefined)}
+        />
+      )}
     </>
   );
 }

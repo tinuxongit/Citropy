@@ -24,21 +24,43 @@ export function Welcome() {
   return (
     <div className="welcome">
       <div className="welcome-inner">
-        {project ? <FolderOpenIcon size={36} className="welcome-mark" /> : <FolderIcon size={36} className="welcome-mark" />}
+        {project ? (
+          <FolderOpenIcon size={36} className="welcome-mark" />
+        ) : (
+          <FolderIcon size={36} className="welcome-mark" />
+        )}
         <h1 className="truncate">{project ? project.name : "Open a workspace"}</h1>
-        <p className="welcome-path truncate">{project ? shortPath(project.path, home) : "Choose a project folder to start working."}</p>
+        <p className="welcome-path truncate">
+          {project ? shortPath(project.path, home) : "Choose a project folder to start working."}
+        </p>
 
         {project ? (
-          <button className="btn" type="button" data-variant="primary" onClick={() => createThread()} disabled={!connected || creating || !canStart}>
-            <NewMessageIcon size={14} />New thread</button>
+          <button
+            className="btn"
+            type="button"
+            data-variant="primary"
+            onClick={() => createThread()}
+            disabled={!connected || creating || !canStart}
+          >
+            <NewMessageIcon size={14} />
+            New thread
+          </button>
         ) : (
-          <button className="btn" type="button" data-variant="primary" onClick={chooseWorkspace} disabled={choosing}>
+          <button
+            className="btn"
+            type="button"
+            data-variant="primary"
+            onClick={chooseWorkspace}
+            disabled={choosing}
+          >
             <FolderIcon size={16} />
             {choosing ? "Choose a folder in the system dialog…" : "Choose folder…"}
           </button>
         )}
 
-        {project && !canStart && <p className="settings-note">Enable a provider in Settings to start a conversation.</p>}
+        {project && !canStart && (
+          <p className="settings-note">Enable a provider in Settings to start a conversation.</p>
+        )}
         {others.length > 0 && (
           <div className="recent-list">
             <span className="recent-label">{project ? "Other projects" : "Recent projects"}</span>
@@ -72,9 +94,19 @@ export function ChatWelcome() {
         <ConversationsIcon size={36} className="welcome-mark" />
         <h1>Chat</h1>
         <p className="welcome-path">Ask anything. Chats can't change your files.</p>
-        <button className="btn" type="button" data-variant="primary" onClick={() => void createChat()} disabled={!connected || creating || !canStart}>
-          <NewMessageIcon size={14} />New chat</button>
-        {!canStart && <p className="settings-note">Enable a provider in Settings to start a chat.</p>}
+        <button
+          className="btn"
+          type="button"
+          data-variant="primary"
+          onClick={() => void createChat()}
+          disabled={!connected || creating || !canStart}
+        >
+          <NewMessageIcon size={14} />
+          New chat
+        </button>
+        {!canStart && (
+          <p className="settings-note">Enable a provider in Settings to start a chat.</p>
+        )}
       </div>
     </div>
   );

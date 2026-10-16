@@ -12,7 +12,13 @@ function channels(hex: string): number[] {
 
 function mix(color: string, base: string, amount: number): string {
   const top = channels(color);
-  return `#${channels(base).map((value, index) => Math.round(value + (top[index]! - value) * amount).toString(16).padStart(2, "0")).join("")}`;
+  return `#${channels(base)
+    .map((value, index) =>
+      Math.round(value + (top[index]! - value) * amount)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
 function luminance(hex: string): number {
@@ -28,7 +34,8 @@ function rgba(hex: string, alpha: number): string {
 }
 
 function readableText(accent: string, scheme: Scheme): string {
-  if (scheme === "dark") return luminance(accent) < 0.12 ? mix("#ffffff", accent, 0.45) : mix("#ffffff", accent, 0.22);
+  if (scheme === "dark")
+    return luminance(accent) < 0.12 ? mix("#ffffff", accent, 0.45) : mix("#ffffff", accent, 0.22);
   return luminance(accent) > 0.18 ? mix("#000000", accent, 0.4) : accent;
 }
 

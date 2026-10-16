@@ -2,10 +2,25 @@ import "./fixtures/isolated-data.mjs";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { test } from "node:test";
-import { descendants, parseLinuxProcessStat, parseLinuxProportionalMemory, parseProcessTable, processCpuPercent, processTable } from "../server/process-table.ts";
+import {
+  descendants,
+  parseLinuxProcessStat,
+  parseLinuxProportionalMemory,
+  parseProcessTable,
+  processCpuPercent,
+  processTable,
+} from "../server/process-table.ts";
 
 test("process CPU uses elapsed time and cumulative counters rather than lifetime averages", () => {
-  const entry = { pid: 5, parent: 1, name: "agent", memory: 1024, cpu: 3, startedAt: "generation-1", cpuTime: 12 };
+  const entry = {
+    pid: 5,
+    parent: 1,
+    name: "agent",
+    memory: 1024,
+    cpu: 3,
+    startedAt: "generation-1",
+    cpuTime: 12,
+  };
   const previous = { startedAt: "generation-1", cpuTime: 10, at: 1000 };
   assert.equal(processCpuPercent(entry, previous, 4000), 200 / 3);
   assert.equal(processCpuPercent({ ...entry, cpuTime: 16 }, previous, 4000), 200);
@@ -15,8 +30,18 @@ test("process CPU uses elapsed time and cumulative counters rather than lifetime
   assert.equal(processCpuPercent({ ...entry, cpuTime: 9 }, previous, 4000), null);
   assert.equal(processCpuPercent(entry, previous, 1000), null);
   assert.equal(processCpuPercent(entry, previous, 12000), null);
-  assert.equal(processCpuPercent({ ...entry, cpuTime: undefined }, { ...previous, cpuTime: undefined }, 4000), null);
-  assert.equal(processCpuPercent({ ...entry, cpuTime: undefined, cpuInterval: true }, { ...previous, cpuTime: undefined }, 4000), 3);
+  assert.equal(
+    processCpuPercent({ ...entry, cpuTime: undefined }, { ...previous, cpuTime: undefined }, 4000),
+    null,
+  );
+  assert.equal(
+    processCpuPercent(
+      { ...entry, cpuTime: undefined, cpuInterval: true },
+      { ...previous, cpuTime: undefined },
+      4000,
+    ),
+    3,
+  );
 });
 
 test("Linux process counters keep birth identity when the name contains parentheses", () => {
@@ -26,41 +51,106 @@ test("Linux process counters keep birth identity when the name contains parenthe
   fields[11] = "150";
   fields[12] = "50";
   fields[19] = "123456";
-  assert.deepEqual(parseLinuxProcessStat(`42 (coding ) (agent)) ${fields.join(" ")}`, 100), { parent: 10, cpuTime: 2, startedAt: "linux:123456" });
+  assert.deepEqual(parseLinuxProcessStat(`42 (coding ) (agent)) ${fields.join(" ")}`, 100), {
+    parent: 10,
+    cpuTime: 2,
+    startedAt: "linux:123456",
+  });
   assert.equal(parseLinuxProcessStat("invalid", 100), undefined);
   assert.equal(parseLinuxProcessStat(`42 (agent) ${fields.join(" ")}`, 0), undefined);
 });
 
 test("Linux memory splits shared pages between the processes that use them", () => {
-  assert.equal(parseLinuxProportionalMemory("7f00-7fff ---p 00000000 00:00 0 [rollup]\nRss:  2048 kB\nPss:  1024 kB\nPss_Anon:  512 kB\n"), 1048576);
+  assert.equal(
+    parseLinuxProportionalMemory(
+      "7f00-7fff ---p 00000000 00:00 0 [rollup]\nRss:  2048 kB\nPss:  1024 kB\nPss_Anon:  512 kB\n",
+    ),
+    1048576,
+  );
   assert.equal(parseLinuxProportionalMemory(""), undefined);
 });
 
 test("platform snapshots parse cumulative CPU and preserve process names", () => {
-  assert.deepEqual(parseProcessTable("10 1 2.5 2048 /usr/bin/node\ninvalid", "linux"), [{ pid: 10, parent: 1, cpu: 2.5, memory: 2097152, name: "/usr/bin/node" }]);
-  assert.deepEqual(parseProcessTable("10 1 2.5 2048 Fri Oct  2 10:12:00 2026 01:02.34 My Program", "darwin"), [{ pid: 10, parent: 1, cpu: 2.5, memory: 2097152, name: "My Program", startedAt: "mac:Fri Oct 2 10:12:00 2026", cpuTime: 62.34 }]);
-  const row = { ProcessId: 10, ParentProcessId: 1, Name: "node.exe", StartedAt: "2026-10-02T10:12:00.1234567Z", WorkingSetSize: "2097152", UserModeTime: "15000000", KernelModeTime: "5000000" };
-  assert.deepEqual(parseProcessTable(JSON.stringify(row), "win32"), [{ pid: 10, parent: 1, name: "node.exe", memory: 2097152, cpu: 0, startedAt: `windows:${row.StartedAt}`, cpuTime: 2 }]);
-  assert.deepEqual(parseProcessTable(JSON.stringify([{ ...row, ProcessId: 0 }, { ...row, ProcessId: "10" }, null]), "win32"), []);
-  const unavailable = parseProcessTable(JSON.stringify({ ...row, StartedAt: null, UserModeTime: null }), "win32")[0];
+  assert.deepEqual(parseProcessTable("10 1 2.5 2048 /usr/bin/node\ninvalid", "linux"), [
+    { pid: 10, parent: 1, cpu: 2.5, memory: 2097152, name: "/usr/bin/node" },
+  ]);
+  assert.deepEqual(
+    parseProcessTable("10 1 2.5 2048 Fri Oct  2 10:12:00 2026 01:02.34 My Program", "darwin"),
+    [
+      {
+        pid: 10,
+        parent: 1,
+        cpu: 2.5,
+        memory: 2097152,
+        name: "My Program",
+        startedAt: "mac:Fri Oct 2 10:12:00 2026",
+        cpuTime: 62.34,
+      },
+    ],
+  );
+  const row = {
+    ProcessId: 10,
+    ParentProcessId: 1,
+    Name: "node.exe",
+    StartedAt: "2026-10-02T10:12:00.1234567Z",
+    WorkingSetSize: "2097152",
+    UserModeTime: "15000000",
+    KernelModeTime: "5000000",
+  };
+  assert.deepEqual(parseProcessTable(JSON.stringify(row), "win32"), [
+    {
+      pid: 10,
+      parent: 1,
+      name: "node.exe",
+      memory: 2097152,
+      cpu: 0,
+      startedAt: `windows:${row.StartedAt}`,
+      cpuTime: 2,
+    },
+  ]);
+  assert.deepEqual(
+    parseProcessTable(
+      JSON.stringify([{ ...row, ProcessId: 0 }, { ...row, ProcessId: "10" }, null]),
+      "win32",
+    ),
+    [],
+  );
+  const unavailable = parseProcessTable(
+    JSON.stringify({ ...row, StartedAt: null, UserModeTime: null }),
+    "win32",
+  )[0];
   assert.equal(unavailable.startedAt, undefined);
   assert.equal(unavailable.cpuTime, undefined);
 });
 
 test("process tree traversal handles deep unordered trees, cycles and multiple roots", () => {
-  const table = Array.from({ length: 10000 }, (_, index) => ({ pid: index + 1, parent: index })).reverse();
+  const table = Array.from({ length: 10000 }, (_, index) => ({
+    pid: index + 1,
+    parent: index,
+  })).reverse();
   table.push({ pid: 20001, parent: 20002 }, { pid: 20002, parent: 20001 });
   assert.equal(descendants(table, [1]).size, 10000);
   assert.deepEqual([...descendants(table, [20001, 20002])].sort(), [20001, 20002]);
-  assert.deepEqual([...descendants([
-    { pid: 1, parent: 0, startedAt: "windows:2026-10-02T10:00:00Z" },
-    { pid: 2, parent: 1, startedAt: "windows:2026-10-02T09:00:00Z" },
-    { pid: 3, parent: 1, startedAt: "windows:2026-10-02T11:00:00Z" },
-  ], [1])], [1, 3]);
+  assert.deepEqual(
+    [
+      ...descendants(
+        [
+          { pid: 1, parent: 0, startedAt: "windows:2026-10-02T10:00:00Z" },
+          { pid: 2, parent: 1, startedAt: "windows:2026-10-02T09:00:00Z" },
+          { pid: 3, parent: 1, startedAt: "windows:2026-10-02T11:00:00Z" },
+        ],
+        [1],
+      ),
+    ],
+    [1, 3],
+  );
 });
 
 test("native resource sampling includes this process with a stable birth identity", async () => {
-  const [first, second] = await Promise.all([processTable([process.pid]), processTable([process.pid])]);
+  const [first, second] = await Promise.all([
+    processTable([process.pid]),
+    processTable([process.pid]),
+  ]);
   const before = first.find((entry) => entry.pid === process.pid);
   const after = second.find((entry) => entry.pid === process.pid);
   assert.ok(before);
@@ -90,8 +180,29 @@ test("diagnostics coalesce requests and reset CPU attribution for reused or depa
   socket.send = (raw) => {
     requests++;
     const request = JSON.parse(raw);
-    const result = [{ pid: process.pid, parent: process.ppid, name: "Citropy Browser", memory: 1, cpu: 99, cpuInterval: true, cpuTime: 99, startedAt: "electron:1" }];
-    if (present) result.push({ pid: 2147483647, parent: process.pid, name: "Citropy GPU", memory: 1024, cpu: 1, cpuInterval: true, cpuTime: used, startedAt: generation });
+    const result = [
+      {
+        pid: process.pid,
+        parent: process.ppid,
+        name: "Citropy Browser",
+        memory: 1,
+        cpu: 99,
+        cpuInterval: true,
+        cpuTime: 99,
+        startedAt: "electron:1",
+      },
+    ];
+    if (present)
+      result.push({
+        pid: 2147483647,
+        parent: process.pid,
+        name: "Citropy GPU",
+        memory: 1024,
+        cpu: 1,
+        cpuInterval: true,
+        cpuTime: used,
+        startedAt: generation,
+      });
     queueMicrotask(() => socket.emit("message", JSON.stringify({ id: request.id, result })));
   };
   attachDesktop(socket);

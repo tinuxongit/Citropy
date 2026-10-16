@@ -101,7 +101,9 @@
   flex: none;
   max-width: 240px;
   border-radius: var(--r-sm);
-  transition: background var(--dur-instant), color var(--dur-instant);
+  transition:
+    background var(--dur-instant),
+    color var(--dur-instant);
   color: var(--text-3);
 }
 .editor-tab:hover {
@@ -340,7 +342,9 @@
   border-radius: var(--r-full);
   background: var(--text-4);
   opacity: 0.35;
-  transition: background var(--dur-instant), opacity var(--dur-fast);
+  transition:
+    background var(--dur-instant),
+    opacity var(--dur-fast);
 }
 .editor-resize:hover::after,
 .editor-resize:focus-visible::after,

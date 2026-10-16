@@ -22,7 +22,12 @@ export function onLines(stream: Readable, handle: (line: string) => void): void 
   });
 }
 
-export function onJson(stream: Readable, handle: (value: unknown) => void, onText?: (line: string) => void, onError?: (error: unknown) => void): void {
+export function onJson(
+  stream: Readable,
+  handle: (value: unknown) => void,
+  onText?: (line: string) => void,
+  onError?: (error: unknown) => void,
+): void {
   onLines(stream, (line) => {
     if (line[0] !== "{" && line[0] !== "[") {
       onText?.(line);

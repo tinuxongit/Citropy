@@ -18,6 +18,7 @@ export function writeLog(level: LogLevel, source: string, message: string): void
   if (!enabled) return;
   const line = `${JSON.stringify({ time: new Date().toISOString(), level, source, message: message.slice(0, MAX_MESSAGE) })}\n`;
   mkdirSync(dirname(logFile), { recursive: true, mode: 0o700 });
-  if (existsSync(logFile) && statSync(logFile).size + Buffer.byteLength(line) > MAX_BYTES) renameSync(logFile, `${logFile}.1`);
+  if (existsSync(logFile) && statSync(logFile).size + Buffer.byteLength(line) > MAX_BYTES)
+    renameSync(logFile, `${logFile}.1`);
   appendFileSync(logFile, line, { mode: 0o600 });
 }

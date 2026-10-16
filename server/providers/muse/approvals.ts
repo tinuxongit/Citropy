@@ -1,4 +1,8 @@
-import type { ApprovalChoice, ApprovalMode, ApprovalRequestParams } from "@muse-code/sdk/dist/src/msp.js";
+import type {
+  ApprovalChoice,
+  ApprovalMode,
+  ApprovalRequestParams,
+} from "@muse-code/sdk/dist/src/msp.js";
 import type { PermissionMode } from "../../../shared/protocol.ts";
 import { toolCall, type MuseTool } from "./tools.ts";
 
@@ -28,7 +32,11 @@ export const SETTLED_ELSEWHERE = new Set(["approvalAlreadyResolved", "approvalRe
 
 const PREFERENCES: Record<Decision, Array<{ decision: string; scope?: string }>> = {
   allow: [{ decision: "approved" }],
-  allow_always: [{ decision: "approvedForSession" }, { decision: "approvedPolicyAmendment", scope: "session" }, { decision: "approved" }],
+  allow_always: [
+    { decision: "approvedForSession" },
+    { decision: "approvedPolicyAmendment", scope: "session" },
+    { decision: "approved" },
+  ],
   deny: [{ decision: "denied" }, { decision: "abort" }],
 };
 
@@ -49,18 +57,32 @@ export function approvalTool(params: ApprovalRequestParams): MuseTool {
   };
 }
 
-export function autoApproved(permissionMode: PermissionMode, params: ApprovalRequestParams, chat = false): boolean {
+export function autoApproved(
+  permissionMode: PermissionMode,
+  params: ApprovalRequestParams,
+  chat = false,
+): boolean {
   if (params.protectedWrite) return false;
   const name = approvalTool(params).name;
   if (chat) return CHAT_SUBJECTS.has(params.subject.kind) && CHAT_APPROVED.has(name);
-  return AUTO_APPROVABLE_SUBJECTS.has(params.subject.kind) && AUTO_APPROVED[permissionMode].includes(name);
+  return (
+    AUTO_APPROVABLE_SUBJECTS.has(params.subject.kind) &&
+    AUTO_APPROVED[permissionMode].includes(name)
+  );
 }
 
 export function approvalChoice(choices: ApprovalChoice[], decision: Decision): ApprovalChoice {
-  const ordered = [...choices].sort((a, b) => SCOPE_ORDER.indexOf(a.scope) - SCOPE_ORDER.indexOf(b.scope));
+  const ordered = [...choices].sort(
+    (a, b) => SCOPE_ORDER.indexOf(a.scope) - SCOPE_ORDER.indexOf(b.scope),
+  );
   for (const wanted of PREFERENCES[decision]) {
-    const choice = ordered.find(entry => entry.decision === wanted.decision && (!wanted.scope || entry.scope === wanted.scope));
+    const choice = ordered.find(
+      (entry) =>
+        entry.decision === wanted.decision && (!wanted.scope || entry.scope === wanted.scope),
+    );
     if (choice) return choice;
   }
-  throw new Error(`Muse Code offered no way to ${decision === "deny" ? "deny" : "allow"} this request.`);
+  throw new Error(
+    `Muse Code offered no way to ${decision === "deny" ? "deny" : "allow"} this request.`,
+  );
 }

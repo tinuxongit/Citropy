@@ -3,10 +3,7 @@ import { BranchIcon } from "../icons/git.tsx";
 import { shortPath } from "../../lib/format.ts";
 import { workingLabels, type Section } from "./labels.ts";
 import { Loader } from "../Loader.tsx";
-import type {
-  GitOperation,
-  GitOverview,
-} from "../../../../shared/protocol.ts";
+import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
 
 export function GitHeader({
   section,
@@ -42,8 +39,8 @@ export function GitHeader({
               : notice
                 ? notice
                 : path
-              ? shortPath(path, home)
-              : "No workspace selected"}
+                  ? shortPath(path, home)
+                  : "No workspace selected"}
           </p>
         </div>
       </div>
@@ -51,9 +48,7 @@ export function GitHeader({
         {data?.repository && (
           <div className="git-current-branch">
             <BranchIcon size={15} />
-            <strong>
-              {branch === "detached" ? "Detached HEAD" : branch}
-            </strong>
+            <strong>{branch === "detached" ? "Detached HEAD" : branch}</strong>
             <span>
               {!data.hasCommits
                 ? "No commits yet"

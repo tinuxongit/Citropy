@@ -5,17 +5,17 @@ import { groupGitFiles } from "../../lib/git-files.ts";
 import { doneLabels, readableError, type Section } from "./labels.ts";
 import { isConflict } from "./files.ts";
 import type { GitSelection } from "./selection.ts";
-import type {
-  GitOperation,
-  GitOverview,
-} from "../../../../shared/protocol.ts";
+import type { GitOperation, GitOverview } from "../../../../shared/protocol.ts";
 
 type Feedback = { error: boolean; text: string; detail?: string };
 
 function firstFile(overview: GitOverview): GitSelection | null {
   const files = overview.status?.files ?? [];
   const unstaged = files.filter((entry) => entry.untracked || entry.work !== " ");
-  const file = files.find(isConflict) ?? groupGitFiles(unstaged, false)[0]?.files[0] ?? groupGitFiles(files, true)[0]?.files[0];
+  const file =
+    files.find(isConflict) ??
+    groupGitFiles(unstaged, false)[0]?.files[0] ??
+    groupGitFiles(files, true)[0]?.files[0];
   return file
     ? {
         kind: "file",
@@ -25,7 +25,10 @@ function firstFile(overview: GitOverview): GitSelection | null {
     : null;
 }
 
-export function sectionSelection(section: Section, overview: GitOverview | null): GitSelection | null {
+export function sectionSelection(
+  section: Section,
+  overview: GitOverview | null,
+): GitSelection | null {
   if (section === "Changes" && overview) return firstFile(overview);
   if (section === "History" && overview?.commits[0])
     return { kind: "commit", hash: overview.commits[0].hash };
@@ -34,15 +37,11 @@ export function sectionSelection(section: Section, overview: GitOverview | null)
 
 function keptSelection(previous: GitSelection | null, overview: GitOverview): GitSelection | null {
   if (previous?.kind === "file") {
-    const file = overview.status?.files.find(
-      (entry) => entry.path === previous.path,
-    );
+    const file = overview.status?.files.find((entry) => entry.path === previous.path);
     if (file)
       return {
         ...previous,
-        staged: previous.staged
-          ? file.staged
-          : !file.untracked && file.work === " ",
+        staged: previous.staged ? file.staged : !file.untracked && file.work === " ",
       };
     return firstFile(overview);
   }
@@ -50,13 +49,8 @@ function keptSelection(previous: GitSelection | null, overview: GitOverview): Gi
     previous?.kind === "commit" &&
     !overview.commits.some((entry) => entry.hash === previous.hash)
   )
-    return overview.commits[0]
-      ? { kind: "commit", hash: overview.commits[0].hash }
-      : null;
-  if (
-    previous?.kind === "stash" &&
-    !overview.stashes.some((entry) => entry.ref === previous.ref)
-  )
+    return overview.commits[0] ? { kind: "commit", hash: overview.commits[0].hash } : null;
+  if (previous?.kind === "stash" && !overview.stashes.some((entry) => entry.ref === previous.ref))
     return null;
   return previous;
 }
@@ -129,12 +123,7 @@ export function useGitRepository({
     };
   }, [projectId, connected]);
 
-  const act = async (
-    operation: GitOperation,
-    value?: string,
-    page = 0,
-    remote?: string,
-  ) => {
+  const act = async (operation: GitOperation, value?: string, page = 0, remote?: string) => {
     if (!projectId || pending.current || !connected) return false;
     const epoch = generation.current;
     pending.current = true;

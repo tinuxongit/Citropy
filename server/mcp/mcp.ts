@@ -19,10 +19,7 @@ export async function handleMcp(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
-  if (
-    req.headers.origin &&
-    req.headers.origin !== `http://${req.headers.host}`
-  ) {
+  if (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`) {
     res.writeHead(403).end();
     return;
   }
@@ -92,37 +89,42 @@ export async function handleMcp(
       jsonrpc: "2.0",
       id,
       result: {
-        protocolVersion: [
-          "2024-11-05",
-          "2025-03-26",
-          "2025-06-18",
-          "2025-11-25",
-        ].includes(String(params?.protocolVersion))
+        protocolVersion: ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"].includes(
+          String(params?.protocolVersion),
+        )
           ? params?.protocolVersion
           : "2025-06-18",
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "citropy", version: packageInfo.version },
-        instructions: mcpInstructions(store.projectDefaults, (await citropySkills(thread.provider)).filter((skill) => skill.enabled)),
+        instructions: mcpInstructions(
+          store.projectDefaults,
+          (await citropySkills(thread.provider)).filter((skill) => skill.enabled),
+        ),
       },
     });
   } else if (method === "tools/list") {
     reply(res, {
       jsonrpc: "2.0",
       id,
-      result: { tools: [...workspaceTools.filter(tool => tool.name === "ask_user"), ...discoveryTools, ...(thread.provider === "claude" ? [approvalTool] : [])] },
+      result: {
+        tools: [
+          ...workspaceTools.filter((tool) => tool.name === "ask_user"),
+          ...discoveryTools,
+          ...(thread.provider === "claude" ? [approvalTool] : []),
+        ],
+      },
     });
   } else if (method === "ping") {
     reply(res, { jsonrpc: "2.0", id, result: {} });
   } else if (method === "tools/call") {
     const controller = new AbortController();
-    const closed = () => { if (!res.writableEnded) controller.abort(); };
+    const closed = () => {
+      if (!res.writableEnded) controller.abort();
+    };
     res.once("close", closed);
     try {
       const args = params?.arguments;
-      if (
-        args !== undefined &&
-        (!args || Array.isArray(args) || typeof args !== "object")
-      )
+      if (args !== undefined && (!args || Array.isArray(args) || typeof args !== "object"))
         throw new Error("Tool arguments must be an object");
       const content = await callWorkspaceTool(
         threadId,

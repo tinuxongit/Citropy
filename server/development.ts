@@ -17,7 +17,12 @@ export function startDevelopment(): Promise<void> {
       [join(root, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1"],
       {
         cwd: root,
-        env: { ...process.env, CITROPY_PORT: String(port), CITROPY_DEVELOPMENT: "1", NO_COLOR: "1" },
+        env: {
+          ...process.env,
+          CITROPY_PORT: String(port),
+          CITROPY_DEVELOPMENT: "1",
+          NO_COLOR: "1",
+        },
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
@@ -57,7 +62,12 @@ export function startDevelopment(): Promise<void> {
 export function relaunchServer(desktop: boolean): Promise<void> {
   const launcher = spawn(
     process.execPath,
-    [join(root, "desktop/start.mjs"), "--dev", `--after=${process.pid}`, ...(desktop ? [] : ["--server-only"])],
+    [
+      join(root, "desktop/start.mjs"),
+      "--dev",
+      `--after=${process.pid}`,
+      ...(desktop ? [] : ["--server-only"]),
+    ],
     { cwd: root, detached: true, stdio: "ignore" },
   );
   return new Promise<void>((resolve, reject) => {

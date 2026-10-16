@@ -1,4 +1,3 @@
-
 import { AccountMenu } from "./AccountMenu.tsx";
 import { AgentsPanel } from "./AgentsPanel.tsx";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
@@ -48,30 +47,46 @@ export function NavigationStrip({
   const chat: StripButton = { name: "Chat", icon: ConversationsIcon, run: onChat, view: "chats" };
   const code: StripButton = { name: "Code", icon: CodeSectionIcon, run: onCode, view: "chat" };
   const bots: StripButton = { name: "Bots", icon: BotsIcon, run: onBots, view: "bots" };
-  const usage: StripButton = { name: "Usage", icon: UsageIcon, run: onUsage, view: "usage", desktopOnly: true };
+  const usage: StripButton = {
+    name: "Usage",
+    icon: UsageIcon,
+    run: onUsage,
+    view: "usage",
+    desktopOnly: true,
+  };
   const settings = { name: "Settings", icon: SettingsIcon, run: onSettings, view: "settings" };
-  const button = ({ name, icon: Icon, run, view, desktopOnly }: StripButton) => narrow && desktopOnly ? null : (
-    <button
-      type="button"
-      className="strip-action"
-      data-view={view}
-      aria-current={activeView === view ? "page" : undefined}
-      key={view}
-      onClick={() => { usagePeek.hide(); run(); }}
-      onPointerOver={() => preloadView(view)}
-      onFocusCapture={() => preloadView(view)}
-      aria-label={name}
-      title={view === "usage" ? undefined : name}
-      aria-describedby={view === "usage" ? usagePeek.describedBy : undefined}
-      {...(view === "usage" ? usagePeek.bind : {})}
-    >
-      <span className="strip-action-face"><Icon size={18} /></span>
-    </button>
-  );
+  const button = ({ name, icon: Icon, run, view, desktopOnly }: StripButton) =>
+    narrow && desktopOnly ? null : (
+      <button
+        type="button"
+        className="strip-action"
+        data-view={view}
+        aria-current={activeView === view ? "page" : undefined}
+        key={view}
+        onClick={() => {
+          usagePeek.hide();
+          run();
+        }}
+        onPointerOver={() => preloadView(view)}
+        onFocusCapture={() => preloadView(view)}
+        aria-label={name}
+        title={view === "usage" ? undefined : name}
+        aria-describedby={view === "usage" ? usagePeek.describedBy : undefined}
+        {...(view === "usage" ? usagePeek.bind : {})}
+      >
+        <span className="strip-action-face">
+          <Icon size={18} />
+        </span>
+      </button>
+    );
   return (
     <nav className="navigation-strip sliding-selection" aria-label="Workspace navigation">
       <div className="navigation-strip-brand" aria-hidden="true" />
-      <SelectionHighlight value={activeView} layout={String(accountOpen)} selector='.strip-action[aria-current="page"] > .strip-action-face' />
+      <SelectionHighlight
+        value={activeView}
+        layout={String(accountOpen)}
+        selector='.strip-action[aria-current="page"] > .strip-action-face'
+      />
       {button(chat)}
       {button(code)}
       {button(bots)}

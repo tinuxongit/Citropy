@@ -16,19 +16,44 @@ const PANEL_CONTENT = { x: 9.5, y: 6, width: 10, height: 12, rx: 1.75 };
 const PROMPT = "M6.5 9L9.5 12L6.5 15M12.5 15.5H17.5";
 
 function Tile({ cuts, ...props }: IconProps & { cuts: ReactNode }) {
-  return <Icon {...props}><Knockout cuts={cuts}><rect {...TILE} /></Knockout></Icon>;
+  return (
+    <Icon {...props}>
+      <Knockout cuts={cuts}>
+        <rect {...TILE} />
+      </Knockout>
+    </Icon>
+  );
 }
 
 export function StopIcon(props: IconProps) {
-  return <Icon {...props}><rect {...STOP} /></Icon>;
+  return (
+    <Icon {...props}>
+      <rect {...STOP} />
+    </Icon>
+  );
 }
 
 export function SquareIcon(props: IconProps) {
-  return <Icon {...props}><rect {...OUTLINE} fill="none" stroke="currentColor" strokeWidth={LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <rect {...OUTLINE} fill="none" stroke="currentColor" strokeWidth={LINE} />
+    </Icon>
+  );
 }
 
 export function SquareDashedIcon(props: IconProps) {
-  return <Icon {...props}><rect {...OUTLINE} fill="none" stroke="currentColor" strokeWidth={LINE} strokeDasharray={DASH} strokeLinecap="round" /></Icon>;
+  return (
+    <Icon {...props}>
+      <rect
+        {...OUTLINE}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={LINE}
+        strokeDasharray={DASH}
+        strokeLinecap="round"
+      />
+    </Icon>
+  );
 }
 
 export function SquarePlusIcon(props: IconProps) {
@@ -40,21 +65,51 @@ export function SquareMenuIcon(props: IconProps) {
 }
 
 export function RowsIcon(props: IconProps) {
-  return <Tile {...props} cuts={<path d={ROW_CUTS} stroke="currentColor" strokeWidth={DIVIDER_WIDTH} />} />;
+  return (
+    <Tile
+      {...props}
+      cuts={<path d={ROW_CUTS} stroke="currentColor" strokeWidth={DIVIDER_WIDTH} />}
+    />
+  );
 }
 
 export function GridIcon(props: IconProps) {
-  return <Tile {...props} cuts={<path d={GRID_CUTS} stroke="currentColor" strokeWidth={DIVIDER_WIDTH} />} />;
+  return (
+    <Tile
+      {...props}
+      cuts={<path d={GRID_CUTS} stroke="currentColor" strokeWidth={DIVIDER_WIDTH} />}
+    />
+  );
 }
 
 export function PanelLeftIcon(props: IconProps) {
-  return <Icon {...props}><Knockout cuts={<rect {...PANEL_CONTENT} />}><rect {...SCREEN} /></Knockout></Icon>;
+  return (
+    <Icon {...props}>
+      <Knockout cuts={<rect {...PANEL_CONTENT} />}>
+        <rect {...SCREEN} />
+      </Knockout>
+    </Icon>
+  );
 }
 
 export function PanelRightIcon(props: IconProps) {
-  return <Icon {...props}><Turn mirror><Knockout cuts={<rect {...PANEL_CONTENT} />}><rect {...SCREEN} /></Knockout></Turn></Icon>;
+  return (
+    <Icon {...props}>
+      <Turn mirror>
+        <Knockout cuts={<rect {...PANEL_CONTENT} />}>
+          <rect {...SCREEN} />
+        </Knockout>
+      </Turn>
+    </Icon>
+  );
 }
 
 export function TerminalIcon(props: IconProps) {
-  return <Icon {...props}><Knockout cuts={<Line d={PROMPT} width={GLYPH_WIDTH} />}><rect {...SCREEN} /></Knockout></Icon>;
+  return (
+    <Icon {...props}>
+      <Knockout cuts={<Line d={PROMPT} width={GLYPH_WIDTH} />}>
+        <rect {...SCREEN} />
+      </Knockout>
+    </Icon>
+  );
 }

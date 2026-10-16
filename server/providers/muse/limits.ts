@@ -1,5 +1,9 @@
 import { tmpdir } from "node:os";
-import type { QuotaDetail, SubscriptionUsage, UsageReadResult } from "@muse-code/sdk/dist/src/msp.js";
+import type {
+  QuotaDetail,
+  SubscriptionUsage,
+  UsageReadResult,
+} from "@muse-code/sdk/dist/src/msp.js";
 import type { ProviderLaunch } from "../types.ts";
 import { MuseHost } from "./host.ts";
 
@@ -16,8 +20,15 @@ export function recordMuseUsage(instanceId: string | undefined, usage: Subscript
   if ((observed.get(key)?.observedAtMs ?? 0) <= usage.observedAtMs) observed.set(key, usage);
 }
 
-export async function readMuseUsage(launch: ProviderLaunch = {}): Promise<SubscriptionUsage | undefined> {
-  const host = await MuseHost.start({ launch, cwd: tmpdir(), access: "readOnly", sessionLog: false });
+export async function readMuseUsage(
+  launch: ProviderLaunch = {},
+): Promise<SubscriptionUsage | undefined> {
+  const host = await MuseHost.start({
+    launch,
+    cwd: tmpdir(),
+    access: "readOnly",
+    sessionLog: false,
+  });
   try {
     const { usage } = await host.request<UsageReadResult>("usage/read");
     if (usage) recordMuseUsage(launch.instanceId, usage);

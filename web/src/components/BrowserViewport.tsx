@@ -32,8 +32,12 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
   );
   const Icon = selected?.Icon ?? (state.mobile ? PhoneIcon : MonitorIcon);
   const valid =
-    Number.isInteger(Number(width)) && Number(width) >= 320 && Number(width) <= 3840 &&
-    Number.isInteger(Number(height)) && Number(height) >= 240 && Number(height) <= 2160;
+    Number.isInteger(Number(width)) &&
+    Number(width) >= 320 &&
+    Number(width) <= 3840 &&
+    Number.isInteger(Number(height)) &&
+    Number(height) >= 240 &&
+    Number(height) <= 2160;
 
   useEffect(() => {
     setWidth(String(state.width));
@@ -59,7 +63,9 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
             >
               <Icon size={14} />
               <span>{selected ? selected.label : "Custom"}</span>
-              <span className="browser-viewport-size">{state.width} × {state.height}</span>
+              <span className="browser-viewport-size">
+                {state.width} × {state.height}
+              </span>
               <ChevronDownIcon size={12} />
             </button>
           )}
@@ -97,12 +103,14 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
             role="switch"
             checked={Boolean(state.mobile)}
             disabled={disabled || Boolean(state.dialog)}
-            onChange={(event) => onResize({
-              action: "resize",
-              width: state.width,
-              height: state.height,
-              mobile: event.target.checked,
-            })}
+            onChange={(event) =>
+              onResize({
+                action: "resize",
+                width: state.width,
+                height: state.height,
+                mobile: event.target.checked,
+              })
+            }
           />
         </label>
         <button
@@ -111,12 +119,14 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
           aria-label="Rotate page viewport"
           title="Rotate viewport"
           disabled={disabled || state.height < 320 || state.width > 2160}
-          onClick={() => onResize({
-            action: "resize",
-            width: state.height,
-            height: state.width,
-            mobile: state.mobile,
-          })}
+          onClick={() =>
+            onResize({
+              action: "resize",
+              width: state.height,
+              height: state.width,
+              mobile: state.mobile,
+            })
+          }
         >
           <RotatePhoneIcon size={21} />
         </button>
@@ -127,7 +137,12 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
           onSubmit={(event) => {
             event.preventDefault();
             if (!valid || disabled) return;
-            onResize({ action: "resize", width: Number(width), height: Number(height), mobile: state.mobile });
+            onResize({
+              action: "resize",
+              width: Number(width),
+              height: Number(height),
+              mobile: state.mobile,
+            });
             setCustom(false);
           }}
         >
@@ -164,7 +179,12 @@ export function BrowserViewport({ state, disabled, onResize }: Props) {
             <button type="button" className="btn" onClick={() => setCustom(false)}>
               Cancel
             </button>
-            <button type="submit" className="btn" data-variant="primary" disabled={disabled || !valid}>
+            <button
+              type="submit"
+              className="btn"
+              data-variant="primary"
+              disabled={disabled || !valid}
+            >
               Apply size
             </button>
           </div>

@@ -11,15 +11,33 @@ const OPEN_SHACKLE = "M7.75 10V7.25a4.25 4.25 0 0 1 8.2-1.6";
 function Lock({ size, shackle }: { size: number; shackle: string }) {
   const id = useId();
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <defs>
         <mask id={id}>
           <rect width="24" height="24" fill="white" />
           <circle {...KEYHOLE} fill="black" />
-          <path d={KEYHOLE_SLOT} stroke="black" strokeWidth={KEYHOLE_SLOT_WIDTH} strokeLinecap="round" />
+          <path
+            d={KEYHOLE_SLOT}
+            stroke="black"
+            strokeWidth={KEYHOLE_SLOT_WIDTH}
+            strokeLinecap="round"
+          />
         </mask>
       </defs>
-      <path d={shackle} fill="none" stroke="currentColor" strokeWidth={SHACKLE_WIDTH} strokeLinecap="round" />
+      <path
+        d={shackle}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={SHACKLE_WIDTH}
+        strokeLinecap="round"
+      />
       <rect {...BODY} mask={`url(#${id})`} />
     </svg>
   );

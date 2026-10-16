@@ -7,7 +7,15 @@ import type { ProviderId } from "../../../../shared/protocol.ts";
 
 const TOP_MODELS = 3;
 
-export function ProviderBreakdown({ providers, totals, models, measure, measureLabel, isolated, onIsolate }: {
+export function ProviderBreakdown({
+  providers,
+  totals,
+  models,
+  measure,
+  measureLabel,
+  isolated,
+  onIsolate,
+}: {
   providers: ProviderId[];
   totals: Partial<Record<ProviderId, UsageTotals>>;
   models: (provider: ProviderId) => Array<{ model: string; totals: UsageTotals }>;
@@ -16,7 +24,11 @@ export function ProviderBreakdown({ providers, totals, models, measure, measureL
   isolated: ProviderId | undefined;
   onIsolate: (provider: ProviderId) => void;
 }) {
-  const grand = providers.reduce((sum, provider) => sum + (totals[provider] ? measureOf(measure, provider, totals[provider]) : 0), 0);
+  const grand = providers.reduce(
+    (sum, provider) =>
+      sum + (totals[provider] ? measureOf(measure, provider, totals[provider]) : 0),
+    0,
+  );
   return (
     <div className="usage-provider-grid">
       {providers.map((provider) => {
@@ -34,13 +46,17 @@ export function ProviderBreakdown({ providers, totals, models, measure, measureL
             className="usage-provider-card"
             data-series={provider}
             aria-pressed={isolated === provider}
-            title={isolated === provider ? "Show all providers" : `Show only ${providerLabels[provider]}`}
+            title={
+              isolated === provider ? "Show all providers" : `Show only ${providerLabels[provider]}`
+            }
             onClick={() => onIsolate(provider)}
           >
             <span className="usage-provider-name">
               <ProviderIcon provider={provider} />
               <span className="truncate">{providerLabels[provider]}</span>
-              <small>{share}% of {measureLabel.toLowerCase()}</small>
+              <small>
+                {share}% of {measureLabel.toLowerCase()}
+              </small>
             </span>
             <strong className="usage-provider-total">{formatMeasure(measure, all)}</strong>
             <i className="usage-share" style={{ "--share": `${share}%` } as CSSProperties} />
@@ -53,7 +69,10 @@ export function ProviderBreakdown({ providers, totals, models, measure, measureL
                 ["API cost", value?.costUsd ? cost(value.costUsd) : "Unknown"],
                 ["Responses", String(value?.turns ?? 0)],
               ].map(([label, amount]) => (
-                <span key={label}><span>{label}</span><span>{amount}</span></span>
+                <span key={label}>
+                  <span>{label}</span>
+                  <span>{amount}</span>
+                </span>
               ))}
             </span>
             {top.length > 0 && (

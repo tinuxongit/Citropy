@@ -15,6 +15,9 @@ after(() => {
 });
 
 test("an unreadable settings file stops startup and is left untouched", async () => {
-  await assert.rejects(import("../server/store.ts"), (error) => /settings\.json/.test(error.message) && error.cause instanceof SyntaxError);
+  await assert.rejects(
+    import("../server/store.ts"),
+    (error) => /settings\.json/.test(error.message) && error.cause instanceof SyntaxError,
+  );
   assert.equal(readFileSync(settingsFile, "utf8"), unreadable);
 });

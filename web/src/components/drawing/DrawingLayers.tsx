@@ -4,7 +4,14 @@ import { ImageIcon } from "../icons/media.tsx";
 import { TOOL_ICONS, TOOL_LABELS } from "./DrawingToolbar.tsx";
 import { INK, type Mark } from "./marks.ts";
 
-export function DrawingLayers({ marks, selection, ink, onSelect, onToggleHidden, onMove }: {
+export function DrawingLayers({
+  marks,
+  selection,
+  ink,
+  onSelect,
+  onToggleHidden,
+  onMove,
+}: {
   marks: Mark[];
   selection: ReadonlySet<Mark>;
   ink: string;

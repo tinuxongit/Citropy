@@ -13,7 +13,14 @@ import { join } from "node:path";
 import { onJson, onLines } from "../lines.ts";
 import { ANSWER_WAIT_MS, permissionToolName } from "../permissions.ts";
 import { dataRoot } from "../paths.ts";
-import type { AgentEvent, AgentSession, Provider, SessionConfig, StartOptions, TranscriptEvent } from "./types.ts";
+import type {
+  AgentEvent,
+  AgentSession,
+  Provider,
+  SessionConfig,
+  StartOptions,
+  TranscriptEvent,
+} from "./types.ts";
 import type { Attachment, PermissionMode, ThreadStatus, TodoItem } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
 import { claudeHome } from "./config-folders.ts";
@@ -24,7 +31,11 @@ const EXTENDED_CONTEXT_MAX = 1_000_000;
 
 // Chats only get tools that read or look things up. Attachments live outside the chat folder, so reading them is allowed up front.
 const CHAT_TOOLS = ["Read", "Glob", "Grep", "WebFetch", "WebSearch", "AskUserQuestion"];
-const chatAllowed = (threadId: string) => ["WebFetch", "WebSearch", `Read(/${join(dataRoot, "attachments", threadId)}/**)`];
+const chatAllowed = (threadId: string) => [
+  "WebFetch",
+  "WebSearch",
+  `Read(/${join(dataRoot, "attachments", threadId)}/**)`,
+];
 
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
 const AGENT_TASK_TYPES = new Set(["local_agent", "remote_agent"]);
@@ -60,11 +71,17 @@ function cacheTtlMs(usage: ClaudeUsage): number | undefined {
 }
 
 function currentContextTokens(usage: ClaudeUsage): number | undefined {
-  const current = Array.isArray(usage.iterations) && usage.iterations.length
-    ? usage.iterations.findLast((entry) => entry && (!entry.type || entry.type === "message"))
-    : usage;
+  const current =
+    Array.isArray(usage.iterations) && usage.iterations.length
+      ? usage.iterations.findLast((entry) => entry && (!entry.type || entry.type === "message"))
+      : usage;
   if (!current) return;
-  const counts = [current.input_tokens ?? 0, current.cache_read_input_tokens ?? 0, current.cache_creation_input_tokens ?? 0, current.output_tokens ?? 0];
+  const counts = [
+    current.input_tokens ?? 0,
+    current.cache_read_input_tokens ?? 0,
+    current.cache_creation_input_tokens ?? 0,
+    current.output_tokens ?? 0,
+  ];
   if (counts.some((value) => !Number.isFinite(value) || value < 0)) return;
   return counts[0]! + counts[1]! + counts[2]! > 0
     ? counts.reduce((sum, value) => sum + value, 0)
@@ -91,7 +108,10 @@ class ClaudeSession implements AgentSession {
   #agentReplies = new Map<string, string>();
   #workflows = new Map<string, Map<string, ThreadStatus>>();
   #shells = new Map<string, string>();
-  #controls = new Map<string, { resolve: () => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
+  #controls = new Map<
+    string,
+    { resolve: () => void; reject: (error: Error) => void; timer: NodeJS.Timeout }
+  >();
   #nextControl = 0;
   #usage: MessageUsage;
   #initialUsage: MessageUsage["totals"];
@@ -136,12 +156,24 @@ class ClaudeSession implements AgentSession {
       "--mcp-config",
       JSON.stringify({
         mcpServers: {
-          ...(options.mcp ? { citropy: { type: "http", ...options.mcp, timeout: ANSWER_WAIT_MS + 60_000, request_timeout_ms: ANSWER_WAIT_MS + 60_000 } } : {}),
+          ...(options.mcp
+            ? {
+                citropy: {
+                  type: "http",
+                  ...options.mcp,
+                  timeout: ANSWER_WAIT_MS + 60_000,
+                  request_timeout_ms: ANSWER_WAIT_MS + 60_000,
+                },
+              }
+            : {}),
         },
       }),
     ];
     if (options.readOnly) args.push("--tools", CHAT_TOOLS.join(","));
-    const allowed = [...(options.mcp ? ["mcp__citropy"] : []), ...(options.readOnly ? chatAllowed(options.threadId) : [])];
+    const allowed = [
+      ...(options.mcp ? ["mcp__citropy"] : []),
+      ...(options.readOnly ? chatAllowed(options.threadId) : []),
+    ];
     if (options.mcp) args.push("--permission-prompt-tool", permissionToolName);
     if (allowed.length) args.push("--allowedTools", allowed.join(","));
     if (options.effort) args.push("--effort", options.effort);
@@ -151,10 +183,7 @@ class ClaudeSession implements AgentSession {
         options.model.replace(/\[1m\]$/i, "") +
           (options.contextMax === EXTENDED_CONTEXT_MAX ? "[1m]" : ""),
       );
-    args.push(
-      "--settings",
-      JSON.stringify({ fastMode: options.fastMode ?? false }),
-    );
+    args.push("--settings", JSON.stringify({ fastMode: options.fastMode ?? false }));
     if (options.externalId) args.push("--resume", options.externalId);
 
     this.#child = spawnCommand(options.binary ?? "claude", args, {
@@ -166,8 +195,7 @@ class ClaudeSession implements AgentSession {
         FORCE_COLOR: "0",
         ...(options.contextMax
           ? {
-              CLAUDE_CODE_DISABLE_1M_CONTEXT:
-                options.contextMax <= DEFAULT_CONTEXT_MAX ? "1" : "0",
+              CLAUDE_CODE_DISABLE_1M_CONTEXT: options.contextMax <= DEFAULT_CONTEXT_MAX ? "1" : "0",
             }
           : {}),
       },
@@ -175,14 +203,23 @@ class ClaudeSession implements AgentSession {
     });
 
     this.#child.stdin.on("error", logFailure("Writing to Claude Code"));
-    onJson(this.#child.stdout, (value) => this.#handle(value as Record<string, unknown>), (line) => {
-      if (/^\s*$/.test(line)) return;
-      this.#emit({ type: "notice", level: "warn", text: line });
-    }, (error) => {
-      this.#emit({ type: "notice", level: "error", text: `Could not process a Claude event: ${error instanceof Error ? error.message : String(error)}` });
-      this.#emit({ type: "exit", code: -1 });
-      this.dispose();
-    });
+    onJson(
+      this.#child.stdout,
+      (value) => this.#handle(value as Record<string, unknown>),
+      (line) => {
+        if (/^\s*$/.test(line)) return;
+        this.#emit({ type: "notice", level: "warn", text: line });
+      },
+      (error) => {
+        this.#emit({
+          type: "notice",
+          level: "error",
+          text: `Could not process a Claude event: ${error instanceof Error ? error.message : String(error)}`,
+        });
+        this.#emit({ type: "exit", code: -1 });
+        this.dispose();
+      },
+    );
     onLines(this.#child.stderr, (line) => {
       if (/^\s*$/.test(line)) return;
       this.#emit({ type: "notice", level: "warn", text: line });
@@ -194,13 +231,21 @@ class ClaudeSession implements AgentSession {
     this.#child.on("exit", (code) => this.#emit({ type: "exit", code: code ?? 0 }));
   }
 
-  async send(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): Promise<void> {
+  async send(
+    text: string,
+    attachments: Attachment[] = [],
+    skills: Array<{ name: string; path: string }> = [],
+  ): Promise<void> {
     this.#active = true;
     this.#userMessageUnread = true;
     this.#write(await this.#content(text, attachments, skills));
   }
 
-  async steer(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): Promise<void> {
+  async steer(
+    text: string,
+    attachments: Attachment[] = [],
+    skills: Array<{ name: string; path: string }> = [],
+  ): Promise<void> {
     const content = await this.#content(text, attachments, skills);
     if (!this.#active) throw new Error("Claude Code already finished this turn.");
     const id = randomUUID();
@@ -208,14 +253,42 @@ class ClaudeSession implements AgentSession {
     this.#steers.add(id);
   }
 
-  async #content(text: string, attachments: Attachment[], skills: Array<{ name: string; path: string }>): Promise<unknown[]> {
+  async #content(
+    text: string,
+    attachments: Attachment[],
+    skills: Array<{ name: string; path: string }>,
+  ): Promise<unknown[]> {
     const content: unknown[] = [];
     for (const file of attachments) {
-      if (isImage(file) && (file.size ?? 0) <= 10 * 1024 * 1024) content.push({ type: "image", source: { type: "base64", media_type: file.mime, data: (await readFile(file.path)).toString("base64") } });
-      else if (file.mime === "application/pdf" && (file.size ?? 0) <= 20 * 1024 * 1024) content.push({ type: "document", source: { type: "base64", media_type: file.mime, data: (await readFile(file.path)).toString("base64") } });
-      else content.push({ type: "text", text: `Attached file: ${file.label}\nLocal path: ${file.path}` });
+      if (isImage(file) && (file.size ?? 0) <= 10 * 1024 * 1024)
+        content.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: file.mime,
+            data: (await readFile(file.path)).toString("base64"),
+          },
+        });
+      else if (file.mime === "application/pdf" && (file.size ?? 0) <= 20 * 1024 * 1024)
+        content.push({
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: file.mime,
+            data: (await readFile(file.path)).toString("base64"),
+          },
+        });
+      else
+        content.push({
+          type: "text",
+          text: `Attached file: ${file.label}\nLocal path: ${file.path}`,
+        });
     }
-    for (const skill of skills) content.push({ type: "text", text: `Use the ${skill.name} skill. Read its instructions at ${skill.path}.` });
+    for (const skill of skills)
+      content.push({
+        type: "text",
+        text: `Use the ${skill.name} skill. Read its instructions at ${skill.path}.`,
+      });
     const prompt = { type: "text", text: text || "Please inspect the attached files." };
     if (SLASH_COMMAND.test(text.trim())) content.unshift(prompt);
     else content.push(prompt);
@@ -223,7 +296,8 @@ class ClaudeSession implements AgentSession {
   }
 
   #write(content: unknown[], steerId?: string): void {
-    if (this.#disposed || !this.#child.stdin.writable) throw new Error("Claude session has closed.");
+    if (this.#disposed || !this.#child.stdin.writable)
+      throw new Error("Claude session has closed.");
     this.#child.stdin.write(
       `${JSON.stringify({
         type: "user",
@@ -236,41 +310,72 @@ class ClaudeSession implements AgentSession {
   async compact(): Promise<void> {
     this.#manualCompaction = true;
     this.#compacted = false;
-    try { await this.send("/compact"); }
-    catch (error) { this.#manualCompaction = false; throw error; }
+    try {
+      await this.send("/compact");
+    } catch (error) {
+      this.#manualCompaction = false;
+      throw error;
+    }
   }
 
   interrupt(): Promise<void> {
-    if (this.#steers.size) this.#emit({ type: "notice", level: "warn", text: this.#steers.size === 1 ? "Stopped before Claude Code read your latest message. Send it again to run it." : `Stopped before Claude Code read your last ${this.#steers.size} messages. Send them again to run them.` });
+    if (this.#steers.size)
+      this.#emit({
+        type: "notice",
+        level: "warn",
+        text:
+          this.#steers.size === 1
+            ? "Stopped before Claude Code read your latest message. Send it again to run it."
+            : `Stopped before Claude Code read your last ${this.#steers.size} messages. Send them again to run them.`,
+      });
     this.#steers.clear();
     if (this.#child.exitCode !== null || this.#child.signalCode !== null) return Promise.resolve();
-    const exited = new Promise<void>(resolve => this.#child.once("exit", () => resolve()));
+    const exited = new Promise<void>((resolve) => this.#child.once("exit", () => resolve()));
     this.#child.kill("SIGINT");
     return exited;
   }
 
   stopShell(taskId: string): Promise<void> {
     if (!this.#shells.has(taskId)) return Promise.resolve();
-    return this.#control({ subtype: "stop_task", task_id: taskId }, "Claude did not confirm that the shell stopped.");
+    return this.#control(
+      { subtype: "stop_task", task_id: taskId },
+      "Claude did not confirm that the shell stopped.",
+    );
   }
 
   async configure(config: SessionConfig): Promise<void> {
-    if (config.effort !== this.#effort ||
+    if (
+      config.effort !== this.#effort ||
       (config.contextMax ?? DEFAULT_CONTEXT_MAX) !== this.#configuredContextMax ||
-      (config.fastMode ?? false) !== this.#fastMode)
+      (config.fastMode ?? false) !== this.#fastMode
+    )
       throw new Error("Claude must restart to apply this setting.");
     if (config.model !== undefined && config.model !== this.#model) {
-      await this.#control({ subtype: "set_model", model: config.model === "default" ? null : config.model.replace(/\[1m\]$/i, "") + (this.#configuredContextMax === EXTENDED_CONTEXT_MAX ? "[1m]" : "") }, "Claude did not confirm the model change.");
+      await this.#control(
+        {
+          subtype: "set_model",
+          model:
+            config.model === "default"
+              ? null
+              : config.model.replace(/\[1m\]$/i, "") +
+                (this.#configuredContextMax === EXTENDED_CONTEXT_MAX ? "[1m]" : ""),
+        },
+        "Claude did not confirm the model change.",
+      );
       this.#model = config.model;
     }
     if (config.permissionMode !== undefined && config.permissionMode !== this.#permissionMode) {
-      await this.#control({ subtype: "set_permission_mode", mode: MODES[config.permissionMode] }, "Claude did not confirm the permission change.");
+      await this.#control(
+        { subtype: "set_permission_mode", mode: MODES[config.permissionMode] },
+        "Claude did not confirm the permission change.",
+      );
       this.#permissionMode = config.permissionMode;
     }
   }
 
   #control(request: Record<string, unknown>, timeoutMessage: string): Promise<void> {
-    if (this.#disposed || !this.#child.stdin.writable) return Promise.reject(new Error("Claude session has closed."));
+    if (this.#disposed || !this.#child.stdin.writable)
+      return Promise.reject(new Error("Claude session has closed."));
     return new Promise((resolve, reject) => {
       const requestId = `control-${++this.#nextControl}`;
       const timer = setTimeout(() => {
@@ -278,7 +383,9 @@ class ClaudeSession implements AgentSession {
         reject(new Error(timeoutMessage));
       }, 10000);
       this.#controls.set(requestId, { resolve, reject, timer });
-      this.#child.stdin.write(`${JSON.stringify({ type: "control_request", request_id: requestId, request })}\n`);
+      this.#child.stdin.write(
+        `${JSON.stringify({ type: "control_request", request_id: requestId, request })}\n`,
+      );
     });
   }
 
@@ -329,20 +436,41 @@ class ClaudeSession implements AgentSession {
     const helpers = this.#workflows.get(taskId) ?? new Map<string, ThreadStatus>();
     this.#workflows.set(taskId, helpers);
     const workflowId = String(message.tool_use_id ?? taskId);
-    const progress = Array.isArray(message.workflow_progress) ? message.workflow_progress as Array<Record<string, unknown>> : [];
+    const progress = Array.isArray(message.workflow_progress)
+      ? (message.workflow_progress as Array<Record<string, unknown>>)
+      : [];
     for (const entry of progress) {
       if (entry.type !== "workflow_agent") continue;
       const id = `${workflowId}:${entry.index}`;
-      const status: ThreadStatus = entry.state === "done" ? "idle" : entry.state === "error" ? "error" : entry.state === "start" && entry.startedAt === undefined ? "queued" : "working";
+      const status: ThreadStatus =
+        entry.state === "done"
+          ? "idle"
+          : entry.state === "error"
+            ? "error"
+            : entry.state === "start" && entry.startedAt === undefined
+              ? "queued"
+              : "working";
       if (helpers.get(id) === status) continue;
       helpers.set(id, status);
-      const result = status === "idle" ? entry.resultPreview : status === "error" ? entry.error : undefined;
-      this.#emit({ type: "subagent", id, title: String(entry.label ?? "Workflow agent"), prompt: typeof entry.promptPreview === "string" ? entry.promptPreview : undefined, model: typeof entry.model === "string" ? entry.model : undefined, status, result: typeof result === "string" ? result : undefined });
+      const result =
+        status === "idle" ? entry.resultPreview : status === "error" ? entry.error : undefined;
+      this.#emit({
+        type: "subagent",
+        id,
+        title: String(entry.label ?? "Workflow agent"),
+        prompt: typeof entry.promptPreview === "string" ? entry.promptPreview : undefined,
+        model: typeof entry.model === "string" ? entry.model : undefined,
+        status,
+        result: typeof result === "string" ? result : undefined,
+      });
     }
     if (message.subtype !== "task_notification") return;
     this.#workflows.delete(taskId);
-    const final: ThreadStatus = message.status === "completed" ? "idle" : message.status === "failed" ? "error" : "stopped";
-    for (const [id, status] of helpers) if (status !== "idle" && status !== "error") this.#emit({ type: "subagent", id, status: final });
+    const final: ThreadStatus =
+      message.status === "completed" ? "idle" : message.status === "failed" ? "error" : "stopped";
+    for (const [id, status] of helpers)
+      if (status !== "idle" && status !== "error")
+        this.#emit({ type: "subagent", id, status: final });
   }
 
   #startAgentRun(taskId: string, message: Record<string, unknown>): void {
@@ -352,40 +480,69 @@ class ClaudeSession implements AgentSession {
     this.#agentIds.add(taskId);
     this.#agentCalls.set(callId, taskId);
     this.#agentReplies.delete(taskId);
-    this.#emit({ type: "subagent", id: taskId, title: String(message.description ?? "Subagent"), ...(launch?.model ? { model: launch.model } : {}), status: "working", ...(typeof message.prompt === "string" ? { runPrompt: message.prompt } : {}), ...(launch ? { launchId: callId } : {}), ...(launch?.parent ? { parent: launch.parent } : {}) });
+    this.#emit({
+      type: "subagent",
+      id: taskId,
+      title: String(message.description ?? "Subagent"),
+      ...(launch?.model ? { model: launch.model } : {}),
+      status: "working",
+      ...(typeof message.prompt === "string" ? { runPrompt: message.prompt } : {}),
+      ...(launch ? { launchId: callId } : {}),
+      ...(launch?.parent ? { parent: launch.parent } : {}),
+    });
   }
 
   #noteAgentLaunch(block: Record<string, unknown>, parent?: string): void {
     if (block.name !== "Agent" && block.name !== "Task") return;
     const model = (block.input as { model?: unknown } | undefined)?.model;
-    this.#agentLaunches.set(String(block.id), { ...(typeof model === "string" ? { model } : {}), ...(parent ? { parent } : {}) });
+    this.#agentLaunches.set(String(block.id), {
+      ...(typeof model === "string" ? { model } : {}),
+      ...(parent ? { parent } : {}),
+    });
   }
 
   #toolEnd(block: Record<string, unknown>): Extract<TranscriptEvent, { type: "tool.end" }> {
     const result = toolContent(block.content);
     const agentId = this.#agentCalls.get(String(block.tool_use_id));
     const reply = agentId && block.is_error !== true ? this.#agentReplies.get(agentId) : undefined;
-    return { type: "tool.end", callId: String(block.tool_use_id), ok: block.is_error !== true, output: reply ?? result.text, ...(result.images.length ? { images: result.images } : {}) };
+    return {
+      type: "tool.end",
+      callId: String(block.tool_use_id),
+      ok: block.is_error !== true,
+      output: reply ?? result.text,
+      ...(result.images.length ? { images: result.images } : {}),
+    };
   }
 
   #subagentFrame(message: Record<string, unknown>): void {
     const id = this.#agentCalls.get(String(message.parent_tool_use_id));
     if (!id || (message.type !== "assistant" && message.type !== "user")) return;
-    const activity = (event: TranscriptEvent) => this.#emit({ type: "subagent.activity", id, event });
+    const activity = (event: TranscriptEvent) =>
+      this.#emit({ type: "subagent.activity", id, event });
     const content = (message.message as { content?: unknown } | undefined)?.content;
     if (!Array.isArray(content)) return;
     content.forEach((raw, index) => {
       const block = raw as Record<string, unknown>;
-      const text = block.type === "text" ? block.text : block.type === "thinking" ? block.thinking : undefined;
+      const text =
+        block.type === "text" ? block.text : block.type === "thinking" ? block.thinking : undefined;
       if (message.type === "assistant" && typeof text === "string" && text) {
         const blockId = `${id}:${String(message.uuid)}:${index}`;
-        activity({ type: "block.start", blockId, block: block.type === "thinking" ? "reasoning" : "text" });
+        activity({
+          type: "block.start",
+          blockId,
+          block: block.type === "thinking" ? "reasoning" : "text",
+        });
         activity({ type: "block.delta", blockId, text });
         activity({ type: "block.end", blockId });
         if (block.type === "text") this.#agentReplies.set(id, text);
       } else if (message.type === "assistant" && block.type === "tool_use") {
         this.#noteAgentLaunch(block, id);
-        activity({ type: "tool.start", callId: String(block.id), name: String(block.name ?? "tool"), input: block.input ?? {} });
+        activity({
+          type: "tool.start",
+          callId: String(block.id),
+          name: String(block.name ?? "tool"),
+          input: block.input ?? {},
+        });
       } else if (message.type === "user" && block.type === "tool_result") {
         activity(this.#toolEnd(block));
       }
@@ -406,50 +563,78 @@ class ClaudeSession implements AgentSession {
     if (this.#disposed) return;
     const type = message.type;
     if (type === "control_response") {
-      const response = message.response as { request_id?: string; subtype?: string; error?: string } | undefined;
+      const response = message.response as
+        { request_id?: string; subtype?: string; error?: string } | undefined;
       const id = response?.request_id ?? "";
       const pending = this.#controls.get(id);
       if (pending) {
         this.#controls.delete(id);
         clearTimeout(pending.timer);
-        if (response?.subtype === "error") pending.reject(new Error(response.error ?? "Claude rejected the control request."));
+        if (response?.subtype === "error")
+          pending.reject(new Error(response.error ?? "Claude rejected the control request."));
         else pending.resolve();
       }
       return;
     }
     if (type === "assistant") {
-      const response = message.message as { id?: string; model?: string; usage?: ClaudeUsage } | undefined;
+      const response = message.message as
+        { id?: string; model?: string; usage?: ClaudeUsage } | undefined;
       const usage = response?.usage;
       if (response?.id && usage && !message.local_command_source) {
-        const current = { input: usage.input_tokens ?? 0, output: usage.output_tokens ?? 0, cacheRead: usage.cache_read_input_tokens ?? 0, cacheWrite: usage.cache_creation_input_tokens ?? 0 };
-        if (Object.values(current).some((value) => value > 0)) this.#usage.update(response.id, current);
+        const current = {
+          input: usage.input_tokens ?? 0,
+          output: usage.output_tokens ?? 0,
+          cacheRead: usage.cache_read_input_tokens ?? 0,
+          cacheWrite: usage.cache_creation_input_tokens ?? 0,
+        };
+        if (Object.values(current).some((value) => value > 0))
+          this.#usage.update(response.id, current);
         if (!message.parent_tool_use_id) {
           if (response.model) this.#model = response.model;
           const contextTokens = currentContextTokens(usage);
           if (contextTokens !== undefined) this.#contextTokens = contextTokens;
           this.#cacheTtl = cacheTtlMs(usage) ?? this.#cacheTtl;
           // The cache lifetime counts from the start of the request that read or wrote it.
-          if (this.#cacheTtl && current.cacheRead + current.cacheWrite > 0) this.#cacheExpiresAt = (this.#requestStarted || Date.now()) + this.#cacheTtl;
+          if (this.#cacheTtl && current.cacheRead + current.cacheWrite > 0)
+            this.#cacheExpiresAt = (this.#requestStarted || Date.now()) + this.#cacheTtl;
         }
-        this.#emit({ type: "usage", usage: { ...this.#usage.totals, contextTokens: this.#contextTokens, contextMax: this.#reportedContextMax, ...(this.#cacheExpiresAt ? { cacheExpiresAt: this.#cacheExpiresAt } : {}) } });
+        this.#emit({
+          type: "usage",
+          usage: {
+            ...this.#usage.totals,
+            contextTokens: this.#contextTokens,
+            contextMax: this.#reportedContextMax,
+            ...(this.#cacheExpiresAt ? { cacheExpiresAt: this.#cacheExpiresAt } : {}),
+          },
+        });
       }
     }
     if (type === "system" && message.subtype === "compact_boundary") {
       const metadata = message.compact_metadata as { post_tokens?: number } | undefined;
       this.#compacted = true;
       this.#contextTokens = metadata?.post_tokens ?? 0;
-      if (!this.#manualCompaction) this.#emit({ type: "compacted", contextTokens: this.#contextTokens });
+      if (!this.#manualCompaction)
+        this.#emit({ type: "compacted", contextTokens: this.#contextTokens });
       return;
     }
 
-    if (type === "system" && ["task_started", "task_progress", "task_notification"].includes(String(message.subtype))) {
+    if (
+      type === "system" &&
+      ["task_started", "task_progress", "task_notification"].includes(String(message.subtype))
+    ) {
       const taskId = String(message.task_id ?? "");
       if (message.task_type === "local_bash" && message.owned_by_subagent) return;
       if (taskId && (message.task_type === "local_bash" || this.#shells.has(taskId))) {
         const callId = this.#shells.get(taskId) ?? String(message.tool_use_id ?? taskId);
         if (message.subtype === "task_notification") {
           this.#shells.delete(taskId);
-          this.#emit({ type: "shell.end", callId, ok: message.status !== "failed", ...(message.status === "stopped" ? { stopped: true } : {}), output: typeof message.summary === "string" ? message.summary : undefined });
+          this.#emit({
+            type: "shell.end",
+            callId,
+            ok: message.status !== "failed",
+            ...(message.status === "stopped" ? { stopped: true } : {}),
+            output: typeof message.summary === "string" ? message.summary : undefined,
+          });
         } else {
           this.#shells.set(taskId, callId);
           this.#emit({ type: "shell.background", callId, taskId });
@@ -469,11 +654,18 @@ class ClaudeSession implements AgentSession {
         this.#emit({ type: "subagent", id: taskId, status: "working" });
         return;
       }
-      const status = message.status === "failed" ? "error" : message.status === "stopped" ? "stopped" : "idle";
-      const summary = status !== "stopped" && typeof message.summary === "string" ? message.summary : undefined;
+      const status =
+        message.status === "failed" ? "error" : message.status === "stopped" ? "stopped" : "idle";
+      const summary =
+        status !== "stopped" && typeof message.summary === "string" ? message.summary : undefined;
       const shown = this.#agentReplies.has(taskId);
       if (summary) this.#agentReplies.set(taskId, summary);
-      this.#emit({ type: "subagent", id: taskId, status, ...(summary && !shown ? { result: summary } : {}) });
+      this.#emit({
+        type: "subagent",
+        id: taskId,
+        status,
+        ...(summary && !shown ? { result: summary } : {}),
+      });
       return;
     }
     if (message.parent_tool_use_id) {
@@ -500,13 +692,24 @@ class ClaudeSession implements AgentSession {
       if (message.status === "compacting") this.#emit({ type: "compacting", active: true });
       if (message.compact_result === "failed") {
         this.#emit({ type: "compacting", active: false });
-        if (!this.#manualCompaction) this.#emit({ type: "notice", level: "warn", text: ["Claude Code could not compact the context.", message.compact_error].filter(Boolean).join(" ") });
+        if (!this.#manualCompaction)
+          this.#emit({
+            type: "notice",
+            level: "warn",
+            text: ["Claude Code could not compact the context.", message.compact_error]
+              .filter(Boolean)
+              .join(" "),
+          });
       }
       return;
     }
 
     if (type === "stream_event") {
-      if ((message.event as StreamEvent | undefined)?.type === "message_start" && !message.parent_tool_use_id) this.#requestStarted = Date.now();
+      if (
+        (message.event as StreamEvent | undefined)?.type === "message_start" &&
+        !message.parent_tool_use_id
+      )
+        this.#requestStarted = Date.now();
       this.#stream(message.event as StreamEvent);
       return;
     }
@@ -514,7 +717,10 @@ class ClaudeSession implements AgentSession {
     if (type === "assistant") {
       const content = (message.message as { content?: unknown[] } | undefined)?.content ?? [];
       if (message.local_command_source && !this.#manualCompaction) {
-        const text = content.filter((block) => (block as { type?: string }).type === "text").map((block) => String((block as { text?: string }).text ?? "")).join("\n");
+        const text = content
+          .filter((block) => (block as { type?: string }).type === "text")
+          .map((block) => String((block as { text?: string }).text ?? ""))
+          .join("\n");
         if (text) {
           const blockId = `command:${String(message.uuid ?? ++this.#turn)}`;
           this.#emit({ type: "block.start", blockId, block: "text" });
@@ -546,7 +752,13 @@ class ClaudeSession implements AgentSession {
         if (block.type !== "tool_result") continue;
         const event = this.#toolEnd(block);
         const agentId = this.#agentCalls.get(event.callId);
-        if (agentId && block.is_error) this.#emit({ type: "subagent", id: agentId, status: "error", ...(this.#agentReplies.has(agentId) ? {} : { result: event.output }) });
+        if (agentId && block.is_error)
+          this.#emit({
+            type: "subagent",
+            id: agentId,
+            status: "error",
+            ...(this.#agentReplies.has(agentId) ? {} : { result: event.output }),
+          });
         this.#adopt(event.callId, event.output);
         this.#emit(event);
       }
@@ -555,15 +767,49 @@ class ClaudeSession implements AgentSession {
 
     if (type === "result") {
       const usage = message.usage as ClaudeUsage | undefined;
-      const cost = typeof message.total_cost_usd === "number" ? Math.max(this.#usage.totals.costUsd, this.#initialUsage.costUsd + message.total_cost_usd) : this.#usage.totals.costUsd;
-      const modelUsage = message.modelUsage as Record<string, { contextWindow?: number; inputTokens?: number; outputTokens?: number; cacheReadInputTokens?: number; cacheCreationInputTokens?: number }> | undefined;
+      const cost =
+        typeof message.total_cost_usd === "number"
+          ? Math.max(
+              this.#usage.totals.costUsd,
+              this.#initialUsage.costUsd + message.total_cost_usd,
+            )
+          : this.#usage.totals.costUsd;
+      const modelUsage = message.modelUsage as
+        | Record<
+            string,
+            {
+              contextWindow?: number;
+              inputTokens?: number;
+              outputTokens?: number;
+              cacheReadInputTokens?: number;
+              cacheCreationInputTokens?: number;
+            }
+          >
+        | undefined;
       const models = Object.values(modelUsage ?? {});
-      const contextMax = (modelUsage?.[this.#model ?? ""] ?? (models.length === 1 ? models[0] : undefined))?.contextWindow;
-      if (contextMax && Number.isFinite(contextMax) && contextMax > 0) this.#reportedContextMax = contextMax;
-      for (const [key, field] of [["input", "inputTokens"], ["output", "outputTokens"], ["cacheRead", "cacheReadInputTokens"], ["cacheWrite", "cacheCreationInputTokens"]] as const) {
+      const contextMax = (
+        modelUsage?.[this.#model ?? ""] ?? (models.length === 1 ? models[0] : undefined)
+      )?.contextWindow;
+      if (contextMax && Number.isFinite(contextMax) && contextMax > 0)
+        this.#reportedContextMax = contextMax;
+      for (const [key, field] of [
+        ["input", "inputTokens"],
+        ["output", "outputTokens"],
+        ["cacheRead", "cacheReadInputTokens"],
+        ["cacheWrite", "cacheCreationInputTokens"],
+      ] as const) {
         const counts = models.map((model) => model[field]);
-        if (counts.length && counts.every((value): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0)) {
-          this.#usage.totals[key] = Math.max(this.#usage.totals[key], this.#initialUsage[key] + counts.reduce((sum, value) => sum + value, 0));
+        if (
+          counts.length &&
+          counts.every(
+            (value): value is number =>
+              typeof value === "number" && Number.isFinite(value) && value >= 0,
+          )
+        ) {
+          this.#usage.totals[key] = Math.max(
+            this.#usage.totals[key],
+            this.#initialUsage[key] + counts.reduce((sum, value) => sum + value, 0),
+          );
         }
       }
       if (Array.isArray(usage?.iterations) && usage.iterations.length && !this.#compacted) {
@@ -581,7 +827,11 @@ class ClaudeSession implements AgentSession {
         },
       });
       const origin = message.origin as { kind?: string } | undefined;
-      const backgroundRun = origin?.kind && origin.kind !== "human" && !message.user_message_uuid && !(Array.isArray(message.user_message_uuids) && message.user_message_uuids.length);
+      const backgroundRun =
+        origin?.kind &&
+        origin.kind !== "human" &&
+        !message.user_message_uuid &&
+        !(Array.isArray(message.user_message_uuids) && message.user_message_uuids.length);
       if (backgroundRun && (this.#userMessageUnread || !this.#active)) return;
       const compacted = this.#compacted;
       this.#compacted = false;
@@ -590,12 +840,24 @@ class ClaudeSession implements AgentSession {
         this.#manualCompaction = false;
         this.#active = false;
         this.#userMessageUnread = false;
-        if (compacted && !isError) this.#emit({ type: "compacted", contextTokens: this.#contextTokens });
-        else this.#emit({ type: "turn.end", error: String(message.result ?? "The provider could not compact this conversation yet.") });
+        if (compacted && !isError)
+          this.#emit({ type: "compacted", contextTokens: this.#contextTokens });
+        else
+          this.#emit({
+            type: "turn.end",
+            error: String(
+              message.result ?? "The provider could not compact this conversation yet.",
+            ),
+          });
         return;
       }
       if (this.#steers.size) {
-        if (isError) this.#emit({ type: "notice", level: "error", text: String(message.result ?? "run failed") });
+        if (isError)
+          this.#emit({
+            type: "notice",
+            level: "error",
+            text: String(message.result ?? "run failed"),
+          });
         return;
       }
       this.#active = false;
@@ -666,8 +928,13 @@ export const claudeProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "stdio", steer: true, compact: true, stopShell: true },
   steerHint: "Claude Code reads it at its next step.",
-  signIn: { kind: "terminal", login: ["auth", "login"], status: ["auth", "status"], signedIn: (output) => /"loggedIn":\s*true\b/.test(output),
-    home: { variable: "CLAUDE_CONFIG_DIR", shared: { from: claudeHome, items: SHARED_SETTINGS } } },
+  signIn: {
+    kind: "terminal",
+    login: ["auth", "login"],
+    status: ["auth", "status"],
+    signedIn: (output) => /"loggedIn":\s*true\b/.test(output),
+    home: { variable: "CLAUDE_CONFIG_DIR", shared: { from: claudeHome, items: SHARED_SETTINGS } },
+  },
   models: [],
   listModels: (launch) => discoverModels("claude", launch),
   async detect(launch) {

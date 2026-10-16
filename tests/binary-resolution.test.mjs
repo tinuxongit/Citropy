@@ -57,7 +57,9 @@ test("invocation with spaces in the launcher path escapes them for cmd.exe", () 
 test("invocation passes direct executables and PowerShell launchers through untouched", () => {
   const direct = invocation({ file: "node", prefix: [] }, ["--version"]);
   assert.deepEqual(direct, { file: "node", args: ["--version"], verbatim: false });
-  const ps = invocation({ file: "powershell.exe", prefix: ["-File", "C:\\x\\agent.ps1"] }, ["exec"]);
+  const ps = invocation({ file: "powershell.exe", prefix: ["-File", "C:\\x\\agent.ps1"] }, [
+    "exec",
+  ]);
   assert.deepEqual(ps.args, ["-File", "C:\\x\\agent.ps1", "exec"]);
   assert.equal(ps.verbatim, false);
 });

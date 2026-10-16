@@ -22,53 +22,121 @@ const fileShapes = new Set(["read", "edit", "write"]);
 
 function ToolStack({ tools }: { tools: ToolPart[] }) {
   const seen = new Set<string>();
-  const marks = tools.flatMap(tool => {
+  const marks = tools.flatMap((tool) => {
     const file = fileShapes.has(tool.shape) && tool.headline;
     const key = file ? `file:${tool.headline}` : `shape:${tool.shape}`;
     if (seen.has(key)) return [];
     seen.add(key);
     const Icon = shapeIcon[tool.shape];
-    return [<span key={key} className="tool-stack-mark">{file ? <FileIcon path={tool.headline} size={11} /> : <Icon size={11} />}</span>];
+    return [
+      <span key={key} className="tool-stack-mark">
+        {file ? <FileIcon path={tool.headline} size={11} /> : <Icon size={11} />}
+      </span>,
+    ];
   });
-  return <span className="tool-stack" aria-hidden="true">{marks.slice(0, 4)}</span>;
+  return (
+    <span className="tool-stack" aria-hidden="true">
+      {marks.slice(0, 4)}
+    </span>
+  );
 }
 
-function TreeRow({ id, live, animate, last }: { id: string; live: boolean; animate: boolean; last: boolean }) {
-  const [step] = useState(() => animate ? nextTreeStep() : undefined);
+function TreeRow({
+  id,
+  live,
+  animate,
+  last,
+}: {
+  id: string;
+  live: boolean;
+  animate: boolean;
+  last: boolean;
+}) {
+  const [step] = useState(() => (animate ? nextTreeStep() : undefined));
   return (
-    <div className="work-tree-row" data-last={last || undefined} data-animate={step !== undefined || undefined} style={{ "--tree-step": step } as CSSProperties}>
+    <div
+      className="work-tree-row"
+      data-last={last || undefined}
+      data-animate={step !== undefined || undefined}
+      style={{ "--tree-step": step } as CSSProperties}
+    >
       <PartView partId={id} live={live} />
     </div>
   );
 }
 
-function GroupTree({ ids, tools, live, auto }: { ids: string[]; tools: ToolPart[]; live: boolean; auto: boolean }) {
-  const [settled] = useState(() => new Set(auto ? tools.filter(tool => tool.status !== "running").map(tool => tool.id) : ids));
+function GroupTree({
+  ids,
+  tools,
+  live,
+  auto,
+}: {
+  ids: string[];
+  tools: ToolPart[];
+  live: boolean;
+  auto: boolean;
+}) {
+  const [settled] = useState(
+    () =>
+      new Set(
+        auto ? tools.filter((tool) => tool.status !== "running").map((tool) => tool.id) : ids,
+      ),
+  );
   return (
     <div className="group-body-inner">
       <VirtualList className="work-tree-list" items={tools} itemKey="id" estimateSize={28} gap={6}>
-        {tool => <TreeRow id={tool.id} live={live} animate={live && !settled.has(tool.id)} last={tool.id === ids.at(-1)} />}
+        {(tool) => (
+          <TreeRow
+            id={tool.id}
+            live={live}
+            animate={live && !settled.has(tool.id)}
+            last={tool.id === ids.at(-1)}
+          />
+        )}
       </VirtualList>
     </div>
   );
 }
 
-export const WorkGroup = memo(function WorkGroup({ ids, live, latestStep }: { ids: string[]; live: boolean; latestStep?: boolean }) {
-  const tools = useApp(useShallow(state => ids.map(id => state.parts.get(id)).filter((part): part is ToolPart => part?.kind === "tool")));
-  const showFailedTools = useApp(state => state.showFailedTools);
+export const WorkGroup = memo(function WorkGroup({
+  ids,
+  live,
+  latestStep,
+}: {
+  ids: string[];
+  live: boolean;
+  latestStep?: boolean;
+}) {
+  const tools = useApp(
+    useShallow((state) =>
+      ids
+        .map((id) => state.parts.get(id))
+        .filter((part): part is ToolPart => part?.kind === "tool"),
+    ),
+  );
+  const showFailedTools = useApp((state) => state.showFailedTools);
   const stats = groupStats(tools);
-  const chosen = useApp(state => state.disclosures[ids[0]!]?.group);
+  const chosen = useApp((state) => state.disclosures[ids[0]!]?.group);
   const [, setOpen] = useDisclosure(ids[0], "group", false);
   const [held, setHeld] = useState(false);
   if (live && stats.running && !held) setHeld(true);
   const open = chosen ?? (live && held && !latestStep);
   return (
     <div className="group-body" data-open={open || undefined}>
-      <button className="group-summary" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button
+        className="group-summary"
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
         <ChevronRightIcon size={13} className="group-chevron" aria-hidden="true" />
         <span className="truncate">{summarize(tools)}</span>
         {tools.length > 0 && <ToolStack tools={tools} />}
-        {showFailedTools && stats.failed > 0 && <span className="group-failed">{stats.failed === 1 ? `${stats.failed} failed tool` : `${stats.failed} failed tools`}</span>}
+        {showFailedTools && stats.failed > 0 && (
+          <span className="group-failed">
+            {stats.failed === 1 ? `${stats.failed} failed tool` : `${stats.failed} failed tools`}
+          </span>
+        )}
       </button>
       {open && <GroupTree ids={ids} tools={tools} live={live} auto={chosen === undefined} />}
     </div>

@@ -1,6 +1,11 @@
 import type { Attachment } from "../../../shared/protocol.ts";
 
-export type ComposerDelivery = { text: string; attachments: Attachment[]; quotes?: string[]; placement: "before" | "after" };
+export type ComposerDelivery = {
+  text: string;
+  attachments: Attachment[];
+  quotes?: string[];
+  placement: "before" | "after";
+};
 
 const waiting = new Map<string, ComposerDelivery[]>();
 const listeners = new Set<() => void>();

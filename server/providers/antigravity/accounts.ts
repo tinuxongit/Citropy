@@ -10,7 +10,7 @@ export async function signOut(launch: ProviderLaunch): Promise<void> {
   cancelSignIn(launch);
   stopAccountSessions(launch.instanceId, "Signed out of Antigravity.");
   const profile = antigravityProfile(launch.instanceId);
-  if (!await hasSignIn(profile)) return;
+  if (!(await hasSignIn(profile))) return;
   const agent = await startAgent({
     instanceId: launch.instanceId,
     environment: launch.environment,
@@ -20,7 +20,8 @@ export async function signOut(launch: ProviderLaunch): Promise<void> {
     onFailure: () => {},
   });
   try {
-    if (!agent.initialized.agentCapabilities?.auth?.logout) throw new Error("This Antigravity version cannot sign out.");
+    if (!agent.initialized.agentCapabilities?.auth?.logout)
+      throw new Error("This Antigravity version cannot sign out.");
     await agent.connection.logout({});
   } finally {
     agent.stop();

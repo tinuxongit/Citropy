@@ -1,5 +1,16 @@
 import { environmentStorage } from "./environment.ts";
-import { CHAT_WIDTHS, CODE_FONTS, WINDOW_SHARE_PANELS, useApp, type ChatWidth, type CodeFont, type PanelId, type Scheme, type StageBackground, type Theme } from "./app-state.ts";
+import {
+  CHAT_WIDTHS,
+  CODE_FONTS,
+  WINDOW_SHARE_PANELS,
+  useApp,
+  type ChatWidth,
+  type CodeFont,
+  type PanelId,
+  type Scheme,
+  type StageBackground,
+  type Theme,
+} from "./app-state.ts";
 import type { WritingModel } from "../../../shared/assistance.ts";
 import { applyCustomColor } from "./custom-theme.ts";
 import type { SearchEngine } from "./web-search.ts";
@@ -13,8 +24,20 @@ const WINDOW_GROWTH = {
 
 export function toggleFavoriteModel(model: WritingModel): void {
   const current = useApp.getState().favoriteModels;
-  const exists = current.some((entry) => entry.provider === model.provider && entry.model === model.model && entry.providerInstanceId === model.providerInstanceId);
-  const favoriteModels = exists ? current.filter((entry) => entry.provider !== model.provider || entry.model !== model.model || entry.providerInstanceId !== model.providerInstanceId) : [...current, model];
+  const exists = current.some(
+    (entry) =>
+      entry.provider === model.provider &&
+      entry.model === model.model &&
+      entry.providerInstanceId === model.providerInstanceId,
+  );
+  const favoriteModels = exists
+    ? current.filter(
+        (entry) =>
+          entry.provider !== model.provider ||
+          entry.model !== model.model ||
+          entry.providerInstanceId !== model.providerInstanceId,
+      )
+    : [...current, model];
   useApp.setState({ favoriteModels });
   environmentStorage.setItem("citropy.favoriteModels", JSON.stringify(favoriteModels));
 }
@@ -23,7 +46,10 @@ export function setPanelWidth(panel: PanelId, width?: number): void {
   if (width !== undefined && (!Number.isFinite(width) || width <= 0)) return;
   const panelWidths = { ...useApp.getState().panelWidths };
   if (width === undefined) delete panelWidths[panel];
-  else panelWidths[panel] = WINDOW_SHARE_PANELS.includes(panel) ? width / viewportWidth() : Math.round(width);
+  else
+    panelWidths[panel] = WINDOW_SHARE_PANELS.includes(panel)
+      ? width / viewportWidth()
+      : Math.round(width);
   useApp.setState({ panelWidths });
   environmentStorage.setItem("citropy.panelWidths", JSON.stringify(panelWidths));
 }
@@ -127,7 +153,10 @@ export function setStageBackground(background: StageBackground): void {
 
 export function applyChatWidth(width: ChatWidth): void {
   const { uiScale, uiSize } = useApp.getState();
-  document.documentElement.style.setProperty("--reading", `${Math.round((CHAT_WIDTHS[width].pixels * uiScale) / uiSize)}px`);
+  document.documentElement.style.setProperty(
+    "--reading",
+    `${Math.round((CHAT_WIDTHS[width].pixels * uiScale) / uiSize)}px`,
+  );
 }
 
 export function setChatWidth(width: ChatWidth): void {
@@ -167,7 +196,9 @@ export function setSidebarGroupOpen(id: string, open: boolean): void {
 }
 
 export function panelWidthValue(panel: PanelId, saved: number, uiScale: number): string {
-  return WINDOW_SHARE_PANELS.includes(panel) ? `calc(var(--viewport-width) * ${saved})` : `${Math.round((saved * uiScale) / 100)}px`;
+  return WINDOW_SHARE_PANELS.includes(panel)
+    ? `calc(var(--viewport-width) * ${saved})`
+    : `${Math.round((saved * uiScale) / 100)}px`;
 }
 
 export function setUiSize(value: number): void {
@@ -180,12 +211,18 @@ export function setUiSize(value: number): void {
 
 function windowGrowth(): number {
   const { fromWidth, toWidth, largest } = WINDOW_GROWTH;
-  const progress = Math.max(0, Math.min(1, (window.innerWidth - fromWidth) / (toWidth - fromWidth)));
+  const progress = Math.max(
+    0,
+    Math.min(1, (window.innerWidth - fromWidth) / (toWidth - fromWidth)),
+  );
   return 1 + progress * (largest - 1);
 }
 
 function windowScale(): number {
-  return Math.round((useApp.getState().uiSize * windowGrowth()) / WINDOW_GROWTH.step) * WINDOW_GROWTH.step;
+  return (
+    Math.round((useApp.getState().uiSize * windowGrowth()) / WINDOW_GROWTH.step) *
+    WINDOW_GROWTH.step
+  );
 }
 
 export function followWindowSize(): void {
@@ -215,7 +252,6 @@ export function setBackgroundEverywhere(value: boolean): void {
   useApp.setState({ backgroundEverywhere: value });
   environmentStorage.setItem("citropy.backgroundEverywhere", value ? "1" : "0");
 }
-
 
 export function setShowFailedTools(value: boolean): void {
   useApp.setState({ showFailedTools: value });

@@ -14,7 +14,10 @@ import { answer, pendingRequests } from "../server/permissions.ts";
 import { previewFile } from "../server/assets.ts";
 import { serveToolImage } from "../server/tools/tool-images.ts";
 
-const picture = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=", "base64");
+const picture = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=",
+  "base64",
+);
 
 async function fixture(t, permissionMode = "bypass") {
   const directory = await mkdtemp(join(tmpdir(), "citropy-workspace-images-"));
@@ -33,19 +36,33 @@ async function fixture(t, permissionMode = "bypass") {
   return { directory, workspace, project, thread, path };
 }
 
-test("sharing a temporary screenshot survives source removal and stays scoped to its conversation", async t => {
+test("sharing a temporary screenshot survives source removal and stays scoped to its conversation", async (t) => {
   const { project, thread, path } = await fixture(t);
-  await assert.rejects(previewFile(new URLSearchParams({ projectId: project.id, threadId: thread.id, path })), /outside this conversation's workspace/);
-  const help = JSON.parse((await callWorkspaceTool(thread.id, "tool_help", { category: "workspace" }))[0].text);
-  assert.ok(help.some(tool => tool.name === "workspace_image"));
-  const image = JSON.parse((await callWorkspaceTool(thread.id, "run_tool", { name: "workspace_image", arguments: { path } }))[0].text);
+  await assert.rejects(
+    previewFile(new URLSearchParams({ projectId: project.id, threadId: thread.id, path })),
+    /outside this conversation's workspace/,
+  );
+  const help = JSON.parse(
+    (await callWorkspaceTool(thread.id, "tool_help", { category: "workspace" }))[0].text,
+  );
+  assert.ok(help.some((tool) => tool.name === "workspace_image"));
+  const image = JSON.parse(
+    (
+      await callWorkspaceTool(thread.id, "run_tool", {
+        name: "workspace_image",
+        arguments: { path },
+      })
+    )[0].text,
+  );
   assert.equal(image.markdown, `![Image](citropy-image:${image.id})`);
   await rm(path);
   const server = createServer((req, res) => {
-    void serveToolImage(req, res, new URL(req.url, "http://localhost").searchParams).catch(error => res.destroy(error));
+    void serveToolImage(req, res, new URL(req.url, "http://localhost").searchParams).catch(
+      (error) => res.destroy(error),
+    );
   });
-  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
-  t.after(() => new Promise(resolve => server.close(resolve)));
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
   const url = `http://127.0.0.1:${server.address().port}/?threadId=${thread.id}&id=${image.id}`;
   const response = await fetch(url);
   assert.equal(response.status, 200);
@@ -54,29 +71,52 @@ test("sharing a temporary screenshot survives source removal and stays scoped to
   assert.equal((await fetch(url.replace(thread.id, "another-conversation"))).status, 404);
 });
 
-test("screenshots a tool reported outside the workspace open only in their conversation", async t => {
+test("screenshots a tool reported outside the workspace open only in their conversation", async (t) => {
   const { project, thread, path } = await fixture(t);
   const other = await fixture(t);
-  const preview = (threadId, projectId = project.id) => previewFile(new URLSearchParams({ projectId, threadId, path }));
+  const preview = (threadId, projectId = project.id) =>
+    previewFile(new URLSearchParams({ projectId, threadId, path }));
   await assert.rejects(preview(thread.id), /outside this conversation's workspace/);
-  store.addMessage(thread.id, { id: "msg_screenshot", role: "assistant", ts: Date.now(), parts: [] });
-  store.addPart(thread.id, "msg_screenshot", { id: "prt_screenshot", kind: "tool", callId: "call_screenshot", name: "Read", shape: "read", headline: "Read screenshot", input: { path }, status: "running", startedAt: Date.now() });
+  store.addMessage(thread.id, {
+    id: "msg_screenshot",
+    role: "assistant",
+    ts: Date.now(),
+    parts: [],
+  });
+  store.addPart(thread.id, "msg_screenshot", {
+    id: "prt_screenshot",
+    kind: "tool",
+    callId: "call_screenshot",
+    name: "Read",
+    shape: "read",
+    headline: "Read screenshot",
+    input: { path },
+    status: "running",
+    startedAt: Date.now(),
+  });
   await assert.rejects(preview(thread.id), /outside this conversation's workspace/);
-  store.patchPart(thread.id, "msg_screenshot", "prt_screenshot", { status: "ok", imageFiles: [{ path, label: "screenshot.png" }] });
+  store.patchPart(thread.id, "msg_screenshot", "prt_screenshot", {
+    status: "ok",
+    imageFiles: [{ path, label: "screenshot.png" }],
+  });
   assert.equal((await preview(thread.id)).path, path);
-  await assert.rejects(preview(other.thread.id, other.project.id), /outside this conversation's workspace/);
+  await assert.rejects(
+    preview(other.thread.id, other.project.id),
+    /outside this conversation's workspace/,
+  );
 });
 
-test("outside-workspace image sharing respects plan mode and manual approval", async t => {
+test("outside-workspace image sharing respects plan mode and manual approval", async (t) => {
   const { thread, path } = await fixture(t, "plan");
   await assert.rejects(callWorkspaceTool(thread.id, "workspace_image", { path }), /Plan only mode/);
   store.patchThread(thread.id, { permissionMode: "manual" });
   for (const decision of ["deny", "allow"]) {
     const sharing = callWorkspaceTool(thread.id, "workspace_image", { path });
-    const result = decision === "deny" ? assert.rejects(sharing, /Denied by the operator/) : sharing;
+    const result =
+      decision === "deny" ? assert.rejects(sharing, /Denied by the operator/) : sharing;
     let request;
     for (let attempt = 0; attempt < 100 && !request; attempt++) {
-      request = pendingRequests().find(request => request.threadId === thread.id);
+      request = pendingRequests().find((request) => request.threadId === thread.id);
       if (!request) await delay(10);
     }
     assert.ok(request, "Image permission was not requested");
@@ -84,22 +124,31 @@ test("outside-workspace image sharing respects plan mode and manual approval", a
     assert.equal(request.input.path, path);
     answer(request.id, decision);
     const content = await result;
-    if (decision === "allow") assert.match(JSON.parse(content[0].text).markdown, /^!\[Image\]\(citropy-image:[0-9a-f-]{36}\)$/);
+    if (decision === "allow")
+      assert.match(
+        JSON.parse(content[0].text).markdown,
+        /^!\[Image\]\(citropy-image:[0-9a-f-]{36}\)$/,
+      );
   }
 });
 
-test("agents receive persistent image sharing instructions", async t => {
+test("agents receive persistent image sharing instructions", async (t) => {
   const { thread } = await fixture(t);
   const server = createServer((req, res) => {
-    void handleMcp(req.url.slice(1), req, res).catch(error => res.destroy(error));
+    void handleMcp(req.url.slice(1), req, res).catch((error) => res.destroy(error));
   });
-  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
-  t.after(() => new Promise(resolve => server.close(resolve)));
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
   const tools = connectTools(thread.id);
   const response = await fetch(`http://127.0.0.1:${server.address().port}/${thread.id}`, {
     method: "POST",
     headers: { ...tools.headers, "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18" } }),
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: { protocolVersion: "2025-06-18" },
+    }),
   });
   assert.equal(response.status, 200);
   const { result } = await response.json();

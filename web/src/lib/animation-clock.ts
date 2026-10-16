@@ -32,4 +32,3 @@ export function onAnimationTick(listener: () => void): () => void {
     sync();
   };
 }
-

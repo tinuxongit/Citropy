@@ -1,10 +1,18 @@
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from "react";
 import { autoscrollDistance, canStartPointerDrag, followPointerDrag } from "./pointer-drag.ts";
 
 const AUTOSCROLL_RATE = 0.3;
 const AUTOSCROLL_MAX = 12;
 const PICKABLE = ".thread-entry > .thread-card, .global-project-heading[data-project-id]";
-const NOT_PICKABLE = '[role="menu"], dialog, [role="dialog"], [role="alertdialog"], input, textarea';
+const NOT_PICKABLE =
+  '[role="menu"], dialog, [role="dialog"], [role="alertdialog"], input, textarea';
 const KEEPS_PICKS = '.picked-actions, [role="menu"], dialog, [role="dialog"], [role="alertdialog"]';
 
 export interface PickedRow {
@@ -17,13 +25,27 @@ const rowKey = (row: PickedRow) => `${row.kind}:${row.environment}:${row.id}`;
 
 function rowOf(element: Element): PickedRow | undefined {
   const project = element.closest<HTMLElement>(".global-project-heading[data-project-id]");
-  if (project) return { kind: "project", environment: project.dataset.environment!, id: project.dataset.projectId! };
+  if (project)
+    return {
+      kind: "project",
+      environment: project.dataset.environment!,
+      id: project.dataset.projectId!,
+    };
   const thread = element.closest<HTMLElement>(".thread-entry");
-  if (thread) return { kind: "thread", environment: thread.dataset.environment!, id: thread.dataset.threadId! };
+  if (thread)
+    return {
+      kind: "thread",
+      environment: thread.dataset.environment!,
+      id: thread.dataset.threadId!,
+    };
   return undefined;
 }
 
-export function useRowPicking({ viewport, list, resetKey }: {
+export function useRowPicking({
+  viewport,
+  list,
+  resetKey,
+}: {
   viewport: RefObject<HTMLElement | null>;
   list: RefObject<HTMLElement | null>;
   resetKey: string;
@@ -46,7 +68,8 @@ export function useRowPicking({ viewport, list, resetKey }: {
         clickedInList = false;
         return;
       }
-      if (clickedInList && viewport.current!.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+      if (clickedInList && viewport.current!.contains(document.activeElement))
+        (document.activeElement as HTMLElement).blur();
     };
     document.addEventListener("pointerdown", press, true);
     document.addEventListener("keydown", key, true);
@@ -100,7 +123,11 @@ export function useRowPicking({ viewport, list, resetKey }: {
       },
       step: (pointer) => {
         const distance = autoscrollDistance(pointer.y, scroll.getBoundingClientRect());
-        if (distance) scroll.scrollTop += Math.max(-AUTOSCROLL_MAX, Math.min(AUTOSCROLL_MAX, distance * AUTOSCROLL_RATE));
+        if (distance)
+          scroll.scrollTop += Math.max(
+            -AUTOSCROLL_MAX,
+            Math.min(AUTOSCROLL_MAX, distance * AUTOSCROLL_RATE),
+          );
         const bounds = listElement.getBoundingClientRect();
         const y = pointer.y - bounds.top;
         const [from, to] = [Math.min(lastY, y), Math.max(lastY, y)];

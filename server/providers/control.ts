@@ -47,7 +47,9 @@ export function providerControl(
     const timer = setTimeout(
       () =>
         finish(
-          new Error(`${provider} did not return ${method} within ${CONTROL_TIMEOUT_MS / 1000} seconds.`),
+          new Error(
+            `${provider} did not return ${method} within ${CONTROL_TIMEOUT_MS / 1000} seconds.`,
+          ),
         ),
       CONTROL_TIMEOUT_MS,
     );
@@ -56,39 +58,37 @@ export function providerControl(
     };
     child.on("error", finish);
     child.stdin.on("error", finish);
-    child.on("exit", () =>
-      finish(new Error(`${provider} closed before returning ${method}.`)),
+    child.on("exit", () => finish(new Error(`${provider} closed before returning ${method}.`)));
+    onJson(
+      child.stdout,
+      (raw) => {
+        if (finished) return;
+        const message = raw as Record<string, any>;
+        if (provider === "codex") {
+          if (message.error)
+            return finish(new Error(message.error.message || "Provider request failed"));
+          if (message.id === 1) {
+            write({ method: "initialized" });
+            write({ id: 2, method, params });
+          } else if (message.id === 2) finish(undefined, message.result);
+        } else if (message.type === "control_response") {
+          const response = message.response;
+          if (response?.subtype !== "success")
+            return finish(new Error(response?.error || "Provider request failed"));
+          if (response.request_id === "init" && method === "initialize")
+            finish(undefined, response.response);
+          else if (response.request_id === "init")
+            write({
+              type: "control_request",
+              request_id: "read",
+              request: { subtype: method, ...params },
+            });
+          else if (response.request_id === "read") finish(undefined, response.response);
+        }
+      },
+      undefined,
+      (error) => finish(error instanceof Error ? error : new Error(String(error))),
     );
-    onJson(child.stdout, (raw) => {
-      if (finished) return;
-      const message = raw as Record<string, any>;
-      if (provider === "codex") {
-        if (message.error)
-          return finish(
-            new Error(message.error.message || "Provider request failed"),
-          );
-        if (message.id === 1) {
-          write({ method: "initialized" });
-          write({ id: 2, method, params });
-        } else if (message.id === 2) finish(undefined, message.result);
-      } else if (message.type === "control_response") {
-        const response = message.response;
-        if (response?.subtype !== "success")
-          return finish(
-            new Error(response?.error || "Provider request failed"),
-          );
-        if (response.request_id === "init" && method === "initialize")
-          finish(undefined, response.response);
-        else if (response.request_id === "init")
-          write({
-            type: "control_request",
-            request_id: "read",
-            request: { subtype: method, ...params },
-          });
-        else if (response.request_id === "read")
-          finish(undefined, response.response);
-      }
-    }, undefined, error => finish(error instanceof Error ? error : new Error(String(error))));
     write(
       provider === "codex"
         ? {

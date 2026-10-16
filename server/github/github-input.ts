@@ -23,8 +23,7 @@ export function repositoryFromRemote(value: string): string | null {
 }
 
 export function positive(value: number): number {
-  if (!Number.isSafeInteger(value) || value < 1)
-    throw new Error("Invalid GitHub item number.");
+  if (!Number.isSafeInteger(value) || value < 1) throw new Error("Invalid GitHub item number.");
   return value;
 }
 
@@ -40,8 +39,7 @@ export function text(value: string, label: string, required = false): string {
 }
 
 export function names(value: string[]): string[] {
-  if (!Array.isArray(value) || value.length > 100)
-    throw new Error("Too many names.");
+  if (!Array.isArray(value) || value.length > 100) throw new Error("Too many names.");
   return value.map((name) => text(name, "name", true).trim());
 }
 

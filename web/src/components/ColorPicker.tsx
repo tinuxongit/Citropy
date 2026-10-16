@@ -6,7 +6,12 @@ import { isHexColor } from "../lib/custom-theme.ts";
 import { ScreenColorPicker } from "./ScreenColorPicker.tsx";
 import "../styles/color-picker.css";
 
-export function ColorPicker({ color, onCommit, className = "", id }: {
+export function ColorPicker({
+  color,
+  onCommit,
+  className = "",
+  id,
+}: {
   color: string;
   onCommit: (color: string) => void;
   className?: string;

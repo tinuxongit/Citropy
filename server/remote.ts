@@ -8,7 +8,13 @@ import { REMOTE_TOKEN_HEADER } from "../shared/remote-connection.mjs";
 export const remoteId = process.env.CITROPY_REMOTE_ID;
 const token = process.env.CITROPY_REMOTE_TOKEN;
 delete process.env.CITROPY_REMOTE_TOKEN;
-if (remoteId && (!token || token.length < 64 || (process.env.CITROPY_HOST !== "127.0.0.1" && !(process.env.CITROPY_CONTAINER === "1" && process.env.CITROPY_HOST === "0.0.0.0"))))
+if (
+  remoteId &&
+  (!token ||
+    token.length < 64 ||
+    (process.env.CITROPY_HOST !== "127.0.0.1" &&
+      !(process.env.CITROPY_CONTAINER === "1" && process.env.CITROPY_HOST === "0.0.0.0")))
+)
   throw new Error("Remote environments require authentication and a loopback listener.");
 
 export function authorizeRemote(req: IncomingMessage): boolean {
@@ -21,7 +27,13 @@ export function authorizeRemote(req: IncomingMessage): boolean {
 }
 
 export async function workspaceDirectory(input: string): Promise<string> {
-  const path = await realpath(input === "~" || !input ? homedir() : input.startsWith("~/") ? resolve(homedir(), input.slice(2)) : resolve(input));
+  const path = await realpath(
+    input === "~" || !input
+      ? homedir()
+      : input.startsWith("~/")
+        ? resolve(homedir(), input.slice(2))
+        : resolve(input),
+  );
   if (!(await stat(path)).isDirectory()) throw new Error("Choose a folder for the workspace.");
   return path;
 }

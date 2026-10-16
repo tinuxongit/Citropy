@@ -23,17 +23,12 @@ export function connectTools(threadId: string): {
   };
 }
 
-export function authorizeTools(
-  threadId: string,
-  authorization: string | undefined,
-): boolean {
+export function authorizeTools(threadId: string, authorization: string | undefined): boolean {
   const token = connections.get(threadId)?.token;
   if (!token || !authorization) return false;
   const expected = Buffer.from(`Bearer ${token}`);
   const supplied = Buffer.from(authorization);
-  return (
-    expected.length === supplied.length && timingSafeEqual(expected, supplied)
-  );
+  return expected.length === supplied.length && timingSafeEqual(expected, supplied);
 }
 
 export function touchTools(threadId: string): void {

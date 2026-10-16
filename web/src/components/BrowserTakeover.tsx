@@ -6,7 +6,9 @@ import { CollapseIcon } from "./icons/media.tsx";
 
 export function BrowserTakeover() {
   const tabId = useBrowserTakeover((state) => state.tabId);
-  const panel = useApp((state) => state.panels.find((entry) => entry.id === tabId && entry.kind === "browser"));
+  const panel = useApp((state) =>
+    state.panels.find((entry) => entry.id === tabId && entry.kind === "browser"),
+  );
   const open = Boolean(panel);
   const clearance = useComposerTabsHeight(open);
   useEffect(() => collapseBrowser, []);
@@ -20,14 +22,16 @@ export function BrowserTakeover() {
   }, [open]);
   if (!panel) return null;
   return (
-    <section
-      className="browser-takeover"
-      aria-label={panel.title}
-      style={{ bottom: clearance }}
-    >
+    <section className="browser-takeover" aria-label={panel.title} style={{ bottom: clearance }}>
       <header className="browser-takeover-head">
         <h2 className="truncate">{panel.title}</h2>
-        <button type="button" className="icon-btn" aria-label="Shrink browser" title="Shrink browser" onClick={collapseBrowser}>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Shrink browser"
+          title="Shrink browser"
+          onClick={collapseBrowser}
+        >
           <CollapseIcon size={15} />
         </button>
       </header>

@@ -9,9 +9,7 @@ function waitForExit(running: Worker) {
       running.off("exit", exited);
       void running.terminate();
       reject(
-        new Error(
-          "Citropy's server is still shutting down. The update has not been applied.",
-        ),
+        new Error("Citropy's server is still shutting down. The update has not been applied."),
       );
     }, 15000);
     const exited = () => {
@@ -23,11 +21,17 @@ function waitForExit(running: Worker) {
   });
 }
 
-export function packagedBackend(env: NodeJS.ProcessEnv, diagnose: (event: string, details?: DiagnosticDetails) => void = () => {}) {
+export function packagedBackend(
+  env: NodeJS.ProcessEnv,
+  diagnose: (event: string, details?: DiagnosticDetails) => void = () => {},
+) {
   let worker: Worker | undefined;
   const start = async () => {
     if (worker) return;
-    if (!(await portAvailable(Number(env.CITROPY_PORT || defaultPort())))) throw new Error("Another server is using Citropy's port. Close it before opening this release.");
+    if (!(await portAvailable(Number(env.CITROPY_PORT || defaultPort()))))
+      throw new Error(
+        "Another server is using Citropy's port. Close it before opening this release.",
+      );
     worker = new Worker(new URL("../server/main.ts", import.meta.url), {
       argv: ["--packaged"],
       execArgv: [],

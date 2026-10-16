@@ -19,7 +19,9 @@
   font-size: var(--text-sm);
   font-weight: 500;
 }
-.provider-grid { margin-bottom: var(--space-24); }
+.provider-grid {
+  margin-bottom: var(--space-24);
+}
 
 .providers-toolbar {
   display: flex;
@@ -115,19 +117,28 @@
 .account-body {
   display: grid;
   gap: var(--space-8);
-  padding: 0 var(--settings-inset) var(--space-12) calc(var(--settings-inset) + var(--account-avatar) + var(--space-12));
+  padding: 0 var(--settings-inset) var(--space-12)
+    calc(var(--settings-inset) + var(--account-avatar) + var(--space-12));
 }
 .account-add-button {
   width: 100%;
   color: var(--text-3);
   font-size: var(--text-sm);
   text-align: left;
-  transition: background var(--dur-instant) var(--ease-out), color var(--dur-instant) var(--ease-out);
+  transition:
+    background var(--dur-instant) var(--ease-out),
+    color var(--dur-instant) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .account-add-button:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+  .account-add-button:hover:not(:disabled) {
+    background: var(--hover);
+    color: var(--text);
+  }
 }
-.account-add-button:disabled { opacity: 0.5; cursor: default; }
+.account-add-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .account-add > input {
   min-width: 0;
   height: 32px;
@@ -138,14 +149,19 @@
   color: var(--text);
   font-size: var(--text-sm);
 }
-.account-add > input:focus { outline: none; box-shadow: var(--field-focus-ring); }
+.account-add > input:focus {
+  outline: none;
+  box-shadow: var(--field-focus-ring);
+}
 .account-add-note {
   grid-column: 2 / -1;
   color: var(--text-3);
   font-size: var(--text-xs);
   line-height: 1.6;
 }
-.account-list-error { padding: 0 var(--settings-inset); }
+.account-list-error {
+  padding: 0 var(--settings-inset);
+}
 
 .terminal-sign-in {
   display: grid;
@@ -161,7 +177,9 @@
   justify-items: start;
   gap: var(--space-8);
 }
-.browser-sign-in .feature-field { justify-self: stretch; }
+.browser-sign-in .feature-field {
+  justify-self: stretch;
+}
 
 .provider-detail-row {
   display: flex;
@@ -176,7 +194,9 @@
   min-width: 0;
   font-size: var(--text-sm);
 }
-.provider-detail-row strong { font-weight: 500; }
+.provider-detail-row strong {
+  font-weight: 500;
+}
 .provider-detail-row small {
   overflow: hidden;
   color: var(--text-3);
@@ -184,9 +204,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.provider-detail-row > .btn { flex: none; }
+.provider-detail-row > .btn {
+  flex: none;
+}
 .provider-details > .provider-maintenance-note,
-.provider-details > .provider-update-output { padding: 0 var(--settings-inset); }
+.provider-details > .provider-update-output {
+  padding: 0 var(--settings-inset);
+}
 
 .provider-maintenance-note,
 .provider-update-result {
@@ -199,14 +223,20 @@
   align-items: center;
   gap: var(--space-6);
 }
-.provider-update-result[data-status="success"] { color: var(--ok); }
-.provider-update-result[data-status="error"] { color: var(--bad); }
+.provider-update-result[data-status="success"] {
+  color: var(--ok);
+}
+.provider-update-result[data-status="error"] {
+  color: var(--bad);
+}
 .provider-update-output {
   margin-top: var(--space-10);
   color: var(--text-3);
   font-size: var(--text-xs);
 }
-.provider-update-output summary { width: fit-content; }
+.provider-update-output summary {
+  width: fit-content;
+}
 .provider-update-output code {
   display: block;
   margin: var(--space-8) 0;
@@ -245,7 +275,9 @@
   color: var(--text-2);
   font-size: var(--text-sm);
 }
-.environment-fields > .btn { justify-self: start; }
+.environment-fields > .btn {
+  justify-self: start;
+}
 .environment-field {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
@@ -263,7 +295,10 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
-.environment-field input:focus { outline: none; box-shadow: var(--field-focus-ring); }
+.environment-field input:focus {
+  outline: none;
+  box-shadow: var(--field-focus-ring);
+}
 
 @container application (max-width: 720px) {
   .account-add > .account-actions {

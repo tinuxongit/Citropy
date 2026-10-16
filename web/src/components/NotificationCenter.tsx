@@ -23,10 +23,29 @@ interface InboxTab {
 }
 
 const TABS: InboxTab[] = [
-  { id: "all", label: "All", empty: "Chat replies, updates, and finished Git or GitHub actions will appear here." },
-  { id: "chat", label: "Chats", kinds: ["chat"], empty: "Replies and questions from your conversations will appear here." },
-  { id: "code", label: "Code", kinds: ["git", "github"], empty: "Finished commits, pushes, and GitHub actions will appear here." },
-  { id: "update", label: "Updates", kinds: ["update"], empty: "New versions of Citropy and your coding tools will appear here." },
+  {
+    id: "all",
+    label: "All",
+    empty: "Chat replies, updates, and finished Git or GitHub actions will appear here.",
+  },
+  {
+    id: "chat",
+    label: "Chats",
+    kinds: ["chat"],
+    empty: "Replies and questions from your conversations will appear here.",
+  },
+  {
+    id: "code",
+    label: "Code",
+    kinds: ["git", "github"],
+    empty: "Finished commits, pushes, and GitHub actions will appear here.",
+  },
+  {
+    id: "update",
+    label: "Updates",
+    kinds: ["update"],
+    empty: "New versions of Citropy and your coding tools will appear here.",
+  },
 ];
 
 const KIND_ICONS: Record<Kind, ComponentType<{ size?: number }>> = {
@@ -51,11 +70,7 @@ function byDay(entries: AppNotification[]) {
   return [...groups];
 }
 
-export function NotificationCenter({
-  onOpen,
-}: {
-  onOpen: (target: NotificationTarget) => void;
-}) {
+export function NotificationCenter({ onOpen }: { onOpen: (target: NotificationTarget) => void }) {
   const notifications = useApp((state) => state.notifications);
   const connected = useApp((state) => state.connected);
   const [open, setOpen] = useState(false);
@@ -67,7 +82,9 @@ export function NotificationCenter({
   const tab = TABS.find((entry) => entry.id === tabId)!;
   const unread = notifications.filter((entry) => !entry.read).length;
   const tabUnread = notifications.filter((entry) => !entry.read && inTab(tab, entry));
-  const visible = notifications.filter((entry) => inTab(tab, entry) && (!unreadOnly || !entry.read));
+  const visible = notifications.filter(
+    (entry) => inTab(tab, entry) && (!unreadOnly || !entry.read),
+  );
   const close = () => {
     setOpen(false);
     trigger.current?.focus();
@@ -96,10 +113,7 @@ export function NotificationCenter({
       className="notifications-wrap"
       ref={wrap}
       onBlur={(event) => {
-        if (
-          event.relatedTarget &&
-          !event.currentTarget.contains(event.relatedTarget)
-        )
+        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget))
           setOpen(false);
       }}
     >
@@ -108,9 +122,7 @@ export function NotificationCenter({
         type="button"
         className="strip-action notification-trigger"
         title="Inbox"
-        aria-label={
-          unread ? `Inbox, ${unread} unread` : "Inbox"
-        }
+        aria-label={unread ? `Inbox, ${unread} unread` : "Inbox"}
         aria-expanded={open}
         aria-haspopup="dialog"
         data-unread={unread > 0 || undefined}
@@ -123,7 +135,13 @@ export function NotificationCenter({
           </span>
         </span>
       </button>
-      <StripPeek anchor={trigger.current} open={open} className="inbox-peek" role="dialog" aria-label="Inbox">
+      <StripPeek
+        anchor={trigger.current}
+        open={open}
+        className="inbox-peek"
+        role="dialog"
+        aria-label="Inbox"
+      >
         <header>
           <h2>Inbox</h2>
           {unread > 0 && <span className="notification-badge">{unread} new</span>}
@@ -132,14 +150,18 @@ export function NotificationCenter({
             className="notification-unread-toggle"
             aria-pressed={unreadOnly}
             onClick={() => setUnreadOnly(!unreadOnly)}
-          >Unread only</button>
+          >
+            Unread only
+          </button>
           <button
             className="icon-btn"
             type="button"
             aria-label="Mark all read"
             title="Mark all read"
             disabled={!tabUnread.length || !connected}
-            onClick={() => send({ t: "notifications.read", ids: tabUnread.map((entry) => entry.id) })}
+            onClick={() =>
+              send({ t: "notifications.read", ids: tabUnread.map((entry) => entry.id) })
+            }
           >
             <CheckCheckIcon size={16} />
           </button>
@@ -153,7 +175,11 @@ export function NotificationCenter({
             <CloseIcon size={16} />
           </button>
         </header>
-        <div className="segmented-tabs notification-tabs sliding-selection" role="tablist" aria-label="Notification types">
+        <div
+          className="segmented-tabs notification-tabs sliding-selection"
+          role="tablist"
+          aria-label="Notification types"
+        >
           <SelectionHighlight value={tabId} />
           {TABS.map((entry) => {
             const count = notifications.filter((item) => !item.read && inTab(entry, item)).length;
@@ -173,18 +199,19 @@ export function NotificationCenter({
             );
           })}
         </div>
-        <div className="notification-list scroll" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tabId}`}>
+        <div
+          className="notification-list scroll"
+          role="tabpanel"
+          id={`${id}-panel`}
+          aria-labelledby={`${id}-${tabId}`}
+        >
           {byDay(visible).map(([label, entries]) => (
             <section className="notification-day" key={label} aria-label={label}>
               <h3>{label}</h3>
               {entries.map((entry) => {
                 const Icon = entry.level === "error" ? CircleAlertIcon : KIND_ICONS[entry.kind];
                 return (
-                  <article
-                    key={entry.id}
-                    className="notification-row"
-                    data-unread={!entry.read}
-                  >
+                  <article key={entry.id} className="notification-row" data-unread={!entry.read}>
                     <span className="notification-symbol" data-level={entry.level}>
                       <Icon size={16} />
                     </span>
@@ -198,7 +225,11 @@ export function NotificationCenter({
                       }}
                     >
                       <strong>{entry.title}</strong>
-                      <span>{entry.kind === "update" ? `${entry.text} is available. Open settings to update when you're ready.` : entry.text}</span>
+                      <span>
+                        {entry.kind === "update"
+                          ? `${entry.text} is available. Open settings to update when you're ready.`
+                          : entry.text}
+                      </span>
                       <time
                         dateTime={new Date(entry.createdAt).toISOString()}
                         title={dateTime(entry.createdAt)}
@@ -213,9 +244,7 @@ export function NotificationCenter({
                         aria-label="Mark read"
                         title="Mark read"
                         disabled={!connected}
-                        onClick={() =>
-                          send({ t: "notifications.read", ids: [entry.id] })
-                        }
+                        onClick={() => send({ t: "notifications.read", ids: [entry.id] })}
                       >
                         <CheckIcon size={14} />
                       </button>
@@ -227,7 +256,9 @@ export function NotificationCenter({
           ))}
           {!visible.length && (
             <div className="notification-empty">
-              <span className="notification-empty-art"><InboxIcon size={28} /></span>
+              <span className="notification-empty-art">
+                <InboxIcon size={28} />
+              </span>
               <strong>{unreadOnly ? "All caught up" : "Nothing here yet"}</strong>
               <p>{tab.empty}</p>
             </div>
@@ -237,12 +268,12 @@ export function NotificationCenter({
           <span>Last 100 items</span>
           <button
             type="button"
-            disabled={
-              !connected || !notifications.some((entry) => entry.read)
-            }
+            disabled={!connected || !notifications.some((entry) => entry.read)}
             onClick={() => send({ t: "notifications.clear" })}
           >
-            <TrashIcon size={13} />Clear read</button>
+            <TrashIcon size={13} />
+            Clear read
+          </button>
         </footer>
       </StripPeek>
     </div>

@@ -42,12 +42,16 @@ export function useTextReveal(
       setRevealing(false);
       if (fresh && !reducedMotion) {
         entrance.current?.animation.cancel();
-        const animation = element.animate([
-          { opacity: 0, transform: "translateY(-6px)" },
-          { opacity: 1, transform: "translateY(0)" },
-        ], {
-          duration: 220, easing: "cubic-bezier(0.2, 0, 0, 1)",
-        });
+        const animation = element.animate(
+          [
+            { opacity: 0, transform: "translateY(-6px)" },
+            { opacity: 1, transform: "translateY(0)" },
+          ],
+          {
+            duration: 220,
+            easing: "cubic-bezier(0.2, 0, 0, 1)",
+          },
+        );
         entrance.current = { id, animation };
       }
       return;
@@ -62,19 +66,18 @@ export function useTextReveal(
       nodes.push({
         node,
         text: node.data,
-        ends: Array.from(
-          segmenter.segment(node.data),
-          (part) => part.index + part.segment.length,
-        ),
+        ends: Array.from(segmenter.segment(node.data), (part) => part.index + part.segment.length),
       });
     }
     if (!nodes.length) {
       started.current = false;
       return;
     }
-    const blocks = [...element.querySelectorAll<HTMLElement>(
-      "p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, figure, table, tr, hr",
-    )];
+    const blocks = [
+      ...element.querySelectorAll<HTMLElement>(
+        "p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, figure, table, tr, hr",
+      ),
+    ];
     for (const block of blocks) block.dataset.revealHidden = "";
     for (const { node } of nodes) node.data = "";
     setRevealing(true);
@@ -90,7 +93,7 @@ export function useTextReveal(
       blocks.length = 0;
     };
     const tick = (now: number) => {
-      let remaining = Math.floor((now - start) * speed / 1000) - shown;
+      let remaining = Math.floor(((now - start) * speed) / 1000) - shown;
       while (remaining > 0 && index < nodes.length) {
         const target = nodes[index]!;
         const take = Math.min(remaining, target.ends.length - count);
@@ -98,7 +101,11 @@ export function useTextReveal(
         shown += take;
         remaining -= take;
         target.node.data = target.text.slice(0, target.ends[count - 1]);
-        for (let parent = target.node.parentElement; parent && parent !== element; parent = parent.parentElement)
+        for (
+          let parent = target.node.parentElement;
+          parent && parent !== element;
+          parent = parent.parentElement
+        )
           delete parent.dataset.revealHidden;
         if (count === target.ends.length) {
           index += 1;

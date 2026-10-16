@@ -55,7 +55,14 @@ import { isNarrowViewport, useNarrowViewport } from "./lib/use-narrow-viewport.t
 import { send } from "./lib/socket.ts";
 import { useUiSounds } from "./lib/use-ui-sounds.ts";
 import { useForgivingPresses } from "./lib/use-forgiving-presses.ts";
-import { chooseWorkspace, closeTab, createChat, createThread, reopenClosedTab, showNextTab } from "./lib/actions.ts";
+import {
+  chooseWorkspace,
+  closeTab,
+  createChat,
+  createThread,
+  reopenClosedTab,
+  showNextTab,
+} from "./lib/actions.ts";
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
 import { BrowserGuests } from "./components/BrowserGuests.tsx";
@@ -67,9 +74,15 @@ const INSPECTOR_MIN_WIDTH = 260;
 const CONVERSATION_MIN_WIDTH = 360;
 
 const GitHub = lazy(() => VIEW_MODULES.github().then((module) => ({ default: module.GitHub })));
-const GitManager = lazy(() => VIEW_MODULES.git().then((module) => ({ default: module.GitManager })));
-const Settings = lazy(() => VIEW_MODULES.settings().then((module) => ({ default: module.Settings })));
-const UsageView = lazy(() => VIEW_MODULES.usage().then((module) => ({ default: module.UsageView })));
+const GitManager = lazy(() =>
+  VIEW_MODULES.git().then((module) => ({ default: module.GitManager })),
+);
+const Settings = lazy(() =>
+  VIEW_MODULES.settings().then((module) => ({ default: module.Settings })),
+);
+const UsageView = lazy(() =>
+  VIEW_MODULES.usage().then((module) => ({ default: module.UsageView })),
+);
 
 export function App() {
   const { activeId: environment } = useEnvironments();
@@ -77,16 +90,16 @@ export function App() {
   const view = useDeferredValue(requestedView);
   const setView = (activeView: typeof view) => useApp.setState({ activeView });
   const [settingsSection, setSettingsSection] = useState<string | null>(null);
-  const [sectionSidebarOpen, setSectionSidebarOpen] = useState(
-    !isNarrowViewport(),
-  );
+  const [sectionSidebarOpen, setSectionSidebarOpen] = useState(!isNarrowViewport());
   const newThreadProvider = useApp((state) => state.newThreadProvider);
   const newBotChatOpen = useApp((state) => state.newBotChatOpen);
   const sidebarOpen = useApp((state) => state.sidebarOpen);
   const narrow = useNarrowViewport();
   const stageBackground = useApp((state) => state.stageBackground);
   const inspectorOpen = useApp((state) => state.inspectorOpen);
-  const botPanelOpen = useApp((state) => state.botPanelOpen && Boolean(rosterItem(state, state.activeRosterId)));
+  const botPanelOpen = useApp(
+    (state) => state.botPanelOpen && Boolean(rosterItem(state, state.activeRosterId)),
+  );
   const panelWidths = useApp((state) => state.panelWidths);
   const uiScale = useApp((state) => state.uiScale);
   const uiTransparency = useApp((state) => state.uiTransparency);
@@ -99,15 +112,23 @@ export function App() {
   });
   const hasActiveThread = useApp((state) => Boolean(state.threads[state.activeThreadId ?? ""]));
   const newestThread = useApp((state) => {
-    if (state.activeView !== "chat" || state.activeThreadId || !state.activeProjectId) return undefined;
+    if (state.activeView !== "chat" || state.activeThreadId || !state.activeProjectId)
+      return undefined;
     return state.threadOrder.find((id) => {
       const thread = state.threads[id];
-      return thread?.projectId === state.activeProjectId &&
-        !thread.parentThreadId && !thread.archived && !thread.snoozedUntil;
+      return (
+        thread?.projectId === state.activeProjectId &&
+        !thread.parentThreadId &&
+        !thread.archived &&
+        !thread.snoozedUntil
+      );
     });
   });
   // An open chat counts as a workspace even when no project is open.
-  const hasProject = useApp((state) => state.projects.length > 0 || Boolean(state.threads[state.activeThreadId ?? ""]?.chat));
+  const hasProject = useApp(
+    (state) =>
+      state.projects.length > 0 || Boolean(state.threads[state.activeThreadId ?? ""]?.chat),
+  );
   // Code and Chat share the sidebar and the conversation layout.
   const conversationView = view === "chat" || view === "chats";
   const panelsShown = view === "chat" || (view === "chats" && hasActiveThread);
@@ -129,7 +150,9 @@ export function App() {
     right: {
       enabled: panelsShown && hasProject,
       open: panelsShown && inspectorOpen,
-      setOpen: (open) => { if (useApp.getState().inspectorOpen !== open) toggleInspector(); },
+      setOpen: (open) => {
+        if (useApp.getState().inspectorOpen !== open) toggleInspector();
+      },
     },
   });
   const openPanels = useRef({ sidebarOpen, inspectorOpen });
@@ -171,8 +194,7 @@ export function App() {
     if (next !== "chat") useApp.setState({ readingThreadId: null });
     setView(next);
     if (next === "chat" || next === "chats") {
-      if (isNarrowViewport() && useApp.getState().sidebarOpen)
-        toggleSidebar();
+      if (isNarrowViewport() && useApp.getState().sidebarOpen) toggleSidebar();
     } else {
       setSectionSidebarOpen(!isNarrowViewport());
     }
@@ -188,8 +210,7 @@ export function App() {
   const openSettings = (section = "General") => setSettingsSection(section);
 
   useEffect(() => {
-    if (githubStatus.data)
-      useApp.setState({ githubAccount: githubStatus.data.account ?? null });
+    if (githubStatus.data) useApp.setState({ githubAccount: githubStatus.data.account ?? null });
   }, [githubStatus.data]);
 
   const openNotification = (target: NotificationTarget) => {
@@ -198,7 +219,8 @@ export function App() {
     // Chats live in a workspace the project list leaves out.
     if (
       target.projectId &&
-      (state.projects.some((project) => project.id === target.projectId) || thread?.projectId === target.projectId)
+      (state.projects.some((project) => project.id === target.projectId) ||
+        thread?.projectId === target.projectId)
     ) {
       useApp.setState({ activeProjectId: target.projectId });
       environmentStorage.setItem("citropy.project", target.projectId);
@@ -252,9 +274,15 @@ export function App() {
       // Text fields and embedded terminals keep their own keys, including
       // every contenteditable form via isContentEditable.
       (target.isContentEditable ||
-        target.closest(".xterm, textarea, select, input:not([type='checkbox']):not([type='radio'])") !== null);
-    const inTerminal = (target: EventTarget | null) => target instanceof HTMLElement && target.closest(".xterm") !== null;
-    const showRosterEntry = (event: KeyboardEvent, pick: (shown: string[], current: number) => string | undefined) => {
+        target.closest(
+          ".xterm, textarea, select, input:not([type='checkbox']):not([type='radio'])",
+        ) !== null);
+    const inTerminal = (target: EventTarget | null) =>
+      target instanceof HTMLElement && target.closest(".xterm") !== null;
+    const showRosterEntry = (
+      event: KeyboardEvent,
+      pick: (shown: string[], current: number) => string | undefined,
+    ) => {
       const state = useApp.getState();
       const shown = orderedRoster(state).shown.map((entry) => entry.item.id);
       const next = pick(shown, shown.indexOf(state.activeRosterId ?? ""));
@@ -263,12 +291,22 @@ export function App() {
       selectRosterEntry(next);
     };
     const stepRoster = (event: KeyboardEvent, step: number) =>
-      showRosterEntry(event, (shown, current) => shown[(current + step + shown.length) % shown.length]);
+      showRosterEntry(
+        event,
+        (shown, current) => shown[(current + step + shown.length) % shown.length],
+      );
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const mod = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
-      if (view === "bots" && event.altKey && !mod && !event.shiftKey && (key === "arrowup" || key === "arrowdown") && !inTextEntry(event.target)) {
+      if (
+        view === "bots" &&
+        event.altKey &&
+        !mod &&
+        !event.shiftKey &&
+        (key === "arrowup" || key === "arrowdown") &&
+        !inTextEntry(event.target)
+      ) {
         stepRoster(event, key === "arrowup" ? -1 : 1);
         return;
       }
@@ -280,7 +318,10 @@ export function App() {
         if (event.repeat) return;
         if (key === ",") setSettingsSection((section) => section ?? "General");
         else chooseWorkspace();
-      } else if (view === "bots" && (event.shiftKey ? event.code === "Comma" : event.altKey && key === "b")) {
+      } else if (
+        view === "bots" &&
+        (event.shiftKey ? event.code === "Comma" : event.altKey && key === "b")
+      ) {
         event.preventDefault();
         toggleBotPanel();
       } else if (key === "b") {
@@ -295,7 +336,14 @@ export function App() {
         event.preventDefault();
         setSectionSidebarOpen(true);
         useApp.setState({ searchFocusPending: true });
-      } else if (key === "f" && !event.altKey && !event.shiftKey && !inTerminal(event.target) && (conversationView || view === "bots") && useApp.getState().activeThreadId) {
+      } else if (
+        key === "f" &&
+        !event.altKey &&
+        !event.shiftKey &&
+        !inTerminal(event.target) &&
+        (conversationView || view === "bots") &&
+        useApp.getState().activeThreadId
+      ) {
         event.preventDefault();
         openChatFind();
       } else if (key === "k" && !event.altKey && !event.shiftKey) {
@@ -308,13 +356,23 @@ export function App() {
         if (!composer || (inTextEntry(event.target) && event.target !== composer)) return;
         event.preventDefault();
         composer.focus();
-      } else if (view === "bots" && !event.altKey && !event.shiftKey && (key === "[" || key === "]")) {
+      } else if (
+        view === "bots" &&
+        !event.altKey &&
+        !event.shiftKey &&
+        (key === "[" || key === "]")
+      ) {
         event.preventDefault();
         if (key === "[") visitPreviousEntry();
         else visitNextEntry();
       } else if (view === "bots" && event.ctrlKey && key === "tab") {
         stepRoster(event, event.shiftKey ? -1 : 1);
-      } else if (view === "bots" && !event.altKey && /^[1-9]$/.test(key) && !inTextEntry(event.target)) {
+      } else if (
+        view === "bots" &&
+        !event.altKey &&
+        /^[1-9]$/.test(key) &&
+        !inTextEntry(event.target)
+      ) {
         showRosterEntry(event, (shown) => shown[Number(key) - 1]);
       } else if (key === "n" && !event.shiftKey) {
         event.preventDefault();
@@ -325,7 +383,12 @@ export function App() {
         if (view === "chats") return void createChat();
         setView("chat");
         createThread();
-      } else if (conversationView && !event.altKey && !inTerminal(event.target) && (key === "w" || key === "t" || key === "tab")) {
+      } else if (
+        conversationView &&
+        !event.altKey &&
+        !inTerminal(event.target) &&
+        (key === "w" || key === "t" || key === "tab")
+      ) {
         const activeThreadId = useApp.getState().activeThreadId;
         if (key === "w" && !event.shiftKey && activeThreadId) closeTab(activeThreadId);
         else if (key === "t" && event.shiftKey) reopenClosedTab();
@@ -343,18 +406,20 @@ export function App() {
       className="shell"
       data-inspector={inspectorOpen && panelsShown}
       data-composer={conversationShown && hasProject && hasActiveThread}
-      data-section={!conversationView && !backgroundEverywhere || undefined}
+      data-section={(!conversationView && !backgroundEverywhere) || undefined}
       data-backdrop={stageBackground !== "default" ? stageBackground : undefined}
-      style={{
-        ...Object.fromEntries(
-          Object.entries(panelWidths).map(([panel, width]) => [
-            `--${panel}-width`,
-            panelWidthValue(panel as PanelId, width, uiScale),
-          ]),
-        ),
-        "--ui-alpha": 1 - uiTransparency / 100,
-        "--popup-floor": opaquePopups ? 1 : 0.95,
-      } as CSSProperties}
+      style={
+        {
+          ...Object.fromEntries(
+            Object.entries(panelWidths).map(([panel, width]) => [
+              `--${panel}-width`,
+              panelWidthValue(panel as PanelId, width, uiScale),
+            ]),
+          ),
+          "--ui-alpha": 1 - uiTransparency / 100,
+          "--popup-floor": opaquePopups ? 1 : 0.95,
+        } as CSSProperties
+      }
     >
       <StageBackdrop />
       <NavigationStrip
@@ -374,7 +439,7 @@ export function App() {
       />
       <RemoteConnectionBanner />
       <div className="shell-body" ref={shellBody}>
-        {(
+        {
           <button
             className="sidebar-scrim"
             type="button"
@@ -384,22 +449,28 @@ export function App() {
             aria-label="Close navigation"
             onClick={toggleNavigation}
           />
+        }
+        {conversationView && (
+          <SlidingPanel open={sidebarOpen} side="left" keepMounted pauseHidden>
+            <Sidebar
+              key={view}
+              section={view === "chats" ? "chats" : "code"}
+              onConversation={() => openView(view)}
+              onView={openView}
+            />
+          </SlidingPanel>
         )}
-        {conversationView && <SlidingPanel open={sidebarOpen} side="left" keepMounted pauseHidden>
-          <Sidebar
-            key={view}
-            section={view === "chats" ? "chats" : "code"}
-            onConversation={() => openView(view)}
-            onView={openView}
-          />
-        </SlidingPanel>}
-        {view === "bots" && <SlidingPanel open={navigationOpen} side="left" keepMounted pauseHidden>
-          <BotRoster onOpen={closeSectionSidebarOnNarrow} />
-        </SlidingPanel>}
+        {view === "bots" && (
+          <SlidingPanel open={navigationOpen} side="left" keepMounted pauseHidden>
+            <BotRoster onOpen={closeSectionSidebarOnNarrow} />
+          </SlidingPanel>
+        )}
         <main className="stage" data-view={view}>
           <Suspense
             fallback={
-              <div className="pane-empty" role="status">Loading…</div>
+              <div className="pane-empty" role="status">
+                Loading…
+              </div>
             }
           >
             {view === "usage" ? (
@@ -442,26 +513,34 @@ export function App() {
             )}
           </Suspense>
         </main>
-        {hasProject && <SlidingPanel open={inspectorOpen && panelsShown} side="right" keepMounted>
-          <Inspector key={environment} visible={inspectorOpen && panelsShown} />
-        </SlidingPanel>}
-        {view === "bots" && <SlidingPanel open={botPanelOpen} side="right" keepMounted>
-          <BotPanel />
-        </SlidingPanel>}
+        {hasProject && (
+          <SlidingPanel open={inspectorOpen && panelsShown} side="right" keepMounted>
+            <Inspector key={environment} visible={inspectorOpen && panelsShown} />
+          </SlidingPanel>
+        )}
+        {view === "bots" && (
+          <SlidingPanel open={botPanelOpen} side="right" keepMounted>
+            <BotPanel />
+          </SlidingPanel>
+        )}
       </div>
-      <AnimatePresence>{newThreadProvider && (
-        <NewConversation key={`${environment}:${activeProjectId}:${newThreadProvider}`} />
-      )}</AnimatePresence>
+      <AnimatePresence>
+        {newThreadProvider && (
+          <NewConversation key={`${environment}:${activeProjectId}:${newThreadProvider}`} />
+        )}
+      </AnimatePresence>
       <AnimatePresence>{newBotChatOpen && <NewChatDialog key={environment} />}</AnimatePresence>
       <ConfirmationDialog />
       <RemoteFolderDialog />
       <LinkActions />
       <Toasts onOpen={openNotification} />
-      <AnimatePresence>{settingsSection && (
-        <Suspense key="settings" fallback={null}>
-          <Settings initialSection={settingsSection} onClose={() => setSettingsSection(null)} />
-        </Suspense>
-      )}</AnimatePresence>
+      <AnimatePresence>
+        {settingsSection && (
+          <Suspense key="settings" fallback={null}>
+            <Settings initialSection={settingsSection} onClose={() => setSettingsSection(null)} />
+          </Suspense>
+        )}
+      </AnimatePresence>
       <WhatsNew onOpenSettings={openSettings} />
       <SetupGuide />
       <DevTriggers />

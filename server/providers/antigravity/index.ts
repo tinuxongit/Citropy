@@ -14,7 +14,10 @@ export const antigravityProvider: Provider = {
   capabilities: { transport: "stdio", steer: false, compact: false, stopShell: false },
   signIn: {
     kind: "app",
-    status: async launch => ({ signedIn: await hasSignIn(antigravityProfile(launch.instanceId)), flow: signInFlow(launch) }),
+    status: async (launch) => ({
+      signedIn: await hasSignIn(antigravityProfile(launch.instanceId)),
+      flow: signInFlow(launch),
+    }),
     start: startSignIn,
     complete: completeSignIn,
     cancel: cancelSignIn,
@@ -27,5 +30,5 @@ export const antigravityProvider: Provider = {
     const installation = await antigravityInstallation();
     return { available: Boolean(installation), version: installation?.version };
   },
-  start: options => new AntigravitySession(options),
+  start: (options) => new AntigravitySession(options),
 };

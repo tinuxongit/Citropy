@@ -20,8 +20,12 @@ export interface SignInTarget {
   instanceId?: string;
 }
 
-export function signInFor(signIns: ProviderSignIn[], provider: ProviderId, instanceId?: string): ProviderSignIn | undefined {
-  return signIns.find(entry => entry.provider === provider && entry.instanceId === instanceId);
+export function signInFor(
+  signIns: ProviderSignIn[],
+  provider: ProviderId,
+  instanceId?: string,
+): ProviderSignIn | undefined {
+  return signIns.find((entry) => entry.provider === provider && entry.instanceId === instanceId);
 }
 
 export function useProviderSignIns(watching = false) {
@@ -30,7 +34,7 @@ export function useProviderSignIns(watching = false) {
   const [signIns, setSignIns] = useState<ProviderSignIn[]>([]);
   const [error, setError] = useState("");
   const [reloads, setReloads] = useState(0);
-  const reload = useCallback(() => setReloads(value => value + 1), []);
+  const reload = useCallback(() => setReloads((value) => value + 1), []);
 
   useEffect(() => {
     if (!connected) return;
@@ -38,17 +42,23 @@ export function useProviderSignIns(watching = false) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const load = async () => {
       try {
-        const value = await api<ProviderSignIn[]>("providers/sign-in", { signal: controller.signal });
+        const value = await api<ProviderSignIn[]>("providers/sign-in", {
+          signal: controller.signal,
+        });
         if (controller.signal.aborted) return;
         setSignIns(value);
         setError("");
-        if (watching || value.some(entry => isFlowActive(entry.flow))) timer = setTimeout(() => void load(), SETTINGS.pollMs);
+        if (watching || value.some((entry) => isFlowActive(entry.flow)))
+          timer = setTimeout(() => void load(), SETTINGS.pollMs);
       } catch (error) {
         if (!controller.signal.aborted) setError((error as Error).message);
       }
     };
     void load();
-    return () => { controller.abort(); clearTimeout(timer); };
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
   }, [connected, providers, watching, reloads]);
 
   return { signIns, error, reload };
@@ -59,12 +69,15 @@ export function useTerminalSignIns() {
   const signIns = useProviderSignIns(Boolean(terminal));
 
   useEffect(() => {
-    if (terminal && signInFor(signIns.signIns, terminal.provider, terminal.instanceId)?.signedIn) setTerminal(undefined);
+    if (terminal && signInFor(signIns.signIns, terminal.provider, terminal.instanceId)?.signedIn)
+      setTerminal(undefined);
   }, [signIns.signIns, terminal]);
 
   useEffect(() => {
     if (!terminal) return;
-    return () => { send({ t: "term.close", termId: signInTerminalId(terminal.provider, terminal.instanceId) }); };
+    return () => {
+      send({ t: "term.close", termId: signInTerminalId(terminal.provider, terminal.instanceId) });
+    };
   }, [terminal]);
 
   return {
@@ -72,6 +85,7 @@ export function useTerminalSignIns() {
     terminal,
     openTerminal: setTerminal,
     closeTerminal: () => setTerminal(undefined),
-    isTerminalOpen: (provider: ProviderId, instanceId?: string) => terminal?.provider === provider && terminal.instanceId === instanceId,
+    isTerminalOpen: (provider: ProviderId, instanceId?: string) =>
+      terminal?.provider === provider && terminal.instanceId === instanceId,
   };
 }

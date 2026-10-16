@@ -2,7 +2,11 @@ import { homedir } from "node:os";
 import type { WebSocket } from "ws";
 import { bus } from "./bus.ts";
 import { store } from "./store.ts";
-import { workspaceThread, type WorkspaceEvent, type WorkspaceThread } from "../shared/workspace-catalog.ts";
+import {
+  workspaceThread,
+  type WorkspaceEvent,
+  type WorkspaceThread,
+} from "../shared/workspace-catalog.ts";
 
 export function attachWorkspaceFeed(socket: WebSocket): void {
   const fingerprints = new Map<string, string>();
@@ -10,13 +14,22 @@ export function attachWorkspaceFeed(socket: WebSocket): void {
   let timer: NodeJS.Timeout | undefined;
   const fingerprint = (thread: WorkspaceThread) => JSON.stringify({ ...thread, updatedAt: 0 });
   const send = (event: WorkspaceEvent) => {
-    if (socket.bufferedAmount > 1024 * 1024) { socket.close(1013, "Workspace updates fell behind."); return; }
+    if (socket.bufferedAmount > 1024 * 1024) {
+      socket.close(1013, "Workspace updates fell behind.");
+      return;
+    }
     if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
   };
-  const threads = store.allMeta().filter(thread => !thread.parentThreadId).map(workspaceThread);
+  const threads = store
+    .allMeta()
+    .filter((thread) => !thread.parentThreadId)
+    .map(workspaceThread);
   for (const thread of threads) fingerprints.set(thread.id, fingerprint(thread));
-  send({ t: "workspace.snapshot", snapshot: { home: homedir(), projects: store.visibleProjects(), threads } });
-  const unsubscribe = bus.subscribe(event => {
+  send({
+    t: "workspace.snapshot",
+    snapshot: { home: homedir(), projects: store.visibleProjects(), threads },
+  });
+  const unsubscribe = bus.subscribe((event) => {
     if (event.t === "thread.upsert" && !event.thread.parentThreadId) {
       const thread = workspaceThread(event.thread);
       const key = fingerprint(thread);
@@ -34,10 +47,15 @@ export function attachWorkspaceFeed(socket: WebSocket): void {
       pending.delete(event.id);
       send(event);
     } else if (event.t === "project.upsert" || event.t === "project.remove") {
-      if (event.t === "project.remove") for (const [id, thread] of pending) if (thread.projectId === event.id) pending.delete(id);
+      if (event.t === "project.remove")
+        for (const [id, thread] of pending) if (thread.projectId === event.id) pending.delete(id);
       send(event);
     }
   });
   socket.on("message", () => socket.close(1008, "Workspace updates are read-only."));
-  socket.on("close", () => { unsubscribe(); clearTimeout(timer); pending.clear(); });
+  socket.on("close", () => {
+    unsubscribe();
+    clearTimeout(timer);
+    pending.clear();
+  });
 }

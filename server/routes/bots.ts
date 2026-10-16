@@ -17,7 +17,11 @@ import type { Routes } from "./types.ts";
 async function createGroup(thread: BotThreadSettings, botIds: string[]) {
   groupStore.assertRoom(botIds);
   const id = uid("grp");
-  const created = await createRequestedThread({ ...thread, projectId: store.botsProject!.id, workspace: { kind: "current" } }, providerInfo(), { title: "Group", groupId: id, workspacePath: store.botFolder(id) });
+  const created = await createRequestedThread(
+    { ...thread, projectId: store.botsProject!.id, workspace: { kind: "current" } },
+    providerInfo(),
+    { title: "Group", groupId: id, workspacePath: store.botFolder(id) },
+  );
   try {
     return groupStore.create(id, created.id, botIds);
   } catch (error) {
@@ -42,13 +46,24 @@ export const botRoutes: Routes = {
     const thread = store.threads.get(source.threadId);
     if (!thread) throw new Error("This bot's conversation is missing.");
     const { name, title, description, notifications, connections } = source;
-    const bot = await createBot(settingsOf(thread), { name: `${name} copy`, title, description, notifications, connections, ...lookOf(source) });
+    const bot = await createBot(settingsOf(thread), {
+      name: `${name} copy`,
+      title,
+      description,
+      notifications,
+      connections,
+      ...lookOf(source),
+    });
     routines.copy(source.threadId, bot.threadId);
     send({ t: "bot.upsert", bot, requestId: event.requestId });
   },
   "bot.remove": (event) => removeThread(botStore.get(event.id).threadId),
   "group.create": async (event, send) => {
-    send({ t: "group.upsert", group: await createGroup(event.thread, event.botIds), requestId: event.requestId });
+    send({
+      t: "group.upsert",
+      group: await createGroup(event.thread, event.botIds),
+      requestId: event.requestId,
+    });
   },
   "group.update": (event, send) => {
     const group = groupStore.update(event.id, event.patch);
@@ -56,5 +71,6 @@ export const botRoutes: Routes = {
   },
   "group.remove": (event) => removeThread(groupStore.get(event.id).threadId),
   "memory.remove": (event) => botStore.removeMemory(event.botId, event.id),
-  "message.react": (event) => react(event.threadId, event.messageId, event.key, flag(event.on, "Reaction")),
+  "message.react": (event) =>
+    react(event.threadId, event.messageId, event.key, flag(event.on, "Reaction")),
 };

@@ -6,15 +6,26 @@ import { dev } from "./config.ts";
 import { minGitCommands } from "./git/mingit.ts";
 
 export const appDataSwitch = join(homedir(), ".citropy-dev", "use-app-data");
-export const usingAppData = dev && !process.env.CITROPY_DATA_DIR && existsSync(appDataSwitch) && readFileSync(appDataSwitch, "utf8").trim() === "1";
-export const dataRoot = process.env.CITROPY_DATA_DIR || join(homedir(), dev && !usingAppData ? ".citropy-dev" : ".citropy");
+export const usingAppData =
+  dev &&
+  !process.env.CITROPY_DATA_DIR &&
+  existsSync(appDataSwitch) &&
+  readFileSync(appDataSwitch, "utf8").trim() === "1";
+export const dataRoot =
+  process.env.CITROPY_DATA_DIR ||
+  join(homedir(), dev && !usingAppData ? ".citropy-dev" : ".citropy");
 export const citropySkillsRoot = join(dataRoot, "skills");
 
 const augmented = new WeakSet<object>();
 
 function wellKnownDirs(env: NodeJS.ProcessEnv, home: string, platform: NodeJS.Platform): string[] {
   const p = platform === "win32" ? win32 : posix;
-  const runtime = p.join(home, ".citropy", "runtimes", `node-v${nodeVersion}-${platform === "win32" ? "win" : platform}-${process.arch}`);
+  const runtime = p.join(
+    home,
+    ".citropy",
+    "runtimes",
+    `node-v${nodeVersion}-${platform === "win32" ? "win" : platform}-${process.arch}`,
+  );
   const dirs = [
     platform === "win32" ? runtime : p.join(runtime, "bin"),
     p.join(home, ".local", "bin"),
@@ -42,7 +53,9 @@ export function augmentPath(
   augmented.add(env);
   const separator = platform === "win32" ? ";" : ":";
   const current = (env.PATH ?? env.Path ?? "").split(separator).filter(Boolean);
-  const present = new Set(current.map((entry) => (platform === "win32" ? entry.toLowerCase() : entry)));
+  const present = new Set(
+    current.map((entry) => (platform === "win32" ? entry.toLowerCase() : entry)),
+  );
   const missing: string[] = [];
   for (const dir of wellKnownDirs(env, home, platform)) {
     const key = platform === "win32" ? dir.toLowerCase() : dir;

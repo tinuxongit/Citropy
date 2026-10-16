@@ -41,10 +41,19 @@ async function start() {
   followVisualViewport();
   await initializeEnvironment();
   applyReleaseDefaults();
-  const [{ App }, { connect, logClientError }, { useApp, applyUiScale, applyCodeFont, followWindowSize }, { hideBootScreenWhenConnected }] = await Promise.all([import("./App.tsx"), import("./lib/socket.ts"), import("./lib/store.ts"), import("./lib/boot-screen.ts")]);
+  const [
+    { App },
+    { connect, logClientError },
+    { useApp, applyUiScale, applyCodeFont, followWindowSize },
+    { hideBootScreenWhenConnected },
+  ] = await Promise.all([
+    import("./App.tsx"),
+    import("./lib/socket.ts"),
+    import("./lib/store.ts"),
+    import("./lib/boot-screen.ts"),
+  ]);
 
-  if (!window.citropyDesktop && window.loomDesktop)
-    window.citropyDesktop = window.loomDesktop;
+  if (!window.citropyDesktop && window.loomDesktop) window.citropyDesktop = window.loomDesktop;
 
   const { theme, scheme, customColor, codeFont } = useApp.getState();
   document.documentElement.dataset.theme = theme;
@@ -66,10 +75,9 @@ async function start() {
       <App />
     </StrictMode>,
   );
-
 }
 
-void start().catch(error => {
+void start().catch((error) => {
   document.getElementById("boot-screen")?.remove();
   const root = document.getElementById("root");
   if (root) root.textContent = error.message;

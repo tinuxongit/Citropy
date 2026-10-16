@@ -19,10 +19,16 @@ async function drain(): Promise<void> {
       cache.delete(key);
       cache.set(key, entry);
     } else {
-      const result = request.kind === "html"
-        ? await highlight(request.code, request.lang, request.theme)
-        : await highlightTokens(request.code, request.lang, request.theme);
-      const size = 2 * (key.length + (typeof result === "string" ? result.length : result?.reduce((total, line) => total + line.length, 0) ?? 0));
+      const result =
+        request.kind === "html"
+          ? await highlight(request.code, request.lang, request.theme)
+          : await highlightTokens(request.code, request.lang, request.theme);
+      const size =
+        2 *
+        (key.length +
+          (typeof result === "string"
+            ? result.length
+            : (result?.reduce((total, line) => total + line.length, 0) ?? 0)));
       entry = { result, bytes: size };
       if (result !== null && size <= CACHE_BYTES) {
         while (cache.size >= CACHE_ENTRIES || bytes + size > CACHE_BYTES) {

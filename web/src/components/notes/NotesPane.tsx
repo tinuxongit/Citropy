@@ -16,7 +16,13 @@ export function NotesPane({ projectId }: { projectId: string }) {
   };
 
   if (!note)
-    return <NoteList notes={notes} onOpen={(id) => open(id, false)} onCreate={(template) => open(create(template.title, template.body), true)} />;
+    return (
+      <NoteList
+        notes={notes}
+        onOpen={(id) => open(id, false)}
+        onCreate={(template) => open(create(template.title, template.body), true)}
+      />
+    );
 
   return (
     <NoteEditor
@@ -25,7 +31,9 @@ export function NotesPane({ projectId }: { projectId: string }) {
       fresh={freshId === note.id}
       onBack={() => setOpenId(null)}
       onChange={(patch) => update(note.id, patch)}
-      onDuplicate={() => open(create(note.title.trim() ? `${note.title.trim()} copy` : "", note.body), false)}
+      onDuplicate={() =>
+        open(create(note.title.trim() ? `${note.title.trim()} copy` : "", note.body), false)
+      }
       onDelete={() => {
         remove(note.id);
         setOpenId(null);

@@ -21,7 +21,12 @@ const keyCodes: Record<string, string> = {
 };
 type Modifier = NonNullable<KeyboardInputEvent["modifiers"]>[number];
 
-const modifierNames: Record<string, Modifier> = { Control: "control", Meta: "meta", Alt: "alt", Shift: "shift" };
+const modifierNames: Record<string, Modifier> = {
+  Control: "control",
+  Meta: "meta",
+  Alt: "alt",
+  Shift: "shift",
+};
 
 export function keyEvents(combo: string): KeyboardInputEvent[] {
   const keys = combo.split("+");
@@ -32,7 +37,13 @@ export function keyEvents(combo: string): KeyboardInputEvent[] {
   const modifiers = keys.map((modifier) => modifierNames[modifier]!);
   const text = modifiers.some((modifier) => modifier !== "shift")
     ? undefined
-    : key === "Enter" ? "\r" : key === "Space" ? " " : key.length === 1 ? key : undefined;
+    : key === "Enter"
+      ? "\r"
+      : key === "Space"
+        ? " "
+        : key.length === 1
+          ? key
+          : undefined;
   return [
     { type: "keyDown", keyCode, modifiers },
     ...(text ? [{ type: "char" as const, keyCode: text, modifiers }] : []),

@@ -15,7 +15,8 @@ let refreshing: Promise<void> | null = null;
 let lastRefresh = 0;
 
 function signedIn(provider: ProviderInfo["id"], instanceId?: string): boolean | undefined {
-  return signIns.find((entry) => entry.provider === provider && entry.instanceId === instanceId)?.signedIn;
+  return signIns.find((entry) => entry.provider === provider && entry.instanceId === instanceId)
+    ?.signedIn;
 }
 
 function withSettings(providers: ProviderInfo[]): ProviderInfo[] {
@@ -24,7 +25,10 @@ function withSettings(providers: ProviderInfo[]): ProviderInfo[] {
     enabled: !store.disabledProviders.has(provider.id),
     signedIn: signedIn(provider.id),
     activeInstanceId: store.activeAccounts.get(provider.id),
-    instances: provider.instances?.map((instance) => ({ ...instance, signedIn: signedIn(provider.id, instance.id) })),
+    instances: provider.instances?.map((instance) => ({
+      ...instance,
+      signedIn: signedIn(provider.id, instance.id),
+    })),
   }));
 }
 

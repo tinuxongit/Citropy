@@ -5,7 +5,17 @@ const SHEET_WIDTH = 2.25;
 
 export function LayersIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d={TOP} strokeWidth={TOP_ROUNDING} />
       <path d={SHEETS} fill="none" strokeWidth={SHEET_WIDTH} />
     </svg>

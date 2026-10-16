@@ -1,6 +1,20 @@
 import type { Project, ThreadMeta } from "./protocol.ts";
 
-export type WorkspaceThread = Pick<ThreadMeta, "id" | "projectId" | "provider" | "title" | "updatedAt" | "position" | "pinned" | "finished" | "archived" | "snoozedUntil" | "running" | "status">;
+export type WorkspaceThread = Pick<
+  ThreadMeta,
+  | "id"
+  | "projectId"
+  | "provider"
+  | "title"
+  | "updatedAt"
+  | "position"
+  | "pinned"
+  | "finished"
+  | "archived"
+  | "snoozedUntil"
+  | "running"
+  | "status"
+>;
 
 export interface WorkspaceCatalog {
   home: string;
@@ -16,6 +30,32 @@ export type WorkspaceEvent =
   | { t: "project.remove"; id: string };
 
 export function workspaceThread(thread: ThreadMeta): WorkspaceThread {
-  const { id, projectId, provider, title, updatedAt, position, pinned, finished, archived, snoozedUntil, running, status } = thread;
-  return { id, projectId, provider, title, updatedAt, position, pinned, finished, archived, snoozedUntil, running, status };
+  const {
+    id,
+    projectId,
+    provider,
+    title,
+    updatedAt,
+    position,
+    pinned,
+    finished,
+    archived,
+    snoozedUntil,
+    running,
+    status,
+  } = thread;
+  return {
+    id,
+    projectId,
+    provider,
+    title,
+    updatedAt,
+    position,
+    pinned,
+    finished,
+    archived,
+    snoozedUntil,
+    running,
+    status,
+  };
 }

@@ -12,9 +12,7 @@ import { ActionError } from "./ActionError.tsx";
 
 export function ApplicationSettings({ active }: { active: boolean }) {
   const connected = useApp((state) => state.connected);
-  const running = useApp((state) =>
-    Object.values(state.threads).some((thread) => thread.running),
-  );
+  const running = useApp((state) => Object.values(state.threads).some((thread) => thread.running));
   const [desktop, setDesktop] = useState<DesktopWindowState>();
   const { state: update } = useAppUpdate();
   const [applicationError, setApplicationError] = useState("");
@@ -26,20 +24,20 @@ export function ApplicationSettings({ active }: { active: boolean }) {
   const applyingUpdate = ["downloading", "ready", "installing"].includes(update.status);
   const development = useApp((state) => state.development);
   const restartServer = async () => {
-    if (!(await confirmAction({
-      title: "Restart the Citropy server?",
-      description: desktop
-        ? "The server and the desktop window restart and pick up code changes. Browser tabs close. Conversations are saved and terminals keep running."
-        : "The server restarts and picks up code changes. This page reconnects when it is back. Conversations are saved and terminals keep running.",
-      label: "Restart server",
-    })))
+    if (
+      !(await confirmAction({
+        title: "Restart the Citropy server?",
+        description: desktop
+          ? "The server and the desktop window restart and pick up code changes. Browser tabs close. Conversations are saved and terminals keep running."
+          : "The server restarts and picks up code changes. This page reconnects when it is back. Conversations are saved and terminals keep running.",
+        label: "Restart server",
+      }))
+    )
       return;
     setApplicationError("");
     send({ t: "server.restart" });
   };
-  const applicationAction = async (
-    action: "reload" | "restart",
-  ) => {
+  const applicationAction = async (action: "reload" | "restart") => {
     setApplicationError("");
     if (
       action === "restart" &&
@@ -85,7 +83,9 @@ export function ApplicationSettings({ active }: { active: boolean }) {
         <div className="setting-row">
           <span>
             <strong>Citropy updates</strong>
-            <small>You'll be notified when an update is available. Download and apply it when you choose.</small>
+            <small>
+              You'll be notified when an update is available. Download and apply it when you choose.
+            </small>
           </span>
           <AppUpdateControl variant="settings" />
         </div>
@@ -93,7 +93,9 @@ export function ApplicationSettings({ active }: { active: boolean }) {
           <div className="setting-row">
             <span>
               <strong>Live interface updates</strong>
-              <small>Interface changes appear as you save. Development data is stored separately.</small>
+              <small>
+                Interface changes appear as you save. Development data is stored separately.
+              </small>
             </span>
             <span>Live updates on</span>
           </div>
@@ -124,7 +126,7 @@ export function ApplicationSettings({ active }: { active: boolean }) {
             <div className="setting-row">
               <span>
                 <strong>Reload interface</strong>
-                <small>{" "}Refresh the window while conversations and terminals keep running.{" "}</small>
+                <small> Refresh the window while conversations and terminals keep running. </small>
               </span>
               <button
                 type="button"
@@ -132,7 +134,8 @@ export function ApplicationSettings({ active }: { active: boolean }) {
                 disabled={updating}
                 onClick={() => void applicationAction("reload")}
               >
-                <RefreshIcon size={14} />{" "}Reload{" "}</button>
+                <RefreshIcon size={14} /> Reload{" "}
+              </button>
             </div>
             <div className="setting-row">
               <span>
@@ -151,14 +154,15 @@ export function ApplicationSettings({ active }: { active: boolean }) {
                 disabled={!connected || updating || running || applyingUpdate}
                 onClick={() => void applicationAction("restart")}
               >
-                <RotateCcwIcon size={14} />{" "}Restart{" "}</button>
+                <RotateCcwIcon size={14} /> Restart{" "}
+              </button>
             </div>
           </>
         ) : (
           <div className="setting-row">
             <span>
               <strong>Desktop app</strong>
-              <small>{" "}Use native browsing, notifications, and window controls.{" "}</small>
+              <small> Use native browsing, notifications, and window controls. </small>
             </span>
             <button
               type="button"
@@ -166,12 +170,22 @@ export function ApplicationSettings({ active }: { active: boolean }) {
               disabled={!connected}
               onClick={() => send({ t: "desktop.open" })}
             >
-              <ExternalLinkIcon size={14} />{" "}Open desktop{" "}</button>
+              <ExternalLinkIcon size={14} /> Open desktop{" "}
+            </button>
           </div>
         )}
       </div>
-      <ActionError className="dialog-error" message={applicationError} onDismiss={() => setApplicationError("")} />
-      {development && !isRemote() && <p className="settings-note">Interface edits update live. Restart the desktop after changing its native code. Server changes require restarting the local server after active work has finished.</p>}
+      <ActionError
+        className="dialog-error"
+        message={applicationError}
+        onDismiss={() => setApplicationError("")}
+      />
+      {development && !isRemote() && (
+        <p className="settings-note">
+          Interface edits update live. Restart the desktop after changing its native code. Server
+          changes require restarting the local server after active work has finished.
+        </p>
+      )}
     </>
   );
 }

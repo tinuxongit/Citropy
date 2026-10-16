@@ -29,9 +29,7 @@ export function GitManager({
 }) {
   const projectId = useApp((state) => state.activeProjectId);
   const thread = useApp((state) => state.threads[state.activeThreadId ?? ""]);
-  const sourceProject = useApp((state) =>
-    state.projects.find((entry) => entry.id === projectId),
-  );
+  const sourceProject = useApp((state) => state.projects.find((entry) => entry.id === projectId));
   const project =
     sourceProject && thread?.projectId === projectId && thread.workspacePath
       ? { ...sourceProject, path: thread.workspacePath }
@@ -44,29 +42,20 @@ export function GitManager({
   const [filter, setFilter] = useState("");
   const [dialog, setDialog] = useState<GitDialogAction | null>(null);
   const dialogTrigger = useRef<HTMLElement | null>(null);
-  const {
-    data,
-    busy,
-    feedback,
-    setFeedback,
-    selection,
-    setSelection,
-    offset,
-    revision,
-    act,
-  } = useGitRepository({
-    projectId,
-    connected,
-    section,
-    onCommitted: () => {
-      setMessage("");
-      setDescription("");
-    },
-    onConflicts: () => {
-      setSection("Changes");
-      setFilter("");
-    },
-  });
+  const { data, busy, feedback, setFeedback, selection, setSelection, offset, revision, act } =
+    useGitRepository({
+      projectId,
+      connected,
+      section,
+      onCommitted: () => {
+        setMessage("");
+        setDescription("");
+      },
+      onConflicts: () => {
+        setSection("Changes");
+        setFilter("");
+      },
+    });
 
   const changeSection = (next: Section) => {
     onNavigate();
@@ -77,18 +66,14 @@ export function GitManager({
 
   const showDialog = (action: GitDialogAction) => {
     dialogTrigger.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setFeedback(null);
     setDialog(action);
   };
   const files = data?.status?.files ?? [];
   const conflicts = files.filter(isConflict);
   const staged = files.filter((file) => file.staged && !isConflict(file));
-  const unstaged = files.filter(
-    (file) => file.untracked || file.work !== " " || isConflict(file),
-  );
+  const unstaged = files.filter((file) => file.untracked || file.work !== " " || isConflict(file));
   const localBranches = data?.branches.filter((entry) => !entry.remote) ?? [];
   const remoteBranches = data?.branches.filter((entry) => entry.remote) ?? [];
   const currentBranch = localBranches.find((entry) => entry.current);
@@ -96,14 +81,9 @@ export function GitManager({
   const upstream = currentBranch?.upstream;
   const disabled = Boolean(busy) || !connected;
   const canCommit =
-    !disabled &&
-    message.trim() &&
-    !conflicts.length &&
-    (staged.length || data?.mergeInProgress);
+    !disabled && message.trim() && !conflicts.length && (staged.length || data?.mergeInProgress);
   const selectedFile =
-    selection?.kind === "file"
-      ? files.find((file) => file.path === selection.path)
-      : undefined;
+    selection?.kind === "file" ? files.find((file) => file.path === selection.path) : undefined;
   const selectedCommit =
     selection?.kind === "commit"
       ? data?.commits.find((commit) => commit.hash === selection.hash)
@@ -112,8 +92,7 @@ export function GitManager({
     selection?.kind === "stash"
       ? data?.stashes.find((stash) => stash.ref === selection.ref)
       : undefined;
-  const match = (text: string) =>
-    text.toLowerCase().includes(filter.toLowerCase());
+  const match = (text: string) => text.toLowerCase().includes(filter.toLowerCase());
   const counts = {
     Changes: files.length,
     History: undefined,
@@ -149,11 +128,7 @@ export function GitManager({
       fields: "remote",
     });
   const reviewChanges = (
-    <button
-      className="btn"
-      data-variant="primary"
-      onClick={() => changeSection("Changes")}
-    >
+    <button className="btn" data-variant="primary" onClick={() => changeSection("Changes")}>
       Review changes
       <ArrowRightIcon size={15} />
     </button>
@@ -162,19 +137,19 @@ export function GitManager({
   return (
     <section className="section-view" aria-label="Git manager">
       <SectionSidebar activeItem={section} open={sidebarOpen} title="Source control">
-          {tabs.map(({ name, icon }) => (
-            <SectionLink
-              key={name}
-              icon={icon}
-              label={name}
-              active={section === name}
-              onSelect={() => changeSection(name)}
-            >
-              {data?.repository && counts[name] !== undefined && (
-                <span className="section-count">{counts[name]}</span>
-              )}
-            </SectionLink>
-          ))}
+        {tabs.map(({ name, icon }) => (
+          <SectionLink
+            key={name}
+            icon={icon}
+            label={name}
+            active={section === name}
+            onSelect={() => changeSection(name)}
+          >
+            {data?.repository && counts[name] !== undefined && (
+              <span className="section-count">{counts[name]}</span>
+            )}
+          </SectionLink>
+        ))}
       </SectionSidebar>
       <div className="git-manager">
         <GitHeader
@@ -193,13 +168,16 @@ export function GitManager({
         {!connected && (
           <div className="git-alert" role="status">
             <CircleAlertIcon size={17} />
-            <p>
-              Connection lost. Your repository will be available when Citropy reconnects.
-            </p>
+            <p>Connection lost. Your repository will be available when Citropy reconnects.</p>
           </div>
         )}
         {feedback?.error && !dialog && (
-          <ActionError as="div" className="git-alert" message={feedback.text} onDismiss={() => setFeedback(null)}>
+          <ActionError
+            as="div"
+            className="git-alert"
+            message={feedback.text}
+            onDismiss={() => setFeedback(null)}
+          >
             <CircleAlertIcon size={17} />
             <div>
               <strong>{feedback.text}</strong>
@@ -225,18 +203,12 @@ export function GitManager({
             <EmptyState
               title="Choose a workspace"
               action={
-                <button
-                  className="btn"
-                  data-variant="primary"
-                  onClick={chooseWorkspace}
-                >
+                <button className="btn" data-variant="primary" onClick={chooseWorkspace}>
                   Open workspace
                 </button>
               }
             >
-              <p>
-                Open a project folder to review changes and manage its Git repository.
-              </p>
+              <p>Open a project folder to review changes and manage its Git repository.</p>
             </EmptyState>
           ) : !data ? (
             busy ? (
@@ -247,11 +219,7 @@ export function GitManager({
             ) : (
               <EmptyState title="Repository unavailable">
                 <p>Refresh to try loading this workspace again.</p>
-                <button
-                  className="btn"
-                  disabled={disabled}
-                  onClick={() => void act("overview")}
-                >
+                <button className="btn" disabled={disabled} onClick={() => void act("overview")}>
                   Try again
                 </button>
               </EmptyState>
@@ -272,7 +240,8 @@ export function GitManager({
               }
             >
               <p>
-                Git keeps a history of your files so you can review changes, save commits, and work on branches.
+                Git keeps a history of your files so you can review changes, save commits, and work
+                on branches.
               </p>
               <p>{project?.name}</p>
             </EmptyState>
@@ -373,24 +342,25 @@ export function GitManager({
           )}
         </div>
 
-        <AnimatePresence>{dialog && (
-          <GitDialog
-            action={dialog}
-            busy={Boolean(busy)}
-            connected={connected}
-            returnFocus={dialogTrigger.current}
-            error={feedback?.error ? feedback.text : ""}
-            errorDetail={feedback?.error ? feedback.detail : undefined}
-            onClose={() => {
-              setDialog(null);
-              setFeedback(null);
-            }}
-            onSubmit={async (value, remote) => {
-              if (await act(dialog.operation, value, 0, remote))
+        <AnimatePresence>
+          {dialog && (
+            <GitDialog
+              action={dialog}
+              busy={Boolean(busy)}
+              connected={connected}
+              returnFocus={dialogTrigger.current}
+              error={feedback?.error ? feedback.text : ""}
+              errorDetail={feedback?.error ? feedback.detail : undefined}
+              onClose={() => {
                 setDialog(null);
-            }}
-          />
-        )}</AnimatePresence>
+                setFeedback(null);
+              }}
+              onSubmit={async (value, remote) => {
+                if (await act(dialog.operation, value, 0, remote)) setDialog(null);
+              }}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );

@@ -9,7 +9,14 @@ const ARROW_WIDTH = 2;
 export function UpdateIcon({ size = 24 }: { size?: number }) {
   const id = useId();
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <defs>
         <mask id={`${id}-tile`}>
           <rect width="24" height="24" fill="white" />
@@ -17,7 +24,14 @@ export function UpdateIcon({ size = 24 }: { size?: number }) {
         </mask>
         <mask id={`${id}-badge`}>
           <rect width="24" height="24" fill="white" />
-          <path d={ARROW} fill="none" stroke="black" strokeWidth={ARROW_WIDTH} strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d={ARROW}
+            fill="none"
+            stroke="black"
+            strokeWidth={ARROW_WIDTH}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </mask>
       </defs>
       <rect {...APP_TILE} mask={`url(#${id}-tile)`} />

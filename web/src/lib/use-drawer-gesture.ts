@@ -27,12 +27,16 @@ function projectedDistance(velocity: number, deceleration = 0.998): number {
 function scrollsSideways(target: Element | null, stop: Element): boolean {
   for (let node = target; node && node !== stop; node = node.parentElement) {
     const overflow = getComputedStyle(node).overflowX;
-    if ((overflow === "auto" || overflow === "scroll") && node.scrollWidth > node.clientWidth) return true;
+    if ((overflow === "auto" || overflow === "scroll") && node.scrollWidth > node.clientWidth)
+      return true;
   }
   return false;
 }
 
-export function useDrawerGestures(body: RefObject<HTMLElement | null>, drawers: Record<Side, Drawer>) {
+export function useDrawerGestures(
+  body: RefObject<HTMLElement | null>,
+  drawers: Record<Side, Drawer>,
+) {
   const reducedMotion = useReducedMotion();
   const motions = useRef<Record<Side, Motion>>({
     left: { progress: motionValue(drawers.left.open ? 1 : 0) },
@@ -57,11 +61,16 @@ export function useDrawerGestures(body: RefObject<HTMLElement | null>, drawers: 
     };
     const apply = (side: Side, value: number) => {
       const { content, scrim } = parts(side);
-      content?.style.setProperty("translate", `${(side === "left" ? value - 1 : 1 - value) * 100}% 0`);
+      content?.style.setProperty(
+        "translate",
+        `${(side === "left" ? value - 1 : 1 - value) * 100}% 0`,
+      );
       content?.style.setProperty("opacity", "1");
       scrim?.style.setProperty("opacity", String(value));
     };
-    const unsubscribers = SIDES.map((side) => motions[side].progress.on("change", (value) => apply(side, value)));
+    const unsubscribers = SIDES.map((side) =>
+      motions[side].progress.on("change", (value) => apply(side, value)),
+    );
     const settle = (side: Side, target: number, commit?: () => void) => {
       const motion = motions[side];
       motion.controls?.stop();
@@ -92,13 +101,15 @@ export function useDrawerGestures(body: RefObject<HTMLElement | null>, drawers: 
     settleRef.current = settle;
 
     let origin: { x: number; y: number } | undefined;
-    let drag: { side: Side; closing: boolean; x: number; progress: number; width: number } | undefined;
+    let drag:
+      { side: Side; closing: boolean; x: number; progress: number; width: number } | undefined;
     const start = (event: TouchEvent) => {
       origin = undefined;
       const touch = event.touches[0];
       if (!narrow() || event.touches.length !== 1 || !touch) return;
       const target = event.target as Element;
-      if (target.closest('input, textarea, [contenteditable="true"], [role="menu"], dialog')) return;
+      if (target.closest('input, textarea, [contenteditable="true"], [role="menu"], dialog'))
+        return;
       if (scrollsSideways(target, element)) return;
       origin = { x: touch.clientX, y: touch.clientY };
     };
@@ -130,7 +141,12 @@ export function useDrawerGestures(body: RefObject<HTMLElement | null>, drawers: 
           dragging.current = undefined;
           return;
         }
-        drag = { ...chosen, x: touch.clientX, progress: motion.progress.get(), width: panel.offsetWidth };
+        drag = {
+          ...chosen,
+          x: touch.clientX,
+          progress: motion.progress.get(),
+          width: panel.offsetWidth,
+        };
       }
       event.preventDefault();
       const delta = (touch.clientX - drag.x) / drag.width;

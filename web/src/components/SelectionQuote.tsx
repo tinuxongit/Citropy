@@ -14,7 +14,13 @@ function selectionInside(node: HTMLElement): Selection | undefined {
   return node.contains(selection.getRangeAt(0).commonAncestorContainer) ? selection : undefined;
 }
 
-export function SelectionQuote({ viewport, threadId }: { viewport: RefObject<HTMLElement | null>; threadId: string }) {
+export function SelectionQuote({
+  viewport,
+  threadId,
+}: {
+  viewport: RefObject<HTMLElement | null>;
+  threadId: string;
+}) {
   const [spot, setSpot] = useState<Spot>();
 
   useEffect(() => {
@@ -63,7 +69,12 @@ export function SelectionQuote({ viewport, threadId }: { viewport: RefObject<HTM
       style={{ left: spot.x, top: spot.y }}
       onPointerDown={(event) => event.preventDefault()}
       onClick={() => {
-        sendToComposer(threadId, { text: "", attachments: [], quotes: [spot.text.trim()], placement: "after" });
+        sendToComposer(threadId, {
+          text: "",
+          attachments: [],
+          quotes: [spot.text.trim()],
+          placement: "after",
+        });
         document.getSelection()?.removeAllRanges();
         setSpot(undefined);
       }}

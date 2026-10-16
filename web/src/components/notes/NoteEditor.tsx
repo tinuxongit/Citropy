@@ -1,5 +1,15 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { BoldIcon, CodeIcon, HeadingTwoIcon, ItalicIcon, LinkIcon, ListIcon, ListOrderedIcon, QuoteIcon, StrikethroughIcon } from "../icons/editing.tsx";
+import {
+  BoldIcon,
+  CodeIcon,
+  HeadingTwoIcon,
+  ItalicIcon,
+  LinkIcon,
+  ListIcon,
+  ListOrderedIcon,
+  QuoteIcon,
+  StrikethroughIcon,
+} from "../icons/editing.tsx";
 import { ChevronLeftIcon } from "../icons/chevrons.tsx";
 import { CopyIcon, CopyPlusIcon, TrashIcon } from "../icons/actions.tsx";
 import { DownloadIcon } from "../icons/arrows.tsx";
@@ -13,24 +23,95 @@ import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { AttachToChatButton } from "../AttachToChatButton.tsx";
 import { noteFileName, noteMarkdown, type Note } from "./use-notes.ts";
 import {
-  continueList, insertCode, insertDivider, insertLink, toggleLinePrefix, toggleTask, wrapSelection, type TextEdit,
+  continueList,
+  insertCode,
+  insertDivider,
+  insertLink,
+  toggleLinePrefix,
+  toggleTask,
+  wrapSelection,
+  type TextEdit,
 } from "./markdown-editing.ts";
 import { copyText } from "../../lib/copy-text.ts";
 
 type Format = (value: string, start: number, end: number) => TextEdit;
 
-const FORMATS: Array<{ id: string; label: string; shortcut?: string; icon: typeof BoldIcon; format: Format }> = [
-  { id: "heading", label: "Heading", icon: HeadingTwoIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "## ") },
-  { id: "bold", label: "Bold", shortcut: "b", icon: BoldIcon, format: (value, start, end) => wrapSelection(value, start, end, "**", "bold text") },
-  { id: "italic", label: "Italic", shortcut: "i", icon: ItalicIcon, format: (value, start, end) => wrapSelection(value, start, end, "_", "italic text") },
-  { id: "strike", label: "Strikethrough", icon: StrikethroughIcon, format: (value, start, end) => wrapSelection(value, start, end, "~~", "crossed out") },
-  { id: "bullets", label: "Bulleted list", icon: ListIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "- ") },
-  { id: "numbers", label: "Numbered list", icon: ListOrderedIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, (index) => `${index + 1}. `) },
-  { id: "tasks", label: "Checklist", icon: PlanIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "- [ ] ") },
-  { id: "quote", label: "Quote", icon: QuoteIcon, format: (value, start, end) => toggleLinePrefix(value, start, end, () => "> ") },
-  { id: "code", label: "Code", icon: CodeIcon, format: (value, start, end) => insertCode(value, start, end, "code") },
-  { id: "link", label: "Link", shortcut: "k", icon: LinkIcon, format: (value, start, end) => insertLink(value, start, end, "link text") },
-  { id: "divider", label: "Divider", icon: MinusIcon, format: (value, start) => insertDivider(value, start) },
+const FORMATS: Array<{
+  id: string;
+  label: string;
+  shortcut?: string;
+  icon: typeof BoldIcon;
+  format: Format;
+}> = [
+  {
+    id: "heading",
+    label: "Heading",
+    icon: HeadingTwoIcon,
+    format: (value, start, end) => toggleLinePrefix(value, start, end, () => "## "),
+  },
+  {
+    id: "bold",
+    label: "Bold",
+    shortcut: "b",
+    icon: BoldIcon,
+    format: (value, start, end) => wrapSelection(value, start, end, "**", "bold text"),
+  },
+  {
+    id: "italic",
+    label: "Italic",
+    shortcut: "i",
+    icon: ItalicIcon,
+    format: (value, start, end) => wrapSelection(value, start, end, "_", "italic text"),
+  },
+  {
+    id: "strike",
+    label: "Strikethrough",
+    icon: StrikethroughIcon,
+    format: (value, start, end) => wrapSelection(value, start, end, "~~", "crossed out"),
+  },
+  {
+    id: "bullets",
+    label: "Bulleted list",
+    icon: ListIcon,
+    format: (value, start, end) => toggleLinePrefix(value, start, end, () => "- "),
+  },
+  {
+    id: "numbers",
+    label: "Numbered list",
+    icon: ListOrderedIcon,
+    format: (value, start, end) => toggleLinePrefix(value, start, end, (index) => `${index + 1}. `),
+  },
+  {
+    id: "tasks",
+    label: "Checklist",
+    icon: PlanIcon,
+    format: (value, start, end) => toggleLinePrefix(value, start, end, () => "- [ ] "),
+  },
+  {
+    id: "quote",
+    label: "Quote",
+    icon: QuoteIcon,
+    format: (value, start, end) => toggleLinePrefix(value, start, end, () => "> "),
+  },
+  {
+    id: "code",
+    label: "Code",
+    icon: CodeIcon,
+    format: (value, start, end) => insertCode(value, start, end, "code"),
+  },
+  {
+    id: "link",
+    label: "Link",
+    shortcut: "k",
+    icon: LinkIcon,
+    format: (value, start, end) => insertLink(value, start, end, "link text"),
+  },
+  {
+    id: "divider",
+    label: "Divider",
+    icon: MinusIcon,
+    format: (value, start) => insertDivider(value, start),
+  },
 ];
 
 function firstWritingSpot(body: string): number {
@@ -96,7 +177,8 @@ export function NoteEditor({
       }
       return;
     }
-    if (event.key !== "Enter" || event.shiftKey || event.altKey || event.nativeEvent.isComposing) return;
+    if (event.key !== "Enter" || event.shiftKey || event.altKey || event.nativeEvent.isComposing)
+      return;
     if (field.selectionStart !== field.selectionEnd) return;
     const edit = continueList(field.value, field.selectionStart);
     if (!edit) return;
@@ -105,11 +187,14 @@ export function NoteEditor({
   };
 
   const remove = async () => {
-    if (await confirmAction({
-      title: "Delete this note?",
-      description: "The note is removed from this computer. It can't be undone.",
-      label: "Delete note",
-    })) onDelete();
+    if (
+      await confirmAction({
+        title: "Delete this note?",
+        description: "The note is removed from this computer. It can't be undone.",
+        label: "Delete note",
+      })
+    )
+      onDelete();
   };
 
   const download = () => {
@@ -122,17 +207,44 @@ export function NoteEditor({
   };
 
   const moreItems: MenuItem[] = [
-    { id: "copy", label: "Copy as Markdown", icon: <CopyIcon size={16} />, onSelect: () => void copyText(noteMarkdown(note)).catch(reportError) },
-    { id: "download", label: "Download as Markdown", icon: <DownloadIcon size={16} />, onSelect: download },
-    { id: "duplicate", label: "Duplicate note", icon: <CopyPlusIcon size={16} />, onSelect: onDuplicate },
-    { id: "delete", label: "Delete note…", icon: <TrashIcon size={16} />, danger: true, onSelect: () => void remove() },
+    {
+      id: "copy",
+      label: "Copy as Markdown",
+      icon: <CopyIcon size={16} />,
+      onSelect: () => void copyText(noteMarkdown(note)).catch(reportError),
+    },
+    {
+      id: "download",
+      label: "Download as Markdown",
+      icon: <DownloadIcon size={16} />,
+      onSelect: download,
+    },
+    {
+      id: "duplicate",
+      label: "Duplicate note",
+      icon: <CopyPlusIcon size={16} />,
+      onSelect: onDuplicate,
+    },
+    {
+      id: "delete",
+      label: "Delete note…",
+      icon: <TrashIcon size={16} />,
+      danger: true,
+      onSelect: () => void remove(),
+    },
   ];
 
   const words = countWords(note.body);
   return (
     <div className="notes-pane note-editor">
       <div className="note-editor-heading">
-        <button type="button" className="icon-btn" aria-label="All notes" title="All notes" onClick={onBack}>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="All notes"
+          title="All notes"
+          onClick={onBack}
+        >
           <ChevronLeftIcon size={17} />
         </button>
         <input
@@ -153,7 +265,16 @@ export function NoteEditor({
           align="end"
           items={moreItems}
           trigger={({ id, open, toggle }) => (
-            <button id={id} type="button" className="icon-btn" aria-label="More note options" title="More note options" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
+            <button
+              id={id}
+              type="button"
+              className="icon-btn"
+              aria-label="More note options"
+              title="More note options"
+              aria-haspopup="menu"
+              aria-expanded={open}
+              onClick={toggle}
+            >
               <MoreIcon size={16} />
             </button>
           )}
@@ -162,12 +283,27 @@ export function NoteEditor({
       <div className="note-editor-controls">
         <div className="panel-segmented sliding-selection" role="group" aria-label="Note view">
           <SelectionHighlight value={mode} />
-          <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>Write</button>
-          <button type="button" aria-pressed={mode === "preview"} onClick={() => setMode("preview")}>Preview</button>
+          <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
+            Write
+          </button>
+          <button
+            type="button"
+            aria-pressed={mode === "preview"}
+            onClick={() => setMode("preview")}
+          >
+            Preview
+          </button>
         </div>
-        <div className="note-formats" role="toolbar" aria-label="Formatting" data-hidden={mode === "preview" || undefined}>
+        <div
+          className="note-formats"
+          role="toolbar"
+          aria-label="Formatting"
+          data-hidden={mode === "preview" || undefined}
+        >
           {FORMATS.map((entry) => {
-            const label = entry.shortcut ? `${entry.label} (Ctrl+${entry.shortcut.toUpperCase()})` : entry.label;
+            const label = entry.shortcut
+              ? `${entry.label} (Ctrl+${entry.shortcut.toUpperCase()})`
+              : entry.label;
             return (
               <button
                 key={entry.id}
@@ -201,18 +337,24 @@ export function NoteEditor({
           <div
             className="note-preview scroll"
             onClick={(event) => {
-              const boxes = [...event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+              const boxes = [
+                ...event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+              ];
               const index = boxes.findIndex((box) => {
                 const rect = box.getBoundingClientRect();
-                return Math.abs(event.clientX - (rect.left + rect.width / 2)) <= rect.width / 2 + 4
-                  && Math.abs(event.clientY - (rect.top + rect.height / 2)) <= rect.height / 2 + 4;
+                return (
+                  Math.abs(event.clientX - (rect.left + rect.width / 2)) <= rect.width / 2 + 4 &&
+                  Math.abs(event.clientY - (rect.top + rect.height / 2)) <= rect.height / 2 + 4
+                );
               });
               if (index !== -1) onChange({ body: toggleTask(note.body, index) });
             }}
           >
-            {note.body.trim()
-              ? <Prose text={note.body} live={false} images={false} />
-              : <p className="note-preview-empty">Nothing to preview yet.</p>}
+            {note.body.trim() ? (
+              <Prose text={note.body} live={false} images={false} />
+            ) : (
+              <p className="note-preview-empty">Nothing to preview yet.</p>
+            )}
           </div>
         )}
       </div>
@@ -220,11 +362,15 @@ export function NoteEditor({
         <span className="note-stats">
           {words === 1 ? `${words} word` : `${words} words`}
           <span aria-hidden="true"> · </span>
-          {note.body.length === 1 ? `${note.body.length} character` : `${note.body.length} characters`}
+          {note.body.length === 1
+            ? `${note.body.length} character`
+            : `${note.body.length} characters`}
         </span>
         <AttachToChatButton
           disabled={!note.body.trim() && !note.title.trim()}
-          file={async () => new File([noteMarkdown(note)], noteFileName(note), { type: "text/markdown" })}
+          file={async () =>
+            new File([noteMarkdown(note)], noteFileName(note), { type: "text/markdown" })
+          }
         />
       </div>
     </div>

@@ -1,13 +1,24 @@
 import "../../web/src/styles/tokens.css";
 import "../../web/src/styles/base.css";
 import "./screen.css";
-import { CapacitorBarcodeScanner, CapacitorBarcodeScannerTypeHint } from "@capacitor/barcode-scanner";
-import { PairingLinkError, pairingOrigin, savedServer, saveServer, serverStatus, UNPAIRED_STATUS } from "./server.ts";
+import {
+  CapacitorBarcodeScanner,
+  CapacitorBarcodeScannerTypeHint,
+} from "@capacitor/barcode-scanner";
+import {
+  PairingLinkError,
+  pairingOrigin,
+  savedServer,
+  saveServer,
+  serverStatus,
+  UNPAIRED_STATUS,
+} from "./server.ts";
 import { availableUpdate } from "./update.ts";
 
 const SCAN_CANCELLED = "OS-PLUG-BARC-0006";
 
-if (matchMedia("(prefers-color-scheme: light)").matches) document.documentElement.dataset.scheme = "light";
+if (matchMedia("(prefers-color-scheme: light)").matches)
+  document.documentElement.dataset.scheme = "light";
 
 const element = <T extends HTMLElement>(selector: string) => {
   const found = document.querySelector<T>(selector);
@@ -16,7 +27,8 @@ const element = <T extends HTMLElement>(selector: string) => {
 };
 
 function show(screen: string) {
-  for (const section of document.querySelectorAll<HTMLElement>("[data-screen]")) section.hidden = section.dataset.screen !== screen;
+  for (const section of document.querySelectorAll<HTMLElement>("[data-screen]"))
+    section.hidden = section.dataset.screen !== screen;
 }
 
 function showError(message: string) {
@@ -41,7 +53,9 @@ function pair(link: string) {
 
 async function scan() {
   try {
-    const { ScanResult } = await CapacitorBarcodeScanner.scanBarcode({ hint: CapacitorBarcodeScannerTypeHint.QR_CODE });
+    const { ScanResult } = await CapacitorBarcodeScanner.scanBarcode({
+      hint: CapacitorBarcodeScannerTypeHint.QR_CODE,
+    });
     pair(ScanResult);
   } catch (error) {
     if ((error as { code?: string }).code === SCAN_CANCELLED) return;
@@ -49,10 +63,14 @@ async function scan() {
   }
 }
 
-window.addEventListener("unhandledrejection", (event) => showError(String(event.reason?.message ?? event.reason)));
+window.addEventListener("unhandledrejection", (event) =>
+  showError(String(event.reason?.message ?? event.reason)),
+);
 
-for (const button of document.querySelectorAll("[data-action='scan']")) button.addEventListener("click", () => void scan());
-for (const button of document.querySelectorAll("[data-action='retry']")) button.addEventListener("click", () => openServer(savedServer()!));
+for (const button of document.querySelectorAll("[data-action='scan']"))
+  button.addEventListener("click", () => void scan());
+for (const button of document.querySelectorAll("[data-action='retry']"))
+  button.addEventListener("click", () => openServer(savedServer()!));
 document.querySelector<HTMLFormElement>("[data-paste]")?.addEventListener("submit", (event) => {
   event.preventDefault();
   pair(new FormData(event.currentTarget as HTMLFormElement).get("link") as string);
@@ -61,10 +79,12 @@ document.querySelector<HTMLFormElement>("[data-paste]")?.addEventListener("submi
 const server = savedServer();
 const offline = document.body.dataset.page === "offline";
 if (offline) {
-  for (const label of document.querySelectorAll("[data-server]")) label.textContent = new URL(server!).host;
+  for (const label of document.querySelectorAll("[data-server]"))
+    label.textContent = new URL(server!).host;
   const status = await serverStatus(server!);
   show(status === UNPAIRED_STATUS ? "unpaired" : "offline");
-  if (status && status >= 400 && status !== UNPAIRED_STATUS) showError(`Your computer answered with error ${status}.`);
+  if (status && status >= 400 && status !== UNPAIRED_STATUS)
+    showError(`Your computer answered with error ${status}.`);
 } else if (server && !new URLSearchParams(location.search).has("scan")) {
   const update = await availableUpdate();
   if (update) {

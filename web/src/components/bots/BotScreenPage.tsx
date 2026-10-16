@@ -18,7 +18,9 @@ export function BotScreenPage({ page }: { page: BrowserState }) {
       {takenOver && (
         <div className="bot-screen-away">
           <span>Shown in the main view</span>
-          <button type="button" className="btn" onClick={collapseBrowser}>Shrink</button>
+          <button type="button" className="btn" onClick={collapseBrowser}>
+            Shrink
+          </button>
         </div>
       )}
     </div>

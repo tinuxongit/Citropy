@@ -9,15 +9,17 @@ import { useApp } from "../lib/store.ts";
 export function ToolsPane() {
   const tools = useApp((state) => state.tools);
   const threadId = useApp((state) => state.activeThreadId);
-  const connection = useApp((state) =>
-    threadId ? state.toolConnections[threadId] : undefined,
-  );
+  const connection = useApp((state) => (threadId ? state.toolConnections[threadId] : undefined));
   const connected = useApp((state) => state.connected);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const filtered = useMemo(() => tools.filter((tool) =>
-    `${tool.name} ${tool.description}`.toLowerCase().includes(query.toLowerCase()),
-  ), [tools, query]);
+  const filtered = useMemo(
+    () =>
+      tools.filter((tool) =>
+        `${tool.name} ${tool.description}`.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [tools, query],
+  );
   const ready = connected && connection?.connected;
   return (
     <div className="tools-pane scroll">
@@ -49,15 +51,17 @@ export function ToolsPane() {
       <VirtualList className="tools-list" items={filtered} itemKey="name" estimateSize={44}>
         {(tool) => (
           <details className="tool-definition" open={expanded.has(tool.name)}>
-            <summary onClick={(event) => {
-              event.preventDefault();
-              setExpanded((previous) => {
-                const next = new Set(previous);
-                if (next.has(tool.name)) next.delete(tool.name);
-                else next.add(tool.name);
-                return next;
-              });
-            }}>
+            <summary
+              onClick={(event) => {
+                event.preventDefault();
+                setExpanded((previous) => {
+                  const next = new Set(previous);
+                  if (next.has(tool.name)) next.delete(tool.name);
+                  else next.add(tool.name);
+                  return next;
+                });
+              }}
+            >
               <span>{tool.name.replaceAll("_", " ")}</span>
               {tool.annotations?.readOnlyHint && <small>Read</small>}
             </summary>

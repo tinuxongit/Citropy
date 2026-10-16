@@ -8,12 +8,7 @@ import { readMuseUsage } from "../providers/muse/limits.ts";
 import type { SubscriptionUsage } from "@muse-code/sdk/dist/src/msp.js";
 import { costByType, costOf, isUnpriced, priceTable } from "./usage-pricing.ts";
 import type { ProviderId } from "../../shared/protocol.ts";
-import type {
-  ProviderUsage,
-  UsageDay,
-  UsageReport,
-  UsageWindow,
-} from "../../shared/features.ts";
+import type { ProviderUsage, UsageDay, UsageReport, UsageWindow } from "../../shared/features.ts";
 
 const cached = new Map<string, ProviderUsage>();
 const pending = new Map<string, Promise<ProviderUsage>>();
@@ -23,10 +18,17 @@ const MONTH_MINUTES = 30 * 24 * 60;
 const SESSION_MINUTES = 5 * 60;
 const MONTHLY_PLANS = new Set(["free", "go"]);
 const UNREPORTED_LIMITS = {
-  opencode: "OpenCode does not expose a combined remaining allowance. Check the connected model service.",
+  opencode:
+    "OpenCode does not expose a combined remaining allowance. Check the connected model service.",
   antigravity: "Citropy cannot read Antigravity's remaining allowance yet.",
 };
-const CLAUDE_WINDOW_LABELS: Record<string, string> = { five_hour: "5 hours", seven_day: "Weekly", session: "5 hours", weekly_all: "Weekly", weekly_scoped: "Weekly" };
+const CLAUDE_WINDOW_LABELS: Record<string, string> = {
+  five_hour: "5 hours",
+  seven_day: "Weekly",
+  session: "5 hours",
+  weekly_all: "Weekly",
+  weekly_scoped: "Weekly",
+};
 
 function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, value));
@@ -42,68 +44,105 @@ function codexWindows(result: Record<string, any>): UsageWindow[] {
   const limits: Array<[string, Record<string, any> | undefined]> = result.rateLimitsByLimitId
     ? Object.entries(result.rateLimitsByLimitId)
     : [["codex", result.rateLimits]];
-  return limits.flatMap(([id, bucket]) => ["primary", "secondary"].flatMap((key) => {
-    const window = bucket?.[key];
-    if (!Number.isFinite(window?.usedPercent)) return [];
-    const fallback = key === "secondary" ? WEEK_MINUTES : MONTHLY_PLANS.has(bucket?.planType) ? MONTH_MINUTES : SESSION_MINUTES;
-    const label = durationLabel(window.windowDurationMins || fallback);
-    const name = bucket?.limitName || (id === "codex" ? "" : id);
-    return [{
-      label: name ? `${name} · ${label}` : label,
-      usedPercent: clampPercent(window.usedPercent),
-      resetsAt: Number.isFinite(window.resetsAt) ? window.resetsAt * 1000 : undefined,
-    }];
-  }));
+  return limits.flatMap(([id, bucket]) =>
+    ["primary", "secondary"].flatMap((key) => {
+      const window = bucket?.[key];
+      if (!Number.isFinite(window?.usedPercent)) return [];
+      const fallback =
+        key === "secondary"
+          ? WEEK_MINUTES
+          : MONTHLY_PLANS.has(bucket?.planType)
+            ? MONTH_MINUTES
+            : SESSION_MINUTES;
+      const label = durationLabel(window.windowDurationMins || fallback);
+      const name = bucket?.limitName || (id === "codex" ? "" : id);
+      return [
+        {
+          label: name ? `${name} · ${label}` : label,
+          usedPercent: clampPercent(window.usedPercent),
+          resetsAt: Number.isFinite(window.resetsAt) ? window.resetsAt * 1000 : undefined,
+        },
+      ];
+    }),
+  );
 }
 
 function claudeWindows(limits: Record<string, any>): UsageWindow[] {
   if (Array.isArray(limits.limits))
-    return limits.limits.filter((entry: any) => Number.isFinite(entry?.percent)).map((entry: any) => {
-      const label = CLAUDE_WINDOW_LABELS[entry.kind] ?? String(entry.kind).replaceAll("_", " ");
-      const scope = entry.scope?.model?.display_name ?? entry.scope?.surface?.display_name;
-      return { label: scope ? `${label} · ${scope}` : label, usedPercent: clampPercent(entry.percent), resetsAt: Date.parse(entry.resets_at) || undefined };
-    });
+    return limits.limits
+      .filter((entry: any) => Number.isFinite(entry?.percent))
+      .map((entry: any) => {
+        const label = CLAUDE_WINDOW_LABELS[entry.kind] ?? String(entry.kind).replaceAll("_", " ");
+        const scope = entry.scope?.model?.display_name ?? entry.scope?.surface?.display_name;
+        return {
+          label: scope ? `${label} · ${scope}` : label,
+          usedPercent: clampPercent(entry.percent),
+          resetsAt: Date.parse(entry.resets_at) || undefined,
+        };
+      });
   const windows: UsageWindow[] = [];
   for (const key of ["five_hour", "seven_day"]) {
     const window = limits[key];
     if (Number.isFinite(window?.utilization))
-      windows.push({ label: CLAUDE_WINDOW_LABELS[key]!, usedPercent: clampPercent(window.utilization), resetsAt: Date.parse(window.resets_at) || undefined });
+      windows.push({
+        label: CLAUDE_WINDOW_LABELS[key]!,
+        usedPercent: clampPercent(window.utilization),
+        resetsAt: Date.parse(window.resets_at) || undefined,
+      });
   }
   for (const window of limits.model_scoped ?? [])
     if (Number.isFinite(window.utilization))
-      windows.push({ label: `Weekly · ${window.display_name}`, usedPercent: clampPercent(window.utilization), resetsAt: Date.parse(window.resets_at) || undefined });
+      windows.push({
+        label: `Weekly · ${window.display_name}`,
+        usedPercent: clampPercent(window.utilization),
+        resetsAt: Date.parse(window.resets_at) || undefined,
+      });
   return windows;
 }
 
 function museLimits(usage: SubscriptionUsage | undefined): ProviderUsage {
-  if (!usage) return { provider: "muse", windows: [], updatedAt: Date.now(), error: "Muse Code reports its allowance after its first reply. Send a message, then check again." };
+  if (!usage)
+    return {
+      provider: "muse",
+      windows: [],
+      updatedAt: Date.now(),
+      error:
+        "Muse Code reports its allowance after its first reply. Send a message, then check again.",
+    };
   return {
     provider: "muse",
     windows: [
-      { label: durationLabel(usage.window.windowDurationMins), usedPercent: clampPercent(usage.window.usedPercent), resetsAt: usage.window.resetsAtMs },
-      { label: durationLabel(WEEK_MINUTES), usedPercent: clampPercent(usage.weekly.usedPercent), resetsAt: usage.weekly.resetsAtMs },
+      {
+        label: durationLabel(usage.window.windowDurationMins),
+        usedPercent: clampPercent(usage.window.usedPercent),
+        resetsAt: usage.window.resetsAtMs,
+      },
+      {
+        label: durationLabel(WEEK_MINUTES),
+        usedPercent: clampPercent(usage.weekly.usedPercent),
+        resetsAt: usage.weekly.resetsAtMs,
+      },
     ],
     plan: usage.tier,
     updatedAt: usage.observedAtMs,
   };
 }
 
-function parseProviderLimits(
-  provider: ProviderId,
-  result: Record<string, any>,
-): ProviderUsage {
-  const windows = provider === "codex" ? codexWindows(result) : claudeWindows(result.rate_limits ?? result);
+function parseProviderLimits(provider: ProviderId, result: Record<string, any>): ProviderUsage {
+  const windows =
+    provider === "codex" ? codexWindows(result) : claudeWindows(result.rate_limits ?? result);
   return {
     provider,
     windows,
     updatedAt: Date.now(),
-    error: windows.length
-      ? undefined
-      : "This account does not report subscription limits.",
+    error: windows.length ? undefined : "This account does not report subscription limits.",
   };
 }
 
-export async function providerLimits(provider: ProviderId, instanceId?: string): Promise<ProviderUsage> {
+export async function providerLimits(
+  provider: ProviderId,
+  instanceId?: string,
+): Promise<ProviderUsage> {
   const { instance, launch } = resolveProviderAccount(provider, instanceId);
   const key = JSON.stringify([provider, instanceId, instance?.binary, instance?.environment]);
   const saved = cached.get(key);
@@ -139,7 +178,13 @@ export async function providerLimits(provider: ProviderId, instanceId?: string):
         const [savedProvider, savedInstanceId] = JSON.parse(id) as [ProviderId, string | null];
         if (!savedInstanceId) continue;
         const current = store.providerInstances.get(savedInstanceId);
-        if (!current || current.provider !== savedProvider || id !== JSON.stringify([savedProvider, savedInstanceId, current.binary, current.environment])) cached.delete(id);
+        if (
+          !current ||
+          current.provider !== savedProvider ||
+          id !==
+            JSON.stringify([savedProvider, savedInstanceId, current.binary, current.environment])
+        )
+          cached.delete(id);
       }
       cached.set(key, result);
       return result;
@@ -154,27 +199,42 @@ function mergeDays(days: UsageDay[]): UsageDay[] {
   for (const day of days) {
     const key = `${day.day}\u0000${day.provider}\u0000${day.model ?? ""}\u0000${day.speed ?? ""}`;
     const existing = merged.get(key);
-    if (!existing) { merged.set(key, { ...day }); continue; }
+    if (!existing) {
+      merged.set(key, { ...day });
+      continue;
+    }
     for (const field of USAGE_TOTAL_KEYS) existing[field] += day[field];
   }
   return [...merged.values()];
 }
 
-export async function usageReport(
-  providers: ProviderId[],
-): Promise<UsageReport> {
+export async function usageReport(providers: ProviderId[]): Promise<UsageReport> {
   const prices = await priceTable();
   const conversations = [...store.threads.values()]
     .filter((thread) => !thread.nativeAgentId)
-    .flatMap((thread) => [...(thread.transfers ?? []), { provider: thread.provider, model: thread.model, usage: thread.usage, at: thread.updatedAt }].map((session, index) => ({
-      id: index === (thread.transfers?.length ?? 0) ? thread.id : `${thread.id}:${index}`,
-      title: thread.title,
-      projectId: thread.projectId,
-      provider: session.provider,
-      model: session.model,
-      usage: { ...session.usage, costUsd: session.usage.costUsd || costOf(prices, session.provider, session.model, session.usage) },
-      updatedAt: session.at,
-    })))
+    .flatMap((thread) =>
+      [
+        ...(thread.transfers ?? []),
+        {
+          provider: thread.provider,
+          model: thread.model,
+          usage: thread.usage,
+          at: thread.updatedAt,
+        },
+      ].map((session, index) => ({
+        id: index === (thread.transfers?.length ?? 0) ? thread.id : `${thread.id}:${index}`,
+        title: thread.title,
+        projectId: thread.projectId,
+        provider: session.provider,
+        model: session.model,
+        usage: {
+          ...session.usage,
+          costUsd:
+            session.usage.costUsd || costOf(prices, session.provider, session.model, session.usage),
+        },
+        updatedAt: session.at,
+      })),
+    )
     .sort((a, b) => b.updatedAt - a.updatedAt);
   const totals = emptyUsage();
   for (const thread of conversations) {
@@ -203,5 +263,5 @@ export async function usageReport(
 }
 
 export function usageLimits(providers: ProviderId[]): Promise<ProviderUsage[]> {
-  return Promise.all(providers.map(provider => providerLimits(provider)));
+  return Promise.all(providers.map((provider) => providerLimits(provider)));
 }

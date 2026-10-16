@@ -18,8 +18,12 @@
   background: var(--canvas-deep);
   color: var(--text);
 }
-.setup-screen::backdrop { background: var(--canvas-deep); }
-.setup-dots { --dot-fade: radial-gradient(ellipse 70% 60% at 50% 0%, transparent, var(--canvas-deep) 75%); }
+.setup-screen::backdrop {
+  background: var(--canvas-deep);
+}
+.setup-dots {
+  --dot-fade: radial-gradient(ellipse 70% 60% at 50% 0%, transparent, var(--canvas-deep) 75%);
+}
 .setup-titlebar {
   position: relative;
   display: flex;
@@ -38,16 +42,31 @@
   padding: var(--space-24) var(--space-24) var(--topbar);
   text-align: center;
 }
-.setup-welcome > * { animation: setup-rise 560ms var(--ease-out) both; }
-.setup-welcome > :nth-child(2) { animation-delay: 60ms; }
-.setup-welcome > :nth-child(3) { animation-delay: 120ms; }
-.setup-welcome > :nth-child(4) { animation-delay: 180ms; }
-.setup-welcome > :nth-child(5) { animation-delay: 240ms; }
+.setup-welcome > * {
+  animation: setup-rise 560ms var(--ease-out) both;
+}
+.setup-welcome > :nth-child(2) {
+  animation-delay: 60ms;
+}
+.setup-welcome > :nth-child(3) {
+  animation-delay: 120ms;
+}
+.setup-welcome > :nth-child(4) {
+  animation-delay: 180ms;
+}
+.setup-welcome > :nth-child(5) {
+  animation-delay: 240ms;
+}
 @keyframes setup-rise {
-  from { opacity: 0; translate: 0 12px; }
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .setup-welcome > * { animation: none; }
+  .setup-welcome > * {
+    animation: none;
+  }
 }
 .setup-welcome-mark,
 .setup-brand-mark {
@@ -118,10 +137,16 @@
   padding: 0 var(--space-24);
   font-size: var(--text-body);
 }
-.setup-cta { gap: var(--space-8); }
-.setup-cta svg { transition: translate var(--dur-fast) var(--ease-out); }
+.setup-cta {
+  gap: var(--space-8);
+}
+.setup-cta svg {
+  transition: translate var(--dur-fast) var(--ease-out);
+}
 @media (hover: hover) and (pointer: fine) {
-  .setup-cta:hover svg { translate: 2px 0; }
+  .setup-cta:hover svg {
+    translate: 2px 0;
+  }
 }
 
 .setup-layout {
@@ -156,7 +181,9 @@
   padding: 0;
   list-style: none;
 }
-.setup-rail-steps li { position: relative; }
+.setup-rail-steps li {
+  position: relative;
+}
 .setup-rail-steps li:not(:last-child)::after {
   content: "";
   position: absolute;
@@ -167,7 +194,9 @@
   background: var(--line-strong);
   transition: background var(--dur-base) var(--ease-out);
 }
-.setup-rail-steps li[data-state="done"]::after { background: var(--accent-line); }
+.setup-rail-steps li[data-state="done"]::after {
+  background: var(--accent-line);
+}
 .setup-rail-steps button {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr);
@@ -178,16 +207,23 @@
   border-radius: var(--r-md);
   color: var(--text-3);
   text-align: left;
-  transition: background var(--dur-instant), color var(--dur-instant);
+  transition:
+    background var(--dur-instant),
+    color var(--dur-instant);
 }
 @media (hover: hover) and (pointer: fine) {
-  .setup-rail-steps button:hover { background: var(--hover); color: var(--text-2); }
+  .setup-rail-steps button:hover {
+    background: var(--hover);
+    color: var(--text-2);
+  }
 }
 .setup-rail-steps li[data-state="current"] button {
   background: var(--accent-soft);
   color: var(--text);
 }
-.setup-rail-steps li[data-state="done"] button { color: var(--text-2); }
+.setup-rail-steps li[data-state="done"] button {
+  color: var(--text-2);
+}
 .setup-rail-number {
   position: relative;
   z-index: 1;
@@ -201,7 +237,9 @@
   font-size: var(--text-xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+  transition:
+    background var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out);
 }
 li[data-state="current"] .setup-rail-number {
   background: var(--accent);
@@ -267,7 +305,9 @@ li[data-state="done"] .setup-rail-number {
   max-width: var(--setup-column);
   margin-inline: auto;
 }
-.setup-stage-heading { margin-bottom: var(--space-40); }
+.setup-stage-heading {
+  margin-bottom: var(--space-40);
+}
 .setup-eyebrow {
   margin: 0 0 var(--space-12);
   color: var(--accent-text);
@@ -298,14 +338,18 @@ li[data-state="done"] .setup-rail-number {
   padding: var(--space-16) max(var(--setup-gutter), (100% - var(--setup-column)) / 2);
   border-top: 1px solid var(--line);
 }
-.setup-actions > [data-variant="ghost"] { margin-right: auto; }
+.setup-actions > [data-variant="ghost"] {
+  margin-right: auto;
+}
 
 .setup-step {
   --settings-inset: 18px;
   --settings-gutter: var(--setup-gutter);
   container-type: inline-size;
 }
-.setup-step > .settings-group-heading:first-child { margin-top: 0; }
+.setup-step > .settings-group-heading:first-child {
+  margin-top: 0;
+}
 .setup-providers {
   display: grid;
   gap: var(--space-12);
@@ -326,7 +370,9 @@ li[data-state="done"] .setup-rail-number {
   min-width: 0;
 }
 @container application (max-width: 820px) {
-  .setup-screen { --setup-gutter: 24px; }
+  .setup-screen {
+    --setup-gutter: 24px;
+  }
   .setup-layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
@@ -337,14 +383,29 @@ li[data-state="done"] .setup-rail-number {
     gap: var(--space-16);
     padding: 0 var(--space-16) var(--space-12);
   }
-  .setup-brand { margin: 0; }
-  .setup-rail-steps { display: flex; gap: var(--space-4); }
+  .setup-brand {
+    margin: 0;
+  }
+  .setup-rail-steps {
+    display: flex;
+    gap: var(--space-4);
+  }
   .setup-rail-steps li::after,
   .setup-rail-text small,
   .setup-rail-note,
-  .setup-rail-steps li:not([data-state="current"]) .setup-rail-text { display: none; }
-  .setup-rail-steps button { padding: var(--space-6); }
-  .setup-rail-steps li:not([data-state="current"]) button { grid-template-columns: 24px; }
-  .setup-stage { margin: 0 var(--space-8) var(--space-8); }
-  .setup-stage-scroll { padding-top: var(--space-40); }
+  .setup-rail-steps li:not([data-state="current"]) .setup-rail-text {
+    display: none;
+  }
+  .setup-rail-steps button {
+    padding: var(--space-6);
+  }
+  .setup-rail-steps li:not([data-state="current"]) button {
+    grid-template-columns: 24px;
+  }
+  .setup-stage {
+    margin: 0 var(--space-8) var(--space-8);
+  }
+  .setup-stage-scroll {
+    padding-top: var(--space-40);
+  }
 }

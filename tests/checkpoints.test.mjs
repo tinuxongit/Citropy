@@ -2,7 +2,18 @@ import "./fixtures/isolated-data.mjs";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, readlink, truncate } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readFile,
+  readdir,
+  rm,
+  rename,
+  symlink,
+  readlink,
+  truncate,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -10,7 +21,14 @@ import { test } from "node:test";
 import { Readable } from "node:stream";
 import { dataRoot } from "../server/paths.ts";
 import { store } from "../server/store.ts";
-import { beginCheckpoint, finishCheckpoint, restoreCheckpoint, redoCheckpoint, checkpointLock, forkConversation } from "../server/checkpoints.ts";
+import {
+  beginCheckpoint,
+  finishCheckpoint,
+  restoreCheckpoint,
+  redoCheckpoint,
+  checkpointLock,
+  forkConversation,
+} from "../server/checkpoints.ts";
 import { uploadAttachment } from "../server/assets.ts";
 import { saveToolImages } from "../server/tools/tool-images.ts";
 import { providers } from "../server/providers/index.ts";
@@ -18,24 +36,44 @@ import { runtimeFor } from "../server/runtime.ts";
 import { removeThread } from "../server/routes/threads.ts";
 import { closeProject } from "../server/routes/projects.ts";
 
-const git = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
-const repository = cwd => join(dataRoot, "checkpoints", createHash("sha256").update(cwd).digest("hex").slice(0, 24), "repository");
+const git = (cwd, ...args) =>
+  execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+const repository = (cwd) =>
+  join(
+    dataRoot,
+    "checkpoints",
+    createHash("sha256").update(cwd).digest("hex").slice(0, 24),
+    "repository",
+  );
 const privateGit = (cwd, ...args) => git(dataRoot, `--git-dir=${repository(cwd)}`, ...args);
 
 async function fixture(t) {
   const cwd = await mkdtemp(join(tmpdir(), "citropy-checkpoints-"));
   git(cwd, "init", "-q");
   const project = store.openProject(cwd);
-  t.after(async () => { await closeProject(project.id); await rm(cwd, { recursive: true, force: true }); });
-  const thread = store.createThread({ projectId: project.id, provider: "claude", permissionMode: "manual", title: "Checkpoint test" });
-  const message = { id: "message", role: "user", ts: 1, parts: [{ id: "text", kind: "text", text: "Make changes" }] };
+  t.after(async () => {
+    await closeProject(project.id);
+    await rm(cwd, { recursive: true, force: true });
+  });
+  const thread = store.createThread({
+    projectId: project.id,
+    provider: "claude",
+    permissionMode: "manual",
+    title: "Checkpoint test",
+  });
+  const message = {
+    id: "message",
+    role: "user",
+    ts: 1,
+    parts: [{ id: "text", kind: "text", text: "Make changes" }],
+  };
   store.addMessage(thread.id, message);
   return { cwd, project, thread, message };
 }
 
-test("branched and restored conversations send historical attachment references to the new agent", async t => {
+test("branched and restored conversations send historical attachment references to the new agent", async (t) => {
   for (const operation of ["branch", "restore"]) {
-    await t.test(operation, async t => {
+    await t.test(operation, async (t) => {
       const { thread, message } = await fixture(t);
       const request = Readable.from([Buffer.from("Historical attachment")]);
       request.headers = {};
@@ -44,7 +82,12 @@ test("branched and restored conversations send historical attachment references 
       let continued;
       if (operation === "branch") continued = await forkConversation(thread, message.id);
       else {
-        store.addMessage(thread.id, { id: "next", role: "user", ts: 2, parts: [{ id: "next-text", kind: "text", text: "Next request" }] });
+        store.addMessage(thread.id, {
+          id: "next",
+          role: "user",
+          ts: 2,
+          parts: [{ id: "next-text", kind: "text", text: "Next request" }],
+        });
         await restoreCheckpoint(thread, "next", "conversation");
         continued = thread;
       }
@@ -53,7 +96,10 @@ test("branched and restored conversations send historical attachment references 
       else assert.equal(saved.path, attachment.path);
       assert.equal(await readFile(saved.path, "utf8"), "Historical attachment");
       const sent = [];
-      t.mock.method(providers.claude, "start", () => ({ send: prompt => sent.push(prompt), dispose() {} }));
+      t.mock.method(providers.claude, "start", () => ({
+        send: (prompt) => sent.push(prompt),
+        dispose() {},
+      }));
       await runtimeFor(continued.id).send("Continue using the attached design");
       assert.equal(sent.length, 1);
       assert.ok(sent[0].includes(JSON.stringify(saved.label)));
@@ -62,22 +108,72 @@ test("branched and restored conversations send historical attachment references 
   }
 });
 
-test("branched conversations copy only the screenshots their messages show", async t => {
+test("branched conversations copy only the screenshots their messages show", async (t) => {
   const { thread, message } = await fixture(t);
-  const [shown, embedded, later] = await saveToolImages(thread.id, [1, 2, 3].map(() => ({ mime: "image/png", data: Buffer.from("png").toString("base64") })));
+  const [shown, embedded, later] = await saveToolImages(
+    thread.id,
+    [1, 2, 3].map(() => ({ mime: "image/png", data: Buffer.from("png").toString("base64") })),
+  );
   store.replaceMessages(thread.id, [
-    { ...message, parts: [...message.parts, { id: "tool", kind: "tool", callId: "call", name: "Screenshot", shape: "generic", headline: "Screenshot", input: {}, status: "done", images: [shown] }] },
-    { id: "answer", role: "assistant", ts: 2, parts: [{ id: "answer-text", kind: "text", text: `![page](citropy-image:${embedded.id})` }] },
-    { id: "later", role: "assistant", ts: 3, parts: [{ id: "later-tool", kind: "tool", callId: "later-call", name: "Screenshot", shape: "generic", headline: "Screenshot", input: {}, status: "done", images: [later] }] },
+    {
+      ...message,
+      parts: [
+        ...message.parts,
+        {
+          id: "tool",
+          kind: "tool",
+          callId: "call",
+          name: "Screenshot",
+          shape: "generic",
+          headline: "Screenshot",
+          input: {},
+          status: "done",
+          images: [shown],
+        },
+      ],
+    },
+    {
+      id: "answer",
+      role: "assistant",
+      ts: 2,
+      parts: [{ id: "answer-text", kind: "text", text: `![page](citropy-image:${embedded.id})` }],
+    },
+    {
+      id: "later",
+      role: "assistant",
+      ts: 3,
+      parts: [
+        {
+          id: "later-tool",
+          kind: "tool",
+          callId: "later-call",
+          name: "Screenshot",
+          shape: "generic",
+          headline: "Screenshot",
+          input: {},
+          status: "done",
+          images: [later],
+        },
+      ],
+    },
   ]);
   const fork = await forkConversation(thread, "answer");
   t.after(() => removeThread(fork.id));
-  assert.deepEqual((await readdir(join(dataRoot, "tool-images", fork.id))).sort(), [`${embedded.id}.png`, `${shown.id}.png`].sort());
+  assert.deepEqual(
+    (await readdir(join(dataRoot, "tool-images", fork.id))).sort(),
+    [`${embedded.id}.png`, `${shown.id}.png`].sort(),
+  );
 });
 
-test("reused checkpoint index handles deleted and newly ignored files without changing the user index", async t => {
+test("reused checkpoint index handles deleted and newly ignored files without changing the user index", async (t) => {
   const { cwd, thread, message } = await fixture(t);
-  for (const [name, text] of Object.entries({ "tracked.txt": "before\n", "deleted.txt": "restore me\n", ".gitignore": "", "newly-ignored.txt": "private\n" })) await writeFile(join(cwd, name), text);
+  for (const [name, text] of Object.entries({
+    "tracked.txt": "before\n",
+    "deleted.txt": "restore me\n",
+    ".gitignore": "",
+    "newly-ignored.txt": "private\n",
+  }))
+    await writeFile(join(cwd, name), text);
   git(cwd, "add", "tracked.txt", "deleted.txt", ".gitignore");
   const userIndex = await readFile(join(cwd, ".git", "index"));
   if (process.platform !== "win32") await symlink("tracked.txt", join(cwd, "link"));
@@ -117,7 +213,7 @@ test("reused checkpoint index handles deleted and newly ignored files without ch
   assert.equal(thread.checkpoints.at(-1).before, after);
 });
 
-test("finished turns record which files changed and by how many lines", async t => {
+test("finished turns record which files changed and by how many lines", async (t) => {
   const { cwd, thread, message } = await fixture(t);
   await writeFile(join(cwd, "edited.txt"), "one\ntwo\nthree\n");
   await beginCheckpoint(thread, message.id);
@@ -126,15 +222,20 @@ test("finished turns record which files changed and by how many lines", async t 
   const reply = { id: "reply", role: "assistant", ts: 2, parts: [] };
   store.addMessage(thread.id, reply);
   await finishCheckpoint(thread, reply.id);
-  const changes = thread.messages.find(entry => entry.id === reply.id).parts.find(part => part.kind === "changes");
+  const changes = thread.messages
+    .find((entry) => entry.id === reply.id)
+    .parts.find((part) => part.kind === "changes");
   assert.equal(changes.checkpoint, message.id);
-  assert.deepEqual([...changes.files].sort((a, b) => a.path.localeCompare(b.path)), [
-    { path: "created.txt", added: 2, removed: 0 },
-    { path: "edited.txt", added: 2, removed: 1 },
-  ]);
+  assert.deepEqual(
+    [...changes.files].sort((a, b) => a.path.localeCompare(b.path)),
+    [
+      { path: "created.txt", added: 2, removed: 0 },
+      { path: "edited.txt", added: 2, removed: 1 },
+    ],
+  );
 });
 
-test("checkpoint capture removes every stale private-index entry when the workspace becomes empty", async t => {
+test("checkpoint capture removes every stale private-index entry when the workspace becomes empty", async (t) => {
   const { cwd, thread } = await fixture(t);
   await writeFile(join(cwd, "untracked.txt"), "temporary\n");
   await beginCheckpoint(thread, "before");
@@ -144,7 +245,7 @@ test("checkpoint capture removes every stale private-index entry when the worksp
   assert.equal(privateGit(cwd, "ls-tree", "-r", "--name-only", thread.checkpoints[0].after), "");
 });
 
-test("checkpoint stdin paths preserve literal names, Git attributes and directory transitions", async t => {
+test("checkpoint stdin paths preserve literal names, Git attributes and directory transitions", async (t) => {
   const { cwd, thread, message } = await fixture(t);
   const paths = ["-leading.txt", "space name.txt", "item[0-9].txt", "café.txt"];
   if (process.platform !== "win32") paths.push(":(glob)*.txt", "line\nfile.txt");
@@ -155,7 +256,8 @@ test("checkpoint stdin paths preserve literal names, Git attributes and director
   await beginCheckpoint(thread, message.id);
   const first = thread.checkpoints.at(-1);
   assert.equal(first.error, undefined);
-  for (const path of paths) assert.equal(privateGit(cwd, "show", `${first.before}:${path}`), "before");
+  for (const path of paths)
+    assert.equal(privateGit(cwd, "show", `${first.before}:${path}`), "before");
   await rm(join(cwd, "directory"), { recursive: true });
   await writeFile(join(cwd, "directory"), "now a file\n");
   await finishCheckpoint(thread);
@@ -166,7 +268,7 @@ test("checkpoint stdin paths preserve literal names, Git attributes and director
   assert.equal(await readFile(join(cwd, "directory", "child"), "utf8"), "child\n");
 });
 
-test("checkpoint size limits leave the reusable index intact", async t => {
+test("checkpoint size limits leave the reusable index intact", async (t) => {
   const { cwd, thread } = await fixture(t);
   await writeFile(join(cwd, "keep.txt"), "keep\n");
   await beginCheckpoint(thread, "within-budget");
@@ -187,18 +289,43 @@ test("checkpoint size limits leave the reusable index intact", async t => {
   assert.equal(privateGit(cwd, "write-tree"), before);
 });
 
-test("thread deletion removes descendant and redo refs while preserving sibling checkpoints", async t => {
+test("thread deletion removes descendant and redo refs while preserving sibling checkpoints", async (t) => {
   const { cwd, project, thread, message } = await fixture(t);
   await writeFile(join(cwd, "file.txt"), "content\n");
-  const child = store.createThread({ projectId: project.id, parentThreadId: thread.id, provider: "claude", permissionMode: "manual", title: "Child" });
-  const sibling = store.createThread({ projectId: project.id, provider: "claude", permissionMode: "manual", title: "Keep" });
-  for (const current of [thread, child, sibling]) { await beginCheckpoint(current, message.id); await finishCheckpoint(current); }
+  const child = store.createThread({
+    projectId: project.id,
+    parentThreadId: thread.id,
+    provider: "claude",
+    permissionMode: "manual",
+    title: "Child",
+  });
+  const sibling = store.createThread({
+    projectId: project.id,
+    provider: "claude",
+    permissionMode: "manual",
+    title: "Keep",
+  });
+  for (const current of [thread, child, sibling]) {
+    await beginCheckpoint(current, message.id);
+    await finishCheckpoint(current);
+  }
   await restoreCheckpoint(thread, message.id, "files");
-  const siblingRefs = privateGit(cwd, "for-each-ref", "--format=%(refname):%(objectname)", `refs/turns/${sibling.id}/`);
+  const siblingRefs = privateGit(
+    cwd,
+    "for-each-ref",
+    "--format=%(refname):%(objectname)",
+    `refs/turns/${sibling.id}/`,
+  );
   assert.ok(privateGit(cwd, "for-each-ref", "--format=%(refname)", `refs/redo/${thread.id}/`));
   await beginCheckpoint(child, "unfinished");
   let release;
-  const held = checkpointLock(cwd, () => new Promise(resolve => { release = resolve; }));
+  const held = checkpointLock(
+    cwd,
+    () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
   await delay(0);
   const finishing = finishCheckpoint(child);
   const pending = beginCheckpoint(thread, "queued-after-delete");
@@ -211,18 +338,35 @@ test("thread deletion removes descendant and redo refs while preserving sibling 
   const refs = privateGit(cwd, "for-each-ref", "--format=%(refname)");
   assert.ok(!refs.includes(thread.id));
   assert.ok(!refs.includes(child.id));
-  assert.equal(privateGit(cwd, "for-each-ref", "--format=%(refname):%(objectname)", `refs/turns/${sibling.id}/`), siblingRefs);
-  await assert.rejects(readFile(join(dataRoot, "checkpoints", `${thread.id}-redo.json`)), { code: "ENOENT" });
+  assert.equal(
+    privateGit(
+      cwd,
+      "for-each-ref",
+      "--format=%(refname):%(objectname)",
+      `refs/turns/${sibling.id}/`,
+    ),
+    siblingRefs,
+  );
+  await assert.rejects(readFile(join(dataRoot, "checkpoints", `${thread.id}-redo.json`)), {
+    code: "ENOENT",
+  });
   assert.equal(await readFile(join(cwd, "file.txt"), "utf8"), "content\n");
 });
 
-test("project closure cleans checkpoint refs for separate workspaces", async t => {
+test("project closure cleans checkpoint refs for separate workspaces", async (t) => {
   const { cwd, project, thread } = await fixture(t);
   const other = join(cwd, "separate");
   await mkdir(other);
   git(other, "init", "-q");
   await writeFile(join(other, "file.txt"), "keep\n");
-  const child = store.createThread({ projectId: project.id, parentThreadId: thread.id, workspacePath: other, provider: "claude", permissionMode: "manual", title: "Separate" });
+  const child = store.createThread({
+    projectId: project.id,
+    parentThreadId: thread.id,
+    workspacePath: other,
+    provider: "claude",
+    permissionMode: "manual",
+    title: "Separate",
+  });
   await beginCheckpoint(child, "message");
   assert.ok(child.checkpoints[0].before);
   await closeProject(project.id);
@@ -230,7 +374,7 @@ test("project closure cleans checkpoint refs for separate workspaces", async t =
   assert.equal(await readFile(join(other, "file.txt"), "utf8"), "keep\n");
 });
 
-test("checkpoint refs can be cleaned after their workspace directory moves", async t => {
+test("checkpoint refs can be cleaned after their workspace directory moves", async (t) => {
   const { cwd, thread } = await fixture(t);
   await writeFile(join(cwd, "file.txt"), "preserve\n");
   await beginCheckpoint(thread, "message");
@@ -242,7 +386,7 @@ test("checkpoint refs can be cleaned after their workspace directory moves", asy
   assert.equal(await readFile(join(moved, "file.txt"), "utf8"), "preserve\n");
 });
 
-test("checkpoint cleanup failures are reported without undoing an explicit conversation deletion", async t => {
+test("checkpoint cleanup failures are reported without undoing an explicit conversation deletion", async (t) => {
   const { cwd, thread } = await fixture(t);
   await writeFile(join(cwd, "file.txt"), "preserve\n");
   await beginCheckpoint(thread, "message");
@@ -251,6 +395,9 @@ test("checkpoint cleanup failures are reported without undoing an explicit conve
   await removeThread(thread.id);
   assert.equal(store.threads.has(thread.id), false);
   assert.equal(errors.mock.callCount(), 1);
-  assert.equal(errors.mock.calls[0].arguments[0], "Deleted conversation checkpoint cleanup failed:");
+  assert.equal(
+    errors.mock.calls[0].arguments[0],
+    "Deleted conversation checkpoint cleanup failed:",
+  );
   assert.equal(await readFile(join(cwd, "file.txt"), "utf8"), "preserve\n");
 });

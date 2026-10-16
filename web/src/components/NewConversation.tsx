@@ -28,17 +28,22 @@ export function NewConversation() {
   );
   const provider = providers.find((entry) => entry.id === providerId);
   const preferences = resolveProjectSettings(projectDefaults, project?.settings);
-  const preferred = preferences.provider === providerId ? preferences : defaults?.provider === providerId ? defaults : undefined;
+  const preferred =
+    preferences.provider === providerId
+      ? preferences
+      : defaults?.provider === providerId
+        ? defaults
+        : undefined;
   const [options, setOptions] = useState<WorkspaceOptions>();
-  const [kind, setKind] = useState<WorkspaceChoice["kind"]>(
-    preferences.workspace ?? "current",
-  );
+  const [kind, setKind] = useState<WorkspaceChoice["kind"]>(preferences.workspace ?? "current");
   const [path, setPath] = useState("");
   const [branch, setBranch] = useState("");
   const [base, setBase] = useState("HEAD");
   const [model, setModel] = useState(preferred?.model ?? "");
   const [tuning, setTuning] = useState<TuningSettings>({ effort: preferred?.effort });
-  const [providerInstanceId, setProviderInstanceId] = useState(provider ? activeAccountId(provider) ?? "" : "");
+  const [providerInstanceId, setProviderInstanceId] = useState(
+    provider ? (activeAccountId(provider) ?? "") : "",
+  );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -100,13 +105,7 @@ export function NewConversation() {
       initialFocus=".new-conversation-model"
       footer={
         <>
-          <button
-            className="btn"
-            type="button"
-            data-cancel
-            onClick={close}
-            disabled={busy}
-          >
+          <button className="btn" type="button" data-cancel onClick={close} disabled={busy}>
             Cancel
           </button>
           <button
@@ -131,7 +130,11 @@ export function NewConversation() {
         <ModelPicker
           label="Model"
           className="model-picker-trigger new-conversation-model"
-          value={{ provider: provider.id, providerInstanceId: providerInstanceId || undefined, model: currentModel?.id ?? "" }}
+          value={{
+            provider: provider.id,
+            providerInstanceId: providerInstanceId || undefined,
+            model: currentModel?.id ?? "",
+          }}
           disabled={busy}
           onChange={(choice) => {
             if (!choice) return;
@@ -140,14 +143,13 @@ export function NewConversation() {
             setModel(choice.model);
             setTuning({});
           }}
-          tune={{ settings: tuning, onChange: (patch) => setTuning((current) => ({ ...current, ...patch })) }}
+          tune={{
+            settings: tuning,
+            onChange: (patch) => setTuning((current) => ({ ...current, ...patch })),
+          }}
         />
       </div>
-      <div
-        className="workspace-choices"
-        role="radiogroup"
-        aria-label="Conversation workspace"
-      >
+      <div className="workspace-choices" role="radiogroup" aria-label="Conversation workspace">
         {WORKSPACE_CHOICES.map(({ id, label, detail, icon: Icon }) => (
           <button
             key={id}

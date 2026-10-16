@@ -112,7 +112,13 @@ export interface UsageReport {
 }
 
 export interface DiagnosticReport {
-  protocol?: Array<{ at: number; provider: ProviderId; threadId: string; type: string; issue?: string }>;
+  protocol?: Array<{
+    at: number;
+    provider: ProviderId;
+    threadId: string;
+    type: string;
+    issue?: string;
+  }>;
   sampledAt: number;
   uptime: number;
   system: {

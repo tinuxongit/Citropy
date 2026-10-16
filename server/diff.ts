@@ -95,7 +95,11 @@ function trimContext(lines: PatchLine[], radius: number): PatchLine[] {
   const keep = new Array<boolean>(lines.length).fill(false);
   lines.forEach((line, index) => {
     if (line.type === "ctx") return;
-    for (let i = Math.max(0, index - radius); i <= Math.min(lines.length - 1, index + radius); i += 1) {
+    for (
+      let i = Math.max(0, index - radius);
+      i <= Math.min(lines.length - 1, index + radius);
+      i += 1
+    ) {
       keep[i] = true;
     }
   });

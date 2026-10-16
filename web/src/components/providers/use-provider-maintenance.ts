@@ -14,7 +14,7 @@ export function useProviderMaintenance() {
   const [checking, setChecking] = useState(false);
   const [starting, setStarting] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
-  const refresh = useCallback(() => setRefreshCount(value => value + 1), []);
+  const refresh = useCallback(() => setRefreshCount((value) => value + 1), []);
   const updating = starting || maintenance.some((entry) => entry.status === "updating");
 
   useEffect(() => {
@@ -53,7 +53,11 @@ export function useProviderMaintenance() {
     setMaintenance((previous) =>
       previous.map((entry) =>
         entry.provider === provider.id
-          ? { ...entry, status: "updating", message: provider.available ? "Starting update…" : "Starting installation…" }
+          ? {
+              ...entry,
+              status: "updating",
+              message: provider.available ? "Starting update…" : "Starting installation…",
+            }
           : entry,
       ),
     );
@@ -63,9 +67,7 @@ export function useProviderMaintenance() {
         body: JSON.stringify({ provider: provider.id }),
       });
       setMaintenance((previous) =>
-        previous.map((entry) =>
-          entry.provider === provider.id ? value : entry,
-        ),
+        previous.map((entry) => (entry.provider === provider.id ? value : entry)),
       );
     } catch (error) {
       reportError(error);
@@ -79,7 +81,9 @@ export function useProviderMaintenance() {
     setStarting(true);
     try {
       const queued = await api<ProviderMaintenance[]>("providers/update-all", { method: "POST" });
-      setMaintenance(previous => previous.map(entry => queued.find(state => state.provider === entry.provider) ?? entry));
+      setMaintenance((previous) =>
+        previous.map((entry) => queued.find((state) => state.provider === entry.provider) ?? entry),
+      );
     } catch (error) {
       reportError(error);
     } finally {

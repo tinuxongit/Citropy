@@ -8,26 +8,97 @@ import { chromium } from "playwright";
 import { parseReleaseNotes } from "../../desktop/release-notes.ts";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
-const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, contextTokens: 0, contextMax: 200000, turns: 1 };
-const thread = { id: "chat", projectId: "project", provider: "opencode", model: "example", title: "Build a small world", createdAt: 1, updatedAt: 1, running: true, status: "working", permissionMode: "manual", usage };
-const project = { id: "project", name: "World builder", path: "/example", isGit: true, lastOpened: 1 };
-const provider = { id: "opencode", label: "OpenCode", available: true, enabled: true, models: [{ id: "example", label: "Example model" }] };
-const questions = [{ id: "scope", question: "How should the world start?", options: [{ label: "Single player" }, { label: "Multiplayer" }], multiple: false }];
+const usage = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  costUsd: 0,
+  contextTokens: 0,
+  contextMax: 200000,
+  turns: 1,
+};
+const thread = {
+  id: "chat",
+  projectId: "project",
+  provider: "opencode",
+  model: "example",
+  title: "Build a small world",
+  createdAt: 1,
+  updatedAt: 1,
+  running: true,
+  status: "working",
+  permissionMode: "manual",
+  usage,
+};
+const project = {
+  id: "project",
+  name: "World builder",
+  path: "/example",
+  isGit: true,
+  lastOpened: 1,
+};
+const provider = {
+  id: "opencode",
+  label: "OpenCode",
+  available: true,
+  enabled: true,
+  models: [{ id: "example", label: "Example model" }],
+};
+const questions = [
+  {
+    id: "scope",
+    question: "How should the world start?",
+    options: [{ label: "Single player" }, { label: "Multiplayer" }],
+    multiple: false,
+  },
+];
 const square = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120"><rect width="200" height="120" fill="red"/></svg>').toString("base64")}`;
 const text = (id, value) => ({ id, kind: "text", text: value, complete: true });
-const plan = { id: "plan", kind: "todo", items: [{ text: "Read the code", status: "completed" }, { text: "Draw the chart", status: "in_progress" }, { text: "Write tests", status: "pending" }] };
+const plan = {
+  id: "plan",
+  kind: "todo",
+  items: [
+    { text: "Read the code", status: "completed" },
+    { text: "Draw the chart", status: "in_progress" },
+    { text: "Write tests", status: "pending" },
+  ],
+};
 async function expect(condition) {
-  for (let attempt = 0; attempt < 50 && !(await condition()); attempt++) await new Promise((resolve) => setTimeout(resolve, 20));
+  for (let attempt = 0; attempt < 50 && !(await condition()); attempt++)
+    await new Promise((resolve) => setTimeout(resolve, 20));
   assert.ok(await condition());
 }
 async function settled(page) {
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await page.waitForFunction(() => document.getAnimations().every(animation =>
-    animation.effect.getComputedTiming().iterations === Infinity || animation.playState === "finished"));
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (animation) =>
+          animation.effect.getComputedTiming().iterations === Infinity ||
+          animation.playState === "finished",
+      ),
+  );
 }
-const history = (count) => Array.from({ length: count }, (_, index) => ({ id: `m${index}`, role: index % 2 ? "assistant" : "user", ts: index, parts: [text(`p${index}`, `Paragraph ${index}. `.repeat(20))] }));
+const history = (count) =>
+  Array.from({ length: count }, (_, index) => ({
+    id: `m${index}`,
+    role: index % 2 ? "assistant" : "user",
+    ts: index,
+    parts: [text(`p${index}`, `Paragraph ${index}. `.repeat(20))],
+  }));
 
-const server = await createServer({ configFile: false, root, cacheDir: fileURLToPath(new URL("../../node_modules/.vite-tests", import.meta.url)), plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
+const server = await createServer({
+  configFile: false,
+  root,
+  cacheDir: fileURLToPath(new URL("../../node_modules/.vite-tests", import.meta.url)),
+  plugins: [react()],
+  logLevel: "error",
+  server: { host: "127.0.0.1", port: 0, watch: null },
+});
 await server.listen();
 const url = server.resolvedUrls.local[0];
 const browser = await chromium.launch();
@@ -36,16 +107,42 @@ await warmup.goto(url, { timeout: 120_000 });
 await warmup.locator(".shell").waitFor({ timeout: 120_000 });
 await warmup.close();
 
-async function app(t, { messages, questions: asked = [], permissions = [], preferences = {}, threadPatch = {}, snapshotPatch = {}, width = 1280, beforeNavigate }) {
-  const context = await browser.newContext({ viewport: { width, height: 860 }, permissions: ["clipboard-read", "clipboard-write"] });
+async function app(
+  t,
+  {
+    messages,
+    questions: asked = [],
+    permissions = [],
+    preferences = {},
+    threadPatch = {},
+    snapshotPatch = {},
+    width = 1280,
+    beforeNavigate,
+  },
+) {
+  const context = await browser.newContext({
+    viewport: { width, height: 860 },
+    permissions: ["clipboard-read", "clipboard-write"],
+  });
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);
   const errors = [];
   const sent = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  t.after(async () => { await context.close(); assert.deepEqual(errors, []); });
+  t.after(async () => {
+    await context.close();
+    assert.deepEqual(errors, []);
+  });
   await page.addInitScript((preferences) => {
-    for (const [key, value] of Object.entries({ project: "project", thread: "chat", inspector: "0", uiScale: "100", gitPanel: "0", ...preferences })) localStorage.setItem(`citropy.${key}`, value);
+    for (const [key, value] of Object.entries({
+      project: "project",
+      thread: "chat",
+      inspector: "0",
+      uiScale: "100",
+      gitPanel: "0",
+      ...preferences,
+    }))
+      localStorage.setItem(`citropy.${key}`, value);
   }, preferences);
   let live;
   await page.routeWebSocket("**/socket*", (socket) => {
@@ -53,14 +150,49 @@ async function app(t, { messages, questions: asked = [], permissions = [], prefe
     socket.onMessage((raw) => {
       const event = JSON.parse(raw);
       sent.push(event);
-      if (event.t === "thread.load") socket.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages }));
-      if (event.t === "git.refresh") socket.send(JSON.stringify({ t: "git.status", projectId: "project", threadId: "chat", status: { branch: "main", ahead: 0, behind: 0, clean: false, files: [{ path: "a.ts", status: "M", staged: false }] } }));
+      if (event.t === "thread.load")
+        socket.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages }));
+      if (event.t === "git.refresh")
+        socket.send(
+          JSON.stringify({
+            t: "git.status",
+            projectId: "project",
+            threadId: "chat",
+            status: {
+              branch: "main",
+              ahead: 0,
+              behind: 0,
+              clean: false,
+              files: [{ path: "a.ts", status: "M", staged: false }],
+            },
+          }),
+        );
     });
-    socket.send(JSON.stringify({ t: "hello", snapshot: { projects: [project], threads: [{ ...thread, ...threadPatch }], home: "/example", providers: [provider], questions: asked, permissions, assistance: { automaticTitles: false, commitModel: null, titleModel: null, reviewModel: null }, ...snapshotPatch } }));
+    socket.send(
+      JSON.stringify({
+        t: "hello",
+        snapshot: {
+          projects: [project],
+          threads: [{ ...thread, ...threadPatch }],
+          home: "/example",
+          providers: [provider],
+          questions: asked,
+          permissions,
+          assistance: {
+            automaticTitles: false,
+            commitModel: null,
+            titleModel: null,
+            reviewModel: null,
+          },
+          ...snapshotPatch,
+        },
+      }),
+    );
   });
   await page.route("**/api/**", (route) => {
     const request = route.request();
-    if (new URL(request.url()).pathname === "/api/agents") return route.fulfill({ json: { agents: [] } });
+    if (new URL(request.url()).pathname === "/api/agents")
+      return route.fulfill({ json: { agents: [] } });
     return route.fulfill({ json: request.method() === "POST" ? { ok: true } : [] });
   });
   await beforeNavigate?.(page);
@@ -77,8 +209,13 @@ async function fixture(t, body) {
   page.setDefaultTimeout(10_000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  t.after(async () => { await context.close(); assert.deepEqual(errors, []); });
-  const html = await server.transformIndexHtml(path, `<!doctype html><html data-theme="neutral" data-scheme="dark"><body style="margin:0;background:#1e1e1e"><div id="fixture" style="position:absolute;left:40px;bottom:40px;width:320px;height:240px"></div><script type="module">
+  t.after(async () => {
+    await context.close();
+    assert.deepEqual(errors, []);
+  });
+  const html = await server.transformIndexHtml(
+    path,
+    `<!doctype html><html data-theme="neutral" data-scheme="dark"><body style="margin:0;background:#1e1e1e"><div id="fixture" style="position:absolute;left:40px;bottom:40px;width:320px;height:240px"></div><script type="module">
     import '/web/src/styles/tokens.css';
     import '/web/src/styles/base.css';
     import '/web/src/styles/app.css';
@@ -86,19 +223,26 @@ async function fixture(t, body) {
     import '/web/src/styles/settings.css';
     import '/web/src/styles/features.css';
     ${body}
-  </script></body></html>`);
+  </script></body></html>`,
+  );
   await page.route(`**${path}`, (route) => route.fulfill({ contentType: "text/html", body: html }));
   await page.goto(new URL(path, url).href);
   return page;
 }
 
 test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
-  t.after(async () => { await browser.close(); await server.close(); });
+  t.after(async () => {
+    await browser.close();
+    await server.close();
+  });
   const checks = [];
   const check = (name, run) => checks.push(t.test(name, run));
 
-  check("setup window opens on first run and from the development menu", async t => {
-    const { page, sent } = await app(t, { messages: [], snapshotPatch: { setupNeeded: true, development: true } });
+  check("setup window opens on first run and from the development menu", async (t) => {
+    const { page, sent } = await app(t, {
+      messages: [],
+      snapshotPatch: { setupNeeded: true, development: true },
+    });
     const setup = page.locator(".setup-screen");
     await setup.getByRole("heading", { name: "Welcome to Citropy" }).waitFor();
     await page.keyboard.press("Escape");
@@ -112,18 +256,31 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await setup.getByRole("button", { name: "Back", exact: true }).click();
     await setup.getByRole("button", { name: "Skip setup" }).click();
     await setup.waitFor({ state: "detached" });
-    assert.ok(sent.some(event => event.t === "setup.finish"));
+    assert.ok(sent.some((event) => event.t === "setup.finish"));
     await page.getByRole("button", { name: "Development triggers" }).click();
     await page.getByRole("menuitem", { name: /^Setup/ }).click();
     await setup.getByRole("heading", { name: "Welcome to Citropy" }).waitFor();
   });
 
-  check("conversation tabs preview, keep, and close conversations", async t => {
-    const { page, push } = await app(t, { messages: history(2), preferences: { sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
-    for (const [id, title] of [["second", "Second conversation"], ["third", "Third conversation"]])
-      push({ t: "thread.upsert", thread: { ...thread, id, title, running: false, status: "idle", updatedAt: 2 } });
+  check("conversation tabs preview, keep, and close conversations", async (t) => {
+    const { page, push } = await app(t, {
+      messages: history(2),
+      preferences: { sidebar: "1" },
+      threadPatch: { running: false, status: "idle" },
+    });
+    for (const [id, title] of [
+      ["second", "Second conversation"],
+      ["third", "Third conversation"],
+    ])
+      push({
+        t: "thread.upsert",
+        thread: { ...thread, id, title, running: false, status: "idle", updatedAt: 2 },
+      });
     const tabs = page.locator(".thread-tab");
-    const titles = () => tabs.locator(".thread-tab-open").evaluateAll(buttons => buttons.map(button => button.title));
+    const titles = () =>
+      tabs
+        .locator(".thread-tab-open")
+        .evaluateAll((buttons) => buttons.map((button) => button.title));
     await expect(async () => (await titles()).join() === "Build a small world");
     await page.locator('.thread-row[aria-label="Second conversation"]').click();
     await expect(async () => (await titles()).join() === "Build a small world,Second conversation");
@@ -131,7 +288,10 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await expect(async () => (await titles()).join() === "Build a small world,Third conversation");
     const third = tabs.filter({ hasText: "Third conversation" });
     assert.equal(await third.getAttribute("data-preview"), "true");
-    await page.screenshot({ path: `${root}/node_modules/.vite-tests/thread-tabs.png`, clip: { x: 0, y: 0, width: 1280, height: 80 } });
+    await page.screenshot({
+      path: `${root}/node_modules/.vite-tests/thread-tabs.png`,
+      clip: { x: 0, y: 0, width: 1280, height: 80 },
+    });
     await third.locator(".thread-tab-open").dblclick();
     assert.equal(await third.getAttribute("data-preview"), null);
     const from = await third.locator(".thread-tab-open").boundingBox();
@@ -139,7 +299,11 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
     await page.mouse.move(to.x + 4, to.y + to.height / 2, { steps: 8 });
-    await expect(async () => (await tabs.first().evaluate(tab => new DOMMatrix(getComputedStyle(tab).transform).m41)) > 0);
+    await expect(
+      async () =>
+        (await tabs.first().evaluate((tab) => new DOMMatrix(getComputedStyle(tab).transform).m41)) >
+        0,
+    );
     await page.mouse.up();
     await expect(async () => (await titles()).join() === "Third conversation,Build a small world");
     assert.equal(await third.getAttribute("data-active"), "true");
@@ -155,246 +319,359 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.equal(await third.getAttribute("data-active"), "true");
   });
 
-  check("sent messages show mentions as named tags", async t => {
-    const mentions = [{ name: "google", title: "Google", icon: "site", url: "https://www.google.com/" }, { name: "review", title: "review", icon: "book" }];
-    const sent = { id: "sent", role: "user", ts: 1, mentions, parts: [text("sent-text", "Check @google with @review, not @other")] };
-    const { page } = await app(t, { messages: [sent], threadPatch: { running: false, status: "idle" } });
+  check("sent messages show mentions as named tags", async (t) => {
+    const mentions = [
+      { name: "google", title: "Google", icon: "site", url: "https://www.google.com/" },
+      { name: "review", title: "review", icon: "book" },
+    ];
+    const sent = {
+      id: "sent",
+      role: "user",
+      ts: 1,
+      mentions,
+      parts: [text("sent-text", "Check @google with @review, not @other")],
+    };
+    const { page } = await app(t, {
+      messages: [sent],
+      threadPatch: { running: false, status: "idle" },
+    });
     const chips = page.locator(".turn-user .mention-chip");
     await expect(async () => (await chips.count()) === 2);
     assert.deepEqual(await chips.allTextContents(), ["Google", "review"]);
-    assert.deepEqual(await chips.evaluateAll(nodes => nodes.map(node => node.firstElementChild?.matches(".link-site-icon, svg"))), [true, true]);
+    assert.deepEqual(
+      await chips.evaluateAll((nodes) =>
+        nodes.map((node) => node.firstElementChild?.matches(".link-site-icon, svg")),
+      ),
+      [true, true],
+    );
     assert.match(await page.locator(".turn-user").innerText(), /@other/);
   });
 
-  for (const width of [900, 1280, 1600, 380]) check(`side panel transitions glide the chat in one direction at ${width}px`, async t => {
-    const { page } = await app(t, { width, messages: history(38), preferences: { inspector: "1", sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
-    await settled(page);
-    let movements = 0;
-    for (const shortcut of ["Control+j", "Control+b", "Control+b", "Control+j"]) {
-      await page.evaluate(() => {
-        const stage = document.querySelector(".stage");
-        const targets = [...document.querySelectorAll(".canvas-inner, .composer-shell")];
-        window.panelFrames = [];
-        window.panelGlides = 0;
-        if (!window.panelGlideListener) {
-          window.panelGlideListener = event => {
-            if (event.target.matches(".sliding-panel") && event.propertyName.startsWith("margin")) window.panelGlides++;
+  for (const width of [900, 1280, 1600, 380])
+    check(`side panel transitions glide the chat in one direction at ${width}px`, async (t) => {
+      const { page } = await app(t, {
+        width,
+        messages: history(38),
+        preferences: { inspector: "1", sidebar: "1" },
+        threadPatch: { running: false, status: "idle" },
+      });
+      await settled(page);
+      let movements = 0;
+      for (const shortcut of ["Control+j", "Control+b", "Control+b", "Control+j"]) {
+        await page.evaluate(() => {
+          const stage = document.querySelector(".stage");
+          const targets = [...document.querySelectorAll(".canvas-inner, .composer-shell")];
+          window.panelFrames = [];
+          window.panelGlides = 0;
+          if (!window.panelGlideListener) {
+            window.panelGlideListener = (event) => {
+              if (event.target.matches(".sliding-panel") && event.propertyName.startsWith("margin"))
+                window.panelGlides++;
+            };
+            document.addEventListener("transitionrun", window.panelGlideListener);
+          }
+          const sample = () => {
+            const rect = stage.getBoundingClientRect();
+            window.panelFrames.push({
+              width: rect.width,
+              left: rect.left,
+              right: rect.right,
+              edges: targets.map((target) => {
+                const box = target.getBoundingClientRect();
+                return [box.left, box.right];
+              }),
+            });
+            window.panelFrame = requestAnimationFrame(sample);
           };
-          document.addEventListener("transitionrun", window.panelGlideListener);
-        }
-        const sample = () => {
-          const rect = stage.getBoundingClientRect();
-          window.panelFrames.push({ width: rect.width, left: rect.left, right: rect.right, edges: targets.map(target => { const box = target.getBoundingClientRect(); return [box.left, box.right]; }) });
-          window.panelFrame = requestAnimationFrame(sample);
-        };
-        sample();
-      });
-      await page.keyboard.press(shortcut);
-      await settled(page);
-      const { frames, glides } = await page.evaluate(() => {
-        cancelAnimationFrame(window.panelFrame);
-        return { frames: window.panelFrames, glides: window.panelGlides };
-      });
-      for (const frame of frames)
-        for (const [left, right] of frame.edges) assert.ok(left >= frame.left - 1 && right <= frame.right + 1, JSON.stringify(frame));
-      const steps = frames.slice(1).map((frame, index) => frame.width - frames[index].width);
-      assert.ok(steps.every(step => step >= -1) || steps.every(step => step <= 1), JSON.stringify(frames.map(frame => frame.width)));
-      if (glides) movements++;
-    }
-    if (width > 720) assert.ok(movements >= 2);
-    else assert.equal(movements, 0);
-    await page.keyboard.press('Control+j');
-    await page.waitForTimeout(80);
-    await page.keyboard.press('Control+j');
-    await settled(page);
-    assert.equal(await page.locator('.sliding-panel[data-side="right"]').getAttribute('data-open'), 'true');
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.keyboard.press('Control+j');
-    await settled(page);
-    assert.equal(await page.locator('.canvas-inner').evaluate(element => element.getAnimations().length), 0);
-  });
-
-  for (const width of [1280, 380]) check(`settings preserve the current screen while loading at ${width}px`, async t => {
-    let release;
-    const loading = new Promise(resolve => { release = resolve; });
-    t.after(() => release());
-    const { page } = await app(t, {
-      width,
-      messages: history(2),
-      threadPatch: { running: false, status: "idle" },
-      beforeNavigate: page => page.route('**/components/Settings.tsx', async route => {
-        await loading;
-        await route.continue();
-      }),
-    });
-    await page.evaluate(async () => {
-      const { useApp } = await import('/web/src/lib/store.ts');
-      useApp.setState({ activeView: 'settings' });
-    });
-    await page.waitForTimeout(150);
-    assert.equal(await page.locator('.composer-shell').isVisible(), true);
-    assert.equal(await page.getByRole('status').filter({ hasText: 'Loading…' }).count(), 0);
-    release();
-    await page.getByRole('region', { name: 'Settings', exact: true }).waitFor();
-    assert.equal(await page.locator('.settings-title').innerText(), 'General');
-    assert.equal(await page.locator('.composer-shell').count(), 0);
-  });
-
-  check("settings and folder shortcuts stay out of text fields and embedded terminals", async t => {
-    const { page, sent } = await app(t, { messages: history(2), threadPatch: { running: false, status: "idle" } });
-    await settled(page);
-    const chooses = () => sent.filter(event => event.t === "project.choose").length;
-    const box = page.getByRole("textbox", { name: "Message", exact: true });
-    assert.equal(await box.isEnabled(), true);
-    await box.focus();
-    await page.keyboard.press("Control+,");
-    await page.keyboard.press("Control+o");
-    await page.waitForTimeout(150);
-    assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).count(), 0);
-    assert.equal(chooses(), 0);
-    await page.evaluate(() => {
-      const host = document.createElement("div");
-      host.className = "xterm";
-      host.tabIndex = -1;
-      document.body.appendChild(host);
-      host.focus();
-    });
-    await page.keyboard.press("Control+,");
-    await page.keyboard.press("Control+o");
-    await page.waitForTimeout(150);
-    assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).count(), 0);
-    assert.equal(chooses(), 0);
-    await page.evaluate(() => {
-      const note = document.createElement("div");
-      note.setAttribute("contenteditable", "");
-      note.tabIndex = -1;
-      note.textContent = "editable";
-      document.body.appendChild(note);
-      note.focus();
-    });
-    await page.keyboard.press("Control+,");
-    await page.keyboard.press("Control+o");
-    await page.waitForTimeout(150);
-    assert.equal(await page.getByRole('region', { name: 'Settings', exact: true }).count(), 0);
-    assert.equal(chooses(), 0);
-    await page.evaluate(() => { const focused = document.activeElement; if (focused instanceof HTMLElement) focused.blur(); });
-    await page.keyboard.press("Control+,");
-    await page.getByRole('region', { name: 'Settings', exact: true }).waitFor();
-    await page.keyboard.press("Control+o");
-    await expect(() => chooses() > 0);
-  });
-
-  for (const width of [1280, 380]) check(`sidebar movement does not animate tabs within the composer at ${width}px`, async t => {
-    const { page } = await app(t, { width, messages: history(8), preferences: { sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
-    await settled(page);
-    for (const shortcut of ['Control+b', 'Control+b', 'Control+j', 'Control+j']) {
-      await page.evaluate(() => {
-        const glass = document.querySelector('.composer-glass');
-        const shell = glass.parentElement;
-        window.masks = new Set([glass.style.maskImage]);
-        window.shellSizes = new Set([`${shell.offsetWidth}x${shell.offsetHeight}`]);
-        window.maskObserver = new MutationObserver(() => {
-          window.masks.add(glass.style.maskImage);
-          window.shellSizes.add(`${shell.offsetWidth}x${shell.offsetHeight}`);
+          sample();
         });
-        window.maskObserver.observe(glass, { attributes: true, attributeFilter: ['style'] });
-      });
-      await page.keyboard.press(shortcut);
+        await page.keyboard.press(shortcut);
+        await settled(page);
+        const { frames, glides } = await page.evaluate(() => {
+          cancelAnimationFrame(window.panelFrame);
+          return { frames: window.panelFrames, glides: window.panelGlides };
+        });
+        for (const frame of frames)
+          for (const [left, right] of frame.edges)
+            assert.ok(left >= frame.left - 1 && right <= frame.right + 1, JSON.stringify(frame));
+        const steps = frames.slice(1).map((frame, index) => frame.width - frames[index].width);
+        assert.ok(
+          steps.every((step) => step >= -1) || steps.every((step) => step <= 1),
+          JSON.stringify(frames.map((frame) => frame.width)),
+        );
+        if (glides) movements++;
+      }
+      if (width > 720) assert.ok(movements >= 2);
+      else assert.equal(movements, 0);
+      await page.keyboard.press("Control+j");
+      await page.waitForTimeout(80);
+      await page.keyboard.press("Control+j");
       await settled(page);
-      const { masks, sizes } = await page.evaluate(() => {
-        window.maskObserver.disconnect();
-        return { masks: window.masks.size, sizes: window.shellSizes.size };
-      });
-      assert.ok(masks <= sizes + 1, `The composer regenerated ${masks} masks for ${sizes} sizes during one panel toggle`);
-    }
-  });
+      assert.equal(
+        await page.locator('.sliding-panel[data-side="right"]').getAttribute("data-open"),
+        "true",
+      );
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.keyboard.press("Control+j");
+      await settled(page);
+      assert.equal(
+        await page.locator(".canvas-inner").evaluate((element) => element.getAnimations().length),
+        0,
+      );
+    });
 
-  check("rapid panel reversals keep message headers inside the chat", async t => {
-    const { page } = await app(t, { width: 1280, messages: history(8), preferences: { inspector: "1", sidebar: "1" }, threadPatch: { running: false, status: "idle" } });
+  for (const width of [1280, 380])
+    check(`settings preserve the current screen while loading at ${width}px`, async (t) => {
+      let release;
+      const loading = new Promise((resolve) => {
+        release = resolve;
+      });
+      t.after(() => release());
+      const { page } = await app(t, {
+        width,
+        messages: history(2),
+        threadPatch: { running: false, status: "idle" },
+        beforeNavigate: (page) =>
+          page.route("**/components/Settings.tsx", async (route) => {
+            await loading;
+            await route.continue();
+          }),
+      });
+      await page.evaluate(async () => {
+        const { useApp } = await import("/web/src/lib/store.ts");
+        useApp.setState({ activeView: "settings" });
+      });
+      await page.waitForTimeout(150);
+      assert.equal(await page.locator(".composer-shell").isVisible(), true);
+      assert.equal(await page.getByRole("status").filter({ hasText: "Loading…" }).count(), 0);
+      release();
+      await page.getByRole("region", { name: "Settings", exact: true }).waitFor();
+      assert.equal(await page.locator(".settings-title").innerText(), "General");
+      assert.equal(await page.locator(".composer-shell").count(), 0);
+    });
+
+  check(
+    "settings and folder shortcuts stay out of text fields and embedded terminals",
+    async (t) => {
+      const { page, sent } = await app(t, {
+        messages: history(2),
+        threadPatch: { running: false, status: "idle" },
+      });
+      await settled(page);
+      const chooses = () => sent.filter((event) => event.t === "project.choose").length;
+      const box = page.getByRole("textbox", { name: "Message", exact: true });
+      assert.equal(await box.isEnabled(), true);
+      await box.focus();
+      await page.keyboard.press("Control+,");
+      await page.keyboard.press("Control+o");
+      await page.waitForTimeout(150);
+      assert.equal(await page.getByRole("region", { name: "Settings", exact: true }).count(), 0);
+      assert.equal(chooses(), 0);
+      await page.evaluate(() => {
+        const host = document.createElement("div");
+        host.className = "xterm";
+        host.tabIndex = -1;
+        document.body.appendChild(host);
+        host.focus();
+      });
+      await page.keyboard.press("Control+,");
+      await page.keyboard.press("Control+o");
+      await page.waitForTimeout(150);
+      assert.equal(await page.getByRole("region", { name: "Settings", exact: true }).count(), 0);
+      assert.equal(chooses(), 0);
+      await page.evaluate(() => {
+        const note = document.createElement("div");
+        note.setAttribute("contenteditable", "");
+        note.tabIndex = -1;
+        note.textContent = "editable";
+        document.body.appendChild(note);
+        note.focus();
+      });
+      await page.keyboard.press("Control+,");
+      await page.keyboard.press("Control+o");
+      await page.waitForTimeout(150);
+      assert.equal(await page.getByRole("region", { name: "Settings", exact: true }).count(), 0);
+      assert.equal(chooses(), 0);
+      await page.evaluate(() => {
+        const focused = document.activeElement;
+        if (focused instanceof HTMLElement) focused.blur();
+      });
+      await page.keyboard.press("Control+,");
+      await page.getByRole("region", { name: "Settings", exact: true }).waitFor();
+      await page.keyboard.press("Control+o");
+      await expect(() => chooses() > 0);
+    },
+  );
+
+  for (const width of [1280, 380])
+    check(`sidebar movement does not animate tabs within the composer at ${width}px`, async (t) => {
+      const { page } = await app(t, {
+        width,
+        messages: history(8),
+        preferences: { sidebar: "1" },
+        threadPatch: { running: false, status: "idle" },
+      });
+      await settled(page);
+      for (const shortcut of ["Control+b", "Control+b", "Control+j", "Control+j"]) {
+        await page.evaluate(() => {
+          const glass = document.querySelector(".composer-glass");
+          const shell = glass.parentElement;
+          window.masks = new Set([glass.style.maskImage]);
+          window.shellSizes = new Set([`${shell.offsetWidth}x${shell.offsetHeight}`]);
+          window.maskObserver = new MutationObserver(() => {
+            window.masks.add(glass.style.maskImage);
+            window.shellSizes.add(`${shell.offsetWidth}x${shell.offsetHeight}`);
+          });
+          window.maskObserver.observe(glass, { attributes: true, attributeFilter: ["style"] });
+        });
+        await page.keyboard.press(shortcut);
+        await settled(page);
+        const { masks, sizes } = await page.evaluate(() => {
+          window.maskObserver.disconnect();
+          return { masks: window.masks.size, sizes: window.shellSizes.size };
+        });
+        assert.ok(
+          masks <= sizes + 1,
+          `The composer regenerated ${masks} masks for ${sizes} sizes during one panel toggle`,
+        );
+      }
+    });
+
+  check("rapid panel reversals keep message headers inside the chat", async (t) => {
+    const { page } = await app(t, {
+      width: 1280,
+      messages: history(8),
+      preferences: { inspector: "1", sidebar: "1" },
+      threadPatch: { running: false, status: "idle" },
+    });
     await settled(page);
-    const start = await page.locator('.canvas-inner').boundingBox();
-    for (const shortcut of ["Control+j", "Control+b", "Control+b", "Control+j", "Control+j", "Control+b", "Control+b", "Control+j"]) {
+    const start = await page.locator(".canvas-inner").boundingBox();
+    for (const shortcut of [
+      "Control+j",
+      "Control+b",
+      "Control+b",
+      "Control+j",
+      "Control+j",
+      "Control+b",
+      "Control+b",
+      "Control+j",
+    ]) {
       await page.keyboard.press(shortcut);
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
       const escaped = await page.evaluate(() => {
-        const stage = document.querySelector('.stage').getBoundingClientRect();
-        const headers = [...document.querySelectorAll('.message-avatar, .turn-heading > strong, .turn-heading > .turn-meta')];
-        const targets = [...headers, ...document.querySelectorAll('.canvas-inner, .composer-shell')];
-        const animations = targets.flatMap(target => target.getAnimations());
-        for (const animation of animations) { animation.pause(); animation.currentTime = 0; }
-        const escaped = headers.map(header => ({ name: header.className, left: header.getBoundingClientRect().left, right: header.getBoundingClientRect().right }))
-          .filter(header => header.left < stage.left - 1 || header.right > stage.right + 1);
+        const stage = document.querySelector(".stage").getBoundingClientRect();
+        const headers = [
+          ...document.querySelectorAll(
+            ".message-avatar, .turn-heading > strong, .turn-heading > .turn-meta",
+          ),
+        ];
+        const targets = [
+          ...headers,
+          ...document.querySelectorAll(".canvas-inner, .composer-shell"),
+        ];
+        const animations = targets.flatMap((target) => target.getAnimations());
+        for (const animation of animations) {
+          animation.pause();
+          animation.currentTime = 0;
+        }
+        const escaped = headers
+          .map((header) => ({
+            name: header.className,
+            left: header.getBoundingClientRect().left,
+            right: header.getBoundingClientRect().right,
+          }))
+          .filter((header) => header.left < stage.left - 1 || header.right > stage.right + 1);
         for (const animation of animations) animation.play();
         return escaped;
       });
       assert.deepEqual(escaped, []);
     }
     await settled(page);
-    const end = await page.locator('.canvas-inner').boundingBox();
+    const end = await page.locator(".canvas-inner").boundingBox();
     assert.equal(end.x, start.x);
     assert.equal(end.width, start.width);
-    assert.equal(await page.locator('.sliding-panel[data-side="right"]').getAttribute('data-open'), 'true');
-    assert.equal(await page.locator('.sliding-panel[data-side="left"]').getAttribute('data-open'), 'true');
+    assert.equal(
+      await page.locator('.sliding-panel[data-side="right"]').getAttribute("data-open"),
+      "true",
+    );
+    assert.equal(
+      await page.locator('.sliding-panel[data-side="left"]').getAttribute("data-open"),
+      "true",
+    );
   });
 
-  check("the reading area follows the chat throughout rapid panel reversals", async t => {
-    const { page } = await app(t, { messages: history(8), preferences: { sidebar: "1", inspector: "1" }, threadPatch: { running: false, status: "idle" } });
-    await page.evaluate(async () => {
-      const { saveBackgroundFile } = await import('/web/src/lib/background-files.ts');
-      const { useApp } = await import('/web/src/lib/store.ts');
-      const image = new OffscreenCanvas(100, 100);
-      image.getContext('2d').fillRect(0, 0, 100, 100);
-      await saveBackgroundFile('image', await image.convertToBlob());
-      useApp.setState({ stageBackground: 'image', backgroundFocus: 70 });
+  check("the reading area follows the chat throughout rapid panel reversals", async (t) => {
+    const { page } = await app(t, {
+      messages: history(8),
+      preferences: { sidebar: "1", inspector: "1" },
+      threadPatch: { running: false, status: "idle" },
     });
-    await page.locator('.stage-focus-band').waitFor({ state: 'attached' });
+    await page.evaluate(async () => {
+      const { saveBackgroundFile } = await import("/web/src/lib/background-files.ts");
+      const { useApp } = await import("/web/src/lib/store.ts");
+      const image = new OffscreenCanvas(100, 100);
+      image.getContext("2d").fillRect(0, 0, 100, 100);
+      await saveBackgroundFile("image", await image.convertToBlob());
+      useApp.setState({ stageBackground: "image", backgroundFocus: 70 });
+    });
+    await page.locator(".stage-focus-band").waitFor({ state: "attached" });
     await settled(page);
     await page.evaluate(() => {
       window.focusDraws = 0;
       const draw = CanvasRenderingContext2D.prototype.drawImage;
       CanvasRenderingContext2D.prototype.drawImage = function (...args) {
-        if (this.canvas.classList?.contains('stage-backdrop-focus')) window.focusDraws++;
+        if (this.canvas.classList?.contains("stage-backdrop-focus")) window.focusDraws++;
         return draw.apply(this, args);
       };
     });
     const frames = await page.evaluate(async () => {
-      const { toggleInspector, toggleSidebar } = await import('/web/src/lib/store.ts');
+      const { toggleInspector, toggleSidebar } = await import("/web/src/lib/store.ts");
       const frames = [];
       for (let index = 0; index < 12; index++) {
-        await new Promise(resolve => requestAnimationFrame(() => {
-          (index % 3 ? toggleInspector : toggleSidebar)();
-          setTimeout(() => {
-            const column = document.querySelector('.canvas-inner').getBoundingClientRect();
-            const band = document.querySelector('.stage-focus-band').getBoundingClientRect();
-            frames.push({ column: column.left + column.width / 2, band: band.left + band.width / 2 });
-            resolve();
-          }, 0);
-        }));
-        await new Promise(resolve => setTimeout(resolve, 35));
+        await new Promise((resolve) =>
+          requestAnimationFrame(() => {
+            (index % 3 ? toggleInspector : toggleSidebar)();
+            setTimeout(() => {
+              const column = document.querySelector(".canvas-inner").getBoundingClientRect();
+              const band = document.querySelector(".stage-focus-band").getBoundingClientRect();
+              frames.push({
+                column: column.left + column.width / 2,
+                band: band.left + band.width / 2,
+              });
+              resolve();
+            }, 0);
+          }),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 35));
       }
       return frames;
     });
-    for (const frame of frames) assert.ok(Math.abs(frame.column - frame.band) <= 1, JSON.stringify(frame));
-    for (const shortcut of ['Control+j', 'Control+b', 'Control+j', 'Control+b', 'Control+j']) {
+    for (const frame of frames)
+      assert.ok(Math.abs(frame.column - frame.band) <= 1, JSON.stringify(frame));
+    for (const shortcut of ["Control+j", "Control+b", "Control+j", "Control+b", "Control+j"]) {
       await page.keyboard.press(shortcut);
       await page.waitForTimeout(35);
     }
     await page.evaluate(() => {
-      const column = document.querySelector('.canvas-inner');
+      const column = document.querySelector(".canvas-inner");
       for (const animation of column.getAnimations()) animation.updatePlaybackRate(0.3);
     });
     await settled(page);
     const bounds = await page.evaluate(() => {
-      const column = document.querySelector('.canvas-inner').getBoundingClientRect();
-      const band = document.querySelector('.stage-focus-band').getBoundingClientRect();
+      const column = document.querySelector(".canvas-inner").getBoundingClientRect();
+      const band = document.querySelector(".stage-focus-band").getBoundingClientRect();
       return { column: column.left + column.width / 2, band: band.left + band.width / 2 };
     });
     assert.ok(Math.abs(bounds.column - bounds.band) <= 1, JSON.stringify(bounds));
     assert.equal(await page.evaluate(() => window.focusDraws), 0);
   });
 
-  check("background focus fades across the chat boundary", async t => {
-    const page = await fixture(t, `
+  check("background focus fades across the chat boundary", async (t) => {
+    const page = await fixture(
+      t,
+      `
       import React from 'react';
       import { createRoot } from 'react-dom/client';
       import { StageBackdrop } from '/web/src/components/StageBackdrop.tsx';
@@ -411,201 +688,408 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       createRoot(host).render(React.createElement('div', { className: 'shell', 'data-backdrop': 'image', style: { display: 'block', '--strip': '0px', '--ui-alpha': 1 } },
         React.createElement(StageBackdrop),
         React.createElement('main', { className: 'stage', style: { width: '55%', height: '100%' } }, React.createElement('div', { className: 'canvas-inner', style: { width: '100%' } }))));
-    `);
+    `,
+    );
     await page.waitForFunction(() => {
-      const canvas = document.querySelector('.stage-backdrop-focus');
-      return canvas && canvas.width > 100 && canvas.getContext('2d').getImageData(50, 20, 1, 1).data[3] > 0;
+      const canvas = document.querySelector(".stage-backdrop-focus");
+      return (
+        canvas &&
+        canvas.width > 100 &&
+        canvas.getContext("2d").getImageData(50, 20, 1, 1).data[3] > 0
+      );
     });
-    const boundary = await page.locator('.stage').evaluate(stage => Math.round(stage.getBoundingClientRect().right));
+    const boundary = await page
+      .locator(".stage")
+      .evaluate((stage) => Math.round(stage.getBoundingClientRect().right));
     const screenshot = await page.screenshot();
-    const samples = await page.evaluate(async ({ data, boundary }) => {
-      const image = new Image();
-      image.src = `data:image/png;base64,${data}`;
-      await image.decode();
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const context = canvas.getContext('2d');
-      context.drawImage(image, 0, 0);
-      return [boundary - 2, boundary + 2, boundary + 160].map(x => context.getImageData(x, 20, 1, 1).data[0]);
-    }, { data: screenshot.toString('base64'), boundary });
+    const samples = await page.evaluate(
+      async ({ data, boundary }) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${data}`;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0);
+        return [boundary - 2, boundary + 2, boundary + 160].map(
+          (x) => context.getImageData(x, 20, 1, 1).data[0],
+        );
+      },
+      { data: screenshot.toString("base64"), boundary },
+    );
     assert.ok(Math.abs(samples[0] - samples[1]) < 8, JSON.stringify(samples));
     assert.ok(samples[2] - samples[0] > 30, JSON.stringify(samples));
   });
 
-  check("unsupported Markdown links keep their content without opening another app page", async t => {
-    const page = await fixture(t, `
+  check(
+    "unsupported Markdown links keep their content without opening another app page",
+    async (t) => {
+      const page = await fixture(
+        t,
+        `
       import { renderMarkdown } from '/web/src/lib/markdown.ts';
-      const source = ${JSON.stringify('[**Source**](/workspace/app.ts:12) [Relative](src/app.ts) [Section](#details) [Unsafe](javascript:alert%281%29) [Web](https://example.invalid) [Mail](mailto:test@example.invalid) [![Preview](' + square + ')](/workspace/image.svg)')};
+      const source = ${JSON.stringify("[**Source**](/workspace/app.ts:12) [Relative](src/app.ts) [Section](#details) [Unsafe](javascript:alert%281%29) [Web](https://example.invalid) [Mail](mailto:test@example.invalid) [![Preview](" + square + ")](/workspace/image.svg)")};
       document.querySelector('#fixture').innerHTML = await renderMarkdown(source, 'dark');
-    `);
-    await page.locator("#fixture strong").waitFor();
-    assert.equal(await page.locator("#fixture strong").textContent(), "Source");
-    assert.deepEqual(await page.locator("#fixture a").evaluateAll(links => links.map(link => link.getAttribute("href"))), ["https://example.invalid", "mailto:test@example.invalid"]);
-    assert.equal(await page.locator("#fixture button.markdown-image").count(), 1);
-    await page.getByText("Source", { exact: true }).click();
-    assert.equal(page.context().pages().length, 1);
-    assert.ok(page.url().includes("/fixture-"));
-  });
+    `,
+      );
+      await page.locator("#fixture strong").waitFor();
+      assert.equal(await page.locator("#fixture strong").textContent(), "Source");
+      assert.deepEqual(
+        await page
+          .locator("#fixture a")
+          .evaluateAll((links) => links.map((link) => link.getAttribute("href"))),
+        ["https://example.invalid", "mailto:test@example.invalid"],
+      );
+      assert.equal(await page.locator("#fixture button.markdown-image").count(), 1);
+      await page.getByText("Source", { exact: true }).click();
+      assert.equal(page.context().pages().length, 1);
+      assert.ok(page.url().includes("/fixture-"));
+    },
+  );
 
-  check("Markdown images written beside text start on their own line", async t => {
-    const page = await fixture(t, `
+  check("Markdown images written beside text start on their own line", async (t) => {
+    const page = await fixture(
+      t,
+      `
       import { renderMarkdown } from '/web/src/lib/markdown.ts';
-      const source = ${JSON.stringify('**Before** ![One](' + square + ') ![Two](' + square + ') after')};
+      const source = ${JSON.stringify("**Before** ![One](" + square + ") ![Two](" + square + ") after")};
       document.querySelector('#fixture').innerHTML = await renderMarkdown(source, 'dark');
-    `);
+    `,
+    );
     await page.locator("#fixture strong").waitFor();
     assert.deepEqual(
-      await page.locator("#fixture > p").evaluateAll(paragraphs => paragraphs.map(paragraph => [paragraph.className, paragraph.querySelectorAll(".markdown-image").length, paragraph.innerText.trim()])),
-      [["", 0, "Before"], ["markdown-images", 2, ""], ["", 0, "after"]],
+      await page
+        .locator("#fixture > p")
+        .evaluateAll((paragraphs) =>
+          paragraphs.map((paragraph) => [
+            paragraph.className,
+            paragraph.querySelectorAll(".markdown-image").length,
+            paragraph.innerText.trim(),
+          ]),
+        ),
+      [
+        ["", 0, "Before"],
+        ["markdown-images", 2, ""],
+        ["", 0, "after"],
+      ],
     );
   });
 
-  check("persistent Markdown images load in chat and open the image viewer", async t => {
+  check("persistent Markdown images load in chat and open the image viewer", async (t) => {
     const id = "a8859cab-7485-42e5-8bf0-30a0bde22f4c";
-    const picture = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=", "base64");
+    const picture = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=",
+      "base64",
+    );
     const { page } = await app(t, {
-      messages: [{ id: "reply", role: "assistant", ts: 1, parts: [text("image", `![Screenshot](citropy-image:${id})`)] }],
+      messages: [
+        {
+          id: "reply",
+          role: "assistant",
+          ts: 1,
+          parts: [text("image", `![Screenshot](citropy-image:${id})`)],
+        },
+      ],
       threadPatch: { running: false, status: "idle" },
-      beforeNavigate: page => page.route("**/api/tool-images?*", route => {
-        const params = new URL(route.request().url()).searchParams;
-        assert.equal(params.get("threadId"), "chat");
-        assert.equal(params.get("id"), id);
-        return route.fulfill({ contentType: "image/png", body: picture });
-      }),
+      beforeNavigate: (page) =>
+        page.route("**/api/tool-images?*", (route) => {
+          const params = new URL(route.request().url()).searchParams;
+          assert.equal(params.get("threadId"), "chat");
+          assert.equal(params.get("id"), id);
+          return route.fulfill({ contentType: "image/png", body: picture });
+        }),
     });
-    await page.waitForFunction(() => document.querySelector(".markdown-image img")?.naturalWidth > 0);
+    await page.waitForFunction(
+      () => document.querySelector(".markdown-image img")?.naturalWidth > 0,
+    );
     await page.getByRole("button", { name: "Preview Screenshot", exact: true }).click();
     await page.getByRole("dialog", { name: "Screenshot", exact: true }).waitFor();
-    await page.waitForFunction(() => document.querySelector(".image-surface img")?.naturalWidth > 0);
-    assert.equal(await page.getByRole("button", { name: "Fit image", exact: true }).isVisible(), true);
+    await page.waitForFunction(
+      () => document.querySelector(".image-surface img")?.naturalWidth > 0,
+    );
+    assert.equal(
+      await page.getByRole("button", { name: "Fit image", exact: true }).isVisible(),
+      true,
+    );
   });
 
-  check("queue rows align controls and update their position numbers after reordering", async t => {
-    const queue = [
-      { id: "first", text: "First request", createdAt: 1 },
-      { id: "second", text: "Second request with attachment", createdAt: 2, attachments: [{ id: "file", label: "context.txt", path: "/context.txt" }] },
-      { id: "third", text: "Third request", createdAt: 3 },
-    ];
-    const { page, sent, push } = await app(t, { messages: history(2), threadPatch: { running: false, status: "stopped", queue } });
-    await page.getByRole("button", { name: "3 queued messages", exact: true }).click();
-    const panel = page.getByRole("dialog", { name: "Queued messages", exact: true });
-    await panel.waitFor();
-    assert.equal(await panel.locator("header").count(), 0);
-    assert.deepEqual(await panel.locator(".composer-queue-position").allTextContents(), ["1", "2", "3"]);
-    for (const width of [1280, 380]) {
-      await page.setViewportSize({ width, height: 860 });
-      await settled(page);
-      for (const selector of [".composer-queue-send", ".composer-queue-edit", ".composer-queue-remove"]) {
-        const positions = await panel.locator(selector).evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().x));
-        assert.ok(Math.max(...positions) - Math.min(...positions) < 1, selector);
+  check(
+    "queue rows align controls and update their position numbers after reordering",
+    async (t) => {
+      const queue = [
+        { id: "first", text: "First request", createdAt: 1 },
+        {
+          id: "second",
+          text: "Second request with attachment",
+          createdAt: 2,
+          attachments: [{ id: "file", label: "context.txt", path: "/context.txt" }],
+        },
+        { id: "third", text: "Third request", createdAt: 3 },
+      ];
+      const { page, sent, push } = await app(t, {
+        messages: history(2),
+        threadPatch: { running: false, status: "stopped", queue },
+      });
+      await page.getByRole("button", { name: "3 queued messages", exact: true }).click();
+      const panel = page.getByRole("dialog", { name: "Queued messages", exact: true });
+      await panel.waitFor();
+      assert.equal(await panel.locator("header").count(), 0);
+      assert.deepEqual(await panel.locator(".composer-queue-position").allTextContents(), [
+        "1",
+        "2",
+        "3",
+      ]);
+      for (const width of [1280, 380]) {
+        await page.setViewportSize({ width, height: 860 });
+        await settled(page);
+        for (const selector of [
+          ".composer-queue-send",
+          ".composer-queue-edit",
+          ".composer-queue-remove",
+        ]) {
+          const positions = await panel
+            .locator(selector)
+            .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
+          assert.ok(Math.max(...positions) - Math.min(...positions) < 1, selector);
+        }
+        assert.ok(await panel.evaluate((node) => node.scrollWidth <= node.clientWidth));
       }
-      assert.ok(await panel.evaluate(node => node.scrollWidth <= node.clientWidth));
-    }
-    await panel.getByRole("button", { name: "Move up", exact: true }).first().click();
-    assert.ok(sent.some(event => event.t === "queue.move" && event.id === "second" && event.index === 0));
-    push({ t: "thread.upsert", thread: { ...thread, running: false, status: "stopped", queue: [queue[1], queue[0], queue[2]] } });
-    await expect(async () => (await panel.locator(".composer-queue-text").first().textContent()) === queue[1].text);
-    assert.deepEqual(await panel.locator(".composer-queue-position").allTextContents(), ["1", "2", "3"]);
-  });
+      await panel.getByRole("button", { name: "Move up", exact: true }).first().click();
+      assert.ok(
+        sent.some(
+          (event) => event.t === "queue.move" && event.id === "second" && event.index === 0,
+        ),
+      );
+      push({
+        t: "thread.upsert",
+        thread: {
+          ...thread,
+          running: false,
+          status: "stopped",
+          queue: [queue[1], queue[0], queue[2]],
+        },
+      });
+      await expect(
+        async () =>
+          (await panel.locator(".composer-queue-text").first().textContent()) === queue[1].text,
+      );
+      assert.deepEqual(await panel.locator(".composer-queue-position").allTextContents(), [
+        "1",
+        "2",
+        "3",
+      ]);
+    },
+  );
 
-  for (const [count, width] of [[13, 1280], [61, 380]]) {
-    check(`thinking keeps its animated row and scroll position at ${width}px when reasoning arrives`, async t => {
-      const { page, push } = await app(t, { messages: history(count), preferences: { sidebar: "0" }, threadPatch: { running: false, status: "idle" }, width });
-      await settled(page);
-      const runStartedAt = Date.now();
-      push({ t: "thread.upsert", thread: { ...thread, status: "thinking", runStartedAt } });
-      await page.locator(".working").waitFor();
-      assert.equal(await page.locator(".working").evaluate(node => getComputedStyle(node.closest("article")).animationName), "citropy-rise");
-      await settled(page);
-      await page.evaluate(() => {
-        const canvas = document.querySelector(".canvas");
-        const working = document.querySelector(".working");
-        const article = working.closest("article");
-        window.thinkingFrames = [];
-        const sample = () => {
-          window.thinkingFrames.push({
-            same: document.querySelector(".working") === working && working.closest("article") === article,
-            opacity: Number(getComputedStyle(article).opacity),
-            gap: canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight,
-            top: canvas.scrollTop,
-          });
-          window.thinkingFrame = requestAnimationFrame(sample);
-        };
-        sample();
-      });
-      push({ t: "message.add", threadId: "chat", message: { id: "reply", role: "assistant", ts: Date.now(), parts: [] } });
-      await settled(page);
-      push({ t: "part.add", threadId: "chat", messageId: "reply", part: { id: "reason", kind: "reasoning", text: "", complete: false } });
-      await settled(page);
-      push({ t: "part.append", threadId: "chat", messageId: "reply", partId: "reason", text: "Checking the application." });
-      await page.locator(".reasoning-head").waitFor();
-      await settled(page);
-      const frames = await page.evaluate(() => {
-        cancelAnimationFrame(window.thinkingFrame);
-        return window.thinkingFrames;
-      });
-      assert.ok(frames.length >= 3);
-      assert.ok(frames.every(frame => frame.same && frame.opacity === 1), JSON.stringify(frames));
-      assert.ok(frames.every((frame, index) => index === 0 || frame.top >= frames[index - 1].top - 1), JSON.stringify(frames));
-      assert.ok(Math.abs(frames.at(-1).gap - frames[0].gap) <= 1, JSON.stringify(frames));
-      await page.locator(".reasoning-head").click();
-      await page.getByText("Checking the application.", { exact: true }).waitFor();
-      push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle", runStartedAt } });
-      await expect(async () => await page.locator(".working").count() === 0);
-    });
+  for (const [count, width] of [
+    [13, 1280],
+    [61, 380],
+  ]) {
+    check(
+      `thinking keeps its animated row and scroll position at ${width}px when reasoning arrives`,
+      async (t) => {
+        const { page, push } = await app(t, {
+          messages: history(count),
+          preferences: { sidebar: "0" },
+          threadPatch: { running: false, status: "idle" },
+          width,
+        });
+        await settled(page);
+        const runStartedAt = Date.now();
+        push({ t: "thread.upsert", thread: { ...thread, status: "thinking", runStartedAt } });
+        await page.locator(".working").waitFor();
+        assert.equal(
+          await page
+            .locator(".working")
+            .evaluate((node) => getComputedStyle(node.closest("article")).animationName),
+          "citropy-rise",
+        );
+        await settled(page);
+        await page.evaluate(() => {
+          const canvas = document.querySelector(".canvas");
+          const working = document.querySelector(".working");
+          const article = working.closest("article");
+          window.thinkingFrames = [];
+          const sample = () => {
+            window.thinkingFrames.push({
+              same:
+                document.querySelector(".working") === working &&
+                working.closest("article") === article,
+              opacity: Number(getComputedStyle(article).opacity),
+              gap: canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight,
+              top: canvas.scrollTop,
+            });
+            window.thinkingFrame = requestAnimationFrame(sample);
+          };
+          sample();
+        });
+        push({
+          t: "message.add",
+          threadId: "chat",
+          message: { id: "reply", role: "assistant", ts: Date.now(), parts: [] },
+        });
+        await settled(page);
+        push({
+          t: "part.add",
+          threadId: "chat",
+          messageId: "reply",
+          part: { id: "reason", kind: "reasoning", text: "", complete: false },
+        });
+        await settled(page);
+        push({
+          t: "part.append",
+          threadId: "chat",
+          messageId: "reply",
+          partId: "reason",
+          text: "Checking the application.",
+        });
+        await page.locator(".reasoning-head").waitFor();
+        await settled(page);
+        const frames = await page.evaluate(() => {
+          cancelAnimationFrame(window.thinkingFrame);
+          return window.thinkingFrames;
+        });
+        assert.ok(frames.length >= 3);
+        assert.ok(
+          frames.every((frame) => frame.same && frame.opacity === 1),
+          JSON.stringify(frames),
+        );
+        assert.ok(
+          frames.every((frame, index) => index === 0 || frame.top >= frames[index - 1].top - 1),
+          JSON.stringify(frames),
+        );
+        assert.ok(Math.abs(frames.at(-1).gap - frames[0].gap) <= 1, JSON.stringify(frames));
+        await page.locator(".reasoning-head").click();
+        await page.getByText("Checking the application.", { exact: true }).waitFor();
+        push({
+          t: "thread.upsert",
+          thread: { ...thread, running: false, status: "idle", runStartedAt },
+        });
+        await expect(async () => (await page.locator(".working").count()) === 0);
+      },
+    );
   }
 
-  check("a text-only reply removes its pending activity when the turn ends", async t => {
-    const { page, push } = await app(t, { messages: history(13), threadPatch: { status: "thinking", runStartedAt: 100 } });
+  check("a text-only reply removes its pending activity when the turn ends", async (t) => {
+    const { page, push } = await app(t, {
+      messages: history(13),
+      threadPatch: { status: "thinking", runStartedAt: 100 },
+    });
     await page.locator(".working").waitFor();
     const indicator = await page.locator(".working").elementHandle();
-    push({ t: "message.add", threadId: "chat", message: { id: "reply", role: "assistant", ts: 101, parts: [] } });
-    push({ t: "part.add", threadId: "chat", messageId: "reply", part: { id: "answer", kind: "text", text: "Here is the answer.", complete: false } });
+    push({
+      t: "message.add",
+      threadId: "chat",
+      message: { id: "reply", role: "assistant", ts: 101, parts: [] },
+    });
+    push({
+      t: "part.add",
+      threadId: "chat",
+      messageId: "reply",
+      part: { id: "answer", kind: "text", text: "Here is the answer.", complete: false },
+    });
     await page.getByText("Here is the answer.", { exact: true }).waitFor();
-    assert.ok(await indicator.evaluate(node => node === document.querySelector(".working")));
+    assert.ok(await indicator.evaluate((node) => node === document.querySelector(".working")));
     assert.equal(await page.locator(".working").count(), 1);
-    push({ t: "part.patch", threadId: "chat", messageId: "reply", partId: "answer", patch: { complete: true } });
-    push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle", runStartedAt: 100 } });
-    await expect(async () => await page.locator(".working").count() === 0);
+    push({
+      t: "part.patch",
+      threadId: "chat",
+      messageId: "reply",
+      partId: "answer",
+      patch: { complete: true },
+    });
+    push({
+      t: "thread.upsert",
+      thread: { ...thread, running: false, status: "idle", runStartedAt: 100 },
+    });
+    await expect(async () => (await page.locator(".working").count()) === 0);
     assert.equal(await page.locator(".work-fold").count(), 0);
     assert.ok(await page.getByText("Here is the answer.", { exact: true }).isVisible());
   });
 
-  for (const width of [1280, 380]) check(`the steps fold stays above updates and answers at ${width}px`, async t => {
-    const tool = id => ({ id, kind: "tool", callId: id, name: "Read", shape: "read", headline: `${id}.ts`, status: "ok", startedAt: 1, endedAt: 2, output: "Tool output" });
-    const { page, push } = await app(t, { width, preferences: { sidebar: "0", stageBackground: "default", textStreaming: "0" }, messages: [...history(12), { id: "reply", role: "assistant", ts: 20, parts: [tool("first"), text("update", "Checked the first file."), tool("second")] }] });
-    const fold = page.locator(".work-fold");
-    const update = page.locator('[data-part-id="update"]');
-    const answer = page.locator('[data-part-id="answer"]');
-    const belowFold = locator => locator.evaluate(node => node.getBoundingClientRect().top >= document.querySelector(".work-fold").getBoundingClientRect().bottom);
-    await fold.waitFor();
-    await settled(page);
-    assert.match(await fold.textContent(), /^\d+ steps$/);
-    await expect(async () => await update.count() === 0);
-    push({ t: "part.add", threadId: "chat", messageId: "reply", part: text("answer", "Here is the final answer.", false) });
-    await page.getByText("Here is the final answer.", { exact: true }).waitFor();
-    await settled(page);
-    assert.ok(await belowFold(answer));
-    await fold.click();
-    await update.waitFor();
-    await settled(page);
-    assert.ok(await belowFold(update));
-    assert.ok(await update.evaluate(node => node.getBoundingClientRect().bottom <= document.querySelector('[data-part-id="answer"]').getBoundingClientRect().top));
-    await fold.click();
-    await expect(async () => await update.count() === 0);
-    push({ t: "part.patch", threadId: "chat", messageId: "reply", partId: "answer", patch: { complete: true } });
-    push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle" } });
-    await expect(async () => await page.locator(".working").count() === 0);
-    await settled(page);
-    assert.match(await fold.textContent(), /^Worked for /);
-    assert.ok(await belowFold(answer));
-    await page.screenshot({ path: `/tmp/citropy-work-footer-${width}.png` });
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  });
+  for (const width of [1280, 380])
+    check(`the steps fold stays above updates and answers at ${width}px`, async (t) => {
+      const tool = (id) => ({
+        id,
+        kind: "tool",
+        callId: id,
+        name: "Read",
+        shape: "read",
+        headline: `${id}.ts`,
+        status: "ok",
+        startedAt: 1,
+        endedAt: 2,
+        output: "Tool output",
+      });
+      const { page, push } = await app(t, {
+        width,
+        preferences: { sidebar: "0", stageBackground: "default", textStreaming: "0" },
+        messages: [
+          ...history(12),
+          {
+            id: "reply",
+            role: "assistant",
+            ts: 20,
+            parts: [tool("first"), text("update", "Checked the first file."), tool("second")],
+          },
+        ],
+      });
+      const fold = page.locator(".work-fold");
+      const update = page.locator('[data-part-id="update"]');
+      const answer = page.locator('[data-part-id="answer"]');
+      const belowFold = (locator) =>
+        locator.evaluate(
+          (node) =>
+            node.getBoundingClientRect().top >=
+            document.querySelector(".work-fold").getBoundingClientRect().bottom,
+        );
+      await fold.waitFor();
+      await settled(page);
+      assert.match(await fold.textContent(), /^\d+ steps$/);
+      await expect(async () => (await update.count()) === 0);
+      push({
+        t: "part.add",
+        threadId: "chat",
+        messageId: "reply",
+        part: text("answer", "Here is the final answer.", false),
+      });
+      await page.getByText("Here is the final answer.", { exact: true }).waitFor();
+      await settled(page);
+      assert.ok(await belowFold(answer));
+      await fold.click();
+      await update.waitFor();
+      await settled(page);
+      assert.ok(await belowFold(update));
+      assert.ok(
+        await update.evaluate(
+          (node) =>
+            node.getBoundingClientRect().bottom <=
+            document.querySelector('[data-part-id="answer"]').getBoundingClientRect().top,
+        ),
+      );
+      await fold.click();
+      await expect(async () => (await update.count()) === 0);
+      push({
+        t: "part.patch",
+        threadId: "chat",
+        messageId: "reply",
+        partId: "answer",
+        patch: { complete: true },
+      });
+      push({ t: "thread.upsert", thread: { ...thread, running: false, status: "idle" } });
+      await expect(async () => (await page.locator(".working").count()) === 0);
+      await settled(page);
+      assert.match(await fold.textContent(), /^Worked for /);
+      assert.ok(await belowFold(answer));
+      await page.screenshot({ path: `/tmp/citropy-work-footer-${width}.png` });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    });
 
-  check("project defaults keep the newest edit while an earlier save is pending", async t => {
-    const page = await fixture(t, `
+  check("project defaults keep the newest edit while an earlier save is pending", async (t) => {
+    const page = await fixture(
+      t,
+      `
       import React from 'react';
       import { createRoot } from 'react-dom/client';
       import { ProjectSettings } from '/web/src/components/ProjectSettings.tsx';
@@ -615,25 +1099,34 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       const root = document.querySelector('#fixture');
       root.style.cssText = 'position:absolute;top:20px;left:40px;width:700px';
       createRoot(root).render(React.createElement(ProjectSettings));
-    `);
+    `,
+    );
     const pending = [];
-    await page.route('**/api/projects/defaults', route => { pending.push(route); });
-    const pull = page.getByRole('switch', { name: 'Pull before starting' });
+    await page.route("**/api/projects/defaults", (route) => {
+      pending.push(route);
+    });
+    const pull = page.getByRole("switch", { name: "Pull before starting" });
     await pull.check();
     await expect(() => pending.length === 1);
     await pull.uncheck();
     await expect(() => pending.length === 2);
     await pending[0].fulfill({ json: { autoPull: true } });
-    await page.waitForFunction(() => window.settingsStore.getState().projectDefaults.autoPull === true);
+    await page.waitForFunction(
+      () => window.settingsStore.getState().projectDefaults.autoPull === true,
+    );
     await settled(page);
     assert.equal(await pull.isChecked(), false);
     await pending[1].fulfill({ json: { autoPull: false } });
-    await page.waitForFunction(() => window.settingsStore.getState().projectDefaults.autoPull === false);
+    await page.waitForFunction(
+      () => window.settingsStore.getState().projectDefaults.autoPull === false,
+    );
     assert.equal(await pull.isChecked(), false);
   });
 
-  check("a project dialog saves only the settings changed for that project", async t => {
-    const page = await fixture(t, `
+  check("a project dialog saves only the settings changed for that project", async (t) => {
+    const page = await fixture(
+      t,
+      `
       import React from 'react';
       import { createRoot } from 'react-dom/client';
       import { ProjectSettings } from '/web/src/components/ProjectSettings.tsx';
@@ -642,25 +1135,29 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       const root = document.querySelector('#fixture');
       root.style.cssText = 'position:absolute;top:20px;left:40px;width:700px';
       createRoot(root).render(React.createElement(ProjectSettings));
-    `);
+    `,
+    );
     let saved;
-    await page.route('**/api/projects?projectId=*', route => { saved = route.request().postDataJSON(); route.fulfill({ json: { ...project, ...saved } }); });
-    await page.getByRole('button', { name: new RegExp(project.name) }).click();
-    const dialog = page.getByRole('dialog');
-    const permissions = dialog.getByRole('button', { name: 'Permissions', exact: true });
-    assert.equal(await permissions.textContent(), 'Plan only');
+    await page.route("**/api/projects?projectId=*", (route) => {
+      saved = route.request().postDataJSON();
+      route.fulfill({ json: { ...project, ...saved } });
+    });
+    await page.getByRole("button", { name: new RegExp(project.name) }).click();
+    const dialog = page.getByRole("dialog");
+    const permissions = dialog.getByRole("button", { name: "Permissions", exact: true });
+    assert.equal(await permissions.textContent(), "Plan only");
     await permissions.click();
-    await page.getByRole('menuitem', { name: /^Full access/ }).click();
-    const reset = dialog.getByRole('button', { name: 'Use default permissions' });
+    await page.getByRole("menuitem", { name: /^Full access/ }).click();
+    const reset = dialog.getByRole("button", { name: "Use default permissions" });
     await reset.click();
     assert.equal(await reset.count(), 0);
-    assert.equal(await permissions.textContent(), 'Plan only');
-    await dialog.getByRole('button', { name: 'Workspace', exact: true }).click();
-    await page.getByRole('menuitem', { name: /^New worktree/ }).click();
-    await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill('Renamed');
-    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(async () => await page.getByRole('dialog').count() === 0);
-    assert.deepEqual(saved, { name: 'Renamed', settings: { workspace: 'new' } });
+    assert.equal(await permissions.textContent(), "Plan only");
+    await dialog.getByRole("button", { name: "Workspace", exact: true }).click();
+    await page.getByRole("menuitem", { name: /^New worktree/ }).click();
+    await dialog.getByRole("textbox", { name: "Name", exact: true }).fill("Renamed");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(async () => (await page.getByRole("dialog").count()) === 0);
+    assert.deepEqual(saved, { name: "Renamed", settings: { workspace: "new" } });
   });
 
   check("typing several lines keeps the chat at the bottom", async (t) => {
@@ -675,33 +1172,76 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       await input.pressSequentially(line);
     }
     await settled(page);
-    assert.ok(await canvas.evaluate((node) => node.scrollHeight - node.scrollTop - node.clientHeight < 2));
-    assert.equal(await page.getByRole("button", { name: "Jump to latest", exact: true }).count(), 0);
+    assert.ok(
+      await canvas.evaluate((node) => node.scrollHeight - node.scrollTop - node.clientHeight < 2),
+    );
+    assert.equal(
+      await page.getByRole("button", { name: "Jump to latest", exact: true }).count(),
+      0,
+    );
   });
 
-  check("text folding into the steps fold while working keeps the chat height steady", async (t) => {
-    const tool = (id, status) => ({ id, kind: "tool", callId: id, name: "Bash", shape: "command", headline: "npm test", input: { command: "npm test" }, status, startedAt: 1 });
-    const { page, push } = await app(t, { messages: [...history(12), { id: "reply", role: "assistant", ts: 20, parts: [tool("first", "ok"), text("update", "Checked the first part. ".repeat(12))] }] });
-    await page.locator('[data-part-id="update"]').waitFor();
-    await settled(page);
-    await page.evaluate(() => {
-      const canvas = document.querySelector(".canvas");
-      window.heights = [];
-      const sample = () => { window.heights.push(canvas.scrollHeight); requestAnimationFrame(sample); };
-      requestAnimationFrame(sample);
-    });
-    push({ t: "part.add", threadId: "chat", messageId: "reply", part: tool("second", "running") });
-    await page.locator(".work-fold").waitFor();
-    await settled(page);
-    const heights = await page.evaluate(() => window.heights);
-    const lowest = heights.indexOf(Math.min(...heights));
-    assert.ok(Math.max(...heights.slice(lowest)) - heights[lowest] < 20, `height grew back after folding: ${heights.join(",")}`);
-  });
+  check(
+    "text folding into the steps fold while working keeps the chat height steady",
+    async (t) => {
+      const tool = (id, status) => ({
+        id,
+        kind: "tool",
+        callId: id,
+        name: "Bash",
+        shape: "command",
+        headline: "npm test",
+        input: { command: "npm test" },
+        status,
+        startedAt: 1,
+      });
+      const { page, push } = await app(t, {
+        messages: [
+          ...history(12),
+          {
+            id: "reply",
+            role: "assistant",
+            ts: 20,
+            parts: [tool("first", "ok"), text("update", "Checked the first part. ".repeat(12))],
+          },
+        ],
+      });
+      await page.locator('[data-part-id="update"]').waitFor();
+      await settled(page);
+      await page.evaluate(() => {
+        const canvas = document.querySelector(".canvas");
+        window.heights = [];
+        const sample = () => {
+          window.heights.push(canvas.scrollHeight);
+          requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      });
+      push({
+        t: "part.add",
+        threadId: "chat",
+        messageId: "reply",
+        part: tool("second", "running"),
+      });
+      await page.locator(".work-fold").waitFor();
+      await settled(page);
+      const heights = await page.evaluate(() => window.heights);
+      const lowest = heights.indexOf(Math.min(...heights));
+      assert.ok(
+        Math.max(...heights.slice(lowest)) - heights[lowest] < 20,
+        `height grew back after folding: ${heights.join(",")}`,
+      );
+    },
+  );
 
   check("questions and plans share the composer tabs", async (t) => {
     const { page } = await app(t, {
-      messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("intro", "Working on it."), plan] }],
-      questions: [{ id: "request", threadId: "chat", messageId: "answer", questions, createdAt: 1 }],
+      messages: [
+        { id: "answer", role: "assistant", ts: 1, parts: [text("intro", "Working on it."), plan] },
+      ],
+      questions: [
+        { id: "request", threadId: "chat", messageId: "answer", questions, createdAt: 1 },
+      ],
     });
     const question = page.getByRole("region", { name: "Your input", exact: true });
     await question.waitFor();
@@ -714,13 +1254,20 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await question.getByText("Multiplayer", { exact: true }).click();
     const answered = page.waitForRequest("**/api/threads/question*");
     await question.getByRole("button", { name: "Send answers", exact: true }).click();
-    assert.deepEqual((await answered).postDataJSON(), { id: "request", answers: { scope: ["Multiplayer"] } });
+    assert.deepEqual((await answered).postDataJSON(), {
+      id: "request",
+      answers: { scope: ["Multiplayer"] },
+    });
   });
 
-  check("questions remain answerable after the conversation finishes", async t => {
+  check("questions remain answerable after the conversation finishes", async (t) => {
     const { page } = await app(t, {
-      messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("intro", "Pick a scope.")] }],
-      questions: [{ id: "request", threadId: "chat", messageId: "answer", questions, createdAt: 1 }],
+      messages: [
+        { id: "answer", role: "assistant", ts: 1, parts: [text("intro", "Pick a scope.")] },
+      ],
+      questions: [
+        { id: "request", threadId: "chat", messageId: "answer", questions, createdAt: 1 },
+      ],
       threadPatch: { running: false, status: "idle" },
     });
     const question = page.getByRole("region", { name: "Your input", exact: true });
@@ -728,33 +1275,60 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await question.getByText("Single player", { exact: true }).click();
     const answered = page.waitForRequest("**/api/threads/question*");
     await question.getByRole("button", { name: "Send answers", exact: true }).click();
-    assert.deepEqual((await answered).postDataJSON(), { id: "request", answers: { scope: ["Single player"] } });
+    assert.deepEqual((await answered).postDataJSON(), {
+      id: "request",
+      answers: { scope: ["Single player"] },
+    });
   });
 
-  check("questions lower to a bar and keep their answer", async t => {
+  check("questions lower to a bar and keep their answer", async (t) => {
     const { page } = await app(t, {
-      messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("intro", "Pick a scope.")] }],
-      questions: [{ id: "request", threadId: "chat", messageId: "answer", questions, createdAt: 1 }],
+      messages: [
+        { id: "answer", role: "assistant", ts: 1, parts: [text("intro", "Pick a scope.")] },
+      ],
+      questions: [
+        { id: "request", threadId: "chat", messageId: "answer", questions, createdAt: 1 },
+      ],
     });
     const question = page.getByRole("region", { name: "Your input", exact: true });
     await question.waitFor();
     await question.getByText("Multiplayer", { exact: true }).click();
-    const full = await question.evaluate(node => node.offsetHeight);
+    const full = await question.evaluate((node) => node.offsetHeight);
     await question.getByRole("button", { name: "Lower", exact: true }).click();
     const raise = question.getByRole("button", { name: /How should the world start\?/ });
     await raise.waitFor();
     await question.getByText("Single player", { exact: true }).waitFor({ state: "hidden" });
-    assert.ok(await question.evaluate(node => node.offsetHeight) < full / 2);
+    assert.ok((await question.evaluate((node) => node.offsetHeight)) < full / 2);
     await raise.click();
     const answered = page.waitForRequest("**/api/threads/question*");
     await question.getByRole("button", { name: "Send answers", exact: true }).click();
-    assert.deepEqual((await answered).postDataJSON(), { id: "request", answers: { scope: ["Multiplayer"] } });
+    assert.deepEqual((await answered).postDataJSON(), {
+      id: "request",
+      answers: { scope: ["Multiplayer"] },
+    });
   });
 
   check("permission requests are answered from their composer tab", async (t) => {
     const { page, sent } = await app(t, {
-      messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("intro", "I need to run a command.")] }],
-      permissions: [{ id: "permission", threadId: "chat", tool: "Bash", shape: "command", headline: "npm test", input: { command: "npm test" }, createdAt: 1 }],
+      messages: [
+        {
+          id: "answer",
+          role: "assistant",
+          ts: 1,
+          parts: [text("intro", "I need to run a command.")],
+        },
+      ],
+      permissions: [
+        {
+          id: "permission",
+          threadId: "chat",
+          tool: "Bash",
+          shape: "command",
+          headline: "npm test",
+          input: { command: "npm test" },
+          createdAt: 1,
+        },
+      ],
     });
     const permission = page.getByRole("region", { name: "Review this action", exact: true });
     await permission.waitFor();
@@ -763,16 +1337,39 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await permission.getByText("npm test", { exact: true }).waitFor();
     await permission.getByRole("button", { name: "Allow once", exact: true }).click();
     await expect(() => sent.some((event) => event.t === "permission.answer"));
-    assert.deepEqual(sent.find((event) => event.t === "permission.answer"), { t: "permission.answer", id: "permission", decision: "allow" });
+    assert.deepEqual(
+      sent.find((event) => event.t === "permission.answer"),
+      { t: "permission.answer", id: "permission", decision: "allow" },
+    );
   });
 
   check("conversation details keep scripts and routines in their own sections", async (t) => {
     const scripts = [{ id: "dev", name: "Dev server", command: "npm run dev" }];
-    const routines = [{ id: "nightly", name: "Nightly check", prompt: "Check", schedule: { kind: "weekly", days: [1], time: "08:00" }, paused: false, createdAt: 1, nextRunAt: Date.now() + 3_600_000, runs: [{ id: "r1", startedAt: 1, finishedAt: 2, status: "error" }] }];
-    const { page, sent } = await app(t, { messages: [], preferences: { threadDetails: "1" }, threadPatch: { routines }, snapshotPatch: { projects: [{ ...project, scripts }] } });
+    const routines = [
+      {
+        id: "nightly",
+        name: "Nightly check",
+        prompt: "Check",
+        schedule: { kind: "weekly", days: [1], time: "08:00" },
+        paused: false,
+        createdAt: 1,
+        nextRunAt: Date.now() + 3_600_000,
+        runs: [{ id: "r1", startedAt: 1, finishedAt: 2, status: "error" }],
+      },
+    ];
+    const { page, sent } = await app(t, {
+      messages: [],
+      preferences: { threadDetails: "1" },
+      threadPatch: { routines },
+      snapshotPatch: { projects: [{ ...project, scripts }] },
+    });
     const panel = page.locator(".thread-details-panel");
-    const scriptSection = panel.locator(".details-section", { has: page.getByRole("heading", { name: "Scripts" }) });
-    const routineSection = panel.locator(".details-section", { has: page.getByRole("heading", { name: "Routines" }) });
+    const scriptSection = panel.locator(".details-section", {
+      has: page.getByRole("heading", { name: "Scripts" }),
+    });
+    const routineSection = panel.locator(".details-section", {
+      has: page.getByRole("heading", { name: "Routines" }),
+    });
     await routineSection.waitFor();
     await scriptSection.getByRole("button", { name: "Edit Dev server" }).click();
     const editor = page.getByRole("dialog", { name: "Edit project script" });
@@ -782,16 +1379,44 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     assert.equal(await routineSection.locator(".bot-run-dot").getAttribute("data-status"), "error");
     await routineSection.getByRole("button", { name: "Add routine" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
-    assert.equal(await panel.locator(".details-section", { has: page.getByRole("button", { name: "Open in editor" }) }).getByRole("button", { name: "Dev server", exact: true }).count(), 0);
+    assert.equal(
+      await panel
+        .locator(".details-section", { has: page.getByRole("button", { name: "Open in editor" }) })
+        .getByRole("button", { name: "Dev server", exact: true })
+        .count(),
+      0,
+    );
     await scriptSection.getByRole("button", { name: "Dev server", exact: true }).click();
-    await expect(() => sent.some((event) => event.t === "project.runScript" && event.scriptId === "dev"));
+    await expect(() =>
+      sent.some((event) => event.t === "project.runScript" && event.scriptId === "dev"),
+    );
   });
 
   check("code blocks copy and images close on any outside click", async (t) => {
-    const { page } = await app(t, { messages: [{ id: "answer", role: "assistant", ts: 1, parts: [text("code", `Here:\n\n\`\`\`ts\nexport const answer = 42;\n\`\`\`\n\n![Red square](${square})`)] }] });
+    const { page } = await app(t, {
+      messages: [
+        {
+          id: "answer",
+          role: "assistant",
+          ts: 1,
+          parts: [
+            text(
+              "code",
+              `Here:\n\n\`\`\`ts\nexport const answer = 42;\n\`\`\`\n\n![Red square](${square})`,
+            ),
+          ],
+        },
+      ],
+    });
     await page.getByRole("button", { name: "Copy code", exact: true }).click();
-    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "export const answer = 42;");
-    for (const point of [{ x: 640, y: 20 }, { x: 30, y: 430 }]) {
+    assert.equal(
+      await page.evaluate(() => navigator.clipboard.readText()),
+      "export const answer = 42;",
+    );
+    for (const point of [
+      { x: 640, y: 20 },
+      { x: 30, y: 430 },
+    ]) {
       await page.getByRole("button", { name: /Preview Red square/ }).click();
       const viewer = page.locator("dialog.image-viewer");
       await viewer.locator("img").waitFor();
@@ -803,20 +1428,38 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
   });
 
   check("strip peeks keep their own width when the shared styles load later", async (t) => {
-    const page = await fixture(t, `
+    const page = await fixture(
+      t,
+      `
       import '/web/src/styles/overlays.css';
       import '/web/src/styles/strip-peek.css';
       document.getElementById('fixture').innerHTML = '<div class="strip-peek usage-peek"></div><div class="strip-peek inbox-peek"></div>';
-    `);
+    `,
+    );
     await page.locator(".usage-peek").waitFor({ state: "attached" });
-    const widths = await page.$$eval(".strip-peek", (peeks) => peeks.map((peek) => peek.getBoundingClientRect().width));
+    const widths = await page.$$eval(".strip-peek", (peeks) =>
+      peeks.map((peek) => peek.getBoundingClientRect().width),
+    );
     assert.deepEqual(widths, [464, 380]);
   });
 
   check("release notes page through history without closing or moving the arrows", async (t) => {
-    const notes = (version) => ({ version, sections: [{ title: "Fixed", items: [`Change in ${version}`, ...(version === "0.1.1" ? ["Another", "And another", "One more"] : [])] }] });
+    const notes = (version) => ({
+      version,
+      sections: [
+        {
+          title: "Fixed",
+          items: [
+            `Change in ${version}`,
+            ...(version === "0.1.1" ? ["Another", "And another", "One more"] : []),
+          ],
+        },
+      ],
+    });
     const releases = ["0.1.3", "0.1.2", "0.1.1"].map(notes);
-    const page = await fixture(t, `
+    const page = await fixture(
+      t,
+      `
       import '/web/src/styles/strip-peek.css';
       import React from 'react';
       import { createRoot } from 'react-dom/client';
@@ -825,7 +1468,8 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       const state = { status: "current", currentVersion: "0.1.3", notes: releases[0] };
       window.citropyDesktop = { updateState: async () => state, onUpdateState: () => () => {}, updateCommand: async () => state, releaseHistory: async () => releases };
       createRoot(document.getElementById('fixture')).render(React.createElement('nav', { className: 'navigation-strip' }, React.createElement(AppUpdateControl, { variant: 'strip' })));
-    `);
+    `,
+    );
     await page.locator(".app-update-control").hover();
     const older = page.getByRole("button", { name: "Older release", exact: true });
     const newer = page.getByRole("button", { name: "Newer release", exact: true });
@@ -851,8 +1495,16 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
 
   check("what's new fits and lists every item of every release", async (t) => {
     const changelog = readFileSync(new URL("../../CHANGELOG.md", import.meta.url), "utf8");
-    const releases = changelog.split(/^## /m).slice(1).map((block) => ({ version: block.split("\n", 1)[0].trim(), sections: parseReleaseNotes(block.slice(block.indexOf("\n"))) }));
-    const page = await fixture(t, `
+    const releases = changelog
+      .split(/^## /m)
+      .slice(1)
+      .map((block) => ({
+        version: block.split("\n", 1)[0].trim(),
+        sections: parseReleaseNotes(block.slice(block.indexOf("\n"))),
+      }));
+    const page = await fixture(
+      t,
+      `
       import '/web/src/styles/overlays.css';
       import '/web/src/styles/whats-new.css';
       import React from 'react';
@@ -861,7 +1513,8 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       import { WhatsNew } from '/web/src/components/WhatsNew.tsx';
       window.showRelease = (notes) => useApp.setState({ whatsNew: notes });
       createRoot(document.getElementById('fixture')).render(React.createElement(WhatsNew, { onOpenSettings: () => {} }));
-    `);
+    `,
+    );
     await page.waitForFunction(() => window.showRelease);
     for (const release of releases) {
       await page.evaluate((notes) => window.showRelease(notes), release);
@@ -871,7 +1524,11 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       while (await more.count()) await more.first().click();
       await settled(page);
       const shown = await dialog.locator(".whats-new-tile, .whats-new-list li").count();
-      assert.equal(shown, release.sections.flatMap((section) => section.items).length, release.version);
+      assert.equal(
+        shown,
+        release.sections.flatMap((section) => section.items).length,
+        release.version,
+      );
       const box = await dialog.boundingBox();
       assert.ok(box.y >= 0 && box.y + box.height <= 900, release.version);
       await page.evaluate(() => window.showRelease(null));
@@ -880,15 +1537,20 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
   });
 
   check("the video player plays, seeks, and mutes from the keyboard", async (t) => {
-    const page = await fixture(t, `
+    const page = await fixture(
+      t,
+      `
       import React from 'react';
       import { createRoot } from 'react-dom/client';
       import { VideoPlayer } from '/web/src/components/VideoPlayer.tsx';
       createRoot(document.getElementById('fixture')).render(React.createElement(VideoPlayer, { src: '/tests/fixtures/editor-preview.webm', name: 'editor-preview.webm' }));
-    `);
+    `,
+    );
     const player = page.locator(".video-player");
     const element = player.locator("video");
-    await page.waitForFunction(() => document.querySelector(".video-player video")?.readyState >= 1);
+    await page.waitForFunction(
+      () => document.querySelector(".video-player video")?.readyState >= 1,
+    );
     await player.getByRole("button", { name: "Play", exact: true }).first().click();
     await page.waitForFunction(() => !document.querySelector(".video-player video").paused);
     await player.focus();
@@ -897,7 +1559,9 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.keyboard.press("m");
     assert.equal(await element.evaluate((node) => node.muted), true);
     await player.getByRole("slider", { name: "Seek" }).fill("0.5");
-    await expect(async () => Math.abs(await element.evaluate((node) => node.currentTime) - 0.5) < 0.1);
+    await expect(
+      async () => Math.abs((await element.evaluate((node) => node.currentTime)) - 0.5) < 0.1,
+    );
   });
 
   await Promise.all(checks);

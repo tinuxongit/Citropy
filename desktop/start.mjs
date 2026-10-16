@@ -21,7 +21,8 @@ function running(pid) {
 if (previous) {
   for (let i = 0; i < 300 && running(previous); i++)
     await new Promise((resolve) => setTimeout(resolve, 100));
-  if (running(previous)) throw new Error(`The previous Citropy server (process ${previous}) did not stop.`);
+  if (running(previous))
+    throw new Error(`The previous Citropy server (process ${previous}) did not stop.`);
 }
 async function healthy() {
   try {
@@ -45,7 +46,8 @@ async function nextFreePort(start) {
 let state = await healthy();
 if (state !== true) {
   if (!explicitPort && !(await portAvailable(port))) port = await nextFreePort(port + 1);
-  if (development && !explicitUiPort && !(await portAvailable(uiPort))) uiPort = await nextFreePort(uiPort + 1);
+  if (development && !explicitUiPort && !(await portAvailable(uiPort)))
+    uiPort = await nextFreePort(uiPort + 1);
   const server = spawn(
     process.execPath,
     [
@@ -70,18 +72,16 @@ if (state !== true) {
   for (let i = 0; i < 200 && (state = await healthy()) !== true; i++)
     await new Promise((resolve) => setTimeout(resolve, 100));
 }
-if (state !== true) throw new Error("Citropy could not start. Run npm run dev or npm run serve to see the server error.");
+if (state !== true)
+  throw new Error(
+    "Citropy could not start. Run npm run dev or npm run serve to see the server error.",
+  );
 if (serverOnly) process.exit(0);
-const response = await fetch(
-  `${origin()}/api/desktop${development ? "?development=1" : ""}`,
-  {
-    method: "POST",
-    signal: AbortSignal.timeout(55000),
-  },
-);
+const response = await fetch(`${origin()}/api/desktop${development ? "?development=1" : ""}`, {
+  method: "POST",
+  signal: AbortSignal.timeout(55000),
+});
 if (!response.ok) throw new Error(await response.text());
 console.log(
-  development
-    ? "Citropy desktop is open with live interface updates."
-    : "Citropy desktop is open.",
+  development ? "Citropy desktop is open with live interface updates." : "Citropy desktop is open.",
 );

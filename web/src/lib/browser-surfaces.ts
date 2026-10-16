@@ -2,12 +2,20 @@ import { create } from "zustand";
 
 export type BrowserSurface = { x: number; y: number; width: number; height: number; layer: number };
 
-export const useBrowserSurfaces = create<{ byId: Record<string, BrowserSurface> }>(() => ({ byId: {} }));
+export const useBrowserSurfaces = create<{ byId: Record<string, BrowserSurface> }>(() => ({
+  byId: {},
+}));
 
 export function showSurface(id: string, surface: BrowserSurface): void {
   useBrowserSurfaces.setState((state) => {
     const current = state.byId[id];
-    if (current && (Object.keys(surface) as (keyof BrowserSurface)[]).every((key) => current[key] === surface[key])) return state;
+    if (
+      current &&
+      (Object.keys(surface) as (keyof BrowserSurface)[]).every(
+        (key) => current[key] === surface[key],
+      )
+    )
+      return state;
     return { byId: { ...state.byId, [id]: surface } };
   });
 }

@@ -4,14 +4,25 @@ import { ChevronLeftIcon, ChevronRightIcon } from "./icons/chevrons.tsx";
 const WHEEL_STEP = 50;
 
 function center(strip: HTMLElement, item: HTMLElement, behavior: ScrollBehavior): void {
-  strip.scrollTo({ left: item.offsetLeft + item.offsetWidth / 2 - strip.clientWidth / 2, behavior });
+  strip.scrollTo({
+    left: item.offsetLeft + item.offsetWidth / 2 - strip.clientWidth / 2,
+    behavior,
+  });
 }
 
 function maxScroll(strip: HTMLElement): number {
   return strip.scrollWidth - strip.clientWidth;
 }
 
-export function OptionStrip({ label, selected, children }: { label: string; selected: string; children: ReactNode }) {
+export function OptionStrip({
+  label,
+  selected,
+  children,
+}: {
+  label: string;
+  selected: string;
+  children: ReactNode;
+}) {
   const frame = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
@@ -52,7 +63,9 @@ export function OptionStrip({ label, selected, children }: { label: string; sele
     const measure = () => {
       const start = element.scrollLeft < 1;
       const end = element.scrollLeft > maxScroll(element) - 1;
-      setEnds((previous) => previous.start === start && previous.end === end ? previous : { start, end });
+      setEnds((previous) =>
+        previous.start === start && previous.end === end ? previous : { start, end },
+      );
     };
     const onScrollEnd = () => {
       target.current = undefined;
@@ -76,13 +89,29 @@ export function OptionStrip({ label, selected, children }: { label: string; sele
   return (
     <div className="option-strip-zone">
       <div ref={frame} className="option-strip-frame">
-        <div ref={strip} className="option-strip" role="group" aria-label={label}>{children}</div>
+        <div ref={strip} className="option-strip" role="group" aria-label={label}>
+          {children}
+        </div>
         {scrolls && (
           <>
-            <button className="option-strip-arrow" data-side="start" type="button" aria-label="Previous" disabled={ends.start} onClick={() => step(-1)}>
+            <button
+              className="option-strip-arrow"
+              data-side="start"
+              type="button"
+              aria-label="Previous"
+              disabled={ends.start}
+              onClick={() => step(-1)}
+            >
               <ChevronLeftIcon size={18} />
             </button>
-            <button className="option-strip-arrow" data-side="end" type="button" aria-label="Next" disabled={ends.end} onClick={() => step(1)}>
+            <button
+              className="option-strip-arrow"
+              data-side="end"
+              type="button"
+              aria-label="Next"
+              disabled={ends.end}
+              onClick={() => step(1)}
+            >
               <ChevronRightIcon size={18} />
             </button>
           </>

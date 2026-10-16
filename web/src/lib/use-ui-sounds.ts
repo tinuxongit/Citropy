@@ -1,11 +1,6 @@
 import { useEffect } from "react";
 import { useApp } from "./store.ts";
-import {
-  configureUiSounds,
-  playUiSound,
-  unlockUiSounds,
-  type UiSound,
-} from "./ui-sound.ts";
+import { configureUiSounds, playUiSound, unlockUiSounds, type UiSound } from "./ui-sound.ts";
 
 const SILENT =
   ".xterm, textarea, select, [contenteditable='true'], [data-ui-sound='off'], input:not([type='checkbox']):not([type='radio'])";
@@ -13,8 +8,7 @@ const PRESSABLE =
   "button, [role='button'], [role='tab'], [role='menuitem'], [role='option'], a[href], summary, label, input[type='checkbox'], input[type='radio']";
 const TOGGLES =
   "input[type='checkbox'], input[type='radio'], [role='switch'], [role='checkbox'], [role='radio']";
-const NAVIGATION =
-  "a[href], summary, [role='tab'], [role='menuitem'], [role='option']";
+const NAVIGATION = "a[href], summary, [role='tab'], [role='menuitem'], [role='option']";
 const INERT = ":disabled, [aria-disabled='true'], [data-disabled='true']";
 
 function clickSoundFor(target: EventTarget | null): UiSound | null {

@@ -3,7 +3,13 @@ import { fitScale, useBrowserSurfaces } from "../lib/browser-surfaces.ts";
 
 const PARKED_OFFSET = -100_000;
 
-export type BrowserGuest = { id: string; partition: string; width: number; height: number; rendering: boolean };
+export type BrowserGuest = {
+  id: string;
+  partition: string;
+  width: number;
+  height: number;
+  rendering: boolean;
+};
 
 type WebviewElement = HTMLElement & { getWebContentsId(): number };
 
@@ -12,12 +18,17 @@ export function BrowserGuests() {
   const [covers, setCovers] = useState<Record<string, string | undefined>>({});
   useEffect(() => window.citropyDesktop!.onBrowserGuests(setGuests), []);
   useEffect(
-    () => window.citropyDesktop!.onBrowserCover((id, image) => setCovers((current) => ({ ...current, [id]: image }))),
+    () =>
+      window.citropyDesktop!.onBrowserCover((id, image) =>
+        setCovers((current) => ({ ...current, [id]: image })),
+      ),
     [],
   );
   return (
     <>
-      {guests.map((guest) => <Guest key={guest.id} guest={guest} cover={covers[guest.id]} />)}
+      {guests.map((guest) => (
+        <Guest key={guest.id} guest={guest} cover={covers[guest.id]} />
+      ))}
       <div className="browser-guests-backing" />
     </>
   );
@@ -46,7 +57,13 @@ function Guest({ guest, cover }: { guest: BrowserGuest; cover?: string }) {
   }, [guest.id]);
 
   const placement: CSSProperties = surface
-    ? { left: surface.x, top: surface.y, width: surface.width, height: surface.height, zIndex: surface.layer }
+    ? {
+        left: surface.x,
+        top: surface.y,
+        width: surface.width,
+        height: surface.height,
+        zIndex: surface.layer,
+      }
     : {
         left: guest.rendering ? 0 : PARKED_OFFSET,
         top: guest.rendering ? 0 : PARKED_OFFSET,

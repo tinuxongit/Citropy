@@ -4,7 +4,13 @@ import type { Connection } from "../../../../shared/features.ts";
 import { api } from "../../lib/api.ts";
 import { SiteIcon } from "../icons/SiteIcon.tsx";
 
-export function BotConnections({ bot, onChange }: { bot: Pick<Bot, "name" | "connections">; onChange: (profile: Partial<BotProfile>) => void }) {
+export function BotConnections({
+  bot,
+  onChange,
+}: {
+  bot: Pick<Bot, "name" | "connections">;
+  onChange: (profile: Partial<BotProfile>) => void;
+}) {
   const [connections, setConnections] = useState<Connection[]>();
   const [error, setError] = useState("");
   useEffect(() => {
@@ -17,7 +23,10 @@ export function BotConnections({ bot, onChange }: { bot: Pick<Bot, "name" | "con
     return () => controller.abort();
   }, []);
   // Picks of removed connections still count, so the bot never gains a sign-in when a connection goes away.
-  const picked = connections?.filter((connection) => bot.connections.includes(connection.id)).map((connection) => connection.id) ?? [];
+  const picked =
+    connections
+      ?.filter((connection) => bot.connections.includes(connection.id))
+      .map((connection) => connection.id) ?? [];
   const toggle = (id: string, on: boolean) =>
     onChange({ connections: on ? [...picked, id] : picked.filter((entry) => entry !== id) });
   const summary = !bot.connections.length
@@ -41,13 +50,19 @@ export function BotConnections({ bot, onChange }: { bot: Pick<Bot, "name" | "con
                   <strong className="truncate">{connection.name}</strong>
                   <small className="truncate">{connection.site}</small>
                 </span>
-                <input type="checkbox" checked={picked.includes(connection.id)} onChange={(event) => toggle(connection.id, event.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={picked.includes(connection.id)}
+                  onChange={(event) => toggle(connection.id, event.target.checked)}
+                />
               </label>
             ))}
           </div>
         </>
       ) : (
-        <p className="bot-memory-empty">No connections yet. Add sites in Settings &gt; Connections.</p>
+        <p className="bot-memory-empty">
+          No connections yet. Add sites in Settings &gt; Connections.
+        </p>
       )}
     </section>
   );

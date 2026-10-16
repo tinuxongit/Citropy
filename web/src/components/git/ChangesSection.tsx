@@ -9,11 +9,7 @@ import { EmptyState } from "./GitEmptyState.tsx";
 import { FileGroup } from "./FileGroup.tsx";
 import { fileLabel } from "./files.ts";
 import type { GitDialogAction } from "../GitDialog.tsx";
-import type {
-  GitFile,
-  GitOperation,
-  GitOverview,
-} from "../../../../shared/protocol.ts";
+import type { GitFile, GitOperation, GitOverview } from "../../../../shared/protocol.ts";
 import { Loader } from "../Loader.tsx";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 
@@ -79,7 +75,9 @@ export function ChangesSection({
           <div>
             <strong>
               {conflicts.length
-                ? (conflicts.length === 1 ? `${conflicts.length} file needs conflict resolution` : `${conflicts.length} files need conflict resolution`)
+                ? conflicts.length === 1
+                  ? `${conflicts.length} file needs conflict resolution`
+                  : `${conflicts.length} files need conflict resolution`
                 : "Ready to finish the merge"}
             </strong>
             <p>
@@ -112,51 +110,73 @@ export function ChangesSection({
         <div className="git-first-commit">
           <CommitIcon size={18} />
           <span>
-            <strong>Make your first commit.</strong> Review your files, stage the ones to track, then write a commit message.
+            <strong>Make your first commit.</strong> Review your files, stage the ones to track,
+            then write a commit message.
           </span>
         </div>
       )}
-      <div
-        className="git-split"
-        data-detail={selection?.kind === "file"}
-      >
+      <div className="git-split" data-detail={selection?.kind === "file"}>
         <div className="git-change-list">
           <div className="git-change-files">
-          <label className="git-filter">
-            <SearchIcon size={15} />
-            <input
-              aria-label="Filter changed files"
-              placeholder="Filter files…"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-            />
-            {filter && (
-              <button
-                className="icon-btn"
-                aria-label="Clear file filter"
-                onClick={() => setFilter("")}
-              >
-                <CloseIcon size={13} />
-              </button>
-            )}
-          </label>
-          <div className="git-file-groups scroll sliding-selection">
-            <SelectionHighlight value={selection?.kind === "file" ? `${selection.staged}:${selection.path}` : undefined} selector='.git-file-row[data-selected="true"]' />
-            <FileGroup title="Unstaged changes" list={unstaged} inIndex={false} disabled={disabled} selection={selection} match={match} act={act} setSelection={setSelection} />
-            <FileGroup title="Staged for commit" list={staged} inIndex={true} disabled={disabled} selection={selection} match={match} act={act} setSelection={setSelection} />
-            {filter && !files.some((file) => match(file.path)) && (
-              <p className="git-list-hint">
-                No files match '{filter}'.
-              </p>
-            )}
-          </div>
+            <label className="git-filter">
+              <SearchIcon size={15} />
+              <input
+                aria-label="Filter changed files"
+                placeholder="Filter files…"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+              />
+              {filter && (
+                <button
+                  className="icon-btn"
+                  aria-label="Clear file filter"
+                  onClick={() => setFilter("")}
+                >
+                  <CloseIcon size={13} />
+                </button>
+              )}
+            </label>
+            <div className="git-file-groups scroll sliding-selection">
+              <SelectionHighlight
+                value={
+                  selection?.kind === "file" ? `${selection.staged}:${selection.path}` : undefined
+                }
+                selector='.git-file-row[data-selected="true"]'
+              />
+              <FileGroup
+                title="Unstaged changes"
+                list={unstaged}
+                inIndex={false}
+                disabled={disabled}
+                selection={selection}
+                match={match}
+                act={act}
+                setSelection={setSelection}
+              />
+              <FileGroup
+                title="Staged for commit"
+                list={staged}
+                inIndex={true}
+                disabled={disabled}
+                selection={selection}
+                match={match}
+                act={act}
+                setSelection={setSelection}
+              />
+              {filter && !files.some((file) => match(file.path)) && (
+                <p className="git-list-hint">No files match '{filter}'.</p>
+              )}
+            </div>
           </div>
           <form
             className="git-commit-form"
             onSubmit={(event) => {
               event.preventDefault();
               if (canCommit)
-                void act("commit", [message.trim(), description.trim()].filter(Boolean).join("\n\n"));
+                void act(
+                  "commit",
+                  [message.trim(), description.trim()].filter(Boolean).join("\n\n"),
+                );
             }}
           >
             <input
@@ -164,11 +184,7 @@ export function ChangesSection({
               value={message}
               disabled={busy === "commit"}
               onChange={(event) => setMessage(event.target.value)}
-              placeholder={
-                data.hasCommits
-                  ? "Summarize the change"
-                  : "Initial commit"
-              }
+              placeholder={data.hasCommits ? "Summarize the change" : "Initial commit"}
             />
             <textarea
               aria-label="Description"
@@ -183,16 +199,8 @@ export function ChangesSection({
               <span className="truncate">{branch}</span>
               <span>{staged.length} staged</span>
             </div>
-            <button
-              className="btn"
-              data-variant="primary"
-              disabled={!canCommit}
-            >
-              {busy === "commit" ? (
-                <Loader size={15} />
-              ) : (
-                <CommitIcon size={17} />
-              )}
+            <button className="btn" data-variant="primary" disabled={!canCommit}>
+              {busy === "commit" ? <Loader size={15} /> : <CommitIcon size={17} />}
               {data.mergeInProgress
                 ? "Complete merge"
                 : data.hasCommits
@@ -202,10 +210,7 @@ export function ChangesSection({
           </form>
         </div>
         <ResizeHandle panel="git" inline />
-        <section
-          className="git-review-pane"
-          aria-label="File preview"
-        >
+        <section className="git-review-pane" aria-label="File preview">
           {selection?.kind === "file" && selectedFile ? (
             <>
               <header className="git-review-header">
@@ -240,9 +245,7 @@ export function ChangesSection({
                           description: selectedFile.untracked
                             ? `${selection.path} will be permanently deleted.`
                             : `Unstaged edits to ${selection.path} will be lost. Staged changes will be kept.`,
-                          label: selectedFile.untracked
-                            ? "Delete file"
-                            : "Discard changes",
+                          label: selectedFile.untracked ? "Delete file" : "Discard changes",
                           danger: true,
                         })
                       }
@@ -253,18 +256,9 @@ export function ChangesSection({
                   <button
                     className="btn"
                     disabled={disabled}
-                    onClick={() =>
-                      void act(
-                        selection.staged ? "unstage" : "stage",
-                        selection.path,
-                      )
-                    }
+                    onClick={() => void act(selection.staged ? "unstage" : "stage", selection.path)}
                   >
-                    {selection.staged ? (
-                      <MinusIcon size={14} />
-                    ) : (
-                      <PlusIcon size={14} />
-                    )}
+                    {selection.staged ? <MinusIcon size={14} /> : <PlusIcon size={14} />}
                     {selection.staged ? "Unstage" : "Stage file"}
                   </button>
                 </div>

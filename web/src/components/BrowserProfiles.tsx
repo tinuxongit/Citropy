@@ -9,10 +9,7 @@ import { api } from "../lib/api.ts";
 import { confirmAction, useApp } from "../lib/store.ts";
 import { saveProjectDefaults } from "../lib/actions.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
-import type {
-  BrowserProfile,
-  ImportBrowser,
-} from "../../../shared/features.ts";
+import type { BrowserProfile, ImportBrowser } from "../../../shared/features.ts";
 import { Select } from "./Select.tsx";
 import { setSearchEngine } from "../lib/preferences.ts";
 import { SEARCH_ENGINES, type SearchEngine } from "../lib/web-search.ts";
@@ -92,17 +89,11 @@ export function BrowserProfiles() {
     }
   };
   const selectProfile = (id: string) =>
-    perform(async () =>
-      showProfiles(await send<Profiles>("profiles", "POST", { selected: id })),
-    );
+    perform(async () => showProfiles(await send<Profiles>("profiles", "POST", { selected: id })));
   const addProfile = () =>
-    perform(async () =>
-      showProfiles(await send<Profiles>("profiles", "POST", { name })),
-    );
+    perform(async () => showProfiles(await send<Profiles>("profiles", "POST", { name })));
   const deleteProfile = (id: string) =>
-    perform(async () =>
-      showProfiles(await send<Profiles>("profiles", "DELETE", { id })),
-    );
+    perform(async () => showProfiles(await send<Profiles>("profiles", "DELETE", { id })));
   const importCookies = () =>
     perform(async () => {
       const result = await send<ImportResult>("import", "POST", {
@@ -158,7 +149,13 @@ export function BrowserProfiles() {
               value: id,
               label: engine.label,
               icon: (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
                   <path d={engine.icon} />
                 </svg>
               ),
@@ -182,7 +179,10 @@ export function BrowserProfiles() {
         <label className="setting-row">
           <span>
             <strong>Browse in Citropy</strong>
-            <small>Ask providers to search and read websites in this browser, where your sign-ins work, instead of their built-in web tools.</small>
+            <small>
+              Ask providers to search and read websites in this browser, where your sign-ins work,
+              instead of their built-in web tools.
+            </small>
           </span>
           <input
             className="setting-switch"
@@ -217,7 +217,8 @@ export function BrowserProfiles() {
           </button>
         </div>
         <p className="feature-note">
-          Keep logins separate. The selected profile is used for new browser tabs; open tabs keep their current profile.
+          Keep logins separate. The selected profile is used for new browser tabs; open tabs keep
+          their current profile.
         </p>
         {data?.profiles.map((profile) => (
           <div className="profile-row" key={profile.id}>
@@ -225,7 +226,8 @@ export function BrowserProfiles() {
             <span>
               <strong>{profile.id === "workspace" ? "Workspace" : profile.name}</strong>
               <small>
-                {profile.cookies}{" "}cookies ·{" "}{profile.activeTabs}{" "}open tabs{" "}</small>
+                {profile.cookies} cookies · {profile.activeTabs} open tabs{" "}
+              </small>
             </span>
             <button
               className="btn"
@@ -245,18 +247,13 @@ export function BrowserProfiles() {
               <button
                 className="icon-btn"
                 disabled={busy || profile.activeTabs > 0}
-                title={
-                  profile.activeTabs
-                    ? "Close this profile's tabs first"
-                    : "Delete profile"
-                }
+                title={profile.activeTabs ? "Close this profile's tabs first" : "Delete profile"}
                 aria-label={`Delete ${profile.name}`}
                 onClick={async () => {
                   if (
                     await confirmAction({
                       title: `Delete ${profile.name}?`,
-                      description:
-                        "Remove this profile and its saved browser data.",
+                      description: "Remove this profile and its saved browser data.",
                       label: "Delete profile",
                       danger: true,
                     })
@@ -291,9 +288,16 @@ export function BrowserProfiles() {
       </section>
       <section className="settings-group">
         <h2 className="settings-group-heading">Import signed-in sessions</h2>
-        <p className="feature-note">{" "}Copy cookies from a browser on this computer. Close that browser first. Your system may ask to unlock its keyring. Some sites may require you to sign in again.{" "}</p>
+        <p className="feature-note">
+          {" "}
+          Copy cookies from a browser on this computer. Close that browser first. Your system may
+          ask to unlock its keyring. Some sites may require you to sign in again.{" "}
+        </p>
         <div className="feature-form-grid">
-          <label className="feature-field">{" "}Import from{" "}<Select
+          <label className="feature-field">
+            {" "}
+            Import from{" "}
+            <Select
               disabled={busy}
               value={sourceId}
               onChange={setSourceId}
@@ -308,7 +312,10 @@ export function BrowserProfiles() {
               ]}
             />
           </label>
-          <label className="feature-field">{" "}Citropy profile{" "}<Select
+          <label className="feature-field">
+            {" "}
+            Citropy profile{" "}
+            <Select
               disabled={busy}
               value={profileId}
               onChange={setProfileId}
@@ -331,23 +338,21 @@ export function BrowserProfiles() {
       </section>
       <section className="settings-group">
         <h2 className="settings-group-heading">Profile data</h2>
-        <p className="feature-note">{" "}Applies to{" "}
+        <p className="feature-note">
+          {" "}
+          Applies to{" "}
           {data?.profiles.find((profile) => profile.id === profileId)?.name ??
             "the selected profile"}
           .
         </p>
         <div className="feature-inline">
-          <button
-            className="btn"
-            disabled={busy || !data}
-            onClick={() => clearData("cookies")}
-          >
-            <CookieIcon size={15} />{" "}Clear cookies{" "}</button>
-          <button
-            className="btn"
-            disabled={busy || !data}
-            onClick={() => clearData("cache")}
-          >{" "}Clear cache{" "}</button>
+          <button className="btn" disabled={busy || !data} onClick={() => clearData("cookies")}>
+            <CookieIcon size={15} /> Clear cookies{" "}
+          </button>
+          <button className="btn" disabled={busy || !data} onClick={() => clearData("cache")}>
+            {" "}
+            Clear cache{" "}
+          </button>
         </div>
       </section>
       {message && (
@@ -356,9 +361,7 @@ export function BrowserProfiles() {
         </p>
       )}
       <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
-      {!projectId && (
-        <p className="feature-note">{" "}Open a workspace to manage browser profiles.{" "}</p>
-      )}
+      {!projectId && <p className="feature-note"> Open a workspace to manage browser profiles. </p>}
     </div>
   );
 }

@@ -34,12 +34,26 @@ function ufwAllows(port: number): boolean {
   } catch (error) {
     return unlessCode(["EACCES"], false)(error);
   }
-  return [...rules.matchAll(/^### tuple ### allow (\S+) (\S+) /gm)].some(([, protocol, ports]) =>
-    (protocol === "tcp" || protocol === "any") && ports !== "any" && coversPort(ports!, port));
+  return [...rules.matchAll(/^### tuple ### allow (\S+) (\S+) /gm)].some(
+    ([, protocol, ports]) =>
+      (protocol === "tcp" || protocol === "any") && ports !== "any" && coversPort(ports!, port),
+  );
 }
 
 function ufwArguments(port: number, subnet: string): string[] {
-  return ["allow", "from", subnet, "to", "any", "port", String(port), "proto", "tcp", "comment", "Citropy phone access"];
+  return [
+    "allow",
+    "from",
+    subnet,
+    "to",
+    "any",
+    "port",
+    String(port),
+    "proto",
+    "tcp",
+    "comment",
+    "Citropy phone access",
+  ];
 }
 
 export function subnetOf(cidr: string): string {
@@ -54,9 +68,16 @@ export function subnetOf(cidr: string): string {
 export function firewallBlock(port: number, subnet: string): FirewallBlock | undefined {
   if (process.platform !== "linux" || !ufw) return undefined;
   if (setting("/etc/ufw/ufw.conf", "ENABLED") !== "yes") return undefined;
-  if (!["DROP", "REJECT"].includes(setting("/etc/default/ufw", "DEFAULT_INPUT_POLICY") ?? "")) return undefined;
+  if (!["DROP", "REJECT"].includes(setting("/etc/default/ufw", "DEFAULT_INPUT_POLICY") ?? ""))
+    return undefined;
   if (granted.has(grantKey(port, subnet)) || ufwAllows(port)) return undefined;
-  return { name: "ufw", command: `sudo ufw ${ufwArguments(port, subnet).map((part) => (part.includes(" ") ? `'${part}'` : part)).join(" ")}`, canFix: canRunAsAdmin };
+  return {
+    name: "ufw",
+    command: `sudo ufw ${ufwArguments(port, subnet)
+      .map((part) => (part.includes(" ") ? `'${part}'` : part))
+      .join(" ")}`,
+    canFix: canRunAsAdmin,
+  };
 }
 
 export async function allowThroughFirewall(port: number, subnet: string): Promise<void> {

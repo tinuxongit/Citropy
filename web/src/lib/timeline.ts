@@ -18,7 +18,15 @@ export interface TimelineRow {
   stamp?: number;
 }
 
-export type FoldRow = { kind: "fold"; id: string; ids: string[]; messageIds: string[]; open: boolean; active: boolean; since: number };
+export type FoldRow = {
+  kind: "fold";
+  id: string;
+  ids: string[];
+  messageIds: string[];
+  open: boolean;
+  active: boolean;
+  since: number;
+};
 export type LiveRow = { kind: "live"; messageIds: string[] };
 
 export function partFingerprint(part: Part | undefined): string {
@@ -49,12 +57,16 @@ function sameTimelineContent(previous: AppState, state: AppState, threadId: stri
   if (previous.order[threadId] !== order) return false;
   const thread = state.threads[threadId];
   const previousThread = previous.threads[threadId];
-  if (previousThread?.status !== thread?.status ||
+  if (
+    previousThread?.status !== thread?.status ||
     previousThread?.running !== thread?.running ||
     previousThread?.compacting !== thread?.compacting ||
-    previousThread?.runStartedAt !== thread?.runStartedAt) return false;
+    previousThread?.runStartedAt !== thread?.runStartedAt
+  )
+    return false;
   const version = state.timelineVersions?.[threadId];
-  const sameParts = previous.parts === state.parts ||
+  const sameParts =
+    previous.parts === state.parts ||
     (version !== undefined && previous.timelineVersions?.[threadId] === version);
   const sameMessages = previous.messages === state.messages;
   const sameDisclosures = previous.disclosures === state.disclosures;
@@ -63,18 +75,25 @@ function sameTimelineContent(previous: AppState, state: AppState, threadId: stri
     const message = state.messages[messageId];
     if (!sameMessages && previous.messages[messageId] !== message) return false;
     for (const partId of message?.partIds ?? []) {
-      if (!sameDisclosures && previous.disclosures[partId]?.activity !== state.disclosures[partId]?.activity) return false;
+      if (
+        !sameDisclosures &&
+        previous.disclosures[partId]?.activity !== state.disclosures[partId]?.activity
+      )
+        return false;
       if (!sameParts) {
         const part = state.parts.get(partId);
         const previousPart = previous.parts.get(partId);
-        if (previousPart !== part && partFingerprint(previousPart) !== partFingerprint(part)) return false;
+        if (previousPart !== part && partFingerprint(previousPart) !== partFingerprint(part))
+          return false;
       }
     }
   }
   return true;
 }
 
-export function createTimelineSelector(threadId: string | null): (state: AppState) => TimelineRow[] {
+export function createTimelineSelector(
+  threadId: string | null,
+): (state: AppState) => TimelineRow[] {
   let rows: TimelineRow[] = [];
   let previous: AppState | undefined;
   return (state) => {
@@ -82,12 +101,13 @@ export function createTimelineSelector(threadId: string | null): (state: AppStat
     const unchanged = previous && sameTimelineContent(previous, state, threadId);
     previous = state;
     if (unchanged) return rows;
-    const previousByKey = new Map(rows.map(item => [item.key, item]));
-    const next = timelineRows(state, threadId).map(item => {
+    const previousByKey = new Map(rows.map((item) => [item.key, item]));
+    const next = timelineRows(state, threadId).map((item) => {
       const kept = previousByKey.get(item.key);
       return kept && sameTimelineRow(kept, item) ? kept : item;
     });
-    if (next.length !== rows.length || next.some((item, index) => item !== rows[index])) rows = next;
+    if (next.length !== rows.length || next.some((item, index) => item !== rows[index]))
+      rows = next;
     return rows;
   };
 }
@@ -99,8 +119,13 @@ function isActionRow(row: Row, parts: AppState["parts"]): boolean {
   return part?.kind === "tool" || part?.kind === "todo" || part?.kind === "question";
 }
 
-function finalAnswerRange(rows: Row[], parts: AppState["parts"]): { start: number; end: number } | undefined {
-  const end = rows.findLastIndex(row => row.kind === "part" && parts.get(row.id)?.kind === "text");
+function finalAnswerRange(
+  rows: Row[],
+  parts: AppState["parts"],
+): { start: number; end: number } | undefined {
+  const end = rows.findLastIndex(
+    (row) => row.kind === "part" && parts.get(row.id)?.kind === "text",
+  );
   if (end === -1) return;
 
   let start = end;
@@ -124,16 +149,28 @@ function sameAuthor(a: MessageOrigin | undefined, b: MessageOrigin | undefined):
 export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
   const order = state.order[threadId] ?? [];
   const thread = state.threads[threadId];
-  const running = Boolean(thread?.running || thread?.compacting || ["thinking", "working", "queued", "awaiting"].includes(thread?.status ?? ""));
-  const busy = Boolean(thread?.compacting || ["thinking", "working", "queued"].includes(thread?.status ?? ""));
+  const running = Boolean(
+    thread?.running ||
+    thread?.compacting ||
+    ["thinking", "working", "queued", "awaiting"].includes(thread?.status ?? ""),
+  );
+  const busy = Boolean(
+    thread?.compacting || ["thinking", "working", "queued"].includes(thread?.status ?? ""),
+  );
   const startedAt = thread?.runStartedAt;
-  const lastAssistantId = order.findLast(id => state.messages[id]?.role === "assistant");
+  const lastAssistantId = order.findLast((id) => state.messages[id]?.role === "assistant");
   const turns: string[][] = [];
   for (const messageId of order) {
     const assistant = state.messages[messageId]?.role === "assistant";
     const previous = turns.at(-1);
     const leading = state.messages[previous?.[0] ?? ""];
-    if (assistant && previous && leading?.role === "assistant" && sameAuthor(leading.origin, state.messages[messageId]!.origin)) previous.push(messageId);
+    if (
+      assistant &&
+      previous &&
+      leading?.role === "assistant" &&
+      sameAuthor(leading.origin, state.messages[messageId]!.origin)
+    )
+      previous.push(messageId);
     else turns.push([messageId]);
   }
   const timeline = turns.flatMap<TimelineRow>((messageIds, turnIndex) => {
@@ -141,24 +178,41 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
     const message = state.messages[messageId];
     if (!message || message.origin?.kind === "reaction") return [];
     const previousTs = state.messages[turns[turnIndex - 1]?.at(-1) ?? ""]?.ts;
-    const stamp = inBotsView(thread) && (previousTs === undefined || message.ts - previousTs > STAMP_GAP_MS) ? message.ts : undefined;
-    if (message.role !== "assistant") return [{ key: messageId, messageId, first: true, last: true, stamp }];
+    const stamp =
+      inBotsView(thread) && (previousTs === undefined || message.ts - previousTs > STAMP_GAP_MS)
+        ? message.ts
+        : undefined;
+    if (message.role !== "assistant")
+      return [{ key: messageId, messageId, first: true, last: true, stamp }];
     const owners = new Map<string, string>();
     for (const id of messageIds) {
       for (const partId of state.messages[id]!.partIds) owners.set(partId, id);
     }
-    const partIds = [...owners.keys()].filter(id => !(inBotsView(thread) && passReply(state.parts.get(id))));
+    const partIds = [...owners.keys()].filter(
+      (id) => !(inBotsView(thread) && passReply(state.parts.get(id))),
+    );
     const rows = buildRows(partIds.map((id) => state.parts.get(id)));
     const before = turns[turnIndex - 1]?.at(-1);
     const turnKey = before ?? threadId;
-    const continuing = running && startedAt !== undefined && messageIds.some(id => state.messages[id]!.ts >= startedAt);
-    const latest = order.at(-1) === messageIds.at(-1) || (continuing && messageIds.includes(lastAssistantId ?? ""));
+    const continuing =
+      running &&
+      startedAt !== undefined &&
+      messageIds.some((id) => state.messages[id]!.ts >= startedAt);
+    const latest =
+      order.at(-1) === messageIds.at(-1) ||
+      (continuing && messageIds.includes(lastAssistantId ?? ""));
     const active = latest && running && (startedAt === undefined || continuing);
     if (!rows.length && !active) return [];
     let visible: NonNullable<TimelineRow["row"]>[] = rows;
     let latestStep: Row | undefined;
     let steps: Row[] = [];
-    if (rows.some(row => isActionRow(row, state.parts) || row.kind === "part" && state.parts.get(row.id)?.kind === "reasoning")) {
+    if (
+      rows.some(
+        (row) =>
+          isActionRow(row, state.parts) ||
+          (row.kind === "part" && state.parts.get(row.id)?.kind === "reasoning"),
+      )
+    ) {
       const finalAnswer = active ? undefined : finalAnswerRange(rows, state.parts);
       const work = rows.filter((row, index) => {
         if (finalAnswer && index >= finalAnswer.start && index <= finalAnswer.end) return false;
@@ -171,17 +225,32 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       const id = partIds[0]!;
       const open = state.disclosures[id]?.activity ?? false;
       if (active && !open) latestStep = work.at(-1);
-      steps = work.filter(row => open || !(row.kind === "part" && state.parts.get(row.id)?.kind === "text"));
+      steps = work.filter(
+        (row) => open || !(row.kind === "part" && state.parts.get(row.id)?.kind === "text"),
+      );
       if (hidden.length) {
         const since = state.messages[before ?? ""]?.ts ?? message.ts;
-        const ids = work.flatMap(row => row.kind === "part" ? [row.id] : row.ids);
-        visible = [{ kind: "fold", id, ids, messageIds, open, active, since }, ...rows.filter(row => open || !hidden.includes(row))];
+        const ids = work.flatMap((row) => (row.kind === "part" ? [row.id] : row.ids));
+        visible = [
+          { kind: "fold", id, ids, messageIds, open, active, since },
+          ...rows.filter((row) => open || !hidden.includes(row)),
+        ];
       }
     }
     if (active) visible = [...visible, { kind: "live", messageIds }];
     return visible.map((row, index) => ({
-      key: row.kind === "fold" ? `fold-${turnKey}` : row.kind === "live" ? `live-${turnKey}` : row.kind === "part" ? row.id : `${row.kind}-${row.ids[0]}`,
-      messageId: row.kind === "fold" || row.kind === "live" ? messageId : owners.get(row.kind === "part" ? row.id : row.ids[0]!)!,
+      key:
+        row.kind === "fold"
+          ? `fold-${turnKey}`
+          : row.kind === "live"
+            ? `live-${turnKey}`
+            : row.kind === "part"
+              ? row.id
+              : `${row.kind}-${row.ids[0]}`,
+      messageId:
+        row.kind === "fold" || row.kind === "live"
+          ? messageId
+          : owners.get(row.kind === "part" ? row.id : row.ids[0]!)!,
       row,
       first: index === 0,
       last: index === visible.length - 1,
@@ -191,8 +260,13 @@ export function timelineRows(state: AppState, threadId: string): TimelineRow[] {
       step: (row.kind !== "fold" && row.kind !== "live" && steps.includes(row)) || undefined,
     }));
   });
-  if (busy && !timeline.some(row => row.row?.kind === "live")) {
-    timeline.push({ key: `live-${order.at(-1) ?? threadId}`, first: true, last: true, row: { kind: "live", messageIds: [] } });
+  if (busy && !timeline.some((row) => row.row?.kind === "live")) {
+    timeline.push({
+      key: `live-${order.at(-1) ?? threadId}`,
+      first: true,
+      last: true,
+      row: { kind: "live", messageIds: [] },
+    });
   }
   return timeline;
 }
@@ -202,13 +276,36 @@ function sameIds(ids: string[] | undefined, other: string[] | undefined): boolea
 }
 
 function sameTimelineRow(item: TimelineRow, other: TimelineRow): boolean {
-  if (item.key !== other.key || item.messageId !== other.messageId ||
-    item.first !== other.first || item.last !== other.last || item.latestStep !== other.latestStep || item.step !== other.step || item.stamp !== other.stamp || !sameIds(item.replyIds, other.replyIds) || item.row?.kind !== other.row?.kind) return false;
+  if (
+    item.key !== other.key ||
+    item.messageId !== other.messageId ||
+    item.first !== other.first ||
+    item.last !== other.last ||
+    item.latestStep !== other.latestStep ||
+    item.step !== other.step ||
+    item.stamp !== other.stamp ||
+    !sameIds(item.replyIds, other.replyIds) ||
+    item.row?.kind !== other.row?.kind
+  )
+    return false;
   const row = item.row;
   const next = other.row;
   if (!row || !next || row.kind === "part") return true;
   if (row.kind === "live" && next.kind === "live") return sameIds(row.messageIds, next.messageIds);
-  if (row.kind === "fold" && next.kind === "fold" &&
-    (row.id !== next.id || row.open !== next.open || row.active !== next.active || row.since !== next.since || !sameIds(row.messageIds, next.messageIds))) return false;
-  return row.kind !== "live" && next.kind !== "live" && next.kind !== "part" && sameIds(row.ids, next.ids);
+  if (
+    row.kind === "fold" &&
+    next.kind === "fold" &&
+    (row.id !== next.id ||
+      row.open !== next.open ||
+      row.active !== next.active ||
+      row.since !== next.since ||
+      !sameIds(row.messageIds, next.messageIds))
+  )
+    return false;
+  return (
+    row.kind !== "live" &&
+    next.kind !== "live" &&
+    next.kind !== "part" &&
+    sameIds(row.ids, next.ids)
+  );
 }

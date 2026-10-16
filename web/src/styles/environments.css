@@ -1,4 +1,8 @@
-.environment-settings { display: flex; flex-direction: column; gap: var(--space-16); }
+.environment-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
 .environment-row {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr) auto;
@@ -7,26 +11,99 @@
   min-height: 64px;
   padding: var(--space-12) var(--settings-inset);
 }
-.environment-list > .environment-row + .environment-row { border-top: 1px solid var(--line); }
-.environment-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-full); background: var(--raised); color: var(--text-2); }
-.environment-row[data-state="in-use"] .environment-icon { color: var(--accent); }
-.environment-text { display: grid; gap: var(--space-2); min-width: 0; }
-.environment-text strong { overflow: hidden; font-size: var(--text-sm); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.environment-text small { overflow: hidden; color: var(--text-3); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
-.environment-status { display: flex; align-items: center; gap: var(--space-6); }
-.environment-row[data-state="error"] .environment-status { color: var(--bad); white-space: normal; overflow-wrap: anywhere; }
-.environment-actions { display: flex; align-items: center; gap: var(--space-4); }
-.environment-menu-space { width: 32px; }
-.environment-add { display: flex; flex-wrap: wrap; gap: var(--space-8); }
-.ssh-form, .ssh-options { display: flex; flex-direction: column; gap: var(--space-10); }
-.ssh-form > label:not(:first-child) { margin-top: var(--space-6); }
-.ssh-form input { min-width: 0; width: 100%; padding: var(--space-10) var(--space-12); }
-.ssh-form details { margin-top: var(--space-8); }
-.ssh-form summary { color: var(--text-3); }
-.ssh-options { padding-top: var(--space-16); }
-.ssh-error { color: var(--bad) !important; overflow-wrap: anywhere; white-space: pre-wrap; }
-.ssh-progress { display: flex; align-items: center; gap: var(--space-8); }
-.ssh-progress > svg { flex: none; }
+.environment-list > .environment-row + .environment-row {
+  border-top: 1px solid var(--line);
+}
+.environment-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  background: var(--raised);
+  color: var(--text-2);
+}
+.environment-row[data-state="in-use"] .environment-icon {
+  color: var(--accent);
+}
+.environment-text {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.environment-text strong {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.environment-text small {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.environment-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+.environment-row[data-state="error"] .environment-status {
+  color: var(--bad);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.environment-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.environment-menu-space {
+  width: 32px;
+}
+.environment-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+.ssh-form,
+.ssh-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+.ssh-form > label:not(:first-child) {
+  margin-top: var(--space-6);
+}
+.ssh-form input {
+  min-width: 0;
+  width: 100%;
+  padding: var(--space-10) var(--space-12);
+}
+.ssh-form details {
+  margin-top: var(--space-8);
+}
+.ssh-form summary {
+  color: var(--text-3);
+}
+.ssh-options {
+  padding-top: var(--space-16);
+}
+.ssh-error {
+  color: var(--bad) !important;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.ssh-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.ssh-progress > svg {
+  flex: none;
+}
 .remote-connection-banner {
   position: absolute;
   top: calc(var(--topbar) + 8px);
@@ -40,13 +117,30 @@
   border-radius: var(--r-popup);
   background: var(--overlay);
 }
-.remote-connection-banner > span { flex: 1; min-width: 0; font-size: var(--text-sm); overflow-wrap: anywhere; }
-.remote-connection-banner > svg { flex: none; }
-.environment-breadcrumb { max-width: 130px; }
+.remote-connection-banner > span {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.remote-connection-banner > svg {
+  flex: none;
+}
+.environment-breadcrumb {
+  max-width: 130px;
+}
 @media (max-width: 720px) {
-  .remote-connection-banner { flex-wrap: wrap; }
-  .remote-connection-banner > span { flex-basis: calc(100% - 40px); }
-  .environment-breadcrumb { display: none; }
+  .remote-connection-banner {
+    flex-wrap: wrap;
+  }
+  .remote-connection-banner > span {
+    flex-basis: calc(100% - 40px);
+  }
+  .environment-breadcrumb {
+    display: none;
+  }
 }
 
-.ssh-form .settings-note { margin: var(--space-6) 0 0; }
+.ssh-form .settings-note {
+  margin: var(--space-6) 0 0;
+}

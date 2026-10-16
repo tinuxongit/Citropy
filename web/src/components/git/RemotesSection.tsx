@@ -37,11 +37,7 @@ export function RemotesSection({
           <p>Connect repositories and keep your work in sync.</p>
         </div>
         {data.remotes.length > 0 && (
-          <button
-            className="btn"
-            disabled={disabled}
-            onClick={addRemote}
-          >
+          <button className="btn" disabled={disabled} onClick={addRemote}>
             <PlusIcon size={15} />
             Add remote
           </button>
@@ -51,18 +47,17 @@ export function RemotesSection({
         <EmptyState
           title="Your work is local"
           action={
-            <button
-              className="btn"
-              data-variant="primary"
-              disabled={disabled}
-              onClick={addRemote}
-            >
+            <button className="btn" data-variant="primary" disabled={disabled} onClick={addRemote}>
               <PlusIcon size={15} />
               Connect a remote
             </button>
           }
         >
-          <p>{" "}Add a remote repository to back up your commits and collaborate. Nothing is published until you choose to push.{" "}</p>
+          <p>
+            {" "}
+            Add a remote repository to back up your commits and collaborate. Nothing is published
+            until you choose to push.{" "}
+          </p>
         </EmptyState>
       ) : (
         <>
@@ -88,18 +83,16 @@ export function RemotesSection({
               <div className="git-sync-counts">
                 <span>
                   <ArrowUpIcon size={15} />
-                  <strong>{data.status?.ahead ?? 0}</strong>to push{" "}</span>
+                  <strong>{data.status?.ahead ?? 0}</strong>to push{" "}
+                </span>
                 <span>
                   <ArrowDownIcon size={15} />
-                  <strong>{data.status?.behind ?? 0}</strong>to pull{" "}</span>
+                  <strong>{data.status?.behind ?? 0}</strong>to pull{" "}
+                </span>
               </div>
             )}
             <div className="git-inline-actions">
-              <button
-                className="btn"
-                disabled={disabled}
-                onClick={() => void act("fetch")}
-              >
+              <button className="btn" disabled={disabled} onClick={() => void act("fetch")}>
                 <RefreshIcon size={14} />
                 Fetch
               </button>
@@ -136,68 +129,68 @@ export function RemotesSection({
           </div>
           <div className="git-table-heading">
             <h3>
-            Connected repositories
-              <span className="git-count">
-                {data.remotes.length}
-              </span>
+              Connected repositories
+              <span className="git-count">{data.remotes.length}</span>
             </h3>
           </div>
           <div className="git-card-list">
-          {data.remotes.map((remote) => (
-            <div className="git-remote-row" key={remote.name}>
-              <span className="git-row-mark">
-                <RemoteIcon size={16} />
-              </span>
-              <div className="git-row-main">
-                <strong>{remote.name}</strong>
-                <code>{remote.url}</code>
+            {data.remotes.map((remote) => (
+              <div className="git-remote-row" key={remote.name}>
+                <span className="git-row-mark">
+                  <RemoteIcon size={16} />
+                </span>
+                <div className="git-row-main">
+                  <strong>{remote.name}</strong>
+                  <code>{remote.url}</code>
+                </div>
+                <div className="git-inline-actions">
+                  {!upstream?.startsWith(remote.name + "/") &&
+                    data.hasCommits &&
+                    branch !== "detached" && (
+                      <button
+                        className="btn"
+                        data-variant={!upstream ? "primary" : undefined}
+                        disabled={disabled || data.mergeInProgress}
+                        onClick={() =>
+                          showDialog({
+                            operation: "publish",
+                            value: remote.name,
+                            title: `Publish ${branch}?`,
+                            description: `Push this branch to ${remote.name} and use it as the upstream for future pulls and pushes.`,
+                            label: "Publish branch",
+                          })
+                        }
+                      >
+                        <ArrowUpIcon size={14} />
+                        Publish branch
+                      </button>
+                    )}
+                  <button
+                    className="icon-btn git-danger"
+                    title={"Remove " + remote.name}
+                    disabled={disabled}
+                    onClick={() =>
+                      showDialog({
+                        operation: "removeRemote",
+                        value: remote.name,
+                        title: `Disconnect ${remote.name}?`,
+                        description: `Remove this local remote configuration. The repository at ${remote.url} will not be deleted.`,
+                        label: "Disconnect remote",
+                        danger: true,
+                      })
+                    }
+                  >
+                    <TrashIcon size={15} />
+                  </button>
+                </div>
               </div>
-              <div className="git-inline-actions">
-                {!upstream?.startsWith(remote.name + "/") &&
-                  data.hasCommits &&
-                  branch !== "detached" && (
-                    <button
-                      className="btn"
-                      data-variant={
-                        !upstream ? "primary" : undefined
-                      }
-                      disabled={disabled || data.mergeInProgress}
-                      onClick={() =>
-                        showDialog({
-                          operation: "publish",
-                          value: remote.name,
-                          title: `Publish ${branch}?`,
-                          description: `Push this branch to ${remote.name} and use it as the upstream for future pulls and pushes.`,
-                          label: "Publish branch",
-                        })
-                      }
-                    >
-                      <ArrowUpIcon size={14} />
-                      Publish branch
-                    </button>
-                  )}
-                <button
-                  className="icon-btn git-danger"
-                  title={"Remove " + remote.name}
-                  disabled={disabled}
-                  onClick={() =>
-                    showDialog({
-                      operation: "removeRemote",
-                      value: remote.name,
-                      title: `Disconnect ${remote.name}?`,
-                      description: `Remove this local remote configuration. The repository at ${remote.url} will not be deleted.`,
-                      label: "Disconnect remote",
-                      danger: true,
-                    })
-                  }
-                >
-                  <TrashIcon size={15} />
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
           </div>
-          <p className="git-page-note">{" "}Fetch checks for remote updates. Pull brings them into your branch using fast-forward only.{" "}</p>
+          <p className="git-page-note">
+            {" "}
+            Fetch checks for remote updates. Pull brings them into your branch using fast-forward
+            only.{" "}
+          </p>
         </>
       )}
     </div>

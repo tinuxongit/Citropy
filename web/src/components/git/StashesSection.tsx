@@ -33,9 +33,7 @@ export function StashesSection({
   revision: number;
   files: GitFile[];
   conflicts: GitFile[];
-  selectedStash:
-    | { ref: string; subject: string }
-    | undefined;
+  selectedStash: { ref: string; subject: string } | undefined;
   reviewChanges: ReactNode;
   setSelection: (value: GitSelection | null) => void;
   showDialog: (action: GitDialogAction) => void;
@@ -51,20 +49,14 @@ export function StashesSection({
     <div className="git-stash-layout">
       <header className="git-section-heading">
         <div>
-          <p>{" "}Set unfinished work aside and restore it when you're ready.{" "}</p>
+          <p> Set unfinished work aside and restore it when you're ready. </p>
         </div>
         {data.hasCommits && data.stashes.length > 0 && (
           <button
             className="btn"
             data-variant="primary"
-            disabled={
-              disabled || !files.length || conflicts.length > 0
-            }
-            title={
-              !files.length
-                ? "Make a change before saving a stash"
-                : undefined
-            }
+            disabled={disabled || !files.length || conflicts.length > 0}
+            title={!files.length ? "Make a change before saving a stash" : undefined}
             onClick={saveStash}
           >
             <ArchiveIcon size={15} />
@@ -73,11 +65,12 @@ export function StashesSection({
         )}
       </header>
       {!data.hasCommits ? (
-        <EmptyState
-            title="Make a first commit to use stashes"
-          action={reviewChanges}
-        >
-          <p>{" "}A stash saves work relative to a commit. Create your first commit before setting changes aside.{" "}</p>
+        <EmptyState title="Make a first commit to use stashes" action={reviewChanges}>
+          <p>
+            {" "}
+            A stash saves work relative to a commit. Create your first commit before setting changes
+            aside.{" "}
+          </p>
         </EmptyState>
       ) : !data.stashes.length ? (
         <EmptyState
@@ -94,27 +87,23 @@ export function StashesSection({
             ) : undefined
           }
         >
-          <p>{" "}Stashes keep unfinished changes while you switch tasks. Applying one restores the files and keeps the saved copy.{" "}</p>
+          <p>
+            {" "}
+            Stashes keep unfinished changes while you switch tasks. Applying one restores the files
+            and keeps the saved copy.{" "}
+          </p>
           {!files.length && <p>Your working tree is clean.</p>}
         </EmptyState>
       ) : (
-        <div
-          className="git-split"
-          data-detail={selection?.kind === "stash"}
-        >
+        <div className="git-split" data-detail={selection?.kind === "stash"}>
           <div className="git-stash-list scroll sliding-selection">
             <SelectionHighlight value={selection?.kind === "stash" ? selection.ref : undefined} />
             {data.stashes.map((entry) => (
               <button
                 className="git-history-row"
                 key={entry.ref}
-                aria-pressed={
-                  selection?.kind === "stash" &&
-                  selection.ref === entry.ref
-                }
-                onClick={() =>
-                  setSelection({ kind: "stash", ref: entry.ref })
-                }
+                aria-pressed={selection?.kind === "stash" && selection.ref === entry.ref}
+                onClick={() => setSelection({ kind: "stash", ref: entry.ref })}
               >
                 <StashIcon size={16} />
                 <span>
@@ -126,10 +115,7 @@ export function StashesSection({
             ))}
           </div>
           <ResizeHandle panel="git" inline />
-          <section
-            className="git-review-pane"
-            aria-label="Stash preview"
-          >
+          <section className="git-review-pane" aria-label="Stash preview">
             {selection?.kind === "stash" && selectedStash ? (
               <>
                 <header className="git-review-header">
@@ -142,8 +128,7 @@ export function StashesSection({
                   </button>
                   <div>
                     <h2>{selectedStash.subject}</h2>
-                    <p>
-                      {selectedStash.ref}{" "}· Applying keeps this saved copy{" "}</p>
+                    <p>{selectedStash.ref} · Applying keeps this saved copy </p>
                   </div>
                   <div className="git-inline-actions">
                     <button
@@ -167,9 +152,7 @@ export function StashesSection({
                       className="btn"
                       data-variant="primary"
                       disabled={disabled || conflicts.length > 0}
-                      onClick={() =>
-                        void act("applyStash", selectedStash.ref)
-                      }
+                      onClick={() => void act("applyStash", selectedStash.ref)}
                     >
                       <ArchiveIcon size={14} />
                       Apply stash
@@ -185,7 +168,7 @@ export function StashesSection({
               </>
             ) : (
               <EmptyState title="Review saved work">
-                <p>{" "}Select a stash to inspect its file changes before applying it.{" "}</p>
+                <p> Select a stash to inspect its file changes before applying it. </p>
               </EmptyState>
             )}
           </section>

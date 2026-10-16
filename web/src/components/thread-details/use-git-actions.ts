@@ -27,30 +27,65 @@ export function useGitActions(thread: ThreadMeta) {
   const scope = status?.files.some((file) => file.staged) ? "staged" : "all";
   const staged = status?.files.filter((file) => file.staged).length ?? 0;
   const hasChanges = Boolean(status && !status.clean);
-  const canPush = Boolean(status && status.upstream !== null && status.ahead > 0 && status.behind === 0);
+  const canPush = Boolean(
+    status && status.upstream !== null && status.ahead > 0 && status.behind === 0,
+  );
   const failed = !busy && Boolean(error || state?.status === "error");
-  const activity = state?.status === "pushing" ? activities.push : state?.status === "committing" ? "Committing…" : state?.status === "generating" ? activities.commit : pending ? activities[pending] : "";
+  const activity =
+    state?.status === "pushing"
+      ? activities.push
+      : state?.status === "committing"
+        ? "Committing…"
+        : state?.status === "generating"
+          ? activities.commit
+          : pending
+            ? activities[pending]
+            : "";
 
   const track = async (action: Pending, work: () => Promise<unknown>) => {
     setPending(action);
     setError("");
-    try { await work(); }
-    catch (error) { setError((error as Error).message); }
-    finally { setPending(null); }
+    try {
+      await work();
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setPending(null);
+    }
   };
-  const run = (action: GitActionState["action"]) => track(action, () =>
-    api(`threads/git-action?threadId=${encodeURIComponent(thread.id)}`, { method: "POST", body: JSON.stringify({ action, scope }) }));
-  const manage = (operation: "pull" | "switchBranch" | "init", value?: string) => track(operation, () =>
-    manageGit(thread.projectId, operation, value, undefined, undefined, thread.id));
+  const run = (action: GitActionState["action"]) =>
+    track(action, () =>
+      api(`threads/git-action?threadId=${encodeURIComponent(thread.id)}`, {
+        method: "POST",
+        body: JSON.stringify({ action, scope }),
+      }),
+    );
+  const manage = (operation: "pull" | "switchBranch" | "init", value?: string) =>
+    track(operation, () =>
+      manageGit(thread.projectId, operation, value, undefined, undefined, thread.id),
+    );
   const dismissError = () => {
     setError("");
-    if (state?.status === "error") void api(`threads/git-action?threadId=${encodeURIComponent(thread.id)}`, { method: "DELETE" }).catch(reportError);
+    if (state?.status === "error")
+      void api(`threads/git-action?threadId=${encodeURIComponent(thread.id)}`, {
+        method: "DELETE",
+      }).catch(reportError);
   };
 
   return {
-    status, busy, blocked, failed, activity, scope, staged, hasChanges, canPush,
-    error: error || (state?.status === "error" ? state.message ?? "" : ""),
-    run, manage, dismissError,
+    status,
+    busy,
+    blocked,
+    failed,
+    activity,
+    scope,
+    staged,
+    hasChanges,
+    canPush,
+    error: error || (state?.status === "error" ? (state.message ?? "") : ""),
+    run,
+    manage,
+    dismissError,
   };
 }
 

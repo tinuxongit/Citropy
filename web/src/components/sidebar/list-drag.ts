@@ -20,7 +20,12 @@ export interface SlotBounds {
   bottom: number;
 }
 
-function findDropSlot(y: number, entries: SlotBounds[], sourceIndex: number, lastIndex: number): Omit<ListDrop, "span"> | undefined {
+function findDropSlot(
+  y: number,
+  entries: SlotBounds[],
+  sourceIndex: number,
+  lastIndex: number,
+): Omit<ListDrop, "span"> | undefined {
   for (const { id, index, top, bottom } of entries) {
     if ((y < top && index !== 0) || (y >= bottom && index !== lastIndex)) continue;
     if (index === sourceIndex) return undefined;
@@ -31,7 +36,12 @@ function findDropSlot(y: number, entries: SlotBounds[], sourceIndex: number, las
   return undefined;
 }
 
-export function dropShifts(ids: string[], sourceId: string, drop: ListDrop, keyOf: (id: string) => string = (id) => id): Map<string, number> {
+export function dropShifts(
+  ids: string[],
+  sourceId: string,
+  drop: ListDrop,
+  keyOf: (id: string) => string = (id) => id,
+): Map<string, number> {
   const shifts = new Map<string, number>();
   const from = ids.indexOf(sourceId);
   const target = ids.indexOf(drop.id);
@@ -43,16 +53,29 @@ export function dropShifts(ids: string[], sourceId: string, drop: ListDrop, keyO
   return shifts;
 }
 
-export function followListDrag(event: ReactPointerEvent, handle: HTMLElement, { scroll, sourceIndex, lastIndex, measure, begin, place, change, end }: {
-  scroll: HTMLElement;
-  sourceIndex: number;
-  lastIndex: number;
-  measure: () => SlotBounds[];
-  begin: () => void;
-  place: (offset: number) => void;
-  change: (drop: ListDrop | undefined) => void;
-  end: (drop: ListDrop | undefined) => void;
-}): () => void {
+export function followListDrag(
+  event: ReactPointerEvent,
+  handle: HTMLElement,
+  {
+    scroll,
+    sourceIndex,
+    lastIndex,
+    measure,
+    begin,
+    place,
+    change,
+    end,
+  }: {
+    scroll: HTMLElement;
+    sourceIndex: number;
+    lastIndex: number;
+    measure: () => SlotBounds[];
+    begin: () => void;
+    place: (offset: number) => void;
+    change: (drop: ListDrop | undefined) => void;
+    end: (drop: ListDrop | undefined) => void;
+  },
+): () => void {
   const startY = event.clientY;
   const startScroll = scroll.scrollTop;
   let lastTime = performance.now();
@@ -73,7 +96,13 @@ export function followListDrag(event: ReactPointerEvent, handle: HTMLElement, { 
       const last = entries.find((entry) => entry.index === lastIndex);
       const before = scroll.scrollTop;
       if (inside && distance) {
-        const step = Math.max(-AUTOSCROLL_MAX_STEP, Math.min(AUTOSCROLL_MAX_STEP, distance * AUTOSCROLL_GAIN)) * Math.min(MAX_FRAME_MS, now - lastTime) / FRAME_MS;
+        const step =
+          (Math.max(
+            -AUTOSCROLL_MAX_STEP,
+            Math.min(AUTOSCROLL_MAX_STEP, distance * AUTOSCROLL_GAIN),
+          ) *
+            Math.min(MAX_FRAME_MS, now - lastTime)) /
+          FRAME_MS;
         const minimum = first ? Math.min(0, first.top - bounds.top) : -Infinity;
         const maximum = last ? Math.max(0, last.bottom - bounds.bottom) : Infinity;
         scroll.scrollTop += Math.max(minimum, Math.min(maximum, step));
@@ -85,10 +114,17 @@ export function followListDrag(event: ReactPointerEvent, handle: HTMLElement, { 
       const next = slot && { ...slot, span };
       const sourceTop = source.top - scrolled;
       const minimum = Math.max(bounds.top, first ? first.top - scrolled : -Infinity);
-      const maximum = Math.max(minimum, Math.min(bounds.bottom, last ? last.bottom - scrolled : Infinity) - span);
+      const maximum = Math.max(
+        minimum,
+        Math.min(bounds.bottom, last ? last.bottom - scrolled : Infinity) - span,
+      );
       const top = sourceTop + y - startY + scroll.scrollTop - startScroll;
       place(Math.max(minimum, Math.min(maximum, top)) - sourceTop);
-      if (current?.id !== next?.id || current?.edge !== next?.edge || current?.span !== next?.span) {
+      if (
+        current?.id !== next?.id ||
+        current?.edge !== next?.edge ||
+        current?.span !== next?.span
+      ) {
         current = next;
         change(next);
       }

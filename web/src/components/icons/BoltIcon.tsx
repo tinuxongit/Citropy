@@ -3,7 +3,17 @@ const ROUNDING = 1.75;
 
 export function BoltIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth={ROUNDING} strokeLinejoin="round" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth={ROUNDING}
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d={BOLT} />
     </svg>
   );

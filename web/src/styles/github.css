@@ -178,7 +178,13 @@
 .shell[data-backdrop] .github-detail {
   background: var(--panel);
 }
-.shell[data-backdrop] :is(.github-repositories article, .github-releases article, .github-notifications article, .github-local-workspace) {
+.shell[data-backdrop]
+  :is(
+    .github-repositories article,
+    .github-releases article,
+    .github-notifications article,
+    .github-local-workspace
+  ) {
   padding: var(--space-20) var(--space-16);
   border-radius: var(--r-lg);
   background: var(--backdrop-card-bg);
@@ -270,11 +276,9 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: clamp(
-      240px,
-      var(--github-width, max(250px, 31%)),
-      min(640px, calc(100% - 360px))
-    ) 0 minmax(0, 1fr);
+  grid-template-columns:
+    clamp(240px, var(--github-width, max(250px, 31%)), min(640px, calc(100% - 360px)))
+    0 minmax(0, 1fr);
 }
 .github-list {
   min-height: 0;
@@ -303,7 +307,9 @@
 .github-item[aria-pressed="true"] {
   background: transparent;
 }
-.github-list { --selection-fill: var(--highlight); }
+.github-list {
+  --selection-fill: var(--highlight);
+}
 .github-item strong {
   font-size: var(--text-base);
   font-weight: 500;
@@ -891,9 +897,9 @@
     flex-wrap: wrap;
   }
   .github-repositories article:nth-child(even),
-.github-checks > div:nth-child(even),
-.github-jobs details:nth-child(even),
-.github-notifications article:nth-child(even) {
+  .github-checks > div:nth-child(even),
+  .github-jobs details:nth-child(even),
+  .github-notifications article:nth-child(even) {
     background: var(--panel);
   }
   .github-notifications article > div {

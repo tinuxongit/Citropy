@@ -15,36 +15,68 @@ function lineRange(value: string, start: number, end: number): [number, number] 
   return [from, to === -1 ? value.length : to];
 }
 
-export function wrapSelection(value: string, start: number, end: number, marker: string, placeholder: string): TextEdit {
+export function wrapSelection(
+  value: string,
+  start: number,
+  end: number,
+  marker: string,
+  placeholder: string,
+): TextEdit {
   const selected = value.slice(start, end);
-  if (selected.length >= marker.length * 2 && selected.startsWith(marker) && selected.endsWith(marker)) {
+  if (
+    selected.length >= marker.length * 2 &&
+    selected.startsWith(marker) &&
+    selected.endsWith(marker)
+  ) {
     const inner = selected.slice(marker.length, -marker.length);
     return { from: start, to: end, text: inner, selection: [start, start + inner.length] };
   }
   const inner = selected || placeholder;
-  return { from: start, to: end, text: marker + inner + marker, selection: [start + marker.length, start + marker.length + inner.length] };
+  return {
+    from: start,
+    to: end,
+    text: marker + inner + marker,
+    selection: [start + marker.length, start + marker.length + inner.length],
+  };
 }
 
-export function toggleLinePrefix(value: string, start: number, end: number, prefix: (index: number) => string): TextEdit {
+export function toggleLinePrefix(
+  value: string,
+  start: number,
+  end: number,
+  prefix: (index: number) => string,
+): TextEdit {
   const [from, to] = lineRange(value, start, end);
   const lines = value.slice(from, to).split("\n");
   const present = lines.every((line, index) => line.startsWith(prefix(index)));
   const text = lines
-    .map((line, index) => (present ? line.slice(prefix(index).length) : prefix(index) + line.replace(LINE_MARKER, "")))
+    .map((line, index) =>
+      present ? line.slice(prefix(index).length) : prefix(index) + line.replace(LINE_MARKER, ""),
+    )
     .join("\n");
   if (start !== end) return { from, to, text, selection: [from, from + text.length] };
   const caret = Math.max(from, start + text.length - (to - from));
   return { from, to, text, selection: [caret, caret] };
 }
 
-export function insertLink(value: string, start: number, end: number, placeholder: string): TextEdit {
+export function insertLink(
+  value: string,
+  start: number,
+  end: number,
+  placeholder: string,
+): TextEdit {
   const label = value.slice(start, end) || placeholder;
   const text = `[${label}](https://)`;
   const url = start + label.length + 3;
   return { from: start, to: end, text, selection: [url, url + "https://".length] };
 }
 
-export function insertCode(value: string, start: number, end: number, placeholder: string): TextEdit {
+export function insertCode(
+  value: string,
+  start: number,
+  end: number,
+  placeholder: string,
+): TextEdit {
   const selected = value.slice(start, end);
   if (!selected.includes("\n")) return wrapSelection(value, start, end, "`", placeholder);
   const text = `\`\`\`\n${selected}\n\`\`\``;
@@ -71,8 +103,11 @@ export function continueList(value: string, caret: number): TextEdit | null {
 
 export function toggleTask(value: string, index: number): string {
   let seen = -1;
-  return value.replace(/^(\s*[-*+] \[)([ xX])(\] )/gm, (whole, open: string, mark: string, close: string) => {
-    seen++;
-    return seen === index ? `${open}${mark === " " ? "x" : " "}${close}` : whole;
-  });
+  return value.replace(
+    /^(\s*[-*+] \[)([ xX])(\] )/gm,
+    (whole, open: string, mark: string, close: string) => {
+      seen++;
+      return seen === index ? `${open}${mark === " " ? "x" : " "}${close}` : whole;
+    },
+  );
 }

@@ -2,12 +2,7 @@ import { readdir, readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, basename } from "node:path";
-import {
-  randomUUID,
-  createHash,
-  pbkdf2Sync,
-  createDecipheriv,
-} from "node:crypto";
+import { randomUUID, createHash, pbkdf2Sync, createDecipheriv } from "node:crypto";
 import { isUtf8 } from "node:buffer";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -20,8 +15,7 @@ interface ProjectSettings {
 }
 
 type Source = { id: string; name: string; browser: string; path: string } & (
-  | { engine: "chromium"; application: string }
-  | { engine: "firefox" }
+  { engine: "chromium"; application: string } | { engine: "firefox" }
 );
 
 // Firefox rows carry the camel-case columns and Chromium rows the snake-case ones.
@@ -77,7 +71,8 @@ async function save() {
 }
 
 function projectProfiles(projectId: unknown) {
-  if (typeof projectId !== "string" || !/^[a-zA-Z0-9_-]+$/.test(projectId)) throw new Error("Invalid workspace");
+  if (typeof projectId !== "string" || !/^[a-zA-Z0-9_-]+$/.test(projectId))
+    throw new Error("Invalid workspace");
   preferences[projectId] ??= {
     selected: "workspace",
     profiles: [{ id: "workspace", name: "Workspace" }],
@@ -93,9 +88,7 @@ export function botProfile(profileId: unknown) {
 
 export function browserProfile(projectId: string, profileId?: string) {
   const settings = projectProfiles(projectId);
-  const profile = settings.profiles.find(
-    (entry) => entry.id === (profileId ?? settings.selected),
-  );
+  const profile = settings.profiles.find((entry) => entry.id === (profileId ?? settings.selected));
   if (!profile) throw new Error("Browser profile not found");
   return {
     ...profile,
@@ -118,11 +111,7 @@ async function sources() {
     ? [
         ["Chrome", linux ? "google-chrome" : "Google/Chrome", "chrome"],
         ["Chromium", linux ? "chromium" : "Chromium", "chromium"],
-        [
-          "Brave",
-          linux ? "BraveSoftware/Brave-Browser" : "BraveSoftware/Brave-Browser",
-          "brave",
-        ],
+        ["Brave", linux ? "BraveSoftware/Brave-Browser" : "BraveSoftware/Brave-Browser", "brave"],
         ["Edge", linux ? "microsoft-edge" : "Microsoft Edge", "microsoft-edge"],
         ["Vivaldi", linux ? "vivaldi" : "Vivaldi", "vivaldi"],
         ["Helium", linux ? "helium" : "Helium", "helium"],
@@ -136,12 +125,10 @@ async function sources() {
         unlessCode(["ENOENT", "ENOTDIR"], []),
       );
       const names =
-        JSON.parse(
-          await readFile(join(root, "Local State"), "utf8").catch(ifMissing("{}")),
-        ).profile?.info_cache ?? {};
+        JSON.parse(await readFile(join(root, "Local State"), "utf8").catch(ifMissing("{}"))).profile
+          ?.info_cache ?? {};
       for (const entry of entries) {
-        if (!entry.isDirectory() || !/^(Default|Profile \d+)$/.test(entry.name))
-          continue;
+        if (!entry.isDirectory() || !/^(Default|Profile \d+)$/.test(entry.name)) continue;
         const path = [
           join(root, entry.name, "Network/Cookies"),
           join(root, entry.name, "Cookies"),
@@ -178,7 +165,12 @@ async function sources() {
   return result;
 }
 
-export function decryptCookie(encrypted: Uint8Array, host: string, version: number, keys: Record<string, Buffer | undefined>) {
+export function decryptCookie(
+  encrypted: Uint8Array,
+  host: string,
+  version: number,
+  keys: Record<string, Buffer | undefined>,
+) {
   const buffer = Buffer.from(encrypted);
   const prefix = buffer.subarray(0, 3).toString();
   if (!["v10", "v11"].includes(prefix)) return null;
@@ -186,17 +178,9 @@ export function decryptCookie(encrypted: Uint8Array, host: string, version: numb
   if (!key) return null;
   try {
     const decipher = createDecipheriv("aes-128-cbc", key, Buffer.alloc(16, 32));
-    let plain = Buffer.concat([
-      decipher.update(buffer.subarray(3)),
-      decipher.final(),
-    ]);
+    let plain = Buffer.concat([decipher.update(buffer.subarray(3)), decipher.final()]);
     if (version >= 24) {
-      if (
-        !plain
-          .subarray(0, 32)
-          .equals(createHash("sha256").update(host).digest())
-      )
-        return null;
+      if (!plain.subarray(0, 32).equals(createHash("sha256").update(host).digest())) return null;
       plain = plain.subarray(32);
     }
     return isUtf8(plain) ? plain.toString("utf8") : null;
@@ -224,32 +208,25 @@ async function readCookies(source: Source) {
       .all() as unknown as CookieRow[];
     if (source.engine === "chromium")
       version = Number(
-        database.prepare("SELECT value FROM meta WHERE key = 'version'").get()
-          ?.value || 0,
+        database.prepare("SELECT value FROM meta WHERE key = 'version'").get()?.value || 0,
       );
     database.exec("ROLLBACK");
   } finally {
     database.close();
   }
-  const keys: Record<string, Buffer | undefined> = { v10: pbkdf2Sync("peanuts", "saltysalt", 1, 16, "sha1") };
+  const keys: Record<string, Buffer | undefined> = {
+    v10: pbkdf2Sync("peanuts", "saltysalt", 1, 16, "sha1"),
+  };
   if (source.engine === "chromium") {
     const needsSecret =
       process.platform === "darwin" ||
-      rows.some(
-        (row) =>
-          Buffer.from(row.encrypted_value).subarray(0, 3).toString() === "v11",
-      );
+      rows.some((row) => Buffer.from(row.encrypted_value).subarray(0, 3).toString() === "v11");
     if (needsSecret) {
       const result = await (
         process.platform === "darwin"
           ? run(
               "security",
-              [
-                "find-generic-password",
-                "-w",
-                "-s",
-                `${source.browser} Safe Storage`,
-              ],
+              ["find-generic-password", "-w", "-s", `${source.browser} Safe Storage`],
               { timeout: 30_000, maxBuffer: 4096 },
             )
           : run("secret-tool", ["lookup", "application", source.application], {
@@ -271,19 +248,13 @@ async function readCookies(source: Source) {
   let skipped = 0;
   for (const row of rows) {
     const firefox = source.engine === "firefox";
-    if (
-      firefox
-        ? row.originAttributes
-        : row.top_frame_site_key || row.partition_key
-    ) {
+    if (firefox ? row.originAttributes : row.top_frame_site_key || row.partition_key) {
       skipped++;
       continue;
     }
     const host = firefox ? row.host : row.host_key;
     const value =
-      firefox || row.value
-        ? row.value
-        : decryptCookie(row.encrypted_value, host, version, keys);
+      firefox || row.value ? row.value : decryptCookie(row.encrypted_value, host, version, keys);
     if (value === null) {
       skipped++;
       continue;
@@ -304,22 +275,23 @@ async function readCookies(source: Source) {
       secure,
       httpOnly: Boolean(firefox ? row.isHttpOnly : row.is_httponly),
       sameSite:
-        (["no_restriction", "lax", "strict"] as const)[
-          firefox ? row.sameSite : row.samesite
-        ] ?? "unspecified",
+        (["no_restriction", "lax", "strict"] as const)[firefox ? row.sameSite : row.samesite] ??
+        "unspecified",
     };
-    if (host.startsWith(".") && !row.name.startsWith("__Host-"))
-      cookie.domain = host;
+    if (host.startsWith(".") && !row.name.startsWith("__Host-")) cookie.domain = host;
     if (expirationDate > 0) cookie.expirationDate = expirationDate;
     cookies.push(cookie);
   }
   return { cookies, skipped };
 }
 
-export function handleProfiles(operation: string, input: ProfileInput, session: typeof sessions, tabs: ProfileTabs) {
-  const result = operations.then(() =>
-    applyProfiles(operation, input, session, tabs),
-  );
+export function handleProfiles(
+  operation: string,
+  input: ProfileInput,
+  session: typeof sessions,
+  tabs: ProfileTabs,
+) {
+  const result = operations.then(() => applyProfiles(operation, input, session, tabs));
   operations = result.then(
     () => {},
     () => {},
@@ -333,7 +305,12 @@ export async function clearProfileData(target: Session) {
   await target.clearCodeCaches({});
 }
 
-async function applyProfiles(operation: string, input: ProfileInput, session: typeof sessions, tabs: ProfileTabs) {
+async function applyProfiles(
+  operation: string,
+  input: ProfileInput,
+  session: typeof sessions,
+  tabs: ProfileTabs,
+) {
   if (operation === "forget-bot") {
     const profile = botProfile(input.profileId);
     if (!profile) throw new Error("Bot profile not found");
@@ -344,8 +321,7 @@ async function applyProfiles(operation: string, input: ProfileInput, session: ty
   const getSession = (id?: string) =>
     session.fromPartition(browserProfile(input.projectId, id).partition);
   if (operation === "forget") {
-    for (const profile of settings.profiles)
-      await clearProfileData(getSession(profile.id));
+    for (const profile of settings.profiles) await clearProfileData(getSession(profile.id));
     delete preferences[input.projectId];
     await save();
     return { ok: true };
@@ -374,21 +350,16 @@ async function applyProfiles(operation: string, input: ProfileInput, session: ty
       }
       await save();
     } else if (input.method === "DELETE") {
-      if (input.id === "workspace")
-        throw new Error("The workspace profile cannot be deleted.");
+      if (input.id === "workspace") throw new Error("The workspace profile cannot be deleted.");
       browserProfile(input.projectId, input.id);
       if (
         [...tabs.values()].some(
-          (tab) =>
-            tab.state.projectId === input.projectId &&
-            tab.state.profileId === input.id,
+          (tab) => tab.state.projectId === input.projectId && tab.state.profileId === input.id,
         )
       )
         throw new Error("Close this profile's browser tabs first.");
       await clearProfileData(getSession(input.id));
-      settings.profiles = settings.profiles.filter(
-        (entry) => entry.id !== input.id,
-      );
+      settings.profiles = settings.profiles.filter((entry) => entry.id !== input.id);
       if (settings.selected === input.id) settings.selected = "workspace";
       await save();
     }
@@ -410,16 +381,13 @@ async function applyProfiles(operation: string, input: ProfileInput, session: ty
   }
   const target = getSession(input.profileId || settings.selected);
   if (operation === "clear") {
-    if (input.kind === "cookies")
-      await target.clearStorageData({ storages: ["cookies"] });
+    if (input.kind === "cookies") await target.clearStorageData({ storages: ["cookies"] });
     else if (input.kind === "cache") await target.clearCache();
     else throw new Error("Select cookies or cache.");
     return { ok: true };
   }
   if (operation === "import") {
-    const source = (await sources()).find(
-      (entry) => entry.id === input.sourceId,
-    );
+    const source = (await sources()).find((entry) => entry.id === input.sourceId);
     if (!source) throw new Error("Source browser profile not found.");
     const data = await readCookies(source);
     let imported = 0;

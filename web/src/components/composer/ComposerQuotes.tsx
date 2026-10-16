@@ -1,7 +1,13 @@
 import { CloseIcon } from "../icons/marks.tsx";
 import { QuoteIcon } from "../icons/editing.tsx";
 
-export function ComposerQuotes({ quotes, onRemove }: { quotes: string[]; onRemove: (index: number) => void }) {
+export function ComposerQuotes({
+  quotes,
+  onRemove,
+}: {
+  quotes: string[];
+  onRemove: (index: number) => void;
+}) {
   return (
     <div className="attachments">
       {quotes.map((quote, index) => (

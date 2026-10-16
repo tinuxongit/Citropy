@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ExitFullscreenIcon, FullscreenIcon, MutedIcon, PauseIcon, PlayIcon, VolumeIcon } from "./icons/media.tsx";
+import {
+  ExitFullscreenIcon,
+  FullscreenIcon,
+  MutedIcon,
+  PauseIcon,
+  PlayIcon,
+  VolumeIcon,
+} from "./icons/media.tsx";
 
 const clock = (seconds: number) => {
   const total = Number.isFinite(seconds) ? Math.floor(seconds) : 0;
@@ -9,7 +16,17 @@ const clock = (seconds: number) => {
   return hours ? `${hours}:${String(minutes).padStart(2, "0")}:${rest}` : `${minutes}:${rest}`;
 };
 
-export function VideoPlayer({ src, name, style, onSize }: { src: string; name: string; style?: CSSProperties; onSize?: (width: number, height: number) => void }) {
+export function VideoPlayer({
+  src,
+  name,
+  style,
+  onSize,
+}: {
+  src: string;
+  name: string;
+  style?: CSSProperties;
+  onSize?: (width: number, height: number) => void;
+}) {
   const player = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const idle = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -36,7 +53,8 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
     const element = player.current;
     if (!element) return;
     let intersecting = false;
-    const update = () => setVisible(!document.hidden && (intersecting || document.fullscreenElement === element));
+    const update = () =>
+      setVisible(!document.hidden && (intersecting || document.fullscreenElement === element));
     const observer = new IntersectionObserver((entries) => {
       intersecting = entries.at(-1)?.isIntersecting ?? false;
       update();
@@ -99,7 +117,12 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
     if (document.fullscreenElement) void document.exitFullscreen();
     else void player.current!.requestFullscreen();
   };
-  if (error) return <p className="video-player-error" role="alert">Unable to play this video.</p>;
+  if (error)
+    return (
+      <p className="video-player-error" role="alert">
+        Unable to play this video.
+      </p>
+    );
   return (
     <div
       ref={player}
@@ -124,7 +147,12 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
           f: toggleFullscreen,
         };
         const action = actions[event.key];
-        if (!action || (event.target instanceof HTMLInputElement && event.key.startsWith("Arrow")) || (event.target instanceof HTMLButtonElement && event.key === " ")) return;
+        if (
+          !action ||
+          (event.target instanceof HTMLInputElement && event.key.startsWith("Arrow")) ||
+          (event.target instanceof HTMLButtonElement && event.key === " ")
+        )
+          return;
         event.preventDefault();
         action();
         wake();
@@ -136,10 +164,17 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
         preload="metadata"
         playsInline
         onClick={toggle}
-        onPlay={() => { setPlaying(true); wake(); }}
-        onPause={() => { if (!scrubbing.current) setPlaying(false); }}
+        onPlay={() => {
+          setPlaying(true);
+          wake();
+        }}
+        onPause={() => {
+          if (!scrubbing.current) setPlaying(false);
+        }}
         onEnded={() => setPlaying(false)}
-        onTimeUpdate={(event) => { if (visible) setTime(event.currentTarget.currentTime); }}
+        onTimeUpdate={(event) => {
+          if (visible) setTime(event.currentTarget.currentTime);
+        }}
         onLoadedMetadata={(event) => {
           setDuration(event.currentTarget.duration);
           onSize?.(event.currentTarget.videoWidth, event.currentTarget.videoHeight);
@@ -158,7 +193,14 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
       )}
       <div className="video-player-controls">
         <div className="video-player-seek-wrap">
-          {pointed !== undefined && <span className="video-player-pointed" style={{ left: `clamp(24px, ${pointed * 100}%, calc(100% - 24px))` }}>{clock(pointed * duration)}</span>}
+          {pointed !== undefined && (
+            <span
+              className="video-player-pointed"
+              style={{ left: `clamp(24px, ${pointed * 100}%, calc(100% - 24px))` }}
+            >
+              {clock(pointed * duration)}
+            </span>
+          )}
           <input
             className="range video-player-seek"
             type="range"
@@ -184,7 +226,13 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
           />
         </div>
         <div className="video-player-bar">
-          <button className="icon-btn" type="button" aria-label={playing ? "Pause" : "Play"} title={playing ? "Pause" : "Play"} onClick={toggle}>
+          <button
+            className="icon-btn"
+            type="button"
+            aria-label={playing ? "Pause" : "Play"}
+            title={playing ? "Pause" : "Play"}
+            onClick={toggle}
+          >
             {playing ? <PauseIcon size={17} /> : <PlayIcon size={17} />}
           </button>
           <div className="video-player-volume">
@@ -201,13 +249,27 @@ export function VideoPlayer({ src, name, style, onSize }: { src: string; name: s
                 onChange={(event) => changeVolume(Number(event.target.value))}
               />
             </div>
-            <button className="icon-btn" type="button" aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"} onClick={toggleMuted}>
+            <button
+              className="icon-btn"
+              type="button"
+              aria-label={muted ? "Unmute" : "Mute"}
+              title={muted ? "Unmute" : "Mute"}
+              onClick={toggleMuted}
+            >
               {muted ? <MutedIcon size={17} /> : <VolumeIcon size={17} />}
             </button>
           </div>
-          <span className="video-player-time">{clock(time)} <span>/ {clock(duration)}</span></span>
+          <span className="video-player-time">
+            {clock(time)} <span>/ {clock(duration)}</span>
+          </span>
           <span className="video-player-spacer" />
-          <button className="icon-btn" type="button" aria-label={fullscreen ? "Exit full screen" : "Full screen"} title={fullscreen ? "Exit full screen" : "Full screen"} onClick={toggleFullscreen}>
+          <button
+            className="icon-btn"
+            type="button"
+            aria-label={fullscreen ? "Exit full screen" : "Full screen"}
+            title={fullscreen ? "Exit full screen" : "Full screen"}
+            onClick={toggleFullscreen}
+          >
             {fullscreen ? <ExitFullscreenIcon size={17} /> : <FullscreenIcon size={17} />}
           </button>
         </div>

@@ -21,20 +21,29 @@ export function ProjectSettings() {
       <h2 className="settings-group-heading">Defaults for new chats</h2>
       <DefaultsGroup />
       <h2 className="settings-group-heading">Projects</h2>
-      <p className="settings-note project-list-note">Click a project to change its name or give it its own settings. Anything you leave alone follows your defaults.</p>
+      <p className="settings-note project-list-note">
+        Click a project to change its name or give it its own settings. Anything you leave alone
+        follows your defaults.
+      </p>
       {projects.length > 0 ? (
         <div className="settings-card-grid">
           {projects.map((project) => (
-            <SettingsCard key={project.id}
+            <SettingsCard
+              key={project.id}
               title={project.name}
               subtitle={project.path}
               description={projectSummary(project.settings ?? {}, providers)}
               icon={<FolderIcon size={20} />}
-              onOpen={() => setOpenId(project.id)} />
+              onOpen={() => setOpenId(project.id)}
+            />
           ))}
         </div>
-      ) : <p className="settings-note">Folders you open show up here.</p>}
-      <AnimatePresence>{opened && <ProjectDialog key={opened.id} project={opened} onClose={() => setOpenId("")} />}</AnimatePresence>
+      ) : (
+        <p className="settings-note">Folders you open show up here.</p>
+      )}
+      <AnimatePresence>
+        {opened && <ProjectDialog key={opened.id} project={opened} onClose={() => setOpenId("")} />}
+      </AnimatePresence>
     </>
   );
 }
@@ -59,10 +68,15 @@ function DefaultsGroup() {
       setError((cause as Error).message);
     }
   };
-  return <>
-    <div className="settings-group">
-      <ProjectOptionRows settings={resolveProjectSettings(settings)} update={(patch) => void update(patch)} />
-    </div>
-    <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
-  </>;
+  return (
+    <>
+      <div className="settings-group">
+        <ProjectOptionRows
+          settings={resolveProjectSettings(settings)}
+          update={(patch) => void update(patch)}
+        />
+      </div>
+      <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
+    </>
+  );
 }

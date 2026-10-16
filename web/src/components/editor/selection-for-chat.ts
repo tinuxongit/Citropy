@@ -8,11 +8,17 @@ function selectedLines(selection: monaco.Selection): [number, number] {
   return [start, endsAtLineStart ? selection.endLineNumber - 1 : selection.endLineNumber];
 }
 
-export function selectionForChat(selection: monaco.Selection, document: Pick<TextDocument, "path" | "dirty" | "model">): string {
+export function selectionForChat(
+  selection: monaco.Selection,
+  document: Pick<TextDocument, "path" | "dirty" | "model">,
+): string {
   const [start, end] = selectedLines(selection);
-  if (!document.dirty) return `${contextReference(document.path)}${start === end ? `#L${start}` : `#L${start}-L${end}`}`;
+  if (!document.dirty)
+    return `${contextReference(document.path)}${start === end ? `#L${start}` : `#L${start}-L${end}`}`;
   const code = document.model.getValueInRange(selection).replace(/\n$/, "");
-  const fence = "`".repeat(Math.max(3, ...[...code.matchAll(/`+/g)].map((run) => run[0].length + 1)));
+  const fence = "`".repeat(
+    Math.max(3, ...[...code.matchAll(/`+/g)].map((run) => run[0].length + 1)),
+  );
   const lines = start === end ? `line ${start}` : `lines ${start}-${end}`;
   return `Unsaved ${lines} of ${document.path}:\n${fence}${document.model.getLanguageId()}\n${code}\n${fence}`;
 }

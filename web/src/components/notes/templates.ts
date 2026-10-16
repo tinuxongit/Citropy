@@ -19,7 +19,14 @@ const sections = (...headings: Array<[heading: string, start: string]>) =>
 
 export function noteTemplates(): NoteTemplate[] {
   return [
-    { id: "blank", label: "Blank note", hint: "Start from an empty page", icon: NotebookPenIcon, title: "", body: "" },
+    {
+      id: "blank",
+      label: "Blank note",
+      hint: "Start from an empty page",
+      icon: NotebookPenIcon,
+      title: "",
+      body: "",
+    },
     {
       id: "brief",
       label: "Task brief",
@@ -34,7 +41,12 @@ export function noteTemplates(): NoteTemplate[] {
       hint: "What broke, what you expected, how to repeat it",
       icon: BugIcon,
       title: "Bug report",
-      body: sections(["What happened", ""], ["What I expected", ""], ["Steps to reproduce", "1. "], ["Where", "- "]),
+      body: sections(
+        ["What happened", ""],
+        ["What I expected", ""],
+        ["Steps to reproduce", "1. "],
+        ["Where", "- "],
+      ),
     },
     {
       id: "idea",
@@ -66,7 +78,12 @@ export function noteTemplates(): NoteTemplate[] {
       hint: "Who was there, what was decided, who does what",
       icon: UsersIcon,
       title: "Meeting notes",
-      body: sections(["Attendees", "- "], ["Notes", ""], ["Decisions", "- "], ["Action items", "- [ ] "]),
+      body: sections(
+        ["Attendees", "- "],
+        ["Notes", ""],
+        ["Decisions", "- "],
+        ["Action items", "- [ ] "],
+      ),
     },
   ];
 }

@@ -13,7 +13,12 @@ export interface SectionLook {
   tone: "brand" | "accent" | "ok" | "neutral";
 }
 
-export function ReleaseNoteList({ title, look: { icon: Icon, marker: Marker, tone }, items, onOpenSettings }: {
+export function ReleaseNoteList({
+  title,
+  look: { icon: Icon, marker: Marker, tone },
+  items,
+  onOpenSettings,
+}: {
   title: string;
   look: SectionLook;
   items: string[];
@@ -25,9 +30,20 @@ export function ReleaseNoteList({ title, look: { icon: Icon, marker: Marker, ton
         const { lead, detail } = noteItem(item);
         return (
           <li key={index}>
-            <span className="whats-new-marker" aria-hidden="true"><Marker size={10} /></span>
-            <span><strong><ReleaseNoteText text={lead} onOpenSettings={onOpenSettings} /></strong>
-            {detail && <> <ReleaseNoteText text={detail} onOpenSettings={onOpenSettings} /></>}</span>
+            <span className="whats-new-marker" aria-hidden="true">
+              <Marker size={10} />
+            </span>
+            <span>
+              <strong>
+                <ReleaseNoteText text={lead} onOpenSettings={onOpenSettings} />
+              </strong>
+              {detail && (
+                <>
+                  {" "}
+                  <ReleaseNoteText text={detail} onOpenSettings={onOpenSettings} />
+                </>
+              )}
+            </span>
           </li>
         );
       })}

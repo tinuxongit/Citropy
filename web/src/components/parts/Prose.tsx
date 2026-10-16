@@ -20,10 +20,24 @@ interface Props {
   mentions?: MentionTag[];
 }
 
-export function Prose({ partId, text, live, className, images = true, commands = false, mentions }: Props) {
+export function Prose({
+  partId,
+  text,
+  live,
+  className,
+  images = true,
+  commands = false,
+  mentions,
+}: Props) {
   const streaming = useApp((state) => state.textStreaming);
   const waiting = live && !streaming;
-  const { html, blocks, ready } = useMarkdown(waiting ? "" : text, live && streaming, images, commands, mentions);
+  const { html, blocks, ready } = useMarkdown(
+    waiting ? "" : text,
+    live && streaming,
+    images,
+    commands,
+    mentions,
+  );
   const root = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<{ images: ViewerImage[]; index: number } | null>(null);
   const shown = Boolean(text) && !waiting && (streaming || ready);
@@ -35,54 +49,100 @@ export function Prose({ partId, text, live, className, images = true, commands =
   const revealing = useTextReveal(root, partId, html, live, ready);
   if (!shown) return null;
   return (
-    <><div
-      className={className ? `prose ${className}` : "prose"}
-      ref={root}
-      data-part-id={partId}
-      data-live={(streaming && live) || revealing || undefined}
-      aria-busy={revealing || undefined}
-      onClick={event => {
-        const run = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button.code-run") : null;
-        if (run && root.current?.contains(run)) {
-          try { runCommand(run.closest("figure")?.querySelector("pre code")?.textContent ?? ""); } catch (error) { reportError(error); }
-          return;
-        }
-        const copy = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button.code-copy") : null;
-        if (copy && root.current?.contains(copy)) {
-          const code = copy.closest("figure")?.querySelector("pre code")?.textContent ?? "";
-          void copyText(code).then(() => {
-            copy.dataset.copied = "";
-            copy.setAttribute("aria-label", "Copied");
-            setTimeout(() => {
-              delete copy.dataset.copied;
-              copy.setAttribute("aria-label", "Copy code");
-            }, 1500);
+    <>
+      <div
+        className={className ? `prose ${className}` : "prose"}
+        ref={root}
+        data-part-id={partId}
+        data-live={(streaming && live) || revealing || undefined}
+        aria-busy={revealing || undefined}
+        onClick={(event) => {
+          const run =
+            event.target instanceof Element
+              ? event.target.closest<HTMLButtonElement>("button.code-run")
+              : null;
+          if (run && root.current?.contains(run)) {
+            try {
+              runCommand(run.closest("figure")?.querySelector("pre code")?.textContent ?? "");
+            } catch (error) {
+              reportError(error);
+            }
+            return;
+          }
+          const copy =
+            event.target instanceof Element
+              ? event.target.closest<HTMLButtonElement>("button.code-copy")
+              : null;
+          if (copy && root.current?.contains(copy)) {
+            const code = copy.closest("figure")?.querySelector("pre code")?.textContent ?? "";
+            void copyText(code).then(() => {
+              copy.dataset.copied = "";
+              copy.setAttribute("aria-label", "Copied");
+              setTimeout(() => {
+                delete copy.dataset.copied;
+                copy.setAttribute("aria-label", "Copy code");
+              }, 1500);
+            });
+            return;
+          }
+          const button =
+            event.target instanceof Element
+              ? event.target.closest<HTMLButtonElement>("button.markdown-image")
+              : null;
+          const selected = button?.querySelector("img");
+          if (!selected || !root.current?.contains(button)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const elements = [
+            ...root.current.querySelectorAll<HTMLImageElement>(".markdown-image img"),
+          ];
+          setPreview({
+            images: elements.map((image) => ({
+              src: image.src,
+              name: image.alt || image.title || "Preview",
+            })),
+            index: elements.indexOf(selected),
           });
-          return;
-        }
-        const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button.markdown-image") : null;
-        const selected = button?.querySelector("img");
-        if (!selected || !root.current?.contains(button)) return;
-        event.preventDefault();
-        event.stopPropagation();
-        const elements = [...root.current.querySelectorAll<HTMLImageElement>(".markdown-image img")];
-        setPreview({ images: elements.map(image => ({ src: image.src, name: image.alt || image.title || "Preview" })), index: elements.indexOf(selected) });
-      }}
-      onLoadCapture={event => {
-        if (event.target instanceof HTMLIFrameElement && event.target.classList.contains("markdown-visual")) connectVisual(event.target);
-        if (event.target instanceof HTMLImageElement && event.target.classList.contains("link-favicon")) event.target.parentElement?.setAttribute("data-loaded", "");
-      }}
-      onErrorCapture={event => {
-        if (event.target instanceof HTMLImageElement && event.target.classList.contains("link-favicon")) {
-          event.target.hidden = true;
-          event.target.parentElement?.removeAttribute("data-loaded");
-        } else if (event.target instanceof HTMLImageElement && event.target.parentElement?.classList.contains("markdown-image")) {
-          event.target.hidden = true;
-          event.target.parentElement.setAttribute("data-error", "");
-          const fallback = event.target.parentElement.querySelector<HTMLElement>(".markdown-image-error");
-          if (fallback) fallback.hidden = false;
-        }
-      }}
-    />{preview && <ImageViewer images={preview.images} index={preview.index} onIndexChange={index => setPreview({ ...preview, index })} onClose={() => setPreview(null)} />}</>
+        }}
+        onLoadCapture={(event) => {
+          if (
+            event.target instanceof HTMLIFrameElement &&
+            event.target.classList.contains("markdown-visual")
+          )
+            connectVisual(event.target);
+          if (
+            event.target instanceof HTMLImageElement &&
+            event.target.classList.contains("link-favicon")
+          )
+            event.target.parentElement?.setAttribute("data-loaded", "");
+        }}
+        onErrorCapture={(event) => {
+          if (
+            event.target instanceof HTMLImageElement &&
+            event.target.classList.contains("link-favicon")
+          ) {
+            event.target.hidden = true;
+            event.target.parentElement?.removeAttribute("data-loaded");
+          } else if (
+            event.target instanceof HTMLImageElement &&
+            event.target.parentElement?.classList.contains("markdown-image")
+          ) {
+            event.target.hidden = true;
+            event.target.parentElement.setAttribute("data-error", "");
+            const fallback =
+              event.target.parentElement.querySelector<HTMLElement>(".markdown-image-error");
+            if (fallback) fallback.hidden = false;
+          }
+        }}
+      />
+      {preview && (
+        <ImageViewer
+          images={preview.images}
+          index={preview.index}
+          onIndexChange={(index) => setPreview({ ...preview, index })}
+          onClose={() => setPreview(null)}
+        />
+      )}
+    </>
   );
 }

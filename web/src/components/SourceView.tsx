@@ -17,12 +17,30 @@ export function SourceView({ text, path }: { text: string; path: string }) {
     measureElement: (element) => element.offsetHeight,
   });
   return (
-    <div className="preview-body source-view scroll" ref={viewport} role="region" aria-label={`Source of ${path}`} tabIndex={0}>
+    <div
+      className="preview-body source-view scroll"
+      ref={viewport}
+      role="region"
+      aria-label={`Source of ${path}`}
+      tabIndex={0}
+    >
       <div className="source-lines" style={{ height: list.getTotalSize() }}>
         {list.getVirtualItems().map((item) => (
-          <div className="source-line" data-index={item.index} key={item.key} ref={list.measureElement} style={{ transform: `translateY(${item.start}px)` }}>
-            <span className="source-line-number" aria-hidden="true">{item.index + 1}</span>
-            <code dangerouslySetInnerHTML={{ __html: highlighted?.[item.index] ?? escapeHtml(lines[item.index]!) }} />
+          <div
+            className="source-line"
+            data-index={item.index}
+            key={item.key}
+            ref={list.measureElement}
+            style={{ transform: `translateY(${item.start}px)` }}
+          >
+            <span className="source-line-number" aria-hidden="true">
+              {item.index + 1}
+            </span>
+            <code
+              dangerouslySetInnerHTML={{
+                __html: highlighted?.[item.index] ?? escapeHtml(lines[item.index]!),
+              }}
+            />
           </div>
         ))}
       </div>

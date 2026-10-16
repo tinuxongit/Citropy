@@ -6,7 +6,11 @@ export const IMPORT_TOO_LARGE = `This session exceeds the ${IMPORT_MAX_BYTES / 1
 export const IMPORT_DEFAULT_TITLE = "Imported conversation";
 export const IMPORT_ATTACHMENT_NOTE = "[Attachment in original provider session]";
 
-export const IMPORT_PROVIDERS = ["claude", "codex", "opencode"] as const satisfies readonly ProviderId[];
+export const IMPORT_PROVIDERS = [
+  "claude",
+  "codex",
+  "opencode",
+] as const satisfies readonly ProviderId[];
 
 export type ImportProvider = (typeof IMPORT_PROVIDERS)[number];
 

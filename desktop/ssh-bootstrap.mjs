@@ -12,10 +12,13 @@ import { readRemoteHealth, REMOTE_TOKEN_HEADER } from "../shared/remote-connecti
 const SAVED_SERVER_HEALTH_TIMEOUT_MS = 2000;
 
 const [id, build] = process.argv.slice(2);
-if (!/^[a-f0-9-]{36}$/.test(id || "") || !/^[a-f0-9]{64}$/.test(build || "")) throw new Error("Invalid remote environment.");
+if (!/^[a-f0-9-]{36}$/.test(id || "") || !/^[a-f0-9]{64}$/.test(build || ""))
+  throw new Error("Invalid remote environment.");
 const [major, minor] = process.versions.node.split(".").map(Number);
-if (major < 22 || (major === 22 && minor < 18)) throw new Error("Install Node 22.18 or newer on the SSH host.");
-if (process.platform === "win32") throw new Error("SSH environments currently require a Linux or macOS host.");
+if (major < 22 || (major === 22 && minor < 18))
+  throw new Error("Install Node 22.18 or newer on the SSH host.");
+if (process.platform === "win32")
+  throw new Error("SSH environments currently require a Linux or macOS host.");
 const root = join(homedir(), ".citropy", "ssh", id);
 const statePath = join(root, "server.json");
 const lock = join(root, "launch.lock");
@@ -25,36 +28,59 @@ try {
 } catch (error) {
   if (error.code !== "EEXIST") throw error;
   const owner = await readFile(join(lock, "pid"), "utf8").catch(ifMissing(""));
-  if ((!owner && Date.now() - (await stat(lock)).mtimeMs < 120000) || (Number(owner) > 0 && processExists(Number(owner)))) throw new Error("Another connection is starting this environment. Try again shortly.");
+  if (
+    (!owner && Date.now() - (await stat(lock)).mtimeMs < 120000) ||
+    (Number(owner) > 0 && processExists(Number(owner)))
+  )
+    throw new Error("Another connection is starting this environment. Try again shortly.");
   await rm(lock, { recursive: true });
   await mkdir(lock);
 }
 await writeFile(join(lock, "pid"), String(process.pid));
 let reused = false;
 try {
-  const previous = await readFile(statePath, "utf8").then(JSON.parse).catch(error => { if (error.code === "ENOENT") return null; throw new Error("The saved remote server state could not be read. Repair server.json before reconnecting."); });
+  const previous = await readFile(statePath, "utf8")
+    .then(JSON.parse)
+    .catch((error) => {
+      if (error.code === "ENOENT") return null;
+      throw new Error(
+        "The saved remote server state could not be read. Repair server.json before reconnecting.",
+      );
+    });
   if (previous) {
     const url = `http://127.0.0.1:${previous.port}`;
     const headers = { [REMOTE_TOKEN_HEADER]: previous.token };
-    const health = await readRemoteHealth({ port: previous.port, token: previous.token, environmentId: id, timeout: SAVED_SERVER_HEALTH_TIMEOUT_MS });
+    const health = await readRemoteHealth({
+      port: previous.port,
+      token: previous.token,
+      environmentId: id,
+      timeout: SAVED_SERVER_HEALTH_TIMEOUT_MS,
+    });
     if (health) {
       if (health.build === build) {
         process.stdout.write(`CITROPY_READY ${JSON.stringify(previous)}\n`);
         reused = true;
       } else {
-        const response = await fetch(`${url}/api/remote/shutdown`, { method: "POST", headers, signal: AbortSignal.timeout(10000) });
+        const response = await fetch(`${url}/api/remote/shutdown`, {
+          method: "POST",
+          headers,
+          signal: AbortSignal.timeout(10000),
+        });
         if (response.status === 409) {
           process.stdout.write(`CITROPY_READY ${JSON.stringify(previous)}\n`);
           reused = true;
         } else {
           if (!response.ok) throw new Error(await response.text());
           for (let attempt = 0; attempt < 150 && processExists(previous.pid); attempt++)
-            await new Promise(resolve => setTimeout(resolve, 100));
-          if (processExists(previous.pid)) throw new Error("The remote server is still shutting down. Reconnect shortly.");
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          if (processExists(previous.pid))
+            throw new Error("The remote server is still shutting down. Reconnect shortly.");
         }
       }
     } else if (processExists(previous.pid)) {
-      throw new Error("The saved remote server is not responding. Check its server.log on the SSH host before reconnecting.");
+      throw new Error(
+        "The saved remote server is not responding. Check its server.log on the SSH host before reconnecting.",
+      );
     }
   }
   if (!reused) {
@@ -66,15 +92,39 @@ try {
       cwd: appRoot,
       detached: true,
       execArgv: ["--experimental-strip-types", "--optimize-for-size"],
-      env: { ...process.env, CITROPY_PORT: String(port), CITROPY_HOST: "127.0.0.1", CITROPY_REMOTE_ID: id, CITROPY_REMOTE_TOKEN: token, CITROPY_REMOTE_BUILD: build, CITROPY_DATA_DIR: join(root, "data"), PATH: `${dirname(process.execPath)}:${join(homedir(), ".local/bin")}:${join(homedir(), ".opencode/bin")}:${process.env.PATH || "/usr/bin:/bin"}` },
+      env: {
+        ...process.env,
+        CITROPY_PORT: String(port),
+        CITROPY_HOST: "127.0.0.1",
+        CITROPY_REMOTE_ID: id,
+        CITROPY_REMOTE_TOKEN: token,
+        CITROPY_REMOTE_BUILD: build,
+        CITROPY_DATA_DIR: join(root, "data"),
+        PATH: `${dirname(process.execPath)}:${join(homedir(), ".local/bin")}:${join(homedir(), ".opencode/bin")}:${process.env.PATH || "/usr/bin:/bin"}`,
+      },
       stdio: ["ignore", log.fd, log.fd, "ipc"],
     });
     try {
       await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => finish(new Error("Remote startup timed out. Check server.log in the remote environment folder.")), 90000);
-        const ready = message => { if (message?.t === "ready") finish(); };
-        const failed = () => finish(new Error("The remote server could not start. Check server.log in the remote environment folder."));
-        const finish = error => {
+        const timer = setTimeout(
+          () =>
+            finish(
+              new Error(
+                "Remote startup timed out. Check server.log in the remote environment folder.",
+              ),
+            ),
+          90000,
+        );
+        const ready = (message) => {
+          if (message?.t === "ready") finish();
+        };
+        const failed = () =>
+          finish(
+            new Error(
+              "The remote server could not start. Check server.log in the remote environment folder.",
+            ),
+          );
+        const finish = (error) => {
           clearTimeout(timer);
           child.off("message", ready);
           child.off("exit", failed);
@@ -88,7 +138,9 @@ try {
       const state = { port, token, pid: child.pid, build };
       await writeFile(`${statePath}.tmp`, JSON.stringify(state), { mode: 0o600 });
       await rename(`${statePath}.tmp`, statePath);
-      await pruneRemoteBuilds(join(root, "builds"), build, previous?.build).catch(logFailure("Removing old remote builds"));
+      await pruneRemoteBuilds(join(root, "builds"), build, previous?.build).catch(
+        logFailure("Removing old remote builds"),
+      );
       process.stdout.write(`CITROPY_READY ${JSON.stringify(state)}\n`);
     } catch (error) {
       child.kill("SIGTERM");

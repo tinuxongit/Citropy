@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import { github } from "./actions.ts";
 import { useApp } from "./store.ts";
 import { useEnvironments } from "./environment.ts";
-import type {
-  GitHubRequests,
-  GitHubResponses,
-} from "../../../shared/github.ts";
+import type { GitHubRequests, GitHubResponses } from "../../../shared/github.ts";
 
 export function useGitHub<K extends keyof GitHubRequests>(
   operation: K,
@@ -49,12 +46,8 @@ export function useGitHub<K extends keyof GitHubRequests>(
   }, [operation, key, revision, connected]);
   return {
     data: key === result.key ? result.data : undefined,
-    error:
-      connected && input !== null && key === result.key
-        ? result.error
-        : undefined,
-    loading:
-      input !== null && connected && (key !== result.key || result.loading),
+    error: connected && input !== null && key === result.key ? result.error : undefined,
+    loading: input !== null && connected && (key !== result.key || result.loading),
     refresh: () => setRevision((value) => value + 1),
   };
 }

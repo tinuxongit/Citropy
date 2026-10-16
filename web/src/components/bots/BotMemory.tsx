@@ -15,14 +15,22 @@ export function BotMemory({ bot }: { bot: Bot }) {
                 <span className="bot-memory-text">{entry.text}</span>
                 <small>{day(entry.savedAt)}</small>
               </span>
-              <button type="button" className="icon-btn" aria-label="Forget this" title="Forget this" onClick={() => removeMemory(bot.id, entry.id)}>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Forget this"
+                title="Forget this"
+                onClick={() => removeMemory(bot.id, entry.id)}
+              >
                 <TrashIcon size={14} />
               </button>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="bot-memory-empty">Nothing saved yet. Ask {bot.name} to remember something and it shows up here.</p>
+        <p className="bot-memory-empty">
+          Nothing saved yet. Ask {bot.name} to remember something and it shows up here.
+        </p>
       )}
     </section>
   );

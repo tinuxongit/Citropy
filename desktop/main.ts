@@ -13,7 +13,13 @@ import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-
 import { packagedBackend } from "./backend.ts";
 import { desktopDiagnostics } from "./diagnostics.ts";
 import { initializeProfiles, handleProfiles, type ProfileInput } from "./browser-profiles.ts";
-import { initializeConnections, accountOfProfile, handleConnections, signInTarget, type ConnectionInput } from "./connections.ts";
+import {
+  initializeConnections,
+  accountOfProfile,
+  handleConnections,
+  signInTarget,
+  type ConnectionInput,
+} from "./connections.ts";
 import { createSignInView } from "./sign-in-view.ts";
 import { initializeBrowserTabs, tabs, publish, handleBrowser } from "./browser-tabs.ts";
 import {
@@ -32,7 +38,17 @@ import {
 import { WebSocket } from "ws";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { join, resolve, sep } from "node:path";
-import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, accessSync, constants, existsSync, statSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  openSync,
+  closeSync,
+  accessSync,
+  constants,
+  existsSync,
+  statSync,
+} from "node:fs";
 import { migrateDesktopData } from "./migrate-data.ts";
 import { logFailure } from "../shared/expected-errors.mjs";
 import { defaultPort } from "../shared/ports.mjs";
@@ -49,21 +65,30 @@ interface Notice {
 type FolderRequest = { id?: unknown; path?: unknown } | undefined;
 
 const development = !app.isPackaged && process.env.CITROPY_DEVELOPMENT === "1";
-const { version } = JSON.parse(
-  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
-);
+const { version } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const appName = development ? "Citropy Dev" : "Citropy";
 const desktopId = development ? "citropy-dev" : "citropy";
 const appIcon = fileURLToPath(new URL(`./assets/${desktopId}.png`, import.meta.url));
 app.setName(appName);
 app.setPath(
   "userData",
-  migrateDesktopData(app.getPath("appData"), process.env.CITROPY_DESKTOP_DATA || (development ? join(app.getPath("appData"), appName) : undefined)),
+  migrateDesktopData(
+    app.getPath("appData"),
+    process.env.CITROPY_DESKTOP_DATA ||
+      (development ? join(app.getPath("appData"), appName) : undefined),
+  ),
 );
 if (!app.requestSingleInstanceLock()) app.exit(0);
 const diagnose = desktopDiagnostics(app.getPath("userData"));
-diagnose("app.started", { version, electron: process.versions.electron, platform: process.platform, packaged: app.isPackaged });
-process.on("uncaughtExceptionMonitor", (_, origin) => diagnose("app.uncaught-exception", { reason: origin }));
+diagnose("app.started", {
+  version,
+  electron: process.versions.electron,
+  platform: process.platform,
+  packaged: app.isPackaged,
+});
+process.on("uncaughtExceptionMonitor", (_, origin) =>
+  diagnose("app.uncaught-exception", { reason: origin }),
+);
 app.on("child-process-gone", (_, details) => {
   diagnose("child.exited", { type: details.type, reason: details.reason, code: details.exitCode });
 });
@@ -85,7 +110,8 @@ app.on("second-instance", () => secondInstance.focus());
 if (process.platform === "linux") {
   app.setDesktopName(`${desktopId}.desktop`);
   try {
-    if (refreshMenuIcon({ base: desktopId, picturePath: appIcon })) diagnose("menu-icon.refreshed", {});
+    if (refreshMenuIcon({ base: desktopId, picturePath: appIcon }))
+      diagnose("menu-icon.refreshed", {});
   } catch (error) {
     diagnose("menu-icon.failed", { reason: (error as Error).message });
   }
@@ -114,9 +140,7 @@ const base = new URL(process.env.CITROPY_URL ?? `http://127.0.0.1:${defaultPort(
 const ui = new URL(process.env.CITROPY_UI_URL ?? base.href);
 if (
   ![base, ui].every(
-    (url) =>
-      ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) &&
-      url.protocol === "http:",
+    (url) => ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) && url.protocol === "http:",
   )
 )
   throw new Error("Citropy desktop requires a local server");
@@ -134,14 +158,18 @@ app.on("before-quit", (event) => {
   quitting = true;
   diagnose("app.quitting");
   folderChoice?.abort();
-  void (environments?.dispose() ?? Promise.resolve()).then(() => backend?.stop()).catch((error: Error) => diagnose("app.quit-cleanup-failed", { reason: error.message })).finally(() => {
-    updates?.dispose();
-    for (const notification of notifications) notification.close();
-    for (const tab of tabs.values())
-      if (tab.contents && !tab.contents.isDestroyed()) tab.contents.close({ waitForBeforeUnload: false });
-    socket?.close();
-    app.quit();
-  });
+  void (environments?.dispose() ?? Promise.resolve())
+    .then(() => backend?.stop())
+    .catch((error: Error) => diagnose("app.quit-cleanup-failed", { reason: error.message }))
+    .finally(() => {
+      updates?.dispose();
+      for (const notification of notifications) notification.close();
+      for (const tab of tabs.values())
+        if (tab.contents && !tab.contents.isDestroyed())
+          tab.contents.close({ waitForBeforeUnload: false });
+      socket?.close();
+      app.quit();
+    });
 });
 
 const emit = (event: object) => {
@@ -152,7 +180,9 @@ const updateRepository = "tinuxongit/Citropy";
 
 function macScriptUpdates() {
   if (process.platform !== "darwin" || !app.isPackaged) return false;
-  const result = spawnSync("/usr/bin/codesign", ["-dv", "--verbose=2", process.execPath], { encoding: "utf8" });
+  const result = spawnSync("/usr/bin/codesign", ["-dv", "--verbose=2", process.execPath], {
+    encoding: "utf8",
+  });
   if (result.error) throw result.error;
   return !/Authority=Developer ID Application/.test(`${result.stdout}${result.stderr}`);
 }
@@ -171,7 +201,11 @@ async function request(method: string, body: unknown) {
       if (window.isMinimized()) window.restore();
       window.show();
       window.focus();
-      window.webContents.send("notification:open", { id: params.id, target: params.target, environmentId: "local" });
+      window.webContents.send("notification:open", {
+        id: params.id,
+        target: params.target,
+        environmentId: "local",
+      });
     });
     notification.on("close", () => notifications.delete(notification));
     notification.on("failed", () => notifications.delete(notification));
@@ -184,22 +218,33 @@ async function request(method: string, body: unknown) {
     window.focus();
     return;
   }
-  if (method.startsWith("profiles.")) return handleProfiles(method.slice(9), body as ProfileInput, session, tabs);
+  if (method.startsWith("profiles."))
+    return handleProfiles(method.slice(9), body as ProfileInput, session, tabs);
   if (method.startsWith("connections.")) {
-    const result = await handleConnections(method.slice(12), body as ConnectionInput, session, tabs);
+    const result = await handleConnections(
+      method.slice(12),
+      body as ConnectionInput,
+      session,
+      tabs,
+    );
     for (const tab of tabs.values()) if (accountOfProfile(tab.state.profileId)) publish(tab);
     return result;
   }
-  if (method === "diagnostics") return app.getAppMetrics().map((entry) => ({
-    pid: entry.pid,
-    parent: process.pid,
-    name: entry.name || `Citropy ${entry.type}`,
-    cpu: entry.cpu.percentCPUUsage,
-    cpuInterval: true,
-    ...(Number.isFinite(entry.cpu.cumulativeCPUUsage) ? { cpuTime: entry.cpu.cumulativeCPUUsage } : {}),
-    ...(Number.isFinite(entry.creationTime) && entry.creationTime > 0 ? { startedAt: `electron:${entry.creationTime}` } : {}),
-    memory: entry.memory.workingSetSize * 1024,
-  }));
+  if (method === "diagnostics")
+    return app.getAppMetrics().map((entry) => ({
+      pid: entry.pid,
+      parent: process.pid,
+      name: entry.name || `Citropy ${entry.type}`,
+      cpu: entry.cpu.percentCPUUsage,
+      cpuInterval: true,
+      ...(Number.isFinite(entry.cpu.cumulativeCPUUsage)
+        ? { cpuTime: entry.cpu.cumulativeCPUUsage }
+        : {}),
+      ...(Number.isFinite(entry.creationTime) && entry.creationTime > 0
+        ? { startedAt: `electron:${entry.creationTime}` }
+        : {}),
+      memory: entry.memory.workingSetSize * 1024,
+    }));
   return handleBrowser(method, body);
 }
 
@@ -210,12 +255,24 @@ app
     const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const minWidth = Math.min(960, workArea.width);
     const minHeight = Math.min(640, workArea.height);
-    const width = Math.min(workArea.width, Math.max(minWidth,
-      Number.isFinite(saved.width) ? Math.round(saved.width) : Math.min(1440, workArea.width - 64),
-    ));
-    const height = Math.min(workArea.height, Math.max(minHeight,
-      Number.isFinite(saved.height) ? Math.round(saved.height) : Math.min(900, workArea.height - 64),
-    ));
+    const width = Math.min(
+      workArea.width,
+      Math.max(
+        minWidth,
+        Number.isFinite(saved.width)
+          ? Math.round(saved.width)
+          : Math.min(1440, workArea.width - 64),
+      ),
+    );
+    const height = Math.min(
+      workArea.height,
+      Math.max(
+        minHeight,
+        Number.isFinite(saved.height)
+          ? Math.round(saved.height)
+          : Math.min(900, workArea.height - 64),
+      ),
+    );
     window = new BrowserWindow({
       width,
       height,
@@ -278,19 +335,25 @@ app
       event.sender === window.webContents &&
       event.senderFrame === window.webContents.mainFrame &&
       new URL(event.senderFrame.url).origin === ui.origin;
-    const sshEnvironments = new SshEnvironments({ directory: app.getPath("userData"), appRoot: fileURLToPath(new URL("..", import.meta.url)), origin: ui.origin, projectDefaults: async (settings, signal) => {
-      const response = await fetch(new URL("/api/projects/defaults", base), {
-        method: settings === undefined ? "GET" : "PATCH",
-        headers: { "content-type": "application/json" },
-        ...(settings === undefined ? {} : { body: JSON.stringify({ settings }) }),
-        signal: AbortSignal.any([AbortSignal.timeout(10000), ...(signal ? [signal] : [])]),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not save global project defaults.");
-      return data;
-    }, changed: state => {
-      if (!window.isDestroyed()) window.webContents.send("environments:state", state);
-    } });
+    const sshEnvironments = new SshEnvironments({
+      directory: app.getPath("userData"),
+      appRoot: fileURLToPath(new URL("..", import.meta.url)),
+      origin: ui.origin,
+      projectDefaults: async (settings, signal) => {
+        const response = await fetch(new URL("/api/projects/defaults", base), {
+          method: settings === undefined ? "GET" : "PATCH",
+          headers: { "content-type": "application/json" },
+          ...(settings === undefined ? {} : { body: JSON.stringify({ settings }) }),
+          signal: AbortSignal.any([AbortSignal.timeout(10000), ...(signal ? [signal] : [])]),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not save global project defaults.");
+        return data;
+      },
+      changed: (state) => {
+        if (!window.isDestroyed()) window.webContents.send("environments:state", state);
+      },
+    });
     environments = sshEnvironments;
     await started;
     await sshEnvironments.load();
@@ -302,64 +365,115 @@ app
     for (const [channel, action] of Object.entries<(input: unknown) => unknown>({
       state: () => sshEnvironments.state(),
       hosts: () => sshHosts(),
-      save: input => sshEnvironments.save(input as SshInput | undefined),
-      "project-defaults": settings => sshEnvironments.syncProjectDefaults(settings),
-      connect: async id => {
+      save: (input) => sshEnvironments.save(input as SshInput | undefined),
+      "project-defaults": (settings) => sshEnvironments.syncProjectDefaults(settings),
+      connect: async (id) => {
         return sshEnvironments.connect(idOf(id));
       },
-      disconnect: id => sshEnvironments.disconnect(idOf(id)),
-      remove: id => sshEnvironments.remove(idOf(id)),
-      stop: id => sshEnvironments.stop(idOf(id)),
-      "choose-folder": async request => {
+      disconnect: (id) => sshEnvironments.disconnect(idOf(id)),
+      remove: (id) => sshEnvironments.remove(idOf(id)),
+      stop: (id) => sshEnvironments.stop(idOf(id)),
+      "choose-folder": async (request) => {
         const input = request as FolderRequest;
         if (folderChoice) throw new Error("Finish choosing the current folder first.");
-        const connection = input?.id === "local" ? undefined : sshEnvironments.connections.find(entry => entry.id === input?.id);
-        if (input?.id !== "local" && !connection) throw new Error("This SSH connection was removed.");
+        const connection =
+          input?.id === "local"
+            ? undefined
+            : sshEnvironments.connections.find((entry) => entry.id === input?.id);
+        if (input?.id !== "local" && !connection)
+          throw new Error("This SSH connection was removed.");
         if (connection?.kind === "container") return "/workspace";
         const controller = new AbortController();
         folderChoice = controller;
-        try { return await chooseNativeFolder({ connection, path: typeof input?.path === "string" ? input.path : undefined, signal: controller.signal }, options => dialog.showOpenDialog(window, options)); }
-        finally { if (folderChoice === controller) folderChoice = undefined; }
+        try {
+          return await chooseNativeFolder(
+            {
+              connection,
+              path: typeof input?.path === "string" ? input.path : undefined,
+              signal: controller.signal,
+            },
+            (options) => dialog.showOpenDialog(window, options),
+          );
+        } finally {
+          if (folderChoice === controller) folderChoice = undefined;
+        }
       },
-      "list-folder": async request => {
+      "list-folder": async (request) => {
         const input = request as FolderRequest;
-        const connection = sshEnvironments.connections.find(entry => entry.id === input?.id);
-        if (!connection || connection.kind === "container") throw new Error("This SSH connection was removed.");
-        return listRemoteFolder(connection, typeof input?.path === "string" ? input.path : "", AbortSignal.timeout(25000));
+        const connection = sshEnvironments.connections.find((entry) => entry.id === input?.id);
+        if (!connection || connection.kind === "container")
+          throw new Error("This SSH connection was removed.");
+        return listRemoteFolder(
+          connection,
+          typeof input?.path === "string" ? input.path : "",
+          AbortSignal.timeout(25000),
+        );
       },
-    })) ipcMain.handle(`environments:${channel}`, (event, input) => {
-      if (!trusted(event)) throw new Error("Unavailable outside Citropy");
-      return action(input);
-    });
+    }))
+      ipcMain.handle(`environments:${channel}`, (event, input) => {
+        if (!trusted(event)) throw new Error("Unavailable outside Citropy");
+        return action(input);
+      });
     const unavailableUpdate = !app.isPackaged
       ? "Development build. Live source changes are enabled; release updates require an installed Citropy build."
-      : process.platform === "linux" && !(process.env.APPIMAGE && process.env.APPDIR && resolve(process.execPath).startsWith(`${resolve(process.env.APPDIR)}${sep}`))
+      : process.platform === "linux" &&
+          !(
+            process.env.APPIMAGE &&
+            process.env.APPDIR &&
+            resolve(process.execPath).startsWith(`${resolve(process.env.APPDIR)}${sep}`)
+          )
         ? "Install the Citropy AppImage to download and apply release updates."
         : undefined;
     const scriptedUpdates = !unavailableUpdate && macScriptUpdates();
-    const autoUpdater = unavailableUpdate || scriptedUpdates ? undefined : (await import("electron-updater").then(module => module.default || module)).autoUpdater;
+    const autoUpdater =
+      unavailableUpdate || scriptedUpdates
+        ? undefined
+        : (await import("electron-updater").then((module) => module.default || module)).autoUpdater;
     let stagedUpdate: Awaited<ReturnType<typeof stageScriptUpdate>> | undefined;
     const scriptInstaller = {
       check: async () => {
-        const response = await fetch(`https://github.com/${updateRepository}/releases/latest`, { signal: AbortSignal.timeout(10000) });
-        if (!response.ok) throw new Error(`GitHub answered ${response.status} for the latest release.`);
+        const response = await fetch(`https://github.com/${updateRepository}/releases/latest`, {
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!response.ok)
+          throw new Error(`GitHub answered ${response.status} for the latest release.`);
         return response.url.match(/\/releases\/tag\/v?([^/?#]+)$/)?.[1];
       },
       download: async (target: string) => {
         const architecture = app.runningUnderARM64Translation ? "arm64" : process.arch;
-        stagedUpdate = await stageScriptUpdate(updateRepository, target, architecture, app.getPath("userData"));
+        stagedUpdate = await stageScriptUpdate(
+          updateRepository,
+          target,
+          architecture,
+          app.getPath("userData"),
+        );
       },
       install: async (target: string) => {
-        if (stagedUpdate?.version !== target) throw new Error("Download and verify this release before applying it.");
+        if (stagedUpdate?.version !== target)
+          throw new Error("Download and verify this release before applying it.");
         const script = stagedUpdate.script;
-        const env: NodeJS.ProcessEnv = { ...process.env, CITROPY_RELAUNCH: "1", CITROPY_PARENT_PID: String(process.pid), CITROPY_VERSION: target, CITROPY_STAGED_DOWNLOAD: stagedUpdate.directory };
-        for (const name of ["CITROPY_BASE_URL", "CITROPY_BIN_DIR", "CITROPY_BIN_PATH", "CITROPY_APP_DIR"]) delete env[name];
+        const env: NodeJS.ProcessEnv = {
+          ...process.env,
+          CITROPY_RELAUNCH: "1",
+          CITROPY_PARENT_PID: String(process.pid),
+          CITROPY_VERSION: target,
+          CITROPY_STAGED_DOWNLOAD: stagedUpdate.directory,
+        };
+        for (const name of [
+          "CITROPY_BASE_URL",
+          "CITROPY_BIN_DIR",
+          "CITROPY_BIN_PATH",
+          "CITROPY_APP_DIR",
+        ])
+          delete env[name];
         if (process.platform === "darwin") {
           const directory = resolve(process.execPath, "..", "..", "..", "..");
           try {
             accessSync(directory, constants.W_OK);
           } catch {
-            throw new Error(`Citropy cannot replace itself in ${directory}. Move the app to your Applications folder and try again.`);
+            throw new Error(
+              `Citropy cannot replace itself in ${directory}. Move the app to your Applications folder and try again.`,
+            );
           }
           env.CITROPY_APP_DIR = directory;
         } else if (process.env.APPIMAGE) {
@@ -367,7 +481,13 @@ app
           env.CITROPY_BIN_DIR = resolve(process.env.APPIMAGE, "..");
         }
         const log = openSync(join(app.getPath("userData"), "update.log"), "a");
-        const powershell = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+        const powershell = join(
+          process.env.SystemRoot ?? "C:\\Windows",
+          "System32",
+          "WindowsPowerShell",
+          "v1.0",
+          "powershell.exe",
+        );
         const child = spawn(
           process.platform === "win32" ? powershell : "/bin/sh",
           process.platform === "win32"
@@ -403,16 +523,26 @@ app
           : undefined,
       emit: (state) => {
         if (!window.isDestroyed()) window.webContents.send("updates:state", state);
-        if (state.status === "available") emit({ type: "update.available", version: state.version });
+        if (state.status === "available")
+          emit({ type: "update.available", version: state.version });
       },
       prepareInstall: async () => {
-        const response = await fetch(new URL("/api/updates/prepare", base), { method: "POST", headers: { "x-citropy-desktop-token": token }, signal: AbortSignal.timeout(10000) });
+        const response = await fetch(new URL("/api/updates/prepare", base), {
+          method: "POST",
+          headers: { "x-citropy-desktop-token": token },
+          signal: AbortSignal.timeout(10000),
+        });
         if (!response.ok) {
-          throw Object.assign(new Error("Update is blocked"), { userMessage: (await response.json()).error });
+          throw Object.assign(new Error("Update is blocked"), {
+            userMessage: (await response.json()).error,
+          });
         }
         applyingUpdate = true;
         diagnose("app.update-preparing");
-        for (const profile of new Set([session.defaultSession, ...[...tabs.values()].map(tab => session.fromPartition(tab.partition))])) {
+        for (const profile of new Set([
+          session.defaultSession,
+          ...[...tabs.values()].map((tab) => session.fromPartition(tab.partition)),
+        ])) {
           await profile.cookies.flushStore();
           profile.flushStorageData();
         }
@@ -421,9 +551,14 @@ app
       },
       recoverInstall: async () => {
         if (!applyingUpdate) return;
-        if (!app.requestSingleInstanceLock()) throw new Error("Another Citropy instance is already open.");
+        if (!app.requestSingleInstanceLock())
+          throw new Error("Another Citropy instance is already open.");
         await backend?.start();
-        await fetch(new URL("/api/updates/cancel", base), { method: "POST", headers: { "x-citropy-desktop-token": token }, signal: AbortSignal.timeout(10000) });
+        await fetch(new URL("/api/updates/cancel", base), {
+          method: "POST",
+          headers: { "x-citropy-desktop-token": token },
+          signal: AbortSignal.timeout(10000),
+        });
         if (!socket || socket.readyState !== WebSocket.OPEN) connectDesktop();
         applyingUpdate = false;
       },
@@ -450,8 +585,7 @@ app
       notifications: Notification.isSupported(),
       electron: process.versions.electron,
     });
-    const publishWindow = () =>
-      window.webContents.send("window:state", windowState());
+    const publishWindow = () => window.webContents.send("window:state", windowState());
     ipcMain.handle("window:state", (event) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
       return windowState();
@@ -474,7 +608,8 @@ app
     });
     ipcMain.handle("window:open-folder", async (event, path) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
-      if (typeof path !== "string" || !statSync(path).isDirectory()) throw new Error(`Not a folder: ${path}`);
+      if (typeof path !== "string" || !statSync(path).isDirectory())
+        throw new Error(`Not a folder: ${path}`);
       await shell.openExternal(pathToFileURL(path).href);
     });
     ipcMain.handle("window:command", (event, command) => {
@@ -530,47 +665,58 @@ app
     void window.webContents.setVisualZoomLevelLimits(1, 1);
     window.webContents.setWindowOpenHandler(({ url }) => {
       try {
-        if (["http:", "https:", "mailto:"].includes(new URL(url).protocol)) void shell.openExternal(url).catch((error) => dialog.showErrorBox("Citropy could not open the link", error.message));
+        if (["http:", "https:", "mailto:"].includes(new URL(url).protocol))
+          void shell
+            .openExternal(url)
+            .catch((error) =>
+              dialog.showErrorBox("Citropy could not open the link", error.message),
+            );
       } catch {}
       return { action: "deny" };
     });
-    initializeBrowserTabs({ window, emit, trusted, activeEnvironment: () => sshEnvironments.activeId, closing: () => quitting });
+    initializeBrowserTabs({
+      window,
+      emit,
+      trusted,
+      activeEnvironment: () => sshEnvironments.activeId,
+      closing: () => quitting,
+    });
     connectDesktop = () => {
-    const wsUrl = new URL("/socket", base);
-    wsUrl.protocol = "ws:";
-    wsUrl.searchParams.set("desktop", token);
-    const connection = new WebSocket(wsUrl);
-    socket = connection;
-    connection.on("message", async (raw) => {
-      if (socket !== connection) return;
-      let message;
-      try {
-        message = JSON.parse(String(raw));
-      } catch (error) {
-        logFailure("Reading a message from the Citropy server")(error);
-        return;
-      }
-      try {
-        emit({
-          id: message.id,
-          result: await request(message.method, message.params ?? {}),
-        });
-      } catch (error) {
-        emit({ id: message.id, error: (error as Error).message });
-      }
-    });
-    connection.on("error", () => {
-      if (socket === connection && !quitting && !applyingUpdate) {
-        diagnose("app.quit-requested", { reason: "backend-connection-error" });
-        app.quit();
-      }
-    });
-    connection.on("close", (code) => {
-      if (socket === connection && !quitting && !applyingUpdate) {
-        diagnose("app.quit-requested", { reason: "backend-disconnected", code });
-        app.quit();
-      }
-    });
+      const wsUrl = new URL("/socket", base);
+      wsUrl.protocol = "ws:";
+      wsUrl.searchParams.set("desktop", token);
+      const connection = new WebSocket(wsUrl);
+      socket = connection;
+      connection.on("message", async (raw) => {
+        if (socket !== connection) return;
+        let message;
+        try {
+          message = JSON.parse(String(raw));
+        } catch (error) {
+          logFailure("Reading a message from the Citropy server")(error);
+          return;
+        }
+        try {
+          emit({
+            id: message.id,
+            result: await request(message.method, message.params ?? {}),
+          });
+        } catch (error) {
+          emit({ id: message.id, error: (error as Error).message });
+        }
+      });
+      connection.on("error", () => {
+        if (socket === connection && !quitting && !applyingUpdate) {
+          diagnose("app.quit-requested", { reason: "backend-connection-error" });
+          app.quit();
+        }
+      });
+      connection.on("close", (code) => {
+        if (socket === connection && !quitting && !applyingUpdate) {
+          diagnose("app.quit-requested", { reason: "backend-disconnected", code });
+          app.quit();
+        }
+      });
     };
     connectDesktop();
     await window.loadURL(ui.href);

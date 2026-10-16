@@ -108,10 +108,10 @@ export function PermissionRow({ request }: { request: PermissionRequest }) {
           >
             <Icon size={15} aria-hidden="true" />
             <strong>Review this action</strong>
-            {waiting > 0 && (
-              <span className="permission-count">{waiting} waiting</span>
-            )}
-            <span className="permission-text truncate" title={summary}>{summary}</span>
+            {waiting > 0 && <span className="permission-count">{waiting} waiting</span>}
+            <span className="permission-text truncate" title={summary}>
+              {summary}
+            </span>
             <ChevronDownIcon size={14} className="permission-chevron" aria-hidden="true" />
           </button>
           <div className="permission-actions">

@@ -15,9 +15,18 @@ test("find walks nested folders and returns the largest matching files first", a
   await writeFile(join(directory, "a", "b", "large.pdf"), "x".repeat(500));
   await symlink(directory, join(directory, "a", "loop"));
   const all = await find(directory, { path: "", sort: "size", limit: 2 });
-  assert.deepEqual(all.files.map((file) => [file.path, file.size]), [[join(directory, "a", "b", "large.pdf"), 500], [join(directory, "a", "medium.pdf"), 50]]);
+  assert.deepEqual(
+    all.files.map((file) => [file.path, file.size]),
+    [
+      [join(directory, "a", "b", "large.pdf"), 500],
+      [join(directory, "a", "medium.pdf"), 50],
+    ],
+  );
   assert.equal(all.complete, true);
   const pdfs = await find(directory, { path: "a", name: ".PDF", sort: "size", limit: 10 });
   assert.equal(pdfs.files.length, 2);
-  await assert.rejects(find(directory, { path: "../", sort: "size", limit: 1 }), /inside this workspace/);
+  await assert.rejects(
+    find(directory, { path: "../", sort: "size", limit: 1 }),
+    /inside this workspace/,
+  );
 });

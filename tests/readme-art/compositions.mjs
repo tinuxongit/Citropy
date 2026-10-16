@@ -5,14 +5,25 @@ const CHANGES = { width: 1280, height: 760 };
 const VISUAL = { width: 1280, height: 660 };
 const PHONES = { width: 1280, height: 760 };
 const BENTO = { width: 1280, padding: 40, gap: 16, rows: [360, 300, 300, 300] };
-const BENTO_HEIGHT = BENTO.padding * 2 + BENTO.rows.reduce((sum, row) => sum + row + BENTO.gap, -BENTO.gap);
+const BENTO_HEIGHT =
+  BENTO.padding * 2 + BENTO.rows.reduce((sum, row) => sum + row + BENTO.gap, -BENTO.gap);
 const PHONE_BEZEL = 0.045;
 const PHONE_RADIUS = 0.15;
 
 const ASSETS = "/web/src/assets/providers";
 const LOGOS = {
-  dark: { claude: "claude-light.svg", codex: "chatgpt-dark.svg", opencode: "opencode-dark.svg", antigravity: "antigravity.png" },
-  light: { claude: "claude-light.svg", codex: "chatgpt-light.svg", opencode: "opencode-light.svg", antigravity: "antigravity.png" },
+  dark: {
+    claude: "claude-light.svg",
+    codex: "chatgpt-dark.svg",
+    opencode: "opencode-dark.svg",
+    antigravity: "antigravity.png",
+  },
+  light: {
+    claude: "claude-light.svg",
+    codex: "chatgpt-light.svg",
+    opencode: "opencode-light.svg",
+    antigravity: "antigravity.png",
+  },
 };
 const FIELD = { color: "rgb(255 246 227 / 0.15)", star: "rgb(255 246 227 / 0.85)" };
 
@@ -43,16 +54,21 @@ function phone(shot, width, style) {
 const logo = (scheme, provider, size) =>
   `<span class="logo" style="width:${size}px;height:${size}px"><img src="${ASSETS}/${LOGOS[scheme][provider]}" alt=""></span>`;
 
-const field = (center) => `<canvas class="ascii-field" data-color="${FIELD.color}" data-star="${FIELD.star}" data-center="${center}"></canvas>`;
+const field = (center) =>
+  `<canvas class="ascii-field" data-color="${FIELD.color}" data-star="${FIELD.star}" data-center="${center}"></canvas>`;
 const ticks = (style) => `<div class="ticks" style="${style}"><i></i><i></i><i></i><i></i></div>`;
-const art = (scheme, { width, height }, body, extra = "") => `<main class="art ${scheme} ${extra}" style="width:${width}px;height:${height}px">${body}</main>`;
+const art = (scheme, { width, height }, body, extra = "") =>
+  `<main class="art ${scheme} ${extra}" style="width:${width}px;height:${height}px">${body}</main>`;
 
 const listing = (labels) => `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
 
 function hero({ shots, providers }, { flat = false } = {}) {
   const chat = take(shots, "chat-dark");
   const mobile = take(shots, "phone-dark");
-  return art("dark", HERO, `
+  return art(
+    "dark",
+    HERO,
+    `
     ${field(0.22)}
     <div class="glow" style="left:640px;top:140px;width:640px;height:420px;background:rgb(255 200 130 / 0.14)"></div>
     <section class="place" style="left:72px;top:84px;width:460px">
@@ -66,7 +82,9 @@ function hero({ shots, providers }, { flat = false } = {}) {
       ${crop(chat, null, 0.6, { className: "window lit" })}
     </div>
     ${phone(mobile, 168, "left:1018px;top:236px;transform:rotate(4deg)")}
-  `, flat ? "flat" : "");
+  `,
+    flat ? "flat" : "",
+  );
 }
 
 function agents({ shots, providers }) {
@@ -78,22 +96,31 @@ function agents({ shots, providers }) {
   const lines = providers.map((provider, row) => {
     const target = box(picker, provider.id);
     const start = { x: disc.left + disc.size + 14, y: disc.top + row * disc.step + disc.size / 2 };
-    const end = { x: at.left + (target.x - menu.x) * scale - 6, y: at.top + (target.y - menu.y + target.height / 2) * scale };
+    const end = {
+      x: at.left + (target.x - menu.x) * scale - 6,
+      y: at.top + (target.y - menu.y + target.height / 2) * scale,
+    };
     const bend = (start.x + end.x) / 2;
     return `<path d="M${start.x} ${start.y} C${bend} ${start.y} ${bend} ${end.y} ${end.x} ${end.y}"/><circle cx="${end.x}" cy="${end.y}" r="3"/><circle cx="${start.x}" cy="${start.y}" r="3"/>`;
   });
-  const discs = providers.map((provider, row) => `
+  const discs = providers.map(
+    (provider, row) => `
     <div class="place" style="left:${disc.left}px;top:${disc.top + row * disc.step}px;display:flex;flex-direction:column;align-items:center;width:${disc.size}px">
       ${logo("light", provider.id, disc.size)}
       <span class="label" style="margin-top:12px;white-space:nowrap;color:var(--ink)">${provider.label}</span>
       <span class="label" style="margin-top:4px;white-space:nowrap;letter-spacing:0.08em;text-transform:none">${provider.models[0].label}</span>
-    </div>`);
-  return art("light", AGENTS, `
+    </div>`,
+  );
+  return art(
+    "light",
+    AGENTS,
+    `
     <div class="layer dots"></div>
     <div class="place" style="left:${at.left}px;top:${at.top}px">${crop(picker, "menu", scale, { className: "window", style: "border-radius:16px" })}</div>
     <svg class="connector" width="${AGENTS.width}" height="${AGENTS.height}">${lines.join("")}</svg>
     ${discs.join("")}
-  `);
+  `,
+  );
 }
 
 function changes({ shots }) {
@@ -115,7 +142,10 @@ function changes({ shots }) {
       ${crop(git, region, scale, { className: "card", style: "border-radius:10px" })}
     </div>`;
   });
-  return art("dark", CHANGES, `
+  return art(
+    "dark",
+    CHANGES,
+    `
     ${field(0.5)}
     <div class="glow" style="left:300px;top:200px;width:700px;height:400px;background:rgb(255 200 130 / 0.1)"></div>
     <div class="place" style="left:${(CHANGES.width - git.width * scale) / 2}px;top:${(CHANGES.height - git.height * scale) / 2 + 60}px;width:${git.width * scale}px;height:${git.height * scale}px;transform-style:preserve-3d;transform:perspective(3200px) rotateX(42deg) rotateZ(-22deg);transform-origin:50% 50%">
@@ -124,14 +154,18 @@ function changes({ shots }) {
       ${ticks(`left:-18px;top:-18px;width:${git.width * scale + 36}px;height:${git.height * scale + 36}px`)}
       ${layers.join("")}
     </div>
-  `);
+  `,
+  );
 }
 
 function visual({ shots }) {
   const dark = take(shots, "visual-dark");
   const light = take(shots, "visual-light");
   const scale = 0.92;
-  return art("dark", VISUAL, `
+  return art(
+    "dark",
+    VISUAL,
+    `
     ${field(0.25)}
     <div class="layer" style="clip-path:polygon(64% 0, 100% 0, 100% 100%, 36% 100%);background:var(--paper)">
       <div class="layer dots" style="--hair:var(--hair-on-paper)"></div>
@@ -140,14 +174,18 @@ function visual({ shots }) {
     <div class="place light" style="left:500px;top:262px;transform:rotate(1.5deg)">${crop(light, "visual", scale, { className: "window", style: "border-radius:16px" })}</div>
     <span class="label place" style="left:64px;top:30px">Dark</span>
     <span class="label place" style="right:64px;bottom:28px;color:var(--muted-on-paper)">Light</span>
-  `);
+  `,
+  );
 }
 
 function phones({ shots }) {
   const dark = take(shots, "phone-dark");
   const light = take(shots, "sidebar-light");
   const sharing = take(shots, "sharing-light");
-  return art("dark", PHONES, `
+  return art(
+    "dark",
+    PHONES,
+    `
     <div class="glow" style="left:-120px;top:280px;width:900px;height:620px;background:rgb(255 170 90 / 0.22)"></div>
     <div class="glow" style="left:760px;top:-200px;width:600px;height:500px;background:rgb(255 240 210 / 0.1)"></div>
     <div class="layer dots"></div>
@@ -158,7 +196,8 @@ function phones({ shots }) {
       ${crop(sharing, "devices", 0.72, { className: "card", style: "margin-top:14px;background:var(--paper);border-radius:12px" })}
     </div>
     <span class="label place" style="left:712px;top:212px">Settings / Local sharing</span>
-  `);
+  `,
+  );
 }
 
 function bento({ shots }) {
@@ -166,32 +205,78 @@ function bento({ shots }) {
   const column = (width - padding * 2 - gap * 2) / 3;
   const top = (row) => padding + rows.slice(0, row).reduce((sum, height) => sum + height + gap, 0);
   const place = (col, row, cols, span = 1) => {
-    const height = rows.slice(row, row + span).reduce((sum, value) => sum + value, 0) + gap * (span - 1);
+    const height =
+      rows.slice(row, row + span).reduce((sum, value) => sum + value, 0) + gap * (span - 1);
     return `left:${padding + col * (column + gap)}px;top:${top(row)}px;width:${column * cols + gap * (cols - 1)}px;height:${height}px`;
   };
   const tile = (paper, position, title, text, content) =>
     `<section class="tile ${paper ? "paper" : ""}" style="${position}"><h3>${title}</h3><p>${text}</p>${content}</section>`;
-  return art("dark", { width, height: BENTO_HEIGHT }, `
-    ${tile(false, place(0, 0, 2), "Code editor", "Open, edit and save project files next to the conversation.",
-      crop(take(shots, "editor-dark"), "code", 1.1, { style: "left:330px;top:34px" }))}
-    ${tile(false, place(2, 0, 1, 2), "Browser with phone sizes", "Preview your app and switch between phone, tablet and desktop sizes.",
-      crop(take(shots, "browser-dark"), "panel", 0.78, { style: "left:28px;top:150px" }))}
-    ${tile(true, place(0, 1, 2), "Questions from the agent", "When the agent needs a decision, you answer from a short list.",
-      crop(take(shots, "question-light"), "panel", 0.95, { style: "left:150px;top:118px" }))}
-    ${tile(false, place(0, 2, 1), "SSH and Docker", "Work in projects on a server or in a container.",
-      crop(take(shots, "workspaces-dark"), "menu", 0.9, { style: "left:28px;top:130px" }))}
-    ${tile(true, place(1, 2, 2), "Usage and limits", "Tokens, cost and plan limits for every account.",
-      crop(take(shots, "usage-light"), "chart", 0.82, { style: "left:28px;top:118px" }))}
-    ${tile(false, place(0, 3, 2), "Setup guide", "Install and sign in to each agent, then pick a project.",
-      crop(take(shots, "setup-dark"), null, 0.5, { style: "left:330px;top:34px" }))}
-    ${tile(false, place(2, 3, 1), "Light and dark", "Themes, colors and backgrounds.",
-      `${crop(take(shots, "chat-light"), "threads", 1.1, { style: "left:28px;top:118px" })}${crop(take(shots, "chat-dark"), "threads", 1.1, { style: "left:28px;top:118px;clip-path:polygon(62% 0, 100% 0, 100% 100%, 22% 100%)" })}`)}
-  `);
+  return art(
+    "dark",
+    { width, height: BENTO_HEIGHT },
+    `
+    ${tile(
+      false,
+      place(0, 0, 2),
+      "Code editor",
+      "Open, edit and save project files next to the conversation.",
+      crop(take(shots, "editor-dark"), "code", 1.1, { style: "left:330px;top:34px" }),
+    )}
+    ${tile(
+      false,
+      place(2, 0, 1, 2),
+      "Browser with phone sizes",
+      "Preview your app and switch between phone, tablet and desktop sizes.",
+      crop(take(shots, "browser-dark"), "panel", 0.78, { style: "left:28px;top:150px" }),
+    )}
+    ${tile(
+      true,
+      place(0, 1, 2),
+      "Questions from the agent",
+      "When the agent needs a decision, you answer from a short list.",
+      crop(take(shots, "question-light"), "panel", 0.95, { style: "left:150px;top:118px" }),
+    )}
+    ${tile(
+      false,
+      place(0, 2, 1),
+      "SSH and Docker",
+      "Work in projects on a server or in a container.",
+      crop(take(shots, "workspaces-dark"), "menu", 0.9, { style: "left:28px;top:130px" }),
+    )}
+    ${tile(
+      true,
+      place(1, 2, 2),
+      "Usage and limits",
+      "Tokens, cost and plan limits for every account.",
+      crop(take(shots, "usage-light"), "chart", 0.82, { style: "left:28px;top:118px" }),
+    )}
+    ${tile(
+      false,
+      place(0, 3, 2),
+      "Setup guide",
+      "Install and sign in to each agent, then pick a project.",
+      crop(take(shots, "setup-dark"), null, 0.5, { style: "left:330px;top:34px" }),
+    )}
+    ${tile(
+      false,
+      place(2, 3, 1),
+      "Light and dark",
+      "Themes, colors and backgrounds.",
+      `${crop(take(shots, "chat-light"), "threads", 1.1, { style: "left:28px;top:118px" })}${crop(take(shots, "chat-dark"), "threads", 1.1, { style: "left:28px;top:118px;clip-path:polygon(62% 0, 100% 0, 100% 100%, 22% 100%)" })}`,
+    )}
+  `,
+  );
 }
 
 export const arts = [
   { name: "hero", ...HERO, scale: SCALE, html: hero },
-  { name: "social-preview", ...HERO, scale: 1, opaque: true, html: (context) => hero(context, { flat: true }) },
+  {
+    name: "social-preview",
+    ...HERO,
+    scale: 1,
+    opaque: true,
+    html: (context) => hero(context, { flat: true }),
+  },
   { name: "agents", ...AGENTS, scale: SCALE, html: agents },
   { name: "changes", ...CHANGES, scale: SCALE, html: changes },
   { name: "visual", ...VISUAL, scale: SCALE, html: visual },

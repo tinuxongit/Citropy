@@ -11,17 +11,21 @@ export function ProvidersStep() {
 
   return (
     <div className="setup-providers">
-      {providers.map(provider => (
+      {providers.map((provider) => (
         <ProviderSetupCard
           key={provider.id}
           provider={provider}
-          maintenance={maintenance.find(entry => entry.provider === provider.id)}
+          maintenance={maintenance.find((entry) => entry.provider === provider.id)}
           signIns={signIns}
           busy={!connected || updating}
           onInstall={() => void update(provider)}
         />
       ))}
-      {(signIns.error || maintenanceError) && <p className="dialog-error" role="alert">{signIns.error || maintenanceError}</p>}
+      {(signIns.error || maintenanceError) && (
+        <p className="dialog-error" role="alert">
+          {signIns.error || maintenanceError}
+        </p>
+      )}
     </div>
   );
 }

@@ -32,7 +32,12 @@ function svgMask(width: number, height: number, content: string) {
 function frameMasks(width: number, height: number, shell: Box, tabs: Tab[]) {
   const shapes = (fill: string, inset: number) =>
     `<g fill="${fill}"><rect x="${shell.left + inset}" y="${shell.top + inset}" width="${shell.width - 2 * inset}" height="${shell.height - 2 * inset}" rx="${Math.max(shell.radius - inset, 0)}"/>${tabs.map((tab) => `<path d="${tabPath(tab, inset)}"/>`).join("")}</g>`;
-  const ringMask = (thickness: number) => svgMask(width, height, `<mask id="m">${shapes("#fff", 0)}${shapes("#000", thickness)}</mask><rect width="100%" height="100%" mask="url(#m)"/>`);
+  const ringMask = (thickness: number) =>
+    svgMask(
+      width,
+      height,
+      `<mask id="m">${shapes("#fff", 0)}${shapes("#000", thickness)}</mask><rect width="100%" height="100%" mask="url(#m)"/>`,
+    );
   return {
     fill: svgMask(width, height, shapes("#000", 0)),
     ring: ringMask(rim),
@@ -50,26 +55,42 @@ export function ComposerFrame() {
     let geometry = "";
     const draw = () => {
       const fillet = parseFloat(getComputedStyle(tabList).paddingLeft);
-      const tabs = [...tabList.querySelectorAll<HTMLElement>(".composer-tab, .composer-wide-tab")].filter((tab) => tab.offsetParent).map((tab) => {
-        const style = getComputedStyle(tab);
-        const transform = new DOMMatrixReadOnly(style.transform);
-        const offset = offsetWithin(tab, shell);
-        return {
-          left: offset.left + transform.m41,
-          top: offset.top,
-          shift: transform.m42,
-          width: tab.offsetWidth,
-          height: tab.offsetHeight,
-          radius: parseFloat(style.borderTopLeftRadius),
-          fillet,
-        };
-      });
+      const tabs = [...tabList.querySelectorAll<HTMLElement>(".composer-tab, .composer-wide-tab")]
+        .filter((tab) => tab.offsetParent)
+        .map((tab) => {
+          const style = getComputedStyle(tab);
+          const transform = new DOMMatrixReadOnly(style.transform);
+          const offset = offsetWithin(tab, shell);
+          return {
+            left: offset.left + transform.m41,
+            top: offset.top,
+            shift: transform.m42,
+            width: tab.offsetWidth,
+            height: tab.offsetHeight,
+            radius: parseFloat(style.borderTopLeftRadius),
+            fillet,
+          };
+        });
       const rise = Math.max(0, ...tabs.map((tab) => -tab.top));
-      const visible = tabs.filter((tab) => tab.height > tab.shift).map(({ shift, ...tab }) => {
-        const height = tab.height - shift;
-        return { ...tab, top: tab.top + shift + rise, height, radius: Math.min(tab.radius, height), fillet: Math.min(tab.fillet, height) };
-      });
-      const shellBox = { left: 0, top: rise, width: shell.offsetWidth, height: shell.offsetHeight, radius: parseFloat(getComputedStyle(shell).borderTopLeftRadius) };
+      const visible = tabs
+        .filter((tab) => tab.height > tab.shift)
+        .map(({ shift, ...tab }) => {
+          const height = tab.height - shift;
+          return {
+            ...tab,
+            top: tab.top + shift + rise,
+            height,
+            radius: Math.min(tab.radius, height),
+            fillet: Math.min(tab.fillet, height),
+          };
+        });
+      const shellBox = {
+        left: 0,
+        top: rise,
+        width: shell.offsetWidth,
+        height: shell.offsetHeight,
+        radius: parseFloat(getComputedStyle(shell).borderTopLeftRadius),
+      };
       const nextGeometry = JSON.stringify([shellBox, visible, window.devicePixelRatio]);
       if (nextGeometry === geometry) return;
       geometry = nextGeometry;
@@ -83,16 +104,30 @@ export function ComposerFrame() {
     resize.observe(shell);
     resize.observe(tabList);
     const mutation = new MutationObserver((records) => {
-      if (records.some((record) => record.type === "childList" || (record.target as Element).matches(".composer-tab, .composer-wide-tab"))) draw();
+      if (
+        records.some(
+          (record) =>
+            record.type === "childList" ||
+            (record.target as Element).matches(".composer-tab, .composer-wide-tab"),
+        )
+      )
+        draw();
     });
-    mutation.observe(tabList, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+    mutation.observe(tabList, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["style"],
+    });
     return () => {
       resize.disconnect();
       mutation.disconnect();
     };
   }, []);
-  return <>
-    <span ref={glassRef} className="composer-glass" aria-hidden="true" />
-    <span ref={ringRef} className="composer-focus-ring" aria-hidden="true" />
-  </>;
+  return (
+    <>
+      <span ref={glassRef} className="composer-glass" aria-hidden="true" />
+      <span ref={ringRef} className="composer-focus-ring" aria-hidden="true" />
+    </>
+  );
 }

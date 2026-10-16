@@ -68,8 +68,9 @@ async function render(
     };
     pending.set(id, finish);
     signal?.addEventListener("abort", cancel, { once: true });
-    try { worker!.postMessage({ ...request, id }); }
-    catch (error) {
+    try {
+      worker!.postMessage({ ...request, id });
+    } catch (error) {
       console.error("Sending code to the highlighter failed:", error);
       dispose();
     }
@@ -77,12 +78,19 @@ async function render(
 }
 
 const cache = new Map<string, { result: string | string[]; bytes: number }>();
-const inflight = new Map<string, { controller: AbortController; result: Promise<Result>; consumers: number }>();
+const inflight = new Map<
+  string,
+  { controller: AbortController; result: Promise<Result>; consumers: number }
+>();
 let cacheSize = 0;
 
 function remember(key: string, result: string | string[]): void {
   if (cache.has(key)) return;
-  const size = key.length * 2 + (typeof result === "string" ? result.length * 2 : result.reduce((total, line) => total + line.length * 2 + 16, 0));
+  const size =
+    key.length * 2 +
+    (typeof result === "string"
+      ? result.length * 2
+      : result.reduce((total, line) => total + line.length * 2 + 16, 0));
   if (size > CACHE_BYTES) return;
   while (cache.size >= CACHE_ENTRIES || cacheSize + size > CACHE_BYTES) {
     const [oldKey, entry] = cache.entries().next().value!;
@@ -93,7 +101,11 @@ function remember(key: string, result: string | string[]): void {
   cacheSize += size;
 }
 
-function sharedRender(key: string, request: Omit<HighlightRequest, "id">, signal?: AbortSignal): Promise<Result> {
+function sharedRender(
+  key: string,
+  request: Omit<HighlightRequest, "id">,
+  signal?: AbortSignal,
+): Promise<Result> {
   if (signal?.aborted) return Promise.resolve(null);
   let entry = inflight.get(key);
   if (!entry) {
@@ -125,12 +137,20 @@ function sharedRender(key: string, request: Omit<HighlightRequest, "id">, signal
       }
     };
     signal?.addEventListener("abort", cancel, { once: true });
-    current.result.then(result => finish(result), error => finish(null, error));
+    current.result.then(
+      (result) => finish(result),
+      (error) => finish(null, error),
+    );
     if (signal?.aborted) cancel();
   });
 }
 
-export async function highlight(code: string, lang: string | undefined, theme: "dark" | "light", signal?: AbortSignal): Promise<string> {
+export async function highlight(
+  code: string,
+  lang: string | undefined,
+  theme: "dark" | "light",
+  signal?: AbortSignal,
+): Promise<string> {
   const key = `html\0${theme}\0${lang ?? ""}\0${code}`;
   const cached = cache.get(key);
   if (cached && typeof cached.result === "string") {
@@ -144,7 +164,12 @@ export async function highlight(code: string, lang: string | undefined, theme: "
   return result;
 }
 
-export async function highlightTokens(code: string, lang: string | undefined, theme: "dark" | "light", signal?: AbortSignal): Promise<string[] | null> {
+export async function highlightTokens(
+  code: string,
+  lang: string | undefined,
+  theme: "dark" | "light",
+  signal?: AbortSignal,
+): Promise<string[] | null> {
   if (signal?.aborted) return null;
   const key = `tokens\0${theme}\0${lang ?? ""}\0${code}`;
   const cached = cache.get(key);

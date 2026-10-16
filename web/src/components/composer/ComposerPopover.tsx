@@ -5,7 +5,15 @@ import { useReducedMotion } from "../../lib/use-reduced-motion.ts";
 
 const PANEL = { risePx: 5, seconds: 0.16 };
 
-export function ComposerPopover({ id, label, className, anchor, width, onClose, children }: {
+export function ComposerPopover({
+  id,
+  label,
+  className,
+  anchor,
+  width,
+  onClose,
+  children,
+}: {
   id: string;
   label: string;
   className: string;
@@ -16,7 +24,10 @@ export function ComposerPopover({ id, label, className, anchor, width, onClose, 
 }) {
   const panel = useRef<HTMLElement>(null);
   const reducedMotion = useReducedMotion();
-  const hidden = { opacity: 0, transform: reducedMotion ? "none" : `translateY(${PANEL.risePx}px)` };
+  const hidden = {
+    opacity: 0,
+    transform: reducedMotion ? "none" : `translateY(${PANEL.risePx}px)`,
+  };
   useAnchoredPanel(panel, anchor, { open: true, width });
   useDismiss(panel, anchor, onClose, { open: true, outside: true });
   return (

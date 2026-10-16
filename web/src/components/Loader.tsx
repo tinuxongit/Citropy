@@ -16,7 +16,10 @@ const MIN_SHARPNESS = 3;
 
 const PUSHES = Array.from({ length: DROPS }, (_, drop): CSSProperties => {
   const angle = (drop / DROPS) * Math.PI * 2 - Math.PI / 2;
-  return { "--loader-dx": `${Math.cos(angle) * SPREAD}px`, "--loader-dy": `${Math.sin(angle) * SPREAD}px` } as CSSProperties;
+  return {
+    "--loader-dx": `${Math.cos(angle) * SPREAD}px`,
+    "--loader-dy": `${Math.sin(angle) * SPREAD}px`,
+  } as CSSProperties;
 });
 
 function sharedPhase(): CSSProperties {
@@ -28,7 +31,12 @@ function sharedPhase(): CSSProperties {
   } as CSSProperties;
 }
 
-export function Loader({ size = 16, className, style, ...rest }: { size?: number } & SVGProps<SVGSVGElement>) {
+export function Loader({
+  size = 16,
+  className,
+  style,
+  ...rest
+}: { size?: number } & SVGProps<SVGSVGElement>) {
   const id = useId();
   const [phase] = useState(sharedPhase);
   const sharpness = Math.max(MIN_SHARPNESS, size / EDGE_PIXELS_PER_STEP);
@@ -54,11 +62,22 @@ export function Loader({ size = 16, className, style, ...rest }: { size?: number
           height={1 + (2 * FILTER_MARGIN) / VIEW_BOX}
         >
           <feGaussianBlur stdDeviation={BLUR / VIEW_BOX} />
-          <feColorMatrix values={`1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 ${sharpness} ${(1 - sharpness) / 2}`} />
+          <feColorMatrix
+            values={`1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 ${sharpness} ${(1 - sharpness) / 2}`}
+          />
         </filter>
       </defs>
       <g className="loader-turn">
-        {PUSHES.map((push, drop) => <circle key={drop} className="loader-drop" cx={CENTER} cy={CENTER} r={DROP_RADIUS} style={push} />)}
+        {PUSHES.map((push, drop) => (
+          <circle
+            key={drop}
+            className="loader-drop"
+            cx={CENTER}
+            cy={CENTER}
+            r={DROP_RADIUS}
+            style={push}
+          />
+        ))}
       </g>
     </svg>
   );

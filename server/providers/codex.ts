@@ -15,9 +15,16 @@ import { normalizeTodos } from "../../shared/todos.ts";
 import { codexHome } from "./config-folders.ts";
 
 const SHARED_SETTINGS = ["config.toml", "AGENTS.md", "prompts", "skills"];
-const MODES: Record<PermissionMode, { approvalPolicy: string; sandbox: string; approvalsReviewer: string }> = {
+const MODES: Record<
+  PermissionMode,
+  { approvalPolicy: string; sandbox: string; approvalsReviewer: string }
+> = {
   manual: { approvalPolicy: "untrusted", sandbox: "read-only", approvalsReviewer: "user" },
-  acceptEdits: { approvalPolicy: "on-request", sandbox: "workspace-write", approvalsReviewer: "user" },
+  acceptEdits: {
+    approvalPolicy: "on-request",
+    sandbox: "workspace-write",
+    approvalsReviewer: "user",
+  },
   plan: { approvalPolicy: "never", sandbox: "read-only", approvalsReviewer: "user" },
   bypass: { approvalPolicy: "never", sandbox: "danger-full-access", approvalsReviewer: "user" },
 };
@@ -56,19 +63,45 @@ interface Item {
 
 function elicitationContent(schema: unknown): Record<string, unknown> | undefined {
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) return;
-  const form = schema as { type?: unknown; properties?: Record<string, unknown>; required?: unknown };
-  if (form.type !== "object" || !form.properties || typeof form.properties !== "object" || Array.isArray(form.properties)) return;
+  const form = schema as {
+    type?: unknown;
+    properties?: Record<string, unknown>;
+    required?: unknown;
+  };
+  if (
+    form.type !== "object" ||
+    !form.properties ||
+    typeof form.properties !== "object" ||
+    Array.isArray(form.properties)
+  )
+    return;
   const content: Record<string, unknown> = {};
   for (const [key, raw] of Object.entries(form.properties)) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
     const field = raw as { type?: unknown; enum?: unknown; oneOf?: unknown };
-    const choices = Array.isArray(field.enum) ? field.enum : Array.isArray(field.oneOf) ? field.oneOf.map((choice: unknown) => choice && typeof choice === "object" ? (choice as { const?: unknown }).const : undefined) : [];
-    const once = choices.find((choice: unknown) => typeof choice === "string" && /^(allow[_ -]?once|approve[_ -]?once|accept[_ -]?once|once)$/i.test(choice));
+    const choices = Array.isArray(field.enum)
+      ? field.enum
+      : Array.isArray(field.oneOf)
+        ? field.oneOf.map((choice: unknown) =>
+            choice && typeof choice === "object"
+              ? (choice as { const?: unknown }).const
+              : undefined,
+          )
+        : [];
+    const once = choices.find(
+      (choice: unknown) =>
+        typeof choice === "string" &&
+        /^(allow[_ -]?once|approve[_ -]?once|accept[_ -]?once|once)$/i.test(choice),
+    );
     if (once !== undefined) content[key] = once;
     else if (field.type === "boolean" && /persist|remember|always/i.test(key)) content[key] = false;
   }
   if (!Object.keys(content).length) return;
-  if (Array.isArray(form.required) && form.required.some(key => typeof key !== "string" || !Object.hasOwn(content, key))) return;
+  if (
+    Array.isArray(form.required) &&
+    form.required.some((key) => typeof key !== "string" || !Object.hasOwn(content, key))
+  )
+    return;
   return content;
 }
 
@@ -80,7 +113,10 @@ class CodexSession implements AgentSession {
     return this.#child?.pid;
   }
   #ready: Promise<void>;
-  #requests = new Map<number, { resolve: (result: Wire) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
+  #requests = new Map<
+    number,
+    { resolve: (result: Wire) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }
+  >();
   #nextId = 0;
   #threadId = "";
   #turnId = "";
@@ -88,7 +124,11 @@ class CodexSession implements AgentSession {
   #disposed = false;
   #failed = false;
   #interruptPending = false;
-  #queue: Array<{ text: string; attachments: Attachment[]; skills: Array<{ name: string; path: string }> }> = [];
+  #queue: Array<{
+    text: string;
+    attachments: Attachment[];
+    skills: Array<{ name: string; path: string }>;
+  }> = [];
   #blocks = new Map<string, number>();
   #items = new Map<string, Pick<Item, "id" | "type" | "command" | "changes">>();
   #stderr = "";
@@ -114,21 +154,46 @@ class CodexSession implements AgentSession {
   async #initialize(): Promise<void> {
     const options = this.#options;
     const args = ["app-server"];
-    if (options.mcp) args.push("-c", `mcp_servers.citropy.url=${JSON.stringify(options.mcp.url)}`, "-c", 'mcp_servers.citropy.bearer_token_env_var="CITROPY_MCP_TOKEN"', "-c", "mcp_servers.citropy.tool_timeout_sec=1860");
+    if (options.mcp)
+      args.push(
+        "-c",
+        `mcp_servers.citropy.url=${JSON.stringify(options.mcp.url)}`,
+        "-c",
+        'mcp_servers.citropy.bearer_token_env_var="CITROPY_MCP_TOKEN"',
+        "-c",
+        "mcp_servers.citropy.tool_timeout_sec=1860",
+      );
     if (this.#disposed) return;
     this.#child = spawnCommand(options.binary ?? "codex", args, {
       detached: process.platform !== "win32",
       cwd: options.cwd,
-      env: { ...process.env, ...options.environment, RUST_LOG: "error", ...(options.mcp ? { CITROPY_MCP_TOKEN: options.mcp.headers.Authorization?.replace(/^Bearer /, "") } : {}) },
+      env: {
+        ...process.env,
+        ...options.environment,
+        RUST_LOG: "error",
+        ...(options.mcp
+          ? { CITROPY_MCP_TOKEN: options.mcp.headers.Authorization?.replace(/^Bearer /, "") }
+          : {}),
+      },
       stdio: ["pipe", "pipe", "pipe"],
     });
-    onJson(this.#child.stdout, (raw) => this.#receive(raw as Wire), (line) => this.#options.emit({ type: "notice", level: "warn", text: line }), (error) => this.#fail(`Could not process a Codex event: ${error instanceof Error ? error.message : String(error)}`));
+    onJson(
+      this.#child.stdout,
+      (raw) => this.#receive(raw as Wire),
+      (line) => this.#options.emit({ type: "notice", level: "warn", text: line }),
+      (error) =>
+        this.#fail(
+          `Could not process a Codex event: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+    );
     onLines(this.#child.stderr, (line) => {
       this.#stderr = `${this.#stderr}${line}\n`.slice(-4000);
     });
     this.#child.stdin.on("error", (error) => this.#fail(error.message));
     this.#child.on("error", (error) => this.#fail(error.message));
-    this.#child.on("close", (code) => this.#fail(this.#stderr.trim() || `Codex app-server exited with code ${code}`));
+    this.#child.on("close", (code) =>
+      this.#fail(this.#stderr.trim() || `Codex app-server exited with code ${code}`),
+    );
     await this.#request("initialize", {
       clientInfo: CLIENT_INFO,
       capabilities: { experimentalApi: true },
@@ -141,7 +206,9 @@ class CodexSession implements AgentSession {
         // A read-only sandbox lets chats look at files but not change them.
         ...MODES[this.#options.readOnly ? "plan" : this.#options.permissionMode],
         cwd: this.#options.cwd,
-        serviceTier: this.#options.fastMode ? this.#options.fastModeTier ?? "priority" : "default",
+        serviceTier: this.#options.fastMode
+          ? (this.#options.fastModeTier ?? "priority")
+          : "default",
         ...(this.#options.model && this.#options.model !== "default"
           ? { model: this.#options.model }
           : {}),
@@ -164,7 +231,12 @@ class CodexSession implements AgentSession {
     if (!this.#disposed && !this.#failed) this.#child?.stdin.write(`${JSON.stringify(message)}\n`);
   }
 
-  #request(method: string, params: unknown, fatalTimeout = true, timeoutMs = fatalTimeout ? 30_000 : 10_000): Promise<Wire> {
+  #request(
+    method: string,
+    params: unknown,
+    fatalTimeout = true,
+    timeoutMs = fatalTimeout ? 30_000 : 10_000,
+  ): Promise<Wire> {
     if (this.#disposed || this.#failed) return Promise.reject(new Error("Codex session is closed"));
     return new Promise((resolve, reject) => {
       const id = ++this.#nextId;
@@ -182,19 +254,40 @@ class CodexSession implements AgentSession {
     });
   }
 
-  send(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): void {
+  send(
+    text: string,
+    attachments: Attachment[] = [],
+    skills: Array<{ name: string; path: string }> = [],
+  ): void {
     if (this.#disposed || this.#failed) return;
     this.#queue.push({ text, attachments, skills });
     void this.#pump();
   }
 
-  async steer(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): Promise<void> {
+  async steer(
+    text: string,
+    attachments: Attachment[] = [],
+    skills: Array<{ name: string; path: string }> = [],
+  ): Promise<void> {
     await this.#ready;
     if (!this.#turnId) throw new Error("Codex is still starting this turn. Try again in a moment.");
-    await this.#request("turn/steer", { threadId: this.#threadId, expectedTurnId: this.#turnId, input: this.#input(text, attachments, skills) }, false, 30_000);
+    await this.#request(
+      "turn/steer",
+      {
+        threadId: this.#threadId,
+        expectedTurnId: this.#turnId,
+        input: this.#input(text, attachments, skills),
+      },
+      false,
+      30_000,
+    );
   }
 
-  #input(text: string, attachments: Attachment[], skills: Array<{ name: string; path: string }>): unknown[] {
+  #input(
+    text: string,
+    attachments: Attachment[],
+    skills: Array<{ name: string; path: string }>,
+  ): unknown[] {
     return [
       { type: "text", text: text || "Please inspect the attached files.", text_elements: [] },
       ...attachments.map((file) =>
@@ -215,35 +308,68 @@ class CodexSession implements AgentSession {
       await this.#ready;
       if (this.#disposed || this.#failed) return;
       if (this.#options.mcp && this.#reloadMcp) {
-        try { await this.#request("config/mcpServer/reload", {}, false, 5_000); }
-        catch (error) {
-          if (/method not found|unknown method|not supported/i.test(String(error))) this.#reloadMcp = false;
-          else this.#options.emit({ type: "notice", level: "warn", text: `Could not refresh Codex MCP tools: ${String(error)}` });
+        try {
+          await this.#request("config/mcpServer/reload", {}, false, 5_000);
+        } catch (error) {
+          if (/method not found|unknown method|not supported/i.test(String(error)))
+            this.#reloadMcp = false;
+          else
+            this.#options.emit({
+              type: "notice",
+              level: "warn",
+              text: `Could not refresh Codex MCP tools: ${String(error)}`,
+            });
         }
       }
       const review = /^\/review(?:\s+([\s\S]*))?$/.exec(next.text.trim());
-      if (review && (next.attachments.length || next.skills.length)) throw new Error("Send attachments and skills in a message before starting a review.");
-      const result = review ? await this.#request("review/start", {
-        threadId: this.#threadId,
-        delivery: "inline",
-        target: review[1] ? { type: "custom", instructions: review[1] } : { type: "uncommittedChanges" },
-      }, false, 30_000) : await this.#request("turn/start", {
-        threadId: this.#threadId,
-        serviceTier: this.#options.fastMode ? this.#options.fastModeTier ?? "priority" : "default",
-        input: this.#input(next.text, next.attachments, next.skills),
-        ...(this.#options.effort ? { effort: this.#options.effort } : {}),
-      }, false, 30_000);
+      if (review && (next.attachments.length || next.skills.length))
+        throw new Error("Send attachments and skills in a message before starting a review.");
+      const result = review
+        ? await this.#request(
+            "review/start",
+            {
+              threadId: this.#threadId,
+              delivery: "inline",
+              target: review[1]
+                ? { type: "custom", instructions: review[1] }
+                : { type: "uncommittedChanges" },
+            },
+            false,
+            30_000,
+          )
+        : await this.#request(
+            "turn/start",
+            {
+              threadId: this.#threadId,
+              serviceTier: this.#options.fastMode
+                ? (this.#options.fastModeTier ?? "priority")
+                : "default",
+              input: this.#input(next.text, next.attachments, next.skills),
+              ...(this.#options.effort ? { effort: this.#options.effort } : {}),
+            },
+            false,
+            30_000,
+          );
       if (this.#busy) {
         this.#turnId = (result.turn as { id: string }).id;
         if (this.#interruptPending) this.interrupt();
       }
     } catch (error) {
-      if (!this.#disposed && !this.#failed) this.#finish(error instanceof Error ? error.message : String(error));
+      if (!this.#disposed && !this.#failed)
+        this.#finish(error instanceof Error ? error.message : String(error));
     }
   }
 
   interrupt(): void {
-    if (this.#queue.length) this.#options.emit({ type: "notice", level: "warn", text: this.#queue.length === 1 ? "Stopped before Codex started your latest message. Send it again to run it." : `Stopped before Codex started your last ${this.#queue.length} messages. Send them again to run them.` });
+    if (this.#queue.length)
+      this.#options.emit({
+        type: "notice",
+        level: "warn",
+        text:
+          this.#queue.length === 1
+            ? "Stopped before Codex started your latest message. Send it again to run it."
+            : `Stopped before Codex started your last ${this.#queue.length} messages. Send them again to run them.`,
+      });
     this.#queue = [];
     cancelThread(this.#options.threadId, false);
     cancelQuestions(this.#options.threadId);
@@ -251,7 +377,10 @@ class CodexSession implements AgentSession {
     this.#interruptPending = true;
     if (this.#turnId) {
       this.#interruptPending = false;
-      void this.#request("turn/interrupt", { threadId: this.#threadId, turnId: this.#turnId }).catch((error: Error) => this.#fail(error.message));
+      void this.#request("turn/interrupt", {
+        threadId: this.#threadId,
+        turnId: this.#turnId,
+      }).catch((error: Error) => this.#fail(error.message));
     }
   }
 
@@ -261,8 +390,13 @@ class CodexSession implements AgentSession {
     this.#busy = true;
     this.#compacting = true;
     this.#lastCompaction = "";
-    try { await this.#request("thread/compact/start", { threadId: this.#threadId }); }
-    catch (error) { this.#compacting = false; this.#busy = false; throw error; }
+    try {
+      await this.#request("thread/compact/start", { threadId: this.#threadId });
+    } catch (error) {
+      this.#compacting = false;
+      this.#busy = false;
+      throw error;
+    }
   }
 
   dispose(): void {
@@ -301,7 +435,8 @@ class CodexSession implements AgentSession {
     this.#interruptPending = false;
     for (const blockId of this.#blocks.keys()) this.#options.emit({ type: "block.end", blockId });
     this.#blocks.clear();
-    if ([...this.#items.values()].some(item => item.type === "commandExecution")) void this.#refreshBackground();
+    if ([...this.#items.values()].some((item) => item.type === "commandExecution"))
+      void this.#refreshBackground();
     this.#items.clear();
     cancelThread(this.#options.threadId, false);
     cancelQuestions(this.#options.threadId, { blockingOnly: !error });
@@ -313,9 +448,14 @@ class CodexSession implements AgentSession {
   async stopShell(processId: string): Promise<void> {
     if (![...this.#background.values()].includes(processId)) return;
     this.#backgroundRevision++;
-    await this.#request("thread/backgroundTerminals/terminate", { threadId: this.#threadId, processId }, false);
+    await this.#request(
+      "thread/backgroundTerminals/terminate",
+      { threadId: this.#threadId, processId },
+      false,
+    );
     this.#backgroundRevision++;
-    for (const [id, value] of this.#background) if (value === processId) this.#background.delete(id);
+    for (const [id, value] of this.#background)
+      if (value === processId) this.#background.delete(id);
     if (!this.#background.size) clearTimeout(this.#backgroundTimer);
   }
 
@@ -328,7 +468,11 @@ class CodexSession implements AgentSession {
       const shells: Array<{ itemId: string; processId: string; command: string; cwd: string }> = [];
       let cursor: string | undefined;
       do {
-        const result = await this.#request("thread/backgroundTerminals/list", { threadId: this.#threadId, limit: 100, ...(cursor ? { cursor } : {}) }, false);
+        const result = await this.#request(
+          "thread/backgroundTerminals/list",
+          { threadId: this.#threadId, limit: 100, ...(cursor ? { cursor } : {}) },
+          false,
+        );
         if (this.#disposed) return;
         for (const shell of (result.data ?? []) as typeof shells) {
           active.set(shell.itemId, shell.processId);
@@ -337,23 +481,36 @@ class CodexSession implements AgentSession {
         cursor = typeof result.nextCursor === "string" ? result.nextCursor : undefined;
       } while (cursor);
       if (revision !== this.#backgroundRevision) return;
-      for (const shell of shells) this.#options.emit({ type: "shell.background", callId: shell.itemId, taskId: shell.processId, command: shell.command, cwd: shell.cwd });
-      for (const id of this.#background.keys()) if (!active.has(id)) this.#options.emit({ type: "shell.end", callId: id, ok: true });
+      for (const shell of shells)
+        this.#options.emit({
+          type: "shell.background",
+          callId: shell.itemId,
+          taskId: shell.processId,
+          command: shell.command,
+          cwd: shell.cwd,
+        });
+      for (const id of this.#background.keys())
+        if (!active.has(id)) this.#options.emit({ type: "shell.end", callId: id, ok: true });
       this.#background = active;
-    })().catch(logFailure("Refreshing Codex background shells")).finally(() => {
-      this.#backgroundRefresh = undefined;
-      if (!this.#disposed && this.#background.size) {
-        this.#backgroundTimer = setTimeout(() => { void this.#refreshBackground(); }, 2000);
-        this.#backgroundTimer.unref();
-      }
-    });
+    })()
+      .catch(logFailure("Refreshing Codex background shells"))
+      .finally(() => {
+        this.#backgroundRefresh = undefined;
+        if (!this.#disposed && this.#background.size) {
+          this.#backgroundTimer = setTimeout(() => {
+            void this.#refreshBackground();
+          }, 2000);
+          this.#backgroundTimer.unref();
+        }
+      });
     return this.#backgroundRefresh;
   }
 
   #text(id: string, kind: "text" | "reasoning", text: string, full = false): void {
     const blockId = `${id}:${kind}`;
     const previous = this.#blocks.get(blockId) ?? 0;
-    if (!this.#blocks.has(blockId)) this.#options.emit({ type: "block.start", blockId, block: kind });
+    if (!this.#blocks.has(blockId))
+      this.#options.emit({ type: "block.start", blockId, block: kind });
     const delta = full ? text.slice(previous) : text;
     this.#blocks.set(blockId, previous + delta.length);
     if (delta) this.#options.emit({ type: "block.delta", blockId, text: delta });
@@ -373,7 +530,9 @@ class CodexSession implements AgentSession {
     const method = String(message.method ?? "");
     const params = (message.params ?? {}) as Wire;
     if (message.id !== undefined) {
-      void this.#approve(message.id as string | number, method, params).catch((error: Error) => this.#fail(error.message));
+      void this.#approve(message.id as string | number, method, params).catch((error: Error) =>
+        this.#fail(error.message),
+      );
       return;
     }
     if (params.threadId && this.#threadId && params.threadId !== this.#threadId) {
@@ -381,7 +540,10 @@ class CodexSession implements AgentSession {
       return;
     }
     const emit = this.#options.emit;
-    if (method === "thread/compacted" || (method === "item/completed" && (params.item as Item)?.type === "contextCompaction")) {
+    if (
+      method === "thread/compacted" ||
+      (method === "item/completed" && (params.item as Item)?.type === "contextCompaction")
+    ) {
       const turn = String(params.turnId ?? this.#turnId);
       if (this.#lastCompaction !== turn || this.#compacting) {
         this.#lastCompaction = turn;
@@ -395,16 +557,31 @@ class CodexSession implements AgentSession {
     }
     switch (method) {
       case "item/commandExecution/outputDelta":
-        emit({ type: "tool.output", callId: String(params.itemId), output: String(params.delta ?? ""), append: true });
+        emit({
+          type: "tool.output",
+          callId: String(params.itemId),
+          output: String(params.delta ?? ""),
+          append: true,
+        });
         return;
       case "turn/started":
         this.#turnId = (params.turn as { id: string }).id;
-        emit({ type: "status", status: this.#compacting ? "working" : "thinking", ...(this.#compacting ? { tool: "Compacting context" } : {}) });
+        emit({
+          type: "status",
+          status: this.#compacting ? "working" : "thinking",
+          ...(this.#compacting ? { tool: "Compacting context" } : {}),
+        });
         return;
       case "turn/completed": {
         const turn = params.turn as { id?: string; status: string; error?: { message: string } };
         if (turn.id && turn.id !== this.#turnId) return;
-        this.#finish(turn.status === "failed" ? turn.error?.message ?? "Codex turn failed" : turn.status === "interrupted" && this.#compacting ? "Context compaction was stopped." : undefined);
+        this.#finish(
+          turn.status === "failed"
+            ? (turn.error?.message ?? "Codex turn failed")
+            : turn.status === "interrupted" && this.#compacting
+              ? "Context compaction was stopped."
+              : undefined,
+        );
         return;
       }
       case "item/agentMessage/delta":
@@ -419,14 +596,40 @@ class CodexSession implements AgentSession {
         this.#item(params.item as Item, method === "item/completed");
         return;
       case "thread/tokenUsage/updated": {
-        const usage = params.tokenUsage as { total: { inputTokens: number; outputTokens: number; cachedInputTokens: number; cacheWriteInputTokens?: number }; last: { totalTokens: number }; modelContextWindow?: number };
-        const totals = { input: usage.total.inputTokens, output: usage.total.outputTokens, cacheRead: usage.total.cachedInputTokens, cacheWrite: usage.total.cacheWriteInputTokens ?? 0 };
+        const usage = params.tokenUsage as {
+          total: {
+            inputTokens: number;
+            outputTokens: number;
+            cachedInputTokens: number;
+            cacheWriteInputTokens?: number;
+          };
+          last: { totalTokens: number };
+          modelContextWindow?: number;
+        };
+        const totals = {
+          input: usage.total.inputTokens,
+          output: usage.total.outputTokens,
+          cacheRead: usage.total.cachedInputTokens,
+          cacheWrite: usage.total.cacheWriteInputTokens ?? 0,
+        };
         const cumulative = { ...totals };
         for (const key of ["input", "output", "cacheRead", "cacheWrite"] as const) {
-          const offset = this.#options.externalId ? this.#options.usage?.codexTotals ? Math.max(0, (this.#options.usage[key] ?? 0) - this.#options.usage.codexTotals[key]) : 0 : this.#options.usage?.[key] ?? 0;
+          const offset = this.#options.externalId
+            ? this.#options.usage?.codexTotals
+              ? Math.max(0, (this.#options.usage[key] ?? 0) - this.#options.usage.codexTotals[key])
+              : 0
+            : (this.#options.usage?.[key] ?? 0);
           cumulative[key] += offset;
         }
-        emit({ type: "usage", usage: { ...cumulative, codexTotals: totals, contextTokens: usage.last.totalTokens, contextMax: usage.modelContextWindow ?? 0 } });
+        emit({
+          type: "usage",
+          usage: {
+            ...cumulative,
+            codexTotals: totals,
+            contextTokens: usage.last.totalTokens,
+            contextMax: usage.modelContextWindow ?? 0,
+          },
+        });
         return;
       }
       case "turn/plan/updated":
@@ -437,11 +640,21 @@ class CodexSession implements AgentSession {
         emit({ type: "notice", level: "warn", text: String(params.message ?? "Codex warning") });
         return;
       case "configWarning":
-        emit({ type: "notice", level: "warn", text: [params.summary, params.details].filter(Boolean).join("\n") });
+        emit({
+          type: "notice",
+          level: "warn",
+          text: [params.summary, params.details].filter(Boolean).join("\n"),
+        });
         return;
       case "error":
-        if (params.willRetry) emit({ type: "notice", level: "warn", text: (params.error as { message: string }).message });
-        else if (this.#compacting) this.#finish((params.error as { message?: string })?.message ?? "Compaction failed");
+        if (params.willRetry)
+          emit({
+            type: "notice",
+            level: "warn",
+            text: (params.error as { message: string }).message,
+          });
+        else if (this.#compacting)
+          this.#finish((params.error as { message?: string })?.message ?? "Compaction failed");
         return;
     }
   }
@@ -449,13 +662,27 @@ class CodexSession implements AgentSession {
   #item(item: Item, done: boolean): void {
     const emit = this.#options.emit;
     const wasBackground = this.#background.has(item.id);
-    if (done && item.type === "commandExecution" && item.processId && item.exitCode == null && item.status !== "failed" && item.status !== "declined") {
+    if (
+      done &&
+      item.type === "commandExecution" &&
+      item.processId &&
+      item.exitCode == null &&
+      item.status !== "failed" &&
+      item.status !== "declined"
+    ) {
       if (this.#background.get(item.id) !== item.processId) this.#backgroundRevision++;
       this.#background.set(item.id, item.processId);
-      emit({ type: "shell.background", callId: item.id, taskId: item.processId, command: item.command, cwd: item.cwd });
+      emit({
+        type: "shell.background",
+        callId: item.id,
+        taskId: item.processId,
+        command: item.command,
+        cwd: item.cwd,
+      });
     }
     if (item.type === "commandExecution" && (wasBackground || !this.#busy)) {
-      if (item.aggregatedOutput) emit({ type: "tool.output", callId: item.id, output: item.aggregatedOutput });
+      if (item.aggregatedOutput)
+        emit({ type: "tool.output", callId: item.id, output: item.aggregatedOutput });
       if (done && item.exitCode != null) {
         this.#backgroundRevision++;
         this.#background.delete(item.id);
@@ -465,19 +692,33 @@ class CodexSession implements AgentSession {
       return;
     }
     const started = this.#items.has(item.id);
-    this.#items.set(item.id, { id: item.id, type: item.type, command: item.command, changes: item.changes });
+    this.#items.set(item.id, {
+      id: item.id,
+      type: item.type,
+      command: item.command,
+      changes: item.changes,
+    });
     if (item.type === "agentMessage" || item.type === "plan" || item.type === "reasoning") {
       if (done) {
         const kind = item.type === "reasoning" ? "reasoning" : "text";
-        this.#text(item.id, kind, kind === "reasoning" ? (item.summary ?? []).join("\n") : item.text ?? "", true);
+        this.#text(
+          item.id,
+          kind,
+          kind === "reasoning" ? (item.summary ?? []).join("\n") : (item.text ?? ""),
+          true,
+        );
         emit({ type: "block.end", blockId: `${item.id}:${kind}` });
         if (item.type === "agentMessage" && item.delivery === "async" && item.questions?.length) {
-          emit({ type: "question", id: `question_${item.id}`, questions: item.questions.map((question, index) => ({
-            id: `question_${index + 1}`,
-            question: question.title,
-            options: (question.options ?? []).map(label => ({ label })),
-            multiple: false,
-          })) });
+          emit({
+            type: "question",
+            id: `question_${item.id}`,
+            questions: item.questions.map((question, index) => ({
+              id: `question_${index + 1}`,
+              question: question.title,
+              options: (question.options ?? []).map((label) => ({ label })),
+              multiple: false,
+            })),
+          });
         }
       }
       return;
@@ -489,9 +730,18 @@ class CodexSession implements AgentSession {
     let ok = item.status !== "failed" && item.status !== "declined";
     switch (item.type) {
       case "subAgentActivity":
-        if (item.agentThreadId && item.agentThreadId !== this.#threadId && item.kind === "started") {
+        if (
+          item.agentThreadId &&
+          item.agentThreadId !== this.#threadId &&
+          item.kind === "started"
+        ) {
           this.#agents.set(item.agentThreadId, new Map());
-          emit({ type: "subagent", id: item.agentThreadId, title: item.agentPath?.split("/").at(-1), status: "working" });
+          emit({
+            type: "subagent",
+            id: item.agentThreadId,
+            title: item.agentPath?.split("/").at(-1),
+            status: "working",
+          });
         }
         return;
       case "commandExecution":
@@ -502,14 +752,21 @@ class CodexSession implements AgentSession {
         break;
       case "fileChange":
         name = "Edit";
-        input = { file_path: item.changes?.[0]?.path ?? "", paths: item.changes?.map((change) => change.path) ?? [] };
-        output = (item.changes ?? []).map((change) => `${change.path}\n${change.diff ?? ""}`).join("\n");
+        input = {
+          file_path: item.changes?.[0]?.path ?? "",
+          paths: item.changes?.map((change) => change.path) ?? [],
+        };
+        output = (item.changes ?? [])
+          .map((change) => `${change.path}\n${change.diff ?? ""}`)
+          .join("\n");
         break;
       case "mcpToolCall":
       case "dynamicToolCall":
-        name = item.server ? `mcp__${item.server}__${item.tool}` : item.tool ?? "Tool";
+        name = item.server ? `mcp__${item.server}__${item.tool}` : (item.tool ?? "Tool");
         input = item.arguments ?? {};
-        ({ text: output, images } = item.error ? { text: item.error.message ?? "", images: [] } : toolContent(item.result?.content ?? item.contentItems));
+        ({ text: output, images } = item.error
+          ? { text: item.error.message ?? "", images: [] }
+          : toolContent(item.result?.content ?? item.contentItems));
         break;
       case "webSearch":
         name = "WebSearch";
@@ -520,11 +777,30 @@ class CodexSession implements AgentSession {
         name = `subagent_${item.tool ?? "task"}`;
         input = { description: item.prompt, ids: item.receiverThreadIds };
         output = JSON.stringify(item.agentsStates ?? {});
-        for (const id of new Set([...(item.receiverThreadIds ?? []), ...Object.keys(item.agentsStates ?? {})])) {
+        for (const id of new Set([
+          ...(item.receiverThreadIds ?? []),
+          ...Object.keys(item.agentsStates ?? {}),
+        ])) {
           if (id === this.#threadId) continue;
           if (!this.#agents.has(id)) this.#agents.set(id, new Map());
           const state = item.agentsStates?.[id];
-          emit({ type: "subagent", id, ...(item.prompt ? { title: item.prompt.split("\n")[0]?.slice(0, 70), prompt: item.prompt } : {}), model: item.model, status: state?.status === "completed" ? "idle" : state?.status === "errored" || state?.status === "notFound" ? "error" : state?.status === "shutdown" || state?.status === "interrupted" ? "stopped" : "working", result: state?.message });
+          emit({
+            type: "subagent",
+            id,
+            ...(item.prompt
+              ? { title: item.prompt.split("\n")[0]?.slice(0, 70), prompt: item.prompt }
+              : {}),
+            model: item.model,
+            status:
+              state?.status === "completed"
+                ? "idle"
+                : state?.status === "errored" || state?.status === "notFound"
+                  ? "error"
+                  : state?.status === "shutdown" || state?.status === "interrupted"
+                    ? "stopped"
+                    : "working",
+            result: state?.message,
+          });
         }
         break;
       default:
@@ -532,9 +808,11 @@ class CodexSession implements AgentSession {
     }
     if (!started) emit({ type: "tool.start", callId: item.id, name, input });
     else emit({ type: "tool.input", callId: item.id, input });
-    if (done) emit({ type: "tool.end", callId: item.id, ok, output, ...(images.length ? { images } : {}) });
+    if (done)
+      emit({ type: "tool.end", callId: item.id, ok, output, ...(images.length ? { images } : {}) });
     else emit({ type: "status", status: "working", tool: name });
-    if (done && item.type === "commandExecution" && item.processId && item.exitCode == null) void this.#refreshBackground();
+    if (done && item.type === "commandExecution" && item.processId && item.exitCode == null)
+      void this.#refreshBackground();
   }
 
   #agentEvent(id: string, method: string, params: Wire): void {
@@ -542,21 +820,47 @@ class CodexSession implements AgentSession {
     if (!messages) return;
     const emit = this.#options.emit;
     const item = params.item as Item | undefined;
-    if (item) this.#items.set(item.id, { id: item.id, type: item.type, command: item.command, changes: item.changes });
+    if (item)
+      this.#items.set(item.id, {
+        id: item.id,
+        type: item.type,
+        command: item.command,
+        changes: item.changes,
+      });
     if (method === "turn/started") {
       messages.clear();
       emit({ type: "subagent", id, status: "working" });
     } else if (method === "turn/completed") {
       const turn = params.turn as { status: string; error?: { message?: string } };
-      emit({ type: "subagent", id, status: turn.status === "failed" ? "error" : turn.status === "interrupted" ? "stopped" : "idle", result: turn.error?.message ?? [...messages.values()].join("\n\n") });
+      emit({
+        type: "subagent",
+        id,
+        status:
+          turn.status === "failed" ? "error" : turn.status === "interrupted" ? "stopped" : "idle",
+        result: turn.error?.message ?? [...messages.values()].join("\n\n"),
+      });
     } else if (method === "item/agentMessage/delta") {
       const key = String(params.itemId);
       messages.set(key, `${messages.get(key) ?? ""}${String(params.delta ?? "")}`.slice(-32000));
-      emit({ type: "subagent", id, status: "working", result: [...messages.values()].join("\n\n") });
+      emit({
+        type: "subagent",
+        id,
+        status: "working",
+        result: [...messages.values()].join("\n\n"),
+      });
     } else if (method === "item/completed" && item?.type === "agentMessage") {
       messages.set(item.id, item.text ?? "");
-      emit({ type: "subagent", id, status: "working", result: [...messages.values()].join("\n\n") });
-    } else if (method === "item/completed" && item?.type === "subAgentActivity" && item.kind === "started") {
+      emit({
+        type: "subagent",
+        id,
+        status: "working",
+        result: [...messages.values()].join("\n\n"),
+      });
+    } else if (
+      method === "item/completed" &&
+      item?.type === "subAgentActivity" &&
+      item.kind === "started"
+    ) {
       this.#item(item, true);
     }
   }
@@ -571,41 +875,98 @@ class CodexSession implements AgentSession {
     if (method === "item/tool/requestUserInput") {
       try {
         const input = params.questions;
-        const result = await askQuestion(this.#options.threadId, Array.isArray(input) ? input.map(question => ({ ...question, options: question.options ?? [], secret: question.isSecret === true })) : input, { blocking: params.isBlocking !== false });
-        if (!this.#disposed) this.#write({ id, result: { answers: Object.fromEntries(Object.entries(result.answers).map(([key, answers]) => [key, { answers }])) } });
+        const result = await askQuestion(
+          this.#options.threadId,
+          Array.isArray(input)
+            ? input.map((question) => ({
+                ...question,
+                options: question.options ?? [],
+                secret: question.isSecret === true,
+              }))
+            : input,
+          { blocking: params.isBlocking !== false },
+        );
+        if (!this.#disposed)
+          this.#write({
+            id,
+            result: {
+              answers: Object.fromEntries(
+                Object.entries(result.answers).map(([key, answers]) => [key, { answers }]),
+              ),
+            },
+          });
       } catch (error) {
-        if (!this.#disposed) this.#write({ id, error: { code: -32602, message: (error as Error).message } });
+        if (!this.#disposed)
+          this.#write({ id, error: { code: -32602, message: (error as Error).message } });
       }
       return;
     }
     if (method === "mcpServer/elicitation/request") {
       const mode = String(params.mode ?? "");
-      const content = ["form", "openai/form", "openaiForm"].includes(mode) ? elicitationContent(params.requestedSchema) : undefined;
+      const content = ["form", "openai/form", "openaiForm"].includes(mode)
+        ? elicitationContent(params.requestedSchema)
+        : undefined;
       if (!content) {
         this.#write({ id, result: { action: "decline" } });
         return;
       }
-      const metadata = params._meta && typeof params._meta === "object" && !Array.isArray(params._meta) ? params._meta as Wire : {};
-      const app = [metadata.app_name, metadata.appName, params.serverName].find(value => typeof value === "string" && value.trim());
+      const metadata =
+        params._meta && typeof params._meta === "object" && !Array.isArray(params._meta)
+          ? (params._meta as Wire)
+          : {};
+      const app = [metadata.app_name, metadata.appName, params.serverName].find(
+        (value) => typeof value === "string" && value.trim(),
+      );
       this.#options.emit({ type: "status", status: "awaiting" });
-      const decision = await ask(this.#options.threadId, `App access: ${String(app ?? "MCP server")}`, { message: params.message, server: params.serverName, content });
-      this.#write({ id, result: decision === "deny" ? { action: "decline" } : { action: "accept", content } });
+      const decision = await ask(
+        this.#options.threadId,
+        `App access: ${String(app ?? "MCP server")}`,
+        { message: params.message, server: params.serverName, content },
+      );
+      this.#write({
+        id,
+        result: decision === "deny" ? { action: "decline" } : { action: "accept", content },
+      });
       if (!this.#disposed) this.#options.emit({ type: "status", status: "working" });
       return;
     }
-    if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") {
+    if (
+      method === "item/commandExecution/requestApproval" ||
+      method === "item/fileChange/requestApproval"
+    ) {
       const fileChange = method === "item/fileChange/requestApproval";
       const item = this.#items.get(String(params.itemId));
-      this.#options.emit(subagent ? { type: "subagent", id: childId, status: "awaiting" } : { type: "status", status: "awaiting" });
-      const decision = await ask(this.#options.threadId, fileChange ? "Edit" : "Bash", fileChange
-        ? { file_path: item?.changes?.[0]?.path ?? params.grantRoot ?? "", changes: item?.changes, reason: params.reason }
-        : { command: params.command ?? item?.command ?? "", reason: params.reason });
+      this.#options.emit(
+        subagent
+          ? { type: "subagent", id: childId, status: "awaiting" }
+          : { type: "status", status: "awaiting" },
+      );
+      const decision = await ask(
+        this.#options.threadId,
+        fileChange ? "Edit" : "Bash",
+        fileChange
+          ? {
+              file_path: item?.changes?.[0]?.path ?? params.grantRoot ?? "",
+              changes: item?.changes,
+              reason: params.reason,
+            }
+          : { command: params.command ?? item?.command ?? "", reason: params.reason },
+      );
       this.#write({ id, result: { decision: decision === "deny" ? "decline" : "accept" } });
-      if (!this.#disposed) this.#options.emit(subagent ? { type: "subagent", id: childId, status: "working" } : { type: "status", status: "working" });
+      if (!this.#disposed)
+        this.#options.emit(
+          subagent
+            ? { type: "subagent", id: childId, status: "working" }
+            : { type: "status", status: "working" },
+        );
       return;
     }
     this.#write({ id, error: { code: -32601, message: `Citropy does not support ${method}` } });
-    this.#options.emit({ type: "notice", level: "warn", text: `Codex requested an unsupported interaction: ${method}` });
+    this.#options.emit({
+      type: "notice",
+      level: "warn",
+      text: `Codex requested an unsupported interaction: ${method}`,
+    });
   }
 }
 
@@ -616,8 +977,13 @@ export const codexProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "rpc", steer: true, compact: true, stopShell: true },
   steerHint: "Codex adds it to the turn in progress.",
-  signIn: { kind: "terminal", login: ["login"], status: ["login", "status"], signedIn: (output) => /^Logged in\b/m.test(output),
-    home: { variable: "CODEX_HOME", shared: { from: codexHome, items: SHARED_SETTINGS } } },
+  signIn: {
+    kind: "terminal",
+    login: ["login"],
+    status: ["login", "status"],
+    signedIn: (output) => /^Logged in\b/m.test(output),
+    home: { variable: "CODEX_HOME", shared: { from: codexHome, items: SHARED_SETTINGS } },
+  },
   models: [],
   listModels: (launch) => discoverModels("codex", launch),
   async detect(launch) {

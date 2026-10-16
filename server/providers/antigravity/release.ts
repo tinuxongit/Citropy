@@ -58,8 +58,13 @@ export const ANTIGRAVITY_RELEASE = {
   } satisfies Record<string, AntigravityAsset>,
 };
 
-export function antigravityAsset(platform: string = process.platform, arch: string = process.arch): AntigravityAsset {
-  const asset = (ANTIGRAVITY_RELEASE.assets as Record<string, AntigravityAsset>)[`${platform}-${arch}`];
+export function antigravityAsset(
+  platform: string = process.platform,
+  arch: string = process.arch,
+): AntigravityAsset {
+  const asset = (ANTIGRAVITY_RELEASE.assets as Record<string, AntigravityAsset>)[
+    `${platform}-${arch}`
+  ];
   if (!asset) throw new Error(`Google does not publish Antigravity for ${platform} on ${arch}.`);
   return asset;
 }

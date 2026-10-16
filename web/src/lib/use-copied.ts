@@ -9,11 +9,13 @@ export function useCopied() {
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
   const copy = (text: string) => {
-    void copyText(text).then(() => {
-      setCopied(true);
-      clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => setCopied(false), SETTINGS.copiedMs);
-    }).catch(reportError);
+    void copyText(text)
+      .then(() => {
+        setCopied(true);
+        clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => setCopied(false), SETTINGS.copiedMs);
+      })
+      .catch(reportError);
   };
   return [copied, copy] as const;
 }

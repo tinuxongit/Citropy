@@ -12,12 +12,23 @@ import { store } from "../server/store.ts";
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), "citropy-permissions-"));
   const project = store.openProject(directory);
-  const thread = store.createThread({ projectId: project.id, provider: "claude", permissionMode: "manual", title: "Permission test" });
+  const thread = store.createThread({
+    projectId: project.id,
+    provider: "claude",
+    permissionMode: "manual",
+    title: "Permission test",
+  });
   const runtime = runtimeFor(thread.id);
   let emit;
-  t.mock.method(providers.claude, "start", options => {
+  t.mock.method(providers.claude, "start", (options) => {
     emit = options.emit;
-    return { send() {}, interrupt() { emit({ type: "turn.end" }); }, dispose() {} };
+    return {
+      send() {},
+      interrupt() {
+        emit({ type: "turn.end" });
+      },
+      dispose() {},
+    };
   });
   t.after(async () => {
     cancelThread(thread.id);
@@ -26,11 +37,11 @@ async function fixture(t) {
     await rm(directory, { recursive: true, force: true });
   });
   await runtime.send("Run commands");
-  const request = () => pendingRequests().find(request => request.threadId === thread.id);
-  return { thread, runtime, request, emit: event => emit(event) };
+  const request = () => pendingRequests().find((request) => request.threadId === thread.id);
+  return { thread, runtime, request, emit: (event) => emit(event) };
 }
 
-test("invalid permission answers cannot approve a tool or consume its request", async t => {
+test("invalid permission answers cannot approve a tool or consume its request", async (t) => {
   const { thread, request } = await fixture(t);
   const result = ask(thread.id, "Bash", { command: "echo example" });
   const permission = request();
@@ -42,7 +53,7 @@ test("invalid permission answers cannot approve a tool or consume its request", 
   assert.equal(await result, "deny");
 });
 
-test("late approvals for stopped or deleted conversations are denied without prompting", async t => {
+test("late approvals for stopped or deleted conversations are denied without prompting", async (t) => {
   const { thread, runtime, request } = await fixture(t);
   const previous = ask(thread.id, "Bash", { command: "echo earlier" });
   answer(request().id, "allow_always");
@@ -56,7 +67,7 @@ test("late approvals for stopped or deleted conversations are denied without pro
   assert.equal(request(), undefined);
 });
 
-test("answering one of several approvals leaves the conversation waiting on the others", async t => {
+test("answering one of several approvals leaves the conversation waiting on the others", async (t) => {
   const { thread, request, emit } = await fixture(t);
   const first = ask(thread.id, "Bash", { command: "echo one" });
   const firstId = request().id;

@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from "react";
 import { flushSync } from "react-dom";
 import { dropShifts, followListDrag, type ListDrop, type SlotBounds } from "./list-drag.ts";
 import { canStartPointerDrag } from "./pointer-drag.ts";
@@ -7,8 +15,13 @@ import type { DropEdge } from "../../../../shared/move-beside.ts";
 
 const NO_SHIFTS = new Map<string, number>();
 
-function layoutBounds(section: HTMLElement, virtualized: boolean): { top: number; bottom: number } | undefined {
-  const boxes = virtualized ? Array.from(section.children as HTMLCollectionOf<HTMLElement>) : [section];
+function layoutBounds(
+  section: HTMLElement,
+  virtualized: boolean,
+): { top: number; bottom: number } | undefined {
+  const boxes = virtualized
+    ? Array.from(section.children as HTMLCollectionOf<HTMLElement>)
+    : [section];
   let top = Infinity;
   let bottom = -Infinity;
   for (const box of boxes) {
@@ -20,9 +33,18 @@ function layoutBounds(section: HTMLElement, virtualized: boolean): { top: number
 }
 
 const siblingIds = (groups: ThreadGroup[], environment: string | undefined) =>
-  groups.filter((entry) => entry.project && entry.environment === environment).map((entry) => entry.id);
+  groups
+    .filter((entry) => entry.project && entry.environment === environment)
+    .map((entry) => entry.id);
 
-export function useProjectDrag({ viewport, list, groups, disabled, resetKey, onMove }: {
+export function useProjectDrag({
+  viewport,
+  list,
+  groups,
+  disabled,
+  resetKey,
+  onMove,
+}: {
   viewport: RefObject<HTMLElement | null>;
   list: RefObject<HTMLElement | null>;
   groups: ThreadGroup[];
@@ -54,7 +76,9 @@ export function useProjectDrag({ viewport, list, groups, disabled, resetKey, onM
     const measure = () => {
       if (!section?.isConnected) return [];
       const virtualized = listElement.dataset.virtualized === "true";
-      return Array.from(listElement.querySelectorAll<HTMLElement>(".thread-category[data-tree]")).flatMap((node): SlotBounds[] => {
+      return Array.from(
+        listElement.querySelectorAll<HTMLElement>(".thread-category[data-tree]"),
+      ).flatMap((node): SlotBounds[] => {
         const id = node.dataset.category!;
         const index = indices.get(id);
         if (index === undefined) return [];
@@ -73,7 +97,9 @@ export function useProjectDrag({ viewport, list, groups, disabled, resetKey, onM
           setDragging(projectId);
           if (wasOpen) group.toggle();
         });
-        section = listElement.querySelector<HTMLElement>(`.thread-category[data-category="${CSS.escape(projectId)}"]`);
+        section = listElement.querySelector<HTMLElement>(
+          `.thread-category[data-category="${CSS.escape(projectId)}"]`,
+        );
       },
       place: (offset) => section?.style.setProperty("--project-drag-y", `${offset}px`),
       change: setDrop,
@@ -81,7 +107,8 @@ export function useProjectDrag({ viewport, list, groups, disabled, resetKey, onM
         section?.style.removeProperty("--project-drag-y");
         dragged.current = true;
         if (drop) onMove(projectId, drop.id, drop.edge);
-        if (wasOpen) latest.current.groups.find((entry) => entry.id === projectId && !entry.open)?.toggle();
+        if (wasOpen)
+          latest.current.groups.find((entry) => entry.id === projectId && !entry.open)?.toggle();
         setDragging(undefined);
         setDrop(undefined);
       },

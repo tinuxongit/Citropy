@@ -11,7 +11,9 @@ const CREDENTIALS = "auth.json";
 export async function museSignedIn(launch: ProviderLaunch): Promise<boolean> {
   const environment = museEnvironment(launch);
   if (environment[API_KEY_VARIABLE]) return true;
-  const raw = await readFile(join(museHome(environment), CREDENTIALS), "utf8").catch(ifMissing(undefined));
+  const raw = await readFile(join(museHome(environment), CREDENTIALS), "utf8").catch(
+    ifMissing(undefined),
+  );
   if (raw === undefined) return false;
   const credentials = JSON.parse(raw) as { providers?: Record<string, unknown> };
   return Boolean(credentials.providers?.[MUSE_PROVIDER]);

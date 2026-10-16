@@ -15,29 +15,27 @@ interface ExternalUpdates {
 const STARTUP_CHECK_DELAY_MS = 5000;
 const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const MESSAGES = {
-  recoveryFailed:
-    "The update was not applied. Close and reopen Citropy to restart its server.",
-  verification:
-    "The download failed verification. Download a fresh copy to try again.",
+  recoveryFailed: "The update was not applied. Close and reopen Citropy to restart its server.",
+  verification: "The download failed verification. Download a fresh copy to try again.",
   noRelease:
     "No release is accessible. Check published Citropy releases and, for private repositories, your GitHub sign-in.",
   failed: {
-    install:
-      "The update could not be applied. Citropy has kept the current version.",
-    download:
-      "The download could not finish. Check your connection and try again.",
+    install: "The update could not be applied. Citropy has kept the current version.",
+    download: "The download could not finish. Check your connection and try again.",
     check: "Could not check for updates. Check your connection and try again.",
   },
-  downloaded:
-    "The update is downloaded and verified. Restart Citropy to apply it.",
+  downloaded: "The update is downloaded and verified. Restart Citropy to apply it.",
 };
 
 const errorMessage = (error: unknown, action: Action) => {
-  const { code, message, userMessage } = (error ?? {}) as { code?: unknown; message?: unknown; userMessage?: string };
+  const { code, message, userMessage } = (error ?? {}) as {
+    code?: unknown;
+    message?: unknown;
+    userMessage?: string;
+  };
   const detail = String(message || "");
   const codeText = String(code || "");
-  if (codeText.includes("SHA512") || detail.includes("checksum"))
-    return MESSAGES.verification;
+  if (codeText.includes("SHA512") || detail.includes("checksum")) return MESSAGES.verification;
   if (/404|403|401|token|release|not found/i.test(`${codeText} ${detail}`))
     return MESSAGES.noRelease;
   if (action === "install" && userMessage) return userMessage;
@@ -150,8 +148,7 @@ export function createAppUpdater({
       });
     });
     listen("update-downloaded", (info) => {
-      if (state.status !== "downloading" || info.version !== state.version)
-        return;
+      if (state.status !== "downloading" || info.version !== state.version) return;
       downloadedFile = info.downloadedFile;
       publish({ status: "ready", percent: 100, message: undefined });
     });
@@ -160,14 +157,12 @@ export function createAppUpdater({
     });
   }
   const command = async (request: unknown) => {
-    const action = typeof request === "string" ? request : (request as { action?: unknown } | undefined)?.action;
+    const action =
+      typeof request === "string" ? request : (request as { action?: unknown } | undefined)?.action;
     if (disposed || unavailable || operation || recovering) return { ...state };
     if (action !== "check" && action !== "download" && action !== "install")
       throw new Error("Unknown update action");
-    if (
-      action === "check" &&
-      ["ready", "downloading", "installing"].includes(state.status)
-    )
+    if (action === "check" && ["ready", "downloading", "installing"].includes(state.status))
       return { ...state };
     if (
       action === "download" &&
@@ -184,11 +179,7 @@ export function createAppUpdater({
     operation = action;
     publish({
       status:
-        action === "check"
-          ? "checking"
-          : action === "download"
-            ? "downloading"
-            : "installing",
+        action === "check" ? "checking" : action === "download" ? "downloading" : "installing",
       message: undefined,
       retry: undefined,
       ...(action === "download"
@@ -240,13 +231,9 @@ export function createAppUpdater({
     : setTimeout(() => void command("check"), STARTUP_CHECK_DELAY_MS);
   const interval = unavailable
     ? undefined
-    : setInterval(
-        () => {
-          if (["idle", "current", "available"].includes(state.status))
-            void command("check");
-        },
-        RECHECK_INTERVAL_MS,
-      );
+    : setInterval(() => {
+        if (["idle", "current", "available"].includes(state.status)) void command("check");
+      }, RECHECK_INTERVAL_MS);
   loadNotes(version);
   startup?.unref();
   interval?.unref();

@@ -31,8 +31,20 @@ const providers = [
     available: true,
     enabled: true,
     models: [
-      { id: "claude-opus-5", label: "Claude Opus 5", isDefault: true, efforts: ["low", "medium", "high", "xhigh"], defaultEffort: "high", contextMax: 200000 },
-      { id: "claude-sonnet-5", label: "Claude Sonnet 5", efforts: ["low", "medium", "high"], contextMax: 200000 },
+      {
+        id: "claude-opus-5",
+        label: "Claude Opus 5",
+        isDefault: true,
+        efforts: ["low", "medium", "high", "xhigh"],
+        defaultEffort: "high",
+        contextMax: 200000,
+      },
+      {
+        id: "claude-sonnet-5",
+        label: "Claude Sonnet 5",
+        efforts: ["low", "medium", "high"],
+        contextMax: 200000,
+      },
     ],
   },
   {
@@ -41,7 +53,13 @@ const providers = [
     available: true,
     enabled: true,
     models: [
-      { id: "gpt-5.5", label: "GPT-5.5", isDefault: true, efforts: ["low", "medium", "high"], contextMax: 400000 },
+      {
+        id: "gpt-5.5",
+        label: "GPT-5.5",
+        isDefault: true,
+        efforts: ["low", "medium", "high"],
+        contextMax: 400000,
+      },
     ],
   },
   {
@@ -49,9 +67,7 @@ const providers = [
     label: "OpenCode",
     available: true,
     enabled: true,
-    models: [
-      { id: "kimi-k2.5", label: "Kimi K2.5", isDefault: true, contextMax: 200000 },
-    ],
+    models: [{ id: "kimi-k2.5", label: "Kimi K2.5", isDefault: true, contextMax: 200000 }],
   },
   {
     id: "antigravity",
@@ -59,12 +75,28 @@ const providers = [
     available: true,
     enabled: true,
     models: [
-      { id: "gemini-3.5-pro", label: "Gemini 3.5 Pro", isDefault: true, efforts: ["low", "high"], defaultEffort: "high", contextMax: 1000000 },
+      {
+        id: "gemini-3.5-pro",
+        label: "Gemini 3.5 Pro",
+        isDefault: true,
+        efforts: ["low", "high"],
+        defaultEffort: "high",
+        contextMax: 1000000,
+      },
     ],
   },
 ];
 
-const usage = (turns = 0) => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, contextTokens: 0, contextMax: 200000, turns });
+const usage = (turns = 0) => ({
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  costUsd: 0,
+  contextTokens: 0,
+  contextMax: 200000,
+  turns,
+});
 
 const thread = (id, title, provider, model, extra = {}) => ({
   id,
@@ -87,17 +119,41 @@ const threads = [
     effort: "high",
     permissionMode: "acceptEdits",
     updatedAt: now - 4 * minute,
-    usage: { input: 280000, output: 1900, cacheRead: 100000, cacheWrite: 2000, costUsd: 4.3, contextTokens: 62000, contextMax: 200000, turns: 4 },
+    usage: {
+      input: 280000,
+      output: 1900,
+      cacheRead: 100000,
+      cacheWrite: 2000,
+      costUsd: 4.3,
+      contextTokens: 62000,
+      contextMax: 200000,
+      turns: 4,
+    },
   }),
-  thread("frost", "Frost alert thresholds", "claude", "claude-opus-5", { pinned: true, updatedAt: now - 2 * hour }),
-  thread("humidity", "Debounce flaky humidity sensor", "codex", "gpt-5.5", { updatedAt: now - 5 * hour }),
+  thread("frost", "Frost alert thresholds", "claude", "claude-opus-5", {
+    pinned: true,
+    updatedAt: now - 2 * hour,
+  }),
+  thread("humidity", "Debounce flaky humidity sensor", "codex", "gpt-5.5", {
+    updatedAt: now - 5 * hour,
+  }),
   thread("csv", "CSV export for station logs", "opencode", "kimi-k2.5", { updatedAt: now - day }),
-  thread("forecast", "Sketch the forecast page", "antigravity", "gemini-3.5-pro", { updatedAt: now - 30 * hour }),
+  thread("forecast", "Sketch the forecast page", "antigravity", "gemini-3.5-pro", {
+    updatedAt: now - 30 * hour,
+  }),
   thread("ci", "Speed up CI test matrix", "codex", "gpt-5.5", { updatedAt: now - 2 * day }),
-  thread("units", "Metric and imperial toggle", "claude", "claude-opus-5", { updatedAt: now - 3 * day }),
+  thread("units", "Metric and imperial toggle", "claude", "claude-opus-5", {
+    updatedAt: now - 3 * day,
+  }),
 ];
 
-const project = { id: "workspace", name: "weather-station", path: "/home/dev/code/weather-station", isGit: true, lastOpened: 1 };
+const project = {
+  id: "workspace",
+  name: "weather-station",
+  path: "/home/dev/code/weather-station",
+  isGit: true,
+  lastOpened: 1,
+};
 
 const snapshot = (extra = {}) => ({
   home: "/home/dev",
@@ -129,7 +185,12 @@ const chatMessages = [
     id: "question",
     role: "user",
     ts: now - 45 * minute,
-    parts: [text("question-text", "Add an hourly rainfall chart to the dashboard. Missing hours should show as zero, not gaps.")],
+    parts: [
+      text(
+        "question-text",
+        "Add an hourly rainfall chart to the dashboard. Missing hours should show as zero, not gaps.",
+      ),
+    ],
   },
   {
     id: "answer",
@@ -173,11 +234,51 @@ const gitStatus = {
   behind: 0,
   clean: false,
   files: [
-    { path: "src/dashboard/RainfallChart.tsx", index: "A", work: " ", added: 84, removed: 0, staged: true, untracked: false },
-    { path: "src/lib/buckets.ts", index: "M", work: "M", added: 31, removed: 6, staged: false, untracked: false },
-    { path: "src/dashboard/TemperatureGraph.tsx", index: "M", work: " ", added: 12, removed: 3, staged: true, untracked: false },
-    { path: "tests/buckets.test.ts", index: "?", work: "?", added: 58, removed: 0, staged: false, untracked: true },
-    { path: "docs/charts.md", index: "D", work: " ", added: 0, removed: 22, staged: true, untracked: false },
+    {
+      path: "src/dashboard/RainfallChart.tsx",
+      index: "A",
+      work: " ",
+      added: 84,
+      removed: 0,
+      staged: true,
+      untracked: false,
+    },
+    {
+      path: "src/lib/buckets.ts",
+      index: "M",
+      work: "M",
+      added: 31,
+      removed: 6,
+      staged: false,
+      untracked: false,
+    },
+    {
+      path: "src/dashboard/TemperatureGraph.tsx",
+      index: "M",
+      work: " ",
+      added: 12,
+      removed: 3,
+      staged: true,
+      untracked: false,
+    },
+    {
+      path: "tests/buckets.test.ts",
+      index: "?",
+      work: "?",
+      added: 58,
+      removed: 0,
+      staged: false,
+      untracked: true,
+    },
+    {
+      path: "docs/charts.md",
+      index: "D",
+      work: " ",
+      added: 0,
+      removed: 22,
+      staged: true,
+      untracked: false,
+    },
   ],
 };
 
@@ -187,12 +288,38 @@ const gitOverview = {
   mergeInProgress: false,
   status: gitStatus,
   branches: [
-    { name: "feat/rainfall-chart", current: true, remote: false, upstream: "origin/feat/rainfall-chart", subject: "Fill empty hours with zero", date: new Date(now - hour).toISOString() },
-    { name: "main", current: false, remote: false, upstream: "origin/main", subject: "Release 1.4.0", date: new Date(now - 2 * day).toISOString() },
+    {
+      name: "feat/rainfall-chart",
+      current: true,
+      remote: false,
+      upstream: "origin/feat/rainfall-chart",
+      subject: "Fill empty hours with zero",
+      date: new Date(now - hour).toISOString(),
+    },
+    {
+      name: "main",
+      current: false,
+      remote: false,
+      upstream: "origin/main",
+      subject: "Release 1.4.0",
+      date: new Date(now - 2 * day).toISOString(),
+    },
   ],
   commits: [
-    { hash: "4f1c9ad", author: "Dev", date: new Date(now - hour).toISOString(), subject: "Fill empty hours with zero", refs: "HEAD -> feat/rainfall-chart" },
-    { hash: "b82e017", author: "Dev", date: new Date(now - 3 * hour).toISOString(), subject: "Add bucketByHour", refs: "" },
+    {
+      hash: "4f1c9ad",
+      author: "Dev",
+      date: new Date(now - hour).toISOString(),
+      subject: "Fill empty hours with zero",
+      refs: "HEAD -> feat/rainfall-chart",
+    },
+    {
+      hash: "b82e017",
+      author: "Dev",
+      date: new Date(now - 3 * hour).toISOString(),
+      subject: "Add bucketByHour",
+      refs: "",
+    },
   ],
   remotes: [{ name: "origin", url: "git@github.com:dev/weather-station.git" }],
   stashes: [],
@@ -204,7 +331,7 @@ const gitPatch = {
   removed: 6,
   hunks: [
     {
-      header: "@@ -12,10 +12,16 @@ import type { Reading } from \"./readings\";",
+      header: '@@ -12,10 +12,16 @@ import type { Reading } from "./readings";',
       oldStart: 12,
       newStart: 12,
       lines: [
@@ -212,13 +339,21 @@ const gitPatch = {
         { type: "ctx", text: "export function bucketByHour(", oldNo: 13, newNo: 13 },
         { type: "del", text: "  readings: Reading[],", oldNo: 14 },
         { type: "add", text: "  readings: Reading[],", newNo: 14 },
-        { type: "add", text: "  field: keyof Reading = \"rainfall\",", newNo: 15 },
+        { type: "add", text: '  field: keyof Reading = "rainfall",', newNo: 15 },
         { type: "ctx", text: ") {", oldNo: 15, newNo: 16 },
         { type: "ctx", text: "  const buckets = new Map<number, number>();", oldNo: 16, newNo: 17 },
-        { type: "del", text: "  for (const reading of readings) buckets.set(startOfHour(reading.at), reading[field]);", oldNo: 17 },
+        {
+          type: "del",
+          text: "  for (const reading of readings) buckets.set(startOfHour(reading.at), reading[field]);",
+          oldNo: 17,
+        },
         { type: "add", text: "  for (const reading of readings) {", newNo: 18 },
         { type: "add", text: "    const hour = startOfHour(reading.at);", newNo: 19 },
-        { type: "add", text: "    buckets.set(hour, (buckets.get(hour) ?? 0) + reading[field]);", newNo: 20 },
+        {
+          type: "add",
+          text: "    buckets.set(hour, (buckets.get(hour) ?? 0) + reading[field]);",
+          newNo: 20,
+        },
         { type: "add", text: "  }", newNo: 21 },
         { type: "ctx", text: "  return fillHours(buckets);", oldNo: 18, newNo: 22 },
         { type: "ctx", text: "}", oldNo: 19, newNo: 23 },
@@ -229,10 +364,20 @@ const gitPatch = {
       oldStart: 28,
       newStart: 34,
       lines: [
-        { type: "ctx", text: "  for (let hour = start; hour <= end; hour += HOUR) {", oldNo: 28, newNo: 34 },
+        {
+          type: "ctx",
+          text: "  for (let hour = start; hour <= end; hour += HOUR) {",
+          oldNo: 28,
+          newNo: 34,
+        },
         { type: "del", text: "    if (!buckets.has(hour)) continue;", oldNo: 29 },
         { type: "add", text: "    if (!buckets.has(hour)) buckets.set(hour, 0);", newNo: 35 },
-        { type: "ctx", text: "    filled.set(hour, buckets.get(hour) ?? 0);", oldNo: 30, newNo: 36 },
+        {
+          type: "ctx",
+          text: "    filled.set(hour, buckets.get(hour) ?? 0);",
+          oldNo: 30,
+          newNo: 36,
+        },
         { type: "ctx", text: "  }", oldNo: 31, newNo: 37 },
       ],
     },
@@ -243,16 +388,33 @@ const usageDay = (offset) => {
   const date = new Date(now - offset * day);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
-const usageHistory = Array.from({ length: 120 }, (_, offset) => [
-  ["claude", "claude-opus-5", 2.4],
-  ["codex", "gpt-5.5-codex", 1.3],
-  ["opencode", "kimi-k2.5", 0.5],
-].flatMap(([provider, model, weight], index) => {
-  const wave = (Math.sin(offset * 0.7 + index * 2) + 1.3) * weight * (offset % 7 === 5 || offset % 7 === 6 ? 0.35 : 1);
-  if (wave < 0.4) return [];
-  const input = Math.round(wave * 180000);
-  return [{ day: usageDay(offset), provider, model, input, output: Math.round(input * 0.08), cacheRead: provider === "codex" ? Math.round(input * 0.6) : Math.round(input * 3), cacheWrite: Math.round(input * 0.2), costUsd: provider === "claude" ? Math.round(wave * 180) / 100 : 0, turns: Math.round(wave * 6) + 1 }];
-})).flat();
+const usageHistory = Array.from({ length: 120 }, (_, offset) =>
+  [
+    ["claude", "claude-opus-5", 2.4],
+    ["codex", "gpt-5.5-codex", 1.3],
+    ["opencode", "kimi-k2.5", 0.5],
+  ].flatMap(([provider, model, weight], index) => {
+    const wave =
+      (Math.sin(offset * 0.7 + index * 2) + 1.3) *
+      weight *
+      (offset % 7 === 5 || offset % 7 === 6 ? 0.35 : 1);
+    if (wave < 0.4) return [];
+    const input = Math.round(wave * 180000);
+    return [
+      {
+        day: usageDay(offset),
+        provider,
+        model,
+        input,
+        output: Math.round(input * 0.08),
+        cacheRead: provider === "codex" ? Math.round(input * 0.6) : Math.round(input * 3),
+        cacheWrite: Math.round(input * 0.2),
+        costUsd: provider === "claude" ? Math.round(wave * 180) / 100 : 0,
+        turns: Math.round(wave * 6) + 1,
+      },
+    ];
+  }),
+).flat();
 
 const usageReport = {
   totals: { input: 1284000, output: 192000, cacheRead: 6420000, cacheWrite: 512000, costUsd: 0 },
@@ -330,7 +492,10 @@ const questions = [
     id: "missing",
     question: "How should missing hours appear on the chart?",
     options: [
-      { label: "Zero bars", description: "Keep the time axis continuous with empty hours at zero." },
+      {
+        label: "Zero bars",
+        description: "Keep the time axis continuous with empty hours at zero.",
+      },
       { label: "Skip the hour", description: "Compress gaps so only recorded hours are shown." },
     ],
     multiple: false,
@@ -338,21 +503,44 @@ const questions = [
   {
     id: "range",
     question: "Which time range should the chart open with?",
-    options: [{ label: "Last 24 hours" }, { label: "Last 7 days" }, { label: "Match the temperature graph" }],
+    options: [
+      { label: "Last 24 hours" },
+      { label: "Last 7 days" },
+      { label: "Match the temperature graph" },
+    ],
     multiple: true,
   },
 ];
 
-const questionRequest = { id: "request", threadId: "rainfall", messageId: "answer", questions, createdAt: now };
+const questionRequest = {
+  id: "request",
+  threadId: "rainfall",
+  messageId: "answer",
+  questions,
+  createdAt: now,
+};
 const questionThread = { ...threads[0], running: true, status: "awaiting" };
 const questionMessages = [
-  { id: "prompt", role: "user", ts: now - minute, parts: [text("prompt-text", "Add the rainfall chart to the dashboard.")] },
+  {
+    id: "prompt",
+    role: "user",
+    ts: now - minute,
+    parts: [text("prompt-text", "Add the rainfall chart to the dashboard.")],
+  },
   {
     id: "answer",
     role: "assistant",
     ts: now,
     parts: [
-      { id: "question-tool", kind: "tool", name: "question", shape: "generic", headline: "question", status: "running", input: { questions } },
+      {
+        id: "question-tool",
+        kind: "tool",
+        name: "question",
+        shape: "generic",
+        headline: "question",
+        status: "running",
+        input: { questions },
+      },
       { id: "request", kind: "question", questions, status: "pending" },
     ],
   },
@@ -455,14 +643,22 @@ const visualHtml = `<!doctype html>
 </div>`;
 
 const visualMessages = [
-  { id: "visual-question", role: "user", ts: now - 6 * minute, parts: [text("visual-question-text", "How does this week's rain compare with last week?")] },
+  {
+    id: "visual-question",
+    role: "user",
+    ts: now - 6 * minute,
+    parts: [text("visual-question-text", "How does this week's rain compare with last week?")],
+  },
   {
     id: "visual-answer",
     role: "assistant",
     ts: now - 5 * minute,
     parts: [
       tool("visual-read", "Read", "read", "readings.ts"),
-      text("visual-answer-text", `This week was much wetter, 61 mm against 22 mm, and most of it fell on Tuesday and Thursday.\n\n![Rainfall this week and last](citropy-visual:${visualId})\n\nSaturday is the only day that was drier than last week.`),
+      text(
+        "visual-answer-text",
+        `This week was much wetter, 61 mm against 22 mm, and most of it fell on Tuesday and Thursday.\n\n![Rainfall this week and last](citropy-visual:${visualId})\n\nSaturday is the only day that was drier than last week.`,
+      ),
     ],
   },
 ];
@@ -471,7 +667,15 @@ const sharingState = {
   enabled: true,
   addresses: ["192.168.1.24:4180"],
   tailscale: { status: "off" },
-  devices: [{ id: "pixel", name: "Pixel 9", route: "lan", createdAt: now - 3 * day, lastSeen: now - 12 * minute }],
+  devices: [
+    {
+      id: "pixel",
+      name: "Pixel 9",
+      route: "lan",
+      createdAt: now - 3 * day,
+      lastSeen: now - 12 * minute,
+    },
+  ],
 };
 
 const ok = (route) => route.fulfill({ json: [] });
@@ -484,7 +688,10 @@ async function visualPage(route) {
 
 async function waitForVisual(page) {
   await page.locator("iframe.markdown-visual").waitFor();
-  await page.frameLocator("iframe.markdown-visual").getByText("Rainfall, this week and last").waitFor();
+  await page
+    .frameLocator("iframe.markdown-visual")
+    .getByText("Rainfall, this week and last")
+    .waitFor();
   await page.waitForFunction(() => document.querySelector("iframe.markdown-visual")?.style.height);
 }
 
@@ -508,7 +715,21 @@ async function main() {
     return data;
   }
 
-  async function shot(name, theme, { preferences = {}, snapshot: data = snapshot(), desktop, phone = false, regions = {}, onMessage, api, boot, act } = {}) {
+  async function shot(
+    name,
+    theme,
+    {
+      preferences = {},
+      snapshot: data = snapshot(),
+      desktop,
+      phone = false,
+      regions = {},
+      onMessage,
+      api,
+      boot,
+      act,
+    } = {},
+  ) {
     const page = await browser.newPage({
       viewport: phone ? PHONE : DESKTOP,
       deviceScaleFactor: phone ? PHONE_SCALE : DESKTOP_SCALE,
@@ -522,7 +743,14 @@ async function main() {
     await page.addInitScript(
       ({ values, theme, background }) => {
         if (window !== window.top) return;
-        for (const [key, value] of Object.entries({ project: "workspace", thread: "rainfall", inspector: "0", uiScale: "100", stageBackground: background, ...values }))
+        for (const [key, value] of Object.entries({
+          project: "workspace",
+          thread: "rainfall",
+          inspector: "0",
+          uiScale: "100",
+          stageBackground: background,
+          ...values,
+        }))
           localStorage.setItem(`citropy.${key}`, String(value));
         localStorage.setItem("citropy.scheme", theme);
       },
@@ -534,18 +762,47 @@ async function main() {
         const state = { activeId: "local", endpoint: "", connections: [] };
         if (mode === "workspaces")
           state.connections = [
-            { id: "vps", name: "citropy-vps", target: "deploy@10.0.4", port: 22, node: "node", status: "connected" },
-            { kind: "container", id: "sandbox", name: "sandbox", target: "Docker", port: 0, node: "node", status: "disconnected" },
+            {
+              id: "vps",
+              name: "citropy-vps",
+              target: "deploy@10.0.4",
+              port: 22,
+              node: "node",
+              status: "connected",
+            },
+            {
+              kind: "container",
+              id: "sandbox",
+              name: "sandbox",
+              target: "Docker",
+              port: 0,
+              node: "node",
+              status: "disconnected",
+            },
           ];
         window.citropyDesktop = {
-          windowState: async () => ({ platform: "linux", maximized: false, fullscreen: false, development: false, version: "0.1.0" }),
+          windowState: async () => ({
+            platform: "linux",
+            maximized: false,
+            fullscreen: false,
+            development: false,
+            version: "0.1.0",
+          }),
           windowCommand: async () => {},
           onWindowState: () => () => {},
           onNotification: () => () => {},
           onBrowserSelect: () => () => {},
           onAddressFocus: () => () => {},
           onBrowserGuests: (callback) => {
-            callback([{ id: "browser", partition: "persist:browser", width: 390, height: 844, rendering: false }]);
+            callback([
+              {
+                id: "browser",
+                partition: "persist:browser",
+                width: 390,
+                height: 844,
+                rendering: false,
+              },
+            ]);
             return () => {};
           },
           attachBrowser: () => {},
@@ -589,13 +846,20 @@ async function main() {
       await boot?.(page, () => socket);
       await act?.(page, () => socket);
     } catch (error) {
-      throw new Error(`${name}-${theme}: ${errors.join(" | ") || (await page.locator("body").innerText()).slice(0, 300)}`, { cause: error });
+      throw new Error(
+        `${name}-${theme}: ${errors.join(" | ") || (await page.locator("body").innerText()).slice(0, 300)}`,
+        { cause: error },
+      );
     }
     await page.waitForTimeout(250);
     await page.screenshot({ path: join(captures, `${name}-${theme}.png`), animations: "disabled" });
     const boxes = {};
-    for (const [region, selector] of Object.entries(regions)) boxes[region] = await page.locator(selector).first().boundingBox();
-    await writeFile(join(captures, `${name}-${theme}.json`), JSON.stringify({ ...page.viewportSize(), regions: boxes }));
+    for (const [region, selector] of Object.entries(regions))
+      boxes[region] = await page.locator(selector).first().boundingBox();
+    await writeFile(
+      join(captures, `${name}-${theme}.json`),
+      JSON.stringify({ ...page.viewportSize(), regions: boxes }),
+    );
     if (errors.length) throw new Error(`${name}-${theme}: ${errors.join(" | ")}`);
     await page.close();
   }
@@ -605,7 +869,10 @@ async function main() {
       await shot("chat", theme, {
         regions: { threads: ".thread-list" },
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }),
+            );
         },
         boot: async (page) => {
           await page.locator(".turn").first().waitFor();
@@ -616,15 +883,28 @@ async function main() {
 
     async picker(theme) {
       await shot("picker", theme, {
-        regions: Object.fromEntries([["menu", ".model-picker-menu"], ...providers.map((provider) => [provider.id, `.model-picker-menu button:has-text("${provider.label}")`])]),
+        regions: Object.fromEntries([
+          ["menu", ".model-picker-menu"],
+          ...providers.map((provider) => [
+            provider.id,
+            `.model-picker-menu button:has-text("${provider.label}")`,
+          ]),
+        ]),
         preferences: { thread: "frost" },
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: [] }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: [] }),
+            );
         },
         act: async (page) => {
-          await page.locator('button[aria-haspopup="menu"]', { hasText: "Claude Opus 5" }).last().click();
+          await page
+            .locator('button[aria-haspopup="menu"]', { hasText: "Claude Opus 5" })
+            .last()
+            .click();
           await page.locator(".model-picker-menu").waitFor();
-          await page.getByRole("button", { name: "Antigravity" }).waitFor();        },
+          await page.getByRole("button", { name: "Antigravity" }).waitFor();
+        },
       });
     },
 
@@ -632,7 +912,14 @@ async function main() {
       await shot("visual", theme, {
         regions: { visual: "iframe.markdown-visual" },
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: visualMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({
+                t: "thread.messages",
+                threadId: event.id,
+                messages: visualMessages,
+              }),
+            );
         },
         api: visualPage,
         act: waitForVisual,
@@ -643,7 +930,14 @@ async function main() {
       await shot("phone", theme, {
         phone: true,
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: visualMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({
+                t: "thread.messages",
+                threadId: event.id,
+                messages: visualMessages,
+              }),
+            );
         },
         api: visualPage,
         act: waitForVisual,
@@ -654,7 +948,10 @@ async function main() {
       await shot("sidebar", theme, {
         phone: true,
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }),
+            );
         },
         act: async (page) => {
           await page.getByText("All 38 tests pass", { exact: false }).waitFor();
@@ -670,10 +967,17 @@ async function main() {
         api: (route) => {
           const path = new URL(route.request().url()).pathname;
           if (path === "/api/sharing") return sharingState;
-          if (path === "/api/sharing/pair") return { url: `http://${sharingState.addresses[0]}/pair#7Qm2xV9cLr`, expiresAt: now + 5 * minute };
+          if (path === "/api/sharing/pair")
+            return {
+              url: `http://${sharingState.addresses[0]}/pair#7Qm2xV9cLr`,
+              expiresAt: now + 5 * minute,
+            };
         },
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }),
+            );
         },
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
@@ -702,7 +1006,10 @@ async function main() {
           if (new URL(route.request().url()).pathname === "/api/usage") return usageReport;
         },
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }),
+            );
         },
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
@@ -716,16 +1023,38 @@ async function main() {
 
     async git(theme) {
       await shot("git", theme, {
-        regions: { files: ".git-change-files", commit: ".git-commit-form", review: ".git-review-pane" },
+        regions: {
+          files: ".git-change-files",
+          commit: ".git-commit-form",
+          review: ".git-review-pane",
+        },
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
-          if (event.t === "git.refresh") connection.send(JSON.stringify({ t: "git.status", projectId: event.projectId, status: gitStatus }));
-          if (event.t === "git.manage" && event.operation === "overview") connection.send(JSON.stringify({ t: "git.manage", requestId: event.requestId, result: gitOverview }));
-          if (event.t === "git.diff") connection.send(JSON.stringify({ t: "git.diff", requestId: event.requestId, patch: { ...gitPatch, path: event.path } }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }),
+            );
+          if (event.t === "git.refresh")
+            connection.send(
+              JSON.stringify({ t: "git.status", projectId: event.projectId, status: gitStatus }),
+            );
+          if (event.t === "git.manage" && event.operation === "overview")
+            connection.send(
+              JSON.stringify({ t: "git.manage", requestId: event.requestId, result: gitOverview }),
+            );
+          if (event.t === "git.diff")
+            connection.send(
+              JSON.stringify({
+                t: "git.diff",
+                requestId: event.requestId,
+                patch: { ...gitPatch, path: event.path },
+              }),
+            );
         },
         act: async (page, connection) => {
           await page.locator(".turn").first().waitFor();
-          connection().send(JSON.stringify({ t: "git.status", projectId: "workspace", status: gitStatus }));
+          connection().send(
+            JSON.stringify({ t: "git.status", projectId: "workspace", status: gitStatus }),
+          );
           await page.getByRole("button", { name: "Source control", exact: true }).click();
           await page.getByText("feat/rainfall-chart").first().waitFor();
           await page.waitForTimeout(1000);
@@ -737,17 +1066,38 @@ async function main() {
       await shot("changes", theme, {
         regions: { panel: ".inspector" },
         preferences: { inspector: "1", inspectorWidth: "460" },
-        snapshot: snapshot({ panels: [{ id: "changes", kind: "changes", projectId: "workspace", title: "Changes" }] }),
+        snapshot: snapshot({
+          panels: [{ id: "changes", kind: "changes", projectId: "workspace", title: "Changes" }],
+        }),
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
-          if (event.t === "git.refresh") connection.send(JSON.stringify({ t: "git.status", projectId: event.projectId, status: gitStatus }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }),
+            );
+          if (event.t === "git.refresh")
+            connection.send(
+              JSON.stringify({ t: "git.status", projectId: event.projectId, status: gitStatus }),
+            );
           if (event.t === "git.diff")
-            connection.send(JSON.stringify({ t: "git.diff", requestId: event.requestId, patch: { ...gitPatch, path: event.path } }));
+            connection.send(
+              JSON.stringify({
+                t: "git.diff",
+                requestId: event.requestId,
+                patch: { ...gitPatch, path: event.path },
+              }),
+            );
         },
         act: async (page, connection) => {
           await page.locator(".turn").first().waitFor();
-          connection().send(JSON.stringify({ t: "panel.upsert", panel: { id: "changes", kind: "changes", projectId: "workspace", title: "Changes" } }));
-          connection().send(JSON.stringify({ t: "git.status", projectId: "workspace", status: gitStatus }));
+          connection().send(
+            JSON.stringify({
+              t: "panel.upsert",
+              panel: { id: "changes", kind: "changes", projectId: "workspace", title: "Changes" },
+            }),
+          );
+          connection().send(
+            JSON.stringify({ t: "git.status", projectId: "workspace", status: gitStatus }),
+          );
           await page.getByText("RainfallChart.tsx", { exact: true }).waitFor();
           await page.getByText("buckets.ts", { exact: true }).first().click();
           await page.getByText("bucketByHour", { exact: false }).first().waitFor();
@@ -756,18 +1106,29 @@ async function main() {
     },
 
     async editor(theme) {
-      const panel = { id: "files", kind: "files", projectId: "workspace", title: "Files", threadId: "rainfall" };
+      const panel = {
+        id: "files",
+        kind: "files",
+        projectId: "workspace",
+        title: "Files",
+        threadId: "rainfall",
+      };
       await shot("editor", theme, {
         regions: { panel: ".inspector", code: ".editor-main" },
         preferences: { inspector: "1", panelWidths: JSON.stringify({ inspector: 840 }) },
         snapshot: snapshot({ panels: [panel] }),
         api: (route) => {
           const url = new URL(route.request().url());
-          if (url.pathname === "/api/editor/tree") return editorTree[url.searchParams.get("path") ?? ""] ?? [];
-          if (url.pathname === "/api/editor/file") return { text: rainfallChartSource, revision: "a".repeat(64) };
+          if (url.pathname === "/api/editor/tree")
+            return editorTree[url.searchParams.get("path") ?? ""] ?? [];
+          if (url.pathname === "/api/editor/file")
+            return { text: rainfallChartSource, revision: "a".repeat(64) };
         },
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }),
+            );
         },
         act: async (page, connection) => {
           await page.locator(".turn").first().waitFor();
@@ -775,7 +1136,9 @@ async function main() {
           await page.getByRole("button", { name: "src", exact: true }).click();
           await page.getByRole("button", { name: "dashboard", exact: true }).click();
           await page.getByRole("button", { name: "RainfallChart.tsx", exact: true }).click();
-          await page.waitForFunction(() => document.querySelector(".view-lines")?.textContent?.includes("bucketByHour"));
+          await page.waitForFunction(() =>
+            document.querySelector(".view-lines")?.textContent?.includes("bucketByHour"),
+          );
         },
       });
     },
@@ -786,20 +1149,64 @@ async function main() {
         preferences: { inspector: "1", inspectorWidth: "620" },
         desktop: "browser",
         snapshot: snapshot({
-          panels: [{ id: "browser", kind: "browser", projectId: "workspace", title: "Dashboard", threadId: "rainfall" }],
-          browsers: [{ id: "browser", projectId: "workspace", threadId: "rainfall", title: "Station dashboard", url: "http://127.0.0.1:8080/dashboard", loading: false, width: 390, height: 844, mobile: true, canGoBack: true, canGoForward: false }],
+          panels: [
+            {
+              id: "browser",
+              kind: "browser",
+              projectId: "workspace",
+              title: "Dashboard",
+              threadId: "rainfall",
+            },
+          ],
+          browsers: [
+            {
+              id: "browser",
+              projectId: "workspace",
+              threadId: "rainfall",
+              title: "Station dashboard",
+              url: "http://127.0.0.1:8080/dashboard",
+              loading: false,
+              width: 390,
+              height: 844,
+              mobile: true,
+              canGoBack: true,
+              canGoForward: false,
+            },
+          ],
         }),
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }),
+            );
         },
         act: async (page, connection) => {
           await page.locator(".turn").first().waitFor();
-          connection().send(JSON.stringify({ t: "panel.upsert", panel: { id: "browser", kind: "browser", projectId: "workspace", title: "Dashboard", threadId: "rainfall" } }));
+          connection().send(
+            JSON.stringify({
+              t: "panel.upsert",
+              panel: {
+                id: "browser",
+                kind: "browser",
+                projectId: "workspace",
+                title: "Dashboard",
+                threadId: "rainfall",
+              },
+            }),
+          );
           const screen = page.locator(".browser-screen");
           await screen.waitFor();
           const bounds = await screen.boundingBox();
-          const cover = await image(dashboardHtml, Math.round(bounds.width), Math.round(bounds.height), 3);
-          await page.evaluate((data) => window.__browserCover("browser", data), `data:image/jpeg;base64,${cover}`);
+          const cover = await image(
+            dashboardHtml,
+            Math.round(bounds.width),
+            Math.round(bounds.height),
+            3,
+          );
+          await page.evaluate(
+            (data) => window.__browserCover("browser", data),
+            `data:image/jpeg;base64,${cover}`,
+          );
           await page.locator(".browser-cover").waitFor();
           await page.getByText("Phone", { exact: true }).waitFor();
         },
@@ -809,17 +1216,30 @@ async function main() {
     async question(theme) {
       await shot("question", theme, {
         regions: { panel: ".question-panel" },
-        snapshot: snapshot({ threads: [questionThread, ...threads.slice(1)], questions: [questionRequest] }),
+        snapshot: snapshot({
+          threads: [questionThread, ...threads.slice(1)],
+          questions: [questionRequest],
+        }),
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: questionMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({
+                t: "thread.messages",
+                threadId: event.id,
+                messages: questionMessages,
+              }),
+            );
         },
         api: (route) => {
-          if (new URL(route.request().url()).pathname === "/api/threads/question") return { ok: true };
+          if (new URL(route.request().url()).pathname === "/api/threads/question")
+            return { ok: true };
         },
         boot: async (page) => {
           const panel = page.getByRole("region", { name: "Your input", exact: true });
           await panel.waitFor();
-          await panel.getByText("Keep the time axis continuous with empty hours at zero.", { exact: true }).click();
+          await panel
+            .getByText("Keep the time axis continuous with empty hours at zero.", { exact: true })
+            .click();
           await panel.getByRole("radio", { name: /Zero bars/ }).waitFor();
         },
       });
@@ -831,7 +1251,10 @@ async function main() {
         desktop: "workspaces",
         snapshot: snapshot({ projects: [project] }),
         onMessage: (event, connection) => {
-          if (event.t === "thread.load") connection.send(JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }));
+          if (event.t === "thread.load")
+            connection.send(
+              JSON.stringify({ t: "thread.messages", threadId: event.id, messages: chatMessages }),
+            );
         },
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
@@ -854,9 +1277,16 @@ async function main() {
       console.log(`${name}-${theme}`);
     }
 
-  if (requested.length) console.log(`Captures kept in ${captures}. Run without scene names to rebuild the README art.`);
+  if (requested.length)
+    console.log(`Captures kept in ${captures}. Run without scene names to rebuild the README art.`);
   else {
-    await composeArt({ browser, origin: server.resolvedUrls.local[0], captures, output: assets, providers });
+    await composeArt({
+      browser,
+      origin: server.resolvedUrls.local[0],
+      captures,
+      output: assets,
+      providers,
+    });
     await rm(directory, { recursive: true, force: true });
   }
   await browser.close();

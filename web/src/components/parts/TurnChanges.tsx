@@ -12,7 +12,7 @@ const SHOWN_FILES = 3;
 
 export function TurnChanges({ part }: { part: ChangesPart }) {
   const threadId = useApp((state) => state.activeThreadId);
-  const thread = useApp((state) => threadId ? state.threads[threadId] : undefined);
+  const thread = useApp((state) => (threadId ? state.threads[threadId] : undefined));
   const [expanded, setExpanded] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   if (!thread) return null;
@@ -27,15 +27,28 @@ export function TurnChanges({ part }: { part: ChangesPart }) {
       <div className="turn-changes-head">
         <button type="button" className="turn-changes-title" onClick={() => setReviewing(true)}>
           <FileDiffIcon size={14} aria-hidden="true" />
-          <span>{part.files.length === 1 ? "Edited 1 file" : `Edited ${part.files.length} files`}</span>
+          <span>
+            {part.files.length === 1 ? "Edited 1 file" : `Edited ${part.files.length} files`}
+          </span>
         </button>
-        <button type="button" className="turn-changes-total" aria-label="Review changes" onClick={() => setReviewing(true)}>
+        <button
+          type="button"
+          className="turn-changes-total"
+          aria-label="Review changes"
+          onClick={() => setReviewing(true)}
+        >
           <LineCounts added={added} removed={removed} />
           <ChevronRightIcon size={14} aria-hidden="true" />
         </button>
       </div>
       {files.map((file) => (
-        <button key={file.path} type="button" className="turn-changes-file" title={file.path} onClick={() => setReviewing(true)}>
+        <button
+          key={file.path}
+          type="button"
+          className="turn-changes-file"
+          title={file.path}
+          onClick={() => setReviewing(true)}
+        >
           <FileIcon path={file.path} size={14} />
           <span className="truncate">{file.path.split("/").at(-1)}</span>
           <LineCounts added={file.added} removed={file.removed} />
@@ -43,13 +56,24 @@ export function TurnChanges({ part }: { part: ChangesPart }) {
         </button>
       ))}
       {part.files.length > SHOWN_FILES && (
-        <button type="button" className="turn-changes-file turn-changes-more" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+        <button
+          type="button"
+          className="turn-changes-file turn-changes-more"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(!expanded)}
+        >
           <span>{expanded ? "Show less" : `Show ${hidden} more`}</span>
           <ChevronRightIcon size={14} aria-hidden="true" />
         </button>
       )}
       <AnimatePresence>
-        {reviewing && <TaskReview thread={thread} messageId={part.checkpoint} onClose={() => setReviewing(false)} />}
+        {reviewing && (
+          <TaskReview
+            thread={thread}
+            messageId={part.checkpoint}
+            onClose={() => setReviewing(false)}
+          />
+        )}
       </AnimatePresence>
     </section>
   );

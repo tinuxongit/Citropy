@@ -6,14 +6,28 @@ import { Loader } from "./Loader.tsx";
 import { ServerIcon } from "./icons/ServerIcon.tsx";
 import { Modal } from "./Modal.tsx";
 import { VirtualList } from "./VirtualList.tsx";
-import { finishRemoteFolder, useRemoteFolderRequest, type RemoteFolderRequest as Request } from "../lib/remote-folder.ts";
+import {
+  finishRemoteFolder,
+  useRemoteFolderRequest,
+  type RemoteFolderRequest as Request,
+} from "../lib/remote-folder.ts";
 import { ActionError } from "./ActionError.tsx";
 
-type Listing = { path: string; parent: string | null; folders: { name: string; hidden: boolean }[] };
+type Listing = {
+  path: string;
+  parent: string | null;
+  folders: { name: string; hidden: boolean }[];
+};
 
 export function RemoteFolderDialog() {
   const request = useRemoteFolderRequest((state) => state.request);
-  return <AnimatePresence>{request && <RemoteFolderBrowser key={`${request.environmentId}:${request.path}`} request={request} />}</AnimatePresence>;
+  return (
+    <AnimatePresence>
+      {request && (
+        <RemoteFolderBrowser key={`${request.environmentId}:${request.path}`} request={request} />
+      )}
+    </AnimatePresence>
+  );
 }
 
 function RemoteFolderBrowser({ request }: { request: Request }) {
@@ -35,14 +49,19 @@ function RemoteFolderBrowser({ request }: { request: Request }) {
       setTyped(result.path);
       return result;
     } catch (error) {
-      if (attempt === latest.current) setError((error as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
+      if (attempt === latest.current)
+        setError(
+          (error as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ""),
+        );
     } finally {
       if (attempt === latest.current) setLoading(false);
     }
   };
   useEffect(() => {
     void open(request.path);
-    return () => { latest.current++; };
+    return () => {
+      latest.current++;
+    };
   }, [request]);
   const folders = listing?.folders.filter((folder) => hidden || !folder.hidden) ?? [];
   const join = (name: string) => `${listing!.path === "/" ? "" : listing!.path}/${name}`;
@@ -58,22 +77,82 @@ function RemoteFolderBrowser({ request }: { request: Request }) {
         const selected = typed === listing?.path ? listing : await open(typed);
         if (selected) finish(selected.path);
       }}
-      footer={<>
-        <button type="button" className="btn" data-cancel onClick={() => finish(null)}>Cancel</button>
-        <button type="submit" className="btn" data-variant="primary" disabled={!typed.trim() || loading}><FolderOpenIcon size={15} />Open this folder</button>
-      </>}
+      footer={
+        <>
+          <button type="button" className="btn" data-cancel onClick={() => finish(null)}>
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="btn"
+            data-variant="primary"
+            disabled={!typed.trim() || loading}
+          >
+            <FolderOpenIcon size={15} />
+            Open this folder
+          </button>
+        </>
+      }
     >
       <div className="remote-folder-path feature-inline">
-        <button type="button" className="icon-btn" aria-label="Parent folder" title="Parent folder" disabled={!listing?.parent || loading} onClick={() => listing?.parent && void open(listing.parent)}><ArrowUpIcon size={16} /></button>
-        <input aria-label="Folder path" value={typed} readOnly={loading} spellCheck={false} autoComplete="off" placeholder="~/projects" onChange={(event) => setTyped(event.target.value)} />
-        <label><input type="checkbox" checked={hidden} onChange={(event) => setHidden(event.target.checked)} />Hidden</label>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Parent folder"
+          title="Parent folder"
+          disabled={!listing?.parent || loading}
+          onClick={() => listing?.parent && void open(listing.parent)}
+        >
+          <ArrowUpIcon size={16} />
+        </button>
+        <input
+          aria-label="Folder path"
+          value={typed}
+          readOnly={loading}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder="~/projects"
+          onChange={(event) => setTyped(event.target.value)}
+        />
+        <label>
+          <input
+            type="checkbox"
+            checked={hidden}
+            onChange={(event) => setHidden(event.target.checked)}
+          />
+          Hidden
+        </label>
       </div>
-      <div className="remote-folder-list scroll" role="list" aria-busy={loading} aria-label="Folders">
-        {loading && !listing ? <div className="remote-folder-empty"><Loader size={18} />Loading…</div>
-          : folders.length === 0 ? <div className="remote-folder-empty">No folders here</div>
-            : <VirtualList key={listing?.path} items={folders} itemKey="name" estimateSize={32}>
-              {(folder) => <button type="button" role="listitem" className="remote-folder-row" data-hidden={folder.hidden || undefined} disabled={loading} onClick={() => void open(join(folder.name))}><FolderIcon size={16} /><span className="truncate">{folder.name}</span></button>}
-            </VirtualList>}
+      <div
+        className="remote-folder-list scroll"
+        role="list"
+        aria-busy={loading}
+        aria-label="Folders"
+      >
+        {loading && !listing ? (
+          <div className="remote-folder-empty">
+            <Loader size={18} />
+            Loading…
+          </div>
+        ) : folders.length === 0 ? (
+          <div className="remote-folder-empty">No folders here</div>
+        ) : (
+          <VirtualList key={listing?.path} items={folders} itemKey="name" estimateSize={32}>
+            {(folder) => (
+              <button
+                type="button"
+                role="listitem"
+                className="remote-folder-row"
+                data-hidden={folder.hidden || undefined}
+                disabled={loading}
+                onClick={() => void open(join(folder.name))}
+              >
+                <FolderIcon size={16} />
+                <span className="truncate">{folder.name}</span>
+              </button>
+            )}
+          </VirtualList>
+        )}
       </div>
       <ActionError className="dialog-error" message={error} onDismiss={() => setError("")} />
     </Modal>

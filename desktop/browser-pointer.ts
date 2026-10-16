@@ -21,14 +21,22 @@ function dot(x: number, y: number, size: number) {
   return [x, y - r, x + r, y, x, y + r, x - r, y];
 }
 
-export function createPointer(send: Send, watched: () => boolean, touch: () => boolean, zoom: () => number) {
+export function createPointer(
+  send: Send,
+  watched: () => boolean,
+  touch: () => boolean,
+  zoom: () => number,
+) {
   let position: { x: number; y: number } | undefined;
 
   const draw = (x: number, y: number, pressed = false) => {
     const size = 1 / Math.min(1, Math.max(zoom(), 0.12));
-    return send("Overlay.highlightQuad", { quad: touch() ? dot(x, y, size) : arrow(x, y, size), color: pressed ? pressedFill : fill, outlineColor: outline }).catch(logFailure("Drawing the browser pointer"));
+    return send("Overlay.highlightQuad", {
+      quad: touch() ? dot(x, y, size) : arrow(x, y, size),
+      color: pressed ? pressedFill : fill,
+      outlineColor: outline,
+    }).catch(logFailure("Drawing the browser pointer"));
   };
-
 
   return {
     watched,

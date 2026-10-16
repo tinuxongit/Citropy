@@ -1,15 +1,6 @@
 import { dataRoot } from "./paths.ts";
 import { createReadStream, createWriteStream } from "node:fs";
-import {
-  mkdir,
-  open,
-  readFile,
-  realpath,
-  rename,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, open, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { basename, extname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
@@ -49,8 +40,7 @@ const types: Record<string, string> = {
   ".m4a": "audio/mp4",
 };
 
-const fileMime = (path: string) =>
-  types[extname(path).toLowerCase()] ?? "application/octet-stream";
+const fileMime = (path: string) => types[extname(path).toLowerCase()] ?? "application/octet-stream";
 
 function directory(threadId: string): string {
   if (!store.threads.has(threadId)) throw new Error("Conversation not found");
@@ -65,11 +55,9 @@ export async function uploadAttachment(
   const label = basename(name.replace(/\\/g, "/"))
     .replace(/[\x00-\x1f]/g, "")
     .slice(0, 180);
-  if (!label || label === "." || label === "..")
-    throw new Error("Choose a named file.");
+  if (!label || label === "." || label === "..") throw new Error("Choose a named file.");
   const length = Number(req.headers["content-length"]);
-  if (length > MAX_ATTACHMENT_BYTES)
-    throw new Error("Files can be up to 50 MB.");
+  if (length > MAX_ATTACHMENT_BYTES) throw new Error("Files can be up to 50 MB.");
   const id = randomUUID();
   const dir = join(directory(threadId), id);
   await mkdir(dir, { recursive: true, mode: 0o700 });
@@ -82,18 +70,12 @@ export async function uploadAttachment(
       new Transform({
         transform(chunk, _, done) {
           size += chunk.length;
-          done(
-            size > MAX_ATTACHMENT_BYTES
-              ? new Error("Files can be up to 50 MB.")
-              : null,
-            chunk,
-          );
+          done(size > MAX_ATTACHMENT_BYTES ? new Error("Files can be up to 50 MB.") : null, chunk);
         },
       }),
       createWriteStream(`${path}.upload`, { flags: "wx", mode: 0o600 }),
     );
-    if (!store.threads.has(threadId))
-      throw new Error("Conversation was deleted during upload.");
+    if (!store.threads.has(threadId)) throw new Error("Conversation was deleted during upload.");
     const attachment: Attachment = {
       id,
       path,
@@ -112,15 +94,10 @@ export async function uploadAttachment(
   }
 }
 
-export async function attachmentById(
-  threadId: string,
-  id: string,
-): Promise<Attachment> {
+export async function attachmentById(threadId: string, id: string): Promise<Attachment> {
   if (!/^[0-9a-f-]{36}$/.test(id)) throw new Error("Invalid attachment");
   const dir = join(directory(threadId), id);
-  const attachment = JSON.parse(
-    await readFile(join(dir, "metadata.json"), "utf8"),
-  ) as Attachment;
+  const attachment = JSON.parse(await readFile(join(dir, "metadata.json"), "utf8")) as Attachment;
   const expected = join(dir, "content", basename(attachment.label));
   if (
     attachment.id !== id ||
@@ -137,22 +114,15 @@ export async function validateAttachments(
 ): Promise<Attachment[]> {
   if (!Array.isArray(files) || files.length > 8)
     throw new Error("Attach up to 8 files per message.");
-  return Promise.all(
-    files.map((file) => attachmentById(threadId, String(file?.id ?? ""))),
-  );
+  return Promise.all(files.map((file) => attachmentById(threadId, String(file?.id ?? ""))));
 }
 
-export async function removeAttachment(
-  threadId: string,
-  id: string,
-): Promise<void> {
+export async function removeAttachment(threadId: string, id: string): Promise<void> {
   const file = await attachmentById(threadId, id);
   if (
     store.threads
       .get(threadId)
-      ?.messages.some((message) =>
-        message.attachments?.some((entry) => entry.id === id),
-      )
+      ?.messages.some((message) => message.attachments?.some((entry) => entry.id === id))
   )
     throw new Error("This attachment is part of a sent message.");
   await rm(join(directory(threadId), file.id!), {
@@ -170,10 +140,7 @@ async function assetPath(params: URLSearchParams): Promise<string> {
   const threadId = params.get("threadId") ?? "";
   const attachmentId = params.get("attachmentId");
   if (attachmentId) return (await attachmentById(threadId, attachmentId)).path;
-  const root = workspacePath(
-    params.get("projectId") ?? "",
-    threadId || undefined,
-  );
+  const root = workspacePath(params.get("projectId") ?? "", threadId || undefined);
   const requested = params.get("path") ?? "";
   const path = inside(root, requested);
   if (path && inside(await realpath(root), await realpath(path))) return path;
@@ -182,9 +149,7 @@ async function assetPath(params: URLSearchParams): Promise<string> {
   throw new Error("File is outside this conversation's workspace.");
 }
 
-export async function previewFile(
-  params: URLSearchParams,
-): Promise<FilePreviewData> {
+export async function previewFile(params: URLSearchParams): Promise<FilePreviewData> {
   const path = await assetPath(params);
   const info = await stat(path);
   if (!info.isFile()) throw new Error("This path is not a file.");
@@ -238,9 +203,7 @@ export async function serveAsset(
       res.writeHead(416, { "content-range": `bytes */${info.size}` }).end();
       return;
     }
-    start = match[1]
-      ? Number(match[1])
-      : Math.max(0, info.size - Number(match[2]));
+    start = match[1] ? Number(match[1]) : Math.max(0, info.size - Number(match[2]));
     end = match[1] && match[2] ? Math.min(Number(match[2]), end) : end;
     if (
       !Number.isSafeInteger(start) ||

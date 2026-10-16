@@ -37,9 +37,7 @@ export function authorizeDesktop(value: string | null): boolean {
   if (!value) return false;
   const supplied = Buffer.from(value);
   const expected = Buffer.from(token);
-  return (
-    supplied.length === expected.length && timingSafeEqual(supplied, expected)
-  );
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
 export function attachDesktop(socket: WebSocket): void {
@@ -67,9 +65,7 @@ export function attachDesktop(socket: WebSocket): void {
     connection = null;
     for (const request of pending.values()) {
       clearTimeout(request.timer);
-      request.reject(
-        new Error("Citropy desktop closed. Open it to use desktop tools."),
-      );
+      request.reject(new Error("Citropy desktop closed. Open it to use desktop tools."));
     }
     pending.clear();
     desktopEvents.emit("disconnected");
@@ -77,26 +73,32 @@ export function attachDesktop(socket: WebSocket): void {
   desktopEvents.emit("connected");
 }
 
-export function desktopRequest<T>(
-  method: string,
-  params: unknown = {},
-): Promise<T> {
-  if (remoteId) return Promise.reject(new Error("Desktop browser tools are available in Local environments only."));
+export function desktopRequest<T>(method: string, params: unknown = {}): Promise<T> {
+  if (remoteId)
+    return Promise.reject(
+      new Error("Desktop browser tools are available in Local environments only."),
+    );
   if (!connection || connection.readyState !== connection.OPEN)
     return Promise.reject(new Error("Open Citropy desktop to use desktop tools."));
   return new Promise((resolve, reject) => {
     const id = ++sequence;
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error(`Desktop ${method} timed out`));
-    }, method === "profiles.import" ? 120_000 : 30000);
+    const timer = setTimeout(
+      () => {
+        pending.delete(id);
+        reject(new Error(`Desktop ${method} timed out`));
+      },
+      method === "profiles.import" ? 120_000 : 30000,
+    );
     pending.set(id, { resolve: (value) => resolve(value as T), reject, timer });
     connection!.send(JSON.stringify({ id, method, params }));
   });
 }
 
 export function openDesktop(): Promise<void> {
-  if (remoteId) return Promise.reject(new Error("Desktop browser tools are available in Local environments only."));
+  if (remoteId)
+    return Promise.reject(
+      new Error("Desktop browser tools are available in Local environments only."),
+    );
   if (connection) return desktopRequest("focus");
   if (starting) return starting;
   starting = new Promise<void>((resolve, reject) => {
@@ -107,11 +109,7 @@ export function openDesktop(): Promise<void> {
     const timer = setTimeout(() => {
       desktopEvents.off("connected", connected);
       child?.kill();
-      reject(
-        new Error(
-          "Citropy desktop could not start. Run npm install and try again.",
-        ),
-      );
+      reject(new Error("Citropy desktop could not start. Run npm install and try again."));
     }, 30000);
     desktopEvents.once("connected", connected);
     const env: NodeJS.ProcessEnv = {

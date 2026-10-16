@@ -5,17 +5,32 @@ import type { ProviderLaunch } from "./types.ts";
 import { providers } from "./index.ts";
 import { removeAccountHome } from "./provider-account-home.ts";
 
-const ACCOUNT_UNAVAILABLE = "This provider account is unavailable. Restore it in Settings > Providers.";
+const ACCOUNT_UNAVAILABLE =
+  "This provider account is unavailable. Restore it in Settings > Providers.";
 
-export function resolveProviderAccount(provider: ProviderId, instanceId?: string): { instance: ProviderInstance | undefined; launch: ProviderLaunch } {
+export function resolveProviderAccount(
+  provider: ProviderId,
+  instanceId?: string,
+): { instance: ProviderInstance | undefined; launch: ProviderLaunch } {
   const instance = instanceId ? store.providerInstances.get(instanceId) : undefined;
   if (instanceId && instance?.provider !== provider) throw new Error(ACCOUNT_UNAVAILABLE);
-  return { instance, launch: { instanceId: instance?.id, binary: instance?.binary, environment: instance?.environment } };
+  return {
+    instance,
+    launch: {
+      instanceId: instance?.id,
+      binary: instance?.binary,
+      environment: instance?.environment,
+    },
+  };
 }
 
-export function usableProviderAccount(provider: ProviderInfo | undefined, instanceId?: string | null): ReturnType<typeof providerAccount> & { provider: ProviderInfo } {
+export function usableProviderAccount(
+  provider: ProviderInfo | undefined,
+  instanceId?: string | null,
+): ReturnType<typeof providerAccount> & { provider: ProviderInfo } {
   const account = providerAccount(provider, instanceId);
-  if (!provider || !account.usable) throw new Error("Select an enabled, installed, signed-in provider account.");
+  if (!provider || !account.usable)
+    throw new Error("Select an enabled, installed, signed-in provider account.");
   return { ...account, provider };
 }
 

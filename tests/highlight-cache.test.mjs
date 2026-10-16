@@ -10,12 +10,16 @@ async function fixture(t) {
     requests = [];
     cancellations = [];
     terminated = false;
-    constructor() { worker = this; }
+    constructor() {
+      worker = this;
+    }
     postMessage(request) {
       if ("cancel" in request) this.cancellations.push(request.cancel);
       else this.requests.push(request);
     }
-    terminate() { this.terminated = true; }
+    terminate() {
+      this.terminated = true;
+    }
     finish(result) {
       const request = this.requests.shift();
       assert.ok(request);
@@ -29,7 +33,12 @@ async function fixture(t) {
     else globalThis.Worker = originalWorker;
   });
   const api = await import(`../web/src/lib/highlight.ts?fixture=${++sequence}`);
-  return { ...api, get worker() { return worker; } };
+  return {
+    ...api,
+    get worker() {
+      return worker;
+    },
+  };
 }
 
 test("concurrent identical highlights do not corrupt cache eviction accounting", async (t) => {
@@ -51,7 +60,7 @@ test("concurrent identical highlights do not corrupt cache eviction accounting",
   assert.equal(await last, "last result");
 });
 
-test("token results avoid repeated worker transfers without sharing mutable arrays", async t => {
+test("token results avoid repeated worker transfers without sharing mutable arrays", async (t) => {
   const fixtureState = await fixture(t);
   const { highlight, highlightTokens } = fixtureState;
   const first = highlightTokens("const value = 1", "typescript", "dark");
@@ -76,7 +85,10 @@ test("token results avoid repeated worker transfers without sharing mutable arra
   await Promise.all(variants);
   const controller = new AbortController();
   controller.abort();
-  assert.equal(await highlightTokens("const value = 1", "typescript", "dark", controller.signal), null);
+  assert.equal(
+    await highlightTokens("const value = 1", "typescript", "dark", controller.signal),
+    null,
+  );
   const unsupported = highlightTokens("unsupported", "unknown", "dark");
   fixtureState.worker.finish(null);
   assert.equal(await unsupported, null);
@@ -86,11 +98,13 @@ test("token results avoid repeated worker transfers without sharing mutable arra
   assert.equal(await retry, null);
 });
 
-test("HTML and tokens share a bounded cache with recent entries retained", async t => {
+test("HTML and tokens share a bounded cache with recent entries retained", async (t) => {
   const fixtureState = await fixture(t);
   const { highlight, highlightTokens } = fixtureState;
   const render = async (code, result, html = false) => {
-    const pending = html ? highlight(code, "typescript", "dark") : highlightTokens(code, "typescript", "dark");
+    const pending = html
+      ? highlight(code, "typescript", "dark")
+      : highlightTokens(code, "typescript", "dark");
     fixtureState.worker.finish(result);
     return pending;
   };
@@ -118,7 +132,7 @@ test("HTML and tokens share a bounded cache with recent entries retained", async
   await repeated;
 });
 
-test("token cache limits the number of small retained results", async t => {
+test("token cache limits the number of small retained results", async (t) => {
   const fixtureState = await fixture(t);
   const { highlightTokens } = fixtureState;
   for (let index = 0; index < 128; index++) {
@@ -137,10 +151,12 @@ test("token cache limits the number of small retained results", async t => {
   await oldest;
 });
 
-test("concurrent token callers share worker transfers and receive independent arrays", async t => {
+test("concurrent token callers share worker transfers and receive independent arrays", async (t) => {
   const fixtureState = await fixture(t);
   const { highlightTokens } = fixtureState;
-  const calls = Array.from({ length: 20 }, () => highlightTokens("same source", "typescript", "dark"));
+  const calls = Array.from({ length: 20 }, () =>
+    highlightTokens("same source", "typescript", "dark"),
+  );
   assert.equal(fixtureState.worker.requests.length, 1);
   fixtureState.worker.finish(["first line", "second line"]);
   const results = await Promise.all(calls);
@@ -148,11 +164,14 @@ test("concurrent token callers share worker transfers and receive independent ar
   results[0][0] = "changed";
   results[0].push("extra");
   for (const result of results.slice(1)) assert.deepEqual(result, ["first line", "second line"]);
-  assert.deepEqual(await highlightTokens("same source", "typescript", "dark"), ["first line", "second line"]);
+  assert.deepEqual(await highlightTokens("same source", "typescript", "dark"), [
+    "first line",
+    "second line",
+  ]);
   assert.equal(fixtureState.worker.requests.length, 0);
 });
 
-test("aborting one token consumer preserves peers and the eventual cache entry", async t => {
+test("aborting one token consumer preserves peers and the eventual cache entry", async (t) => {
   const fixtureState = await fixture(t);
   const controller = new AbortController();
   const cancelled = fixtureState.highlightTokens("shared", "typescript", "dark", controller.signal);
@@ -163,11 +182,13 @@ test("aborting one token consumer preserves peers and the eventual cache entry",
   assert.deepEqual(fixtureState.worker.cancellations, []);
   fixtureState.worker.finish(["retained"]);
   assert.deepEqual(await retained, ["retained"]);
-  assert.deepEqual(await fixtureState.highlightTokens("shared", "typescript", "dark"), ["retained"]);
+  assert.deepEqual(await fixtureState.highlightTokens("shared", "typescript", "dark"), [
+    "retained",
+  ]);
   assert.equal(fixtureState.worker.requests.length, 0);
 });
 
-test("HTML consumers cancel independently without caching the cancelled fallback", async t => {
+test("HTML consumers cancel independently without caching the cancelled fallback", async (t) => {
   const fixtureState = await fixture(t);
   const controller = new AbortController();
   const cancelled = fixtureState.highlight("<shared>", "typescript", "dark", controller.signal);
@@ -180,11 +201,13 @@ test("HTML consumers cancel independently without caching the cancelled fallback
   assert.equal(await fixtureState.highlight("<shared>", "typescript", "dark"), "highlighted HTML");
 });
 
-test("the last cancelled consumer cancels its worker job and permits immediate retry", async t => {
+test("the last cancelled consumer cancels its worker job and permits immediate retry", async (t) => {
   const fixtureState = await fixture(t);
   const first = new AbortController();
   const second = new AbortController();
-  const calls = [first, second].map(controller => fixtureState.highlightTokens("retry", "typescript", "dark", controller.signal));
+  const calls = [first, second].map((controller) =>
+    fixtureState.highlightTokens("retry", "typescript", "dark", controller.signal),
+  );
   const oldId = fixtureState.worker.requests[0].id;
   first.abort();
   assert.deepEqual(fixtureState.worker.cancellations, []);
@@ -196,12 +219,16 @@ test("the last cancelled consumer cancels its worker job and permits immediate r
   fixtureState.worker.finish(["fresh result"]);
   assert.deepEqual(await Promise.all(calls), [null, null]);
   assert.deepEqual(await retry, ["fresh result"]);
-  assert.deepEqual(await fixtureState.highlightTokens("retry", "typescript", "dark"), ["fresh result"]);
+  assert.deepEqual(await fixtureState.highlightTokens("retry", "typescript", "dark"), [
+    "fresh result",
+  ]);
 });
 
-test("shared failures and worker disposal allow retries without retaining failed jobs", async t => {
+test("shared failures and worker disposal allow retries without retaining failed jobs", async (t) => {
   const fixtureState = await fixture(t);
-  const calls = Array.from({ length: 3 }, () => fixtureState.highlightTokens("failure", "typescript", "dark"));
+  const calls = Array.from({ length: 3 }, () =>
+    fixtureState.highlightTokens("failure", "typescript", "dark"),
+  );
   fixtureState.worker.finish(null);
   assert.deepEqual(await Promise.all(calls), [null, null, null]);
   const retry = fixtureState.highlightTokens("failure", "typescript", "dark");
@@ -221,7 +248,7 @@ test("shared failures and worker disposal allow retries without retaining failed
   assert.deepEqual(await recovered, ["recovered"]);
 });
 
-test("a failed highlight returns raw markup without caching it", async t => {
+test("a failed highlight returns raw markup without caching it", async (t) => {
   const fixtureState = await fixture(t);
   const failed = fixtureState.highlight("x", "typescript", "dark");
   fixtureState.worker.finish(null);
@@ -232,10 +259,12 @@ test("a failed highlight returns raw markup without caching it", async t => {
   assert.equal(await retry, "highlighted HTML");
 });
 
-test("a shared worker deadline releases every consumer and allows recovery", async t => {
+test("a shared worker deadline releases every consumer and allows recovery", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const fixtureState = await fixture(t);
-  const calls = Array.from({ length: 3 }, () => fixtureState.highlightTokens("timeout", "typescript", "dark"));
+  const calls = Array.from({ length: 3 }, () =>
+    fixtureState.highlightTokens("timeout", "typescript", "dark"),
+  );
   const timedOutWorker = fixtureState.worker;
   assert.equal(timedOutWorker.requests.length, 1);
   t.mock.timers.tick(30_000);

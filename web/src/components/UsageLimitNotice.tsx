@@ -15,7 +15,9 @@ import { ComposerTab } from "./composer/ComposerTab.tsx";
 
 function resetTime(resetsAt: number): string {
   const sameDay = new Date(resetsAt).toDateString() === new Date().toDateString();
-  return sameDay ? clock(resetsAt) : formatDate(resetsAt, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return sameDay
+    ? clock(resetsAt)
+    : formatDate(resetsAt, { weekday: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 function upcoming(resetsAt: number | undefined): string | undefined {
@@ -47,7 +49,11 @@ export function UsageLimitTab({ threadId }: { threadId: string }) {
   );
 }
 
-function UsageLimitTabContent({ threadId, thread, limit }: {
+function UsageLimitTabContent({
+  threadId,
+  thread,
+  limit,
+}: {
   threadId: string;
   thread: ThreadMeta;
   limit: NonNullable<ThreadMeta["usageLimit"]>;
@@ -79,53 +85,82 @@ function UsageLimitTabContent({ threadId, thread, limit }: {
         title={thread.error}
         onClick={() => setOpen((value) => !value)}
       >
-        {limit.resume ? <CheckIcon size={13} aria-hidden="true" /> : <HourglassIcon size={13} aria-hidden="true" />}
+        {limit.resume ? (
+          <CheckIcon size={13} aria-hidden="true" />
+        ) : (
+          <HourglassIcon size={13} aria-hidden="true" />
+        )}
         {time ?? "Usage limit"}
       </ComposerTab>
-      <AnimatePresence>{open && <ComposerPopover id={id} label="Usage limit reached" className="usage-limit-panel" anchor={trigger} width={300} onClose={close}>
-        <header>
-          <HourglassIcon size={15} aria-hidden="true" />
-          <h2>Usage limit reached</h2>
-        </header>
-        <p>{status}</p>
-        {thread.error && <p className="usage-limit-message">{thread.error}</p>}
-        <div className="usage-limit-actions">
-          <label className="usage-limit-action">
-            <span>
-              <strong>Resume at reset</strong>
-              <small>Continue this chat when usage is back.</small>
-            </span>
-            <input
-              className="setting-switch"
-              type="checkbox"
-              role="switch"
-              checked={limit.resume}
-              disabled={!connected}
-              onChange={(event) => isFakeUsageLimit(threadId)
-                ? patchFakeUsageLimit(threadId, { resume: event.target.checked })
-                : send({ t: "thread.resumeAfterLimit", id: threadId, enabled: event.target.checked })}
-            />
-          </label>
-          {time && (
-            <label className="usage-limit-action">
-              <span>
-                <strong>Snooze until reset</strong>
-                <small>Move this chat to Snoozed in the sidebar until then.</small>
-              </span>
-              <input
-                className="setting-switch"
-                type="checkbox"
-                role="switch"
-                checked={snoozed}
-                disabled={!connected}
-                onChange={(event) => isFakeUsageLimit(threadId)
-                  ? patchFakeUsageLimit(threadId, { snoozedUntil: event.target.checked ? limit.resetsAt : undefined })
-                  : void organizeConversation(threadId, { snoozedUntil: event.target.checked ? limit.resetsAt : null }, environmentId()).catch(reportError)}
-              />
-            </label>
-          )}
-        </div>
-      </ComposerPopover>}</AnimatePresence>
+      <AnimatePresence>
+        {open && (
+          <ComposerPopover
+            id={id}
+            label="Usage limit reached"
+            className="usage-limit-panel"
+            anchor={trigger}
+            width={300}
+            onClose={close}
+          >
+            <header>
+              <HourglassIcon size={15} aria-hidden="true" />
+              <h2>Usage limit reached</h2>
+            </header>
+            <p>{status}</p>
+            {thread.error && <p className="usage-limit-message">{thread.error}</p>}
+            <div className="usage-limit-actions">
+              <label className="usage-limit-action">
+                <span>
+                  <strong>Resume at reset</strong>
+                  <small>Continue this chat when usage is back.</small>
+                </span>
+                <input
+                  className="setting-switch"
+                  type="checkbox"
+                  role="switch"
+                  checked={limit.resume}
+                  disabled={!connected}
+                  onChange={(event) =>
+                    isFakeUsageLimit(threadId)
+                      ? patchFakeUsageLimit(threadId, { resume: event.target.checked })
+                      : send({
+                          t: "thread.resumeAfterLimit",
+                          id: threadId,
+                          enabled: event.target.checked,
+                        })
+                  }
+                />
+              </label>
+              {time && (
+                <label className="usage-limit-action">
+                  <span>
+                    <strong>Snooze until reset</strong>
+                    <small>Move this chat to Snoozed in the sidebar until then.</small>
+                  </span>
+                  <input
+                    className="setting-switch"
+                    type="checkbox"
+                    role="switch"
+                    checked={snoozed}
+                    disabled={!connected}
+                    onChange={(event) =>
+                      isFakeUsageLimit(threadId)
+                        ? patchFakeUsageLimit(threadId, {
+                            snoozedUntil: event.target.checked ? limit.resetsAt : undefined,
+                          })
+                        : void organizeConversation(
+                            threadId,
+                            { snoozedUntil: event.target.checked ? limit.resetsAt : null },
+                            environmentId(),
+                          ).catch(reportError)
+                    }
+                  />
+                </label>
+              )}
+            </div>
+          </ComposerPopover>
+        )}
+      </AnimatePresence>
     </>
   );
 }

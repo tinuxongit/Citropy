@@ -27,7 +27,10 @@ function visualPath(threadId: string, id: string): string | null {
 }
 
 function storedPath(threadId: string, id: string): string {
-  if (!STORED_ID.test(id)) throw new Error("Unknown visual. Use an id returned by workspace_visual or workspace_visual_draft.");
+  if (!STORED_ID.test(id))
+    throw new Error(
+      "Unknown visual. Use an id returned by workspace_visual or workspace_visual_draft.",
+    );
   const path = visualPath(threadId, id);
   if (!path) throw new Error("Conversation not found.");
   return path;
@@ -49,8 +52,15 @@ export async function readToolVisual(threadId: string, id: string): Promise<stri
   return html;
 }
 
-export async function appendVisualDraft(threadId: string, html: string, existing?: string): Promise<{ draft: string; bytes: number }> {
-  if (existing && !existing.startsWith("draft-")) throw new Error("Only drafts can be added to. Change a shown visual with workspace_visual, from, and edits.");
+export async function appendVisualDraft(
+  threadId: string,
+  html: string,
+  existing?: string,
+): Promise<{ draft: string; bytes: number }> {
+  if (existing && !existing.startsWith("draft-"))
+    throw new Error(
+      "Only drafts can be added to. Change a shown visual with workspace_visual, from, and edits.",
+    );
   const draft = existing ?? `draft-${randomUUID()}`;
   const path = storedPath(threadId, draft);
   const bytes = existing ? (await stat(path).catch(ifMissing(undefined)))?.size : 0;
@@ -66,13 +76,22 @@ export async function removeVisualDraft(threadId: string, draft: string): Promis
   if (draft.startsWith("draft-")) await rm(storedPath(threadId, draft));
 }
 
-export interface VisualEdit { find: string; replace: string }
+export interface VisualEdit {
+  find: string;
+  replace: string;
+}
 
 export function editVisual(html: string, edits: VisualEdit[]): string {
   return edits.reduce((page, { find, replace }, index) => {
     const at = page.indexOf(find);
-    if (!find || at < 0) throw new Error(`Edit ${index + 1} did not match. Copy find exactly from workspace_visual_source.`);
-    if (page.indexOf(find, at + 1) >= 0) throw new Error(`Edit ${index + 1} matches more than once. Include more surrounding text in find.`);
+    if (!find || at < 0)
+      throw new Error(
+        `Edit ${index + 1} did not match. Copy find exactly from workspace_visual_source.`,
+      );
+    if (page.indexOf(find, at + 1) >= 0)
+      throw new Error(
+        `Edit ${index + 1} matches more than once. Include more surrounding text in find.`,
+      );
     return page.slice(0, at) + replace + page.slice(at + find.length);
   }, html);
 }
@@ -82,11 +101,16 @@ export function framedVisual(html: string): string {
   return `${doctype.trim() || "<!doctype html>"}${FRAME_SETUP}${html.slice(doctype.length)}`;
 }
 
-export async function serveToolVisual(req: IncomingMessage, res: ServerResponse, params: URLSearchParams): Promise<void> {
+export async function serveToolVisual(
+  req: IncomingMessage,
+  res: ServerResponse,
+  params: URLSearchParams,
+): Promise<void> {
   const threadId = params.get("threadId") ?? "";
   const id = params.get("id") ?? "";
-  const path = /^[\w-]{1,120}$/.test(threadId) && VISUAL_ID.test(id) ? visualPath(threadId, id) : null;
-  const html = path && await readFile(path, "utf8").catch(ifMissing(undefined));
+  const path =
+    /^[\w-]{1,120}$/.test(threadId) && VISUAL_ID.test(id) ? visualPath(threadId, id) : null;
+  const html = path && (await readFile(path, "utf8").catch(ifMissing(undefined)));
   if (!html) {
     res.writeHead(404, { "cache-control": "private, max-age=60" }).end();
     return;

@@ -17,5 +17,7 @@ export function useHighlightedLines(code: string, lang?: string): string[] | nul
     });
     return () => controller.abort();
   }, [code, lang, theme]);
-  return result?.code === code && result.lang === lang && result.theme === theme ? result.lines : null;
+  return result?.code === code && result.lang === lang && result.theme === theme
+    ? result.lines
+    : null;
 }

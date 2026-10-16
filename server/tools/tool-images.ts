@@ -1,4 +1,14 @@
-import { copyFile, mkdir, open, readFile, readdir, readlink, realpath, stat, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  mkdir,
+  open,
+  readFile,
+  readdir,
+  readlink,
+  realpath,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { ifMissing } from "../../shared/expected-errors.mjs";
 import { constants, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -26,11 +36,18 @@ export function removeToolImages(threadId: string): void {
   rmSync(join(root, threadId), { recursive: true, force: true });
 }
 
-export async function copyToolImages(fromThreadId: string, toThreadId: string, keep: (id: string) => boolean): Promise<void> {
-  const names = (await readdir(join(root, fromThreadId)).catch(ifMissing([]))).filter(name => keep(parse(name).name));
+export async function copyToolImages(
+  fromThreadId: string,
+  toThreadId: string,
+  keep: (id: string) => boolean,
+): Promise<void> {
+  const names = (await readdir(join(root, fromThreadId)).catch(ifMissing([]))).filter((name) =>
+    keep(parse(name).name),
+  );
   if (!names.length) return;
   await mkdir(join(root, toThreadId), { recursive: true, mode: 0o700 });
-  for (const name of names) await copyFile(join(root, fromThreadId, name), join(root, toThreadId, name));
+  for (const name of names)
+    await copyFile(join(root, fromThreadId, name), join(root, toThreadId, name));
 }
 
 export async function saveToolImages(
@@ -65,31 +82,42 @@ export async function saveToolImageFile(
   const verifyDescriptorPath = process.platform === "linux";
   for (let attempt = 0; attempt < 3; attempt++) {
     if (!isAlive()) throw new Error("Conversation closed.");
-    const directories = verifyDescriptorPath ? undefined : await directoryState(parse(path).root, dirname(path));
+    const directories = verifyDescriptorPath
+      ? undefined
+      : await directoryState(parse(path).root, dirname(path));
     if (directories === null) throw new Error("The image path changed. Try again.");
     const directory = verifyDescriptorPath
       ? await open(dirname(path), constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
       : undefined;
     try {
-      if (directory && await readlink(`/proc/self/fd/${directory.fd}`) !== dirname(path))
+      if (directory && (await readlink(`/proc/self/fd/${directory.fd}`)) !== dirname(path))
         throw new Error("The image path changed. Try again.");
       const lookup = directory ? `/proc/self/fd/${directory.fd}/${basename(path)}` : path;
       const expected = directory ? undefined : await stat(path, { bigint: true });
       if (expected) {
         if (!expected.isFile()) throw new Error("Choose a regular image file.");
         if (expected.size > maxBytes) throw new Error("Images can be up to 8 MiB.");
-        if (await realpath(path) !== path) throw new Error("The image path changed. Try again.");
+        if ((await realpath(path)) !== path) throw new Error("The image path changed. Try again.");
       }
-      const file = await open(lookup, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK | constants.O_NOCTTY);
+      const file = await open(
+        lookup,
+        constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK | constants.O_NOCTTY,
+      );
       let body: Buffer;
       try {
         const info = await file.stat({ bigint: true });
         if (!info.isFile()) throw new Error("Choose a regular image file.");
         if (info.size > maxBytes) throw new Error("Images can be up to 8 MiB.");
-        if (expected && (info.dev !== expected.dev || info.ino !== expected.ino ||
-            info.size !== expected.size || info.ctimeNs !== expected.ctimeNs || info.mtimeNs !== expected.mtimeNs))
+        if (
+          expected &&
+          (info.dev !== expected.dev ||
+            info.ino !== expected.ino ||
+            info.size !== expected.size ||
+            info.ctimeNs !== expected.ctimeNs ||
+            info.mtimeNs !== expected.mtimeNs)
+        )
           throw new Error("The image file changed. Try again.");
-        if (verifyDescriptorPath && await readlink(`/proc/self/fd/${file.fd}`) !== path)
+        if (verifyDescriptorPath && (await readlink(`/proc/self/fd/${file.fd}`)) !== path)
           throw new Error("The image path changed. Try again.");
         const buffer = Buffer.alloc(maxBytes + 1);
         let length = 0;
@@ -99,23 +127,36 @@ export async function saveToolImageFile(
           length += bytesRead;
         }
         if (length > maxBytes) throw new Error("Images can be up to 8 MiB.");
-        if (verifyDescriptorPath && await readlink(`/proc/self/fd/${file.fd}`) !== path)
+        if (verifyDescriptorPath && (await readlink(`/proc/self/fd/${file.fd}`)) !== path)
           throw new Error("The image path changed. Try again.");
         const current = await file.stat({ bigint: true });
-        if (current.size !== info.size || current.ctimeNs !== info.ctimeNs || current.mtimeNs !== info.mtimeNs) continue;
+        if (
+          current.size !== info.size ||
+          current.ctimeNs !== info.ctimeNs ||
+          current.mtimeNs !== info.mtimeNs
+        )
+          continue;
         body = buffer.subarray(0, length);
       } finally {
         await file.close();
       }
       if (directories && !(await sameDirectoryState(directories))) continue;
-      const mime = body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ? "image/png"
-        : body[0] === 255 && body[1] === 216 && body[2] === 255 ? "image/jpeg"
-        : ["GIF87a", "GIF89a"].includes(body.toString("latin1", 0, 6)) ? "image/gif"
-        : body.toString("latin1", 0, 4) === "RIFF" && body.toString("latin1", 8, 12) === "WEBP" ? "image/webp"
-        : undefined;
+      const mime = body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        ? "image/png"
+        : body[0] === 255 && body[1] === 216 && body[2] === 255
+          ? "image/jpeg"
+          : ["GIF87a", "GIF89a"].includes(body.toString("latin1", 0, 6))
+            ? "image/gif"
+            : body.toString("latin1", 0, 4) === "RIFF" && body.toString("latin1", 8, 12) === "WEBP"
+              ? "image/webp"
+              : undefined;
       if (!mime) throw new Error("Choose a PNG, JPEG, GIF, or WebP image.");
       if (!isAlive()) throw new Error("Conversation closed.");
-      const [image] = await saveToolImages(threadId, [{ mime, data: body.toString("base64") }], isAlive);
+      const [image] = await saveToolImages(
+        threadId,
+        [{ mime, data: body.toString("base64") }],
+        isAlive,
+      );
       if (!image) throw new Error("Conversation closed.");
       return image;
     } finally {

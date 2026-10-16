@@ -26,12 +26,19 @@ export function parseReleaseNotes(markdown: string | null | undefined): ReleaseN
   return sections.filter((section) => section.items.length);
 }
 
-export async function fetchReleaseNotes(repository: string, version: string): Promise<ReleaseNoteSection[]> {
-  const response = await fetch(`https://api.github.com/repos/${repository}/releases/tags/v${version}`, {
-    headers: { accept: "application/vnd.github+json" },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!response.ok) throw new Error(`GitHub answered ${response.status} for the Citropy ${version} release notes.`);
+export async function fetchReleaseNotes(
+  repository: string,
+  version: string,
+): Promise<ReleaseNoteSection[]> {
+  const response = await fetch(
+    `https://api.github.com/repos/${repository}/releases/tags/v${version}`,
+    {
+      headers: { accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(10000),
+    },
+  );
+  if (!response.ok)
+    throw new Error(`GitHub answered ${response.status} for the Citropy ${version} release notes.`);
   return parseReleaseNotes(((await response.json()) as { body?: string | null }).body);
 }
 
@@ -40,10 +47,19 @@ export async function fetchReleaseHistory(repository: string): Promise<ReleaseNo
     headers: { accept: "application/vnd.github+json" },
     signal: AbortSignal.timeout(10000),
   });
-  if (!response.ok) throw new Error(`GitHub answered ${response.status} for the Citropy release list.`);
-  const releases = (await response.json()) as Array<{ draft: boolean; prerelease: boolean; tag_name: string; body?: string | null }>;
+  if (!response.ok)
+    throw new Error(`GitHub answered ${response.status} for the Citropy release list.`);
+  const releases = (await response.json()) as Array<{
+    draft: boolean;
+    prerelease: boolean;
+    tag_name: string;
+    body?: string | null;
+  }>;
   return releases
     .filter((release) => !release.draft && !release.prerelease)
-    .map((release) => ({ version: release.tag_name.replace(/^v/, ""), sections: parseReleaseNotes(release.body) }))
+    .map((release) => ({
+      version: release.tag_name.replace(/^v/, ""),
+      sections: parseReleaseNotes(release.body),
+    }))
     .filter((release) => release.sections.length);
 }

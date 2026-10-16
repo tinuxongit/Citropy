@@ -1,7 +1,13 @@
 import type { ServerEvent } from "../shared/protocol.ts";
 import { eventJournal } from "./event-journal.ts";
 
-const UNJOURNALED_EVENTS: ReadonlySet<ServerEvent["t"]> = new Set(["term.data", "term.exit", "browser.state", "shell.upsert", "shell.remove"]);
+const UNJOURNALED_EVENTS: ReadonlySet<ServerEvent["t"]> = new Set([
+  "term.data",
+  "term.exit",
+  "browser.state",
+  "shell.upsert",
+  "shell.remove",
+]);
 
 type Listener = (event: ServerEvent) => void;
 
@@ -17,7 +23,8 @@ class Bus {
 
   emit(event: ServerEvent): void {
     event = structuredClone(event);
-    if (!UNJOURNALED_EVENTS.has(event.t)) event = { ...event, sequence: eventJournal.append(event) };
+    if (!UNJOURNALED_EVENTS.has(event.t))
+      event = { ...event, sequence: eventJournal.append(event) };
     this.#queue.push(event);
     if (this.#emitting) return;
     this.#emitting = true;
@@ -26,7 +33,9 @@ class Bus {
         const next = this.#queue.shift()!;
         for (const listener of this.#listeners) listener(next);
       }
-    } finally { this.#emitting = false; }
+    } finally {
+      this.#emitting = false;
+    }
   }
 }
 

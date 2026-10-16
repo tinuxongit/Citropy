@@ -39,7 +39,9 @@ function parseArgs(args: string | undefined): Record<string, unknown> {
   if (!args) return {};
   try {
     const parsed: unknown = JSON.parse(args);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : { arguments: parsed };
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : { arguments: parsed };
   } catch {
     // Why: Muse streams model-written arguments, so they are not valid JSON until the call settles.
     return { arguments: args };
@@ -49,8 +51,14 @@ function parseArgs(args: string | undefined): Record<string, unknown> {
 function canonical(raw: Record<string, unknown>): Record<string, unknown> {
   const input = { ...raw };
   for (const [key, aliases] of Object.entries(ARGUMENTS)) {
-    const value = aliases.map(alias => raw[alias]).find(entry => entry !== undefined && entry !== null && entry !== "");
-    if (value !== undefined) input[key] = Array.isArray(value) && value.every(part => typeof part === "string") ? value.join(" ") : value;
+    const value = aliases
+      .map((alias) => raw[alias])
+      .find((entry) => entry !== undefined && entry !== null && entry !== "");
+    if (value !== undefined)
+      input[key] =
+        Array.isArray(value) && value.every((part) => typeof part === "string")
+          ? value.join(" ")
+          : value;
   }
   return input;
 }
@@ -60,8 +68,13 @@ export function hasNativeRow(item: Item): boolean {
 }
 
 export function museTool(item: Item): MuseTool {
-  if (item.kind === "userShell") return { name: "Bash", input: { command: item.commandText ?? "" } };
-  if (item.kind === "workflow") return { name: "Task", input: { description: item.entryId ?? item.fallbackText ?? "Workflow" } };
+  if (item.kind === "userShell")
+    return { name: "Bash", input: { command: item.commandText ?? "" } };
+  if (item.kind === "workflow")
+    return {
+      name: "Task",
+      input: { description: item.entryId ?? item.fallbackText ?? "Workflow" },
+    };
   return toolCall(item.tool ?? item.kind, item.args);
 }
 
@@ -76,7 +89,16 @@ export function itemOk(item: Item): boolean {
 }
 
 export function itemOutput(item: Item): string {
-  const text = item.visibleOutput ?? item.result?.summary ?? item.finalSummary ?? item.text ?? item.fallbackText ?? "";
-  const failure = item.status === "completed" ? undefined : item.failureReason ?? `Muse Code reported ${item.status}.`;
+  const text =
+    item.visibleOutput ??
+    item.result?.summary ??
+    item.finalSummary ??
+    item.text ??
+    item.fallbackText ??
+    "";
+  const failure =
+    item.status === "completed"
+      ? undefined
+      : (item.failureReason ?? `Muse Code reported ${item.status}.`);
   return [failure, text].filter(Boolean).join("\n");
 }

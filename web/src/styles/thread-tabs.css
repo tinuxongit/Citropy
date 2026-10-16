@@ -22,7 +22,8 @@
     padding-left: 0;
   }
 
-  .breadcrumb:is([data-view="chat"], [data-view="chats"]) > :is(.thread-title, .breadcrumb-separator) {
+  .breadcrumb:is([data-view="chat"], [data-view="chats"])
+    > :is(.thread-title, .breadcrumb-separator) {
     display: none;
   }
 }
@@ -40,7 +41,9 @@
   color: var(--text-3);
   font-size: var(--text-sm);
   isolation: isolate;
-  transition: color var(--dur-instant), transform var(--dur-fast) var(--ease-out);
+  transition:
+    color var(--dur-instant),
+    transform var(--dur-fast) var(--ease-out);
 }
 
 :is(.thread-tab, .workbench-tab)::after {
@@ -49,7 +52,9 @@
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  transition: background var(--dur-instant), transform var(--dur-fast) var(--ease-out);
+  transition:
+    background var(--dur-instant),
+    transform var(--dur-fast) var(--ease-out);
   pointer-events: none;
 }
 
@@ -65,7 +70,8 @@
 }
 
 :is(.thread-tab:is(:hover, [data-active]), .workbench-tab:is(:hover, [data-active="true"]))::before,
-:is(.thread-tab:is(:hover, [data-active]), .workbench-tab:is(:hover, [data-active="true"])) + :is(.thread-tab, .thread-tabs-new, .workbench-tab)::before {
+:is(.thread-tab:is(:hover, [data-active]), .workbench-tab:is(:hover, [data-active="true"]))
+  + :is(.thread-tab, .thread-tabs-new, .workbench-tab)::before {
   opacity: 0;
 }
 
@@ -181,7 +187,9 @@
   height: var(--tab-height);
   border-radius: var(--r-md);
   color: var(--text-3);
-  transition: background var(--dur-instant), color var(--dur-instant);
+  transition:
+    background var(--dur-instant),
+    color var(--dur-instant);
 }
 
 .thread-tabs-new:hover:not(:disabled) {

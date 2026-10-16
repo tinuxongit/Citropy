@@ -15,9 +15,15 @@
   --series-claude: #eb6834;
   --series-opencode: #1baf7a;
 }
-.usage-view [data-series="codex"] { --series: var(--series-codex); }
-.usage-view [data-series="claude"] { --series: var(--series-claude); }
-.usage-view [data-series="opencode"] { --series: var(--series-opencode); }
+.usage-view [data-series="codex"] {
+  --series: var(--series-codex);
+}
+.usage-view [data-series="claude"] {
+  --series: var(--series-claude);
+}
+.usage-view [data-series="opencode"] {
+  --series: var(--series-opencode);
+}
 .usage-kpis > div,
 .usage-chart,
 .usage-share-bar,
@@ -69,7 +75,9 @@
   border-radius: var(--r-md);
   background: var(--panel);
 }
-.menu .usage-segmented { background: var(--popup-well); }
+.menu .usage-segmented {
+  background: var(--popup-well);
+}
 .usage-segmented button {
   padding: var(--space-6) var(--space-12);
   border-radius: var(--r-sm);
@@ -82,13 +90,37 @@
 .usage-segmented button[aria-pressed="true"] {
   color: var(--text);
 }
-.snooze-menu { display: grid; gap: var(--space-8); }
-.snooze-menu > .menu-item { width: 100%; }
-.snooze-divider { width: 100%; margin: 0; border: 0; border-top: 1px solid var(--line); }
-.snooze-units button { flex: 1; }
-.snooze-stepper { display: grid; justify-items: center; gap: var(--space-2); }
-.snooze-wake { margin: var(--space-6) 0 var(--space-4); color: var(--text-3); font-size: var(--text-xs); text-align: center; font-variant-numeric: tabular-nums; }
-.snooze-submit { width: 100%; }
+.snooze-menu {
+  display: grid;
+  gap: var(--space-8);
+}
+.snooze-menu > .menu-item {
+  width: 100%;
+}
+.snooze-divider {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.snooze-units button {
+  flex: 1;
+}
+.snooze-stepper {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+.snooze-wake {
+  margin: var(--space-6) 0 var(--space-4);
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.snooze-submit {
+  width: 100%;
+}
 .usage-provider-filter {
   display: flex;
   flex-wrap: wrap;
@@ -105,7 +137,10 @@
   color: var(--text-2);
   font-size: var(--text-xs);
   font-weight: 500;
-  transition: background var(--dur-instant) var(--ease-out), color var(--dur-instant) var(--ease-out), opacity var(--dur-instant) var(--ease-out);
+  transition:
+    background var(--dur-instant) var(--ease-out),
+    color var(--dur-instant) var(--ease-out),
+    opacity var(--dur-instant) var(--ease-out);
 }
 .usage-provider-filter button:hover {
   background: var(--hover);
@@ -364,9 +399,15 @@
   min-width: 4px;
   border-radius: 2px;
 }
-.usage-share-track i:first-child { border-radius: var(--r-full) 2px 2px var(--r-full); }
-.usage-share-track i:last-child { border-radius: 2px var(--r-full) var(--r-full) 2px; }
-.usage-share-track i:only-child { border-radius: var(--r-full); }
+.usage-share-track i:first-child {
+  border-radius: var(--r-full) 2px 2px var(--r-full);
+}
+.usage-share-track i:last-child {
+  border-radius: 2px var(--r-full) var(--r-full) 2px;
+}
+.usage-share-track i:only-child {
+  border-radius: var(--r-full);
+}
 .usage-share-legend {
   display: flex;
   flex-wrap: wrap;
@@ -410,7 +451,9 @@
   color: var(--text-2);
   font-size: var(--text-xs);
   text-align: left;
-  transition: background var(--dur-instant) var(--ease-out), box-shadow var(--dur-instant) var(--ease-out);
+  transition:
+    background var(--dur-instant) var(--ease-out),
+    box-shadow var(--dur-instant) var(--ease-out);
 }
 .usage-provider-card:hover {
   background: color-mix(in oklab, var(--surface), var(--text) 4%);
@@ -665,7 +708,15 @@
   border-radius: var(--r-full);
   background: linear-gradient(90deg, var(--fill) var(--left), var(--line-strong) var(--left));
 }
-.limit-window[data-level="low"] { --fill: var(--warn); }
-.limit-window[data-level="empty"] { --fill: var(--bad); }
-.limit-window[data-level] i { --fill: inherit; }
-.limit-window[data-level] strong { color: var(--fill); }
+.limit-window[data-level="low"] {
+  --fill: var(--warn);
+}
+.limit-window[data-level="empty"] {
+  --fill: var(--bad);
+}
+.limit-window[data-level] i {
+  --fill: inherit;
+}
+.limit-window[data-level] strong {
+  color: var(--fill);
+}

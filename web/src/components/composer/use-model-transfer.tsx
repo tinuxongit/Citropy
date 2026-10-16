@@ -13,10 +13,15 @@ export function useModelTransfer(thread: ThreadMeta | undefined) {
   const [scopeSignal] = useState(environmentSignal);
   const providers = useApp((state) => state.providers);
   const [transferring, setTransferring] = useState(false);
-  const [transferSettings, setTransferSettings] = useState<{ key: string; settings: TuningSettings }>({ key: "", settings: {} });
+  const [transferSettings, setTransferSettings] = useState<{
+    key: string;
+    settings: TuningSettings;
+  }>({ key: "", settings: {} });
   return useMemo(() => {
-    const transferKey = (choice: WritingModel) => `${choice.provider}:${choice.providerInstanceId ?? ""}:${choice.model}`;
-    const settingsFor = (choice: WritingModel) => transferSettings.key === transferKey(choice) ? transferSettings.settings : {};
+    const transferKey = (choice: WritingModel) =>
+      `${choice.provider}:${choice.providerInstanceId ?? ""}:${choice.model}`;
+    const settingsFor = (choice: WritingModel) =>
+      transferSettings.key === transferKey(choice) ? transferSettings.settings : {};
     const modelFor = (choice: WritingModel) => {
       const target = providers.find((entry) => entry.id === choice.provider);
       return selectedModel(providerAccount(target, choice.providerInstanceId).models, choice.model);
@@ -26,19 +31,43 @@ export function useModelTransfer(thread: ThreadMeta | undefined) {
       const target = providers.find((entry) => entry.id === choice.provider);
       const { instance } = providerAccount(target, choice.providerInstanceId);
       const name = modelFor(choice)?.label ?? choice.model;
-      if (!await confirmAction({
-        title: `Transfer to ${name}?`,
-        description: "A new agent reads the conversation and continues here. This uses extra usage on the selected provider and may cost more. Your chat history, workspace and draft stay in place.",
-        context: instance ? `${target?.label} · ${instance.name}` : target?.label,
-        label: "Transfer and continue",
-      }) || scopeSignal.aborted || !useApp.getState().connected) return;
+      if (
+        !(await confirmAction({
+          title: `Transfer to ${name}?`,
+          description:
+            "A new agent reads the conversation and continues here. This uses extra usage on the selected provider and may cost more. Your chat history, workspace and draft stay in place.",
+          context: instance ? `${target?.label} · ${instance.name}` : target?.label,
+          label: "Transfer and continue",
+        })) ||
+        scopeSignal.aborted ||
+        !useApp.getState().connected
+      )
+        return;
       setTransferring(true);
       try {
-        await api(`threads/transfer?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ ...choice, ...settingsFor(choice) }) });
-      } catch (error) { reportError(error); }
-      finally { if (!scopeSignal.aborted) setTransferring(false); }
+        await api(`threads/transfer?threadId=${thread.id}`, {
+          method: "POST",
+          body: JSON.stringify({ ...choice, ...settingsFor(choice) }),
+        });
+      } catch (error) {
+        reportError(error);
+      } finally {
+        if (!scopeSignal.aborted) setTransferring(false);
+      }
     };
-    const tuning = (target: WritingModel) => <ModelTuning key={transferKey(target)} settings={settingsFor(target)} model={modelFor(target)} onChange={(patch) => setTransferSettings({ key: transferKey(target), settings: { ...settingsFor(target), ...patch } })} />;
+    const tuning = (target: WritingModel) => (
+      <ModelTuning
+        key={transferKey(target)}
+        settings={settingsFor(target)}
+        model={modelFor(target)}
+        onChange={(patch) =>
+          setTransferSettings({
+            key: transferKey(target),
+            settings: { ...settingsFor(target), ...patch },
+          })
+        }
+      />
+    );
     return { transferring, transfer, tuning };
   }, [thread, providers, transferring, transferSettings, scopeSignal]);
 }

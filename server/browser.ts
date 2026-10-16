@@ -64,10 +64,7 @@ export async function openBrowser(
     throw new Error("Browser belongs to another workspace");
   await openDesktop();
   if (existing) return existing;
-  if (
-    [...sessions.values()].filter((state) => state.projectId === projectId)
-      .length >= 16
-  )
+  if ([...sessions.values()].filter((state) => state.projectId === projectId).length >= 16)
     throw new Error("Close an unused browser tab before opening another.");
   const state: BrowserState = {
     id,
@@ -98,24 +95,28 @@ type BrowserEvent = { time: number; kind: string; level: string; text: string };
 export type BrowserActionResult = BrowserState & { result?: string; events?: BrowserEvent[] };
 
 export function describeBrowserAction(action: string, response: BrowserActionResult): string {
-  const lines = [`${action} done. Page: ${JSON.stringify(response.title)} ${response.url}${response.loading ? " (still loading)" : ""}`];
-  if (response.dialog) lines.push(`A ${response.dialog.type} dialog is open: ${response.dialog.message}. Respond with action dialog.`);
+  const lines = [
+    `${action} done. Page: ${JSON.stringify(response.title)} ${response.url}${response.loading ? " (still loading)" : ""}`,
+  ];
+  if (response.dialog)
+    lines.push(
+      `A ${response.dialog.type} dialog is open: ${response.dialog.message}. Respond with action dialog.`,
+    );
   if (response.error) lines.push(`Page error: ${response.error}`);
-  const events = (response.events ?? []).filter((event) => ["error", "warning"].includes(event.level) || ["download", "tab"].includes(event.kind));
-  for (const event of events.slice(0, 12)) lines.push(`${event.kind} ${event.level}: ${event.text}`);
+  const events = (response.events ?? []).filter(
+    (event) =>
+      ["error", "warning"].includes(event.level) || ["download", "tab"].includes(event.kind),
+  );
+  for (const event of events.slice(0, 12))
+    lines.push(`${event.kind} ${event.level}: ${event.text}`);
   if (events.length > 12) lines.push(`${events.length - 12} more entries in browser_logs.`);
   if (response.result !== undefined) lines.push(`Result: ${response.result}`);
   return lines.join("\n");
 }
 
-export function browserAction(
-  id: string,
-  input: BrowserAction,
-): Promise<BrowserActionResult> {
+export function browserAction(id: string, input: BrowserAction): Promise<BrowserActionResult> {
   if (!sessions.has(id))
-    return Promise.reject(
-      new Error("This browser tab is closed. Open a new browser tab."),
-    );
+    return Promise.reject(new Error("This browser tab is closed. Open a new browser tab."));
   if (input.action === "stop")
     return desktopRequest<BrowserState>("browser.action", { id, input }).then((state) => {
       update(state);
@@ -134,8 +135,7 @@ export function browserAction(
         return response;
       } catch (error) {
         const state = sessions.get(id);
-        if (state)
-          update({ ...state, loading: false, error: (error as Error).message });
+        if (state) update({ ...state, loading: false, error: (error as Error).message });
         throw error;
       }
     });
@@ -145,14 +145,23 @@ export function browserAction(
 
 export async function browserSnapshot(
   id: string,
-  options: { screenshot: boolean; tree: boolean; fullPage: boolean; selector?: string; ref?: string },
+  options: {
+    screenshot: boolean;
+    tree: boolean;
+    fullPage: boolean;
+    selector?: string;
+    ref?: string;
+  },
 ): Promise<{ text: string; image?: string }> {
   if (!sessions.has(id)) throw new Error("Browser tab not found");
   await queues.get(id)?.catch(() => {});
   return desktopRequest("browser.snapshot", { id, ...options });
 }
 
-export async function browserLogs(id: string, clear: boolean): Promise<Array<{ time: number; kind: string; level: string; text: string }>> {
+export async function browserLogs(
+  id: string,
+  clear: boolean,
+): Promise<Array<{ time: number; kind: string; level: string; text: string }>> {
   if (!sessions.has(id)) throw new Error("Browser tab not found");
   return desktopRequest("browser.logs", { id, clear });
 }

@@ -39,10 +39,15 @@ function fixture(overrides = {}) {
 }
 
 test("release notes keep their sections as plain text", () => {
-  assert.deepEqual(parseReleaseNotes("## What's new\n\n- Use **bold** and `code` in [links](https://example.test).\n- Second\n\n## Fixes\n\n* Fixed a thing\n\n[Full changelog](https://example.test)"), [
-    { title: "What's new", items: ["Use bold and code in links.", "Second"] },
-    { title: "Fixes", items: ["Fixed a thing"] },
-  ]);
+  assert.deepEqual(
+    parseReleaseNotes(
+      "## What's new\n\n- Use **bold** and `code` in [links](https://example.test).\n- Second\n\n## Fixes\n\n* Fixed a thing\n\n[Full changelog](https://example.test)",
+    ),
+    [
+      { title: "What's new", items: ["Use bold and code in links.", "Second"] },
+      { title: "Fixes", items: ["Fixed a thing"] },
+    ],
+  );
   assert.deepEqual(parseReleaseNotes(null), []);
 });
 
@@ -56,7 +61,10 @@ test("the updater loads notes for the running version and for an available relea
   });
   t.after(() => control.dispose());
   await tick();
-  assert.deepEqual(control.state().notes, { version: "0.1.0", sections: [{ title: "What's new", items: ["Changes in 0.1.0"] }] });
+  assert.deepEqual(control.state().notes, {
+    version: "0.1.0",
+    sections: [{ title: "What's new", items: ["Changes in 0.1.0"] }],
+  });
   await control.command("check");
   await tick();
   await tick();
@@ -65,7 +73,11 @@ test("the updater loads notes for the running version and for an available relea
 });
 
 test("the updater reports release notes that could not load", async (t) => {
-  const { control } = fixture({ releaseNotes: async () => { throw new Error("GitHub answered 403"); } });
+  const { control } = fixture({
+    releaseNotes: async () => {
+      throw new Error("GitHub answered 403");
+    },
+  });
   t.after(() => control.dispose());
   await tick();
   assert.equal(control.state().notesError, "GitHub answered 403");
@@ -87,22 +99,13 @@ test("release updates require separate download and apply actions and clean up l
   await tick();
   assert.equal(control.state().status, "ready");
   assert.equal(control.state().percent, 100);
-  assert.ok(
-    history.some(
-      (state) => state.status === "downloading" && state.percent === 46.5,
-    ),
-  );
+  assert.ok(history.some((state) => state.status === "downloading" && state.percent === 46.5));
   assert.deepEqual(calls, ["check", "download"]);
   await control.command("check");
   assert.equal(control.state().status, "ready");
   await control.command("install");
   await tick();
-  assert.deepEqual(calls, [
-    "check",
-    "download",
-    "prepare",
-    ["install", false, true],
-  ]);
+  assert.deepEqual(calls, ["check", "download", "prepare", ["install", false, true]]);
   control.dispose();
   assert.equal(updater.eventNames().length, 0);
 });
@@ -227,19 +230,25 @@ test("development builds cannot download and current versions cannot downgrade",
   await assert.rejects(control.command("download"), /new release/);
 });
 
-test("scripted updates finish downloading before shutdown and install the checked version", async t => {
+test("scripted updates finish downloading before shutdown and install the checked version", async (t) => {
   const calls = [];
   let downloaded;
   const { control } = fixture({
     external: {
       check: async () => "0.2.0",
-      download: version => {
+      download: (version) => {
         calls.push(["download", version]);
-        return new Promise(resolve => { downloaded = resolve; });
+        return new Promise((resolve) => {
+          downloaded = resolve;
+        });
       },
-      install: async version => { calls.push(["install", version]); },
+      install: async (version) => {
+        calls.push(["install", version]);
+      },
     },
-    prepareInstall: async () => { calls.push(["prepare"]); },
+    prepareInstall: async () => {
+      calls.push(["prepare"]);
+    },
   });
   t.after(() => control.dispose());
   await control.command("check");

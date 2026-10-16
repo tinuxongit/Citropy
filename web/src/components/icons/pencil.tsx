@@ -23,7 +23,15 @@ function place({ x, y, degrees, scale }: Placement) {
 function Pencil({ at }: { at: Placement }) {
   return (
     <g transform={place(at)}>
-      <Knockout cuts={<path d={`M${BODY.x} 0V24M${ERASER.x} 0V24`} stroke="currentColor" strokeWidth={JOINT_GAP} />}>
+      <Knockout
+        cuts={
+          <path
+            d={`M${BODY.x} 0V24M${ERASER.x} 0V24`}
+            stroke="currentColor"
+            strokeWidth={JOINT_GAP}
+          />
+        }
+      >
         <rect {...BODY} />
         <rect {...ERASER} />
         <path d={TIP} stroke="currentColor" strokeWidth={TIP_ROUNDING} strokeLinejoin="round" />
@@ -33,17 +41,31 @@ function Pencil({ at }: { at: Placement }) {
 }
 
 function PencilGap({ at }: { at: Placement }) {
-  return <path d={SILHOUETTE} transform={place(at)} stroke="currentColor" strokeWidth={(2 * GAP) / at.scale} strokeLinejoin="round" />;
+  return (
+    <path
+      d={SILHOUETTE}
+      transform={place(at)}
+      stroke="currentColor"
+      strokeWidth={(2 * GAP) / at.scale}
+      strokeLinejoin="round"
+    />
+  );
 }
 
 export function EditIcon(props: IconProps) {
-  return <Icon {...props}><Pencil at={EDIT} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Pencil at={EDIT} />
+    </Icon>
+  );
 }
 
 export function ComposeIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <Knockout cuts={<PencilGap at={COMPOSE} />}><rect {...COMPOSE_SHEET} /></Knockout>
+      <Knockout cuts={<PencilGap at={COMPOSE} />}>
+        <rect {...COMPOSE_SHEET} />
+      </Knockout>
       <Pencil at={COMPOSE} />
     </Icon>
   );
@@ -52,7 +74,18 @@ export function ComposeIcon(props: IconProps) {
 export function NotebookPenIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <Knockout cuts={<><PencilGap at={NOTEBOOK_PEN} /><path d={`M${NOTEBOOK_SPINE_X} 0V24`} stroke="currentColor" strokeWidth={NOTEBOOK_SPINE_WIDTH} /></>}>
+      <Knockout
+        cuts={
+          <>
+            <PencilGap at={NOTEBOOK_PEN} />
+            <path
+              d={`M${NOTEBOOK_SPINE_X} 0V24`}
+              stroke="currentColor"
+              strokeWidth={NOTEBOOK_SPINE_WIDTH}
+            />
+          </>
+        }
+      >
         <rect {...NOTEBOOK} />
       </Knockout>
       <Pencil at={NOTEBOOK_PEN} />

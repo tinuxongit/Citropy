@@ -10,9 +10,23 @@ test("desktop diagnostics persist only lifecycle metadata with private permissio
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const file = join(directory, "desktop.log");
   const diagnose = desktopDiagnostics(directory);
-  diagnose("backend.exited", { threadId: 123, code: null, signal: "SIGBUS", stderr: "private prompt", url: "https://secret.test/?token=secret", token: "secret" });
+  diagnose("backend.exited", {
+    threadId: 123,
+    code: null,
+    signal: "SIGBUS",
+    stderr: "private prompt",
+    url: "https://secret.test/?token=secret",
+    token: "secret",
+  });
   const entry = JSON.parse(readFileSync(file, "utf8"));
-  assert.deepEqual(Object.keys(entry).sort(), ["code", "event", "pid", "signal", "threadId", "time"]);
+  assert.deepEqual(Object.keys(entry).sort(), [
+    "code",
+    "event",
+    "pid",
+    "signal",
+    "threadId",
+    "time",
+  ]);
   assert.equal(entry.threadId, 123);
   assert.equal(entry.code, null);
   assert.equal(entry.signal, "SIGBUS");

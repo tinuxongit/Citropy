@@ -32,7 +32,8 @@ export function CitropySkills() {
   }, []);
   const citropySkills = useMemo(() => {
     const byPath = new Map<string, SkillInfo>();
-    for (const skill of skills ?? []) if (skill.scope === "citropy" && !byPath.has(skill.path)) byPath.set(skill.path, skill);
+    for (const skill of skills ?? [])
+      if (skill.scope === "citropy" && !byPath.has(skill.path)) byPath.set(skill.path, skill);
     return [...byPath.values()];
   }, [skills]);
   const perform = async (path: string, method: string, input: object) => {
@@ -49,15 +50,24 @@ export function CitropySkills() {
     }
   };
   const save = async (draft: CitropySkillDraft) => {
-    if (await perform("skills/citropy", "PUT", { id: editing === "new" ? undefined : editing?.id, ...draft })) setEditing(undefined);
+    if (
+      await perform("skills/citropy", "PUT", {
+        id: editing === "new" ? undefined : editing?.id,
+        ...draft,
+      })
+    )
+      setEditing(undefined);
   };
   const remove = async (skill: SkillInfo) => {
-    if (await confirmAction({
-      title: `Delete ${skill.name}?`,
-      description: "Agents stop using this skill. Citropy keeps a recovery copy in deleted-skills.",
-      label: "Delete skill",
-      danger: true,
-    })) {
+    if (
+      await confirmAction({
+        title: `Delete ${skill.name}?`,
+        description:
+          "Agents stop using this skill. Citropy keeps a recovery copy in deleted-skills.",
+        label: "Delete skill",
+        danger: true,
+      })
+    ) {
       setOpenId("");
       await perform("skills", "PATCH", { id: skill.id, action: "delete" });
     }
@@ -66,7 +76,8 @@ export function CitropySkills() {
   return (
     <>
       <p className="feature-note">
-        Citropy skills work with Claude Code, Codex, and OpenCode in every project. Agents see each skill's name and when to use it, and open the full instructions when a task matches.
+        Citropy skills work with Claude Code, Codex, and OpenCode in every project. Agents see each
+        skill's name and when to use it, and open the full instructions when a task matches.
       </p>
       {editing ? (
         <CitropySkillForm
@@ -78,7 +89,12 @@ export function CitropySkills() {
         />
       ) : (
         <div className="feature-save">
-          <button className="btn" data-variant="primary" disabled={!skills} onClick={() => setEditing("new")}>
+          <button
+            className="btn"
+            data-variant="primary"
+            disabled={!skills}
+            onClick={() => setEditing("new")}
+          >
             <PlusIcon size={15} />
             New skill
           </button>
@@ -97,7 +113,11 @@ export function CitropySkills() {
               checked: skill.enabled,
               label: `Enable ${skill.name}, ${SOURCE}`,
               disabled: busy,
-              onChange: () => void perform("skills", "PATCH", { id: skill.id, action: skill.enabled ? "disable" : "enable" }),
+              onChange: () =>
+                void perform("skills", "PATCH", {
+                  id: skill.id,
+                  action: skill.enabled ? "disable" : "enable",
+                }),
             }}
             onOpen={() => setOpenId(skill.id)}
           />
@@ -109,21 +129,41 @@ export function CitropySkills() {
           <p>No Citropy skills yet.</p>
         </div>
       )}
-      <AnimatePresence>{opened && (
-        <SkillDetails
-          skill={opened}
-          icon={MARK}
-          source={SOURCE}
-          onClose={() => setOpenId("")}
-          actions={<>
-            <button className="btn dialog-footer-start" data-variant="ghost" type="button" disabled={busy} onClick={() => void remove(opened)}>
-              <TrashIcon size={15} />
-              Delete
-            </button>
-            <button className="btn" type="button" disabled={busy} onClick={() => { setOpenId(""); setEditing(opened); }}>Edit</button>
-          </>}
-        />
-      )}</AnimatePresence>
+      <AnimatePresence>
+        {opened && (
+          <SkillDetails
+            skill={opened}
+            icon={MARK}
+            source={SOURCE}
+            onClose={() => setOpenId("")}
+            actions={
+              <>
+                <button
+                  className="btn dialog-footer-start"
+                  data-variant="ghost"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void remove(opened)}
+                >
+                  <TrashIcon size={15} />
+                  Delete
+                </button>
+                <button
+                  className="btn"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setOpenId("");
+                    setEditing(opened);
+                  }}
+                >
+                  Edit
+                </button>
+              </>
+            }
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

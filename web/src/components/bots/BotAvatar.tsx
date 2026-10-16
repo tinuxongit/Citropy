@@ -19,7 +19,15 @@ function viewBox(look: BotLook): string {
   return `${-headroom / 2} ${-headroom} ${side} ${side}`;
 }
 
-export function BotAvatar({ bot, size, mood = "idle" }: { bot: BotLook & { id?: string }; size: number; mood?: BotMood }) {
+export function BotAvatar({
+  bot,
+  size,
+  mood = "idle",
+}: {
+  bot: BotLook & { id?: string };
+  size: number;
+  mood?: BotMood;
+}) {
   const { body, face } = shapeGeometry(bot.shape);
   return (
     <svg

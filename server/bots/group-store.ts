@@ -14,42 +14,50 @@ const groupsFile = join(dataRoot, "bot-groups.json");
 
 function loadGroups(): BotGroup[] {
   if (!existsSync(groupsFile)) return [];
-  return (JSON.parse(readFileSync(groupsFile, "utf8")) as Omit<BotGroup, "working">[]).map(group => ({ ...group, working: [] }));
+  return (JSON.parse(readFileSync(groupsFile, "utf8")) as Omit<BotGroup, "working">[]).map(
+    (group) => ({ ...group, working: [] }),
+  );
 }
 
 function checkMembers(value: unknown): string[] {
-  if (!Array.isArray(value) || value.some(id => typeof id !== "string")) throw new Error("Choose the bots for this group.");
+  if (!Array.isArray(value) || value.some((id) => typeof id !== "string"))
+    throw new Error("Choose the bots for this group.");
   const ids = [...new Set(value as string[])];
   if (ids.length < BOT_LIMITS.groupMembersMin || ids.length > BOT_LIMITS.groupMembersMax)
-    throw new Error(`A group holds ${BOT_LIMITS.groupMembersMin} to ${BOT_LIMITS.groupMembersMax} bots.`);
+    throw new Error(
+      `A group holds ${BOT_LIMITS.groupMembersMin} to ${BOT_LIMITS.groupMembersMax} bots.`,
+    );
   for (const id of ids) botStore.get(id);
   return ids;
 }
 
 function joinedNames(bots: Bot[]): string {
-  return bots.map(bot => bot.name).join(", ").slice(0, BOT_LIMITS.groupNameLength);
+  return bots
+    .map((bot) => bot.name)
+    .join(", ")
+    .slice(0, BOT_LIMITS.groupNameLength);
 }
 
 function previewLine(message: Message): string | undefined {
-  const body = message.parts.findLast(part => part.kind === "text" && part.text.trim());
+  const body = message.parts.findLast((part) => part.kind === "text" && part.text.trim());
   if (message.role === "system" || body?.kind !== "text") return undefined;
   const author = message.origin?.kind === "bot" ? message.origin.name : "You";
   return previewText(`${author}: ${body.text}`);
 }
 
 class GroupStore {
-  groups = new Map(loadGroups().map(group => [group.id, group]));
+  groups = new Map(loadGroups().map((group) => [group.id, group]));
 
   constructor() {
-    bus.subscribe(event => {
+    bus.subscribe((event) => {
       if (event.t === "thread.remove") {
         const group = this.byThread(event.id);
         if (group) this.#forget(group.id);
       }
       if (event.t === "bot.remove") {
-        for (const group of this.list().filter(entry => entry.botIds.includes(event.id))) {
-          group.botIds = group.botIds.filter(id => id !== event.id);
-          group.working = group.working.filter(id => id !== event.id);
+        for (const group of this.list().filter((entry) => entry.botIds.includes(event.id))) {
+          group.botIds = group.botIds.filter((id) => id !== event.id);
+          group.working = group.working.filter((id) => id !== event.id);
           this.#changed(group);
         }
       }
@@ -76,21 +84,31 @@ class GroupStore {
   }
 
   byThread(threadId: string): BotGroup | undefined {
-    return this.list().find(group => group.threadId === threadId);
+    return this.list().find((group) => group.threadId === threadId);
   }
 
   members(group: BotGroup): Bot[] {
-    return group.botIds.map(id => botStore.get(id));
+    return group.botIds.map((id) => botStore.get(id));
   }
 
   assertRoom(botIds: unknown): string[] {
-    if (this.groups.size >= BOT_LIMITS.groups) throw new Error(`You can keep up to ${BOT_LIMITS.groups} groups. Delete one to make room.`);
+    if (this.groups.size >= BOT_LIMITS.groups)
+      throw new Error(`You can keep up to ${BOT_LIMITS.groups} groups. Delete one to make room.`);
     return checkMembers(botIds);
   }
 
   create(id: string, threadId: string, botIds: string[]): BotGroup {
     const members = this.assertRoom(botIds);
-    const group: BotGroup = { id, name: joinedNames(members.map(member => botStore.get(member))), botIds: members, threadId, pinned: false, hidden: false, createdAt: Date.now(), working: [] };
+    const group: BotGroup = {
+      id,
+      name: joinedNames(members.map((member) => botStore.get(member))),
+      botIds: members,
+      threadId,
+      pinned: false,
+      hidden: false,
+      createdAt: Date.now(),
+      working: [],
+    };
     this.groups.set(id, group);
     store.patchThread(threadId, { title: group.name });
     this.#changed(group);
@@ -111,16 +129,25 @@ class GroupStore {
         }
         case "botIds": {
           const next = checkMembers(value);
-          for (const added of next.filter(entry => !group.botIds.includes(entry))) addNotice(group.threadId, `Added ${botStore.get(added).name}`);
-          for (const removed of group.botIds.filter(entry => !next.includes(entry))) addNotice(group.threadId, `Removed ${botStore.get(removed).name}`);
+          for (const added of next.filter((entry) => !group.botIds.includes(entry)))
+            addNotice(group.threadId, `Added ${botStore.get(added).name}`);
+          for (const removed of group.botIds.filter((entry) => !next.includes(entry)))
+            addNotice(group.threadId, `Removed ${botStore.get(removed).name}`);
           group.botIds = next;
-          group.working = group.working.filter(entry => next.includes(entry));
+          group.working = group.working.filter((entry) => next.includes(entry));
           break;
         }
-        case "pinned": group.pinned = flag(value, "Pinned"); break;
-        case "hidden": group.hidden = flag(value, "Hidden"); break;
-        case "unread": group.unread = flag(value, "Unread"); break;
-        default: throw new Error(`Groups have no ${key} setting.`);
+        case "pinned":
+          group.pinned = flag(value, "Pinned");
+          break;
+        case "hidden":
+          group.hidden = flag(value, "Hidden");
+          break;
+        case "unread":
+          group.unread = flag(value, "Unread");
+          break;
+        default:
+          throw new Error(`Groups have no ${key} setting.`);
       }
     }
     this.#changed(group);
@@ -130,7 +157,9 @@ class GroupStore {
   setWorking(id: string, botId: string, working: boolean): void {
     const group = this.groups.get(id);
     if (!group || group.working.includes(botId) === working) return;
-    group.working = working ? [...group.working, botId] : group.working.filter(entry => entry !== botId);
+    group.working = working
+      ? [...group.working, botId]
+      : group.working.filter((entry) => entry !== botId);
     bus.emit({ t: "group.upsert", group });
   }
 
@@ -146,7 +175,10 @@ class GroupStore {
   }
 
   #save(): void {
-    saveJson(groupsFile, this.list().map(({ working: _working, ...group }) => group));
+    saveJson(
+      groupsFile,
+      this.list().map(({ working: _working, ...group }) => group),
+    );
   }
 }
 

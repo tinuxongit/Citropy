@@ -2,7 +2,12 @@ import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 
-export function Collapsible({ open, className, children, animated = true }: {
+export function Collapsible({
+  open,
+  className,
+  children,
+  animated = true,
+}: {
   open: boolean;
   className: string;
   children: ReactNode;
@@ -17,7 +22,11 @@ export function Collapsible({ open, className, children, animated = true }: {
           className={`collapsible ${className}`}
           custom={animated}
           variants={{
-            hidden: (moving: boolean) => ({ gridTemplateRows: "0fr", opacity: 0, transition: { duration: moving ? duration : 0 } }),
+            hidden: (moving: boolean) => ({
+              gridTemplateRows: "0fr",
+              opacity: 0,
+              transition: { duration: moving ? duration : 0 },
+            }),
             shown: { gridTemplateRows: "1fr", opacity: 1 },
           }}
           initial={animated ? "hidden" : false}

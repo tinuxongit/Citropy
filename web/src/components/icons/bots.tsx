@@ -8,7 +8,13 @@ const { body, face } = shapeGeometry("cloud");
 export function BotsIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <Knockout cuts={<g transform={`${FIT} translate(${face.x} ${face.y})`}><BotEyes face="neutral" /></g>}>
+      <Knockout
+        cuts={
+          <g transform={`${FIT} translate(${face.x} ${face.y})`}>
+            <BotEyes face="neutral" />
+          </g>
+        }
+      >
         <g transform={FIT}>{body}</g>
       </Knockout>
     </Icon>

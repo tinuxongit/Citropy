@@ -28,7 +28,20 @@ function pullRequestNumber(url: string): string | undefined {
   return url.split("/").at(-1);
 }
 
-export const ThreadRow = memo(function ThreadRow({ thread, environment, now, query, match, picked, drag, preview, describedBy, tree, onFinished, onConversation }: {
+export const ThreadRow = memo(function ThreadRow({
+  thread,
+  environment,
+  now,
+  query,
+  match,
+  picked,
+  drag,
+  preview,
+  describedBy,
+  tree,
+  onFinished,
+  onConversation,
+}: {
   thread: ThreadMeta;
   environment: string;
   now: number;
@@ -43,7 +56,9 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
   onConversation: () => void;
 }) {
   const selected = useApp((state) => state.activeThreadId === thread.id);
-  const activeChildId = useApp((state) => tree.childrenByParent.has(thread.id) ? state.activeThreadId : null);
+  const activeChildId = useApp((state) =>
+    tree.childrenByParent.has(thread.id) ? state.activeThreadId : null,
+  );
   const slice = environmentSlice(environment);
   const connected = slice?.connected ?? false;
   const current = useEnvironments().activeId === environment;
@@ -52,7 +67,9 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
   const { status, label } = threadActivity(thread);
   const working = status !== "idle" && status !== "stopped";
   const wasWorking = useRef(false);
-  useEffect(() => { if (working) wasWorking.current = true; }, [working]);
+  useEffect(() => {
+    if (working) wasWorking.current = true;
+  }, [working]);
   const snoozedUntil = thread.snoozedUntil && !thread.archived ? thread.snoozedUntil : undefined;
   const busy = thread.running || thread.status === "awaiting";
   const blocked = finishBlocked(thread, tree);
@@ -63,10 +80,24 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
     if (!thread.finished) onFinished();
   };
   const remove = () => void removeThread(thread.id, environment).catch(reportError);
-  const rowActions: MenuItem[] = touch ? [
-    { id: "finish", label: thread.finished ? "Reopen" : "Finish", icon: thread.finished ? <RotateCcwIcon size={15} /> : <CheckIcon size={15} />, disabled: !connected || blocked, onSelect: finish },
-    { id: "delete", label: "Delete", icon: <TrashIcon size={15} />, danger: true, onSelect: remove },
-  ] : [];
+  const rowActions: MenuItem[] = touch
+    ? [
+        {
+          id: "finish",
+          label: thread.finished ? "Reopen" : "Finish",
+          icon: thread.finished ? <RotateCcwIcon size={15} /> : <CheckIcon size={15} />,
+          disabled: !connected || blocked,
+          onSelect: finish,
+        },
+        {
+          id: "delete",
+          label: "Delete",
+          icon: <TrashIcon size={15} />,
+          danger: true,
+          onSelect: remove,
+        },
+      ]
+    : [];
 
   const openMenu = (card: HTMLElement) => {
     preview.hide();
@@ -78,9 +109,11 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
     preview.hide();
     onConversation();
     if (environment !== environmentId()) {
-      void openOnEnvironment(environment, thread.projectId, thread.id).then(() => {
-        useApp.setState({ searchMessageId: match?.messageId ?? null });
-      }).catch(reportError);
+      void openOnEnvironment(environment, thread.projectId, thread.id)
+        .then(() => {
+          useApp.setState({ searchMessageId: match?.messageId ?? null });
+        })
+        .catch(reportError);
       return;
     }
     if (thread.projectId !== useApp.getState().activeProjectId) selectProject(thread.projectId);
@@ -124,7 +157,9 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
           className="thread-row"
           data-active={active}
           aria-label={thread.title}
-          aria-description={snoozedUntil ? `Wakes ${dateTime(snoozedUntil)}` : dateTime(thread.updatedAt)}
+          aria-description={
+            snoozedUntil ? `Wakes ${dateTime(snoozedUntil)}` : dateTime(thread.updatedAt)
+          }
           aria-describedby={describedBy}
           aria-current={active ? "page" : undefined}
           onPointerEnter={(event) => {
@@ -132,7 +167,10 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
             preview.show(event.currentTarget, environment, thread.id);
           }}
           onPointerLeave={preview.leave}
-          onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) preview.show(event.currentTarget, environment, thread.id, true); }}
+          onFocus={(event) => {
+            if (event.currentTarget.matches(":focus-visible"))
+              preview.show(event.currentTarget, environment, thread.id, true);
+          }}
           onBlur={preview.hide}
           onClick={open}
         >
@@ -143,49 +181,81 @@ export const ThreadRow = memo(function ThreadRow({ thread, environment, now, que
               <ThreadPulse status={status} />
             </span>
           ) : thread.unread ? (
-            <span className="thread-status" data-status="unread" role="img" aria-label="Finished, not opened yet">
-              <CircleCheckIcon size={14} className="thread-done" data-animate={wasWorking.current} />
+            <span
+              className="thread-status"
+              data-status="unread"
+              role="img"
+              aria-label="Finished, not opened yet"
+            >
+              <CircleCheckIcon
+                size={14}
+                className="thread-done"
+                data-animate={wasWorking.current}
+              />
             </span>
           ) : snoozedUntil ? (
-            <time className="thread-row-time thread-row-wake" dateTime={new Date(snoozedUntil).toISOString()} title={`Wakes ${dateTime(snoozedUntil)}`}>
-              <HourglassIcon size={11} />{until(Math.max(snoozedUntil, now + 60_000), now)}
+            <time
+              className="thread-row-time thread-row-wake"
+              dateTime={new Date(snoozedUntil).toISOString()}
+              title={`Wakes ${dateTime(snoozedUntil)}`}
+            >
+              <HourglassIcon size={11} />
+              {until(Math.max(snoozedUntil, now + 60_000), now)}
             </time>
-          ) : <time className="thread-row-time" dateTime={new Date(thread.updatedAt).toISOString()}>{since(thread.updatedAt, now)}</time>}
+          ) : (
+            <time className="thread-row-time" dateTime={new Date(thread.updatedAt).toISOString()}>
+              {since(thread.updatedAt, now)}
+            </time>
+          )}
         </button>
         <div className="thread-row-actions" onPointerEnter={preview.hide}>
           <ConversationMenu thread={thread} environment={environment} rowActions={rowActions} />
-          {thread.pullRequest && <a
-            className="thread-row-pr"
-            href={thread.pullRequest}
-            target="_blank"
-            rel="noreferrer noopener"
-            aria-label={`Pull request #${pullRequestNumber(thread.pullRequest)}`}
-            title={`Pull request #${pullRequestNumber(thread.pullRequest)}`}
-          ><PullRequestIcon size={13} /></a>}
-          {!touch && <>
-            <button
-              className="thread-row-finish"
-              type="button"
-              title={busy ? "Stop this conversation before finishing" : finishLabel}
-              aria-label={finishLabel}
-              disabled={!connected || blocked}
-              onClick={finish}
+          {thread.pullRequest && (
+            <a
+              className="thread-row-pr"
+              href={thread.pullRequest}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label={`Pull request #${pullRequestNumber(thread.pullRequest)}`}
+              title={`Pull request #${pullRequestNumber(thread.pullRequest)}`}
             >
-              {thread.finished ? <RotateCcwIcon size={14} /> : <CheckIcon size={15} />}
-            </button>
-            <button
-              className="thread-row-kill"
-              type="button"
-              aria-label={`Delete ${thread.title}`}
-              title={`Delete ${thread.title}`}
-              onClick={remove}
-            >
-              <TrashIcon size={13} />
-            </button>
-          </>}
+              <PullRequestIcon size={13} />
+            </a>
+          )}
+          {!touch && (
+            <>
+              <button
+                className="thread-row-finish"
+                type="button"
+                title={busy ? "Stop this conversation before finishing" : finishLabel}
+                aria-label={finishLabel}
+                disabled={!connected || blocked}
+                onClick={finish}
+              >
+                {thread.finished ? <RotateCcwIcon size={14} /> : <CheckIcon size={15} />}
+              </button>
+              <button
+                className="thread-row-kill"
+                type="button"
+                aria-label={`Delete ${thread.title}`}
+                title={`Delete ${thread.title}`}
+                onClick={remove}
+              >
+                <TrashIcon size={13} />
+              </button>
+            </>
+          )}
         </div>
       </div>
-      {!query && <ThreadChildren parent={thread} environment={environment} {...tree} activeThreadId={current ? activeChildId : null} onConversation={onConversation} />}
+      {!query && (
+        <ThreadChildren
+          parent={thread}
+          environment={environment}
+          {...tree}
+          activeThreadId={current ? activeChildId : null}
+          onConversation={onConversation}
+        />
+      )}
     </div>
   );
 });

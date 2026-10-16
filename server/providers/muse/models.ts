@@ -11,9 +11,11 @@ const FALLBACK_EFFORT = "high";
 
 function modelOption(model: ModelCatalogEntry): ModelOption {
   const reported = Array.isArray(model.variants);
-  const efforts = (reported ? model.variants as string[] : FALLBACK_EFFORTS).filter(effort => EFFORTS.includes(effort));
+  const efforts = (reported ? (model.variants as string[]) : FALLBACK_EFFORTS).filter((effort) =>
+    EFFORTS.includes(effort),
+  );
   const preferred = reported ? model.defaultReasoningEffort : FALLBACK_EFFORT;
-  const defaultEffort = efforts.find(effort => effort === preferred) ?? efforts[0];
+  const defaultEffort = efforts.find((effort) => effort === preferred) ?? efforts[0];
   return {
     id: model.modelId,
     label: model.displayLabel.trim() || model.modelId,
@@ -27,7 +29,7 @@ function modelOption(model: ModelCatalogEntry): ModelOption {
 
 export function catalogModels(catalog: ModelListResult): ModelOption[] {
   const seen = new Set<string>();
-  return catalog.models.flatMap(model => {
+  return catalog.models.flatMap((model) => {
     if (model.providerId !== MUSE_PROVIDER || seen.has(model.modelId)) return [];
     seen.add(model.modelId);
     return [modelOption(model)];
@@ -35,10 +37,19 @@ export function catalogModels(catalog: ModelListResult): ModelOption[] {
 }
 
 export async function listMuseModels(launch: ProviderLaunch = {}): Promise<ModelOption[]> {
-  const host = await MuseHost.start({ launch, cwd: tmpdir(), access: "readOnly", sessionLog: false, startupTimeoutMs: CATALOG_TIMEOUT_MS });
+  const host = await MuseHost.start({
+    launch,
+    cwd: tmpdir(),
+    access: "readOnly",
+    sessionLog: false,
+    startupTimeoutMs: CATALOG_TIMEOUT_MS,
+  });
   try {
     const models = catalogModels(await host.request<ModelListResult>("model/list"));
-    if (!models.length) throw new Error("Muse Code lists no models for this account. Check that your Meta account has a Muse Code subscription, then refresh.");
+    if (!models.length)
+      throw new Error(
+        "Muse Code lists no models for this account. Check that your Meta account has a Muse Code subscription, then refresh.",
+      );
     return models;
   } finally {
     await host.close();

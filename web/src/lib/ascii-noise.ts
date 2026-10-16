@@ -150,14 +150,18 @@ function measureCellWidth(): number {
 }
 
 function glyphAtlas(color: string, width: number, height: number, scale: number): OffscreenCanvas {
-  const atlas = new OffscreenCanvas(Math.ceil(width * GLYPHS.length * scale), Math.ceil(height * scale));
+  const atlas = new OffscreenCanvas(
+    Math.ceil(width * GLYPHS.length * scale),
+    Math.ceil(height * scale),
+  );
   const context = atlas.getContext("2d")!;
   context.scale(scale, scale);
   context.font = ASCII_FONT;
   context.fillStyle = color;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  for (let index = 0; index < GLYPHS.length; index++) context.fillText(GLYPHS[index]!, width * (index + 0.5), height / 2);
+  for (let index = 0; index < GLYPHS.length; index++)
+    context.fillText(GLYPHS[index]!, width * (index + 0.5), height / 2);
   return atlas;
 }
 
@@ -169,13 +173,25 @@ function rgba(color: string): [number, number, number, number] {
   return [red! / 255, green! / 255, blue! / 255, alpha! / 255];
 }
 
-function stars(width: number, height: number, scale: number): { shapes: Float32Array; motions: Float32Array; count: number } {
+function stars(
+  width: number,
+  height: number,
+  scale: number,
+): { shapes: Float32Array; motions: Float32Array; count: number } {
   const count = Math.round((width * height) / STAR_AREA);
   const shapes = new Float32Array(count * 4);
   const motions = new Float32Array(count * 2);
   const line = Math.max(1, Math.round(scale));
   for (let index = 0; index < count; index++) {
-    shapes.set([Math.round(hash(index, 1, 7) * width * scale), Math.round(hash(index, 2, 7) * height * scale), Math.round((hash(index, 5, 7) > 0.85 ? 4 : 1.5) * scale), line], index * 4);
+    shapes.set(
+      [
+        Math.round(hash(index, 1, 7) * width * scale),
+        Math.round(hash(index, 2, 7) * height * scale),
+        Math.round((hash(index, 5, 7) > 0.85 ? 4 : 1.5) * scale),
+        line,
+      ],
+      index * 4,
+    );
     motions.set([hash(index, 3, 7) * Math.PI * 2, 0.4 + hash(index, 4, 7) * 1.2], index * 2);
   }
   return { shapes, motions, count };
@@ -183,28 +199,58 @@ function stars(width: number, height: number, scale: number): { shapes: Float32A
 
 function compile(gl: WebGL2RenderingContext, vertex: string, fragment: string): WebGLProgram {
   const program = gl.createProgram();
-  for (const [type, source] of [[gl.VERTEX_SHADER, vertex], [gl.FRAGMENT_SHADER, fragment]] as const) {
+  for (const [type, source] of [
+    [gl.VERTEX_SHADER, vertex],
+    [gl.FRAGMENT_SHADER, fragment],
+  ] as const) {
     const shader = gl.createShader(type)!;
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(`The ASCII background shader failed to compile: ${gl.getShaderInfoLog(shader)}`);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+      throw new Error(
+        `The ASCII background shader failed to compile: ${gl.getShaderInfoLog(shader)}`,
+      );
     gl.attachShader(program, shader);
     gl.deleteShader(shader);
   }
   gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(`The ASCII background shader failed to link: ${gl.getProgramInfoLog(program)}`);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+    throw new Error(`The ASCII background shader failed to link: ${gl.getProgramInfoLog(program)}`);
   return program;
 }
 
-export interface StageArea { left: number; center: number }
+export interface StageArea {
+  left: number;
+  center: number;
+}
 
-function start(canvas: HTMLCanvasElement, { color, starColor, animate, stage: initialStage }: { color: string; starColor: string; animate: boolean; stage: StageArea }) {
-  const gl = canvas.getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false, powerPreference: "low-power" });
-  if (!gl) throw new Error("The ASCII background needs WebGL 2, which this display doesn't provide. Choose another background in Appearance settings.");
+function start(
+  canvas: HTMLCanvasElement,
+  {
+    color,
+    starColor,
+    animate,
+    stage: initialStage,
+  }: { color: string; starColor: string; animate: boolean; stage: StageArea },
+) {
+  const gl = canvas.getContext("webgl2", {
+    alpha: true,
+    premultipliedAlpha: true,
+    antialias: false,
+    depth: false,
+    stencil: false,
+    powerPreference: "low-power",
+  });
+  if (!gl)
+    throw new Error(
+      "The ASCII background needs WebGL 2, which this display doesn't provide. Choose another background in Appearance settings.",
+    );
   const cellWidth = measureCellWidth();
   const star = rgba(starColor);
   // Each start picks its own diagonal for the streaks to drift along.
-  const heading = (0.26 + Math.random() * 0.44) * (Math.random() < 0.5 ? 1 : -1) + (Math.random() < 0.5 ? 0 : Math.PI);
+  const heading =
+    (0.26 + Math.random() * 0.44) * (Math.random() < 0.5 ? 1 : -1) +
+    (Math.random() < 0.5 ? 0 : Math.PI);
   let stage = initialStage;
   let scale = 1;
   let width = 0;
@@ -233,9 +279,21 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, stage: in
     cellState = compile(gl, FULL_SCREEN, CELL_STATE);
     cells = compile(gl, FULL_SCREEN, CELLS);
     starProgram = compile(gl, STAR_SHAPE, STAR_FILL);
-    stateUniforms = Object.fromEntries(["time", "cell", "heading"].map((name) => [name, gl.getUniformLocation(cellState, name)]));
-    cellUniforms = Object.fromEntries(["atlas", "cellState", "cell", "height", ...FADE_UNIFORMS].map((name) => [name, gl.getUniformLocation(cells, name)]));
-    starUniforms = Object.fromEntries(["size", "time", "starColor", "height", ...FADE_UNIFORMS].map((name) => [name, gl.getUniformLocation(starProgram, name)]));
+    stateUniforms = Object.fromEntries(
+      ["time", "cell", "heading"].map((name) => [name, gl.getUniformLocation(cellState, name)]),
+    );
+    cellUniforms = Object.fromEntries(
+      ["atlas", "cellState", "cell", "height", ...FADE_UNIFORMS].map((name) => [
+        name,
+        gl.getUniformLocation(cells, name),
+      ]),
+    );
+    starUniforms = Object.fromEntries(
+      ["size", "time", "starColor", "height", ...FADE_UNIFORMS].map((name) => [
+        name,
+        gl.getUniformLocation(starProgram, name),
+      ]),
+    );
     atlas = gl.createTexture();
     stateTexture = gl.createTexture();
     stateBuffer = gl.createFramebuffer();
@@ -243,7 +301,10 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, stage: in
     motionBuffer = gl.createBuffer();
     starLayout = gl.createVertexArray();
     gl.bindVertexArray(starLayout);
-    for (const [name, buffer, components] of [["star", shapeBuffer, 4], ["motion", motionBuffer, 2]] as const) {
+    for (const [name, buffer, components] of [
+      ["star", shapeBuffer, 4],
+      ["motion", motionBuffer, 2],
+    ] as const) {
       const location = gl.getAttribLocation(starProgram, name);
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       gl.enableVertexAttribArray(location);
@@ -308,7 +369,14 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, stage: in
     canvas.height = Math.round(height * scale);
     gl.bindTexture(gl.TEXTURE_2D, atlas);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, glyphAtlas(color, cellWidth, CELL_HEIGHT, scale));
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      glyphAtlas(color, cellWidth, CELL_HEIGHT, scale),
+    );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     columns = Math.ceil(canvas.width / (cellWidth * scale));
@@ -368,16 +436,26 @@ function start(canvas: HTMLCanvasElement, { color, starColor, animate, stage: in
   };
 }
 
-export function startAsciiNoise(canvas: HTMLCanvasElement, { color, starColor, animate, stage }: {
-  color: string;
-  starColor: string;
-  animate: boolean;
-  stage: () => StageArea;
-}): () => void {
+export function startAsciiNoise(
+  canvas: HTMLCanvasElement,
+  {
+    color,
+    starColor,
+    animate,
+    stage,
+  }: {
+    color: string;
+    starColor: string;
+    animate: boolean;
+    stage: () => StageArea;
+  },
+): () => void {
   const scale = () => Math.min(2, window.devicePixelRatio || 1);
   const noise = start(canvas, { color, starColor, animate, stage: stage() });
   noise.resize(canvas.clientWidth, canvas.clientHeight, scale());
-  const observer = new ResizeObserver(() => noise.resize(canvas.clientWidth, canvas.clientHeight, scale()));
+  const observer = new ResizeObserver(() =>
+    noise.resize(canvas.clientWidth, canvas.clientHeight, scale()),
+  );
   observer.observe(canvas);
   const layers = canvas.parentElement!;
   const moved = () => noise.setStage(stage());

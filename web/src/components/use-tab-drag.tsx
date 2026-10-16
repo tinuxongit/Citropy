@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from "react";
 import { flushSync } from "react-dom";
 import type { DropEdge } from "../../../shared/move-beside.ts";
 import { dropShifts, type ListDrop } from "./sidebar/list-drag.ts";
@@ -25,13 +32,20 @@ function tabSlots(list: HTMLElement): TabSlot[] {
   }));
 }
 
-function tabDrop(slots: TabSlot[], source: TabSlot, left: number, span: number): ListDrop | undefined {
+function tabDrop(
+  slots: TabSlot[],
+  source: TabSlot,
+  left: number,
+  span: number,
+): ListDrop | undefined {
   const sourceIndex = slots.indexOf(source);
   const others = slots.filter((slot) => slot !== source);
-  const leadingEdge = (slot: TabSlot) => slot.left < source.left ? left : left + source.width;
+  const leadingEdge = (slot: TabSlot) => (slot.left < source.left ? left : left + source.width);
   const index = others.filter((slot) => slot.left + slot.width / 2 < leadingEdge(slot)).length;
   if (index === sourceIndex) return undefined;
-  return index < others.length ? { id: others[index]!.id, edge: "before", span } : { id: others.at(-1)!.id, edge: "after", span };
+  return index < others.length
+    ? { id: others[index]!.id, edge: "before", span }
+    : { id: others.at(-1)!.id, edge: "after", span };
 }
 
 function glideToLayout(slots: TabSlot[], scale: number, reorder: () => void): void {
@@ -52,7 +66,12 @@ function glideToLayout(slots: TabSlot[], scale: number, reorder: () => void): vo
   }
 }
 
-export function useTabDrag({ strip, enabled, resetKey, onMove }: {
+export function useTabDrag({
+  strip,
+  enabled,
+  resetKey,
+  onMove,
+}: {
   strip: RefObject<HTMLElement | null>;
   enabled: boolean;
   resetKey: string;
@@ -90,15 +109,30 @@ export function useTabDrag({ strip, enabled, resetKey, onMove }: {
         const bounds = list.getBoundingClientRect();
         const inside = y >= bounds.top - VERTICAL_SLACK && y <= bounds.bottom + VERTICAL_SLACK;
         let distance = 0;
-        if (inside && x < bounds.left + AUTOSCROLL_EDGE) distance = x - bounds.left - AUTOSCROLL_EDGE;
-        else if (inside && x > bounds.right - AUTOSCROLL_EDGE) distance = x - bounds.right + AUTOSCROLL_EDGE;
+        if (inside && x < bounds.left + AUTOSCROLL_EDGE)
+          distance = x - bounds.left - AUTOSCROLL_EDGE;
+        else if (inside && x > bounds.right - AUTOSCROLL_EDGE)
+          distance = x - bounds.right + AUTOSCROLL_EDGE;
         const previousScroll = list.scrollLeft;
-        if (distance) list.scrollLeft += Math.max(-AUTOSCROLL_MAX_STEP, Math.min(AUTOSCROLL_MAX_STEP, distance * AUTOSCROLL_GAIN));
+        if (distance)
+          list.scrollLeft += Math.max(
+            -AUTOSCROLL_MAX_STEP,
+            Math.min(AUTOSCROLL_MAX_STEP, distance * AUTOSCROLL_GAIN),
+          );
         const moved = (x - origin) / scale + list.scrollLeft - initialScroll;
-        const offset = Math.max(first.left - source.left, Math.min(last.left + last.width - source.left - source.width, moved));
+        const offset = Math.max(
+          first.left - source.left,
+          Math.min(last.left + last.width - source.left - source.width, moved),
+        );
         source.element.style.transform = `translateX(${offset}px)`;
         current = inside ? tabDrop(slots, source, source.left + offset, span) : undefined;
-        const next = current ? dropShifts(slots.map((slot) => slot.id), id, current) : new Map<string, number>();
+        const next = current
+          ? dropShifts(
+              slots.map((slot) => slot.id),
+              id,
+              current,
+            )
+          : new Map<string, number>();
         for (const slot of slots) {
           if (slot === source || next.get(slot.id) === shifts.get(slot.id)) continue;
           const shift = next.get(slot.id);

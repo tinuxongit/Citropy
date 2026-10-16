@@ -26,7 +26,13 @@ const SERVE_ARGS: Record<HostAccess, string[]> = {
 };
 
 export function hostAccess(permissionMode: PermissionMode, chat = false): HostAccess {
-  return chat ? "chat" : permissionMode === "bypass" ? "unsandboxed" : permissionMode === "plan" ? "readOnly" : "workspace";
+  return chat
+    ? "chat"
+    : permissionMode === "bypass"
+      ? "unsandboxed"
+      : permissionMode === "plan"
+        ? "readOnly"
+        : "workspace";
 }
 
 export const NO_AUTO_UPDATE = { MUSE_NO_AUTO_UPDATE: "1" };
@@ -63,23 +69,43 @@ export class MuseHost {
       ...SERVE_ARGS[options.access],
       ...(options.sessionLog === false ? ["--no-session-log"] : []),
     ]);
-    const handshake = spawnMspConnection({ command: call.file, args: call.args, cwd: options.cwd, env: museEnvironment(options.launch), shutdownTimeoutMs: SHUTDOWN_TIMEOUT_MS });
+    const handshake = spawnMspConnection({
+      command: call.file,
+      args: call.args,
+      cwd: options.cwd,
+      env: museEnvironment(options.launch),
+      shutdownTimeoutMs: SHUTDOWN_TIMEOUT_MS,
+    });
     const stderr = () => handshake.child.stderrTail;
     let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error("Muse Code did not start in time.")), options.startupTimeoutMs ?? STARTUP_TIMEOUT_MS);
+      timer = setTimeout(
+        () => reject(new Error("Muse Code did not start in time.")),
+        options.startupTimeoutMs ?? STARTUP_TIMEOUT_MS,
+      );
     });
     try {
-      const spawned = await Promise.race([handshake.initialize({
-        clientInfo: { name: CLIENT_INFO.name, title: CLIENT_TITLE, version: CLIENT_INFO.version },
-        capabilities: { requestedCapabilities: options.access === "readOnly" ? [] : [SESSION_MCP] },
-      }), timeout]);
-      if (spawned.initializeResult.schema?.version !== PROTOCOL_VERSION) throw new Error(`Muse Code speaks protocol version ${spawned.initializeResult.schema?.version}, but Citropy supports version ${PROTOCOL_VERSION}. Update Citropy or Muse Code.`);
+      const spawned = await Promise.race([
+        handshake.initialize({
+          clientInfo: { name: CLIENT_INFO.name, title: CLIENT_TITLE, version: CLIENT_INFO.version },
+          capabilities: {
+            requestedCapabilities: options.access === "readOnly" ? [] : [SESSION_MCP],
+          },
+        }),
+        timeout,
+      ]);
+      if (spawned.initializeResult.schema?.version !== PROTOCOL_VERSION)
+        throw new Error(
+          `Muse Code speaks protocol version ${spawned.initializeResult.schema?.version}, but Citropy supports version ${PROTOCOL_VERSION}. Update Citropy or Muse Code.`,
+        );
       return new MuseHost(spawned, stderr);
     } catch (error) {
       await handshake.close();
       const tail = stderr().slice(-STDERR_LINES).join("\n").trim();
-      throw new Error(`Muse Code could not start: ${(error as Error).message}${tail ? `\n${tail}` : ""}`, { cause: error });
+      throw new Error(
+        `Muse Code could not start: ${(error as Error).message}${tail ? `\n${tail}` : ""}`,
+        { cause: error },
+      );
     } finally {
       clearTimeout(timer);
     }
@@ -105,23 +131,36 @@ export class MuseHost {
     return this.#timed(method, this.connection.request(method, params)) as Promise<T>;
   }
 
-  command<T>(method: string, params: Record<string, unknown>, options: { commandId?: string; retry?: boolean } = {}): Promise<T> {
-    return this.#timed(method, this.connection.command(method, params, {
-      ...(options.commandId ? { commandId: options.commandId } : {}),
-      ...(options.retry ? {} : { maxAttempts: 1 }),
-    })) as Promise<T>;
+  command<T>(
+    method: string,
+    params: Record<string, unknown>,
+    options: { commandId?: string; retry?: boolean } = {},
+  ): Promise<T> {
+    return this.#timed(
+      method,
+      this.connection.command(method, params, {
+        ...(options.commandId ? { commandId: options.commandId } : {}),
+        ...(options.retry ? {} : { maxAttempts: 1 }),
+      }),
+    ) as Promise<T>;
   }
 
   close(): Promise<void> {
-    return this.#closing ??= this.#spawned.close().then(() => undefined);
+    return (this.#closing ??= this.#spawned.close().then(() => undefined));
   }
 
   async #timed<T>(method: string, pending: Promise<T>): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
     try {
-      return await Promise.race([pending, new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`Muse Code did not answer ${method} in time.`)), COMMAND_TIMEOUT_MS);
-      })]);
+      return await Promise.race([
+        pending,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error(`Muse Code did not answer ${method} in time.`)),
+            COMMAND_TIMEOUT_MS,
+          );
+        }),
+      ]);
     } finally {
       clearTimeout(timer);
     }

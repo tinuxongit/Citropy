@@ -10,10 +10,16 @@ export function usePresent(open: boolean, element: RefObject<HTMLElement | null>
     const exiting = element.current?.getAnimations() ?? [];
     let current = true;
     Promise.all(exiting.map((animation) => animation.finished)).then(
-      () => { if (current) setPresent(false); },
-      (error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) throw error; },
+      () => {
+        if (current) setPresent(false);
+      },
+      (error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) throw error;
+      },
     );
-    return () => { current = false; };
+    return () => {
+      current = false;
+    };
   }, [open, element]);
   return open || present;
 }

@@ -22,29 +22,19 @@ import type { GlobalInstructions } from "../../shared/provider-settings.ts";
 
 const MAX_BYTES = 64 * 1024;
 
-export function globalInstructionLocation(
-  provider: ProviderId,
-): { path: string; note?: string } {
+export function globalInstructionLocation(provider: ProviderId): { path: string; note?: string } {
   let path: string;
   let note: string | undefined;
   if (provider === "claude") {
-    path = join(
-      process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"),
-      "CLAUDE.md",
-    );
+    path = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "CLAUDE.md");
   } else if (provider === "codex") {
     const home = process.env.CODEX_HOME || join(homedir(), ".codex");
     const override = join(home, "AGENTS.override.md");
     path = existsSync(override) ? override : join(home, "AGENTS.md");
     if (path === override)
-      note =
-        "AGENTS.override.md takes precedence over AGENTS.md when it contains instructions.";
+      note = "AGENTS.override.md takes precedence over AGENTS.md when it contains instructions.";
   } else if (provider === "opencode") {
-    path = join(
-      process.env.XDG_CONFIG_HOME || join(homedir(), ".config"),
-      "opencode",
-      "AGENTS.md",
-    );
+    path = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "opencode", "AGENTS.md");
     note =
       "OpenCode uses this file for global rules. Creating it replaces the Claude Code fallback, if your OpenCode version uses that fallback.";
   } else {
@@ -53,9 +43,7 @@ export function globalInstructionLocation(
   return { path: resolve(path), note };
 }
 
-export function readGlobalInstructions(
-  provider: ProviderId,
-): GlobalInstructions {
+export function readGlobalInstructions(provider: ProviderId): GlobalInstructions {
   const { path, note } = globalInstructionLocation(provider);
   let raw = "";
   let exists = false;
@@ -65,12 +53,9 @@ export function readGlobalInstructions(
     const file = openSync(target, constants.O_RDONLY | constants.O_NONBLOCK);
     try {
       const stat = fstatSync(file);
-      if (!stat.isFile())
-        throw new Error("The instruction path must be a file.");
+      if (!stat.isFile()) throw new Error("The instruction path must be a file.");
       if (stat.size > MAX_BYTES)
-        throw new Error(
-          "This instruction file is larger than 64 KB. Edit it in your file editor.",
-        );
+        throw new Error("This instruction file is larger than 64 KB. Edit it in your file editor.");
       raw = readFileSync(file, "utf8");
       exists = true;
     } finally {
@@ -108,10 +93,7 @@ export function saveGlobalInstructions(
   if (current.exists && content === current.content) return current;
   const target = current.exists ? realpathSync(current.path) : current.path;
   mkdirSync(dirname(target), { recursive: true });
-  const temporary = join(
-    dirname(target),
-    `.citropy-instructions-${randomUUID()}`,
-  );
+  const temporary = join(dirname(target), `.citropy-instructions-${randomUUID()}`);
   const backup = `${temporary}-backup`;
   try {
     writeFileSync(temporary, content, {

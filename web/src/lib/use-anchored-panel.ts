@@ -1,7 +1,11 @@
 import { useEffect, useLayoutEffect, type RefObject } from "react";
 import { scaled, useApp, viewportWidth } from "./store.ts";
 
-export function useAnchoredPanel(panel: RefObject<HTMLElement | null>, anchor: RefObject<HTMLElement | null>, { open, width }: { open: boolean; width: number }) {
+export function useAnchoredPanel(
+  panel: RefObject<HTMLElement | null>,
+  anchor: RefObject<HTMLElement | null>,
+  { open, width }: { open: boolean; width: number },
+) {
   const uiScale = useApp((state) => state.uiScale);
   useLayoutEffect(() => {
     const element = panel.current;
@@ -28,7 +32,12 @@ export function useAnchoredPanel(panel: RefObject<HTMLElement | null>, anchor: R
   }, [open, width, uiScale, panel, anchor]);
 }
 
-export function useDismiss(panel: RefObject<HTMLElement | null>, anchor: RefObject<HTMLElement | null>, onDismiss: () => void, { open, outside }: { open: boolean; outside: boolean }) {
+export function useDismiss(
+  panel: RefObject<HTMLElement | null>,
+  anchor: RefObject<HTMLElement | null>,
+  onDismiss: () => void,
+  { open, outside }: { open: boolean; outside: boolean },
+) {
   useEffect(() => {
     if (!open) return;
     const pointer = (event: PointerEvent) => {

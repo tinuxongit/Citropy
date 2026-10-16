@@ -1,4 +1,6 @@
-export function memoizeAsync<Key, Value>(load: (key: Key) => Promise<Value>): (key: Key) => Promise<Value> {
+export function memoizeAsync<Key, Value>(
+  load: (key: Key) => Promise<Value>,
+): (key: Key) => Promise<Value> {
   const results = new Map<Key, Promise<Value>>();
   return (key) => {
     let result = results.get(key);

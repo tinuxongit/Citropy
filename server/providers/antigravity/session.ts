@@ -1,5 +1,16 @@
 import { readFile } from "node:fs/promises";
-import type { Client, ContentBlock, PromptResponse, RequestPermissionRequest, RequestPermissionResponse, SessionConfigOption, SessionModeState, SessionUpdate, ToolCall, ToolCallUpdate } from "@agentclientprotocol/sdk";
+import type {
+  Client,
+  ContentBlock,
+  PromptResponse,
+  RequestPermissionRequest,
+  RequestPermissionResponse,
+  SessionConfigOption,
+  SessionModeState,
+  SessionUpdate,
+  ToolCall,
+  ToolCallUpdate,
+} from "@agentclientprotocol/sdk";
 import { askQuestion, cancelQuestions } from "../../questions.ts";
 import { ask, cancelThread } from "../../permissions.ts";
 import { normalizeTodos } from "../../../shared/todos.ts";
@@ -7,7 +18,13 @@ import type { Attachment, PermissionMode, Usage } from "../../../shared/protocol
 import { attachmentNote, isImage } from "../attachments.ts";
 import { withSkills } from "../skill-prompt.ts";
 import type { AgentSession, SessionConfig, StartOptions } from "../types.ts";
-import { isSignInRequired, SIGN_IN_METHOD, SIGN_IN_REQUIRED, startAgent, type Agent } from "./acp.ts";
+import {
+  isSignInRequired,
+  SIGN_IN_METHOD,
+  SIGN_IN_REQUIRED,
+  startAgent,
+  type Agent,
+} from "./acp.ts";
 import { agentModel, currentModel, modelOptions, modelSelector, saveModels } from "./models.ts";
 import { modeTarget } from "./modes.ts";
 import { antigravityProfile, hasSignIn } from "./profile.ts";
@@ -25,7 +42,11 @@ const STOP_REASONS: Record<PromptResponse["stopReason"], string | undefined> = {
   refusal: "Antigravity declined to continue.",
 };
 
-type Message = { text: string; attachments: Attachment[]; skills: Array<{ name: string; path: string }> };
+type Message = {
+  text: string;
+  attachments: Attachment[];
+  skills: Array<{ name: string; path: string }>;
+};
 
 const live = new Set<AntigravitySession>();
 
@@ -34,7 +55,11 @@ export function stopAccountSessions(instanceId: string | undefined, reason: stri
 }
 
 function errorText(error: unknown): string {
-  return isSignInRequired(error) ? SIGN_IN_REQUIRED : error instanceof Error ? error.message : String(error);
+  return isSignInRequired(error)
+    ? SIGN_IN_REQUIRED
+    : error instanceof Error
+      ? error.message
+      : String(error);
 }
 
 export class AntigravitySession implements AgentSession {
@@ -64,50 +89,78 @@ export class AntigravitySession implements AgentSession {
   constructor(options: StartOptions) {
     this.#options = options;
     this.instanceId = options.instanceId;
-    this.#totals = { input: options.usage?.input ?? 0, output: options.usage?.output ?? 0, cacheRead: options.usage?.cacheRead ?? 0, cacheWrite: options.usage?.cacheWrite ?? 0 };
+    this.#totals = {
+      input: options.usage?.input ?? 0,
+      output: options.usage?.output ?? 0,
+      cacheRead: options.usage?.cacheRead ?? 0,
+      cacheWrite: options.usage?.cacheWrite ?? 0,
+    };
     live.add(this);
     this.#ready = this.#start();
-    void this.#ready.catch(error => this.#fail(errorText(error)));
+    void this.#ready.catch((error) => this.#fail(errorText(error)));
   }
 
   async #start(): Promise<void> {
     const options = this.#options;
     const profile = antigravityProfile(this.instanceId);
-    if (!await hasSignIn(profile)) throw new Error(SIGN_IN_REQUIRED);
+    if (!(await hasSignIn(profile))) throw new Error(SIGN_IN_REQUIRED);
     const agent = await startAgent({
       instanceId: this.instanceId,
       environment: options.environment,
       cwd: options.cwd,
       client: this.#client(),
       onAuthorization: () => this.#fail(SIGN_IN_REQUIRED),
-      onFailure: error => this.#fail(error.message),
+      onFailure: (error) => this.#fail(error.message),
     });
     this.#agent = agent;
     if (this.#disposed) return agent.stop();
-    agent.child.once("close", code => this.#fail(agent.stderr() || `Antigravity exited with code ${code}`));
+    agent.child.once("close", (code) =>
+      this.#fail(agent.stderr() || `Antigravity exited with code ${code}`),
+    );
     await agent.connection.authenticate({ methodId: SIGN_IN_METHOD });
     const capabilities = agent.initialized.agentCapabilities;
-    const mcpServers = options.mcp && capabilities?.mcpCapabilities?.http
-      ? [{ type: "http" as const, name: "citropy", url: options.mcp.url, headers: Object.entries(options.mcp.headers).map(([name, value]) => ({ name, value })) }]
-      : [];
+    const mcpServers =
+      options.mcp && capabilities?.mcpCapabilities?.http
+        ? [
+            {
+              type: "http" as const,
+              name: "citropy",
+              url: options.mcp.url,
+              headers: Object.entries(options.mcp.headers).map(([name, value]) => ({
+                name,
+                value,
+              })),
+            },
+          ]
+        : [];
     const resuming = Boolean(options.externalId && capabilities?.sessionCapabilities?.resume);
     const session = resuming
-      ? await agent.connection.resumeSession({ sessionId: options.externalId!, cwd: options.cwd, mcpServers })
+      ? await agent.connection.resumeSession({
+          sessionId: options.externalId!,
+          cwd: options.cwd,
+          mcpServers,
+        })
       : await agent.connection.newSession({ cwd: options.cwd, mcpServers });
     this.#sessionId = resuming ? options.externalId! : (session as { sessionId: string }).sessionId;
     this.#modes = session.modes;
     this.#configOptions = session.configOptions;
-    if (modelSelector(this.#configOptions)) await saveModels(profile, modelOptions(this.#configOptions));
+    if (modelSelector(this.#configOptions))
+      await saveModels(profile, modelOptions(this.#configOptions));
     await this.#applyMode(options.permissionMode);
     await this.#applyModel(options.model, options.effort);
-    options.emit({ type: "session", externalId: this.#sessionId, ...currentModel(this.#configOptions) });
+    options.emit({
+      type: "session",
+      externalId: this.#sessionId,
+      ...currentModel(this.#configOptions),
+    });
   }
 
   #client(): Client {
     return {
-      requestPermission: request => this.#permission(request),
-      sessionUpdate: async notification => {
-        if (notification.sessionId === this.#sessionId && !this.#disposed) this.#update(notification.update);
+      requestPermission: (request) => this.#permission(request),
+      sessionUpdate: async (notification) => {
+        if (notification.sessionId === this.#sessionId && !this.#disposed)
+          this.#update(notification.update);
       },
     };
   }
@@ -117,7 +170,11 @@ export class AntigravitySession implements AgentSession {
     const connection = this.#agent!.connection;
     if (target.kind === "option") {
       this.#readOnly = false;
-      const response = await connection.setSessionConfigOption({ sessionId: this.#sessionId, configId: target.configId, value: target.value });
+      const response = await connection.setSessionConfigOption({
+        sessionId: this.#sessionId,
+        configId: target.configId,
+        value: target.value,
+      });
       this.#configOptions = response.configOptions;
       return;
     }
@@ -132,7 +189,11 @@ export class AntigravitySession implements AgentSession {
     const value = agentModel(this.#configOptions, model, effort);
     const selector = modelSelector(this.#configOptions)!;
     if (selector.currentValue === value) return;
-    const response = await this.#agent!.connection.setSessionConfigOption({ sessionId: this.#sessionId, configId: selector.id, value });
+    const response = await this.#agent!.connection.setSessionConfigOption({
+      sessionId: this.#sessionId,
+      configId: selector.id,
+      value,
+    });
     this.#configOptions = response.configOptions;
   }
 
@@ -142,17 +203,35 @@ export class AntigravitySession implements AgentSession {
     if (config.model !== undefined) await this.#applyModel(config.model, config.effort);
   }
 
-  send(text: string, attachments: Attachment[] = [], skills: Array<{ name: string; path: string }> = []): void {
+  send(
+    text: string,
+    attachments: Attachment[] = [],
+    skills: Array<{ name: string; path: string }> = [],
+  ): void {
     if (this.#disposed || this.#failed) return;
     this.#queue.push({ text, attachments, skills });
     void this.#pump();
   }
 
   async #prompt(message: Message): Promise<ContentBlock[]> {
-    const files = await Promise.all(message.attachments.map(async (file): Promise<ContentBlock> => isImage(file)
-      ? { type: "image", mimeType: file.mime!, data: (await readFile(file.path)).toString("base64") }
-      : { type: "text", text: attachmentNote(file) }));
-    return [{ type: "text", text: withSkills(message.text, message.skills) || "Please inspect the attached files." }, ...files];
+    const files = await Promise.all(
+      message.attachments.map(async (file): Promise<ContentBlock> =>
+        isImage(file)
+          ? {
+              type: "image",
+              mimeType: file.mime!,
+              data: (await readFile(file.path)).toString("base64"),
+            }
+          : { type: "text", text: attachmentNote(file) },
+      ),
+    );
+    return [
+      {
+        type: "text",
+        text: withSkills(message.text, message.skills) || "Please inspect the attached files.",
+      },
+      ...files,
+    ];
   }
 
   async #pump(): Promise<void> {
@@ -165,7 +244,10 @@ export class AntigravitySession implements AgentSession {
       await this.#ready;
       if (this.#disposed || this.#failed) return;
       this.#options.emit({ type: "status", status: "thinking" });
-      const response = await this.#agent!.connection.prompt({ sessionId: this.#sessionId, prompt: await this.#prompt(next) });
+      const response = await this.#agent!.connection.prompt({
+        sessionId: this.#sessionId,
+        prompt: await this.#prompt(next),
+      });
       if (response.usage) this.#usage(response.usage);
       this.#finish(STOP_REASONS[response.stopReason]);
     } catch (error) {
@@ -182,11 +264,22 @@ export class AntigravitySession implements AgentSession {
   }
 
   interrupt(): void {
-    if (this.#queue.length) this.#options.emit({ type: "notice", level: "warn", text: this.#queue.length === 1 ? "Stopped before Antigravity started your latest message. Send it again to run it." : `Stopped before Antigravity started your last ${this.#queue.length} messages. Send them again to run them.` });
+    if (this.#queue.length)
+      this.#options.emit({
+        type: "notice",
+        level: "warn",
+        text:
+          this.#queue.length === 1
+            ? "Stopped before Antigravity started your latest message. Send it again to run it."
+            : `Stopped before Antigravity started your last ${this.#queue.length} messages. Send them again to run them.`,
+      });
     this.#queue = [];
     cancelThread(this.#options.threadId, false);
     cancelQuestions(this.#options.threadId);
-    if (this.#busy && this.#sessionId) void this.#agent!.connection.cancel({ sessionId: this.#sessionId }).catch(error => this.#fail(errorText(error)));
+    if (this.#busy && this.#sessionId)
+      void this.#agent!.connection.cancel({ sessionId: this.#sessionId }).catch((error) =>
+        this.#fail(errorText(error)),
+      );
   }
 
   stop(reason: string): void {
@@ -244,7 +337,11 @@ export class AntigravitySession implements AgentSession {
     switch (update.sessionUpdate) {
       case "agent_message_chunk":
       case "agent_thought_chunk":
-        if (update.content.type === "text") this.#text(update.sessionUpdate === "agent_message_chunk" ? "text" : "reasoning", update.content.text);
+        if (update.content.type === "text")
+          this.#text(
+            update.sessionUpdate === "agent_message_chunk" ? "text" : "reasoning",
+            update.content.text,
+          );
         return;
       case "tool_call":
       case "tool_call_update":
@@ -284,26 +381,55 @@ export class AntigravitySession implements AgentSession {
       this.#closeBlocks();
       emit({ type: "tool.start", callId: tool.toolCallId, name, input });
     } else emit({ type: "tool.input", callId: tool.toolCallId, name, input });
-    if ((tool.status === "completed" || tool.status === "failed") && !this.#ended.has(tool.toolCallId)) {
+    if (
+      (tool.status === "completed" || tool.status === "failed") &&
+      !this.#ended.has(tool.toolCallId)
+    ) {
       this.#ended.add(tool.toolCallId);
       const result = toolResult(tool);
-      emit({ type: "tool.end", callId: tool.toolCallId, ok: result.ok, output: result.text, ...(result.images.length ? { images: result.images } : {}) });
-    } else if (tool.status !== "completed" && tool.status !== "failed") emit({ type: "status", status: "working", tool: name });
+      emit({
+        type: "tool.end",
+        callId: tool.toolCallId,
+        ok: result.ok,
+        output: result.text,
+        ...(result.images.length ? { images: result.images } : {}),
+      });
+    } else if (tool.status !== "completed" && tool.status !== "failed")
+      emit({ type: "status", status: "working", tool: name });
   }
 
   async #permission(request: RequestPermissionRequest): Promise<RequestPermissionResponse> {
     const { tool } = this.#track(request.toolCall);
     const options = request.options;
     const choose = (kinds: string[]): RequestPermissionResponse => {
-      const option = kinds.map(kind => options.find(entry => entry.kind === kind)).find(Boolean);
-      return { outcome: option ? { outcome: "selected", optionId: option.optionId } : { outcome: "cancelled" } };
+      const option = kinds
+        .map((kind) => options.find((entry) => entry.kind === kind))
+        .find(Boolean);
+      return {
+        outcome: option
+          ? { outcome: "selected", optionId: option.optionId }
+          : { outcome: "cancelled" },
+      };
     };
     if (tool.toolCallId.startsWith(QUESTION_PREFIX)) {
-      const result = await askQuestion(this.#options.threadId, [{ id: QUESTION_ID, question: tool.title || "Antigravity has a question.", options: options.map(option => ({ label: option.name })), multiple: false }]);
-      const option = options.find(entry => entry.name === result.answers[QUESTION_ID]?.[0]);
-      return { outcome: !result.cancelled && option ? { outcome: "selected", optionId: option.optionId } : { outcome: "cancelled" } };
+      const result = await askQuestion(this.#options.threadId, [
+        {
+          id: QUESTION_ID,
+          question: tool.title || "Antigravity has a question.",
+          options: options.map((option) => ({ label: option.name })),
+          multiple: false,
+        },
+      ]);
+      const option = options.find((entry) => entry.name === result.answers[QUESTION_ID]?.[0]);
+      return {
+        outcome:
+          !result.cancelled && option
+            ? { outcome: "selected", optionId: option.optionId }
+            : { outcome: "cancelled" },
+      };
     }
-    if (this.#readOnly || (this.#options.readOnly && !CHAT_KINDS.has(tool.kind ?? ""))) return choose(["reject_once", "reject_always"]);
+    if (this.#readOnly || (this.#options.readOnly && !CHAT_KINDS.has(tool.kind ?? "")))
+      return choose(["reject_once", "reject_always"]);
     const { name, input } = describeTool(tool);
     this.#options.emit({ type: "status", status: "awaiting" });
     const decision = await ask(this.#options.threadId, name, input);

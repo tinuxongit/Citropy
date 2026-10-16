@@ -9,14 +9,17 @@ import { ReleaseNoteTiles } from "./ReleaseNoteTiles.tsx";
 const SEEN_VERSION = "citropy.whatsNewSeen";
 
 function useNotesAfterUpdate() {
-  const agentReplying = useApp((state) => Boolean(state.threads[state.activeThreadId ?? ""]?.running));
+  const agentReplying = useApp((state) =>
+    Boolean(state.threads[state.activeThreadId ?? ""]?.running),
+  );
   const { state } = useAppUpdate();
   const [waiting, setWaiting] = useState<ReleaseNotes>();
   useEffect(() => {
     if (!state.currentVersion) return;
     const seen = localStorage.getItem(SEEN_VERSION);
     if (!seen) localStorage.setItem(SEEN_VERSION, state.currentVersion);
-    else if (seen !== state.currentVersion && state.notes?.version === state.currentVersion) setWaiting(state.notes);
+    else if (seen !== state.currentVersion && state.notes?.version === state.currentVersion)
+      setWaiting(state.notes);
   }, [state]);
   useEffect(() => {
     if (!waiting || agentReplying) return;
@@ -31,17 +34,40 @@ export function WhatsNew({ onOpenSettings }: { onOpenSettings: (section: string)
   useNotesAfterUpdate();
   const close = () => useApp.setState({ whatsNew: null });
   return (
-    <AnimatePresence>{notes && (
-      <Modal
-        className="whats-new-dialog"
-        title={<><small>What's new</small>Citropy {notes.version}</>}
-        icon={<img src="/citropy.svg" alt="" />}
-        initialFocus="[data-primary]"
-        onClose={close}
-        footer={<button className="btn" data-variant="primary" data-primary type="button" onClick={close}>Got it</button>}
-      >
-        <ReleaseNoteTiles key={notes.version} notes={notes} onOpenSettings={(section) => { close(); onOpenSettings(section); }} />
-      </Modal>
-    )}</AnimatePresence>
+    <AnimatePresence>
+      {notes && (
+        <Modal
+          className="whats-new-dialog"
+          title={
+            <>
+              <small>What's new</small>Citropy {notes.version}
+            </>
+          }
+          icon={<img src="/citropy.svg" alt="" />}
+          initialFocus="[data-primary]"
+          onClose={close}
+          footer={
+            <button
+              className="btn"
+              data-variant="primary"
+              data-primary
+              type="button"
+              onClick={close}
+            >
+              Got it
+            </button>
+          }
+        >
+          <ReleaseNoteTiles
+            key={notes.version}
+            notes={notes}
+            onOpenSettings={(section) => {
+              close();
+              onOpenSettings(section);
+            }}
+          />
+        </Modal>
+      )}
+    </AnimatePresence>
   );
 }

@@ -63,17 +63,10 @@ export function BranchesSection({
     <div className="git-page scroll">
       <header className="git-section-heading">
         <div>
-          <p>
-            Keep separate lines of work and bring changes together.
-          </p>
+          <p>Keep separate lines of work and bring changes together.</p>
         </div>
         {data.hasCommits && (
-          <button
-            className="btn"
-            data-variant="primary"
-            disabled={disabled}
-            onClick={createBranch}
-          >
+          <button className="btn" data-variant="primary" disabled={disabled} onClick={createBranch}>
             <PlusIcon size={15} />
             New branch
           </button>
@@ -90,12 +83,12 @@ export function BranchesSection({
         </div>
       )}
       {!data.hasCommits ? (
-        <EmptyState
-          title="Create a commit before branching"
-          action={reviewChanges}
-        >
-          <p>{" "}Your repository is initialized, but{" "}
-            <strong>{branch}</strong>{" "}has no commits yet. Save your first commit to create this branch and start new ones from it.{" "}</p>
+        <EmptyState title="Create a commit before branching" action={reviewChanges}>
+          <p>
+            {" "}
+            Your repository is initialized, but <strong>{branch}</strong> has no commits yet. Save
+            your first commit to create this branch and start new ones from it.{" "}
+          </p>
         </EmptyState>
       ) : (
         <>
@@ -111,9 +104,7 @@ export function BranchesSection({
           <div className="git-table-heading">
             <h3>
               Local branches
-              <span className="git-count">
-                {localBranches.length}
-              </span>
+              <span className="git-count">{localBranches.length}</span>
             </h3>
             <span>On this computer</span>
           </div>
@@ -137,16 +128,9 @@ export function BranchesSection({
                       )}
                     </div>
                     <p className="truncate">{entry.subject}</p>
-                    <small>
-                      {entry.upstream
-                        ? "Tracking " + entry.upstream
-                        : "Local only"}
-                    </small>
+                    <small>{entry.upstream ? "Tracking " + entry.upstream : "Local only"}</small>
                   </div>
-                  <time
-                    className="git-row-date"
-                    title={dateTime(entry.date)}
-                  >
+                  <time className="git-row-date" title={dateTime(entry.date)}>
                     {formatDate(entry.date, { month: "short", day: "numeric" })}
                   </time>
                   {!entry.current && (
@@ -154,9 +138,7 @@ export function BranchesSection({
                       <button
                         className="btn"
                         disabled={disabled || data.mergeInProgress}
-                        onClick={() =>
-                          void act("switchBranch", entry.name)
-                        }
+                        onClick={() => void act("switchBranch", entry.name)}
                       >
                         Switch
                         <ArrowRightIcon size={13} />
@@ -171,9 +153,7 @@ export function BranchesSection({
                             aria-label={`Actions for ${entry.name}`}
                             aria-expanded={open}
                             aria-haspopup="menu"
-                            disabled={
-                              disabled || data.mergeInProgress
-                            }
+                            disabled={disabled || data.mergeInProgress}
                             onClick={toggle}
                           >
                             <MoreIcon size={17} />
@@ -216,45 +196,37 @@ export function BranchesSection({
                 </div>
               ))}
           </div>
-          {filter &&
-            !localBranches.some((entry) => match(entry.name)) && (
-              <p className="git-list-hint">
-                No local branches match your search.
-              </p>
-            )}
+          {filter && !localBranches.some((entry) => match(entry.name)) && (
+            <p className="git-list-hint">No local branches match your search.</p>
+          )}
           <div className="git-table-heading">
             <h3>
               Remote branches
-              <span className="git-count">
-                {remoteBranches.length}
-              </span>
+              <span className="git-count">{remoteBranches.length}</span>
             </h3>
-            <button
-              className="git-text-button"
-              onClick={() => changeSection("Remotes")}
-            >
-                Manage remotes
+            <button className="git-text-button" onClick={() => changeSection("Remotes")}>
+              Manage remotes
               <ArrowRightIcon size={13} />
             </button>
           </div>
           {remoteBranches.length ? (
             <div className="git-card-list">
-            {remoteBranches
-              .filter((entry) => match(entry.name))
-              .map((entry) => (
-                <div className="git-branch-row" key={entry.name}>
-                  <span className="git-row-mark">
-                    <RemoteIcon size={16} />
-                  </span>
-                  <div className="git-row-main">
-                    <strong>{entry.name}</strong>
-                    <p className="truncate">{entry.subject}</p>
+              {remoteBranches
+                .filter((entry) => match(entry.name))
+                .map((entry) => (
+                  <div className="git-branch-row" key={entry.name}>
+                    <span className="git-row-mark">
+                      <RemoteIcon size={16} />
+                    </span>
+                    <div className="git-row-main">
+                      <strong>{entry.name}</strong>
+                      <p className="truncate">{entry.subject}</p>
+                    </div>
+                    <time className="git-row-date">
+                      {formatDate(entry.date, { month: "short", day: "numeric" })}
+                    </time>
                   </div>
-                  <time className="git-row-date">
-                    {formatDate(entry.date, { month: "short", day: "numeric" })}
-                  </time>
-                </div>
-              ))}
+                ))}
             </div>
           ) : (
             <div className="git-inline-empty">
@@ -268,11 +240,7 @@ export function BranchesSection({
                 </p>
               </div>
               {data.remotes.length > 0 && (
-                <button
-                  className="btn"
-                  disabled={disabled}
-                  onClick={() => void act("fetch")}
-                >
+                <button className="btn" disabled={disabled} onClick={() => void act("fetch")}>
                   Fetch remotes
                 </button>
               )}
@@ -281,9 +249,7 @@ export function BranchesSection({
           {filter &&
             remoteBranches.length > 0 &&
             !remoteBranches.some((entry) => match(entry.name)) && (
-              <p className="git-list-hint">
-                No remote branches match your search.
-              </p>
+              <p className="git-list-hint">No remote branches match your search.</p>
             )}
         </>
       )}

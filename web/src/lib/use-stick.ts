@@ -64,7 +64,13 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
       const upward = node.scrollTop < lastTop.current - 0.5;
       if (!readingExpanded.current) {
         if (near && !upward) stuck.current = true;
-        else if (upward && (pointerHeld.current || (node.scrollHeight === lastHeight.current && node.clientHeight === lastClientHeight.current))) stuck.current = false;
+        else if (
+          upward &&
+          (pointerHeld.current ||
+            (node.scrollHeight === lastHeight.current &&
+              node.clientHeight === lastClientHeight.current))
+        )
+          stuck.current = false;
       }
       lastTop.current = node.scrollTop;
       lastHeight.current = node.scrollHeight;
@@ -102,7 +108,9 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
       const button = (event.target as Element).closest("button[aria-expanded]");
       if (!button) return;
       holdHeight();
-      stuck.current = button.getAttribute("aria-expanded") === "true" && node.scrollHeight - node.scrollTop - node.clientHeight < 2;
+      stuck.current =
+        button.getAttribute("aria-expanded") === "true" &&
+        node.scrollHeight - node.scrollTop - node.clientHeight < 2;
       readingExpanded.current = !stuck.current;
       node.scrollTo({ top: node.scrollTop, behavior: "instant" });
       lastTop.current = node.scrollTop;
@@ -115,13 +123,22 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
       if (inner.offsetHeight < held) inner.style.minHeight = `${held}px`;
     };
     const glide = (distance: number) => {
-      if (!distance || Math.abs(distance) >= node.clientHeight || scrolling() || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (
+        !distance ||
+        Math.abs(distance) >= node.clientHeight ||
+        scrolling() ||
+        matchMedia("(prefers-reduced-motion: reduce)").matches
+      )
+        return;
       const style = getComputedStyle(inner);
       const remaining = new DOMMatrix(style.transform).m42;
-      inner.getAnimations().forEach(animation => animation.cancel());
+      inner.getAnimations().forEach((animation) => animation.cancel());
       inner.animate(
         [{ transform: `translateY(${remaining + distance}px)` }, { transform: "none" }],
-        { duration: parseFloat(style.getPropertyValue("--dur-panel")), easing: style.getPropertyValue("--ease-drawer") },
+        {
+          duration: parseFloat(style.getPropertyValue("--dur-panel")),
+          easing: style.getPropertyValue("--ease-drawer"),
+        },
       );
     };
     const observer = new ResizeObserver(() => {
@@ -129,7 +146,9 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
         releaseFilled();
         const end = contentEnd(inner);
         node.scrollTop = end - node.clientHeight;
-        glide(Math.max(0, end - node.clientHeight) - Math.max(0, shownEnd.current - node.clientHeight));
+        glide(
+          Math.max(0, end - node.clientHeight) - Math.max(0, shownEnd.current - node.clientHeight),
+        );
       }
       shownEnd.current = contentEnd(inner);
       lastTop.current = node.scrollTop;

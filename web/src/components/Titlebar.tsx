@@ -32,16 +32,23 @@ export function Titlebar({
   const projects = useApp((state) => state.projects);
   const activeProjectId = useApp((state) => state.activeProjectId);
   const activeThreadId = useApp((state) => state.activeThreadId);
-  const thread = useApp((state) =>
-    activeThreadId ? state.threads[activeThreadId] : undefined,
-  );
+  const thread = useApp((state) => (activeThreadId ? state.threads[activeThreadId] : undefined));
   const inspectorOpen = useApp((state) => state.inspectorOpen);
   const bot = useApp((state) => state.bots[state.activeRosterId ?? ""]);
   const group = useApp((state) => state.botGroups[state.activeRosterId ?? ""]);
   const members = useGroupMembers(group);
   const botPanelOpen = useApp((state) => state.botPanelOpen);
-  const panelActivity = useApp((state) => state.panels.some((panel) => panel.projectId === state.activeProjectId && state.unseenPanels[panel.id]));
-  const canCreateThread = useApp((state) => state.connected && !state.creatingThread && (view === "chats" || Boolean(state.activeProjectId)));
+  const panelActivity = useApp((state) =>
+    state.panels.some(
+      (panel) => panel.projectId === state.activeProjectId && state.unseenPanels[panel.id],
+    ),
+  );
+  const canCreateThread = useApp(
+    (state) =>
+      state.connected &&
+      !state.creatingThread &&
+      (view === "chats" || Boolean(state.activeProjectId)),
+  );
   const conversationView = view === "chat" || view === "chats";
   const newLabel = view === "chats" ? "New chat" : "New thread";
 
@@ -50,7 +57,7 @@ export function Titlebar({
   // The Git monitor refreshes this checkout-specific metadata for the sidebar too.
   const onProjectCheckout = !thread?.workspacePath || thread.workspacePath === project?.path;
   const branch = thread
-    ? thread.workspaceBranch ?? (onProjectCheckout ? project?.branch : undefined)
+    ? (thread.workspaceBranch ?? (onProjectCheckout ? project?.branch : undefined))
     : project?.branch;
   const workspaceContext = isRemote();
   const header = useRef<HTMLElement>(null);
@@ -74,17 +81,19 @@ export function Titlebar({
     <header ref={header} className="topbar" data-desktop={Boolean(window.citropyDesktop)}>
       <div className="topbar-left">
         <div className="topbar-start">
-          {sidebarToggle && <button
-            className="icon-btn sidebar-toggle"
-            type="button"
-            onClick={onToggleSidebar}
-            aria-expanded={sidebarOpen}
-            aria-label="Toggle sidebar"
-            title="Toggle sidebar"
-          >
-            <PanelLeftIcon size={15} className="sidebar-toggle-panel" />
-            <MenuIcon size={20} className="sidebar-toggle-menu" />
-          </button>}
+          {sidebarToggle && (
+            <button
+              className="icon-btn sidebar-toggle"
+              type="button"
+              onClick={onToggleSidebar}
+              aria-expanded={sidebarOpen}
+              aria-label="Toggle sidebar"
+              title="Toggle sidebar"
+            >
+              <PanelLeftIcon size={15} className="sidebar-toggle-panel" />
+              <MenuIcon size={20} className="sidebar-toggle-menu" />
+            </button>
+          )}
         </div>
       </div>
       <nav
@@ -93,12 +102,23 @@ export function Titlebar({
         aria-label="Current workspace and view"
       >
         {conversationView && <ThreadTabs chats={view === "chats"} />}
-        {workspaceContext && <div className="workspace-breadcrumb">
-          {isRemote() && <span className="environment-breadcrumb" title={environmentName()}><ServerIcon size={13} /><span className="truncate">{environmentName()}</span></span>}
-        </div>}
+        {workspaceContext && (
+          <div className="workspace-breadcrumb">
+            {isRemote() && (
+              <span className="environment-breadcrumb" title={environmentName()}>
+                <ServerIcon size={13} />
+                <span className="truncate">{environmentName()}</span>
+              </span>
+            )}
+          </div>
+        )}
         {conversationView && thread && (
           <>
-            {workspaceContext && <span className="breadcrumb-separator" aria-hidden="true">/</span>}
+            {workspaceContext && (
+              <span className="breadcrumb-separator" aria-hidden="true">
+                /
+              </span>
+            )}
             <span className="thread-title truncate">{thread.title}</span>
           </>
         )}
@@ -106,22 +126,41 @@ export function Titlebar({
           <span className="bot-heading">
             <BotAvatar bot={bot} size={22} mood={botMood(thread)} />
             <span className="thread-title truncate">{bot.name}</span>
-            {bot.title && <span className="topbar-subtitle"><span className="truncate">{bot.title}</span></span>}
+            {bot.title && (
+              <span className="topbar-subtitle">
+                <span className="truncate">{bot.title}</span>
+              </span>
+            )}
           </span>
         )}
         {view === "bots" && group && (
           <span className="bot-heading">
             <GroupAvatar group={group} size={22} />
             <span className="thread-title truncate">{group.name}</span>
-            <span className="topbar-subtitle"><span className="truncate">
-              {group.working.length ? workingLine(members.filter((member) => group.working.includes(member.id)).map((member) => member.name)) : `${members.length} bots`}
-            </span></span>
+            <span className="topbar-subtitle">
+              <span className="truncate">
+                {group.working.length
+                  ? workingLine(
+                      members
+                        .filter((member) => group.working.includes(member.id))
+                        .map((member) => member.name),
+                    )
+                  : `${members.length} bots`}
+              </span>
+            </span>
           </span>
         )}
-        {view === "chat" && project && <span className="topbar-subtitle">
-          <span className="truncate">{project.name}</span>
-          {branch && <><BranchIcon size={11} /><span className="truncate">{branch}</span></>}
-        </span>}
+        {view === "chat" && project && (
+          <span className="topbar-subtitle">
+            <span className="truncate">{project.name}</span>
+            {branch && (
+              <>
+                <BranchIcon size={11} />
+                <span className="truncate">{branch}</span>
+              </>
+            )}
+          </span>
+        )}
       </nav>
 
       <div className="topbar-right">

@@ -36,7 +36,9 @@
   height: var(--tab-height);
   border-radius: var(--r-md);
   color: var(--text-3);
-  transition: background var(--dur-instant), color var(--dur-instant);
+  transition:
+    background var(--dur-instant),
+    color var(--dur-instant);
 }
 .workbench-open:hover:not(:disabled) {
   background: var(--hover);
@@ -67,7 +69,10 @@
   color: var(--text-3);
   border-radius: var(--r-md);
   isolation: isolate;
-  transition: background var(--dur-instant), color var(--dur-instant), transform var(--dur-fast) var(--ease-out);
+  transition:
+    background var(--dur-instant),
+    color var(--dur-instant),
+    transform var(--dur-fast) var(--ease-out);
 }
 .workbench-tabs > .selection-highlight {
   border-radius: var(--r-md);
@@ -91,7 +96,8 @@
 .sliding-selection:has(> [data-tab-id][data-dragging="true"]) > .selection-highlight {
   visibility: hidden;
 }
-.sliding-selection:has(> [data-tab-id][data-dragging="true"]) > [data-active="true"]:not([data-dragging="true"]) {
+.sliding-selection:has(> [data-tab-id][data-dragging="true"])
+  > [data-active="true"]:not([data-dragging="true"]) {
   background: var(--selection-fill, var(--highlight));
 }
 .workbench-tab:hover:not([data-active="true"]) {
@@ -263,7 +269,11 @@
 }
 .browser-frame {
   place-self: center;
-  width: min(100cqw, calc(var(--page-width) * 1px), calc(100cqh * var(--page-width) / var(--page-height)));
+  width: min(
+    100cqw,
+    calc(var(--page-width) * 1px),
+    calc(100cqh * var(--page-width) / var(--page-height))
+  );
   aspect-ratio: var(--page-width) / var(--page-height);
   overflow: hidden;
   background: var(--canvas-deep);
@@ -292,8 +302,17 @@
   gap: var(--space-8);
   padding: var(--space-8) var(--space-8) 0 var(--space-16);
 }
-.browser-takeover-head h2 { flex: 1; min-width: 0; margin: 0; font-size: var(--text-sm); font-weight: 600; }
-.browser-takeover > .browser-pane { flex: 1; min-height: 0; }
+.browser-takeover-head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.browser-takeover > .browser-pane {
+  flex: 1;
+  min-height: 0;
+}
 .browser-guest {
   position: fixed;
   overflow: hidden;

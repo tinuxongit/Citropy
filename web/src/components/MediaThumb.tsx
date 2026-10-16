@@ -8,7 +8,17 @@ const ICON_SIZES = {
 } as const;
 const VIDEO_POSTER_FRAGMENT = "#t=0.1";
 
-export function MediaThumb({ src, alt, video = false, size }: { src: string; alt: string; video?: boolean; size: keyof typeof ICON_SIZES }) {
+export function MediaThumb({
+  src,
+  alt,
+  video = false,
+  size,
+}: {
+  src: string;
+  alt: string;
+  video?: boolean;
+  size: keyof typeof ICON_SIZES;
+}) {
   const [failedSrc, setFailedSrc] = useState<string>();
   const fail = () => setFailedSrc(src);
   const icons = ICON_SIZES[size];
@@ -22,7 +32,14 @@ export function MediaThumb({ src, alt, video = false, size }: { src: string; alt
   if (video)
     return (
       <span className="video-thumbnail">
-        <video src={`${src}${VIDEO_POSTER_FRAGMENT}`} preload="metadata" muted playsInline aria-hidden="true" onError={fail} />
+        <video
+          src={`${src}${VIDEO_POSTER_FRAGMENT}`}
+          preload="metadata"
+          muted
+          playsInline
+          aria-hidden="true"
+          onError={fail}
+        />
         <PlayIcon size={icons.play} />
       </span>
     );

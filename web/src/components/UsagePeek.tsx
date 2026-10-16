@@ -32,12 +32,16 @@ function UsageCard({ id, anchor, open }: { id: string; anchor: HTMLElement; open
   useEffect(() => {
     if (!open) return;
     let live = true;
-    loadUsage().then((next) => {
-      if (!live) return;
-      setReport(next);
-      setError("");
-    }).catch((reason: Error) => live && setError(reason.message));
-    return () => { live = false; };
+    loadUsage()
+      .then((next) => {
+        if (!live) return;
+        setReport(next);
+        setError("");
+      })
+      .catch((reason: Error) => live && setError(reason.message));
+    return () => {
+      live = false;
+    };
   }, [open]);
 
   const providers = report?.providers.filter((entry) => entry.windows.length) ?? [];
@@ -49,10 +53,15 @@ function UsageCard({ id, anchor, open }: { id: string; anchor: HTMLElement; open
         <strong>Usage limits</strong>
         {updated > 0 && <span>Updated {clock(updated)}</span>}
       </header>
-      {error ? <p className="usage-peek-note">{error}</p>
-        : !report ? <p className="usage-peek-note">Reading provider usage…</p>
-        : !providers.length ? <p className="usage-peek-note">No provider limits reported</p>
-        : providers.map((entry) => <ProviderLimits key={entry.provider} entry={entry} />)}
+      {error ? (
+        <p className="usage-peek-note">{error}</p>
+      ) : !report ? (
+        <p className="usage-peek-note">Reading provider usage…</p>
+      ) : !providers.length ? (
+        <p className="usage-peek-note">No provider limits reported</p>
+      ) : (
+        providers.map((entry) => <ProviderLimits key={entry.provider} entry={entry} />)
+      )}
     </StripPeek>
   );
 }
@@ -60,7 +69,12 @@ function UsageCard({ id, anchor, open }: { id: string; anchor: HTMLElement; open
 type PeekHandler = (event: { currentTarget: HTMLElement }) => void;
 
 export function useUsagePeek(): {
-  bind: { onPointerEnter: PeekHandler; onPointerLeave: () => void; onFocus: PeekHandler; onBlur: () => void };
+  bind: {
+    onPointerEnter: PeekHandler;
+    onPointerLeave: () => void;
+    onFocus: PeekHandler;
+    onBlur: () => void;
+  };
   hide: () => void;
   describedBy?: string;
   card: ReactNode;
@@ -86,7 +100,9 @@ export function useUsagePeek(): {
     bind: {
       onPointerEnter: (event) => show(event.currentTarget, DELAY_MS),
       onPointerLeave: hide,
-      onFocus: (event) => { if (event.currentTarget.matches(":focus-visible")) show(event.currentTarget, 0); },
+      onFocus: (event) => {
+        if (event.currentTarget.matches(":focus-visible")) show(event.currentTarget, 0);
+      },
       onBlur: hide,
     },
     hide,

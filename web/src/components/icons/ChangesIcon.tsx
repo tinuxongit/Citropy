@@ -10,11 +10,25 @@ const MINUS = { y: 17.25, from: 7, to: 12 };
 export function ChangesIcon({ size = 24 }: { size?: number }) {
   const id = useId();
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <defs>
         <mask id={`${id}-back`}>
           <rect width="24" height="24" fill="white" />
-          <rect x={FRONT.x - GAP} y={FRONT.y - GAP} width={FRONT.width + 2 * GAP} height={FRONT.height + 2 * GAP} rx={FRONT.rx + GAP} fill="black" />
+          <rect
+            x={FRONT.x - GAP}
+            y={FRONT.y - GAP}
+            width={FRONT.width + 2 * GAP}
+            height={FRONT.height + 2 * GAP}
+            rx={FRONT.rx + GAP}
+            fill="black"
+          />
         </mask>
         <mask id={`${id}-front`}>
           <rect width="24" height="24" fill="white" />

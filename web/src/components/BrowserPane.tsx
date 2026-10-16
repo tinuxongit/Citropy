@@ -15,13 +15,7 @@ import { useCopied } from "../lib/use-copied.ts";
 import { fitScale, useBrowserSurfaces } from "../lib/browser-surfaces.ts";
 import { useBrowserSurface } from "../lib/use-browser-surface.ts";
 
-export function BrowserPane({
-  panel,
-  active,
-}: {
-  panel: PanelTab;
-  active: boolean;
-}) {
+export function BrowserPane({ panel, active }: { panel: PanelTab; active: boolean }) {
   const state = useApp((store) => store.browsers[panel.id]);
   const connected = useApp((store) => store.connected);
   const searchEngine = useApp((store) => store.searchEngine);
@@ -41,7 +35,10 @@ export function BrowserPane({
     setFinishing(true);
     setSignInError("");
     try {
-      await api("connections/status", { method: "POST", body: JSON.stringify({ id, signedIn: true }) });
+      await api("connections/status", {
+        method: "POST",
+        body: JSON.stringify({ id, signedIn: true }),
+      });
     } catch (error) {
       setSignInError((error as Error).message);
     } finally {
@@ -62,7 +59,9 @@ export function BrowserPane({
       }),
     [panel.id],
   );
-  const shown = Boolean(active && connected && state && state.url !== "about:blank" && !state.dialog);
+  const shown = Boolean(
+    active && connected && state && state.url !== "about:blank" && !state.dialog,
+  );
   useBrowserSurface(panel.id, frame, shown);
 
   return (
@@ -117,7 +116,8 @@ export function BrowserPane({
           className="browser-address"
           onSubmit={(event) => {
             event.preventDefault();
-            if (address.trim()) act({ action: "navigate", url: addressOrSearch(address, searchEngine) });
+            if (address.trim())
+              act({ action: "navigate", url: addressOrSearch(address, searchEngine) });
           }}
         >
           <input
@@ -155,16 +155,25 @@ export function BrowserPane({
       {native && state?.account && !state.account.signedIn && (
         <div className="browser-notice browser-sign-in">
           <span>Sign in to {state.profileName} below, then finish.</span>
-          <button className="btn" data-variant="primary" disabled={finishing || !connected} onClick={() => void finishSignIn(state.account!.id)}>Finish sign-in</button>
+          <button
+            className="btn"
+            data-variant="primary"
+            disabled={finishing || !connected}
+            onClick={() => void finishSignIn(state.account!.id)}
+          >
+            Finish sign-in
+          </button>
         </div>
       )}
-      {signInError && <ActionError className="browser-notice" message={signInError} onDismiss={() => setSignInError("")} />}
-      {native && state && (
-        <BrowserViewport state={state} disabled={!connected} onResize={act} />
+      {signInError && (
+        <ActionError
+          className="browser-notice"
+          message={signInError}
+          onDismiss={() => setSignInError("")}
+        />
       )}
-      {!connected && (
-        <div className="browser-notice">Reconnecting to Citropy…</div>
-      )}
+      {native && state && <BrowserViewport state={state} disabled={!connected} onResize={act} />}
+      {!connected && <div className="browser-notice">Reconnecting to Citropy…</div>}
       {state?.error && (
         <div className="browser-notice" role="alert">
           <CircleAlertIcon size={14} />
@@ -195,8 +204,14 @@ export function BrowserPane({
               type="button"
               className="btn"
               onClick={() => act({ action: "dialog", accept: false })}
-            >{" "}Dismiss{" "}</button>
-            <button type="submit" className="btn" data-variant="primary">{" "}OK{" "}</button>
+            >
+              {" "}
+              Dismiss{" "}
+            </button>
+            <button type="submit" className="btn" data-variant="primary">
+              {" "}
+              OK{" "}
+            </button>
           </div>
         </form>
       )}
@@ -204,13 +219,20 @@ export function BrowserPane({
         {!native ? (
           <div className="browser-start">
             <h3>Continue in Citropy desktop</h3>
-            <p>{" "}The desktop app runs the browser directly, with normal scrolling, typing, and tabs shared with your provider.{" "}</p>
+            <p>
+              {" "}
+              The desktop app runs the browser directly, with normal scrolling, typing, and tabs
+              shared with your provider.{" "}
+            </p>
             <button
               type="button"
-              className="btn" data-variant="primary"
+              className="btn"
+              data-variant="primary"
               disabled={!connected}
               onClick={() => send({ t: "desktop.open" })}
-            >{" "}Open Citropy desktop{" "}<ArrowUpRightIcon size={14} />
+            >
+              {" "}
+              Open Citropy desktop <ArrowUpRightIcon size={14} />
             </button>
           </div>
         ) : !state ? (
@@ -239,7 +261,7 @@ export function BrowserPane({
             : "Desktop browser"}
         </span>
         {native && state && surface && (
-          <span>Fit{" "}{Math.round(fitScale(surface, state.width) * 100)}%</span>
+          <span>Fit {Math.round(fitScale(surface, state.width) * 100)}%</span>
         )}
       </div>
     </div>

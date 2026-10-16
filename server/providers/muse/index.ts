@@ -14,13 +14,21 @@ export const museProvider: Provider = {
   supportsPermissionPrompt: true,
   capabilities: { transport: "stdio", steer: true, compact: true, stopShell: true },
   steerHint: "Muse Code adds it to the turn in progress.",
-  signIn: { kind: "terminal", login: ["login"], credentials: museSignedIn, home: { variable: MUSE_HOME_VARIABLE } },
+  signIn: {
+    kind: "terminal",
+    login: ["login"],
+    credentials: museSignedIn,
+    home: { variable: MUSE_HOME_VARIABLE },
+  },
   models: [],
   listModels: listMuseModels,
   async detect(launch) {
-    const output = await commandVersion(launch?.binary ?? MUSE_BINARY, undefined, { ...launch?.environment, ...NO_AUTO_UPDATE });
+    const output = await commandVersion(launch?.binary ?? MUSE_BINARY, undefined, {
+      ...launch?.environment,
+      ...NO_AUTO_UPDATE,
+    });
     const version = output ? museVersion(output) : undefined;
     return { available: Boolean(version), version };
   },
-  start: options => new MuseSession(options),
+  start: (options) => new MuseSession(options),
 };

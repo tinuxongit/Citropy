@@ -13,11 +13,14 @@ export const panelRoutes: Routes = {
     } catch (error) {
       const panels = panelList();
       const panel = panels.find((panel) => panel.id === event.id || panel.id === event.targetId);
-      if (panel) respond({
-        t: "panel.order",
-        projectId: panel.projectId,
-        ids: panels.filter((entry) => entry.projectId === panel.projectId).map((entry) => entry.id),
-      });
+      if (panel)
+        respond({
+          t: "panel.order",
+          projectId: panel.projectId,
+          ids: panels
+            .filter((entry) => entry.projectId === panel.projectId)
+            .map((entry) => entry.id),
+        });
       throw error;
     }
   },
@@ -26,9 +29,18 @@ export const panelRoutes: Routes = {
     if (!project) throw new Error("Open a workspace first");
     if (event.threadId && store.threads.get(event.threadId)?.projectId !== project.id)
       throw new Error("Conversation belongs to another workspace");
-    if (event.url !== undefined && (event.kind !== "browser" || !["http:", "https:"].includes(new URL(event.url).protocol)))
+    if (
+      event.url !== undefined &&
+      (event.kind !== "browser" || !["http:", "https:"].includes(new URL(event.url).protocol))
+    )
       throw new Error("Open a valid HTTP or HTTPS link");
-    const panel = openPanel(project.id, event.kind, event.threadId, event.id, event.background === true);
+    const panel = openPanel(
+      project.id,
+      event.kind,
+      event.threadId,
+      event.id,
+      event.background === true,
+    );
     if (panel.kind !== "browser") return;
     try {
       await browser.openBrowser(project.id, panel.id, event.threadId, event.url);

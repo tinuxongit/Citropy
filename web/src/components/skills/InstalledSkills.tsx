@@ -49,7 +49,8 @@ export function InstalledSkills() {
       !(await confirmAction({
         title: `Delete ${skill.name}?`,
         context: skill.path,
-        description: "Remove this installed skill from its provider. Citropy keeps a recovery copy of its instructions in deleted-skills.",
+        description:
+          "Remove this installed skill from its provider. Citropy keeps a recovery copy of its instructions in deleted-skills.",
         label: "Delete skill",
         danger: true,
       }))
@@ -71,19 +72,25 @@ export function InstalledSkills() {
       setBusy("");
     }
   };
-  const filtered = useMemo(() => skills.filter(
-    (skill) =>
-      skill.scope !== "citropy" &&
-      (!provider || skill.provider === provider) &&
-      `${skill.name} ${skill.description} ${skill.path}`
-        .toLowerCase()
-        .includes(query.toLowerCase()),
-  ), [skills, provider, query]);
+  const filtered = useMemo(
+    () =>
+      skills.filter(
+        (skill) =>
+          skill.scope !== "citropy" &&
+          (!provider || skill.provider === provider) &&
+          `${skill.name} ${skill.description} ${skill.path}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+      ),
+    [skills, provider, query],
+  );
   const opened = skills.find((skill) => skill.id === openId);
   return (
     <>
       <p className="feature-note">
-        Skills installed in each provider's own folders. Turning one off or deleting it changes the provider's files, so finish that provider's conversations first. Type @ in a conversation to use an enabled skill.
+        Skills installed in each provider's own folders. Turning one off or deleting it changes the
+        provider's files, so finish that provider's conversations first. Type @ in a conversation to
+        use an enabled skill.
       </p>
       <div className="feature-filters">
         <label className="feature-search">
@@ -162,21 +169,29 @@ export function InstalledSkills() {
           </p>
         </div>
       )}
-      <AnimatePresence>{opened && (
-        <SkillDetails
-          skill={opened}
-          icon={<ProviderIcon provider={opened.provider} />}
-          source={source(opened)}
-          projectId={projectId}
-          onClose={() => setOpenId("")}
-          actions={
-            <button className="btn dialog-footer-start" data-variant="ghost" type="button" disabled={Boolean(busy)} onClick={() => void change(opened, "delete")}>
-              <TrashIcon size={15} />
-              Delete
-            </button>
-          }
-        />
-      )}</AnimatePresence>
+      <AnimatePresence>
+        {opened && (
+          <SkillDetails
+            skill={opened}
+            icon={<ProviderIcon provider={opened.provider} />}
+            source={source(opened)}
+            projectId={projectId}
+            onClose={() => setOpenId("")}
+            actions={
+              <button
+                className="btn dialog-footer-start"
+                data-variant="ghost"
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={() => void change(opened, "delete")}
+              >
+                <TrashIcon size={15} />
+                Delete
+              </button>
+            }
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

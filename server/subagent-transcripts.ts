@@ -47,11 +47,17 @@ export class SubagentTranscripts {
 
 function write(transcript: ThreadTranscript, event: TranscriptEvent): void {
   switch (event.type) {
-    case "block.start": return transcript.startBlock(event);
-    case "block.delta": return void transcript.appendBlock(event);
-    case "block.end": return transcript.endBlock(event);
-    case "tool.start": return transcript.startTool(event);
-    case "tool.input": return transcript.updateToolInput(event);
-    case "tool.end": return transcript.endTool(event);
+    case "block.start":
+      return transcript.startBlock(event);
+    case "block.delta":
+      return void transcript.appendBlock(event);
+    case "block.end":
+      return transcript.endBlock(event);
+    case "tool.start":
+      return transcript.startTool(event);
+    case "tool.input":
+      return transcript.updateToolInput(event);
+    case "tool.end":
+      return transcript.endTool(event);
   }
 }

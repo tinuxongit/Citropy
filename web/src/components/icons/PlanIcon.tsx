@@ -9,12 +9,19 @@ const CUT_WIDTH = 2;
 export function PlanIcon({ size = 24 }: { size?: number }) {
   const id = useId();
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <defs>
         <mask id={id}>
           <rect width="24" height="24" fill="white" />
           <path
-            d={ROWS.map(y => CHECK(y) + LINE(y)).join("")}
+            d={ROWS.map((y) => CHECK(y) + LINE(y)).join("")}
             fill="none"
             stroke="black"
             strokeWidth={CUT_WIDTH}

@@ -62,10 +62,7 @@ const modelSourceNames: Record<string, string> = {
   "zai-coding-cn": "Z.AI Coding Plan (China)",
 };
 
-export function modelSource(
-  provider: ProviderInfo | undefined,
-  model?: ModelOption,
-): string {
+export function modelSource(provider: ProviderInfo | undefined, model?: ModelOption): string {
   if (!provider) return "Provider unavailable";
   if (provider.id !== "opencode") return provider.label;
   const source = model?.hint ?? model?.id.split("/")[0];
@@ -73,33 +70,45 @@ export function modelSource(
   const name = modelSourceNames[source];
   if (typeof name === "string") return name;
   if (!/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(source)) return source;
-  return source.split(/[-_]/).map(part => part[0]!.toUpperCase() + part.slice(1)).join(" ");
+  return source
+    .split(/[-_]/)
+    .map((part) => part[0]!.toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
-export function threadActivity(thread: Pick<ThreadMeta, "running" | "status" | "usageLimit">): { status: ThreadStatus; label: string } {
-  if (!thread.running && thread.usageLimit) return thread.usageLimit.resume
-    ? { status: "queued", label: "Resumes after reset" }
-    : { status: "error", label: "Usage limit" };
-  const status = thread.running && ["idle", "stopped"].includes(thread.status) ? "working" : thread.status;
-  const label = status === "idle" ? "Ready" : status === "error" ? "Failed" : status === "awaiting" ? "Needs input"
-    : status.charAt(0).toUpperCase() + status.slice(1);
+export function threadActivity(thread: Pick<ThreadMeta, "running" | "status" | "usageLimit">): {
+  status: ThreadStatus;
+  label: string;
+} {
+  if (!thread.running && thread.usageLimit)
+    return thread.usageLimit.resume
+      ? { status: "queued", label: "Resumes after reset" }
+      : { status: "error", label: "Usage limit" };
+  const status =
+    thread.running && ["idle", "stopped"].includes(thread.status) ? "working" : thread.status;
+  const label =
+    status === "idle"
+      ? "Ready"
+      : status === "error"
+        ? "Failed"
+        : status === "awaiting"
+          ? "Needs input"
+          : status.charAt(0).toUpperCase() + status.slice(1);
   return { status, label };
 }
 
 const ACTIVE_STATUSES: ThreadStatus[] = ["queued", "thinking", "working", "awaiting"];
 
-export const threadIsActive = (thread: Pick<ThreadMeta, "running" | "status" | "usageLimit">) => ACTIVE_STATUSES.includes(threadActivity(thread).status);
+export const threadIsActive = (thread: Pick<ThreadMeta, "running" | "status" | "usageLimit">) =>
+  ACTIVE_STATUSES.includes(threadActivity(thread).status);
 
 export function effortLabel(effort: string): string {
-  return effort === "xhigh"
-    ? "Extra high"
-    : effort.charAt(0).toUpperCase() + effort.slice(1);
+  return effort === "xhigh" ? "Extra high" : effort.charAt(0).toUpperCase() + effort.slice(1);
 }
 
 export function tokens(value: number): string {
   if (value < 1000) return String(value);
-  if (value < 100_000)
-    return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  if (value < 100_000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
   if (value < 1_000_000) return `${Math.round(value / 1000)}k`;
   if (value < 1_000_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
   return `${(value / 1_000_000_000).toFixed(2)}B`;
@@ -112,14 +121,22 @@ export function formatDate(date: number | string, options: Intl.DateTimeFormatOp
   const hourCycle = useApp.getState().clock24 ? "h23" : "h12";
   const key = `${LOCALE}:${hourCycle}:${JSON.stringify(options)}`;
   let formatter = dateFormatters.get(key);
-  if (!formatter) dateFormatters.set(key, formatter = new Intl.DateTimeFormat(LOCALE, { ...options, hourCycle }));
+  if (!formatter)
+    dateFormatters.set(
+      key,
+      (formatter = new Intl.DateTimeFormat(LOCALE, { ...options, hourCycle })),
+    );
   return formatter.format(new Date(date));
 }
 
 export function decimal(value: number, fractionDigits = 1): string {
   const key = `${LOCALE}:${fractionDigits}`;
   let formatter = formatters.get(key);
-  if (!formatter) formatters.set(key, formatter = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: fractionDigits }));
+  if (!formatter)
+    formatters.set(
+      key,
+      (formatter = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: fractionDigits })),
+    );
   return formatter.format(value);
 }
 
@@ -189,13 +206,11 @@ export function until(ts: number, now = Date.now()): string {
   if (delta < 60_000) return "under a minute";
   const minutes = Math.round(delta / 60_000);
   if (minutes < 60) return `${minutes}m`;
-  if (minutes < 24 * 60) return minutes % 60
-    ? `${Math.floor(minutes / 60)}h ${minutes % 60}m`
-    : `${minutes / 60}h`;
+  if (minutes < 24 * 60)
+    return minutes % 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes / 60}h`;
   const hours = Math.round(delta / 3_600_000);
-  if (hours <= 7 * 24) return hours % 24
-    ? `${Math.floor(hours / 24)}d ${hours % 24}h`
-    : `${hours / 24}d`;
+  if (hours <= 7 * 24)
+    return hours % 24 ? `${Math.floor(hours / 24)}d ${hours % 24}h` : `${hours / 24}d`;
   return formatDate(ts, { month: "short", day: "numeric" });
 }
 
@@ -208,7 +223,9 @@ export function clock(ts: number): string {
 }
 
 export function shortWhen(ts: number, now = Date.now()): string {
-  return new Date(ts).toDateString() === new Date(now).toDateString() ? clock(ts) : formatDate(ts, { month: "short", day: "numeric" });
+  return new Date(ts).toDateString() === new Date(now).toDateString()
+    ? clock(ts)
+    : formatDate(ts, { month: "short", day: "numeric" });
 }
 
 export function shortPath(path: string, home: string): string {
@@ -266,8 +283,6 @@ export function langFor(path: string): string {
   const name = path.split("/").pop() ?? path;
   if (/^dockerfile$/i.test(name)) return "docker";
   if (/^makefile$/i.test(name)) return "makefile";
-  const ext = name.includes(".")
-    ? (name.split(".").pop() ?? "").toLowerCase()
-    : "";
+  const ext = name.includes(".") ? (name.split(".").pop() ?? "").toLowerCase() : "";
   return EXT_LANG[ext] ?? "text";
 }

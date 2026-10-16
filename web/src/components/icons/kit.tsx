@@ -24,8 +24,22 @@ export function Icon({ size = 24, className, children, ...svg }: IconProps) {
   );
 }
 
-export function Line({ d, width = LINE, ...path }: { d: string; width?: number } & Omit<SVGProps<SVGPathElement>, "d" | "width">) {
-  return <path d={d} fill="none" stroke="currentColor" strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" {...path} />;
+export function Line({
+  d,
+  width = LINE,
+  ...path
+}: { d: string; width?: number } & Omit<SVGProps<SVGPathElement>, "d" | "width">) {
+  return (
+    <path
+      d={d}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={width}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...path}
+    />
+  );
 }
 
 export function Knockout({ cuts, children }: { cuts: ReactNode; children: ReactNode }) {
@@ -34,14 +48,26 @@ export function Knockout({ cuts, children }: { cuts: ReactNode; children: ReactN
     <>
       <mask id={id} maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
         <rect width="24" height="24" fill="white" />
-        <g color="black" fill="currentColor">{cuts}</g>
+        <g color="black" fill="currentColor">
+          {cuts}
+        </g>
       </mask>
       <g mask={`url(#${id})`}>{children}</g>
     </>
   );
 }
 
-export function Turn({ degrees, mirror, children }: { degrees?: number; mirror?: boolean; children: ReactNode }) {
-  const transform = [degrees && `rotate(${degrees} 12 12)`, mirror && "matrix(-1 0 0 1 24 0)"].filter(Boolean).join(" ");
+export function Turn({
+  degrees,
+  mirror,
+  children,
+}: {
+  degrees?: number;
+  mirror?: boolean;
+  children: ReactNode;
+}) {
+  const transform = [degrees && `rotate(${degrees} 12 12)`, mirror && "matrix(-1 0 0 1 24 0)"]
+    .filter(Boolean)
+    .join(" ");
   return <g transform={transform || undefined}>{children}</g>;
 }

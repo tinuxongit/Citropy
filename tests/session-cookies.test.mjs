@@ -7,7 +7,17 @@ import test from "node:test";
 import { keepSessionCookies, persistentCopy } from "../desktop/session-cookies.ts";
 
 const LONGEST_SECONDS = 400 * 86_400;
-const cookie = { name: "sid", value: "abc", domain: ".example.com", hostOnly: false, path: "/", secure: true, httpOnly: true, sameSite: "lax", session: true };
+const cookie = {
+  name: "sid",
+  value: "abc",
+  domain: ".example.com",
+  hostOnly: false,
+  path: "/",
+  secure: true,
+  httpOnly: true,
+  sameSite: "lax",
+  session: true,
+};
 
 function fakeSession(storagePath) {
   const jar = new Map();
@@ -15,7 +25,13 @@ function fakeSession(storagePath) {
     get: async () => [...jar.values()],
     set: async (details) => {
       const { url, expirationDate, ...rest } = details;
-      const stored = { ...cookie, ...rest, domain: rest.domain ?? new URL(url).hostname, session: false, expirationDate };
+      const stored = {
+        ...cookie,
+        ...rest,
+        domain: rest.domain ?? new URL(url).hostname,
+        session: false,
+        expirationDate,
+      };
       jar.set(stored.name, stored);
       cookies.emit("changed", {}, stored, "explicit", false);
     },
@@ -25,12 +41,23 @@ function fakeSession(storagePath) {
 
 test("a sign-in cookie that ends with the session is kept as long as the browser allows", () => {
   assert.deepEqual(persistentCopy(cookie, 1000), {
-    url: "https://example.com/", name: "sid", value: "abc", domain: ".example.com", path: "/", secure: true, httpOnly: true, sameSite: "lax", expirationDate: 1000 + LONGEST_SECONDS,
+    url: "https://example.com/",
+    name: "sid",
+    value: "abc",
+    domain: ".example.com",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+    sameSite: "lax",
+    expirationDate: 1000 + LONGEST_SECONDS,
   });
 });
 
 test("a host-only cookie stays host-only", () => {
-  const copy = persistentCopy({ ...cookie, name: "__Host-sid", domain: "app.example.com", hostOnly: true, secure: false }, 0);
+  const copy = persistentCopy(
+    { ...cookie, name: "__Host-sid", domain: "app.example.com", hostOnly: true, secure: false },
+    0,
+  );
   assert.equal(copy.url, "http://app.example.com/");
   assert.equal("domain" in copy, false);
 });

@@ -31,10 +31,8 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
     const root = handle.current?.parentElement;
     if (size === undefined) root?.style.removeProperty(property);
     else root?.style.setProperty(property, `calc(${size}px * var(--ui-scale))`);
-    if (size !== undefined)
-      setMetrics((previous) => ({ ...previous, size }));
-    if (size === undefined)
-      environmentStorage.removeItem(`citropy${property}`);
+    if (size !== undefined) setMetrics((previous) => ({ ...previous, size }));
+    if (size === undefined) environmentStorage.removeItem(`citropy${property}`);
     else environmentStorage.setItem(`citropy${property}`, String(size));
   };
   const cancel = () => {
@@ -42,8 +40,7 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
     frame.current = 0;
     const current = drag.current;
     if (!current) return;
-    if (current.previous)
-      current.target.style.setProperty(current.property, current.previous);
+    if (current.previous) current.target.style.setProperty(current.property, current.previous);
     else current.target.style.removeProperty(current.property);
     handle.current?.setAttribute("aria-valuenow", String(current.size));
     handle.current?.setAttribute("aria-valuetext", `${current.size} pixels`);
@@ -54,9 +51,8 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
   useLayoutEffect(() => {
     const element = handle.current;
     const root = element?.parentElement;
-    const target = pane === "explorer"
-      ? element?.previousElementSibling
-      : element?.nextElementSibling;
+    const target =
+      pane === "explorer" ? element?.previousElementSibling : element?.nextElementSibling;
     if (!root || !target) return;
     for (const dimension of ["width", "height"]) {
       const name = `--editor-${pane}-${dimension}`;
@@ -116,9 +112,11 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         const root = event.currentTarget.parentElement;
-        const target = (pane === "explorer"
-          ? event.currentTarget.previousElementSibling
-          : event.currentTarget.nextElementSibling) as HTMLElement | null;
+        const target = (
+          pane === "explorer"
+            ? event.currentTarget.previousElementSibling
+            : event.currentTarget.nextElementSibling
+        ) as HTMLElement | null;
         if (!root || !target) return;
         event.preventDefault();
         event.currentTarget.focus();
@@ -145,7 +143,7 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
           frame.current = 0;
           if (drag.current === current) {
             const size = clamp(
-              current.size + direction * (current.position - current.start) / scale,
+              current.size + (direction * (current.position - current.start)) / scale,
             );
             current.target.style.setProperty(current.property, `${Math.round(size * scale)}px`);
             handle.current?.setAttribute("aria-valuenow", String(size));
@@ -157,9 +155,7 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
         const current = drag.current;
         if (!current) return;
         const position = horizontal ? event.clientY : event.clientX;
-        const size = clamp(
-          current.size + direction * (position - current.start) / scale,
-        );
+        const size = clamp(current.size + (direction * (position - current.start)) / scale);
         cancel();
         save(size);
         event.currentTarget.releasePointerCapture(event.pointerId);
@@ -181,11 +177,12 @@ export function EditorResizeHandle({ pane }: { pane: "explorer" | "terminal" }) 
         if (![decrease, increase, "Home", "End"].includes(event.key)) return;
         event.preventDefault();
         const step = (event.shiftKey ? 32 : 10) * direction;
-        const size = event.key === "Home"
-          ? metrics.minimum
-          : event.key === "End"
-            ? metrics.maximum
-            : metrics.size + (event.key === increase ? step : -step);
+        const size =
+          event.key === "Home"
+            ? metrics.minimum
+            : event.key === "End"
+              ? metrics.maximum
+              : metrics.size + (event.key === increase ? step : -step);
         save(clamp(size));
       }}
     />

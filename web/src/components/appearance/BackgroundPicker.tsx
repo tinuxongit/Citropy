@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { CheckIcon } from "../icons/marks.tsx";
 import { ImagePlusIcon } from "../icons/media.tsx";
 import { reportError } from "../../lib/api.ts";
-import { saveBackgroundFile, useBackgroundFile, type BackgroundFileKind } from "../../lib/background-files.ts";
+import {
+  saveBackgroundFile,
+  useBackgroundFile,
+  type BackgroundFileKind,
+} from "../../lib/background-files.ts";
 import { setStageBackground } from "../../lib/preferences.ts";
 import { useApp } from "../../lib/store.ts";
 import type { StageBackground } from "../../lib/app-state.ts";
@@ -35,7 +39,7 @@ function CustomImageOption({ selected }: { selected: boolean }) {
         type="button"
         aria-pressed={selected}
         title="Shows an image or GIF as the background."
-        onClick={() => file ? setStageBackground(kind) : input.current?.click()}
+        onClick={() => (file ? setStageBackground(kind) : input.current?.click())}
       >
         <span
           className="background-preview"
@@ -44,14 +48,27 @@ function CustomImageOption({ selected }: { selected: boolean }) {
           style={url ? { backgroundImage: `url("${url}")` } : undefined}
           aria-hidden="true"
         >
-          {!url && <><ImagePlusIcon size={18} />Upload an image or GIF</>}
+          {!url && (
+            <>
+              <ImagePlusIcon size={18} />
+              Upload an image or GIF
+            </>
+          )}
         </span>
         <span className="theme-option-label">
           <span>Custom image</span>
           {selected && <CheckIcon size={16} />}
         </span>
       </button>
-      {file && <button className="custom-background-replace" type="button" onClick={() => input.current?.click()}>Replace file…</button>}
+      {file && (
+        <button
+          className="custom-background-replace"
+          type="button"
+          onClick={() => input.current?.click()}
+        >
+          Replace file…
+        </button>
+      )}
       <input
         ref={input}
         type="file"
@@ -61,7 +78,9 @@ function CustomImageOption({ selected }: { selected: boolean }) {
           const chosen = event.target.files?.[0];
           event.target.value = "";
           if (!chosen) return;
-          saveBackgroundFile(kind, chosen).then(() => setStageBackground(kind)).catch(reportError);
+          saveBackgroundFile(kind, chosen)
+            .then(() => setStageBackground(kind))
+            .catch(reportError);
         }}
       />
     </div>

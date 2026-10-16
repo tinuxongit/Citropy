@@ -8,7 +8,10 @@ async function readShots(captures) {
   const shots = {};
   for (const file of (await readdir(captures)).filter((name) => name.endsWith(".json"))) {
     const key = basename(file, ".json");
-    shots[key] = { src: `/capture/${key}.png`, ...JSON.parse(await readFile(join(captures, file), "utf8")) };
+    shots[key] = {
+      src: `/capture/${key}.png`,
+      ...JSON.parse(await readFile(join(captures, file), "utf8")),
+    };
   }
   return shots;
 }
@@ -16,10 +19,15 @@ async function readShots(captures) {
 export async function composeArt({ browser, origin, captures, output, providers }) {
   const context = { shots: await readShots(captures), providers };
   for (const art of arts) {
-    const page = await browser.newPage({ viewport: { width: art.width, height: art.height }, deviceScaleFactor: art.scale });
+    const page = await browser.newPage({
+      viewport: { width: art.width, height: art.height },
+      deviceScaleFactor: art.scale,
+    });
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.route("**/capture/**", (route) => route.fulfill({ path: join(captures, basename(new URL(route.request().url()).pathname)) }));
+    await page.route("**/capture/**", (route) =>
+      route.fulfill({ path: join(captures, basename(new URL(route.request().url()).pathname)) }),
+    );
     await page.goto(new URL("/tests/readme-art/stage.html", origin).href);
     await page.waitForFunction(() => typeof window.paintArt === "function");
     await page.evaluate((html) => window.paintArt(html), art.html(context));

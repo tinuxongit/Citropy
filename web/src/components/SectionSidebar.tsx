@@ -15,13 +15,15 @@ export function SectionSidebar({
   children: ReactNode;
 }) {
   return (
-    <SlidingPanel open={open} side="left"><aside className="rail section-rail" aria-label={title}>
-      <nav className="section-nav scroll sliding-selection" aria-label={`${title} sections`}>
-        <SelectionHighlight value={activeItem} />
-        {children}
-      </nav>
-      <ResizeHandle panel="sidebar" />
-    </aside></SlidingPanel>
+    <SlidingPanel open={open} side="left">
+      <aside className="rail section-rail" aria-label={title}>
+        <nav className="section-nav scroll sliding-selection" aria-label={`${title} sections`}>
+          <SelectionHighlight value={activeItem} />
+          {children}
+        </nav>
+        <ResizeHandle panel="sidebar" />
+      </aside>
+    </SlidingPanel>
   );
 }
 

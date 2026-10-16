@@ -18,8 +18,14 @@ export interface Runtime<Status extends RuntimeStatus> {
   pendingSetup?: { label: string; needed(status: Status): boolean };
 }
 
-export function RuntimeRow<Status extends RuntimeStatus>({ runtime, onInstalled }: { runtime: Runtime<Status>; onInstalled?: () => void }) {
-  const connected = useApp(state => state.connected);
+export function RuntimeRow<Status extends RuntimeStatus>({
+  runtime,
+  onInstalled,
+}: {
+  runtime: Runtime<Status>;
+  onInstalled?: () => void;
+}) {
+  const connected = useApp((state) => state.connected);
   const [status, setStatus] = useState<Status>();
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -49,7 +55,10 @@ export function RuntimeRow<Status extends RuntimeStatus>({ runtime, onInstalled 
       }
     };
     void load();
-    return () => { controller.abort(); clearTimeout(timer); };
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
   }, [connected, refresh, onInstalled, path]);
 
   const install = async () => {
@@ -57,7 +66,7 @@ export function RuntimeRow<Status extends RuntimeStatus>({ runtime, onInstalled 
     setError("");
     try {
       setStatus(await api<Status>(path, { method: "POST" }));
-      setRefresh(value => value + 1);
+      setRefresh((value) => value + 1);
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -73,17 +82,40 @@ export function RuntimeRow<Status extends RuntimeStatus>({ runtime, onInstalled 
       <span>
         <strong>{runtime.label}</strong>
         <small>{status?.ready ? runtime.installed(status) : runtime.purpose(status)}</small>
-        {status && !status.supported && !status.ready && <small>{runtime.unsupported(status)}</small>}
-        {(error || status?.message) && <small className="provider-update-result"
-          data-status={error ? "error" : status?.status} role={error || status?.status === "error" ? "alert" : "status"}>
-          {error || status?.message}
-          {error && <button className="btn" onClick={() => setRefresh(value => value + 1)}>Retry</button>}
-        </small>}
+        {status && !status.supported && !status.ready && (
+          <small>{runtime.unsupported(status)}</small>
+        )}
+        {(error || status?.message) && (
+          <small
+            className="provider-update-result"
+            data-status={error ? "error" : status?.status}
+            role={error || status?.status === "error" ? "alert" : "status"}
+          >
+            {error || status?.message}
+            {error && (
+              <button className="btn" onClick={() => setRefresh((value) => value + 1)}>
+                Retry
+              </button>
+            )}
+          </small>
+        )}
       </span>
-      {done ? <span className="provider-up-to-date"><CheckIcon size={14} />Installed</span>
-        : <button className="btn" type="button" disabled={!connected || !status?.supported || busy}
-          onClick={() => void install()}>{busy ? <Loader size={14} /> : <DownloadIcon size={14} />}
-          {busy ? "Installing…" : needsSetup ? runtime.pendingSetup!.label : runtime.installLabel}</button>}
+      {done ? (
+        <span className="provider-up-to-date">
+          <CheckIcon size={14} />
+          Installed
+        </span>
+      ) : (
+        <button
+          className="btn"
+          type="button"
+          disabled={!connected || !status?.supported || busy}
+          onClick={() => void install()}
+        >
+          {busy ? <Loader size={14} /> : <DownloadIcon size={14} />}
+          {busy ? "Installing…" : needsSetup ? runtime.pendingSetup!.label : runtime.installLabel}
+        </button>
+      )}
     </div>
   );
 }

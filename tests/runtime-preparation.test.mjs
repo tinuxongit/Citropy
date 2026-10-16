@@ -17,7 +17,12 @@ import { store } from "../server/store.ts";
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), "citropy-preparation-"));
   const project = store.openProject(directory);
-  const thread = store.createThread({ projectId: project.id, provider: "claude", permissionMode: "manual", title: "Preparation test" });
+  const thread = store.createThread({
+    projectId: project.id,
+    provider: "claude",
+    permissionMode: "manual",
+    title: "Preparation test",
+  });
   const runtime = runtimeFor(thread.id);
   t.after(async () => {
     disposeRuntime(thread.id);
@@ -27,7 +32,7 @@ async function fixture(t) {
   return { directory, thread, runtime };
 }
 
-test("Stop during checkpoint creation preserves the queued request, attachments, and order for retry", async t => {
+test("Stop during checkpoint creation preserves the queued request, attachments, and order for retry", async (t) => {
   const { directory, thread, runtime } = await fixture(t);
   execFileSync("git", ["init", "-q", directory]);
   await writeFile(join(directory, "file.txt"), "Checkpoint content\n");
@@ -46,8 +51,13 @@ test("Stop during checkpoint creation preserves the queued request, attachments,
     dispose() {},
   }));
   let stopped = false;
-  const unsubscribe = bus.subscribe(event => {
-    if (!stopped && event.t === "thread.upsert" && event.thread.id === thread.id && event.thread.checkpoints?.length) {
+  const unsubscribe = bus.subscribe((event) => {
+    if (
+      !stopped &&
+      event.t === "thread.upsert" &&
+      event.thread.id === thread.id &&
+      event.thread.checkpoints?.length
+    ) {
       stopped = true;
       runtime.stop();
     }
@@ -67,11 +77,13 @@ test("Stop during checkpoint creation preserves the queued request, attachments,
   assert.deepEqual(sent, [{ prompt: queued[1].text, attachments: [attachment] }]);
 });
 
-test("a provider failure after recording a queued request does not requeue it", async t => {
+test("a provider failure after recording a queued request does not requeue it", async (t) => {
   const { thread, runtime } = await fixture(t);
   store.patchThread(thread.id, { queue: [{ id: "request", text: "Run once", createdAt: 1 }] });
   t.mock.method(providers.claude, "start", () => ({
-    send() { throw new Error("Provider failed"); },
+    send() {
+      throw new Error("Provider failed");
+    },
     dispose() {},
   }));
   await runtime.sendNow("request");
@@ -82,29 +94,38 @@ test("a provider failure after recording a queued request does not requeue it", 
   assert.equal(thread.error, "Provider failed");
 });
 
-test("FIFO context rejects without a writer and leaves the conversation ready to send", { skip: process.platform === "win32" }, async t => {
-  const { directory, thread, runtime } = await fixture(t);
-  const path = join(directory, "context.pipe");
-  execFileSync("mkfifo", [path]);
-  let writer;
-  const release = setTimeout(() => { writer = openSync(path, constants.O_RDWR | constants.O_NONBLOCK); }, 2000);
-  try {
-    await assert.rejects(runtime.send("Inspect @[context.pipe]"), /Choose a file/);
-    assert.equal(writer, undefined, "reject the FIFO without waiting for a writer");
-  } finally {
-    clearTimeout(release);
-    if (writer !== undefined) closeSync(writer);
-  }
-  assert.equal(runtime.turnActive, false);
-  assert.deepEqual(thread.messages, []);
-  const sent = [];
-  t.mock.method(providers.claude, "start", () => ({ send: prompt => sent.push(prompt), dispose() {} }));
-  await runtime.send("Try another request");
-  assert.deepEqual(sent, ["Try another request"]);
-  assert.equal(thread.queue?.length ?? 0, 0);
-});
+test(
+  "FIFO context rejects without a writer and leaves the conversation ready to send",
+  { skip: process.platform === "win32" },
+  async (t) => {
+    const { directory, thread, runtime } = await fixture(t);
+    const path = join(directory, "context.pipe");
+    execFileSync("mkfifo", [path]);
+    let writer;
+    const release = setTimeout(() => {
+      writer = openSync(path, constants.O_RDWR | constants.O_NONBLOCK);
+    }, 2000);
+    try {
+      await assert.rejects(runtime.send("Inspect @[context.pipe]"), /Choose a file/);
+      assert.equal(writer, undefined, "reject the FIFO without waiting for a writer");
+    } finally {
+      clearTimeout(release);
+      if (writer !== undefined) closeSync(writer);
+    }
+    assert.equal(runtime.turnActive, false);
+    assert.deepEqual(thread.messages, []);
+    const sent = [];
+    t.mock.method(providers.claude, "start", () => ({
+      send: (prompt) => sent.push(prompt),
+      dispose() {},
+    }));
+    await runtime.send("Try another request");
+    assert.deepEqual(sent, ["Try another request"]);
+    assert.equal(thread.queue?.length ?? 0, 0);
+  },
+);
 
-test("bounded context reads retain text, truncation, binary rejection, and symlink support", async t => {
+test("bounded context reads retain text, truncation, binary rejection, and symlink support", async (t) => {
   const { directory } = await fixture(t);
   const path = join(directory, "context.txt");
   await writeFile(path, "Context\n");

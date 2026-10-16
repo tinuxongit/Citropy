@@ -5,7 +5,13 @@ import { dateTime, since } from "../../lib/format.ts";
 import { ProviderIcon } from "../icons/ProviderIcon.tsx";
 import { DisconnectedIcon } from "../icons/hardware.tsx";
 
-export function CachedThreadRow({ thread, now, environment, showDisconnected, onConversation }: {
+export function CachedThreadRow({
+  thread,
+  now,
+  environment,
+  showDisconnected,
+  onConversation,
+}: {
   thread: CachedThread;
   now: number;
   showDisconnected: boolean;
@@ -30,9 +36,20 @@ export function CachedThreadRow({ thread, now, environment, showDisconnected, on
         >
           <ProviderIcon provider={thread.provider} />
           <span className="thread-row-title">{thread.title}</span>
-          {showDisconnected
-            ? <span className="thread-status" role="img" aria-label="Disconnected" title="Disconnected"><DisconnectedIcon size={14} /></span>
-            : <time className="thread-row-time" dateTime={new Date(thread.updatedAt).toISOString()}>{since(thread.updatedAt, now)}</time>}
+          {showDisconnected ? (
+            <span
+              className="thread-status"
+              role="img"
+              aria-label="Disconnected"
+              title="Disconnected"
+            >
+              <DisconnectedIcon size={14} />
+            </span>
+          ) : (
+            <time className="thread-row-time" dateTime={new Date(thread.updatedAt).toISOString()}>
+              {since(thread.updatedAt, now)}
+            </time>
+          )}
         </button>
       </div>
     </div>

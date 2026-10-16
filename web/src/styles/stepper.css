@@ -1,11 +1,62 @@
-.stepper { display: grid; justify-items: center; gap: var(--space-2); width: 100%; }
-.stepper-step { display: grid; place-items: center; width: 100%; height: 30px; border-radius: var(--r-sm); color: var(--text-2); transition: background var(--dur-instant) var(--ease-out), color var(--dur-instant) var(--ease-out); }
-.stepper-step:hover:not(:disabled) { background: var(--hover); color: var(--text); }
-.stepper-step:disabled { opacity: 0.35; }
-.stepper-amount { display: grid; justify-items: center; width: 100%; padding: var(--space-4) 0; border-radius: var(--r-md); background: var(--popup-well); }
-.stepper-amount:focus-within { box-shadow: var(--field-focus-ring); }
-.stepper-amount input { width: 100%; padding: 0; border: 0; background: none; color: var(--text); font-size: var(--text-display); font-weight: 600; line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; appearance: textfield; outline: none; }
-.stepper-amount input:focus-visible { outline: none; box-shadow: none; }
+.stepper {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+.stepper-step {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 30px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  transition:
+    background var(--dur-instant) var(--ease-out),
+    color var(--dur-instant) var(--ease-out);
+}
+.stepper-step:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+.stepper-step:disabled {
+  opacity: 0.35;
+}
+.stepper-amount {
+  display: grid;
+  justify-items: center;
+  width: 100%;
+  padding: var(--space-4) 0;
+  border-radius: var(--r-md);
+  background: var(--popup-well);
+}
+.stepper-amount:focus-within {
+  box-shadow: var(--field-focus-ring);
+}
+.stepper-amount input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: var(--text-display);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+  outline: none;
+}
+.stepper-amount input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
 .stepper-amount input::-webkit-inner-spin-button,
-.stepper-amount input::-webkit-outer-spin-button { appearance: none; margin: 0; }
-.stepper-amount span { color: var(--text-3); font-size: var(--text-xs); }
+.stepper-amount input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.stepper-amount span {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}

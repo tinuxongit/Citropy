@@ -1,6 +1,10 @@
 import type { ThemeRegistrationRaw } from "shiki/core";
 
-function build(name: string, type: "dark" | "light", palette: Record<string, string>): ThemeRegistrationRaw {
+function build(
+  name: string,
+  type: "dark" | "light",
+  palette: Record<string, string>,
+): ThemeRegistrationRaw {
   const get = (key: string) => palette[key] ?? palette.text ?? "#000";
   return {
     name,
@@ -8,34 +12,87 @@ function build(name: string, type: "dark" | "light", palette: Record<string, str
     colors: { "editor.background": "#00000000", "editor.foreground": get("text") },
     settings: [
       { settings: { foreground: get("text"), background: "#00000000" } },
-      { scope: ["comment", "punctuation.definition.comment", "string.comment"], settings: { foreground: get("comment"), fontStyle: "italic" } },
       {
-        scope: ["keyword", "storage", "storage.type", "keyword.control", "keyword.operator.new", "keyword.operator.expression"],
+        scope: ["comment", "punctuation.definition.comment", "string.comment"],
+        settings: { foreground: get("comment"), fontStyle: "italic" },
+      },
+      {
+        scope: [
+          "keyword",
+          "storage",
+          "storage.type",
+          "keyword.control",
+          "keyword.operator.new",
+          "keyword.operator.expression",
+        ],
         settings: { foreground: get("keyword") },
       },
-      { scope: ["string", "string.quoted", "punctuation.definition.string"], settings: { foreground: get("string") } },
-      { scope: ["constant.numeric", "constant.language", "constant.character", "keyword.other.unit"], settings: { foreground: get("number") } },
       {
-        scope: ["entity.name.function", "support.function", "meta.function-call.generic", "variable.function"],
+        scope: ["string", "string.quoted", "punctuation.definition.string"],
+        settings: { foreground: get("string") },
+      },
+      {
+        scope: [
+          "constant.numeric",
+          "constant.language",
+          "constant.character",
+          "keyword.other.unit",
+        ],
+        settings: { foreground: get("number") },
+      },
+      {
+        scope: [
+          "entity.name.function",
+          "support.function",
+          "meta.function-call.generic",
+          "variable.function",
+        ],
         settings: { foreground: get("func") },
       },
       {
-        scope: ["entity.name.type", "entity.name.class", "support.type", "support.class", "storage.type.class"],
+        scope: [
+          "entity.name.type",
+          "entity.name.class",
+          "support.type",
+          "support.class",
+          "storage.type.class",
+        ],
         settings: { foreground: get("type") },
       },
-      { scope: ["variable", "meta.definition.variable", "variable.other.readwrite"], settings: { foreground: get("text") } },
+      {
+        scope: ["variable", "meta.definition.variable", "variable.other.readwrite"],
+        settings: { foreground: get("text") },
+      },
       { scope: ["variable.parameter", "meta.parameter"], settings: { foreground: get("param") } },
       {
-        scope: ["variable.other.property", "support.variable.property", "meta.object-literal.key", "entity.name.tag.yaml", "support.type.property-name"],
+        scope: [
+          "variable.other.property",
+          "support.variable.property",
+          "meta.object-literal.key",
+          "entity.name.tag.yaml",
+          "support.type.property-name",
+        ],
         settings: { foreground: get("prop") },
       },
-      { scope: ["entity.name.tag", "punctuation.definition.tag"], settings: { foreground: get("tag") } },
+      {
+        scope: ["entity.name.tag", "punctuation.definition.tag"],
+        settings: { foreground: get("tag") },
+      },
       { scope: ["entity.other.attribute-name"], settings: { foreground: get("attr") } },
-      { scope: ["keyword.operator", "punctuation", "meta.brace"], settings: { foreground: get("punct") } },
-      { scope: ["string.regexp", "constant.character.escape"], settings: { foreground: get("regex") } },
+      {
+        scope: ["keyword.operator", "punctuation", "meta.brace"],
+        settings: { foreground: get("punct") },
+      },
+      {
+        scope: ["string.regexp", "constant.character.escape"],
+        settings: { foreground: get("regex") },
+      },
       { scope: ["markup.inserted", "markup.inserted.diff"], settings: { foreground: get("add") } },
       { scope: ["markup.deleted", "markup.deleted.diff"], settings: { foreground: get("del") } },
-      { scope: ["markup.heading", "entity.name.section"], settings: { foreground: get("func"), fontStyle: "bold" } },
+      {
+        scope: ["markup.heading", "entity.name.section"],
+        settings: { foreground: get("func"), fontStyle: "bold" },
+      },
       { scope: ["markup.bold"], settings: { fontStyle: "bold" } },
       { scope: ["markup.italic"], settings: { fontStyle: "italic" } },
       { scope: ["invalid", "invalid.illegal"], settings: { foreground: get("tag") } },

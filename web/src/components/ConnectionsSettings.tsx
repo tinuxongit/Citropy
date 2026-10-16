@@ -16,7 +16,10 @@ export function ConnectionsSettings() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
-  const [signingIn, setSigningIn] = useState<{ connection: Connection; account: ConnectionAccount }>();
+  const [signingIn, setSigningIn] = useState<{
+    connection: Connection;
+    account: ConnectionAccount;
+  }>();
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
@@ -41,7 +44,9 @@ export function ConnectionsSettings() {
       setBusy(false);
     }
   };
-  const suggested = suggestions.filter((suggestion) => !connections?.some((connection) => connection.site === siteOf(suggestion.url)));
+  const suggested = suggestions.filter(
+    (suggestion) => !connections?.some((connection) => connection.site === siteOf(suggestion.url)),
+  );
   const signIn = async (connection: Connection, account: ConnectionAccount) => {
     setSigningIn({ connection, account });
     setError("");
@@ -56,29 +61,39 @@ export function ConnectionsSettings() {
   };
   const addAccount = async (connection: Connection, label: string) => {
     const list = await perform("connections/accounts", "POST", { id: connection.id, label });
-    if (list) void signIn(connection, list.find((entry) => entry.id === connection.id)!.accounts.at(-1)!);
+    if (list)
+      void signIn(connection, list.find((entry) => entry.id === connection.id)!.accounts.at(-1)!);
     return Boolean(list);
   };
   const signOut = async (account: ConnectionAccount) => {
-    if (await confirmAction({
-      title: `Sign out of ${account.name}?`,
-      description: "This also closes its open browser tabs. Agents can't use your account there until you sign in again.",
-      label: "Sign out",
-      danger: true,
-    })) await perform("connections/status", "POST", { id: account.id, signedIn: false });
+    if (
+      await confirmAction({
+        title: `Sign out of ${account.name}?`,
+        description:
+          "This also closes its open browser tabs. Agents can't use your account there until you sign in again.",
+        label: "Sign out",
+        danger: true,
+      })
+    )
+      await perform("connections/status", "POST", { id: account.id, signedIn: false });
   };
   const remove = async (account: ConnectionAccount) => {
-    if (await confirmAction({
-      title: `Remove ${account.name}?`,
-      description: "This also signs you out of it in Citropy's browser and closes its open tabs.",
-      label: "Remove",
-      danger: true,
-    })) await perform("connections", "DELETE", { id: account.id });
+    if (
+      await confirmAction({
+        title: `Remove ${account.name}?`,
+        description: "This also signs you out of it in Citropy's browser and closes its open tabs.",
+        label: "Remove",
+        danger: true,
+      })
+    )
+      await perform("connections", "DELETE", { id: account.id });
   };
   return (
     <div className="feature-stack">
       <p className="feature-note">
-        Sign in to a website once in Citropy. Agents can then open it with your account, and they ask you before buying, sending, posting, or deleting anything there. Each account keeps its own sign-in, and Add account signs in to another account on the same site.
+        Sign in to a website once in Citropy. Agents can then open it with your account, and they
+        ask you before buying, sending, posting, or deleting anything there. Each account keeps its
+        own sign-in, and Add account signs in to another account on the same site.
       </p>
       {connections && connections.length > 0 && (
         <section className="settings-group" aria-label="Connected websites">
@@ -103,14 +118,31 @@ export function ConnectionsSettings() {
             {suggested.map((suggestion) => (
               <div className="setting-row connection-row" key={suggestion.url}>
                 <span className="connection-site">
-                  <span className="connection-icon"><SiteIcon url={suggestion.url} /></span>
+                  <span className="connection-icon">
+                    <SiteIcon url={suggestion.url} />
+                  </span>
                   <span>
                     <strong>{suggestion.name}</strong>
-                    <small>{"description" in suggestion ? suggestion.description : siteOf(suggestion.url)}</small>
+                    <small>
+                      {"description" in suggestion
+                        ? suggestion.description
+                        : siteOf(suggestion.url)}
+                    </small>
                   </span>
                 </span>
                 <span className="row-actions">
-                  <button className="btn" data-variant="ghost" disabled={busy} aria-label={`Add ${suggestion.name}`} onClick={() => void perform("connections", "POST", { name: suggestion.name, url: suggestion.url })}>
+                  <button
+                    className="btn"
+                    data-variant="ghost"
+                    disabled={busy}
+                    aria-label={`Add ${suggestion.name}`}
+                    onClick={() =>
+                      void perform("connections", "POST", {
+                        name: suggestion.name,
+                        url: suggestion.url,
+                      })
+                    }
+                  >
                     <PlusIcon size={15} />
                     Add
                   </button>
@@ -132,8 +164,19 @@ export function ConnectionsSettings() {
             }
           }}
         >
-          <input aria-label="Connection name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Name, like Gmail" maxLength={60} />
-          <input aria-label="Website address" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="mail.google.com" />
+          <input
+            aria-label="Connection name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Name, like Gmail"
+            maxLength={60}
+          />
+          <input
+            aria-label="Website address"
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
+            placeholder="mail.google.com"
+          />
           <button className="btn" disabled={busy || !name.trim() || !url.trim() || !connections}>
             <PlusIcon size={15} />
             Add
@@ -141,7 +184,15 @@ export function ConnectionsSettings() {
         </form>
       </section>
       <ActionError className="feature-error" message={error} onDismiss={() => setError("")} />
-      <AnimatePresence>{signingIn && <SignInDialog key={signingIn.account.id} connection={signingIn.connection} account={signingIn.account} />}</AnimatePresence>
+      <AnimatePresence>
+        {signingIn && (
+          <SignInDialog
+            key={signingIn.account.id}
+            connection={signingIn.connection}
+            account={signingIn.account}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

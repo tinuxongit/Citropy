@@ -24,7 +24,18 @@ function stroke(x: number, d: string): ReactNode {
 }
 
 function bar(x: number, tilt: number): ReactNode {
-  return <rect key={x} className="bot-eye" x={x - 2.6} y={-1.2} width={5.2} height={2.4} rx={1.2} transform={`rotate(${tilt} ${x} 0)`} />;
+  return (
+    <rect
+      key={x}
+      className="bot-eye"
+      x={x - 2.6}
+      y={-1.2}
+      width={5.2}
+      height={2.4}
+      rx={1.2}
+      transform={`rotate(${tilt} ${x} 0)`}
+    />
+  );
 }
 
 function mark(x: number, d: string): ReactNode {
@@ -33,12 +44,15 @@ function mark(x: number, d: string): ReactNode {
 
 const HAPPY_ARC = "M-2.2 1.2Q0 -2.2 2.2 1.2";
 const CROSS = "M-1.7 -1.7L1.7 1.7M1.7 -1.7L-1.7 1.7";
-const HEART = "M0 2.4C-1.6 1.3 -2.7 0.2 -2.7 -0.9A1.4 1.4 0 0 1 0 -1.6A1.4 1.4 0 0 1 2.7 -0.9C2.7 0.2 1.6 1.3 0 2.4Z";
+const HEART =
+  "M0 2.4C-1.6 1.3 -2.7 0.2 -2.7 -0.9A1.4 1.4 0 0 1 0 -1.6A1.4 1.4 0 0 1 2.7 -0.9C2.7 0.2 1.6 1.3 0 2.4Z";
 
 const FACES: Record<BotFace, ReactNode[]> = {
   neutral: [pill(-EYE_SPREAD, 0.5, -24), pill(EYE_SPREAD, -0.5, 0)],
   attentive: [pill(-EYE_SPREAD, 0, 0), pill(EYE_SPREAD, 0, 0)],
-  surprised: [-EYE_SPREAD, EYE_SPREAD].map((x) => <circle key={x} className="bot-eye" cx={x} cy={0} r={2.3} />),
+  surprised: [-EYE_SPREAD, EYE_SPREAD].map((x) => (
+    <circle key={x} className="bot-eye" cx={x} cy={0} r={2.3} />
+  )),
   happy: [-EYE_SPREAD, EYE_SPREAD].map((x) => stroke(x, HAPPY_ARC)),
   sad: [pill(-EYE_SPREAD, 0.4, 28, 5.4), pill(EYE_SPREAD, 0.4, -28, 5.4)],
   angry: [bar(-EYE_SPREAD, 22), bar(EYE_SPREAD, -22)],

@@ -43,12 +43,7 @@ test("browser profiles isolate imported cookies and preserve source databases", 
   };
   const tabs = new Map();
   const action = (operation, input = {}) =>
-    handleProfiles(
-      operation,
-      { projectId: "fixture", method: "POST", ...input },
-      session,
-      tabs,
-    );
+    handleProfiles(operation, { projectId: "fixture", method: "POST", ...input }, session, tabs);
   const initial = await action("profiles", { method: "GET" });
   assert.equal(initial.selected, "workspace");
   assert.equal(browserProfile("fixture").partition, "persist:citropy-fixture");
@@ -58,9 +53,8 @@ test("browser profiles isolate imported cookies and preserve source databases", 
   ]);
   const profileId = parallel[1].selected;
   assert.equal(
-    JSON.parse(
-      fs.readFileSync(join(directory, "browser-profiles.json"), "utf8"),
-    ).fixture.profiles.length,
+    JSON.parse(fs.readFileSync(join(directory, "browser-profiles.json"), "utf8")).fixture.profiles
+      .length,
     3,
   );
   assert.notEqual(
@@ -74,20 +68,8 @@ test("browser profiles isolate imported cookies and preserve source databases", 
   database.exec(
     "CREATE TABLE moz_cookies (host TEXT, name TEXT, value TEXT, path TEXT, expiry INTEGER, isSecure INTEGER, isHttpOnly INTEGER, sameSite INTEGER, originAttributes TEXT)",
   );
-  const insert = database.prepare(
-    "INSERT INTO moz_cookies VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  );
-  insert.run(
-    ".example.test",
-    "session",
-    "fixture-cookie",
-    "/",
-    4000000000,
-    1,
-    1,
-    1,
-    "",
-  );
+  const insert = database.prepare("INSERT INTO moz_cookies VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+  insert.run(".example.test", "session", "fixture-cookie", "/", 4000000000, 1, 1, 1, "");
   insert.run("example.test", "expired", "old", "/", 1, 1, 0, 1, "");
   insert.run(
     "example.test",
@@ -112,27 +94,16 @@ test("browser profiles isolate imported cookies and preserve source databases", 
   assert.deepEqual(imported, { imported: 1, skipped: 2 });
   assert.deepEqual(fs.readFileSync(path), before);
   const state = await action("profiles", { method: "GET" });
-  assert.equal(
-    state.profiles.find((entry) => entry.id === "workspace").cookies,
-    0,
-  );
-  assert.equal(
-    state.profiles.find((entry) => entry.id === profileId).cookies,
-    1,
-  );
+  assert.equal(state.profiles.find((entry) => entry.id === "workspace").cookies, 0);
+  assert.equal(state.profiles.find((entry) => entry.id === profileId).cookies, 1);
   const cookie = (
-    await session
-      .fromPartition(browserProfile("fixture", profileId).partition)
-      .cookies.get({})
+    await session.fromPartition(browserProfile("fixture", profileId).partition).cookies.get({})
   )[0];
   assert.equal(cookie.httpOnly, true);
   assert.equal(cookie.secure, true);
   assert.equal(cookie.sameSite, "lax");
   tabs.set("open", { state: { projectId: "fixture", profileId } });
-  await assert.rejects(
-    action("profiles", { method: "DELETE", id: profileId }),
-    /Close/,
-  );
+  await assert.rejects(action("profiles", { method: "DELETE", id: profileId }), /Close/);
   tabs.clear();
   await action("clear", { profileId, kind: "cookies" });
   await action("profiles", { method: "DELETE", id: profileId });
@@ -143,12 +114,12 @@ test("browser profiles isolate imported cookies and preserve source databases", 
     1,
   );
   await action("forget");
+  assert.equal((await session.fromPartition("persist:citropy-fixture").cookies.get({})).length, 0);
   assert.equal(
-    (await session.fromPartition("persist:citropy-fixture").cookies.get({})).length,
-    0,
-  );
-  assert.equal(
-    Object.hasOwn(JSON.parse(fs.readFileSync(join(directory, "browser-profiles.json"), "utf8")), "fixture"),
+    Object.hasOwn(
+      JSON.parse(fs.readFileSync(join(directory, "browser-profiles.json"), "utf8")),
+      "fixture",
+    ),
     false,
   );
   const key = pbkdf2Sync("peanuts", "saltysalt", 1, 16, "sha1");
@@ -157,27 +128,22 @@ test("browser profiles isolate imported cookies and preserve source databases", 
   const encrypted = Buffer.concat([
     Buffer.from("v10"),
     cipher.update(
-      Buffer.concat([
-        createHash("sha256").update(host).digest(),
-        Buffer.from("encrypted-fixture"),
-      ]),
+      Buffer.concat([createHash("sha256").update(host).digest(), Buffer.from("encrypted-fixture")]),
     ),
     cipher.final(),
   ]);
-  assert.equal(
-    decryptCookie(encrypted, host, 24, { v10: key }),
-    "encrypted-fixture",
-  );
+  assert.equal(decryptCookie(encrypted, host, 24, { v10: key }), "encrypted-fixture");
   assert.equal(decryptCookie(encrypted, ".wrong.test", 24, { v10: key }), null);
-  assert.equal(
-    decryptCookie(Buffer.from("v20unsupported"), host, 24, { v10: key }),
-    null,
-  );
+  assert.equal(decryptCookie(Buffer.from("v20unsupported"), host, 24, { v10: key }), null);
 });
 
 test("each bot gets its own browser profile and other ids are refused", async () => {
   const { botProfile } = await import("../desktop/browser-profiles.ts");
-  assert.deepEqual(botProfile("bot-bot_abc"), { id: "bot-bot_abc", name: "Bot", partition: "persist:citropy-bot-bot_abc" });
+  assert.deepEqual(botProfile("bot-bot_abc"), {
+    id: "bot-bot_abc",
+    name: "Bot",
+    partition: "persist:citropy-bot-bot_abc",
+  });
   assert.equal(botProfile("workspace"), undefined);
   assert.equal(botProfile("bot-../x"), undefined);
   assert.equal(botProfile(undefined), undefined);

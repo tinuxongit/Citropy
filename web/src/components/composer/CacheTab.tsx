@@ -20,22 +20,30 @@ export function CacheTab({ threadId }: { threadId: string }) {
   const [, tick] = useState(0);
   const left = expiresAt === undefined ? 0 : expiresAt - Date.now();
   const expiring = !running && left > 0 && left <= WARNING_MS;
-  useVisibleInterval(() => tick((value) => value + 1), expiring ? 1000 : 15_000, !running && left > 0);
+  useVisibleInterval(
+    () => tick((value) => value + 1),
+    expiring ? 1000 : 15_000,
+    !running && left > 0,
+  );
   // The fuse burns down over the warning window, so its length is the share of time left.
   const fuse = { "--fuse": Math.min(left / WARNING_MS, 1) } as CSSProperties;
   return (
-    <AnimatePresence>{expiring && <motion.div
-      key="cache"
-      className="composer-tab cache-tab"
-      layout="position"
-      {...tabMotion}
-      role="timer"
-      aria-label={`Prompt cache cools down in ${countdown(left)}`}
-      data-last-minute={left <= LAST_MINUTE_MS || undefined}
-      style={fuse}
-    >
-      <FlameIcon size={13} aria-hidden="true" />
-      <span>{countdown(left)}</span>
-    </motion.div>}</AnimatePresence>
+    <AnimatePresence>
+      {expiring && (
+        <motion.div
+          key="cache"
+          className="composer-tab cache-tab"
+          layout="position"
+          {...tabMotion}
+          role="timer"
+          aria-label={`Prompt cache cools down in ${countdown(left)}`}
+          data-last-minute={left <= LAST_MINUTE_MS || undefined}
+          style={fuse}
+        >
+          <FlameIcon size={13} aria-hidden="true" />
+          <span>{countdown(left)}</span>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

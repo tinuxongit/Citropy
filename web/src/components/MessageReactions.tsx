@@ -19,7 +19,7 @@ const REACTION_ICONS: Record<ReactionKey, ComponentType<IconProps>> = {
 };
 
 function useReactions(messageId: string) {
-  return useApp(state => state.messages[messageId]?.reactions);
+  return useApp((state) => state.messages[messageId]?.reactions);
 }
 
 export function ReactionPicker({ threadId, messageId }: { threadId: string; messageId: string }) {
@@ -29,14 +29,28 @@ export function ReactionPicker({ threadId, messageId }: { threadId: string; mess
       align="start"
       width={MENU_WIDTH}
       trigger={({ open, toggle, id }) => (
-        <button id={id} className="icon-btn" type="button" aria-label="React to this message" title="React to this message" aria-expanded={open} onClick={toggle}>
+        <button
+          id={id}
+          className="icon-btn"
+          type="button"
+          aria-label="React to this message"
+          title="React to this message"
+          aria-expanded={open}
+          onClick={toggle}
+        >
           <SmileIcon size={ICON_SIZE} />
         </button>
       )}
       items={REACTIONS.map(({ key, label }) => {
         const Icon = REACTION_ICONS[key];
-        const on = Boolean(reactions?.some(entry => entry.key === key));
-        return { id: key, label, icon: <Icon size={MENU_ICON_SIZE} />, selected: on, onSelect: () => reactToMessage(threadId, messageId, key, !on) };
+        const on = Boolean(reactions?.some((entry) => entry.key === key));
+        return {
+          id: key,
+          label,
+          icon: <Icon size={MENU_ICON_SIZE} />,
+          selected: on,
+          onSelect: () => reactToMessage(threadId, messageId, key, !on),
+        };
       })}
     />
   );
@@ -50,7 +64,15 @@ export function MessageReactions({ threadId, messageId }: { threadId: string; me
       {reactions.map(({ key }) => {
         const Icon = REACTION_ICONS[key];
         return (
-          <button key={key} type="button" className="message-reaction" aria-pressed="true" aria-label={`Remove ${reactionLabel(key).toLowerCase()}`} title={`Remove ${reactionLabel(key).toLowerCase()}`} onClick={() => reactToMessage(threadId, messageId, key, false)}>
+          <button
+            key={key}
+            type="button"
+            className="message-reaction"
+            aria-pressed="true"
+            aria-label={`Remove ${reactionLabel(key).toLowerCase()}`}
+            title={`Remove ${reactionLabel(key).toLowerCase()}`}
+            onClick={() => reactToMessage(threadId, messageId, key, false)}
+          >
             <Icon size={ICON_SIZE} />
           </button>
         );

@@ -1,20 +1,38 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { formatDate, providerLabels } from "../../lib/format.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
-import { bucketTotal, formatMeasure, measureOf, niceScale, type UsageBucket, type UsageMeasure, type UsagePeriod } from "./usage-series.ts";
+import {
+  bucketTotal,
+  formatMeasure,
+  measureOf,
+  niceScale,
+  type UsageBucket,
+  type UsageMeasure,
+  type UsagePeriod,
+} from "./usage-series.ts";
 import type { ProviderId } from "../../../../shared/protocol.ts";
 
 function axisLabel(period: UsagePeriod, start: Date): string {
-  return formatDate(start.getTime(), period === "monthly" ? { month: "short" } : { month: "short", day: "numeric" });
+  return formatDate(
+    start.getTime(),
+    period === "monthly" ? { month: "short" } : { month: "short", day: "numeric" },
+  );
 }
 
 function bucketTitle(period: UsagePeriod, start: Date): string {
   if (period === "monthly") return formatDate(start.getTime(), { month: "long", year: "numeric" });
-  if (period === "weekly") return `Week of ${formatDate(start.getTime(), { month: "short", day: "numeric" })}`;
+  if (period === "weekly")
+    return `Week of ${formatDate(start.getTime(), { month: "short", day: "numeric" })}`;
   return formatDate(start.getTime(), { weekday: "short", month: "short", day: "numeric" });
 }
 
-export function UsageChart({ buckets, providers, measure, period, caption }: {
+export function UsageChart({
+  buckets,
+  providers,
+  measure,
+  period,
+  caption,
+}: {
   buckets: UsageBucket[];
   providers: ProviderId[];
   measure: UsageMeasure;
@@ -30,17 +48,23 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
   const labelEvery = Math.ceil(buckets.length / 6);
   const focusable = active ?? buckets.length - 1;
   const move = (event: KeyboardEvent) => {
-    const next = { ArrowLeft: focusable - 1, ArrowRight: focusable + 1, Home: 0, End: buckets.length - 1 }[event.key];
+    const next = {
+      ArrowLeft: focusable - 1,
+      ArrowRight: focusable + 1,
+      Home: 0,
+      End: buckets.length - 1,
+    }[event.key];
     if (next === undefined) return;
     event.preventDefault();
     const index = Math.min(Math.max(next, 0), buckets.length - 1);
     setActive(index);
     (columns.current?.children[index] as HTMLElement | undefined)?.focus();
   };
-  const values = (bucket: UsageBucket) => providers.flatMap((provider) => {
-    const totals = bucket.byProvider[provider];
-    return totals ? [{ provider, value: measureOf(measure, provider, totals) }] : [];
-  });
+  const values = (bucket: UsageBucket) =>
+    providers.flatMap((provider) => {
+      const totals = bucket.byProvider[provider];
+      return totals ? [{ provider, value: measureOf(measure, provider, totals) }] : [];
+    });
 
   return (
     <figure className="usage-chart">
@@ -48,8 +72,12 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
         <h3>{caption}</h3>
         <div className="usage-segmented sliding-selection" role="group" aria-label="Chart view">
           <SelectionHighlight value={view} />
-          <button type="button" aria-pressed={view === "chart"} onClick={() => setView("chart")}>Chart</button>
-          <button type="button" aria-pressed={view === "table"} onClick={() => setView("table")}>Table</button>
+          <button type="button" aria-pressed={view === "chart"} onClick={() => setView("chart")}>
+            Chart
+          </button>
+          <button type="button" aria-pressed={view === "table"} onClick={() => setView("table")}>
+            Table
+          </button>
         </div>
       </figcaption>
       {view === "table" ? (
@@ -58,21 +86,34 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
             <thead>
               <tr>
                 <th>Period</th>
-                {providers.map((provider) => <th key={provider}>{providerLabels[provider]}</th>)}
+                {providers.map((provider) => (
+                  <th key={provider}>{providerLabels[provider]}</th>
+                ))}
                 <th>Total</th>
               </tr>
             </thead>
             <tbody>
-              {buckets.map((bucket, index) => ({ bucket, total: totals[index]! })).reverse().map(({ bucket, total }) => (
-                <tr key={bucket.start.getTime()}>
-                  <td>{bucketTitle(period, bucket.start)}</td>
-                  {providers.map((provider) => {
-                    const value = bucket.byProvider[provider];
-                    return <td key={provider}>{value ? formatMeasure(measure, measureOf(measure, provider, value)) : "0"}</td>;
-                  })}
-                  <td><strong>{formatMeasure(measure, total)}</strong></td>
-                </tr>
-              ))}
+              {buckets
+                .map((bucket, index) => ({ bucket, total: totals[index]! }))
+                .reverse()
+                .map(({ bucket, total }) => (
+                  <tr key={bucket.start.getTime()}>
+                    <td>{bucketTitle(period, bucket.start)}</td>
+                    {providers.map((provider) => {
+                      const value = bucket.byProvider[provider];
+                      return (
+                        <td key={provider}>
+                          {value
+                            ? formatMeasure(measure, measureOf(measure, provider, value))
+                            : "0"}
+                        </td>
+                      );
+                    })}
+                    <td>
+                      <strong>{formatMeasure(measure, total)}</strong>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
@@ -93,7 +134,9 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
             aria-label={caption}
             style={{ "--count": buckets.length } as CSSProperties}
             onKeyDown={move}
-            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setActive(undefined); }}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setActive(undefined);
+            }}
           >
             {buckets.map((bucket, index) => (
               <button
@@ -106,7 +149,10 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
                 onPointerEnter={() => setActive(index)}
                 onFocus={() => setActive(index)}
               >
-                <span className="usage-stack" style={{ height: `${top ? (totals[index]! / top) * 100 : 0}%` }}>
+                <span
+                  className="usage-stack"
+                  style={{ height: `${top ? (totals[index]! / top) * 100 : 0}%` }}
+                >
                   {values(bucket).map(({ provider, value }) => (
                     <i key={provider} data-series={provider} style={{ flexGrow: value }} />
                   ))}
@@ -114,10 +160,16 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
               </button>
             ))}
           </div>
-          <div className="usage-axis" aria-hidden="true" style={{ "--count": buckets.length } as CSSProperties}>
+          <div
+            className="usage-axis"
+            aria-hidden="true"
+            style={{ "--count": buckets.length } as CSSProperties}
+          >
             {buckets.map((bucket, index) => (
               <span key={bucket.start.getTime()}>
-                {(buckets.length - 1 - index) % labelEvery === 0 ? axisLabel(period, bucket.start) : ""}
+                {(buckets.length - 1 - index) % labelEvery === 0
+                  ? axisLabel(period, bucket.start)
+                  : ""}
               </span>
             ))}
           </div>
@@ -128,14 +180,18 @@ export function UsageChart({ buckets, providers, measure, period, caption }: {
               data-side={active >= buckets.length / 2 ? "left" : undefined}
               style={{ "--at": (active + 0.5) / buckets.length } as CSSProperties}
             >
-              <span className="usage-tooltip-title">{bucketTitle(period, buckets[active].start)}</span>
-              {values(buckets[active]).reverse().map(({ provider, value }) => (
-                <span key={provider} className="usage-tooltip-row">
-                  <i data-series={provider} />
-                  <strong>{formatMeasure(measure, value)}</strong>
-                  <span>{providerLabels[provider]}</span>
-                </span>
-              ))}
+              <span className="usage-tooltip-title">
+                {bucketTitle(period, buckets[active].start)}
+              </span>
+              {values(buckets[active])
+                .reverse()
+                .map(({ provider, value }) => (
+                  <span key={provider} className="usage-tooltip-row">
+                    <i data-series={provider} />
+                    <strong>{formatMeasure(measure, value)}</strong>
+                    <span>{providerLabels[provider]}</span>
+                  </span>
+                ))}
               <span className="usage-tooltip-row usage-tooltip-total">
                 <strong>{formatMeasure(measure, totals[active]!)}</strong>
                 <span>Total</span>

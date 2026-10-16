@@ -11,7 +11,9 @@ import { checkPackagedTerminal } from "./smoke-terminal.mjs";
 
 const root = fileURLToPath(new URL("../release/linux-unpacked/", import.meta.url));
 const directory = await mkdtemp(join(tmpdir(), "citropy-release-smoke-"));
-const display = spawn("Xvfb", ["-displayfd", "3", "-screen", "0", "1440x1000x24"], { stdio: ["ignore", "ignore", "pipe", "pipe"] });
+const display = spawn("Xvfb", ["-displayfd", "3", "-screen", "0", "1440x1000x24"], {
+  stdio: ["ignore", "ignore", "pipe", "pipe"],
+});
 let desktop;
 try {
   const [number] = await once(display.stdio[3], "data");
@@ -22,22 +24,53 @@ try {
   await access(join(appRoot, "dist/fonts/CitropySans.woff2"));
   const notices = await readFile(join(appRoot, "dist/THIRD_PARTY_NOTICES.txt"), "utf8");
   for (const path of ["react/LICENSE", "monaco-editor/LICENSE", "tslib/CopyrightNotice.txt"]) {
-    assert.ok(notices.includes(await readFile(new URL(`../node_modules/${path}`, import.meta.url), "utf8")), `Missing bundled dependency notice: ${path}`);
+    assert.ok(
+      notices.includes(await readFile(new URL(`../node_modules/${path}`, import.meta.url), "utf8")),
+      `Missing bundled dependency notice: ${path}`,
+    );
   }
   await access(join(appRoot, "desktop/apply-appimage-update.sh"));
   await access(join(appRoot, "desktop/appimage-relaunch.ts"));
-  for (const path of [".env", "tests", ".git", "web", "desktop/start.mjs", "desktop/install.mjs", "desktop/smoke.mjs", "desktop/smoke-mac.mjs", "desktop/smoke-win.mjs", "desktop/smoke-terminal.mjs", "node_modules/vite", "node_modules/playwright", "node_modules/shiki", "node_modules/motion"]) {
-    const present = await access(join(appRoot, path)).then(() => true, () => false);
+  for (const path of [
+    ".env",
+    "tests",
+    ".git",
+    "web",
+    "desktop/start.mjs",
+    "desktop/install.mjs",
+    "desktop/smoke.mjs",
+    "desktop/smoke-mac.mjs",
+    "desktop/smoke-win.mjs",
+    "desktop/smoke-terminal.mjs",
+    "node_modules/vite",
+    "node_modules/playwright",
+    "node_modules/shiki",
+    "node_modules/motion",
+  ]) {
+    const present = await access(join(appRoot, path)).then(
+      () => true,
+      () => false,
+    );
     assert.equal(present, false, `Development file in release: ${path}`);
   }
   await checkPackagedTerminal(join(root, "citropy"), appRoot);
   const { version } = JSON.parse(await readFile(join(appRoot, "package.json"), "utf8"));
-  const artifact = (await readdir(join(root, ".."))).find(name => name.startsWith(`Citropy-${version}-`) && name.endsWith(".AppImage"));
+  const artifact = (await readdir(join(root, ".."))).find(
+    (name) => name.startsWith(`Citropy-${version}-`) && name.endsWith(".AppImage"),
+  );
   assert.ok(artifact, "Build the AppImage before running the release smoke check.");
   desktop = await electron.launch({
     executablePath: join(root, "..", artifact),
     args: ["--no-sandbox", "--ozone-platform=x11"],
-    env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: "1", DISPLAY: `:${String(number).trim()}`, CITROPY_PORT: String(port), CITROPY_DATA_DIR: join(directory, "data"), CITROPY_DESKTOP_DATA: join(directory, "desktop"), CITROPY_DEVELOPMENT: "1" },
+    env: {
+      ...process.env,
+      APPIMAGE_EXTRACT_AND_RUN: "1",
+      DISPLAY: `:${String(number).trim()}`,
+      CITROPY_PORT: String(port),
+      CITROPY_DATA_DIR: join(directory, "data"),
+      CITROPY_DESKTOP_DATA: join(directory, "desktop"),
+      CITROPY_DEVELOPMENT: "1",
+    },
     timeout: 60000,
   });
   assert.equal(await desktop.evaluate(({ app }) => app.isPackaged), true);
@@ -60,16 +93,26 @@ try {
   assert.equal(await page.getByRole("button", { name: "Restart server", exact: true }).count(), 0);
   assert.equal(await page.getByText(/Interface edits update live/).count(), 0);
   await page.getByRole("heading", { name: "Application", exact: true, level: 1 }).waitFor();
-  await page.getByRole("heading", { name: "General", exact: true, level: 1 }).waitFor({ state: "detached" });
+  await page
+    .getByRole("heading", { name: "General", exact: true, level: 1 })
+    .waitFor({ state: "detached" });
   for (const width of [1440, 960]) {
-    await desktop.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setSize(width, 900), width);
+    await desktop.evaluate(
+      ({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setSize(width, 900),
+      width,
+    );
     await page.screenshot({ path: join(root, "..", `smoke-${width}.png`), animations: "disabled" });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
   }
   await desktop.close();
   desktop = undefined;
   await assert.rejects(fetch(`${base}/api/health`, { signal: AbortSignal.timeout(1000) }));
-  console.log(`Citropy ${version}: packaged startup, terminal, shutdown, release contents, and development restrictions passed.`);
+  console.log(
+    `Citropy ${version}: packaged startup, terminal, shutdown, release contents, and development restrictions passed.`,
+  );
 } finally {
   await desktop?.close();
   display.kill();

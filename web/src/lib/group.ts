@@ -6,7 +6,7 @@ export type Row = { kind: "part"; id: string } | { kind: "group"; ids: string[] 
 
 export function buildRows(parts: Array<Part | undefined>): Row[] {
   const rows: Row[] = [];
-  const hasQuestion = parts.some(part => part?.kind === "question");
+  const hasQuestion = parts.some((part) => part?.kind === "question");
   let batch: string[] = [];
 
   const flush = () => {
@@ -21,7 +21,7 @@ export function buildRows(parts: Array<Part | undefined>): Row[] {
     if (part.kind === "todo" && normalizeTodos(part.items).length === 0) continue;
     if (part.kind === "tool") {
       if (hasQuestion && isQuestionTool(part.name)) continue;
-      if ((part.images?.length || part.imageFiles?.length)) {
+      if (part.images?.length || part.imageFiles?.length) {
         flush();
         rows.push({ kind: "part", id: part.id });
         continue;
@@ -69,7 +69,18 @@ export function summarize(tools: ToolPart[]): string {
   }
 
   const parts: string[] = [];
-  const order: ToolShape[] = ["edit", "write", "read", "command", "search", "web", "computer", "task", "generic", "todo"];
+  const order: ToolShape[] = [
+    "edit",
+    "write",
+    "read",
+    "command",
+    "search",
+    "web",
+    "computer",
+    "task",
+    "generic",
+    "todo",
+  ];
   for (const shape of order) {
     const unique = counts.get(shape);
     if (unique) parts.push(phrase(shape, unique.size));
@@ -84,7 +95,12 @@ export function summarize(tools: ToolPart[]): string {
   return sentence.join(" · ");
 }
 
-export function groupStats(tools: ToolPart[]): { added: number; removed: number; failed: number; running: boolean } {
+export function groupStats(tools: ToolPart[]): {
+  added: number;
+  removed: number;
+  failed: number;
+  running: boolean;
+} {
   let added = 0;
   let removed = 0;
   let failed = 0;
@@ -128,7 +144,14 @@ const VERBS: Record<string, [string, string]> = {
 };
 
 function shownName({ name, input }: Pick<ToolPart, "name" | "input">): string {
-  const inner = /(?:^|_)run_tool$/.test(name) && input && typeof input === "object" && "name" in input && typeof input.name === "string" ? input.name : undefined;
+  const inner =
+    /(?:^|_)run_tool$/.test(name) &&
+    input &&
+    typeof input === "object" &&
+    "name" in input &&
+    typeof input.name === "string"
+      ? input.name
+      : undefined;
   return inner ? `citropy_${inner}` : name.replace(/^mcp__citropy__/, "citropy_");
 }
 
@@ -137,12 +160,14 @@ export function toolLabel(part: Pick<ToolPart, "name" | "input" | "status">): st
   const { status } = part;
   const pair = VERBS[name];
   if (!pair) {
-    const short = (name.startsWith("mcp__") ? name.split("__").slice(2).join(" ") || name : name.replace(/^citropy_/, "")).replaceAll("_", " ");
+    const short = (
+      name.startsWith("mcp__")
+        ? name.split("__").slice(2).join(" ") || name
+        : name.replace(/^citropy_/, "")
+    ).replaceAll("_", " ");
     return status === "running" ? `Running ${short}` : short;
   }
   if (status === "denied") return `Blocked ${pair[1].toLowerCase()}`;
   if (status === "stopped") return `Stopped ${pair[0].toLowerCase()}`;
-  return status === "running"
-    ? pair[0]
-    : pair[1];
+  return status === "running" ? pair[0] : pair[1];
 }

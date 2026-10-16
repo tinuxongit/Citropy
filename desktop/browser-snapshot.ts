@@ -12,12 +12,37 @@ export interface AXNode {
 }
 
 const skippedRoles = new Set<string | undefined>(["InlineTextBox", "LineBreak"]);
-const silentRoles = new Set<string | undefined>(["generic", "image", "none", "StaticText", "paragraph", "group", "LabelText", "list", "listitem", "section", "Section", "RootWebArea", "WebArea"]);
-const reportedStates = ["focused", "disabled", "checked", "pressed", "selected", "expanded", "required", "invalid"];
+const silentRoles = new Set<string | undefined>([
+  "generic",
+  "image",
+  "none",
+  "StaticText",
+  "paragraph",
+  "group",
+  "LabelText",
+  "list",
+  "listitem",
+  "section",
+  "Section",
+  "RootWebArea",
+  "WebArea",
+]);
+const reportedStates = [
+  "focused",
+  "disabled",
+  "checked",
+  "pressed",
+  "selected",
+  "expanded",
+  "required",
+  "invalid",
+];
 
 function visible(node: AXNode) {
   if (node.ignored || skippedRoles.has(node.role?.value)) return false;
-  return Boolean(node.name?.value?.trim() || node.value?.value) || !silentRoles.has(node.role?.value);
+  return (
+    Boolean(node.name?.value?.trim() || node.value?.value) || !silentRoles.has(node.role?.value)
+  );
 }
 
 function states(node: AXNode) {
@@ -35,7 +60,10 @@ function states(node: AXNode) {
 function line(node: AXNode, depth: number) {
   const role = node.role?.value ?? "";
   const name = node.name?.value?.trim() ? ` ${JSON.stringify(node.name.value.trim())}` : "";
-  const value = node.value?.value !== undefined && node.value.value !== "" ? ` value=${JSON.stringify(node.value.value)}` : "";
+  const value =
+    node.value?.value !== undefined && node.value.value !== ""
+      ? ` value=${JSON.stringify(node.value.value)}`
+      : "";
   const flags = states(node);
   const id = node.ref ?? node.backendDOMNodeId;
   const ref = id ? ` [ref=${id}]` : "";
@@ -45,14 +73,20 @@ function line(node: AXNode, depth: number) {
 export function formatTree(nodes: AXNode[], rootBackendId?: string | number) {
   const byId = new Map(nodes.map((node) => [node.nodeId, node]));
   const hasParent = new Set(nodes.flatMap((node) => node.childIds ?? []));
-  const roots = rootBackendId === undefined
-    ? nodes.filter((node) => !hasParent.has(node.nodeId))
-    : nodes.filter((node) => String(node.ref ?? node.backendDOMNodeId) === String(rootBackendId));
+  const roots =
+    rootBackendId === undefined
+      ? nodes.filter((node) => !hasParent.has(node.nodeId))
+      : nodes.filter((node) => String(node.ref ?? node.backendDOMNodeId) === String(rootBackendId));
   const lines: string[] = [];
-  const labelled = (node: AXNode) => node.role?.value !== "StaticText" ? node.name?.value?.trim() : undefined;
+  const labelled = (node: AXNode) =>
+    node.role?.value !== "StaticText" ? node.name?.value?.trim() : undefined;
   const walk = (node: AXNode, depth: number, nearbyNames: Set<string | undefined>): void => {
     const repeats = node.role?.value === "StaticText" && nearbyNames.has(node.name?.value?.trim());
-    const shown = !repeats && (visible(node) || (rootBackendId !== undefined && String(node.ref ?? node.backendDOMNodeId) === String(rootBackendId)));
+    const shown =
+      !repeats &&
+      (visible(node) ||
+        (rootBackendId !== undefined &&
+          String(node.ref ?? node.backendDOMNodeId) === String(rootBackendId)));
     if (shown) lines.push(line(node, depth));
     const children = (node.childIds ?? []).flatMap((id) => byId.get(id) ?? []);
     const names = new Set(shown ? [node.name?.value?.trim()] : nearbyNames);

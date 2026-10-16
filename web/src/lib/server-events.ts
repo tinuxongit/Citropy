@@ -17,11 +17,7 @@ import { applySnapshot } from "./snapshot-state.ts";
 import { neighborOf, rosterItem } from "./roster.ts";
 import { inBotsView } from "../../../shared/bots.ts";
 
-export function applyEvents(
-  previous: AppState,
-  events: ServerEvent[],
-  focused = true,
-): AppState {
+export function applyEvents(previous: AppState, events: ServerEvent[], focused = true): AppState {
   const state = { ...previous };
   const copied = new Set<HistoryCollection>();
   for (const event of events) {
@@ -35,7 +31,11 @@ export function applyEvents(
     applyEvent(state, event, focused);
   }
   trimHistories(state, previous);
-  return Object.keys(state).some(key => state[key as keyof AppState] !== previous[key as keyof AppState]) ? state : previous;
+  return Object.keys(state).some(
+    (key) => state[key as keyof AppState] !== previous[key as keyof AppState],
+  )
+    ? state
+    : previous;
 }
 
 function sortThreads(state: AppState): void {
@@ -49,13 +49,18 @@ function sameThreadMeta(a: ThreadMeta, b: ThreadMeta): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   for (const key of keys) {
     if (key === "updatedAt") continue;
-    if (JSON.stringify(a[key as keyof ThreadMeta]) !== JSON.stringify(b[key as keyof ThreadMeta])) return false;
+    if (JSON.stringify(a[key as keyof ThreadMeta]) !== JSON.stringify(b[key as keyof ThreadMeta]))
+      return false;
   }
   return true;
 }
 
 function panelInView(state: AppState, projectId: string, panelId: string): boolean {
-  return state.inspectorOpen && state.activeProjectId === projectId && state.activePanels[projectId] === panelId;
+  return (
+    state.inspectorOpen &&
+    state.activeProjectId === projectId &&
+    state.activePanels[projectId] === panelId
+  );
 }
 
 function markPanelUnseen(state: AppState, projectId: string, panelId: string): void {
@@ -88,10 +93,7 @@ function applyShellEvent(
 
 function applySettingsEvent(
   state: AppState,
-  event: Extract<
-    ServerEvent,
-    { t: "project.defaults" } | { t: "assistance.settings" }
-  >,
+  event: Extract<ServerEvent, { t: "project.defaults" } | { t: "assistance.settings" }>,
 ): void {
   switch (event.t) {
     case "project.defaults":
@@ -107,13 +109,18 @@ function applyPanelEvent(
   state: AppState,
   event: Extract<
     ServerEvent,
-    { t: "panel.upsert" } | { t: "panel.remove" } | { t: "panel.order" } | { t: "browser.state" } | { t: "tools.connection" }
+    | { t: "panel.upsert" }
+    | { t: "panel.remove" }
+    | { t: "panel.order" }
+    | { t: "browser.state" }
+    | { t: "tools.connection" }
   >,
 ): void {
   switch (event.t) {
     case "panel.order": {
       const tabs = state.panels.filter((panel) => panel.projectId === event.projectId);
-      const selected = tabs.find((panel) => panel.id === state.activePanels[event.projectId]) ?? tabs[0];
+      const selected =
+        tabs.find((panel) => panel.id === state.activePanels[event.projectId]) ?? tabs[0];
       if (selected) state.activePanels = { ...state.activePanels, [event.projectId]: selected.id };
       const remaining = new Map(tabs.map((panel) => [panel.id, panel]));
       const ordered = event.ids.flatMap((id) => {
@@ -123,23 +130,21 @@ function applyPanelEvent(
       });
       ordered.push(...remaining.values());
       let index = 0;
-      state.panels = state.panels.map((panel) => panel.projectId === event.projectId ? ordered[index++]! : panel);
+      state.panels = state.panels.map((panel) =>
+        panel.projectId === event.projectId ? ordered[index++]! : panel,
+      );
       return;
     }
     case "panel.upsert": {
       if (String(event.panel.kind) === "computer") return;
       const exists = state.panels.some((panel) => panel.id === event.panel.id);
       state.panels = exists
-        ? state.panels.map((panel) =>
-            panel.id === event.panel.id ? event.panel : panel,
-          )
+        ? state.panels.map((panel) => (panel.id === event.panel.id ? event.panel : panel))
         : [...state.panels, event.panel];
       if (
         !event.background &&
         (!state.activePanels[event.panel.projectId] ||
-          (!exists &&
-            (!event.panel.threadId ||
-              event.panel.threadId === state.activeThreadId)))
+          (!exists && (!event.panel.threadId || event.panel.threadId === state.activeThreadId)))
       )
         state.activePanels = {
           ...state.activePanels,
@@ -160,9 +165,7 @@ function applyPanelEvent(
         state.activePanels = {
           ...state.activePanels,
           [removed.projectId]:
-            state.panels.findLast(
-              (panel) => panel.projectId === removed.projectId,
-            )?.id ?? "",
+            state.panels.findLast((panel) => panel.projectId === removed.projectId)?.id ?? "",
         };
       const { [event.id]: browser, ...browsers } = state.browsers;
       state.browsers = browsers;
@@ -170,9 +173,11 @@ function applyPanelEvent(
         Object.entries(state.editorTerminals).flatMap(([filesId, terminal]) => {
           if (filesId === event.id) return [];
           if (terminal.id !== event.id) return [[filesId, terminal]];
-          const replacement = state.panels.findLast((panel) =>
-            panel.kind === "terminal" && panel.projectId === removed?.projectId &&
-            (panel.threadId ?? null) === terminal.threadId,
+          const replacement = state.panels.findLast(
+            (panel) =>
+              panel.kind === "terminal" &&
+              panel.projectId === removed?.projectId &&
+              (panel.threadId ?? null) === terminal.threadId,
           );
           return replacement ? [[filesId, { ...terminal, id: replacement.id }]] : [];
         }),
@@ -222,9 +227,7 @@ function applyProjectEvent(
       state.projects =
         index === -1
           ? [event.project, ...state.projects]
-          : state.projects.map((p) =>
-              p.id === event.project.id ? event.project : p,
-            );
+          : state.projects.map((p) => (p.id === event.project.id ? event.project : p));
       if (!state.activeProjectId) state.activeProjectId = event.project.id;
       return;
     }
@@ -234,8 +237,7 @@ function applyProjectEvent(
       const { [event.id]: panel, ...remainingPanels } = state.activePanels;
       state.git = remainingGit;
       state.activePanels = remainingPanels;
-      if (state.activeProjectId === event.id)
-        state.activeProjectId = state.projects[0]?.id ?? null;
+      if (state.activeProjectId === event.id) state.activeProjectId = state.projects[0]?.id ?? null;
       return;
     }
   }
@@ -245,30 +247,45 @@ function applyThreadEvent(
   state: AppState,
   event: Extract<
     ServerEvent,
-    { t: "thread.upsert" } | { t: "thread.remove" } | { t: "thread.accepted" } | { t: "thread.messages" } | { t: "thread.search" }
+    | { t: "thread.upsert" }
+    | { t: "thread.remove" }
+    | { t: "thread.accepted" }
+    | { t: "thread.messages" }
+    | { t: "thread.search" }
   >,
 ): void {
   switch (event.t) {
     case "thread.upsert": {
       const previous = state.threads[event.thread.id];
-      if (previous && previous.updatedAt === event.thread.updatedAt && sameThreadMeta(previous, event.thread)) return;
+      if (
+        previous &&
+        previous.updatedAt === event.thread.updatedAt &&
+        sameThreadMeta(previous, event.thread)
+      )
+        return;
       state.threads = { ...state.threads, [event.thread.id]: event.thread };
       if (!previous || previous.updatedAt !== event.thread.updatedAt) sortThreads(state);
       return;
     }
     case "thread.remove": {
-      if (rosterItem(state, state.activeRosterId)?.threadId === event.id) state.activeRosterId = neighborOf(state, state.activeRosterId!);
+      if (rosterItem(state, state.activeRosterId)?.threadId === event.id)
+        state.activeRosterId = neighborOf(state, state.activeRosterId!);
       const { [event.id]: removed, ...rest } = state.threads;
       state.threads = rest;
       removeMessages(state, event.id);
-      const { [event.id]: connection, ...remainingConnections } =
-        state.toolConnections;
+      const { [event.id]: connection, ...remainingConnections } = state.toolConnections;
       state.toolConnections = remainingConnections;
       sortThreads(state);
       if (state.activeThreadId === event.id) {
         state.activeThreadId = null;
         // The hidden Chats workspace has no welcome screen, so leave it with its last chat.
-        if (removed?.chat && !Object.values(rest).some((thread) => thread.chat && !thread.parentThreadId && !thread.archived && !thread.snoozedUntil))
+        if (
+          removed?.chat &&
+          !Object.values(rest).some(
+            (thread) =>
+              thread.chat && !thread.parentThreadId && !thread.archived && !thread.snoozedUntil,
+          )
+        )
           state.activeProjectId = state.projects[0]?.id ?? null;
       }
       Object.assign(state, withoutTab(state, event.id));
@@ -292,18 +309,26 @@ function applyPromptEvent(
   state: AppState,
   event: Extract<
     ServerEvent,
-    { t: "question.request" } | { t: "question.close" } | { t: "permission.request" } | { t: "permission.close" }
+    | { t: "question.request" }
+    | { t: "question.close" }
+    | { t: "permission.request" }
+    | { t: "permission.close" }
   >,
 ): void {
   switch (event.t) {
     case "question.request": {
       playAlert("attention");
-      state.questions = [...state.questions.filter(question => question.id !== event.request.id), event.request];
+      state.questions = [
+        ...state.questions.filter((question) => question.id !== event.request.id),
+        event.request,
+      ];
       return;
     }
     case "question.close": {
-      state.questions = state.questions.filter(question => question.id !== event.id);
-      state.questionDrafts = Object.fromEntries(Object.entries(state.questionDrafts).filter(([id]) => id !== event.id));
+      state.questions = state.questions.filter((question) => question.id !== event.id);
+      state.questionDrafts = Object.fromEntries(
+        Object.entries(state.questionDrafts).filter(([id]) => id !== event.id),
+      );
       return;
     }
     case "permission.request": {
@@ -312,9 +337,7 @@ function applyPromptEvent(
       return;
     }
     case "permission.close": {
-      state.permissions = state.permissions.filter(
-        (request) => request.id !== event.id,
-      );
+      state.permissions = state.permissions.filter((request) => request.id !== event.id);
       return;
     }
   }
@@ -322,10 +345,7 @@ function applyPromptEvent(
 
 function applyGitEvent(
   state: AppState,
-  event: Extract<
-    ServerEvent,
-    { t: "git.status" } | { t: "git.diff" } | { t: "git.manage" }
-  >,
+  event: Extract<ServerEvent, { t: "git.status" } | { t: "git.diff" } | { t: "git.manage" }>,
 ): void {
   switch (event.t) {
     case "git.status": {
@@ -335,8 +355,7 @@ function applyGitEvent(
         !event.threadId &&
         active?.workspacePath &&
         active.workspacePath !==
-          state.projects.find((project) => project.id === active.projectId)
-            ?.path
+          state.projects.find((project) => project.id === active.projectId)?.path
       )
         return;
       state.git = { ...state.git, [event.projectId]: event.status };
@@ -424,10 +443,7 @@ export function applyEvent(state: AppState, event: ServerEvent, focused = true):
       resolveResponse(
         event.requestId,
         event.result,
-        event.error ??
-          (event.result === undefined
-            ? "GitHub returned no result."
-            : undefined),
+        event.error ?? (event.result === undefined ? "GitHub returned no result." : undefined),
       );
       return;
     case "bot.upsert":

@@ -1,6 +1,12 @@
 import type { CSSProperties } from "react";
 import { CircleIcon } from "../icons/status.tsx";
-import { EraserIcon, HighlighterIcon, LineIcon, PaintBucketIcon, PointerIcon } from "../icons/drawing.tsx";
+import {
+  EraserIcon,
+  HighlighterIcon,
+  LineIcon,
+  PaintBucketIcon,
+  PointerIcon,
+} from "../icons/drawing.tsx";
 import { ArrowUpRightIcon } from "../icons/arrows.tsx";
 import { EditIcon } from "../icons/pencil.tsx";
 import { RedoIcon, UndoIcon } from "../icons/rotation.tsx";
@@ -13,21 +19,75 @@ import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { INK, brushWidth, type Tool } from "./marks.ts";
 
 const TOOLS = [
-  { tool: "select", label: "Select", key: "V", icon: PointerIcon, hint: "Click or drag a box to select, then drag to move. Ctrl+C copies, Ctrl+V pastes marks or screenshots, Delete removes." },
+  {
+    tool: "select",
+    label: "Select",
+    key: "V",
+    icon: PointerIcon,
+    hint: "Click or drag a box to select, then drag to move. Ctrl+C copies, Ctrl+V pastes marks or screenshots, Delete removes.",
+  },
   { tool: "pen", label: "Pen", key: "P", icon: EditIcon, hint: "Drag to draw." },
-  { tool: "highlighter", label: "Highlighter", key: "H", icon: HighlighterIcon, hint: "Drag to highlight. It stays see-through." },
-  { tool: "eraser", label: "Eraser", key: "E", icon: EraserIcon, hint: "Drag over anything to erase it." },
-  { tool: "line", label: "Line", key: "L", icon: LineIcon, hint: "Drag to draw. Hold Shift to snap the angle." },
-  { tool: "arrow", label: "Arrow", key: "A", icon: ArrowUpRightIcon, hint: "Drag from the tail to the tip. Hold Shift to snap the angle." },
-  { tool: "rectangle", label: "Rectangle", key: "R", icon: SquareIcon, hint: "Drag to draw. Hold Shift for a square." },
-  { tool: "ellipse", label: "Ellipse", key: "O", icon: CircleIcon, hint: "Drag to draw. Hold Shift for a circle." },
-  { tool: "text", label: "Text", key: "T", icon: TypeIcon, hint: "Click to place text. Enter finishes, Shift+Enter adds a line." },
+  {
+    tool: "highlighter",
+    label: "Highlighter",
+    key: "H",
+    icon: HighlighterIcon,
+    hint: "Drag to highlight. It stays see-through.",
+  },
+  {
+    tool: "eraser",
+    label: "Eraser",
+    key: "E",
+    icon: EraserIcon,
+    hint: "Drag over anything to erase it.",
+  },
+  {
+    tool: "line",
+    label: "Line",
+    key: "L",
+    icon: LineIcon,
+    hint: "Drag to draw. Hold Shift to snap the angle.",
+  },
+  {
+    tool: "arrow",
+    label: "Arrow",
+    key: "A",
+    icon: ArrowUpRightIcon,
+    hint: "Drag from the tail to the tip. Hold Shift to snap the angle.",
+  },
+  {
+    tool: "rectangle",
+    label: "Rectangle",
+    key: "R",
+    icon: SquareIcon,
+    hint: "Drag to draw. Hold Shift for a square.",
+  },
+  {
+    tool: "ellipse",
+    label: "Ellipse",
+    key: "O",
+    icon: CircleIcon,
+    hint: "Drag to draw. Hold Shift for a circle.",
+  },
+  {
+    tool: "text",
+    label: "Text",
+    key: "T",
+    icon: TypeIcon,
+    hint: "Click to place text. Enter finishes, Shift+Enter adds a line.",
+  },
 ] satisfies Array<{ tool: Tool; label: string; key: string; icon: typeof EditIcon; hint: string }>;
 
-export const TOOL_ICONS = Object.fromEntries(TOOLS.map((entry) => [entry.tool, entry.icon])) as Record<Tool, typeof EditIcon>;
-export const TOOL_LABELS = Object.fromEntries(TOOLS.map((entry) => [entry.tool, entry.label])) as Record<Tool, string>;
+export const TOOL_ICONS = Object.fromEntries(
+  TOOLS.map((entry) => [entry.tool, entry.icon]),
+) as Record<Tool, typeof EditIcon>;
+export const TOOL_LABELS = Object.fromEntries(
+  TOOLS.map((entry) => [entry.tool, entry.label]),
+) as Record<Tool, string>;
 
-export const TOOL_KEYS: Record<string, Tool> = Object.fromEntries(TOOLS.map((entry) => [entry.key.toLowerCase(), entry.tool]));
+export const TOOL_KEYS: Record<string, Tool> = Object.fromEntries(
+  TOOLS.map((entry) => [entry.key.toLowerCase(), entry.tool]),
+);
 
 const SWATCHES = [
   { color: INK, label: "Ink" },
@@ -91,10 +151,24 @@ export function DrawingTools({
         <PaintBucketIcon size={16} />
       </button>
       <div className="drawing-history">
-        <button type="button" className="icon-btn" disabled={!canUndo} aria-label="Undo" title={`Undo (Ctrl+Z)`} onClick={onUndo}>
+        <button
+          type="button"
+          className="icon-btn"
+          disabled={!canUndo}
+          aria-label="Undo"
+          title={`Undo (Ctrl+Z)`}
+          onClick={onUndo}
+        >
           <UndoIcon size={16} />
         </button>
-        <button type="button" className="icon-btn" disabled={!canRedo} aria-label="Redo" title={`Redo (Ctrl+Shift+Z)`} onClick={onRedo}>
+        <button
+          type="button"
+          className="icon-btn"
+          disabled={!canRedo}
+          aria-label="Redo"
+          title={`Redo (Ctrl+Shift+Z)`}
+          onClick={onRedo}
+        >
           <RedoIcon size={16} />
         </button>
       </div>
@@ -156,9 +230,21 @@ export function DrawingStyle({
       </div>
       <label className="drawing-size" title="Size">
         <span className="drawing-size-preview" aria-hidden="true">
-          <span style={{ width: preview, height: preview, background: tool === "eraser" ? "var(--text-3)" : color === INK ? ink : color }} />
+          <span
+            style={{
+              width: preview,
+              height: preview,
+              background: tool === "eraser" ? "var(--text-3)" : color === INK ? ink : color,
+            }}
+          />
         </span>
-        <Range aria-label="Size" min={1} max={MAX_SIZE} value={size} onChange={(event) => onSize(Number(event.target.value))} />
+        <Range
+          aria-label="Size"
+          min={1}
+          max={MAX_SIZE}
+          value={size}
+          onChange={(event) => onSize(Number(event.target.value))}
+        />
       </label>
     </>
   );

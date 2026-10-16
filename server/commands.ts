@@ -15,17 +15,11 @@ const HIDDEN_COMMAND_NAMES = new Set([
   "workflow-launch-exec",
 ]);
 
-const catalogs = new Map<
-  string,
-  { time: number; value: Promise<ProviderCommand[]> }
->();
-const promptDirectory = () =>
-  join(codexHome(), "prompts");
+const catalogs = new Map<string, { time: number; value: Promise<ProviderCommand[]> }>();
+const promptDirectory = () => join(codexHome(), "prompts");
 
 async function codexPrompts() {
-  const files = await readdir(promptDirectory(), { withFileTypes: true }).catch(
-    () => [],
-  );
+  const files = await readdir(promptDirectory(), { withFileTypes: true }).catch(() => []);
   return Promise.all(
     files
       .filter((file) => file.isFile() && /^[\w.-]+\.md$/.test(file.name))
@@ -36,22 +30,16 @@ async function codexPrompts() {
         return {
           name: `prompts:${file.name.slice(0, -3)}`,
           description:
-            /^description:\s*["']?(.+?)["']?$/m.exec(
-              frontmatter?.[1] ?? "",
-            )?.[1] ?? "Personal Codex prompt",
-          argumentHint: /^argument-hint:\s*["']?(.+?)["']?$/m.exec(
-            frontmatter?.[1] ?? "",
-          )?.[1],
+            /^description:\s*["']?(.+?)["']?$/m.exec(frontmatter?.[1] ?? "")?.[1] ??
+            "Personal Codex prompt",
+          argumentHint: /^argument-hint:\s*["']?(.+?)["']?$/m.exec(frontmatter?.[1] ?? "")?.[1],
           template: text.slice(frontmatter?.[0].length ?? 0, 120000),
         };
       }),
   );
 }
 
-export function listCommands(
-  provider: ProviderId,
-  cwd: string,
-): Promise<ProviderCommand[]> {
+export function listCommands(provider: ProviderId, cwd: string): Promise<ProviderCommand[]> {
   const key = `${provider}:${cwd}`;
   const cached = catalogs.get(key);
   if (cached && Date.now() - cached.time < 60000) return cached.value;
@@ -71,8 +59,7 @@ export function listCommands(
       provider === "claude"
         ? (await providerControl("claude", "initialize", {}, cwd)).commands
         : await discoverOpenCodeCommands(cwd);
-    if (!Array.isArray(result))
-      throw new Error("The provider did not return its commands.");
+    if (!Array.isArray(result)) throw new Error("The provider did not return its commands.");
     return result
       .filter(
         (command) =>
@@ -84,14 +71,8 @@ export function listCommands(
       )
       .map((command) => ({
         name: command.name,
-        description: String(command.description ?? "Provider command").slice(
-          0,
-          600,
-        ),
-        argumentHint:
-          typeof command.argumentHint === "string"
-            ? command.argumentHint
-            : undefined,
+        description: String(command.description ?? "Provider command").slice(0, 600),
+        argumentHint: typeof command.argumentHint === "string" ? command.argumentHint : undefined,
       }));
   })();
   catalogs.set(key, { time: Date.now(), value });
@@ -102,16 +83,11 @@ export function listCommands(
   return value;
 }
 
-export async function expandCommand(
-  provider: ProviderId,
-  text: string,
-): Promise<string> {
+export async function expandCommand(provider: ProviderId, text: string): Promise<string> {
   if (provider !== "codex") return text;
   const match = /^\/prompts:([\w.-]+)(?:\s+([\s\S]*))?$/.exec(text.trim());
   if (!match) return text;
-  const command = (await codexPrompts()).find(
-    (command) => command.name === `prompts:${match[1]}`,
-  );
+  const command = (await codexPrompts()).find((command) => command.name === `prompts:${match[1]}`);
   if (!command) throw new Error("This Codex prompt is no longer installed.");
   const args = match[2] ?? "";
   const values =
@@ -126,14 +102,10 @@ export async function expandCommand(
         value.slice(value.indexOf("=") + 1).replace(/^(["'])(.*)\1$/, "$2"),
       ]),
   );
-  return command.template.replace(
-    /\$(ARGUMENTS|[1-9]|[A-Z][A-Z0-9_]*)\b/g,
-    (_, name: string) => {
-      if (name === "ARGUMENTS") return args;
-      const value = /^\d$/.test(name) ? values[Number(name) - 1] : named[name];
-      if (value === undefined)
-        throw new Error(`Provide ${name} for /${command.name}.`);
-      return value;
-    },
-  );
+  return command.template.replace(/\$(ARGUMENTS|[1-9]|[A-Z][A-Z0-9_]*)\b/g, (_, name: string) => {
+    if (name === "ARGUMENTS") return args;
+    const value = /^\d$/.test(name) ? values[Number(name) - 1] : named[name];
+    if (value === undefined) throw new Error(`Provide ${name} for /${command.name}.`);
+    return value;
+  });
 }

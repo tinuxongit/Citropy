@@ -13,7 +13,8 @@ process.env.XDG_DATA_HOME = join(root, "data");
 await mkdir(process.env.CITROPY_DATA_DIR, { recursive: true });
 const { store } = await import("../server/store.ts");
 const { eventJournal } = await import("../server/event-journal.ts");
-const { listImportableSessions, importSession } = await import("../server/session-import/session-import.ts");
+const { listImportableSessions, importSession } =
+  await import("../server/session-import/session-import.ts");
 const { providerLogUsage } = await import("../server/usage/provider-log-usage.ts");
 const { IMPORT_MAX_BYTES } = await import("../shared/session-import.ts");
 
@@ -33,11 +34,34 @@ const folder = async (name) => {
 const claudeFile = async (name, sessionId, cwd, padding = "") => {
   const project = join(process.env.CLAUDE_CONFIG_DIR, "projects", "demo");
   await mkdir(project, { recursive: true });
-  const header = line({ type: "user", sessionId, cwd, uuid: `${sessionId}-u`, timestamp: at, message: { role: "user", content: "Hello Claude" } })
-    + line({ type: "assistant", sessionId, cwd, uuid: `${sessionId}-a`, timestamp: at, message: { role: "assistant", model: "claude-opus-5", content: [{ type: "text", text: "Hello there" }] } });
-  await writeFile(join(project, `${name}.jsonl`), padding ? Buffer.concat([Buffer.from(header), Buffer.from(padding)]) : header);
+  const header =
+    line({
+      type: "user",
+      sessionId,
+      cwd,
+      uuid: `${sessionId}-u`,
+      timestamp: at,
+      message: { role: "user", content: "Hello Claude" },
+    }) +
+    line({
+      type: "assistant",
+      sessionId,
+      cwd,
+      uuid: `${sessionId}-a`,
+      timestamp: at,
+      message: {
+        role: "assistant",
+        model: "claude-opus-5",
+        content: [{ type: "text", text: "Hello there" }],
+      },
+    });
+  await writeFile(
+    join(project, `${name}.jsonl`),
+    padding ? Buffer.concat([Buffer.from(header), Buffer.from(padding)]) : header,
+  );
 };
-const listed = async (provider, sessionId) => (await listImportableSessions(provider)).find((session) => session.sessionId === sessionId);
+const listed = async (provider, sessionId) =>
+  (await listImportableSessions(provider)).find((session) => session.sessionId === sessionId);
 
 test("imports a Claude session with its messages", async () => {
   const cwd = await folder("claude-basic");
@@ -49,7 +73,10 @@ test("imports a Claude session with its messages", async () => {
   const { threadId } = await importSession(session.id);
   const thread = store.threads.get(threadId);
   assert.equal(thread.externalId, "claude-basic");
-  assert.deepEqual(thread.messages.map((message) => message.parts[0].text), ["Hello Claude", "Hello there"]);
+  assert.deepEqual(
+    thread.messages.map((message) => message.parts[0].text),
+    ["Hello Claude", "Hello there"],
+  );
 });
 
 test("reopens an imported session after its folder is deleted", async () => {
@@ -66,15 +93,36 @@ test("imports a Codex session and captures its model", async () => {
   const cwd = await folder("codex-basic");
   const sessions = join(process.env.CODEX_HOME, "sessions", "2026", "09", "20");
   await mkdir(sessions, { recursive: true });
-  await writeFile(join(sessions, "rollout-basic.jsonl"),
-    line({ timestamp: at, type: "session_meta", payload: { id: "codex-basic", cwd } })
-    + line({ timestamp: at, type: "turn_context", payload: { model: "gpt-5.5-codex" } })
-    + line({ timestamp: at, type: "response_item", payload: { type: "message", role: "user", content: [{ type: "input_text", text: "Hello Codex" }] } })
-    + line({ timestamp: at, type: "response_item", payload: { type: "message", role: "assistant", content: [{ type: "output_text", text: "Hello back" }] } }));
+  await writeFile(
+    join(sessions, "rollout-basic.jsonl"),
+    line({ timestamp: at, type: "session_meta", payload: { id: "codex-basic", cwd } }) +
+      line({ timestamp: at, type: "turn_context", payload: { model: "gpt-5.5-codex" } }) +
+      line({
+        timestamp: at,
+        type: "response_item",
+        payload: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "Hello Codex" }],
+        },
+      }) +
+      line({
+        timestamp: at,
+        type: "response_item",
+        payload: {
+          type: "message",
+          role: "assistant",
+          content: [{ type: "output_text", text: "Hello back" }],
+        },
+      }),
+  );
   const { threadId } = await importSession((await listed("codex", "codex-basic")).id);
   const thread = store.threads.get(threadId);
   assert.equal(thread.model, "gpt-5.5-codex");
-  assert.deepEqual(thread.messages.map((message) => message.parts[0].text), ["Hello Codex", "Hello back"]);
+  assert.deepEqual(
+    thread.messages.map((message) => message.parts[0].text),
+    ["Hello Codex", "Hello back"],
+  );
 });
 
 test("refuses to import a session above the size limit", async () => {
@@ -89,17 +137,51 @@ test("lists and imports OpenCode sessions from the shared database", async () =>
   const database = join(process.env.XDG_DATA_HOME, "opencode", "opencode.db");
   await mkdir(join(process.env.XDG_DATA_HOME, "opencode"), { recursive: true });
   const db = new DatabaseSync(database);
-  db.exec("CREATE TABLE session (id TEXT, directory TEXT, title TEXT, model TEXT, time_updated INTEGER, parent_id TEXT)");
+  db.exec(
+    "CREATE TABLE session (id TEXT, directory TEXT, title TEXT, model TEXT, time_updated INTEGER, parent_id TEXT)",
+  );
   db.exec("CREATE TABLE message (id TEXT, session_id TEXT, time_created INTEGER, data TEXT)");
-  db.exec("CREATE TABLE part (id TEXT, message_id TEXT, session_id TEXT, time_created INTEGER, data TEXT)");
+  db.exec(
+    "CREATE TABLE part (id TEXT, message_id TEXT, session_id TEXT, time_created INTEGER, data TEXT)",
+  );
   const created = Date.parse(at);
-  db.prepare("INSERT INTO session VALUES (?, ?, ?, ?, ?, NULL)").run("oc-basic", cwd, "OpenCode chat", JSON.stringify({ providerID: "anthropic", id: "claude-opus-5" }), created);
+  db.prepare("INSERT INTO session VALUES (?, ?, ?, ?, ?, NULL)").run(
+    "oc-basic",
+    cwd,
+    "OpenCode chat",
+    JSON.stringify({ providerID: "anthropic", id: "claude-opus-5" }),
+    created,
+  );
   const message = db.prepare("INSERT INTO message VALUES (?, ?, ?, ?)");
   const part = db.prepare("INSERT INTO part VALUES (?, ?, ?, ?, ?)");
   message.run("m1", "oc-basic", created, JSON.stringify({ role: "user", time: { created } }));
-  part.run("p1", "m1", "oc-basic", created, JSON.stringify({ type: "text", text: "Hello OpenCode" }));
-  message.run("m2", "oc-basic", created + 1, JSON.stringify({ role: "assistant", providerID: "anthropic", modelID: "claude-opus-5", time: { created: created + 1 }, tokens: { input: 7, output: 3, reasoning: 0, cache: { read: 0, write: 0 } }, cost: 0 }));
-  part.run("p2", "m2", "oc-basic", created + 1, JSON.stringify({ type: "text", text: "Hello from OpenCode" }));
+  part.run(
+    "p1",
+    "m1",
+    "oc-basic",
+    created,
+    JSON.stringify({ type: "text", text: "Hello OpenCode" }),
+  );
+  message.run(
+    "m2",
+    "oc-basic",
+    created + 1,
+    JSON.stringify({
+      role: "assistant",
+      providerID: "anthropic",
+      modelID: "claude-opus-5",
+      time: { created: created + 1 },
+      tokens: { input: 7, output: 3, reasoning: 0, cache: { read: 0, write: 0 } },
+      cost: 0,
+    }),
+  );
+  part.run(
+    "p2",
+    "m2",
+    "oc-basic",
+    created + 1,
+    JSON.stringify({ type: "text", text: "Hello from OpenCode" }),
+  );
   db.close();
   const session = await listed("opencode", "oc-basic");
   assert.equal(session.title, "OpenCode chat");
@@ -107,7 +189,13 @@ test("lists and imports OpenCode sessions from the shared database", async () =>
   const { threadId } = await importSession(session.id);
   const thread = store.threads.get(threadId);
   assert.equal(thread.model, "anthropic/claude-opus-5");
-  assert.deepEqual(thread.messages.map((entry) => entry.parts[0].text), ["Hello OpenCode", "Hello from OpenCode"]);
+  assert.deepEqual(
+    thread.messages.map((entry) => entry.parts[0].text),
+    ["Hello OpenCode", "Hello from OpenCode"],
+  );
   const usage = (await providerLogUsage()).filter((entry) => entry.provider === "opencode");
-  assert.equal(usage.reduce((sum, entry) => sum + entry.input, 0), 7);
+  assert.equal(
+    usage.reduce((sum, entry) => sum + entry.input, 0),
+    7,
+  );
 });

@@ -9,7 +9,14 @@ const PULSE_WIDTH = 2;
 export function AgentsIcon({ size = 24 }: { size?: number }) {
   const id = useId();
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <defs>
         <mask id={`${id}-back`}>
           <rect width="24" height="24" fill="white" />
@@ -17,7 +24,14 @@ export function AgentsIcon({ size = 24 }: { size?: number }) {
         </mask>
         <mask id={`${id}-front`}>
           <rect width="24" height="24" fill="white" />
-          <path d={PULSE} fill="none" stroke="black" strokeWidth={PULSE_WIDTH} strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d={PULSE}
+            fill="none"
+            stroke="black"
+            strokeWidth={PULSE_WIDTH}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </mask>
       </defs>
       <rect {...BACK_CARD} mask={`url(#${id}-back)`} />

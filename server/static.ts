@@ -32,7 +32,10 @@ function openFile(root: string, file: string) {
     if (!inside(root, canonical)) return undefined;
     fd = openSync(canonical, "r");
     const info = fstatSync(fd);
-    if (!info.isFile() || !sameFile(expected, info)) { closeSync(fd); return undefined; }
+    if (!info.isFile() || !sameFile(expected, info)) {
+      closeSync(fd);
+      return undefined;
+    }
     return { fd, info, path: canonical };
   } catch (error) {
     if (fd !== undefined) closeSync(fd);
@@ -51,10 +54,14 @@ export function serveStatic(root: string, urlPath: string, res: ServerResponse):
     return true;
   };
   let decoded: string;
-  try { decoded = decodeURIComponent(urlPath.split("?")[0] ?? "/"); }
-  catch { return badRequest(); }
+  try {
+    decoded = decodeURIComponent(urlPath.split("?")[0] ?? "/");
+  } catch {
+    return badRequest();
+  }
   // URL paths use forward slashes on every OS. Do not let Windows reinterpret a URL.
-  if (!decoded.startsWith("/") || decoded.startsWith("//") || /[\\\0]/.test(decoded)) return badRequest();
+  if (!decoded.startsWith("/") || decoded.startsWith("//") || /[\\\0]/.test(decoded))
+    return badRequest();
   const absoluteRoot = resolve(root);
   const requestedFile = resolve(absoluteRoot, `.${decoded}`);
   if (!inside(absoluteRoot, requestedFile)) return badRequest();
@@ -65,8 +72,11 @@ export function serveStatic(root: string, urlPath: string, res: ServerResponse):
     return true;
   }
   let canonicalRoot: string;
-  try { canonicalRoot = realpathSync(absoluteRoot); }
-  catch (error) { return ifMissing(false)(error); }
+  try {
+    canonicalRoot = realpathSync(absoluteRoot);
+  } catch (error) {
+    return ifMissing(false)(error);
+  }
   let opened = openFile(canonicalRoot, requestedFile);
   // Only application navigations may use the SPA shell, never missing build resources.
   if (!opened && !posix.extname(clean) && !/^\/(assets|fonts)(\/|$)/.test(clean))
@@ -79,9 +89,14 @@ export function serveStatic(root: string, urlPath: string, res: ServerResponse):
   let encoding: string | undefined;
   if (compressible) {
     const accepted = new Map<string, number>();
-    for (const part of String(res.req?.headers["accept-encoding"] ?? "").toLowerCase().split(",")) {
+    for (const part of String(res.req?.headers["accept-encoding"] ?? "")
+      .toLowerCase()
+      .split(",")) {
       const [name, ...parameters] = part.trim().split(";");
-      const value = parameters.find(parameter => parameter.trim().startsWith("q="))?.trim().slice(2);
+      const value = parameters
+        .find((parameter) => parameter.trim().startsWith("q="))
+        ?.trim()
+        .slice(2);
       const quality = value === undefined ? 1 : Number(value);
       accepted.set(name!.trim(), quality >= 0 && quality <= 1 ? quality : 0);
     }
@@ -112,7 +127,8 @@ export function serveStatic(root: string, urlPath: string, res: ServerResponse):
   }
   // The open descriptor survives renames; pipeline closes it on read errors or client aborts.
   pipeline(createReadStream(path, { fd, autoClose: true, end: info.size - 1 }), res, (error) => {
-    if (error && error.code !== "ERR_STREAM_PREMATURE_CLOSE") console.error("Serving a static file failed:", path, error);
+    if (error && error.code !== "ERR_STREAM_PREMATURE_CLOSE")
+      console.error("Serving a static file failed:", path, error);
   });
   return true;
 }

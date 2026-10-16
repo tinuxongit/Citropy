@@ -29,16 +29,30 @@ const manageTitles: Partial<Record<GitOperation, string>> = {
 export const gitRoutes: Routes = {
   "git.manage": async (event, send) => {
     const project = resolveWorkspace(event.projectId, event.threadId);
-    if (!project) return send({ t: "git.manage", requestId: event.requestId, error: "Workspace not found" });
+    if (!project)
+      return send({ t: "git.manage", requestId: event.requestId, error: "Workspace not found" });
     const title = manageTitles[event.operation];
     const target = { view: "git" as const, projectId: project.id, threadId: event.threadId };
     try {
-      const result = await git.manage(project.path, event.operation, event.value, event.offset, event.remote);
+      const result = await git.manage(
+        project.path,
+        event.operation,
+        event.value,
+        event.offset,
+        event.remote,
+      );
       send({ t: "git.manage", requestId: event.requestId, result });
       if (title) store.notify({ kind: "git", level: "success", title, text: project.name, target });
     } catch (error) {
       send({ t: "git.manage", requestId: event.requestId, error: (error as Error).message });
-      if (title) store.notify({ kind: "git", level: "error", title: "Git action failed", text: (error as Error).message, target });
+      if (title)
+        store.notify({
+          kind: "git",
+          level: "error",
+          title: "Git action failed",
+          text: (error as Error).message,
+          target,
+        });
     }
     await refreshGit(event.projectId, true, event.threadId);
   },
@@ -52,7 +66,12 @@ export const gitRoutes: Routes = {
       const patch = await git.fileDiff(project.path, event.path, event.staged ?? false);
       send({ t: "git.diff", requestId: event.requestId, patch });
     } catch (error) {
-      send({ t: "git.diff", requestId: event.requestId, patch: null, error: (error as Error).message });
+      send({
+        t: "git.diff",
+        requestId: event.requestId,
+        patch: null,
+        error: (error as Error).message,
+      });
     }
   },
   "git.discard": async (event) => {
@@ -75,7 +94,11 @@ export const gitRoutes: Routes = {
         target: { view: "git", projectId: project.id, threadId: event.threadId },
       });
     } catch (error) {
-      bus.emit({ t: "toast", level: "error", text: (error as Error).message.split("\n")[0] ?? "Commit failed" });
+      bus.emit({
+        t: "toast",
+        level: "error",
+        text: (error as Error).message.split("\n")[0] ?? "Commit failed",
+      });
     }
     await refreshGit(event.projectId, true, event.threadId);
   },

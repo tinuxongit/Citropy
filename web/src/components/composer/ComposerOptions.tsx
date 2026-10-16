@@ -1,4 +1,11 @@
-import { useEffect, useState, type ComponentType, type PointerEvent, type ReactNode, type Ref } from "react";
+import {
+  useEffect,
+  useState,
+  type ComponentType,
+  type PointerEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { BoltIcon } from "../icons/BoltIcon.tsx";
 import { EditIcon } from "../icons/pencil.tsx";
 import { EffortIcon } from "../icons/EffortIcon.tsx";
@@ -13,11 +20,7 @@ import { effectiveEffort } from "../../../../shared/model-options.ts";
 import { SelectionHighlight } from "../SelectionHighlight.tsx";
 import { AnimatePresence, motion, useSpring, type MotionStyle } from "motion/react";
 import { useReducedMotion } from "../../lib/use-reduced-motion.ts";
-import type {
-  ModelOption,
-  PermissionMode,
-  ThreadMeta,
-} from "../../../../shared/protocol.ts";
+import type { ModelOption, PermissionMode, ThreadMeta } from "../../../../shared/protocol.ts";
 
 const BAR_ICON_SIZE = 18;
 const FAST_BADGE_SIZE = 14;
@@ -54,8 +57,7 @@ export const PERMISSION_MODES: Array<{
   },
 ];
 
-const contextLabel = (size: number) =>
-  tokens(size).replace(/\.00M$/, "M");
+const contextLabel = (size: number) => tokens(size).replace(/\.00M$/, "M");
 
 export type TuningTab = "effort" | "context" | "speed";
 
@@ -78,7 +80,9 @@ export function ModelTuning({
   const contextWindow = settings.contextWindow ?? model?.contextMax;
   const tabs: Array<{ id: TuningTab; label: string; icon: ComponentType<{ size?: number }> }> = [
     ...(efforts.length ? [{ id: "effort" as const, label: "Effort", icon: EffortIcon }] : []),
-    ...(model?.contextWindows?.length ? [{ id: "context" as const, label: "Context", icon: LayersIcon }] : []),
+    ...(model?.contextWindows?.length
+      ? [{ id: "context" as const, label: "Context", icon: LayersIcon }]
+      : []),
     ...(model?.fastMode ? [{ id: "speed" as const, label: "Speed", icon: BoltIcon }] : []),
   ].filter((entry) => !only || only.includes(entry.id));
   const [chosen, setChosen] = useState<TuningTab>();
@@ -87,7 +91,12 @@ export function ModelTuning({
   return (
     <div className="model-tuning">
       {tabs.length > 1 && (
-        <div className="tuning-tabs sliding-selection" role="tablist" aria-orientation="vertical" aria-label="Model options">
+        <div
+          className="tuning-tabs sliding-selection"
+          role="tablist"
+          aria-orientation="vertical"
+          aria-label="Model options"
+        >
           <SelectionHighlight value={tab} />
           {tabs.map((entry) => (
             <button
@@ -105,39 +114,47 @@ export function ModelTuning({
         </div>
       )}
       <div className="tuning-panel">
-      {tab === "effort" && (
-        <EffortSlider efforts={efforts} level={level} onChange={(index) => onChange({ effort: efforts[index] })} />
-      )}
-      {tab === "context" && (
-        <div className="tuning-chips sliding-selection" role="group" aria-label="Context window">
-          <SelectionHighlight value={String(contextWindow)} />
-          {model!.contextWindows!.map((size) => (
-            <button
-              key={size}
-              type="button"
-              aria-pressed={contextWindow === size}
-              onClick={() => onChange({ contextWindow: size })}
-            >
-              {contextLabel(size)} tokens
-            </button>
-          ))}
-        </div>
-      )}
-      {tab === "speed" && (
-        <label className="tuning-speed">
-          <span>
-            <strong>Fast mode</strong>
-            <small>{settings.fastMode ? (model?.fastModeHint ?? "Faster responses, increased usage") : "Standard speed and usage"}</small>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            className="setting-switch"
-            checked={Boolean(settings.fastMode)}
-            onChange={(event) => onChange({ fastMode: event.target.checked })}
+        {tab === "effort" && (
+          <EffortSlider
+            efforts={efforts}
+            level={level}
+            onChange={(index) => onChange({ effort: efforts[index] })}
           />
-        </label>
-      )}
+        )}
+        {tab === "context" && (
+          <div className="tuning-chips sliding-selection" role="group" aria-label="Context window">
+            <SelectionHighlight value={String(contextWindow)} />
+            {model!.contextWindows!.map((size) => (
+              <button
+                key={size}
+                type="button"
+                aria-pressed={contextWindow === size}
+                onClick={() => onChange({ contextWindow: size })}
+              >
+                {contextLabel(size)} tokens
+              </button>
+            ))}
+          </div>
+        )}
+        {tab === "speed" && (
+          <label className="tuning-speed">
+            <span>
+              <strong>Fast mode</strong>
+              <small>
+                {settings.fastMode
+                  ? (model?.fastModeHint ?? "Faster responses, increased usage")
+                  : "Standard speed and usage"}
+              </small>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="setting-switch"
+              checked={Boolean(settings.fastMode)}
+              onChange={(event) => onChange({ fastMode: event.target.checked })}
+            />
+          </label>
+        )}
       </div>
     </div>
   );
@@ -155,7 +172,13 @@ function EffortSlider({
   onChange: (index: number) => void;
 }) {
   const [grip, setGrip] = useState<EffortGrip>();
-  useEffect(() => setGrip((current) => (current?.phase === "released" && current.position === level ? undefined : current)), [level]);
+  useEffect(
+    () =>
+      setGrip((current) =>
+        current?.phase === "released" && current.position === level ? undefined : current,
+      ),
+    [level],
+  );
   const position = grip?.position ?? level;
   const index = Math.round(position);
   const last = efforts.length - 1;
@@ -182,7 +205,9 @@ function EffortSlider({
   };
   return (
     <div className="effort-slider">
-      <div className="effort-slider-value">{efforts[index] && <RollingLabel text={formatEffort(efforts[index])} order={index} />}</div>
+      <div className="effort-slider-value">
+        {efforts[index] && <RollingLabel text={formatEffort(efforts[index])} order={index} />}
+      </div>
       <motion.div
         className="effort-slider-track"
         style={{ "--fill": fill } as MotionStyle}
@@ -201,7 +226,11 @@ function EffortSlider({
         onPointerCancel={() => setGrip(undefined)}
       >
         {efforts.map((value, stop) => (
-          <span key={value} className="effort-slider-stop" data-passed={stop <= position || undefined} />
+          <span
+            key={value}
+            className="effort-slider-stop"
+            data-passed={stop <= position || undefined}
+          />
         ))}
         <span className="effort-slider-thumb" />
         <input
@@ -275,8 +304,7 @@ export function PermissionMenu({
         icon: <entry.icon size={17} />,
         hint: entry.hint,
         selected: entry.id === thread.permissionMode,
-        onSelect: () =>
-          configureThread(thread.id, { permissionMode: entry.id }),
+        onSelect: () => configureThread(thread.id, { permissionMode: entry.id }),
       }))}
       trigger={({ toggle, id, open }) => (
         <button
@@ -316,10 +344,26 @@ export function EffortMenu({
   const label = effort ? formatEffort(effort) : thread.fastMode ? "Fast" : "Standard";
   const choices = effort ? efforts.map(formatEffort) : ["Standard", "Fast"];
   return (
-    <TuningMenu thread={thread} model={model} tabs={["effort", "speed"]} disabled={disabled} buttonRef={buttonRef} className="composer-effort" label={`Effort and speed: ${label}${effort && thread.fastMode ? ", fast mode on" : ""}`}>
-      {effort ? <EffortIcon size={BAR_ICON_SIZE} filled={(efforts.indexOf(effort) + 1) / efforts.length} /> : <BoltIcon size={BAR_ICON_SIZE} />}
+    <TuningMenu
+      thread={thread}
+      model={model}
+      tabs={["effort", "speed"]}
+      disabled={disabled}
+      buttonRef={buttonRef}
+      className="composer-effort"
+      label={`Effort and speed: ${label}${effort && thread.fastMode ? ", fast mode on" : ""}`}
+    >
+      {effort ? (
+        <EffortIcon size={BAR_ICON_SIZE} filled={(efforts.indexOf(effort) + 1) / efforts.length} />
+      ) : (
+        <BoltIcon size={BAR_ICON_SIZE} />
+      )}
       <span className="composer-label composer-label-stack">
-        {choices.map((choice) => <span key={choice} data-current={choice === label || undefined}>{choice}</span>)}
+        {choices.map((choice) => (
+          <span key={choice} data-current={choice === label || undefined}>
+            {choice}
+          </span>
+        ))}
       </span>
       {effort && thread.fastMode && <BoltIcon size={FAST_BADGE_SIZE} />}
     </TuningMenu>
@@ -338,7 +382,14 @@ export function ContextMenu({
   const contextWindow = thread.contextWindow ?? model?.contextMax;
   if (!contextWindow || !model?.contextWindows?.length) return null;
   return (
-    <TuningMenu thread={thread} model={model} tabs={["context"]} disabled={disabled} className="composer-context" label={`Context window: ${contextWindow.toLocaleString(LOCALE)} tokens`}>
+    <TuningMenu
+      thread={thread}
+      model={model}
+      tabs={["context"]}
+      disabled={disabled}
+      className="composer-context"
+      label={`Context window: ${contextWindow.toLocaleString(LOCALE)} tokens`}
+    >
       <LayersIcon size={BAR_ICON_SIZE} />
       <span className="composer-label">{contextLabel(contextWindow)}</span>
     </TuningMenu>
@@ -369,7 +420,14 @@ function TuningMenu({
       width={260}
       className="tuning-menu"
       items={[]}
-      controls={<ModelTuning settings={thread} model={model} onChange={(patch) => configureThread(thread.id, patch)} only={tabs} />}
+      controls={
+        <ModelTuning
+          settings={thread}
+          model={model}
+          onChange={(patch) => configureThread(thread.id, patch)}
+          only={tabs}
+        />
+      }
       trigger={({ toggle, id, open }) => (
         <button
           id={id}

@@ -16,7 +16,20 @@ export interface DiagnosticDetails {
 
 export function desktopDiagnostics(directory: string) {
   const file = join(directory, "desktop.log");
-  return (event: string, { version, electron, platform, packaged, threadId, code, signal, reason, type }: DiagnosticDetails = {}) => {
+  return (
+    event: string,
+    {
+      version,
+      electron,
+      platform,
+      packaged,
+      threadId,
+      code,
+      signal,
+      reason,
+      type,
+    }: DiagnosticDetails = {},
+  ) => {
     try {
       const line = `${JSON.stringify({ time: new Date().toISOString(), pid: process.pid, event, version, electron, platform, packaged, threadId, code, signal, reason, type })}\n`;
       const bytes = Buffer.byteLength(line);

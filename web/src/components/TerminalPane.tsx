@@ -61,7 +61,10 @@ const LIGHT = {
 let webgl2Available = false;
 
 function terminalFont(): string {
-  return getComputedStyle(document.documentElement).getPropertyValue("--font-terminal").trim() || "monospace";
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue("--font-terminal").trim() ||
+    "monospace"
+  );
 }
 
 function hasWebgl2(): boolean {
@@ -70,7 +73,7 @@ function hasWebgl2(): boolean {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("webgl2");
     context?.getExtension("WEBGL_lose_context")?.loseContext();
-    return webgl2Available = Boolean(context);
+    return (webgl2Available = Boolean(context));
   } catch {
     return false;
   }
@@ -115,7 +118,7 @@ export function TerminalPane({
     };
     if (term.current) {
       term.current.options.theme = useApp.getState().scheme === "light" ? LIGHT : DARK;
-      term.current.options.fontSize = 13 * useApp.getState().uiScale / 100;
+      term.current.options.fontSize = (13 * useApp.getState().uiScale) / 100;
       term.current.options.fontFamily = terminalFont();
       fit.current?.fit();
       if (!attached.current) {
@@ -137,18 +140,17 @@ export function TerminalPane({
 
     void (async () => {
       const fontFamily = terminalFont();
-      const [{ Terminal: Xterm }, { FitAddon: Fit }, { WebLinksAddon }] =
-        await Promise.all([
-          import("@xterm/xterm"),
-          import("@xterm/addon-fit"),
-          import("@xterm/addon-web-links"),
-          document.fonts.load(`13px ${fontFamily}`),
-        ]);
+      const [{ Terminal: Xterm }, { FitAddon: Fit }, { WebLinksAddon }] = await Promise.all([
+        import("@xterm/xterm"),
+        import("@xterm/addon-fit"),
+        import("@xterm/addon-web-links"),
+        document.fonts.load(`13px ${fontFamily}`),
+      ]);
       if (disposed || signal.aborted || !host.current) return;
 
       const instance = new Xterm({
         fontFamily,
-        fontSize: 13 * useApp.getState().uiScale / 100,
+        fontSize: (13 * useApp.getState().uiScale) / 100,
         lineHeight: 1.35,
         letterSpacing: 0,
         cursorBlink: true,
@@ -161,16 +163,29 @@ export function TerminalPane({
       instance.loadAddon(fitAddon);
       instance.loadAddon(new WebLinksAddon());
       instance.open(host.current);
-      instance.attachCustomKeyEventHandler(event => {
-        if (event.type !== "keydown" || !event.ctrlKey || event.altKey || event.metaKey || event.key.toLowerCase() !== "c" || !instance.hasSelection()) return true;
+      instance.attachCustomKeyEventHandler((event) => {
+        if (
+          event.type !== "keydown" ||
+          !event.ctrlKey ||
+          event.altKey ||
+          event.metaKey ||
+          event.key.toLowerCase() !== "c" ||
+          !instance.hasSelection()
+        )
+          return true;
         event.preventDefault();
         event.stopPropagation();
         try {
           if (!document.execCommand("copy")) {
-            if (!navigator.clipboard) throw new Error("Could not copy terminal selection. Try your browser's Copy command.");
+            if (!navigator.clipboard)
+              throw new Error(
+                "Could not copy terminal selection. Try your browser's Copy command.",
+              );
             void navigator.clipboard.writeText(instance.getSelection()).catch(reportError);
           }
-        } catch (error) { reportError(error); }
+        } catch (error) {
+          reportError(error);
+        }
         return false;
       });
 
@@ -194,7 +209,8 @@ export function TerminalPane({
       });
 
       instance.onData((data) => {
-        if (!signal.aborted && !replays.current.get(instance)) send({ t: "term.data", termId: termId, data });
+        if (!signal.aborted && !replays.current.get(instance))
+          send({ t: "term.data", termId: termId, data });
       });
       instance.onResize(({ cols, rows }) => {
         if (!signal.aborted) send({ t: "term.resize", termId: termId, cols, rows });
@@ -216,39 +232,54 @@ export function TerminalPane({
     }
     if (renderer.current || webgl.current === false) return;
     let cancelled = false;
-    const timer = setTimeout(() => void (async () => {
-      webgl.current ??= hasWebgl2();
-      if (!webgl.current) return;
-      const { WebglAddon } = await import("@xterm/addon-webgl");
-      const instance = term.current;
-      if (cancelled || signal.aborted || !instance) return;
-      const addon = new WebglAddon();
-      try {
-        instance.loadAddon(addon);
-      } catch (error) {
-        console.error("The terminal's WebGL renderer failed; using the standard renderer:", error);
-        webgl.current = false;
-        addon.dispose();
-        return;
-      }
-      const contexts = [...instance.element!.querySelectorAll("canvas")]
-        .map(canvas => canvas.getContext("webgl2")).filter(context => context !== null);
-      const release = {
-        dispose() {
-          if (renderer.current !== release) return;
-          renderer.current = null;
-          addon.dispose();
-          for (const context of contexts) context.getExtension("WEBGL_lose_context")?.loseContext();
-        },
-      };
-      renderer.current = release;
-      addon.onContextLoss(() => release.dispose());
-      fit.current?.fit();
-    })().catch((error) => {
-      console.error("The terminal's WebGL renderer failed; using the standard renderer:", error);
-      webgl.current = false;
-    }), 500);
-    return () => { cancelled = true; clearTimeout(timer); };
+    const timer = setTimeout(
+      () =>
+        void (async () => {
+          webgl.current ??= hasWebgl2();
+          if (!webgl.current) return;
+          const { WebglAddon } = await import("@xterm/addon-webgl");
+          const instance = term.current;
+          if (cancelled || signal.aborted || !instance) return;
+          const addon = new WebglAddon();
+          try {
+            instance.loadAddon(addon);
+          } catch (error) {
+            console.error(
+              "The terminal's WebGL renderer failed; using the standard renderer:",
+              error,
+            );
+            webgl.current = false;
+            addon.dispose();
+            return;
+          }
+          const contexts = [...instance.element!.querySelectorAll("canvas")]
+            .map((canvas) => canvas.getContext("webgl2"))
+            .filter((context) => context !== null);
+          const release = {
+            dispose() {
+              if (renderer.current !== release) return;
+              renderer.current = null;
+              addon.dispose();
+              for (const context of contexts)
+                context.getExtension("WEBGL_lose_context")?.loseContext();
+            },
+          };
+          renderer.current = release;
+          addon.onContextLoss(() => release.dispose());
+          fit.current?.fit();
+        })().catch((error) => {
+          console.error(
+            "The terminal's WebGL renderer failed; using the standard renderer:",
+            error,
+          );
+          webgl.current = false;
+        }),
+      500,
+    );
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [active, connected, ready]);
 
   useEffect(() => {
@@ -260,36 +291,60 @@ export function TerminalPane({
         if (!instance) return;
         const acknowledge = () => {
           if (event.streamId && event.data.length && !signal.aborted)
-            send({ t: "term.ack", termId: termId, count: event.data.length, streamId: event.streamId });
+            send({
+              t: "term.ack",
+              termId: termId,
+              count: event.data.length,
+              streamId: event.streamId,
+            });
         };
-        const position = event.sessionId && Number.isSafeInteger(event.offset)
-          ? { sessionId: event.sessionId, offset: event.offset! } : undefined;
+        const position =
+          event.sessionId && Number.isSafeInteger(event.offset)
+            ? { sessionId: event.sessionId, offset: event.offset! }
+            : undefined;
         let data = event.data;
         if (position && !event.reset) {
           const previous = cursor.current;
-          if (!previous || previous.sessionId !== position.sessionId || previous.offset < position.offset - data.length || previous.offset >= position.offset) {
+          if (
+            !previous ||
+            previous.sessionId !== position.sessionId ||
+            previous.offset < position.offset - data.length ||
+            previous.offset >= position.offset
+          ) {
             acknowledge();
             return;
           }
           data = data.slice(Math.max(0, previous.offset - (position.offset - data.length)));
         }
         cursor.current = position;
-        if (!data && !event.reset) { acknowledge(); return; }
+        if (!data && !event.reset) {
+          acknowledge();
+          return;
+        }
         if (event.reset) replays.current.set(instance, (replays.current.get(instance) ?? 0) + 1);
         instance.write((event.reset ? "\x1bc" : "") + data, () => {
           if (event.reset) replays.current.set(instance, (replays.current.get(instance) ?? 1) - 1);
           if (event.reset && attached.current && !signal.aborted && term.current) {
             if (!document.documentElement.hasAttribute("data-resizing")) fit.current?.fit();
-            send({ t: "term.resize", termId: termId, cols: term.current.cols, rows: term.current.rows });
+            send({
+              t: "term.resize",
+              termId: termId,
+              cols: term.current.cols,
+              rows: term.current.rows,
+            });
           }
           acknowledge();
         });
-      }
-      else {
+      } else {
         if (event.sessionId && Number.isSafeInteger(event.offset)) {
           const previous = cursor.current;
           const ending = exitNotice(event.code);
-          if (!previous || previous.sessionId !== event.sessionId || previous.offset !== event.offset! - ending.length) return;
+          if (
+            !previous ||
+            previous.sessionId !== event.sessionId ||
+            previous.offset !== event.offset! - ending.length
+          )
+            return;
           cursor.current = { sessionId: event.sessionId, offset: event.offset! };
         } else cursor.current = undefined;
         term.current?.writeln(`\r\n${`[process exited with code ${event.code ?? "?"}]`}`);
@@ -304,7 +359,7 @@ export function TerminalPane({
 
   useEffect(() => {
     if (!active || !term.current) return;
-    term.current.options.fontSize = 13 * uiScale / 100;
+    term.current.options.fontSize = (13 * uiScale) / 100;
     fit.current?.fit();
   }, [uiScale]);
 
@@ -359,9 +414,7 @@ export function TerminalPane({
 
   return (
     <div className="terminal-pane">
-      {!connected && (
-        <div className="browser-notice">Reconnecting to your terminal…</div>
-      )}
+      {!connected && <div className="browser-notice">Reconnecting to your terminal…</div>}
       <div className="term" ref={host} />
     </div>
   );

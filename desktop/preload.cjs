@@ -4,12 +4,14 @@ contextBridge.exposeInMainWorld("citropyDesktop", {
   environmentsState: () => ipcRenderer.invoke("environments:state"),
   sshHosts: () => ipcRenderer.invoke("environments:hosts"),
   saveEnvironment: (connection) => ipcRenderer.invoke("environments:save", connection),
-  configureProjectDefaults: (settings) => ipcRenderer.invoke("environments:project-defaults", settings),
+  configureProjectDefaults: (settings) =>
+    ipcRenderer.invoke("environments:project-defaults", settings),
   connectEnvironment: (id) => ipcRenderer.invoke("environments:connect", id),
   disconnectEnvironment: (id) => ipcRenderer.invoke("environments:disconnect", id),
   stopEnvironment: (id) => ipcRenderer.invoke("environments:stop", id),
   removeEnvironment: (id) => ipcRenderer.invoke("environments:remove", id),
-  chooseWorkspaceFolder: (id, path) => ipcRenderer.invoke("environments:choose-folder", { id, path }),
+  chooseWorkspaceFolder: (id, path) =>
+    ipcRenderer.invoke("environments:choose-folder", { id, path }),
   listWorkspaceFolder: (id, path) => ipcRenderer.invoke("environments:list-folder", { id, path }),
   onEnvironmentsState: (callback) => {
     const listener = (_, state) => callback(state);
@@ -51,7 +53,8 @@ contextBridge.exposeInMainWorld("citropyDesktop", {
     return () => ipcRenderer.removeListener("browser:guests", listener);
   },
   attachBrowser: (id, contentsId) => ipcRenderer.send("browser:attach", { id, contentsId }),
-  browserPresented: (id, visible, scale) => ipcRenderer.send("browser:presented", { id, visible, scale }),
+  browserPresented: (id, visible, scale) =>
+    ipcRenderer.send("browser:presented", { id, visible, scale }),
   onBrowserCover: (callback) => {
     const listener = (_, id, image) => callback(id, image);
     ipcRenderer.on("browser:cover", listener);

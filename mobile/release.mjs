@@ -7,4 +7,7 @@ const releaseFolder = new URL("../release/", import.meta.url);
 
 execFileSync("./gradlew", ["assembleRelease"], { cwd: android, stdio: "inherit" });
 mkdirSync(releaseFolder, { recursive: true });
-copyFileSync(new URL("app/build/outputs/apk/release/app-release.apk", android), new URL(androidApkName, releaseFolder));
+copyFileSync(
+  new URL("app/build/outputs/apk/release/app-release.apk", android),
+  new URL(androidApkName, releaseFolder),
+);

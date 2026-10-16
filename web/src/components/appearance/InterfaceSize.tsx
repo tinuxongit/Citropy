@@ -30,7 +30,10 @@ export function InterfaceSize() {
             type="button"
             onClick={() => setUiSize(DEFAULT_UI_SCALE)}
             disabled={uiSize === DEFAULT_UI_SCALE}
-          >{" "}Reset to default{" "}</button>
+          >
+            {" "}
+            Reset to default{" "}
+          </button>
           <span>Larger</span>
         </div>
       </div>

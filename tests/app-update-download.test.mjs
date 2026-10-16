@@ -16,11 +16,9 @@ test(
   { timeout: 35000 },
   async (t) => {
     const folder = await mkdtemp(join(tmpdir(), "citropy-update-download-"));
-    const display = spawn(
-      "Xvfb",
-      ["-displayfd", "3", "-screen", "0", "1200x800x24"],
-      { stdio: ["ignore", "ignore", "ignore", "pipe"] },
-    );
+    const display = spawn("Xvfb", ["-displayfd", "3", "-screen", "0", "1200x800x24"], {
+      stdio: ["ignore", "ignore", "ignore", "pipe"],
+    });
     const [number] = await once(display.stdio[3], "data");
     const payload = Buffer.alloc(512 * 1024, "citropy-release-fixture");
     let corrupt = false;
@@ -103,32 +101,22 @@ app.on('before-quit', () => globalThis.control.dispose());
       await desktop.evaluate(() => globalThis.control.command("check"));
       for (
         let i = 0;
-        i < 100 &&
-        (await desktop.evaluate(() => globalThis.control.state())).status ===
-          "checking";
+        i < 100 && (await desktop.evaluate(() => globalThis.control.state())).status === "checking";
         i++
       )
         await new Promise((resolve) => setTimeout(resolve, 30));
-      assert.equal(
-        (await desktop.evaluate(() => globalThis.control.state())).status,
-        "available",
-      );
+      assert.equal((await desktop.evaluate(() => globalThis.control.state())).status, "available");
       assert.equal(await desktop.evaluate(() => globalThis.installs), 0);
       await desktop.evaluate(() => globalThis.control.command("download"));
       for (
         let i = 0;
         i < 100 &&
-        (await desktop.evaluate(() => globalThis.control.state())).status ===
-          "downloading";
+        (await desktop.evaluate(() => globalThis.control.state())).status === "downloading";
         i++
       )
         await new Promise((resolve) => setTimeout(resolve, 30));
       const state = await desktop.evaluate(() => globalThis.control.state());
-      assert.equal(
-        state.status,
-        broken ? "error" : "ready",
-        JSON.stringify(state),
-      );
+      assert.equal(state.status, broken ? "error" : "ready", JSON.stringify(state));
       if (broken) assert.match(state.message, /verification/);
       else {
         assert.equal(await desktop.evaluate(() => globalThis.installs), 0);

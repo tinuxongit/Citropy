@@ -3,7 +3,20 @@ import type { IconProps } from "./kit.tsx";
 import { AtomIcon, PresentationIcon } from "./objects.tsx";
 import { BracesIcon, CodeXmlIcon } from "./editing.tsx";
 import { BoxIcon, DatabaseIcon, PackageIcon } from "./hardware.tsx";
-import { FileArchiveIcon, FileAudioIcon, FileCodeIcon, FileCogIcon, FileImageIcon, FileKeyIcon, FileLockIcon, FileSpreadsheetIcon, FileTextIcon, FileTypeIcon, FileVideoIcon, PageIcon } from "./files.tsx";
+import {
+  FileArchiveIcon,
+  FileAudioIcon,
+  FileCodeIcon,
+  FileCogIcon,
+  FileImageIcon,
+  FileKeyIcon,
+  FileLockIcon,
+  FileSpreadsheetIcon,
+  FileTextIcon,
+  FileTypeIcon,
+  FileVideoIcon,
+  PageIcon,
+} from "./files.tsx";
 import { BranchIcon } from "./git.tsx";
 import { HashIcon } from "./marks.tsx";
 import { PenNibIcon } from "./drawing.tsx";
@@ -56,14 +69,41 @@ const icons: Record<FileType, { icon?: ComponentType<IconProps>; mark?: string; 
   file: { icon: PageIcon, tone: "neutral" },
 };
 
-export function FileIcon({ path, mime, size = 16, className = "" }: { path: string; mime?: string; size?: number; className?: string }) {
+export function FileIcon({
+  path,
+  mime,
+  size = 16,
+  className = "",
+}: {
+  path: string;
+  mime?: string;
+  size?: number;
+  className?: string;
+}) {
   const type = fileTypeFor(path, mime);
   const { icon: Icon, mark, tone } = icons[type];
-  const props = { className: `file-type-icon ${className}`, "data-file-type": type, "data-tone": tone, "aria-hidden": true as const, focusable: false as const };
-  return Icon ? <Icon {...props} size={size} /> : (
+  const props = {
+    className: `file-type-icon ${className}`,
+    "data-file-type": type,
+    "data-tone": tone,
+    "aria-hidden": true as const,
+    focusable: false as const,
+  };
+  return Icon ? (
+    <Icon {...props} size={size} />
+  ) : (
     <svg {...props} width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <rect x="1.5" y="1.5" width="21" height="21" rx="3" fillOpacity="0.14" />
-      <text x="12" y="16" textAnchor="middle" fontFamily="var(--font-ui)" fontWeight="750" fontSize={mark!.length > 2 ? 8.5 : 11}>{mark}</text>
+      <text
+        x="12"
+        y="16"
+        textAnchor="middle"
+        fontFamily="var(--font-ui)"
+        fontWeight="750"
+        fontSize={mark!.length > 2 ? 8.5 : 11}
+      >
+        {mark}
+      </text>
     </svg>
   );
 }

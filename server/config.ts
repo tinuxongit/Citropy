@@ -1,7 +1,10 @@
 import { env, argv } from "node:process";
 import { defaultPort } from "../shared/ports.mjs";
 
-export const dev = !argv.includes("--packaged") && !env.CITROPY_REMOTE_ID && (argv.includes("--dev") || env.CITROPY_DEVELOPMENT === "1");
+export const dev =
+  !argv.includes("--packaged") &&
+  !env.CITROPY_REMOTE_ID &&
+  (argv.includes("--dev") || env.CITROPY_DEVELOPMENT === "1");
 export const port = Number(env.CITROPY_PORT ?? defaultPort(dev));
 export const host = env.CITROPY_HOST ?? "127.0.0.1";
 export const origin = `http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}`;

@@ -16,22 +16,17 @@ export class MessageUsage {
     };
   }
 
-  update(
-    id: string,
-    usage: Partial<Usage>,
-  ): Pick<Usage, (typeof keys)[number]> {
+  update(id: string, usage: Partial<Usage>): Pick<Usage, (typeof keys)[number]> {
     const previous = this.#messages.get(id) ?? {};
     const next = { ...previous };
     for (const key of keys) {
       const value = usage[key];
-      if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
-        continue;
+      if (typeof value !== "number" || !Number.isFinite(value) || value < 0) continue;
       this.totals[key] += value - (previous[key] ?? 0);
       next[key] = value;
     }
     this.#messages.set(id, next);
-    if (this.#messages.size > 2048)
-      this.#messages.delete(this.#messages.keys().next().value!);
+    if (this.#messages.size > 2048) this.#messages.delete(this.#messages.keys().next().value!);
     return { ...this.totals };
   }
 }

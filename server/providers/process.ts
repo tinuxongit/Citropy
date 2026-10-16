@@ -9,9 +9,14 @@ import type { IPty } from "node-pty";
  */
 function killTreeOnWindows(pid: number | undefined, force: boolean): void {
   if (!pid) return;
-  execFile("taskkill", ["/pid", String(pid), "/T", ...(force ? ["/F"] : [])], { windowsHide: true }, (error) => {
-    if (error) console.error("Stopping process tree failed:", pid, error);
-  });
+  execFile(
+    "taskkill",
+    ["/pid", String(pid), "/T", ...(force ? ["/F"] : [])],
+    { windowsHide: true },
+    (error) => {
+      if (error) console.error("Stopping process tree failed:", pid, error);
+    },
+  );
 }
 
 const stopping = new Map<ChildProcess | IPty, Promise<void>>();
@@ -31,13 +36,24 @@ export function stopProcess(child: ChildProcess | IPty, processGroup = false): v
       if (value === "SIGKILL") child.kill();
       return;
     }
-    if (!group) { child.kill(value); return; }
-    try { process.kill(-group, value); }
-    catch (error) { if (!hasCode(error, "ESRCH")) child.kill(value); }
+    if (!group) {
+      child.kill(value);
+      return;
+    }
+    try {
+      process.kill(-group, value);
+    } catch (error) {
+      if (!hasCode(error, "ESRCH")) child.kill(value);
+    }
   };
   let complete!: () => void;
   let escalated = false;
-  stopping.set(child, new Promise<void>((resolve) => { complete = resolve; }));
+  stopping.set(
+    child,
+    new Promise<void>((resolve) => {
+      complete = resolve;
+    }),
+  );
   const finish = () => {
     clearTimeout(timer);
     if (subscription) subscription.dispose();

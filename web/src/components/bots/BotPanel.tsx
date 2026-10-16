@@ -28,12 +28,24 @@ export function BotPanel() {
     <aside className="inspector bot-panel" aria-label={`${item.name} details`}>
       <header className="bot-panel-head">
         {page.kind !== "overview" && (
-          <button type="button" className="icon-btn" aria-label="Back" title="Back" onClick={() => setPage(OVERVIEW)}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Back"
+            title="Back"
+            onClick={() => setPage(OVERVIEW)}
+          >
             <ChevronLeftIcon size={15} />
           </button>
         )}
         <h2 className="bot-panel-title truncate">{title}</h2>
-        <button type="button" className="icon-btn" aria-label="Close panel" title={`Close panel (${MOD}Shift+,)`} onClick={toggleBotPanel}>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Close panel"
+          title={`Close panel (${MOD}Shift+,)`}
+          onClick={toggleBotPanel}
+        >
           <CloseIcon size={14} />
         </button>
       </header>

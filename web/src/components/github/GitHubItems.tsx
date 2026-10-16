@@ -8,12 +8,7 @@ import { RefreshIcon } from "../icons/rotation.tsx";
 import { SearchIcon } from "../icons/actions.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { Select } from "../Select.tsx";
-import {
-  GitHubFeedback,
-  GitHubPagination,
-  GitHubState,
-  githubDate,
-} from "./GitHubShared.tsx";
+import { GitHubFeedback, GitHubPagination, GitHubState, githubDate } from "./GitHubShared.tsx";
 import { GitHubItemDetail, githubItemState } from "./GitHubItemDetail.tsx";
 import { GitHubItemDialog, type ItemAction } from "./GitHubItemDialog.tsx";
 import type { GitHubRepository } from "../../../../shared/github.ts";
@@ -40,10 +35,7 @@ export function GitHubItems({
   const [action, setAction] = useState<ItemAction | null>(null);
   const [feedback, setFeedback] = useState("");
   const list = useGitHub("items", { repo, pull, state, query: search, page });
-  const detail = useGitHub(
-    "detail",
-    selected ? { repo, pull, number: selected } : null,
-  );
+  const detail = useGitHub("detail", selected ? { repo, pull, number: selected } : null);
   const item = detail.data?.item;
   const refresh = () => {
     list.refresh();
@@ -67,7 +59,7 @@ export function GitHubItems({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-            <button className="btn" type="submit">
+          <button className="btn" type="submit">
             Search
           </button>
         </form>
@@ -111,7 +103,10 @@ export function GitHubItems({
       )}
       <div className="github-split" data-detail={Boolean(selected)}>
         <div className="github-list scroll sliding-selection">
-          <SelectionHighlight value={selected === null ? undefined : String(selected)} selector='.github-item[aria-pressed="true"]' />
+          <SelectionHighlight
+            value={selected === null ? undefined : String(selected)}
+            selector='.github-item[aria-pressed="true"]'
+          />
           <div className="github-list-caption">
             {list.data?.total ?? ""} {pull ? "pull requests" : "issues"}
           </div>
@@ -120,7 +115,7 @@ export function GitHubItems({
             loading={list.loading && !list.data}
             empty={
               list.data?.items.length === 0
-                ? `No ${state === "all" ? "" : (state === "open" ? "open" : "closed")} ${pull ? "pull requests" : "issues"}`
+                ? `No ${state === "all" ? "" : state === "open" ? "open" : "closed"} ${pull ? "pull requests" : "issues"}`
                 : undefined
             }
           />
@@ -147,37 +142,23 @@ export function GitHubItems({
               </div>
             </button>
           ))}
-          {list.data && (
-            <GitHubPagination
-              page={page}
-              more={list.data.more}
-              onChange={setPage}
-            />
-          )}
+          {list.data && <GitHubPagination page={page} more={list.data.more} onChange={setPage} />}
         </div>
         <ResizeHandle panel="github" inline />
         <div className="github-detail scroll">
           {!selected ? (
             <div className="github-empty">
               <MessageIcon size={30} />
-          <h2>Select {pull ? "a pull request" : "an issue"}</h2>
-              <p>
-                Read the conversation, review changes, and follow its progress here.
-              </p>
+              <h2>Select {pull ? "a pull request" : "an issue"}</h2>
+              <p>Read the conversation, review changes, and follow its progress here.</p>
             </div>
           ) : (
             <>
-              <button
-                className="btn github-detail-back"
-                onClick={() => setSelected(null)}
-              >
+              <button className="btn github-detail-back" onClick={() => setSelected(null)}>
                 <ArrowLeftIcon size={15} />
                 Back to {pull ? "pull requests" : "issues"}
               </button>
-              <GitHubFeedback
-                error={detail.error}
-                loading={detail.loading && !detail.data}
-              />
+              <GitHubFeedback error={detail.error} loading={detail.loading && !detail.data} />
               {detail.data && (
                 <GitHubItemDetail
                   repository={repository}
@@ -193,21 +174,23 @@ export function GitHubItems({
           )}
         </div>
       </div>
-      <AnimatePresence>{action && (
-        <GitHubItemDialog
-          action={action}
-          repository={repository}
-          pull={pull}
-          selected={selected}
-          item={item}
-          branch={branch}
-          onClose={() => setAction(null)}
-          onSaved={(message) => {
-            setFeedback(message);
-            refresh();
-          }}
-        />
-      )}</AnimatePresence>
+      <AnimatePresence>
+        {action && (
+          <GitHubItemDialog
+            action={action}
+            repository={repository}
+            pull={pull}
+            selected={selected}
+            item={item}
+            branch={branch}
+            onClose={() => setAction(null)}
+            onSaved={(message) => {
+              setFeedback(message);
+              refresh();
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

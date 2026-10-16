@@ -22,7 +22,13 @@ export function useForgivingPresses(): void {
       const { control, box } = pressed;
       if (!control.isConnected || control.matches(":disabled")) return;
       if (control.contains(event.target) || !event.target.contains(control)) return;
-      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) return;
+      if (
+        event.clientX < box.left ||
+        event.clientX > box.right ||
+        event.clientY < box.top ||
+        event.clientY > box.bottom
+      )
+        return;
       event.stopPropagation();
       event.preventDefault();
       control.dispatchEvent(new MouseEvent("click", event));

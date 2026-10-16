@@ -12,23 +12,31 @@ const WAITING: Partial<Record<ThreadStatus, string>> = {
 };
 
 export function Working({ messageIds }: { messageIds: string[] }) {
-  const thread = useApp(state => state.threads[state.activeThreadId ?? ""]);
-  const tool = useApp(state => {
-    const running = messageIds.flatMap(id => state.messages[id]?.partIds ?? []).map(id => state.parts.get(id))
-      .findLast(part => part?.kind === "tool" && part.status === "running");
+  const thread = useApp((state) => state.threads[state.activeThreadId ?? ""]);
+  const tool = useApp((state) => {
+    const running = messageIds
+      .flatMap((id) => state.messages[id]?.partIds ?? [])
+      .map((id) => state.parts.get(id))
+      .findLast((part) => part?.kind === "tool" && part.status === "running");
     if (running?.kind !== "tool") return undefined;
     const label = toolLabel(running);
-    return running.shape === "generic" || !running.headline ? label : `${label} ${running.headline}`;
+    return running.shape === "generic" || !running.headline
+      ? label
+      : `${label} ${running.headline}`;
   });
   const startedAt = thread?.runStartedAt ?? thread?.updatedAt ?? 0;
   const now = useSecondClock(startedAt);
 
-  const text = thread?.compacting ? "Compacting context" : (thread?.status && WAITING[thread.status]) || tool || "Thinking";
+  const text = thread?.compacting
+    ? "Compacting context"
+    : (thread?.status && WAITING[thread.status]) || tool || "Thinking";
 
   return (
     <span className="working">
       <Loader size={16} />
-      <span className="working-text truncate" role="status"><AnimatedText text={text} /></span>
+      <span className="working-text truncate" role="status">
+        <AnimatedText text={text} />
+      </span>
       <span className="working-time">{duration(Math.max(0, now - startedAt))}</span>
     </span>
   );

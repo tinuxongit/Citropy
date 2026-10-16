@@ -3,10 +3,24 @@ import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { environmentSlice } from "../lib/live-environments.ts";
-import { formatDate, modelLabel, providerLabels, shortPath, threadActivity } from "../lib/format.ts";
+import {
+  formatDate,
+  modelLabel,
+  providerLabels,
+  shortPath,
+  threadActivity,
+} from "../lib/format.ts";
 import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 
-export function ThreadPreview({ id, thread, environment, anchor, onClose, onPointerEnter, onPointerLeave }: {
+export function ThreadPreview({
+  id,
+  thread,
+  environment,
+  anchor,
+  onClose,
+  onPointerEnter,
+  onPointerLeave,
+}: {
   id: string;
   thread: ThreadMeta;
   environment: string;
@@ -16,11 +30,11 @@ export function ThreadPreview({ id, thread, environment, anchor, onClose, onPoin
   onPointerLeave: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const uiScale = useApp(state => state.uiScale);
+  const uiScale = useApp((state) => state.uiScale);
   const slice = environmentSlice(environment);
   const home = slice?.home ?? "";
-  const project = slice?.projects.find(project => project.id === thread.projectId);
-  const provider = slice?.providers.find(provider => provider.id === thread.provider);
+  const project = slice?.projects.find((project) => project.id === thread.projectId);
+  const provider = slice?.providers.find((provider) => provider.id === thread.provider);
   const activity = threadActivity(thread);
   const status = activity.status;
   const statusLabel = thread.archived ? "Archived" : thread.finished ? "Finished" : activity.label;
@@ -31,7 +45,10 @@ export function ThreadPreview({ id, thread, environment, anchor, onClose, onPoin
     if (!element) return;
     element.showPopover();
     const position = () => {
-      if (!anchor.isConnected) { onClose(); return; }
+      if (!anchor.isConnected) {
+        onClose();
+        return;
+      }
       const scale = uiScale / 100;
       const bounds = anchor.getBoundingClientRect();
       const width = Math.min(300, viewportWidth() - 24);
@@ -40,8 +57,11 @@ export function ThreadPreview({ id, thread, environment, anchor, onClose, onPoin
       const viewportHeight = innerHeight / scale;
       const beside = bounds.right / scale + width + 20 <= viewportWidth();
       const left = beside ? bounds.right / scale + 8 : bounds.left / scale;
-      const top = beside ? bounds.top / scale
-        : bounds.bottom / scale + height + 20 <= viewportHeight ? bounds.bottom / scale + 8 : bounds.top / scale - height - 8;
+      const top = beside
+        ? bounds.top / scale
+        : bounds.bottom / scale + height + 20 <= viewportHeight
+          ? bounds.bottom / scale + 8
+          : bounds.top / scale - height - 8;
       element.style.left = `${scaled(Math.max(12, Math.min(left, viewportWidth() - width - 12)))}px`;
       element.style.top = `${scaled(Math.max(12, Math.min(top, viewportHeight - height - 12)))}px`;
     };
@@ -49,8 +69,12 @@ export function ThreadPreview({ id, thread, environment, anchor, onClose, onPoin
     const resize = new ResizeObserver(position);
     resize.observe(element);
     resize.observe(anchor);
-    const dismiss = (event: Event) => { if (!element.contains(event.target as Node)) onClose(); };
-    const key = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    const dismiss = (event: Event) => {
+      if (!element.contains(event.target as Node)) onClose();
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
     window.addEventListener("resize", onClose);
     window.addEventListener("scroll", dismiss, true);
     document.addEventListener("pointerdown", dismiss, true);
@@ -65,16 +89,65 @@ export function ThreadPreview({ id, thread, environment, anchor, onClose, onPoin
     };
   }, [anchor, uiScale, onClose]);
 
-  return <div ref={ref} id={id} className="thread-preview scroll" role="tooltip" popover="manual" onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}>
-    <strong className="thread-preview-title">{thread.title}</strong>
-    <div className="thread-preview-model"><ProviderIcon provider={thread.provider} /><span>{modelLabel(providerAccount(provider, thread.providerInstanceId).models, thread.model)}<small>{provider?.label ?? providerLabels[thread.provider]}</small></span></div>
-    <dl>
-      <dt>Status</dt><dd data-status={status}>{statusLabel}</dd>
-      <dt>Last activity</dt><dd><time dateTime={new Date(thread.updatedAt).toISOString()}>{formatDate(thread.updatedAt, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></dd>
-      {path && <><dt>Folder</dt><dd>{shortPath(path, home)}</dd></>}
-      {thread.workspaceBranch && <><dt>Branch</dt><dd>{thread.workspaceBranch}</dd></>}
-      {thread.pullRequest && <><dt>Pull request</dt><dd>#{thread.pullRequest.split("/").at(-1)}</dd></>}
-      {Boolean(thread.changedFiles) && <><dt>Changes</dt><dd>{thread.changedFiles} {thread.changedFiles === 1 ? "file" : "files"}</dd></>}
-    </dl>
-  </div>;
+  return (
+    <div
+      ref={ref}
+      id={id}
+      className="thread-preview scroll"
+      role="tooltip"
+      popover="manual"
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+    >
+      <strong className="thread-preview-title">{thread.title}</strong>
+      <div className="thread-preview-model">
+        <ProviderIcon provider={thread.provider} />
+        <span>
+          {modelLabel(providerAccount(provider, thread.providerInstanceId).models, thread.model)}
+          <small>{provider?.label ?? providerLabels[thread.provider]}</small>
+        </span>
+      </div>
+      <dl>
+        <dt>Status</dt>
+        <dd data-status={status}>{statusLabel}</dd>
+        <dt>Last activity</dt>
+        <dd>
+          <time dateTime={new Date(thread.updatedAt).toISOString()}>
+            {formatDate(thread.updatedAt, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </time>
+        </dd>
+        {path && (
+          <>
+            <dt>Folder</dt>
+            <dd>{shortPath(path, home)}</dd>
+          </>
+        )}
+        {thread.workspaceBranch && (
+          <>
+            <dt>Branch</dt>
+            <dd>{thread.workspaceBranch}</dd>
+          </>
+        )}
+        {thread.pullRequest && (
+          <>
+            <dt>Pull request</dt>
+            <dd>#{thread.pullRequest.split("/").at(-1)}</dd>
+          </>
+        )}
+        {Boolean(thread.changedFiles) && (
+          <>
+            <dt>Changes</dt>
+            <dd>
+              {thread.changedFiles} {thread.changedFiles === 1 ? "file" : "files"}
+            </dd>
+          </>
+        )}
+      </dl>
+    </div>
+  );
 }

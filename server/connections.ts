@@ -7,19 +7,30 @@ export function listConnections(): Promise<Connection[]> {
 }
 
 export async function accountProfileId(id: string): Promise<string> {
-  const account = (await listConnections()).flatMap((connection) => connection.accounts).find((entry) => entry.id === id);
+  const account = (await listConnections())
+    .flatMap((connection) => connection.accounts)
+    .find((entry) => entry.id === id);
   if (!account) throw new Error(`No account ${id}. Check browser_connections.`);
   return account.profileId;
 }
 
 async function closeAccountTabs(id: unknown): Promise<void> {
-  await Promise.all(browserStates().filter((state) => state.account?.id === id).map((state) => closeBrowser(state.id)));
+  await Promise.all(
+    browserStates()
+      .filter((state) => state.account?.id === id)
+      .map((state) => closeBrowser(state.id)),
+  );
 }
 
-export async function handleConnections(method: string, operation: string, input: Record<string, unknown>): Promise<Connection[]> {
+export async function handleConnections(
+  method: string,
+  operation: string,
+  input: Record<string, unknown>,
+): Promise<Connection[]> {
   if (operation === "" && method === "GET") return listConnections();
   if (operation === "" && method === "POST") return desktopRequest("connections.add", input);
-  if (operation === "accounts" && method === "POST") return desktopRequest("connections.add-account", input);
+  if (operation === "accounts" && method === "POST")
+    return desktopRequest("connections.add-account", input);
   if (operation === "" && method === "DELETE") {
     await closeAccountTabs(input.id);
     return desktopRequest("connections.remove", input);

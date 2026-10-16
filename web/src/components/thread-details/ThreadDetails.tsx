@@ -55,22 +55,49 @@ export function ThreadDetailsButton() {
   if (!thread || thread.chat) return null;
   const busy = gitActionBusy(thread.gitAction);
   const failed = thread.gitAction?.status === "error";
-  return <button type="button" className="icon-btn thread-details-toggle" aria-label="Conversation details" aria-pressed={open} data-active={open} data-error={failed || undefined} title="Conversation details" onClick={toggleDetails}>
-    {busy ? <Loader size={15} /> : failed ? <CircleAlertIcon size={16} /> : <SquareMenuIcon size={16} />}
-  </button>;
+  return (
+    <button
+      type="button"
+      className="icon-btn thread-details-toggle"
+      aria-label="Conversation details"
+      aria-pressed={open}
+      data-active={open}
+      data-error={failed || undefined}
+      title="Conversation details"
+      onClick={toggleDetails}
+    >
+      {busy ? (
+        <Loader size={15} />
+      ) : failed ? (
+        <CircleAlertIcon size={16} />
+      ) : (
+        <SquareMenuIcon size={16} />
+      )}
+    </button>
+  );
 }
 
 export function ThreadDetailsPanel() {
   const thread = useRootThread();
-  const project = useApp((state) => state.projects.find((project) => project.id === thread?.projectId));
+  const project = useApp((state) =>
+    state.projects.find((project) => project.id === thread?.projectId),
+  );
   const open = useDetailsShown() && Boolean(thread && project);
   const shown = useLaggedValue(open);
   const panel = useRef<HTMLElement>(null);
   const present = usePresent(shown, panel);
   if (!(open || present) || !thread || !project) return null;
-  return <aside ref={panel} className="thread-details-panel" data-open={shown} inert={!open} aria-label="Conversation details">
-    <ThreadDetails key={thread.id} thread={thread} project={project} />
-  </aside>;
+  return (
+    <aside
+      ref={panel}
+      className="thread-details-panel"
+      data-open={shown}
+      inert={!open}
+      aria-label="Conversation details"
+    >
+      <ThreadDetails key={thread.id} thread={thread} project={project} />
+    </aside>
+  );
 }
 
 function ThreadDetails({ thread, project }: { thread: ThreadMeta; project: Project }) {
@@ -92,30 +119,69 @@ function ThreadDetails({ thread, project }: { thread: ThreadMeta; project: Proje
   };
 
   const watching = connected && isGit && !git.busy;
-  useEffect(() => { if (watching) refresh(); }, [watching, refresh]);
+  useEffect(() => {
+    if (watching) refresh();
+  }, [watching, refresh]);
   useVisibleInterval(refresh, SETTINGS.refreshMs, watching);
 
   const folder = thread.workspacePath ?? project.path;
   const openFolder = !isRemote() && window.citropyDesktop?.openFolder;
   const branch = git.status?.branch || thread.workspaceBranch || project.branch || "Branch";
-  return <>
-    <section className="details-card">
-      <div className="details-section" aria-label="Workspace">
-        <DetailRow icon={<ComposeIcon size={16} />} label="Open in editor" disabled={!connected} onClick={() => showInChat(() => openWorkbenchPanel("files"))} />
-        {openFolder && <DetailRow icon={<FolderOpenIcon size={16} />} label="Open folder" title={folder} onClick={() => void openFolder(folder).catch(reportError)} />}
-      </div>
-      {isGit && <div className="details-section" aria-label="Version control">
-        <GitSection thread={thread} git={git} branch={branch} onReview={() => setReviewing(true)} onSourceControl={openSourceControl} onChanges={() => showInChat(() => openWorkbenchPanel("changes"))} />
-      </div>}
-      {!isGit && <div className="details-section" aria-label="Version control">
-        <DetailRow icon={git.busy ? <Loader size={14} /> : <NewBranchIcon size={16} />} label={git.busy ? git.activity : "Initialize Git"} title="Start tracking this folder's history with Git" disabled={!connected || git.busy} onClick={() => void git.manage("init")} />
-        <ActionError className="details-error" message={git.failed ? git.error : ""} onDismiss={git.dismissError} />
-      </div>}
-      <ProjectScripts project={project} threadId={thread.id} disabled={!connected} />
-      <ThreadRoutines threadId={thread.id} />
-      <ShellsSection threadId={thread.id} disabled={!connected} />
-      {!connected && <p className="details-note">Disconnected from Citropy</p>}
-    </section>
-    <AnimatePresence>{reviewing && <TaskReview thread={thread} onClose={() => setReviewing(false)} />}</AnimatePresence>
-  </>;
+  return (
+    <>
+      <section className="details-card">
+        <div className="details-section" aria-label="Workspace">
+          <DetailRow
+            icon={<ComposeIcon size={16} />}
+            label="Open in editor"
+            disabled={!connected}
+            onClick={() => showInChat(() => openWorkbenchPanel("files"))}
+          />
+          {openFolder && (
+            <DetailRow
+              icon={<FolderOpenIcon size={16} />}
+              label="Open folder"
+              title={folder}
+              onClick={() => void openFolder(folder).catch(reportError)}
+            />
+          )}
+        </div>
+        {isGit && (
+          <div className="details-section" aria-label="Version control">
+            <GitSection
+              thread={thread}
+              git={git}
+              branch={branch}
+              onReview={() => setReviewing(true)}
+              onSourceControl={openSourceControl}
+              onChanges={() => showInChat(() => openWorkbenchPanel("changes"))}
+            />
+          </div>
+        )}
+        {!isGit && (
+          <div className="details-section" aria-label="Version control">
+            <DetailRow
+              icon={git.busy ? <Loader size={14} /> : <NewBranchIcon size={16} />}
+              label={git.busy ? git.activity : "Initialize Git"}
+              title="Start tracking this folder's history with Git"
+              disabled={!connected || git.busy}
+              onClick={() => void git.manage("init")}
+            />
+            <ActionError
+              className="details-error"
+              message={git.failed ? git.error : ""}
+              onDismiss={git.dismissError}
+            />
+          </div>
+        )}
+        <ProjectScripts project={project} threadId={thread.id} disabled={!connected} />
+        <ThreadRoutines threadId={thread.id} />
+        <ShellsSection threadId={thread.id} disabled={!connected} />
+        {!connected && <p className="details-note">Disconnected from Citropy</p>}
+      </section>
+      <AnimatePresence>
+        {reviewing && <TaskReview thread={thread} onClose={() => setReviewing(false)} />}
+      </AnimatePresence>
+    </>
+  );
 }

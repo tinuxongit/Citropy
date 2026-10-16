@@ -9,7 +9,7 @@ export function defaultPort(development = false) {
 }
 
 export function portAvailable(port) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const probe = createServer();
     probe.once("error", () => resolve(false));
     probe.listen(port, HOST, () => probe.close(() => resolve(true)));

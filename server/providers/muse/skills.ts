@@ -1,4 +1,8 @@
-import type { SkillCatalogEntry, SkillListResult, TurnInputPart } from "@muse-code/sdk/dist/src/msp.js";
+import type {
+  SkillCatalogEntry,
+  SkillListResult,
+  TurnInputPart,
+} from "@muse-code/sdk/dist/src/msp.js";
 import type { ProviderCommand } from "../../../shared/features.ts";
 import type { ProviderLaunch } from "../types.ts";
 import { MUSE_PROVIDER, MuseHost } from "./host.ts";
@@ -24,11 +28,19 @@ export async function listSkills(host: MuseHost, sessionId: string): Promise<Ski
   return (await host.request<SkillListResult>("skill/list", { sessionId })).skills;
 }
 
-export async function listMuseCommands(cwd: string, launch: ProviderLaunch = {}): Promise<ProviderCommand[]> {
+export async function listMuseCommands(
+  cwd: string,
+  launch: ProviderLaunch = {},
+): Promise<ProviderCommand[]> {
   const host = await MuseHost.start({ launch, cwd, access: "readOnly", sessionLog: false });
   try {
     const sessionId = host.connection.mintCommandId();
-    await host.command("session/start", { sessionId, workspaceRoot: cwd, providerId: MUSE_PROVIDER, approvalMode: "denyUnmatched" });
+    await host.command("session/start", {
+      sessionId,
+      workspaceRoot: cwd,
+      providerId: MUSE_PROVIDER,
+      approvalMode: "denyUnmatched",
+    });
     return (await listSkills(host, sessionId)).map(skillCommand);
   } finally {
     await host.close();

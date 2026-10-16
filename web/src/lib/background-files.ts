@@ -26,10 +26,18 @@ export function useBackgroundFile(kind: BackgroundFileKind): Blob | undefined {
   const [file, setFile] = useState<Blob>();
   useEffect(() => {
     let live = true;
-    const load = () => void loadBackgroundFile(kind).then((next) => live && setFile(next)).catch(reportError);
+    const load = () =>
+      void loadBackgroundFile(kind)
+        .then((next) => live && setFile(next))
+        .catch(reportError);
     load();
-    const stop = onBackgroundFileChange((changed) => { if (changed === kind) load(); });
-    return () => { live = false; stop(); };
+    const stop = onBackgroundFileChange((changed) => {
+      if (changed === kind) load();
+    });
+    return () => {
+      live = false;
+      stop();
+    };
   }, [kind]);
   return file;
 }

@@ -17,12 +17,17 @@ export function useViewportBounds(viewport: RefObject<HTMLElement | null>) {
   return bounds;
 }
 
-export function useCloseOnOutsideClick(viewport: RefObject<HTMLElement | null>, media: string, onClose: () => void) {
+export function useCloseOnOutsideClick(
+  viewport: RefObject<HTMLElement | null>,
+  media: string,
+  onClose: () => void,
+) {
   useEffect(() => {
     const dialog = viewport.current?.closest("dialog");
     if (!dialog) return;
     const closeOutside = (event: MouseEvent) => {
-      if (event.target instanceof Element && !event.target.closest(`${media}, ${KEEP_OPEN}`)) onClose();
+      if (event.target instanceof Element && !event.target.closest(`${media}, ${KEEP_OPEN}`))
+        onClose();
     };
     dialog.addEventListener("click", closeOutside);
     return () => dialog.removeEventListener("click", closeOutside);

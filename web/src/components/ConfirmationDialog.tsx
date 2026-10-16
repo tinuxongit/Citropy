@@ -31,7 +31,9 @@ function ConfirmationCard({ confirmation }: { confirmation: Confirmation }) {
   const connected = useApp((state) => state.connected);
   const reducedMotion = useReducedMotion();
   const card = useRef<HTMLDivElement>(null);
-  const [host] = useState(() => [...document.querySelectorAll("dialog[open]")].at(-1) ?? document.body);
+  const [host] = useState(
+    () => [...document.querySelectorAll("dialog[open]")].at(-1) ?? document.body,
+  );
   const [side, setSide] = useState<"top" | "bottom">("bottom");
 
   useLayoutEffect(() => {
@@ -40,7 +42,9 @@ function ConfirmationCard({ confirmation }: { confirmation: Confirmation }) {
     setSide(place(element, confirmation.anchor));
     const previous = document.activeElement;
     element.querySelector<HTMLElement>("[data-cancel]")?.focus({ preventScroll: true });
-    const outside = (event: PointerEvent) => { if (!element.contains(event.target as Node)) answerConfirmation(false); };
+    const outside = (event: PointerEvent) => {
+      if (!element.contains(event.target as Node)) answerConfirmation(false);
+    };
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
@@ -55,7 +59,8 @@ function ConfirmationCard({ confirmation }: { confirmation: Confirmation }) {
       document.removeEventListener("pointerdown", outside, true);
       document.removeEventListener("keydown", escape, true);
       window.removeEventListener("resize", resize);
-      if (previous instanceof HTMLElement && previous.isConnected) previous.focus({ preventScroll: true });
+      if (previous instanceof HTMLElement && previous.isConnected)
+        previous.focus({ preventScroll: true });
     };
   }, [confirmation]);
 
@@ -85,12 +90,20 @@ function ConfirmationCard({ confirmation }: { confirmation: Confirmation }) {
       </header>
       {(confirmation.context || !connected) && (
         <div className="dialog-content">
-          {confirmation.context && <div className="confirmation-context">{confirmation.context}</div>}
-          {!connected && <p className="dialog-error" role="alert">Reconnect to Citropy to continue.</p>}
+          {confirmation.context && (
+            <div className="confirmation-context">{confirmation.context}</div>
+          )}
+          {!connected && (
+            <p className="dialog-error" role="alert">
+              Reconnect to Citropy to continue.
+            </p>
+          )}
         </div>
       )}
       <footer className="dialog-footer">
-        <button type="button" className="btn" data-cancel onClick={() => answerConfirmation(false)}>Cancel</button>
+        <button type="button" className="btn" data-cancel onClick={() => answerConfirmation(false)}>
+          Cancel
+        </button>
         <button
           type="button"
           className="btn"
@@ -108,5 +121,9 @@ function ConfirmationCard({ confirmation }: { confirmation: Confirmation }) {
 
 export function ConfirmationDialog() {
   const confirmation = useApp((state) => state.confirmation);
-  return <AnimatePresence>{confirmation && <ConfirmationCard key={confirmation.title} confirmation={confirmation} />}</AnimatePresence>;
+  return (
+    <AnimatePresence>
+      {confirmation && <ConfirmationCard key={confirmation.title} confirmation={confirmation} />}
+    </AnimatePresence>
+  );
 }

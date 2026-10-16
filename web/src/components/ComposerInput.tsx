@@ -1,10 +1,4 @@
-import {
-  Fragment,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { BookIcon } from "./icons/BookIcon.tsx";
 import { SiteIcon } from "./icons/SiteIcon.tsx";
 import { TerminalIcon } from "./icons/squares.tsx";
@@ -27,7 +21,13 @@ import { EVERYONE_HANDLE, botHandle } from "../../../shared/bots.ts";
 const CITROPY_MARK = <span className="citropy-mark" aria-hidden="true" />;
 
 const tagIcon = (tag: MentionTag) =>
-  tag.icon === "site" ? <SiteIcon url={tag.url!} /> : tag.icon === "citropy" ? CITROPY_MARK : <BookIcon size={16} />;
+  tag.icon === "site" ? (
+    <SiteIcon url={tag.url!} />
+  ) : tag.icon === "citropy" ? (
+    CITROPY_MARK
+  ) : (
+    <BookIcon size={16} />
+  );
 
 const MENTION_AVATAR_SIZE = 16;
 
@@ -73,13 +73,15 @@ export function ComposerInput({
   const mention = /(?:^|\s)@([^\s\[\]]*)$/.exec(value.slice(0, caret));
   const slash = !group && /^\/[\w.:-]*$/.test(value) ? value : undefined;
   const query = mention ? `@${mention[1]}` : slash;
-  const mode = mention ? group ? "members" : "skills" : slash ? "commands" : undefined;
+  const mode = mention ? (group ? "members" : "skills") : slash ? "commands" : undefined;
   const hasMentions = /(?:^|\s)@([\w.:-]+)/.test(value);
   const catalogMode = group
     ? undefined
     : mode === "commands"
       ? "commands"
-      : mode === "skills" || hasMentions ? "skills" : undefined;
+      : mode === "skills" || hasMentions
+        ? "skills"
+        : undefined;
   const { skills, tools, nativeCommands, paths, loading, error } = useComposerCatalog({
     thread,
     mode: mode === "members" ? undefined : mode,
@@ -93,22 +95,43 @@ export function ComposerInput({
   }, [query]);
   const enabled = skills
     .filter((skill) => skill.enabled && skill.provider === thread.provider)
-    .sort(
-      (a, b) => Number(b.scope === "project") - Number(a.scope === "project"),
-    )
+    .sort((a, b) => Number(b.scope === "project") - Number(a.scope === "project"))
     .filter(
-      (skill, index, entries) =>
-        entries.findIndex((entry) => entry.name === skill.name) === index,
+      (skill, index, entries) => entries.findIndex((entry) => entry.name === skill.name) === index,
     );
   const citropyTools = tools.filter((tool) => !enabled.some((skill) => skill.name === tool.name));
-  const everyone = group && { id: EVERYONE_HANDLE, section: "Bots", label: `@${EVERYONE_HANDLE}`, title: "Everyone", hint: "Every bot in this group", icon: <GroupAvatar group={group} size={MENTION_AVATAR_SIZE} /> };
+  const everyone = group && {
+    id: EVERYONE_HANDLE,
+    section: "Bots",
+    label: `@${EVERYONE_HANDLE}`,
+    title: "Everyone",
+    hint: "Every bot in this group",
+    icon: <GroupAvatar group={group} size={MENTION_AVATAR_SIZE} />,
+  };
   const memberOptions: SuggestionOption[] = [
-    ...members.map((bot) => ({ id: bot.id, section: "Bots", label: `@${botHandle(bot.name)}`, title: bot.name, hint: bot.title, icon: <BotAvatar bot={bot} size={MENTION_AVATAR_SIZE} /> })),
+    ...members.map((bot) => ({
+      id: bot.id,
+      section: "Bots",
+      label: `@${botHandle(bot.name)}`,
+      title: bot.name,
+      hint: bot.title,
+      icon: <BotAvatar bot={bot} size={MENTION_AVATAR_SIZE} />,
+    })),
     ...(everyone ? [everyone] : []),
   ];
-  const mentions = new Map<string, MentionLook>(group
-    ? memberOptions.map((option) => [option.label.slice(1), { label: option.title ?? option.label, icon: option.icon }] as const)
-    : [...enabled.map(skillTag), ...citropyTools.map(toolTag)].map((tag) => [tag.name, { label: tag.title, icon: tagIcon(tag) }] as const));
+  const mentions = new Map<string, MentionLook>(
+    group
+      ? memberOptions.map(
+          (option) =>
+            [
+              option.label.slice(1),
+              { label: option.title ?? option.label, icon: option.icon },
+            ] as const,
+        )
+      : [...enabled.map(skillTag), ...citropyTools.map(toolTag)].map(
+          (tag) => [tag.name, { label: tag.title, icon: tagIcon(tag) }] as const,
+        ),
+  );
   const toolOptions: SuggestionOption[] = citropyTools
     .filter((tool) => tool.name.includes((mention?.[1] ?? "").toLowerCase()))
     .map((tool) => ({
@@ -123,71 +146,71 @@ export function ComposerInput({
   const lines = (mention?.[1] ?? "").match(/#L\d+(?:-L?\d+)?$/)?.[0] ?? "";
   const options: SuggestionOption[] =
     mode === "members"
-      ? memberOptions.filter((option) => option.label.toLowerCase().startsWith(`@${mention?.[1] ?? ""}`.toLowerCase()))
+      ? memberOptions.filter((option) =>
+          option.label.toLowerCase().startsWith(`@${mention?.[1] ?? ""}`.toLowerCase()),
+        )
       : mode === "skills"
-      ? [...toolOptions.filter((option) => option.section === "Citropy"), ...paths.map(entry => {
-          const slash = entry.path.lastIndexOf("/");
-          return {
-            id: `context:${entry.path}`,
-            section: "Files",
-            label: `${contextReference(entry.path)}${lines}`,
-            title: `${entry.path.slice(slash + 1)}${entry.dir ? "/" : lines}`,
-            hint: entry.path.slice(0, Math.max(0, slash)),
-            icon: entry.dir ? <FolderIcon size={16} /> : <FileTextIcon size={16} />,
-          };
-        }), ...enabled
-          .filter((skill) =>
-            skill.name
-              .toLowerCase()
-              .includes((mention?.[1] ?? "").toLowerCase()),
-          )
-          .map((skill) => ({
-            id: skill.id,
-            section: "Skills",
-            label: `@${skill.name}`,
-            title: skill.name,
-            hint: skill.description,
-            tag: skill.scope,
-            icon: tagIcon(skillTag(skill)),
-          })), ...toolOptions.filter((option) => option.section !== "Citropy")]
-      : [
-          ...commands.map((command) => ({ ...command, section: "Citropy" })),
-          ...nativeCommands
-            .filter(
-              (command) =>
-                !localCommandNames.has(command.name) &&
-                !skills.some(
-                  (skill) =>
-                    skill.provider === thread.provider &&
-                    (skill.name === command.name ||
-                      skill.name === command.name.split(":").at(-1)),
-                ),
-            )
-            .map((command) => ({
-              id: `provider:${command.name}`,
-              section: providerLabels[thread.provider],
-              label: `/${command.name}`,
-              hint: command.description,
-              tag: command.argumentHint,
-              icon: <TerminalIcon size={16} />,
-            })),
-        ].filter((command) =>
-          command.label.toLowerCase().startsWith((slash ?? "").toLowerCase()),
-        );
+        ? [
+            ...toolOptions.filter((option) => option.section === "Citropy"),
+            ...paths.map((entry) => {
+              const slash = entry.path.lastIndexOf("/");
+              return {
+                id: `context:${entry.path}`,
+                section: "Files",
+                label: `${contextReference(entry.path)}${lines}`,
+                title: `${entry.path.slice(slash + 1)}${entry.dir ? "/" : lines}`,
+                hint: entry.path.slice(0, Math.max(0, slash)),
+                icon: entry.dir ? <FolderIcon size={16} /> : <FileTextIcon size={16} />,
+              };
+            }),
+            ...enabled
+              .filter((skill) =>
+                skill.name.toLowerCase().includes((mention?.[1] ?? "").toLowerCase()),
+              )
+              .map((skill) => ({
+                id: skill.id,
+                section: "Skills",
+                label: `@${skill.name}`,
+                title: skill.name,
+                hint: skill.description,
+                tag: skill.scope,
+                icon: tagIcon(skillTag(skill)),
+              })),
+            ...toolOptions.filter((option) => option.section !== "Citropy"),
+          ]
+        : [
+            ...commands.map((command) => ({ ...command, section: "Citropy" })),
+            ...nativeCommands
+              .filter(
+                (command) =>
+                  !localCommandNames.has(command.name) &&
+                  !skills.some(
+                    (skill) =>
+                      skill.provider === thread.provider &&
+                      (skill.name === command.name ||
+                        skill.name === command.name.split(":").at(-1)),
+                  ),
+              )
+              .map((command) => ({
+                id: `provider:${command.name}`,
+                section: providerLabels[thread.provider],
+                label: `/${command.name}`,
+                hint: command.description,
+                tag: command.argumentHint,
+                icon: <TerminalIcon size={16} />,
+              })),
+          ].filter((command) =>
+            command.label.toLowerCase().startsWith((slash ?? "").toLowerCase()),
+          );
   const visible = Boolean(mode && query !== dismissed);
   const index = Math.min(selected, Math.max(0, options.length - 1));
   const activeOption = options[index];
   useEffect(() => {
-    list.current
-      ?.querySelector('[aria-selected="true"]')
-      ?.scrollIntoView({ block: "nearest" });
+    list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
   }, [index, query]);
   const choose = (label: string) => {
     const next = mention
-      ? value.slice(0, caret - (mention[1] ?? "").length - 1) +
-        label +
-        " " +
-        value.slice(caret)
+      ? value.slice(0, caret - (mention[1] ?? "").length - 1) + label + " " + value.slice(caret)
       : label + " ";
     const position = mention
       ? caret - (mention[1] ?? "").length - 1 + label.length + 1
@@ -202,7 +225,9 @@ export function ComposerInput({
             className="composer-suggestion-list scroll"
             id="composer-suggestions"
             role="listbox"
-            aria-label={mode === "members" ? "Bots" : mode === "skills" ? "Files and skills" : "Commands"}
+            aria-label={
+              mode === "members" ? "Bots" : mode === "skills" ? "Files and skills" : "Commands"
+            }
           >
             {options.map((option, i) => (
               <Fragment key={option.id}>
@@ -227,9 +252,17 @@ export function ComposerInput({
                 </button>
               </Fragment>
             ))}
-            {loading && <p role="status">{mode === "skills" ? "Loading skills…" : "Loading commands…"}</p>}
+            {loading && (
+              <p role="status">{mode === "skills" ? "Loading skills…" : "Loading commands…"}</p>
+            )}
             {!options.length && !loading && !error && (
-              <p>{mode === "members" ? "No matching bots in this group." : mode === "skills" ? "No matching files, skills, Citropy tools, or connections." : "No matching commands."}</p>
+              <p>
+                {mode === "members"
+                  ? "No matching bots in this group."
+                  : mode === "skills"
+                    ? "No matching files, skills, Citropy tools, or connections."
+                    : "No matching commands."}
+              </p>
             )}
             {error && <p role="status">{error}</p>}
           </div>
@@ -266,10 +299,7 @@ export function ComposerInput({
           if (visible && activeOption) {
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               setSelected(
-                (index +
-                  (event.key === "ArrowDown" ? 1 : -1) +
-                  options.length) %
-                  options.length,
+                (index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length,
               );
               return true;
             }

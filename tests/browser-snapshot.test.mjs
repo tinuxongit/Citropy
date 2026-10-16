@@ -2,17 +2,32 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { formatTree } from "../desktop/browser-snapshot.ts";
 
-const node = (nodeId, role, name, childIds = [], extra = {}) => ({ nodeId, role: { value: role }, name: { value: name }, childIds, ...extra });
+const node = (nodeId, role, name, childIds = [], extra = {}) => ({
+  nodeId,
+  role: { value: role },
+  name: { value: name },
+  childIds,
+  ...extra,
+});
 
 const nodes = [
   node("1", "RootWebArea", "Settings", ["2"], { backendDOMNodeId: 1 }),
   node("2", "generic", "", ["3", "6"], { backendDOMNodeId: 2 }),
   node("3", "navigation", "Sections", ["4", "5"], { backendDOMNodeId: 3 }),
-  node("4", "button", "General", [], { backendDOMNodeId: 4, properties: [{ name: "focused", value: { value: true } }] }),
-  node("5", "button", "Appearance", ["9", "10"], { backendDOMNodeId: 5, properties: [{ name: "expanded", value: { value: false } }] }),
+  node("4", "button", "General", [], {
+    backendDOMNodeId: 4,
+    properties: [{ name: "focused", value: { value: true } }],
+  }),
+  node("5", "button", "Appearance", ["9", "10"], {
+    backendDOMNodeId: 5,
+    properties: [{ name: "expanded", value: { value: false } }],
+  }),
   node("9", "InlineTextBox", "Appearance"),
   node("10", "StaticText", "Appearance", [], { backendDOMNodeId: 10 }),
-  node("6", "checkbox", "Sounds", [], { backendDOMNodeId: 6, properties: [{ name: "checked", value: { value: "true" } }] }),
+  node("6", "checkbox", "Sounds", [], {
+    backendDOMNodeId: 6,
+    properties: [{ name: "checked", value: { value: "true" } }],
+  }),
   node("7", "generic", "", [], { ignored: true }),
 ];
 

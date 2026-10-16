@@ -1,7 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { Collapsible } from "./Collapsible.tsx";
 
-export function ReleaseNoteFold({ items, preview, render }: {
+export function ReleaseNoteFold({
+  items,
+  preview,
+  render,
+}: {
   items: string[];
   preview: number;
   render: (entries: string[], offset: number) => ReactNode;
@@ -12,8 +16,15 @@ export function ReleaseNoteFold({ items, preview, render }: {
   return (
     <>
       {render(items.slice(0, preview), 0)}
-      <Collapsible open={expanded} className="whats-new-folded">{render(folded, preview)}</Collapsible>
-      <button type="button" className="whats-new-more" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+      <Collapsible open={expanded} className="whats-new-folded">
+        {render(folded, preview)}
+      </Collapsible>
+      <button
+        type="button"
+        className="whats-new-more"
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+      >
         {expanded ? "Show fewer" : `Show ${folded.length} more`}
       </button>
     </>

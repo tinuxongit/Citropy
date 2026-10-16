@@ -20,7 +20,11 @@ const MENTION = /(?:^|\s)@([\w.:-]+)(?![\w./:-])/g;
 
 function $sizeBefore(node: LexicalNode): number {
   let size = 0;
-  for (let current: LexicalNode | null = node; current && !$isRootNode(current); current = current.getParent()) {
+  for (
+    let current: LexicalNode | null = node;
+    current && !$isRootNode(current);
+    current = current.getParent()
+  ) {
     for (const sibling of current.getPreviousSiblings()) size += sibling.getTextContentSize();
   }
   return size;
@@ -70,7 +74,12 @@ export function $setMessage(text: string, caret?: number) {
 
 function $caretIn(node: TextNode): number | undefined {
   const selection = $getSelection();
-  if (!$isRangeSelection(selection) || !selection.isCollapsed() || selection.anchor.key !== node.getKey()) return undefined;
+  if (
+    !$isRangeSelection(selection) ||
+    !selection.isCollapsed() ||
+    selection.anchor.key !== node.getKey()
+  )
+    return undefined;
   return selection.anchor.offset;
 }
 

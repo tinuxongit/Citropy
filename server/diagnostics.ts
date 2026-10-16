@@ -5,7 +5,12 @@ import { store } from "./store.ts";
 import { panelList } from "./panels.ts";
 import { browserStates } from "./browser.ts";
 import { servicePid } from "./terminals/terminals.ts";
-import { processCpuPercent, processTable, type ProcessCpuSample, type ProcessEntry } from "./process-table.ts";
+import {
+  processCpuPercent,
+  processTable,
+  type ProcessCpuSample,
+  type ProcessEntry,
+} from "./process-table.ts";
 import { protocolLog } from "./providers/events.ts";
 import type { DiagnosticReport } from "../shared/features.ts";
 
@@ -16,10 +21,14 @@ const serverStartedAt = `server:${process.pid}:${Date.now() - process.uptime() *
 
 export async function diagnostics(): Promise<DiagnosticReport> {
   if (cached && performance.now() - cached.at < 1000) return cached.report;
-  pending ??= collect().then((report) => {
-    cached = { at: performance.now(), report };
-    return report;
-  }).finally(() => { pending = undefined; });
+  pending ??= collect()
+    .then((report) => {
+      cached = { at: performance.now(), report };
+      return report;
+    })
+    .finally(() => {
+      pending = undefined;
+    });
   return pending;
 }
 
@@ -28,10 +37,12 @@ async function collect(): Promise<DiagnosticReport> {
   const terminalPid = servicePid();
   const [processes, desktop] = await Promise.all([
     processTable([process.pid, ...(terminalPid ? [terminalPid] : [])]),
-    desktopConnected() ? desktopRequest<ProcessEntry[]>("diagnostics").then((entries) => {
-      const sampledAt = performance.now();
-      return entries.map((entry) => ({ ...entry, sampledAt }));
-    }) : [],
+    desktopConnected()
+      ? desktopRequest<ProcessEntry[]>("diagnostics").then((entries) => {
+          const sampledAt = performance.now();
+          return entries.map((entry) => ({ ...entry, sampledAt }));
+        })
+      : [],
   ]);
   const allProcesses = new Map(processes.map((entry) => [entry.pid, entry]));
   for (const entry of desktop) {
@@ -53,15 +64,22 @@ async function collect(): Promise<DiagnosticReport> {
       memory: memory.rss,
     });
   const at = performance.now();
-  const sampledProcesses = [...allProcesses.values()].map((entry) => ({
-    pid: entry.pid,
-    parent: entry.parent,
-    name: entry.name,
-    memory: entry.memory,
-    startedAt: entry.startedAt,
-    cpu: processCpuPercent(entry, previousProcesses.get(entry.pid), entry.sampledAt ?? at),
-  })).sort((a, b) => (b.cpu ?? -1) - (a.cpu ?? -1));
-  previousProcesses = new Map([...allProcesses.values()].map((entry) => [entry.pid, { startedAt: entry.startedAt, cpuTime: entry.cpuTime, at: entry.sampledAt ?? at }]));
+  const sampledProcesses = [...allProcesses.values()]
+    .map((entry) => ({
+      pid: entry.pid,
+      parent: entry.parent,
+      name: entry.name,
+      memory: entry.memory,
+      startedAt: entry.startedAt,
+      cpu: processCpuPercent(entry, previousProcesses.get(entry.pid), entry.sampledAt ?? at),
+    }))
+    .sort((a, b) => (b.cpu ?? -1) - (a.cpu ?? -1));
+  previousProcesses = new Map(
+    [...allProcesses.values()].map((entry) => [
+      entry.pid,
+      { startedAt: entry.startedAt, cpuTime: entry.cpuTime, at: entry.sampledAt ?? at },
+    ]),
+  );
   return {
     ...(dev ? { protocol: protocolLog() } : {}),
     sampledAt: Date.now(),
@@ -80,8 +98,7 @@ async function collect(): Promise<DiagnosticReport> {
     },
     processes: sampledProcesses,
     conversations: store.threads.size,
-    running: [...store.threads.values()].filter((thread) => thread.running)
-      .length,
+    running: [...store.threads.values()].filter((thread) => thread.running).length,
     terminals: panelList().filter((panel) => panel.kind === "terminal").length,
     browsers: browserStates().length,
   };

@@ -67,11 +67,26 @@ export const doneLabels: Partial<Record<GitOperation, string>> = {
 };
 
 const errorRules: Array<{ pattern: RegExp; message: string }> = [
-  { pattern: /unable to auto-detect email|please tell me who you are/i, message: "Set your Git name and email before making a commit." },
-  { pattern: /conflict|automatic merge failed/i, message: "Some changes conflict. Review the affected files before continuing." },
-  { pattern: /would be overwritten/i, message: "Commit or stash your local changes before switching." },
-  { pattern: /not fully merged/i, message: "This branch has unmerged commits. Merge them before deleting the branch." },
-  { pattern: /authentication|permission denied|could not read username/i, message: "Git couldn't authenticate with this remote. Check your Git credentials." },
+  {
+    pattern: /unable to auto-detect email|please tell me who you are/i,
+    message: "Set your Git name and email before making a commit.",
+  },
+  {
+    pattern: /conflict|automatic merge failed/i,
+    message: "Some changes conflict. Review the affected files before continuing.",
+  },
+  {
+    pattern: /would be overwritten/i,
+    message: "Commit or stash your local changes before switching.",
+  },
+  {
+    pattern: /not fully merged/i,
+    message: "This branch has unmerged commits. Merge them before deleting the branch.",
+  },
+  {
+    pattern: /authentication|permission denied|could not read username/i,
+    message: "Git couldn't authenticate with this remote. Check your Git credentials.",
+  },
 ];
 
 const unknownError = "Git couldn't complete the action.";
@@ -79,5 +94,10 @@ const unknownError = "Git couldn't complete the action.";
 export function readableError(error: string) {
   const rule = errorRules.find(({ pattern }) => pattern.test(error));
   if (rule) return rule.message;
-  return error.split("\n").find((line) => line.trim() && !line.startsWith("Command failed:"))?.replace(/^(fatal|error):\s*/i, "") ?? unknownError;
+  return (
+    error
+      .split("\n")
+      .find((line) => line.trim() && !line.startsWith("Command failed:"))
+      ?.replace(/^(fatal|error):\s*/i, "") ?? unknownError
+  );
 }

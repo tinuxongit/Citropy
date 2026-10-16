@@ -19,7 +19,7 @@ import { modelLabel } from "../lib/format.ts";
 export function SubagentsPane() {
   const parentId = useApp((state) => {
     const activeId = state.activeThreadId;
-    return activeId ? state.threads[activeId]?.parentThreadId ?? activeId : activeId;
+    return activeId ? (state.threads[activeId]?.parentThreadId ?? activeId) : activeId;
   });
   const providers = useApp((state) => state.providers);
   const connected = useApp((state) => state.connected);
@@ -29,15 +29,18 @@ export function SubagentsPane() {
     return (state: AppState) => {
       if (previous !== state.threads) {
         previous = state.threads;
-        children = Object.values(state.threads).filter(thread => thread.parentThreadId === parentId);
+        children = Object.values(state.threads).filter(
+          (thread) => thread.parentThreadId === parentId,
+        );
       }
       return children;
     };
   }, [parentId]);
   const children = useApp(useShallow(selectChildren));
-  const { current, earlier } = useMemo(() => groupSubagents(
-    children.toSorted((a, b) => a.createdAt - b.createdAt),
-  ), [children]);
+  const { current, earlier } = useMemo(
+    () => groupSubagents(children.toSorted((a, b) => a.createdAt - b.createdAt)),
+    [children],
+  );
   const [historyOpen, setHistoryOpen] = useState(false);
   const renderChild = (child: (typeof children)[number]) => (
     <div className="subagent-item" key={child.id}>
@@ -48,7 +51,10 @@ export function SubagentsPane() {
       </div>
       <p>
         {modelLabel(
-          providerAccount(providers.find((provider) => provider.id === child.provider), child.providerInstanceId).models,
+          providerAccount(
+            providers.find((provider) => provider.id === child.provider),
+            child.providerInstanceId,
+          ).models,
           child.model,
         )}
       </p>
@@ -81,7 +87,9 @@ export function SubagentsPane() {
               selectThread(child.id);
               loadThread(child.id);
             }}
-          >View work<ArrowUpRightIcon size={13} />
+          >
+            View work
+            <ArrowUpRightIcon size={13} />
           </button>
         </div>
       </div>
@@ -95,7 +103,9 @@ export function SubagentsPane() {
           <h3>Delegated work</h3>
           <p>
             {children.length
-              ? (children.length === 1 ? `${children.filter((child) => child.running).length} running · ${children.length} subagent` : `${children.filter((child) => child.running).length} running · ${children.length} subagents`)
+              ? children.length === 1
+                ? `${children.filter((child) => child.running).length} running · ${children.length} subagent`
+                : `${children.filter((child) => child.running).length} running · ${children.length} subagents`
               : "Subagents for this conversation"}
           </p>
         </div>
@@ -103,10 +113,15 @@ export function SubagentsPane() {
       {children.length === 0 ? (
         <div className="panel-quiet-empty">
           <p>No subagents yet.</p>
-          <span>Ask your provider to delegate a task. Its subagents will appear here and beneath the chat in your sidebar.</span>
+          <span>
+            Ask your provider to delegate a task. Its subagents will appear here and beneath the
+            chat in your sidebar.
+          </span>
         </div>
       ) : (
-        <VirtualList items={current} itemKey="id" estimateSize={116}>{renderChild}</VirtualList>
+        <VirtualList items={current} itemKey="id" estimateSize={116}>
+          {renderChild}
+        </VirtualList>
       )}
       {earlier.length > 0 && (
         <div className="subagent-history">
@@ -122,7 +137,9 @@ export function SubagentsPane() {
             {historyOpen ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}
           </button>
           <Collapsible open={historyOpen} className="subagent-history-list">
-            <VirtualList items={earlier} itemKey="id" estimateSize={116}>{renderChild}</VirtualList>
+            <VirtualList items={earlier} itemKey="id" estimateSize={116}>
+              {renderChild}
+            </VirtualList>
           </Collapsible>
         </div>
       )}

@@ -4,12 +4,7 @@ import { CheckIcon } from "../icons/marks.tsx";
 import { RefreshIcon } from "../icons/rotation.tsx";
 import { useGitHub } from "../../lib/use-github.ts";
 import { github } from "../../lib/actions.ts";
-import {
-  GitHubFeedback,
-  GitHubLink,
-  GitHubPagination,
-  githubDate,
-} from "./GitHubShared.tsx";
+import { GitHubFeedback, GitHubLink, GitHubPagination, githubDate } from "./GitHubShared.tsx";
 
 export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => void }) {
   const [page, setPage] = useState(1);
@@ -28,7 +23,9 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
               setAll(event.target.checked);
               setPage(1);
             }}
-          />{" "}Include read notifications{" "}</label>
+          />{" "}
+          Include read notifications{" "}
+        </label>
         <button
           className="icon-btn"
           aria-label="Refresh notifications"
@@ -41,9 +38,7 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
       <GitHubFeedback
         error={error || list.error}
         loading={list.loading && !list.data}
-        empty={
-          list.data?.items.length === 0 ? "No notifications" : undefined
-        }
+        empty={list.data?.items.length === 0 ? "No notifications" : undefined}
       />
       <div className="github-notifications">
         {list.data?.items.map((notification) => (
@@ -52,18 +47,18 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
             <div>
               <strong>{notification.subject.title}</strong>
               <p className="github-meta">
-                <button
-                  onClick={() => onSelect(notification.repository.full_name)}
-                >
+                <button onClick={() => onSelect(notification.repository.full_name)}>
                   {notification.repository.full_name}
                 </button>{" "}
-                · {notification.reason.replaceAll("_", " ")} ·{" "}
-                {githubDate(notification.updated_at)}
+                · {notification.reason.replaceAll("_", " ")} · {githubDate(notification.updated_at)}
               </p>
             </div>
             <GitHubLink
               href={`https://github.com/notifications?query=repo%3A${encodeURIComponent(notification.repository.full_name)}`}
-            >{" "}Open{" "}</GitHubLink>
+            >
+              {" "}
+              Open{" "}
+            </GitHubLink>
             {notification.unread && (
               <button
                 className="icon-btn"
@@ -92,13 +87,7 @@ export function GitHubNotifications({ onSelect }: { onSelect: (repo: string) => 
           </article>
         ))}
       </div>
-      {list.data && (
-        <GitHubPagination
-          page={page}
-          more={list.data.more}
-          onChange={setPage}
-        />
-      )}
+      {list.data && <GitHubPagination page={page} more={list.data.more} onChange={setPage} />}
     </div>
   );
 }

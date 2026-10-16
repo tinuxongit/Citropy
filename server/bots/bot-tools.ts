@@ -33,21 +33,32 @@ function ownBot(thread: Thread): Bot {
 
 function messageText(args: Record<string, unknown>): string {
   const text = required(args, "text");
-  if (text.length > BOT_LIMITS.messageLength) throw new Error(`Keep bot messages under ${BOT_LIMITS.messageLength} characters.`);
+  if (text.length > BOT_LIMITS.messageLength)
+    throw new Error(`Keep bot messages under ${BOT_LIMITS.messageLength} characters.`);
   return text;
 }
 
 function currentDepth(thread: Thread): number {
-  const origin = thread.messages.findLast(entry => entry.role === "user")?.origin;
+  const origin = thread.messages.findLast((entry) => entry.role === "user")?.origin;
   return origin?.kind === "bot" || origin?.kind === "group" ? origin.depth : 0;
 }
 
 function groups(bot: Bot) {
-  return groupStore.list().filter(group => group.botIds.includes(bot.id)).map(group => ({
-    id: group.id,
-    name: group.name,
-    members: groupStore.members(group).map(member => ({ botId: member.id, name: member.name, handle: `@${botHandle(member.name)}`, title: member.title })),
-  }));
+  return groupStore
+    .list()
+    .filter((group) => group.botIds.includes(bot.id))
+    .map((group) => ({
+      id: group.id,
+      name: group.name,
+      members: groupStore
+        .members(group)
+        .map((member) => ({
+          botId: member.id,
+          name: member.name,
+          handle: `@${botHandle(member.name)}`,
+          title: member.title,
+        })),
+    }));
 }
 
 async function postToGroup(thread: Thread, args: Record<string, unknown>) {
@@ -62,10 +73,19 @@ async function message(thread: Thread, args: Record<string, unknown>) {
   if (target.threadId === thread.id) throw new Error("A bot cannot message itself.");
   const text = messageText(args);
   const depth = currentDepth(thread) + 1;
-  if (depth > BOT_LIMITS.handoffDepth) throw new Error(`This chain of bot messages reached ${BOT_LIMITS.handoffDepth} handoffs. Report back to the user instead.`);
+  if (depth > BOT_LIMITS.handoffDepth)
+    throw new Error(
+      `This chain of bot messages reached ${BOT_LIMITS.handoffDepth} handoffs. Report back to the user instead.`,
+    );
   const sender = thread.botId ? botStore.get(thread.botId) : undefined;
   await runtimeFor(target.threadId).send(text, [], {
-    origin: { kind: "bot", threadId: thread.id, ...(sender ? { botId: sender.id } : {}), name: sender?.name ?? thread.title, depth },
+    origin: {
+      kind: "bot",
+      threadId: thread.id,
+      ...(sender ? { botId: sender.id } : {}),
+      name: sender?.name ?? thread.title,
+      depth,
+    },
   });
   return { sent: true, to: summary(target) };
 }
@@ -84,11 +104,20 @@ async function create(thread: Thread, args: Record<string, unknown>) {
 }
 
 function memories(bot: Bot) {
-  return bot.memory.map(entry => ({ id: entry.id, text: entry.text, savedAt: new Date(entry.savedAt).toISOString() }));
+  return bot.memory.map((entry) => ({
+    id: entry.id,
+    text: entry.text,
+    savedAt: new Date(entry.savedAt).toISOString(),
+  }));
 }
 
-export async function callBotTool(thread: Thread, name: string, args: Record<string, unknown>): Promise<unknown> {
-  if (CHANGES.has(name) && thread.permissionMode === "plan") throw new Error("This action is unavailable in Plan only mode.");
+export async function callBotTool(
+  thread: Thread,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  if (CHANGES.has(name) && thread.permissionMode === "plan")
+    throw new Error("This action is unavailable in Plan only mode.");
   switch (name) {
     case "bots_list":
       return botStore.list().map(summary);
@@ -100,8 +129,11 @@ export async function callBotTool(thread: Thread, name: string, args: Record<str
       return memories(ownBot(thread));
     case "bots_memory_save": {
       const bot = ownBot(thread);
-      const entry = botStore.saveMemory(bot.id, { ...(args.id === undefined ? {} : { id: required(args, "id") }), text: required(args, "text") });
-      return memories(bot).find(memory => memory.id === entry.id);
+      const entry = botStore.saveMemory(bot.id, {
+        ...(args.id === undefined ? {} : { id: required(args, "id") }),
+        text: required(args, "text"),
+      });
+      return memories(bot).find((memory) => memory.id === entry.id);
     }
     case "bots_memory_remove":
       botStore.removeMemory(ownBot(thread).id, required(args, "id"));

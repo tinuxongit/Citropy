@@ -1,4 +1,10 @@
-import { createServer, request, type ClientRequest, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  request,
+  type ClientRequest,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import type { AddressInfo, Socket } from "node:net";
 import type { Duplex } from "node:stream";
 import { logFailure } from "../shared/expected-errors.mjs";
@@ -22,50 +28,116 @@ export async function remoteProxy(allowedOrigin: string | (() => string)) {
   let target: ProxyTarget | undefined;
   const sockets = new Set<Socket>();
   const streams = new Set<Duplex>();
-  const requests = new Set<{ upstream: ClientRequest; res: ServerResponse; req: IncomingMessage; cors: Record<string, string> }>();
-  const origin = () => typeof allowedOrigin === "function" ? allowedOrigin() : allowedOrigin;
+  const requests = new Set<{
+    upstream: ClientRequest;
+    res: ServerResponse;
+    req: IncomingMessage;
+    cors: Record<string, string>;
+  }>();
+  const origin = () => (typeof allowedOrigin === "function" ? allowedOrigin() : allowedOrigin);
   const trusted = (req: IncomingMessage) => {
     const host = `127.0.0.1:${(server.address() as AddressInfo).port}`;
     if (req.headers.host !== host) return false;
     if (req.headers.origin) return req.headers.origin === origin();
     if (req.headers["sec-fetch-site"] !== "cross-site") return true;
-    try { return new URL(req.headers.referer || "").origin === origin(); } catch { return false; }
+    try {
+      return new URL(req.headers.referer || "").origin === origin();
+    } catch {
+      return false;
+    }
   };
-  const headersFor = (req: IncomingMessage, { remotePort, token }: ProxyTarget) => ({ ...req.headers, host: `127.0.0.1:${remotePort}`, origin: `http://127.0.0.1:${remotePort}`, [REMOTE_TOKEN_HEADER]: token });
+  const headersFor = (req: IncomingMessage, { remotePort, token }: ProxyTarget) => ({
+    ...req.headers,
+    host: `127.0.0.1:${remotePort}`,
+    origin: `http://127.0.0.1:${remotePort}`,
+    [REMOTE_TOKEN_HEADER]: token,
+  });
   const server = createServer((req, res) => {
-    if (!trusted(req)) { res.writeHead(403).end(); return; }
+    if (!trusted(req)) {
+      res.writeHead(403).end();
+      return;
+    }
     const cors = { "access-control-allow-origin": origin(), vary: "Origin" };
-    if (!req.url?.startsWith("/api/") || req.url.startsWith("/api/remote/shutdown") || req.url.startsWith("/api/desktop") || req.url.startsWith("/api/updates/")) { res.writeHead(404, cors).end(); return; }
-    if (req.method === "OPTIONS") { res.writeHead(204, { ...cors, "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE", "access-control-allow-headers": "Content-Type" }).end(); return; }
-    if (!target) { res.writeHead(503, { ...cors, "content-type": "application/json" }).end(JSON.stringify({ error: "The environment connection is disconnected. Reconnect or switch to Local." })); return; }
+    if (
+      !req.url?.startsWith("/api/") ||
+      req.url.startsWith("/api/remote/shutdown") ||
+      req.url.startsWith("/api/desktop") ||
+      req.url.startsWith("/api/updates/")
+    ) {
+      res.writeHead(404, cors).end();
+      return;
+    }
+    if (req.method === "OPTIONS") {
+      res
+        .writeHead(204, {
+          ...cors,
+          "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE",
+          "access-control-allow-headers": "Content-Type",
+        })
+        .end();
+      return;
+    }
+    if (!target) {
+      res
+        .writeHead(503, { ...cors, "content-type": "application/json" })
+        .end(
+          JSON.stringify({
+            error: "The environment connection is disconnected. Reconnect or switch to Local.",
+          }),
+        );
+      return;
+    }
     const headers = headersFor(req, target);
     delete headers.cookie;
-    const upstream = request({ hostname: "127.0.0.1", port: target.port, method: req.method, path: req.url, headers }, response => {
-      if (res.writableEnded || res.destroyed) { response.destroy(); return; }
-      const responseHeaders = { ...response.headers, ...cors };
-      delete responseHeaders["set-cookie"];
-      res.writeHead(response.statusCode || 502, responseHeaders);
-      // A truncated upstream body must also close the renderer response.
-      pipeline(response, res, (error) => {
-        if (error && error.code !== "ERR_STREAM_PREMATURE_CLOSE") logFailure("Proxying a remote response")(error);
-      });
-    });
+    const upstream = request(
+      { hostname: "127.0.0.1", port: target.port, method: req.method, path: req.url, headers },
+      (response) => {
+        if (res.writableEnded || res.destroyed) {
+          response.destroy();
+          return;
+        }
+        const responseHeaders = { ...response.headers, ...cors };
+        delete responseHeaders["set-cookie"];
+        res.writeHead(response.statusCode || 502, responseHeaders);
+        // A truncated upstream body must also close the renderer response.
+        pipeline(response, res, (error) => {
+          if (error && error.code !== "ERR_STREAM_PREMATURE_CLOSE")
+            logFailure("Proxying a remote response")(error);
+        });
+      },
+    );
     const active = { upstream, res, req, cors };
     requests.add(active);
     upstream.on("error", () => {
       if (res.writableEnded) return;
-      if (!res.headersSent) res.writeHead(502, { ...cors, "content-type": "application/json" }).end(JSON.stringify({ error: "The environment backend could not be reached. Reconnect and try again." }));
+      if (!res.headersSent)
+        res
+          .writeHead(502, { ...cors, "content-type": "application/json" })
+          .end(
+            JSON.stringify({
+              error: "The environment backend could not be reached. Reconnect and try again.",
+            }),
+          );
       else res.destroy();
     });
     upstream.setTimeout(300000, () => upstream.destroy());
-    res.on("close", () => { requests.delete(active); upstream.destroy(); });
-    req.on("error", error => upstream.destroy(error));
+    res.on("close", () => {
+      requests.delete(active);
+      upstream.destroy();
+    });
+    req.on("error", (error) => upstream.destroy(error));
     req.on("aborted", () => upstream.destroy());
     req.pipe(upstream);
   });
-  server.on("connection", socket => { sockets.add(socket); socket.on("close", () => sockets.delete(socket)); });
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+  });
   server.on("upgrade", (req, client, head) => {
-    if (!trusted(req) || req.url?.split("?")[0] !== "/socket" || !target) { client.destroy(); return; }
+    if (!trusted(req) || req.url?.split("?")[0] !== "/socket" || !target) {
+      client.destroy();
+      return;
+    }
     streams.add(client);
     client.on("close", () => streams.delete(client));
     const headers = headersFor(req, target);
@@ -74,22 +146,35 @@ export async function remoteProxy(allowedOrigin: string | (() => string)) {
     upstream.on("upgrade", (response, socket, buffered) => {
       socket.setTimeout(0);
       sockets.add(socket);
-      socket.on("close", () => { sockets.delete(socket); client.destroy(); });
+      socket.on("close", () => {
+        sockets.delete(socket);
+        client.destroy();
+      });
       socket.on("error", () => client.destroy());
       client.on("close", () => socket.destroy());
-      client.write(`HTTP/1.1 101 Switching Protocols\r\n${Object.entries(response.headers).map(([key, value]) => `${key}: ${value}`).join("\r\n")}\r\n\r\n`);
+      client.write(
+        `HTTP/1.1 101 Switching Protocols\r\n${Object.entries(response.headers)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join("\r\n")}\r\n\r\n`,
+      );
       if (buffered.length) client.write(buffered);
       if (head.length) socket.write(head);
       socket.pipe(client).pipe(socket);
     });
-    upstream.on("response", () => { upstream.destroy(); client.destroy(); });
+    upstream.on("response", () => {
+      upstream.destroy();
+      client.destroy();
+    });
     upstream.on("error", () => client.destroy());
     upstream.setTimeout(10000, () => upstream.destroy());
     client.on("error", () => upstream.destroy());
     client.on("close", () => upstream.destroy());
     upstream.end();
   });
-  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
   return {
     endpoint: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
     setTarget(value: ProxyTarget | undefined) {
@@ -99,12 +184,23 @@ export async function remoteProxy(allowedOrigin: string | (() => string)) {
         if (res.writableEnded) continue;
         req.unpipe(upstream);
         req.resume();
-        if (!res.headersSent) res.writeHead(503, { ...cors, "content-type": "application/json" }).end(JSON.stringify({ error: "The environment connection changed. Try again after reconnecting." }));
+        if (!res.headersSent)
+          res
+            .writeHead(503, { ...cors, "content-type": "application/json" })
+            .end(
+              JSON.stringify({
+                error: "The environment connection changed. Try again after reconnecting.",
+              }),
+            );
         else res.destroy();
         upstream.destroy();
       }
       requests.clear();
     },
-    close() { target = undefined; for (const socket of sockets) socket.destroy(); return new Promise<void>(resolve => server.close(() => resolve())); },
+    close() {
+      target = undefined;
+      for (const socket of sockets) socket.destroy();
+      return new Promise<void>((resolve) => server.close(() => resolve()));
+    },
   };
 }

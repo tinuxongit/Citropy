@@ -6,5 +6,8 @@ export function museVersion(output: string): string | undefined {
 }
 
 export function comparableMuseVersion(version: string): string {
-  return version.replace(REVISION, (_, release: string, patch?: string) => `-release.${release}.${patch ?? "0"}`);
+  return version.replace(
+    REVISION,
+    (_, release: string, patch?: string) => `-release.${release}.${patch ?? "0"}`,
+  );
 }

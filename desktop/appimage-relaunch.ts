@@ -16,14 +16,20 @@ export function spawnAppImageRelaunch({
   downloadedFile,
   parentPid,
   logFile,
-}: { appImage: string; downloadedFile?: string; parentPid: number; logFile: string }) {
+}: {
+  appImage: string;
+  downloadedFile?: string;
+  parentPid: number;
+  logFile: string;
+}) {
   const dest = absolutePath(appImage, "The installed AppImage");
   const source =
     downloadedFile === undefined
       ? undefined
       : absolutePath(downloadedFile, "The downloaded update");
   const log = absolutePath(logFile, "The update log");
-  if (source && dest === source) throw new Error("The downloaded update cannot replace itself in place.");
+  if (source && dest === source)
+    throw new Error("The downloaded update cannot replace itself in place.");
   if (!Number.isInteger(parentPid) || parentPid <= 0)
     throw new Error("The running Citropy process id is missing.");
   const stream = openSync(log, "a");

@@ -16,14 +16,20 @@ const SURFACES = new Set(["--panel", "--overlay", "--surface", "--raised", "--ra
 
 function withAlpha(hex: string, alpha: number): string {
   if (alpha >= 1) return hex;
-  return `${hex.slice(0, 7)}${Math.round(alpha * 255).toString(16).padStart(2, "0")}`;
+  return `${hex.slice(0, 7)}${Math.round(alpha * 255)
+    .toString(16)
+    .padStart(2, "0")}`;
 }
 
 function themeColors(element: HTMLElement, alpha: number): Record<string, string> {
   const style = getComputedStyle(element);
-  const token = (name: string) => SURFACES.has(name)
-    ? withAlpha(hexColor(style.getPropertyValue(`${name}-solid`).trim()), name === "--overlay" ? Math.min(1, alpha + 0.12) : alpha)
-    : hexColor(style.getPropertyValue(name).trim());
+  const token = (name: string) =>
+    SURFACES.has(name)
+      ? withAlpha(
+          hexColor(style.getPropertyValue(`${name}-solid`).trim()),
+          name === "--overlay" ? Math.min(1, alpha + 0.12) : alpha,
+        )
+      : hexColor(style.getPropertyValue(name).trim());
   const clear = "#00000000";
   return {
     "editor.background": token("--canvas"),
@@ -44,7 +50,7 @@ function themeColors(element: HTMLElement, alpha: number): Record<string, string
     "editorHoverWidget.border": clear,
     "input.background": token("--raised"),
     "input.border": clear,
-    "focusBorder": clear,
+    focusBorder: clear,
     "list.hoverBackground": token("--raised"),
     "list.activeSelectionBackground": token("--raised-2"),
     "list.focusBackground": token("--raised-2"),
@@ -73,7 +79,9 @@ export function CodeEditor({
   const scheme = useApp((state) => state.scheme);
   const customColor = useApp((state) => state.customColor);
   const clearBackground = useApp((state) => state.stageBackground !== "default");
-  const surfaceAlpha = useApp((state) => state.stageBackground === "default" ? 1 : 1 - state.uiTransparency / 100);
+  const surfaceAlpha = useApp((state) =>
+    state.stageBackground === "default" ? 1 : 1 - state.uiTransparency / 100,
+  );
   const scale = useApp((state) => state.uiScale);
   const codeFont = useApp((state) => state.codeFont);
   const reducedMotion = useReducedMotion();
@@ -86,7 +94,8 @@ export function CodeEditor({
       model: null,
       automaticLayout: true,
       minimap: { enabled: false },
-      fontFamily: getComputedStyle(container.current).getPropertyValue("--font-mono").trim() || "monospace",
+      fontFamily:
+        getComputedStyle(container.current).getPropertyValue("--font-mono").trim() || "monospace",
       fontLigatures: '"calt"',
       fontSize: scaled(13),
       lineHeight: scaled(22),
@@ -137,16 +146,13 @@ export function CodeEditor({
   useEffect(() => {
     const editor = instance.current;
     if (!editor) return;
-    if (current.current !== document)
-      current.current.view = editor.saveViewState();
+    if (current.current !== document) current.current.view = editor.saveViewState();
     current.current = document;
     editor.setModel(document.model);
     editor.restoreViewState(document.view);
     editor.updateOptions({ ariaLabel: `Code editor: ${document.path}` });
     const refresh = () =>
-      setProblems(
-        monaco.editor.getModelMarkers({ resource: document.model.uri }).length,
-      );
+      setProblems(monaco.editor.getModelMarkers({ resource: document.model.uri }).length);
     refresh();
     const listener = monaco.editor.onDidChangeMarkers(refresh);
     editor.focus();
@@ -156,9 +162,12 @@ export function CodeEditor({
   useEffect(() => {
     const editor = instance.current;
     if (!editor || !container.current) return;
-    const fontFamily = getComputedStyle(container.current).getPropertyValue("--font-mono").trim() || "monospace";
+    const fontFamily =
+      getComputedStyle(container.current).getPropertyValue("--font-mono").trim() || "monospace";
     editor.updateOptions({ fontFamily });
-    void window.document.fonts.load(`13px ${fontFamily}`).then(() => monaco.editor.remeasureFonts());
+    void window.document.fonts
+      .load(`13px ${fontFamily}`)
+      .then(() => monaco.editor.remeasureFonts());
   }, [codeFont]);
 
   useEffect(() => {
@@ -170,7 +179,9 @@ export function CodeEditor({
       rules: [],
       colors: {
         ...themeColors(container.current, surfaceAlpha),
-        ...(clearBackground ? { "editor.background": "#00000000", "editorGutter.background": "#00000000" } : {}),
+        ...(clearBackground
+          ? { "editor.background": "#00000000", "editorGutter.background": "#00000000" }
+          : {}),
       },
     });
     monaco.editor.setTheme(name);
@@ -193,14 +204,23 @@ export function CodeEditor({
         <button
           type="button"
           className="editor-problems"
-          onClick={() => instance.current?.trigger("toolbar", "editor.action.marker.nextInFiles", null)}
+          onClick={() =>
+            instance.current?.trigger("toolbar", "editor.action.marker.nextInFiles", null)
+          }
           title="Go to next problem"
         >
           {problems === 1 ? `${problems} problem` : `${problems} problems`}
         </button>
       )}
       {menu && instance.current && (
-        <EditorContextMenu editor={instance.current} file={document} threadId={threadId} x={menu.x} y={menu.y} onClose={() => setMenu(undefined)} />
+        <EditorContextMenu
+          editor={instance.current}
+          file={document}
+          threadId={threadId}
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(undefined)}
+        />
       )}
     </>
   );

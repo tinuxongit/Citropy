@@ -25,9 +25,7 @@ export function githubItemState(entry: GitHubItem): string {
 }
 
 function moveTabFocus(event: KeyboardEvent<HTMLDivElement>) {
-  const buttons = Array.from(
-    event.currentTarget.querySelectorAll<HTMLButtonElement>("button"),
-  );
+  const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button"));
   const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
   if (current < 0) return;
   const next = nextTabIndex(event.key, current, buttons.length);
@@ -65,8 +63,7 @@ export function GitHubItemDetail({
         <GitHubLink href={item.html_url}>Open on GitHub</GitHubLink>
         <h2>{item.title}</h2>
         <p>
-          {item.user?.login ?? "Deleted user"} opened this {" "}
-          {githubDate(item.created_at)}
+          {item.user?.login ?? "Deleted user"} opened this {githubDate(item.created_at)}
         </p>
       </header>
       {pull && item.head && (
@@ -120,11 +117,7 @@ export function GitHubItemDetail({
           </>
         )}
         {canEdit && !item.merged && !repository.archived && (
-          <button
-            className="btn"
-            data-variant="ghost"
-            onClick={() => onAction("state")}
-          >
+          <button className="btn" data-variant="ghost" onClick={() => onAction("state")}>
             {item.state === "open" ? "Close" : "Reopen"}
           </button>
         )}
@@ -141,10 +134,7 @@ export function GitHubItemDetail({
         onKeyDown={moveTabFocus}
       >
         <SelectionHighlight value={tab} />
-        {(pull
-          ? ["Conversation", "Files changed", "Checks"]
-          : ["Conversation"]
-        ).map((name) => (
+        {(pull ? ["Conversation", "Files changed", "Checks"] : ["Conversation"]).map((name) => (
           <button
             role="tab"
             aria-selected={tab === name}
@@ -154,9 +144,7 @@ export function GitHubItemDetail({
           >
             {name}
             {name === "Files changed" && <span>{item.changed_files}</span>}
-            {name === "Checks" && (
-              <span>{detail.checks.length + detail.statuses.length}</span>
-            )}
+            {name === "Checks" && <span>{detail.checks.length + detail.statuses.length}</span>}
           </button>
         ))}
       </div>
@@ -174,12 +162,8 @@ function Conversation({ detail }: { detail: GitHubDetail }) {
       <Prose text={item.body || "No description provided."} live={false} />
       {(item.labels.length > 0 || item.assignees.length > 0) && (
         <div className="github-item-metadata">
-          <span>{" "}Labels:{" "}
-            {item.labels.map((label) => label.name).join(", ") || "None"}
-          </span>
-          <span>{" "}Assignees:{" "}
-            {item.assignees.map((user) => user.login).join(", ") || "None"}
-          </span>
+          <span> Labels: {item.labels.map((label) => label.name).join(", ") || "None"}</span>
+          <span> Assignees: {item.assignees.map((user) => user.login).join(", ") || "None"}</span>
         </div>
       )}
       {detail.reviews.map((review) => (
@@ -187,7 +171,10 @@ function Conversation({ detail }: { detail: GitHubDetail }) {
           <header>
             <strong>{review.user?.login ?? "Deleted user"}</strong>
             <GitHubState state={review.state ?? "commented"} />
-            <GitHubLink className="github-meta" href={review.html_url}>{" "}Review{" "}</GitHubLink>
+            <GitHubLink className="github-meta" href={review.html_url}>
+              {" "}
+              Review{" "}
+            </GitHubLink>
           </header>
           <Prose text={review.body} live={false} />
         </article>
@@ -197,7 +184,10 @@ function Conversation({ detail }: { detail: GitHubDetail }) {
           <header>
             <strong>{comment.user?.login ?? "Deleted user"}</strong>
             <span>{githubDate(comment.created_at!)}</span>
-            <GitHubLink className="github-meta" href={comment.html_url}>{" "}Comment{" "}</GitHubLink>
+            <GitHubLink className="github-meta" href={comment.html_url}>
+              {" "}
+              Comment{" "}
+            </GitHubLink>
           </header>
           <Prose text={comment.body} live={false} />
         </article>
@@ -210,16 +200,20 @@ function FilesChanged({ files }: { files: GitHubFile[] }) {
   const [collapsed, setCollapsed] = useState(new Set<string>());
   return (
     <VirtualList items={files} itemKey="filename" estimateSize={300} className="github-files">
-      {file => (
-        <details open={!collapsed.has(file.filename)} onToggle={event => {
-          const open = event.currentTarget.open;
-          setCollapsed(previous => {
-            if (previous.has(file.filename) === !open) return previous;
-            const next = new Set(previous);
-            if (open) next.delete(file.filename); else next.add(file.filename);
-            return next;
-          });
-        }}>
+      {(file) => (
+        <details
+          open={!collapsed.has(file.filename)}
+          onToggle={(event) => {
+            const open = event.currentTarget.open;
+            setCollapsed((previous) => {
+              if (previous.has(file.filename) === !open) return previous;
+              const next = new Set(previous);
+              if (open) next.delete(file.filename);
+              else next.add(file.filename);
+              return next;
+            });
+          }}
+        >
           <summary>
             <FileIcon path={file.filename} />
             <span>{file.filename}</span>
@@ -227,16 +221,21 @@ function FilesChanged({ files }: { files: GitHubFile[] }) {
             <span className="del">−{file.deletions}</span>
           </summary>
           {file.previous_filename && (
-            <p className="github-meta">{" "}Renamed from{" "}{file.previous_filename}
-            </p>
+            <p className="github-meta"> Renamed from {file.previous_filename}</p>
           )}
-          {!collapsed.has(file.filename) && (file.patch ? (
-            <GitHubFileDiff file={file} />
-          ) : (
-            <p className="github-meta">{" "}GitHub does not provide an inline diff for this file.{" "}
-              <GitHubLink className="github-inline-link" href={file.blob_url}>{" "}View file{" "}</GitHubLink>
-            </p>
-          ))}
+          {!collapsed.has(file.filename) &&
+            (file.patch ? (
+              <GitHubFileDiff file={file} />
+            ) : (
+              <p className="github-meta">
+                {" "}
+                GitHub does not provide an inline diff for this file.{" "}
+                <GitHubLink className="github-inline-link" href={file.blob_url}>
+                  {" "}
+                  View file{" "}
+                </GitHubLink>
+              </p>
+            ))}
         </details>
       )}
     </VirtualList>
@@ -251,7 +250,10 @@ function GitHubFileDiff({ file }: { file: GitHubFile }) {
       added: file.additions,
       removed: file.deletions,
       hunks: parsed?.hunks ?? [],
-      truncated: parsed?.truncated || (parsed?.added ?? 0) < file.additions || (parsed?.removed ?? 0) < file.deletions,
+      truncated:
+        parsed?.truncated ||
+        (parsed?.added ?? 0) < file.additions ||
+        (parsed?.removed ?? 0) < file.deletions,
     };
   }, [file]);
   return <DiffView patch={patch} showHeader={false} showHunkHeaders expanded />;
@@ -264,18 +266,18 @@ function Checks({ detail }: { detail: GitHubDetail }) {
         <div key={check.id}>
           <GitHubState state={check.conclusion ?? check.status} />
           <strong>{check.name}</strong>
-          <GitHubLink href={check.details_url}>{" "}Details{" "}</GitHubLink>
+          <GitHubLink href={check.details_url}> Details </GitHubLink>
         </div>
       ))}
       {detail.statuses.map((check) => (
         <div key={check.id}>
           <GitHubState state={check.state} />
           <strong>{check.context}</strong>
-          <GitHubLink href={check.target_url}>{" "}Details{" "}</GitHubLink>
+          <GitHubLink href={check.target_url}> Details </GitHubLink>
         </div>
       ))}
       {!detail.checks.length && !detail.statuses.length && (
-        <p className="github-meta">{" "}No checks reported for this commit.{" "}</p>
+        <p className="github-meta"> No checks reported for this commit. </p>
       )}
     </div>
   );

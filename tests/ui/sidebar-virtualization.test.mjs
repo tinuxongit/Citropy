@@ -5,19 +5,38 @@ import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
 
-test("sidebar bounds rows and loads history only when a conversation opens", { timeout: 60_000 }, async t => {
-  const root = fileURLToPath(new URL("../..", import.meta.url));
-  const server = await createServer({ configFile: false, root, cacheDir: `${root}/node_modules/.vite-sidebar-virtualization-tests`, plugins: [react()], logLevel: "error", server: { host: "127.0.0.1", port: 0, watch: null } });
-  await server.listen();
-  const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, reducedMotion: "reduce" });
-  page.setDefaultTimeout(10_000);
-  page.setDefaultNavigationTimeout(30_000);
-  const errors = [];
-  page.on("pageerror", error => errors.push(error.message));
-  t.after(async () => { await browser.close(); await server.close(); assert.deepEqual(errors, []); });
-  const path = "/sidebar-virtualization-fixture.html";
-  const html = await server.transformIndexHtml(path, `<!doctype html><html data-theme="neutral" data-scheme="dark"><body><div id="fixture" style="height:100vh;display:flex"></div><script type="module">
+test(
+  "sidebar bounds rows and loads history only when a conversation opens",
+  { timeout: 60_000 },
+  async (t) => {
+    const root = fileURLToPath(new URL("../..", import.meta.url));
+    const server = await createServer({
+      configFile: false,
+      root,
+      cacheDir: `${root}/node_modules/.vite-sidebar-virtualization-tests`,
+      plugins: [react()],
+      logLevel: "error",
+      server: { host: "127.0.0.1", port: 0, watch: null },
+    });
+    await server.listen();
+    const browser = await chromium.launch();
+    const page = await browser.newPage({
+      viewport: { width: 1280, height: 860 },
+      reducedMotion: "reduce",
+    });
+    page.setDefaultTimeout(10_000);
+    page.setDefaultNavigationTimeout(30_000);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    t.after(async () => {
+      await browser.close();
+      await server.close();
+      assert.deepEqual(errors, []);
+    });
+    const path = "/sidebar-virtualization-fixture.html";
+    const html = await server.transformIndexHtml(
+      path,
+      `<!doctype html><html data-theme="neutral" data-scheme="dark"><body><div id="fixture" style="height:100vh;display:flex"></div><script type="module">
     import React from 'react';
     import { createRoot } from 'react-dom/client';
     import { flushSync } from 'react-dom';
@@ -48,122 +67,191 @@ test("sidebar bounds rows and loads history only when a conversation opens", { t
     };
     window.updateThread = (id, patch) => flushSync(() => useApp.setState(state => applyEvents(state, [{ t: 'thread.upsert', thread: { ...state.threads[id], ...patch } }])));
     window.sidebarStore = useApp;
-  </script></body></html>`);
-  await page.route(`**${path}`, route => route.fulfill({ contentType: "text/html", body: html }));
-  await page.route("**/api/**", route => route.fulfill({ json: {} }));
-  await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
-  await page.waitForFunction(() => window.setup);
+  </script></body></html>`,
+    );
+    await page.route(`**${path}`, (route) =>
+      route.fulfill({ contentType: "text/html", body: html }),
+    );
+    await page.route("**/api/**", (route) => route.fulfill({ json: {} }));
+    await page.goto(new URL(path, server.resolvedUrls.local[0]).href);
+    await page.waitForFunction(() => window.setup);
 
-  await t.test("hover previews avoid history requests and opening still loads", async () => {
-    await page.evaluate(() => window.setup(500));
-    const first = page.getByRole("button", { name: "Chat 0", exact: true });
-    await first.waitFor();
-    assert.ok(await page.locator(".thread-row").count() < 50);
-    await page.evaluate(() => {
-      for (const row of [...document.querySelectorAll('.thread-row')].slice(0, 10)) {
-        row.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
-        row.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse' }));
+    await t.test("hover previews avoid history requests and opening still loads", async () => {
+      await page.evaluate(() => window.setup(500));
+      const first = page.getByRole("button", { name: "Chat 0", exact: true });
+      await first.waitFor();
+      assert.ok((await page.locator(".thread-row").count()) < 50);
+      await page.evaluate(() => {
+        for (const row of [...document.querySelectorAll(".thread-row")].slice(0, 10)) {
+          row.dispatchEvent(
+            new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }),
+          );
+          row.dispatchEvent(
+            new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse" }),
+          );
+        }
+      });
+      await first.hover();
+      await page.getByRole("tooltip").waitFor();
+      assert.deepEqual(
+        await page.evaluate(() => window.sent.filter((event) => event.t === "thread.load")),
+        [],
+      );
+      await first.click();
+      assert.deepEqual(
+        await page.evaluate(() =>
+          window.sent.filter((event) => event.t === "thread.load").map((event) => event.id),
+        ),
+        ["t0"],
+      );
+      await page.locator(".rail-list").evaluate((element) => {
+        element.scrollTop = 3000;
+      });
+      await page.waitForFunction(() => document.querySelector(".rail-list").scrollTop >= 3000);
+      const position = await page.locator(".rail-list").evaluate((element) => element.scrollTop);
+      await page.evaluate(() =>
+        window.updateThread("t0", {
+          title: "Updated chat",
+          usage: { input: 0, output: 100, costUsd: 0, turns: 1 },
+        }),
+      );
+      await page
+        .getByRole("button", { name: "Updated chat", exact: true })
+        .waitFor({ state: "attached" });
+      assert.ok(
+        Math.abs(
+          (await page.locator(".rail-list").evaluate((element) => element.scrollTop)) - position,
+        ) < 2,
+      );
+      assert.ok((await page.locator(".thread-row").count()) < 50);
+    });
+
+    await t.test("collapsed finished chats stay hidden and expanding stays bounded", async () => {
+      await page.evaluate(() => window.setup(5000, "closed"));
+      assert.equal(await page.locator(".thread-row").count(), 0);
+      await page.evaluate(() => window.updateThread("t4999", { title: "Updated finished chat" }));
+      assert.equal(await page.locator(".thread-row").count(), 0);
+      await page.getByRole("button", { name: "Expand Finished", exact: true }).click();
+      await page.getByRole("button", { name: "Chat 0", exact: true }).waitFor();
+      assert.ok((await page.locator(".thread-row").count()) < 50);
+      await page.locator(".rail-list").evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.getByRole("button", { name: "Updated finished chat", exact: true }).waitFor();
+      assert.ok((await page.locator(".thread-row").count()) < 50);
+      await page.locator(".rail-list").evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await page.getByRole("button", { name: "Collapse Finished", exact: true }).click();
+      await page.waitForFunction(() => document.querySelectorAll(".thread-row").length === 0);
+    });
+
+    await t.test("large subagent lists retain selection and focus while scrolling", async () => {
+      await page.evaluate(() => window.setup(560, "children"));
+      await page.getByRole("button", { name: "Chat 1", exact: true }).waitFor();
+      assert.ok((await page.locator(".thread-child").count()) < 50);
+      await page.locator(".rail-list").evaluate((element) => {
+        element.scrollTop = 17_000;
+      });
+      const last = page.getByRole("button", { name: "Chat 500", exact: true });
+      await last.waitFor();
+      await last.focus();
+      await page.locator(".rail-list").evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.getByRole("button", { name: "Chat 559", exact: true }).waitFor();
+      assert.ok(await last.evaluate((element) => element === document.activeElement));
+      await last.click();
+      assert.equal(
+        await page.evaluate(() => window.sidebarStore.getState().activeThreadId),
+        "t500",
+      );
+      assert.ok(
+        (await page.evaluate(() => window.sent)).some(
+          (event) => event.t === "thread.load" && event.id === "t500",
+        ),
+      );
+      assert.ok(
+        await last.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          const viewport = document.querySelector(".rail-list").getBoundingClientRect();
+          return bounds.top >= viewport.top && bounds.bottom <= viewport.bottom;
+        }),
+      );
+      await last.focus();
+      await page.locator(".rail-list").evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.getByRole("button", { name: "Chat 559", exact: true }).waitFor();
+      assert.ok(await last.evaluate((element) => element === document.activeElement));
+      assert.ok((await page.locator('.thread-entry[data-thread-id="t0"]').count()) === 1);
+      assert.ok((await page.locator(".thread-child").count()) < 50);
+      await page.getByRole("textbox", { name: "Find a conversation", exact: true }).focus();
+      await page.locator(".rail-list").evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await page.waitForFunction(() => document.querySelector('.thread-child[data-active="true"]'));
+      assert.ok(
+        await page.locator(".selection-highlight").evaluate((element) => {
+          if (element.hidden) return true;
+          const bounds = element.getBoundingClientRect();
+          const viewport = document.querySelector(".rail-list").getBoundingClientRect();
+          return bounds.bottom <= viewport.top || bounds.top >= viewport.bottom;
+        }),
+      );
+      for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: 860 });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        assert.ok((await page.locator(".thread-child").count()) < 50);
+        await page.screenshot({ path: `/tmp/citropy-sidebar-optimized-${width}.png` });
       }
     });
-    await first.hover();
-    await page.getByRole("tooltip").waitFor();
-    assert.deepEqual(await page.evaluate(() => window.sent.filter(event => event.t === 'thread.load')), []);
-    await first.click();
-    assert.deepEqual(await page.evaluate(() => window.sent.filter(event => event.t === 'thread.load').map(event => event.id)), ["t0"]);
-    await page.locator(".rail-list").evaluate(element => { element.scrollTop = 3000; });
-    await page.waitForFunction(() => document.querySelector('.rail-list').scrollTop >= 3000);
-    const position = await page.locator(".rail-list").evaluate(element => element.scrollTop);
-    await page.evaluate(() => window.updateThread('t0', { title: 'Updated chat', usage: { input: 0, output: 100, costUsd: 0, turns: 1 } }));
-    await page.getByRole("button", { name: "Updated chat", exact: true }).waitFor({ state: "attached" });
-    assert.ok(Math.abs(await page.locator(".rail-list").evaluate(element => element.scrollTop) - position) < 2);
-    assert.ok(await page.locator(".thread-row").count() < 50);
-  });
 
-  await t.test("collapsed finished chats stay hidden and expanding stays bounded", async () => {
-    await page.evaluate(() => window.setup(5000, 'closed'));
-    assert.equal(await page.locator(".thread-row").count(), 0);
-    await page.evaluate(() => window.updateThread('t4999', { title: 'Updated finished chat' }));
-    assert.equal(await page.locator(".thread-row").count(), 0);
-    await page.getByRole("button", { name: "Expand Finished", exact: true }).click();
-    await page.getByRole("button", { name: "Chat 0", exact: true }).waitFor();
-    assert.ok(await page.locator(".thread-row").count() < 50);
-    await page.locator(".rail-list").evaluate(element => { element.scrollTop = element.scrollHeight; });
-    await page.getByRole("button", { name: "Updated finished chat", exact: true }).waitFor();
-    assert.ok(await page.locator(".thread-row").count() < 50);
-    await page.locator(".rail-list").evaluate(element => { element.scrollTop = 0; });
-    await page.getByRole("button", { name: "Collapse Finished", exact: true }).click();
-    await page.waitForFunction(() => document.querySelectorAll('.thread-row').length === 0);
-  });
+    await t.test("finished chats show a tick until they are read", async () => {
+      await page.setViewportSize({ width: 1280, height: 860 });
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      await page.evaluate(() => window.setup(2));
+      const tick = (id) =>
+        page.locator(
+          `.thread-entry[data-thread-id="${id}"] .thread-row [aria-label="Finished, not opened yet"]`,
+        );
+      await page.evaluate(() => window.updateThread("t1", { unread: true }));
+      await tick("t1").waitFor();
+      assert.equal(await tick("t1").locator("svg").getAttribute("data-animate"), "false");
 
-  await t.test("large subagent lists retain selection and focus while scrolling", async () => {
-    await page.evaluate(() => window.setup(560, 'children'));
-    await page.getByRole("button", { name: "Chat 1", exact: true }).waitFor();
-    assert.ok(await page.locator(".thread-child").count() < 50);
-    await page.locator(".rail-list").evaluate(element => { element.scrollTop = 17_000; });
-    const last = page.getByRole("button", { name: "Chat 500", exact: true });
-    await last.waitFor();
-    await last.focus();
-    await page.locator(".rail-list").evaluate(element => { element.scrollTop = element.scrollHeight; });
-    await page.getByRole("button", { name: "Chat 559", exact: true }).waitFor();
-    assert.ok(await last.evaluate(element => element === document.activeElement));
-    await last.click();
-    assert.equal(await page.evaluate(() => window.sidebarStore.getState().activeThreadId), "t500");
-    assert.ok((await page.evaluate(() => window.sent)).some(event => event.t === 'thread.load' && event.id === 't500'));
-    assert.ok(await last.evaluate(element => {
-      const bounds = element.getBoundingClientRect();
-      const viewport = document.querySelector('.rail-list').getBoundingClientRect();
-      return bounds.top >= viewport.top && bounds.bottom <= viewport.bottom;
-    }));
-    await last.focus();
-    await page.locator(".rail-list").evaluate(element => { element.scrollTop = element.scrollHeight; });
-    await page.getByRole("button", { name: "Chat 559", exact: true }).waitFor();
-    assert.ok(await last.evaluate(element => element === document.activeElement));
-    assert.ok(await page.locator('.thread-entry[data-thread-id="t0"]').count() === 1);
-    assert.ok(await page.locator(".thread-child").count() < 50);
-    await page.getByRole("textbox", { name: "Find a conversation", exact: true }).focus();
-    await page.locator(".rail-list").evaluate(element => { element.scrollTop = 0; });
-    await page.waitForFunction(() => document.querySelector('.thread-child[data-active="true"]'));
-    assert.ok(await page.locator(".selection-highlight").evaluate(element => {
-      if (element.hidden) return true;
-      const bounds = element.getBoundingClientRect();
-      const viewport = document.querySelector('.rail-list').getBoundingClientRect();
-      return bounds.bottom <= viewport.top || bounds.top >= viewport.bottom;
-    }));
-    for (const width of [1280, 390]) {
-      await page.setViewportSize({ width, height: 860 });
-      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-      assert.ok(await page.locator(".thread-child").count() < 50);
-      await page.screenshot({ path: `/tmp/citropy-sidebar-optimized-${width}.png` });
-    }
-  });
+      await page.evaluate(() => window.updateThread("t0", { status: "working", running: true }));
+      await page.evaluate(() =>
+        window.updateThread("t0", { status: "idle", running: false, unread: true }),
+      );
+      assert.equal(await tick("t0").locator("svg").getAttribute("data-animate"), "true");
+      await page.waitForFunction(
+        () =>
+          document.querySelector('.thread-entry[data-thread-id="t0"] .thread-done').getAnimations()
+            .length === 0,
+      );
 
-  await t.test("finished chats show a tick until they are read", async () => {
-    await page.setViewportSize({ width: 1280, height: 860 });
-    await page.emulateMedia({ reducedMotion: "no-preference" });
-    await page.evaluate(() => window.setup(2));
-    const tick = id => page.locator(`.thread-entry[data-thread-id="${id}"] .thread-row [aria-label="Finished, not opened yet"]`);
-    await page.evaluate(() => window.updateThread('t1', { unread: true }));
-    await tick('t1').waitFor();
-    assert.equal(await tick('t1').locator('svg').getAttribute('data-animate'), 'false');
-
-    await page.evaluate(() => window.updateThread('t0', { status: 'working', running: true }));
-    await page.evaluate(() => window.updateThread('t0', { status: 'idle', running: false, unread: true }));
-    assert.equal(await tick('t0').locator('svg').getAttribute('data-animate'), 'true');
-    await page.waitForFunction(() => document.querySelector('.thread-entry[data-thread-id="t0"] .thread-done').getAnimations().length === 0);
-
-    await page.evaluate(() => window.updateThread('t0', { unread: undefined }));
-    await tick('t0').waitFor({ state: 'detached' });
-    assert.equal(await page.locator('.thread-entry[data-thread-id="t0"] .thread-row time').count(), 1);
-  });
-
-  await t.test("snoozed chats count down to when they wake", async () => {
-    await page.evaluate(() => window.setup(2));
-    await page.evaluate(() => {
-      window.sidebarStore.setState({ sidebarGroups: { snoozed: true } });
-      window.updateThread('t1', { snoozedUntil: Date.now() + (2 * 60 + 30) * 60_000 });
+      await page.evaluate(() => window.updateThread("t0", { unread: undefined }));
+      await tick("t0").waitFor({ state: "detached" });
+      assert.equal(
+        await page.locator('.thread-entry[data-thread-id="t0"] .thread-row time').count(),
+        1,
+      );
     });
-    const time = page.locator('.thread-entry[data-thread-id="t1"] .thread-row-time');
-    assert.equal(await time.textContent(), "2h 30m");
-    assert.match(await page.locator('.thread-entry[data-thread-id="t1"] .thread-row').getAttribute("aria-description"), /^Wakes /);
-  });
-});
+
+    await t.test("snoozed chats count down to when they wake", async () => {
+      await page.evaluate(() => window.setup(2));
+      await page.evaluate(() => {
+        window.sidebarStore.setState({ sidebarGroups: { snoozed: true } });
+        window.updateThread("t1", { snoozedUntil: Date.now() + (2 * 60 + 30) * 60_000 });
+      });
+      const time = page.locator('.thread-entry[data-thread-id="t1"] .thread-row-time');
+      assert.equal(await time.textContent(), "2h 30m");
+      assert.match(
+        await page
+          .locator('.thread-entry[data-thread-id="t1"] .thread-row')
+          .getAttribute("aria-description"),
+        /^Wakes /,
+      );
+    });
+  },
+);

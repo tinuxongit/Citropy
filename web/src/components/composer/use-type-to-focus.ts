@@ -13,20 +13,24 @@ const TEXT_FIELDS = [
   '[role="textbox"]',
 ].join(",");
 
-const OWNS_TYPING = [
-  TEXT_FIELDS,
-  '[role="menuitem"]',
-  '[role="option"]',
-].join(",");
+const OWNS_TYPING = [TEXT_FIELDS, '[role="menuitem"]', '[role="option"]'].join(",");
 
 function redirectsToComposer(event: Event): boolean {
   const target = event.target;
-  const inChat = target === document.body || (target instanceof Element && target.closest(".stage") !== null && target.closest(OWNS_TYPING) === null);
+  const inChat =
+    target === document.body ||
+    (target instanceof Element &&
+      target.closest(".stage") !== null &&
+      target.closest(OWNS_TYPING) === null);
   return !event.defaultPrevented && inChat && document.querySelector(OPEN_OVERLAYS) === null;
 }
 
 function returnsToComposer(active: Element | null): boolean {
-  return active?.closest(TEXT_FIELDS) == null && !document.getSelection()?.toString() && document.querySelector(OPEN_OVERLAYS) === null;
+  return (
+    active?.closest(TEXT_FIELDS) == null &&
+    !document.getSelection()?.toString() &&
+    document.querySelector(OPEN_OVERLAYS) === null
+  );
 }
 
 function pastedFiles(data: DataTransfer, inline: boolean): File[] {
@@ -36,7 +40,9 @@ function pastedFiles(data: DataTransfer, inline: boolean): File[] {
     .filter((file): file is File => Boolean(file));
   if (files.length || inline) return files;
   const text = data.getData("text/plain");
-  return new Blob([text]).size >= PASTE_ATTACHMENT_BYTES ? [new File([text], PASTED_TEXT_NAME, { type: "text/plain" })] : [];
+  return new Blob([text]).size >= PASTE_ATTACHMENT_BYTES
+    ? [new File([text], PASTED_TEXT_NAME, { type: "text/plain" })]
+    : [];
 }
 
 export function useTypeToFocus({
@@ -62,8 +68,18 @@ export function useTypeToFocus({
       document.execCommand("insertText", false, text);
     };
     const onKey = (event: KeyboardEvent) => {
-      inlinePaste.current = (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "v";
-      if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.key.length !== 1 || event.key === " " || !redirectsToComposer(event)) return;
+      inlinePaste.current =
+        (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "v";
+      if (
+        event.isComposing ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.key.length !== 1 ||
+        event.key === " " ||
+        !redirectsToComposer(event)
+      )
+        return;
       event.preventDefault();
       insert(event.key);
     };

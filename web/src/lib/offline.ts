@@ -14,11 +14,7 @@ function save(offline: Record<string, QueuedMessage[]>): void {
   environmentStorage.setItem("citropy.offline", JSON.stringify(offline));
 }
 
-export function holdMessage(
-  threadId: string,
-  text: string,
-  attachments: Attachment[],
-): void {
+export function holdMessage(threadId: string, text: string, attachments: Attachment[]): void {
   const { offline } = useApp.getState();
   const item = { id: randomId(), text, attachments, createdAt: Date.now() };
   save({ ...offline, [threadId]: [...(offline[threadId] ?? []), item] });
@@ -50,7 +46,13 @@ export async function flushHeld(): Promise<void> {
         }
         const id = requestId();
         const accepted = awaitResponse(id);
-        send({ t: "thread.send", threadId, text: item.text, attachments: item.attachments, requestId: id });
+        send({
+          t: "thread.send",
+          threadId,
+          text: item.text,
+          attachments: item.attachments,
+          requestId: id,
+        });
         try {
           await accepted;
         } catch (error) {
@@ -60,7 +62,8 @@ export async function flushHeld(): Promise<void> {
         if (signal.aborted) {
           const offline = readOffline(scope);
           const remaining = offline[threadId]?.filter((entry) => entry.id !== item.id) ?? [];
-          if (remaining.length) offline[threadId] = remaining; else delete offline[threadId];
+          if (remaining.length) offline[threadId] = remaining;
+          else delete offline[threadId];
           environmentStorage.setItem("citropy.offline", JSON.stringify(offline), scope);
           return;
         }

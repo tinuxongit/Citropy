@@ -19,9 +19,14 @@ function newerFirst(a: number[], b: number[]) {
 }
 
 export function byFamily(models: ModelOption[]): ModelOption[] {
-  const families = [...new Set(models.map(model => family(model.label)))];
+  const families = [...new Set(models.map((model) => family(model.label)))];
   return models
-    .map((model, index) => ({ model, index, family: families.indexOf(family(model.label)), version: version(model.label) }))
+    .map((model, index) => ({
+      model,
+      index,
+      family: families.indexOf(family(model.label)),
+      version: version(model.label),
+    }))
     .sort((a, b) => a.family - b.family || newerFirst(a.version, b.version) || a.index - b.index)
-    .map(entry => entry.model);
+    .map((entry) => entry.model);
 }

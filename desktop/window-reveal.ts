@@ -1,6 +1,9 @@
 import type { BrowserWindow } from "electron";
 
-export function revealDesktopWindow(window: BrowserWindow | null | undefined, { maximized = false } = {}) {
+export function revealDesktopWindow(
+  window: BrowserWindow | null | undefined,
+  { maximized = false } = {},
+) {
   if (!window || window.isDestroyed()) return;
   if (window.isMinimized()) window.restore();
   window.show();

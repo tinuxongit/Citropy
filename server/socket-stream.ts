@@ -12,7 +12,14 @@ export function encodeServerEvent(event: ServerEvent): string {
 }
 
 function transcriptEvent(event: ServerEvent): boolean {
-  return event.t === "thread.messages" || event.t === "message.add" || event.t === "message.patch" || event.t === "part.add" || event.t === "part.append" || event.t === "part.patch";
+  return (
+    event.t === "thread.messages" ||
+    event.t === "message.add" ||
+    event.t === "message.patch" ||
+    event.t === "part.add" ||
+    event.t === "part.append" ||
+    event.t === "part.patch"
+  );
 }
 
 type PendingEvent = {
@@ -33,7 +40,12 @@ export class SocketStream {
   #write: (message: string) => void;
   #history: (event: Extract<ServerEvent, { t: "thread.messages" }>) => ServerEvent;
 
-  constructor(after: number, threads: string[], write: (message: string) => void, history: (event: Extract<ServerEvent, { t: "thread.messages" }>) => ServerEvent) {
+  constructor(
+    after: number,
+    threads: string[],
+    write: (message: string) => void,
+    history: (event: Extract<ServerEvent, { t: "thread.messages" }>) => ServerEvent,
+  ) {
     this.#after = after;
     this.#sequence = after;
     this.#threads = new Set(threads);
@@ -58,18 +70,29 @@ export class SocketStream {
       return;
     }
     this.#sequence = event.sequence;
-    if (transcriptEvent(event) && "threadId" in event && typeof event.threadId === "string" && !this.#threads.has(event.threadId)) {
+    if (
+      transcriptEvent(event) &&
+      "threadId" in event &&
+      typeof event.threadId === "string" &&
+      !this.#threads.has(event.threadId)
+    ) {
       this.#schedule();
       return;
     }
     if (event.t === "thread.messages") event = this.#history(event);
-    const key = event.t === "part.patch" || event.t === "part.append"
-      ? `${event.t}:${event.threadId}:${event.messageId}:${event.partId}`
-      : event.t === "thread.upsert" ? `thread.upsert:${event.thread.id}` : undefined;
+    const key =
+      event.t === "part.patch" || event.t === "part.append"
+        ? `${event.t}:${event.threadId}:${event.messageId}:${event.partId}`
+        : event.t === "thread.upsert"
+          ? `thread.upsert:${event.thread.id}`
+          : undefined;
     const index = key === undefined ? undefined : this.#replaceable.get(key);
     const previous = index === undefined ? undefined : this.#events[index];
     let bytes: number;
-    let textEnd = event.t === "part.append" && event.text.length ? event.text.charCodeAt(event.text.length - 1) : undefined;
+    let textEnd =
+      event.t === "part.append" && event.text.length
+        ? event.text.charCodeAt(event.text.length - 1)
+        : undefined;
     let patchSizes = previous?.patchSizes;
     if (previous && event.t === "part.patch" && previous.event.t === "part.patch") {
       if (!patchSizes) {
@@ -91,13 +114,28 @@ export class SocketStream {
         else patchSizes.fields.delete(key);
       }
       patchSizes.bytes += Math.max(0, patchSizes.fields.size - 1) - Math.max(0, oldCount - 1);
-      bytes = previous.bytes + patchSizes.bytes - oldBytes
-        + String(event.sequence).length - String(previous.event.sequence).length;
+      bytes =
+        previous.bytes +
+        patchSizes.bytes -
+        oldBytes +
+        String(event.sequence).length -
+        String(previous.event.sequence).length;
       event = { ...event, patch: { ...previous.event.patch, ...event.patch } };
     } else if (previous && event.t === "part.append" && previous.event.t === "part.append") {
-      bytes = previous.bytes + Buffer.byteLength(JSON.stringify(event.text)) - 2
-        + String(event.sequence).length - String(previous.event.sequence).length;
-      if (previous.textEnd !== undefined && previous.textEnd >= 0xd800 && previous.textEnd <= 0xdbff && event.text.charCodeAt(0) >= 0xdc00 && event.text.charCodeAt(0) <= 0xdfff) bytes -= 8;
+      bytes =
+        previous.bytes +
+        Buffer.byteLength(JSON.stringify(event.text)) -
+        2 +
+        String(event.sequence).length -
+        String(previous.event.sequence).length;
+      if (
+        previous.textEnd !== undefined &&
+        previous.textEnd >= 0xd800 &&
+        previous.textEnd <= 0xdbff &&
+        event.text.charCodeAt(0) >= 0xdc00 &&
+        event.text.charCodeAt(0) <= 0xdfff
+      )
+        bytes -= 8;
       if (!event.text.length) textEnd = previous.textEnd;
       event = { ...event, text: previous.event.text + event.text };
     } else {

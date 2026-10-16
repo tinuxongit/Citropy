@@ -6,8 +6,13 @@ function ready(account: Pick<ProviderInfo, "available" | "signedIn"> | undefined
   return Boolean(account?.available && account.signedIn);
 }
 
-export function providerAccount(provider: ProviderInfo | undefined, instanceId?: string | null): { instance: ProviderAccountInfo | undefined; models: ModelOption[]; usable: boolean } {
-  const instance = instanceId ? provider?.instances?.find(entry => entry.id === instanceId) : undefined;
+export function providerAccount(
+  provider: ProviderInfo | undefined,
+  instanceId?: string | null,
+): { instance: ProviderAccountInfo | undefined; models: ModelOption[]; usable: boolean } {
+  const instance = instanceId
+    ? provider?.instances?.find((entry) => entry.id === instanceId)
+    : undefined;
   return {
     instance,
     models: (instanceId ? instance : provider)?.models ?? [],

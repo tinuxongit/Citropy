@@ -15,17 +15,22 @@ const GIT: Runtime<GitRuntimeStatus> = {
   id: "git",
   label: "Git",
   installLabel: "Install Git",
-  purpose: (status) => status?.supported ? `Tracks changes in your projects. ${status.method}` : "Tracks changes in your projects.",
+  purpose: (status) =>
+    status?.supported
+      ? `Tracks changes in your projects. ${status.method}`
+      : "Tracks changes in your projects.",
   installed: (status) => `Git ${status.version ?? ""}`,
   unsupported: (status) => status.method,
 };
 
 export function RuntimeDownloads({ onInstalled }: { onInstalled?: () => void }) {
-  return <>
-    <h2 className="settings-group-heading settings-group-spaced">Runtime downloads</h2>
-    <div className="settings-group" aria-label="Runtime downloads">
-      <RuntimeRow runtime={NODE} onInstalled={onInstalled} />
-      <RuntimeRow runtime={GIT} onInstalled={onInstalled} />
-    </div>
-  </>;
+  return (
+    <>
+      <h2 className="settings-group-heading settings-group-spaced">Runtime downloads</h2>
+      <div className="settings-group" aria-label="Runtime downloads">
+        <RuntimeRow runtime={NODE} onInstalled={onInstalled} />
+        <RuntimeRow runtime={GIT} onInstalled={onInstalled} />
+      </div>
+    </>
+  );
 }

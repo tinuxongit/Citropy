@@ -3,7 +3,16 @@ import { canRunAsAdmin } from "../admin-command.ts";
 import { writeLog } from "../logs.ts";
 import { saveSharingSettings, sharingSettings } from "./devices.ts";
 import { createDeviceProxy, type DeviceProxy } from "./proxy.ts";
-import { allowOperator, operatorCommand, readStatus, serve, servedTarget, stopServing, TailscaleCommandError, tailscaleExecutable } from "./tailscale-cli.ts";
+import {
+  allowOperator,
+  operatorCommand,
+  readStatus,
+  serve,
+  servedTarget,
+  stopServing,
+  TailscaleCommandError,
+  tailscaleExecutable,
+} from "./tailscale-cli.ts";
 
 const SETTINGS = {
   httpsPort: 443,
@@ -39,17 +48,29 @@ let recheck: NodeJS.Timeout | undefined;
 
 function requireExecutable(): string {
   const executable = tailscaleExecutable();
-  if (!executable) throw new Problem("Tailscale is not installed on this computer.", { link: { label: "Download Tailscale", url: SETTINGS.downloadUrl } });
+  if (!executable)
+    throw new Problem("Tailscale is not installed on this computer.", {
+      link: { label: "Download Tailscale", url: SETTINGS.downloadUrl },
+    });
   return executable;
 }
 
 async function tailnetName(executable: string): Promise<string> {
   const status = await readStatus(executable).catch((error: unknown) => {
-    if (error instanceof TailscaleCommandError && !error.accessDenied) throw new Problem("Tailscale is not running on this computer. Start it and Citropy connects on its own.");
+    if (error instanceof TailscaleCommandError && !error.accessDenied)
+      throw new Problem(
+        "Tailscale is not running on this computer. Start it and Citropy connects on its own.",
+      );
     throw error;
   });
-  if (status.backendState !== "Running") throw new Problem("Tailscale is not connected. Open Tailscale and sign in, and Citropy connects on its own.");
-  if (!status.dnsName) throw new Problem("Turn on MagicDNS for your tailnet so this computer gets a web address.", { link: { label: "Open DNS settings", url: SETTINGS.dnsSettingsUrl } });
+  if (status.backendState !== "Running")
+    throw new Problem(
+      "Tailscale is not connected. Open Tailscale and sign in, and Citropy connects on its own.",
+    );
+  if (!status.dnsName)
+    throw new Problem("Turn on MagicDNS for your tailnet so this computer gets a web address.", {
+      link: { label: "Open DNS settings", url: SETTINGS.dnsSettingsUrl },
+    });
   return status.dnsName;
 }
 
@@ -63,7 +84,14 @@ async function listenLocally(): Promise<string> {
     const wanted = sharingSettings.tailscalePort ?? 0;
     await new Promise<void>((resolve, reject) => {
       created.server.once("error", (error: NodeJS.ErrnoException) =>
-        reject(error.code === "EADDRINUSE" ? new Problem(`Another program is using port ${wanted}, which Citropy shares over Tailscale. Close that program, then turn Tailscale sharing off and on.`) : error));
+        reject(
+          error.code === "EADDRINUSE"
+            ? new Problem(
+                `Another program is using port ${wanted}, which Citropy shares over Tailscale. Close that program, then turn Tailscale sharing off and on.`,
+              )
+            : error,
+        ),
+      );
       created.server.listen(wanted, "127.0.0.1", resolve);
     });
     proxy = created;
@@ -87,20 +115,41 @@ async function connect(signal: AbortSignal): Promise<void> {
   const url = publicUrl(dnsName);
   const mapped = await servedTarget(executable, dnsName, SETTINGS.httpsPort);
   if (mapped && mapped !== target)
-    throw new Problem(`Tailscale already shares ${mapped} at ${url}. Turn that off to share Citropy there.`, { command: `tailscale serve --https=${SETTINGS.httpsPort} off` });
+    throw new Problem(
+      `Tailscale already shares ${mapped} at ${url}. Turn that off to share Citropy there.`,
+      { command: `tailscale serve --https=${SETTINGS.httpsPort} off` },
+    );
   if (!mapped) {
     if (state.status !== "approval") state = { status: "connecting" };
-    await serve(executable, SETTINGS.httpsPort, target, SETTINGS.approvalTimeoutMs, signal, (link) => {
-      state = { status: "approval", message: "Your tailnet needs HTTPS turned on. Approve it on the Tailscale page, and Citropy finishes on its own.", link: { label: "Turn on HTTPS", url: link } };
-    });
+    await serve(
+      executable,
+      SETTINGS.httpsPort,
+      target,
+      SETTINGS.approvalTimeoutMs,
+      signal,
+      (link) => {
+        state = {
+          status: "approval",
+          message:
+            "Your tailnet needs HTTPS turned on. Approve it on the Tailscale page, and Citropy finishes on its own.",
+          link: { label: "Turn on HTTPS", url: link },
+        };
+      },
+    );
   }
   state = { status: "on", url };
 }
 
 function problemState(error: unknown): TailscaleState {
-  if (error instanceof Problem) return { status: "problem", message: error.message, ...error.details };
+  if (error instanceof Problem)
+    return { status: "problem", message: error.message, ...error.details };
   if (error instanceof TailscaleCommandError && error.accessDenied)
-    return { status: "problem", message: "Tailscale needs your permission before Citropy can share this computer.", command: operatorCommand(), canFix: canRunAsAdmin };
+    return {
+      status: "problem",
+      message: "Tailscale needs your permission before Citropy can share this computer.",
+      command: operatorCommand(),
+      canFix: canRunAsAdmin,
+    };
   const message = error instanceof Error ? error.message : String(error);
   writeLog("error", "sharing", `Tailscale: ${message}`);
   return { status: "problem", message: `Tailscale reported: ${message}` };
@@ -113,7 +162,9 @@ function refresh(): Promise<void> {
     .catch((error: unknown) => {
       if (!controller.signal.aborted) state = problemState(error);
     })
-    .finally(() => { attempt = undefined; });
+    .finally(() => {
+      attempt = undefined;
+    });
   return attempt;
 }
 
@@ -144,7 +195,10 @@ export async function stopTailscale(): Promise<void> {
   if (!wasServing || !sharingSettings.tailscalePort) return;
   const executable = requireExecutable();
   const dnsName = await tailnetName(executable);
-  if (await servedTarget(executable, dnsName, SETTINGS.httpsPort) === localTarget(sharingSettings.tailscalePort))
+  if (
+    (await servedTarget(executable, dnsName, SETTINGS.httpsPort)) ===
+    localTarget(sharingSettings.tailscalePort)
+  )
     await stopServing(executable, SETTINGS.httpsPort);
 }
 

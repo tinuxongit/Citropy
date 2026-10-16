@@ -3,7 +3,9 @@ import { isSectionShown, settingsSections, type SettingsSection } from "./settin
 import { isNarrowViewport } from "./use-narrow-viewport.ts";
 
 const LEAD_SENTENCE = /^(.+?[.!?])\s+(?=[A-Z0-9"'])(.+)$/s;
-const SETTINGS_PLACE = new RegExp(`(?<=Settings > )(${settingsSections.map((section) => section.name).join("|")})\\b`);
+const SETTINGS_PLACE = new RegExp(
+  `(?<=Settings > )(${settingsSections.map((section) => section.name).join("|")})\\b`,
+);
 
 export type NoteText = (string | SettingsSection)[];
 
@@ -27,7 +29,8 @@ export function noteText(text: string): NoteText {
 
 export function mergedSections(notes: ReleaseNotes): ReleaseNoteSection[] {
   const byTitle = new Map<string, string[]>();
-  for (const section of notes.sections) byTitle.set(section.title, [...(byTitle.get(section.title) ?? []), ...section.items]);
+  for (const section of notes.sections)
+    byTitle.set(section.title, [...(byTitle.get(section.title) ?? []), ...section.items]);
   return [...byTitle].map(([title, items]) => ({ title, items }));
 }
 

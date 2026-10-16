@@ -46,13 +46,20 @@ export function answer(id: string, decision: Decision): void {
 }
 
 export function cancelThread(threadId: string, forgetAllowed = true): void {
-  for (const entry of [...pending.values()]) if (entry.request.threadId === threadId) settle(entry, "deny");
+  for (const entry of [...pending.values()])
+    if (entry.request.threadId === threadId) settle(entry, "deny");
   if (forgetAllowed) alwaysAllowed.delete(threadId);
 }
 
-export function ask(threadId: string, tool: string, input: unknown, options: { signal?: AbortSignal } = {}): Promise<Decision> {
+export function ask(
+  threadId: string,
+  tool: string,
+  input: unknown,
+  options: { signal?: AbortSignal } = {},
+): Promise<Decision> {
   const thread = store.threads.get(threadId);
-  if (!thread || thread.status === "stopped" || options.signal?.aborted) return Promise.resolve("deny");
+  if (!thread || thread.status === "stopped" || options.signal?.aborted)
+    return Promise.resolve("deny");
   if (alwaysAllowed.get(threadId)?.has(tool)) return Promise.resolve("allow");
   const project = store.projects.get(thread.projectId);
   const root = (project?.chats ? thread.workspacePath : project?.path) ?? "";
@@ -68,7 +75,11 @@ export function ask(threadId: string, tool: string, input: unknown, options: { s
     createdAt: Date.now(),
   };
   return new Promise<Decision>((resolve) => {
-    const entry: Pending = { request, resolve, timer: setTimeout(() => settle(entry, "deny"), ANSWER_WAIT_MS) };
+    const entry: Pending = {
+      request,
+      resolve,
+      timer: setTimeout(() => settle(entry, "deny"), ANSWER_WAIT_MS),
+    };
     entry.timer.unref();
     pending.set(request.id, entry);
     if (thread.running) store.patchThread(threadId, { status: "awaiting", activeTool: undefined });

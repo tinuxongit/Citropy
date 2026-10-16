@@ -1,4 +1,10 @@
-import { describeSchedule, timeLabel, type Routine, type RoutineDraft, type RoutineSchedule } from "../../../shared/routines.ts";
+import {
+  describeSchedule,
+  timeLabel,
+  type Routine,
+  type RoutineDraft,
+  type RoutineSchedule,
+} from "../../../shared/routines.ts";
 import { formatDate, until } from "./format.ts";
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";

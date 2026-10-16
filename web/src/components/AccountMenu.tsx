@@ -2,7 +2,11 @@ import { useId, type ReactNode } from "react";
 import { UserIcon } from "./icons/people.tsx";
 import { useApp } from "../lib/store.ts";
 
-export function AccountMenu({ open, onOpenChange, children }: {
+export function AccountMenu({
+  open,
+  onOpenChange,
+  children,
+}: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: ReactNode;
@@ -12,18 +16,24 @@ export function AccountMenu({ open, onOpenChange, children }: {
 
   return (
     <div className="account-menu" data-open={open || undefined}>
-      <div className="account-menu-items" id={id}>{children}</div>
+      <div className="account-menu-items" id={id}>
+        {children}
+      </div>
       <button
         type="button"
         className="strip-action account-menu-button"
         aria-label={account?.login ?? "Account"}
-        title={open ? undefined : account?.login ?? "Account"}
+        title={open ? undefined : (account?.login ?? "Account")}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => onOpenChange(!open)}
       >
         <span className="strip-action-face">
-          {account ? <img className="account-menu-avatar" src={account.avatar_url} alt="" /> : <UserIcon size={18} />}
+          {account ? (
+            <img className="account-menu-avatar" src={account.avatar_url} alt="" />
+          ) : (
+            <UserIcon size={18} />
+          )}
         </span>
       </button>
     </div>

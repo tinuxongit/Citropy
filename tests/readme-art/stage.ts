@@ -1,7 +1,9 @@
 import { ASCII_FONT, startAsciiNoise } from "../../web/src/lib/ascii-noise.ts";
 
 declare global {
-  interface Window { paintArt(html: string): Promise<void> }
+  interface Window {
+    paintArt(html: string): Promise<void>;
+  }
 }
 
 window.paintArt = async (html) => {
@@ -9,8 +11,14 @@ window.paintArt = async (html) => {
   await Promise.all([document.fonts.ready, document.fonts.load(ASCII_FONT)]);
   for (const canvas of document.querySelectorAll<HTMLCanvasElement>("canvas.ascii-field")) {
     const { color, star, center } = canvas.dataset;
-    if (!color || !star || !center) throw new Error("An ASCII field needs data-color, data-star and data-center.");
-    startAsciiNoise(canvas, { color, starColor: star, animate: false, stage: () => ({ left: 0, center: canvas.clientWidth * Number(center) }) });
+    if (!color || !star || !center)
+      throw new Error("An ASCII field needs data-color, data-star and data-center.");
+    startAsciiNoise(canvas, {
+      color,
+      starColor: star,
+      animate: false,
+      stage: () => ({ left: 0, center: canvas.clientWidth * Number(center) }),
+    });
   }
   await Promise.all([...document.images].map((image) => image.decode()));
 };

@@ -1,5 +1,12 @@
 import {
-  useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type CSSProperties, type KeyboardEvent, type PointerEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
 } from "react";
 import { JustifyIcon } from "../icons/editing.tsx";
 import { WindowIcon } from "../icons/WindowIcon.tsx";
@@ -20,9 +27,35 @@ import { cachedImage, loadImage, storeImage } from "./drawing-images.ts";
 import { DrawingStyle, DrawingTools, TOOL_KEYS } from "./DrawingToolbar.tsx";
 import { useDrawing } from "./use-drawing.ts";
 import {
-  INK, boxAround, brushWidth, constrain, contains, drawMarks, drawPaper, drawSelection, inkColor, isFillable, isMovable, markAt,
-  markBox, moveLayer, moveMark, paperWith, renderImage, restack, settleStroke, tenth, textFont, textFontSize,
-  type FrameKind, type FreehandTool, type Mark, type Pattern, type Point, type Tone, type Tool,
+  INK,
+  boxAround,
+  brushWidth,
+  constrain,
+  contains,
+  drawMarks,
+  drawPaper,
+  drawSelection,
+  inkColor,
+  isFillable,
+  isMovable,
+  markAt,
+  markBox,
+  moveLayer,
+  moveMark,
+  paperWith,
+  renderImage,
+  restack,
+  settleStroke,
+  tenth,
+  textFont,
+  textFontSize,
+  type FrameKind,
+  type FreehandTool,
+  type Mark,
+  type Pattern,
+  type Point,
+  type Tone,
+  type Tool,
 } from "./marks.ts";
 import "../../styles/drawing.css";
 
@@ -42,17 +75,28 @@ const FRAMES: Array<{ value: FrameKind | undefined; label: string; icon: typeof 
   { value: "phone", label: "Phone screen", icon: PhoneIcon },
 ];
 
-interface Bounds { width: number; height: number }
-type Gesture = { kind: "move"; from: Point; to: Point } | { kind: "box"; from: Point; to: Point; add: boolean };
+interface Bounds {
+  width: number;
+  height: number;
+}
+type Gesture =
+  { kind: "move"; from: Point; to: Point } | { kind: "box"; from: Point; to: Point; add: boolean };
 
-interface CachedLayer { canvas: HTMLCanvasElement; marks: Mark[]; ink: string; imagesLoaded: number }
+interface CachedLayer {
+  canvas: HTMLCanvasElement;
+  marks: Mark[];
+  ink: string;
+  imagesLoaded: number;
+}
 
 const PASTE_OFFSET = 16;
 const CLIPBOARD_TYPE = "application/x-citropy-drawing";
 const PASTED_IMAGE_ROOM = 0.8;
 
-const isTyping = (target: EventTarget) => target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
-const isFreehand = (tool: Tool): tool is FreehandTool => tool === "pen" || tool === "highlighter" || tool === "eraser";
+const isTyping = (target: EventTarget) =>
+  target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+const isFreehand = (tool: Tool): tool is FreehandTool =>
+  tool === "pen" || tool === "highlighter" || tool === "eraser";
 
 export function DrawingPane({ projectId }: { projectId: string }) {
   const drawing = useDrawing(projectId);
@@ -90,7 +134,9 @@ export function DrawingPane({ projectId }: { projectId: string }) {
     const scale = canvas.width / bounds.width;
     context.setTransform(scale, 0, 0, scale, 0, 0);
     const move = gesture.current?.kind === "move" ? gesture.current : null;
-    const shift = move ? { marks: selection, dx: move.to[0] - move.from[0], dy: move.to[1] - move.from[1] } : undefined;
+    const shift = move
+      ? { marks: selection, dx: move.to[0] - move.from[0], dy: move.to[1] - move.from[1] }
+      : undefined;
     if (shift) {
       drawMarks(context, marks, ink, shift);
     } else {
@@ -98,17 +144,25 @@ export function DrawingPane({ projectId }: { projectId: string }) {
     }
     if (current.current) drawMarks(context, [current.current], ink);
     if (tool !== "select") return;
-    const marquee = gesture.current?.kind === "box" ? boxAround(gesture.current.from, gesture.current.to) : undefined;
-    const boxes = selected.map((mark) => markBox(context, mark))
-      .map((box) => shift ? { ...box, x: box.x + shift.dx, y: box.y + shift.dy } : box);
+    const marquee =
+      gesture.current?.kind === "box"
+        ? boxAround(gesture.current.from, gesture.current.to)
+        : undefined;
+    const boxes = selected
+      .map((mark) => markBox(context, mark))
+      .map((box) => (shift ? { ...box, x: box.x + shift.dx, y: box.y + shift.dy } : box));
     drawSelection(context, boxes, marquee);
   };
 
   const matches = (cache: CachedLayer | null, canvas: HTMLCanvasElement): cache is CachedLayer =>
-    !!cache && cache.ink === ink && cache.imagesLoaded === imagesLoaded.current
-    && cache.canvas.width === canvas.width && cache.canvas.height === canvas.height;
+    !!cache &&
+    cache.ink === ink &&
+    cache.imagesLoaded === imagesLoaded.current &&
+    cache.canvas.width === canvas.width &&
+    cache.canvas.height === canvas.height;
 
-  const startsMarks = (prefix: Mark[]) => prefix.length <= marks.length && prefix.every((mark, index) => marks[index] === mark);
+  const startsMarks = (prefix: Mark[]) =>
+    prefix.length <= marks.length && prefix.every((mark, index) => marks[index] === mark);
 
   const settledLayer = (canvas: HTMLCanvasElement, scale: number) => {
     const cache = settled.current;
@@ -138,7 +192,8 @@ export function DrawingPane({ projectId }: { projectId: string }) {
     if (!element) return;
     const observer = new ResizeObserver(([entry]) => {
       const { width, height } = entry!.contentRect;
-      if (width > 0 && height > 0) setBounds({ width: Math.round(width), height: Math.round(height) });
+      if (width > 0 && height > 0)
+        setBounds({ width: Math.round(width), height: Math.round(height) });
     });
     observer.observe(element);
     return () => observer.disconnect();
@@ -161,10 +216,11 @@ export function DrawingPane({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     for (const mark of marks) {
-      if (mark.kind === "image" && !cachedImage(mark.image)) loadImage(mark.image).then(() => {
-        imagesLoaded.current += 1;
-        schedule();
-      }, reportError);
+      if (mark.kind === "image" && !cachedImage(mark.image))
+        loadImage(mark.image).then(() => {
+          imagesLoaded.current += 1;
+          schedule();
+        }, reportError);
     }
   }, [marks]);
 
@@ -244,12 +300,17 @@ export function DrawingPane({ projectId }: { projectId: string }) {
       schedule();
       return;
     }
-    if (tool === "select") event.currentTarget.toggleAttribute("data-over-mark", !!markAt(inkContext(), marks, pointFrom(event)));
+    if (tool === "select")
+      event.currentTarget.toggleAttribute(
+        "data-over-mark",
+        !!markAt(inkContext(), marks, pointFrom(event)),
+      );
     const mark = current.current;
     if (!mark) return;
     if (mark.kind === "freehand") {
       const events = event.nativeEvent.getCoalescedEvents?.() ?? [];
-      for (const entry of events.length ? events : [event.nativeEvent]) mark.points.push(strokePoint(entry));
+      for (const entry of events.length ? events : [event.nativeEvent])
+        mark.points.push(strokePoint(entry));
     } else if (mark.kind === "shape") {
       const to = pointFrom(event);
       mark.to = event.shiftKey ? constrain(mark.tool, mark.from, to) : to;
@@ -266,7 +327,9 @@ export function DrawingPane({ projectId }: { projectId: string }) {
     const dy = done.to[1] - done.from[1];
     if (done.kind === "box") {
       const area = boxAround(done.from, done.to);
-      const inside = marks.filter((mark) => isMovable(mark) && contains(area, markBox(inkContext(), mark)));
+      const inside = marks.filter(
+        (mark) => isMovable(mark) && contains(area, markBox(inkContext(), mark)),
+      );
       setSelection(new Set([...(done.add ? selected : []), ...inside]));
     } else if (dx || dy) {
       changeSelected((mark) => moveMark(mark, dx, dy));
@@ -278,24 +341,32 @@ export function DrawingPane({ projectId }: { projectId: string }) {
     setSelection((previous) => new Set([...previous].map((mark) => changed.get(mark) ?? mark)));
   };
 
-  const changeSelected = (update: (mark: Mark) => Mark) => replace(new Map(selected.map((mark) => [mark, update(mark)])));
+  const changeSelected = (update: (mark: Mark) => Mark) =>
+    replace(new Map(selected.map((mark) => [mark, update(mark)])));
 
   const pickColor = (next: string) => {
     setColor(next);
-    if (selected.length) changeSelected((mark) => mark.kind === "image" ? mark : { ...mark, color: next });
+    if (selected.length)
+      changeSelected((mark) => (mark.kind === "image" ? mark : { ...mark, color: next }));
   };
 
   const toggleFill = () => {
     const next = !filled;
     setFilled(next);
-    if (selected.some(isFillable)) changeSelected((mark) => isFillable(mark) ? { ...mark, filled: next } : mark);
+    if (selected.some(isFillable))
+      changeSelected((mark) => (isFillable(mark) ? { ...mark, filled: next } : mark));
     else if (tool !== "rectangle" && tool !== "ellipse") chooseTool("rectangle");
   };
 
   const selectLayer = (mark: Mark, adding: boolean) => {
     setTool("select");
     if (!adding) setSelection(new Set([mark]));
-    else setSelection(new Set(selection.has(mark) ? selected.filter((entry) => entry !== mark) : [...selected, mark]));
+    else
+      setSelection(
+        new Set(
+          selection.has(mark) ? selected.filter((entry) => entry !== mark) : [...selected, mark],
+        ),
+      );
   };
 
   const onPointerUp = () => {
@@ -312,11 +383,29 @@ export function DrawingPane({ projectId }: { projectId: string }) {
 
   const pasteImage = async (file: File) => {
     const { id, bitmap } = await storeImage(file);
-    const room = { width: bounds!.width * PASTED_IMAGE_ROOM, height: bounds!.height * PASTED_IMAGE_ROOM };
-    const scale = Math.min(1 / window.devicePixelRatio, room.width / bitmap.width, room.height / bitmap.height);
+    const room = {
+      width: bounds!.width * PASTED_IMAGE_ROOM,
+      height: bounds!.height * PASTED_IMAGE_ROOM,
+    };
+    const scale = Math.min(
+      1 / window.devicePixelRatio,
+      room.width / bitmap.width,
+      room.height / bitmap.height,
+    );
     const width = tenth(bitmap.width * scale);
     const height = tenth(bitmap.height * scale);
-    paste([{ kind: "image", image: id, at: [tenth((bounds!.width - width) / 2), tenth((bounds!.height - height) / 2)], width, height }], 0);
+    paste(
+      [
+        {
+          kind: "image",
+          image: id,
+          at: [tenth((bounds!.width - width) / 2), tenth((bounds!.height - height) / 2)],
+          width,
+          height,
+        },
+      ],
+      0,
+    );
   };
 
   const onCopy = (event: ClipboardEvent<HTMLDivElement>) => {
@@ -350,7 +439,8 @@ export function DrawingPane({ projectId }: { projectId: string }) {
     const mark = current.current;
     current.current = null;
     if (!mark) return;
-    if (mark.kind === "shape" && mark.from[0] === mark.to[0] && mark.from[1] === mark.to[1]) schedule();
+    if (mark.kind === "shape" && mark.from[0] === mark.to[0] && mark.from[1] === mark.to[1])
+      schedule();
     else drawing.add(mark.kind === "freehand" ? settleStroke(mark) : mark);
   };
 
@@ -399,37 +489,71 @@ export function DrawingPane({ projectId }: { projectId: string }) {
 
   const paperItems: MenuItem[] = [
     ...PATTERNS.map((entry) => ({
-      id: `pattern:${entry.value}`, label: entry.label, icon: <entry.icon size={16} />, section: "Background",
+      id: `pattern:${entry.value}`,
+      label: entry.label,
+      icon: <entry.icon size={16} />,
+      section: "Background",
       selected: paper.pattern === entry.value,
       onSelect: () => setPaper({ ...paper, pattern: entry.value }),
     })),
     ...TONES.map((entry) => ({
-      id: `tone:${entry.value}`, label: entry.label, icon: <entry.icon size={16} />, section: "Paper color",
+      id: `tone:${entry.value}`,
+      label: entry.label,
+      icon: <entry.icon size={16} />,
+      section: "Paper color",
       selected: paper.tone === entry.value,
       onSelect: () => setPaper({ ...paper, tone: entry.value }),
     })),
     ...FRAMES.map((entry) => ({
-      id: `frame:${entry.value ?? "none"}`, label: entry.label, icon: <entry.icon size={16} />, section: "Frame",
+      id: `frame:${entry.value ?? "none"}`,
+      label: entry.label,
+      icon: <entry.icon size={16} />,
+      section: "Frame",
       selected: paper.frame?.kind === entry.value,
       onSelect: () => setPaper(paperWith(paper, entry.value, bounds!.width, bounds!.height)),
     })),
   ];
 
   const moreItems: MenuItem[] = [
-    { id: "save", label: "Save as image", icon: <DownloadIcon size={16} />, disabled: !bounds, onSelect: () => void saveImage() },
-    { id: "clear", label: "Clear drawing", icon: <TrashIcon size={16} />, danger: true, disabled: !marks.length, onSelect: drawing.clear },
+    {
+      id: "save",
+      label: "Save as image",
+      icon: <DownloadIcon size={16} />,
+      disabled: !bounds,
+      onSelect: () => void saveImage(),
+    },
+    {
+      id: "clear",
+      label: "Clear drawing",
+      icon: <TrashIcon size={16} />,
+      danger: true,
+      disabled: !marks.length,
+      onSelect: drawing.clear,
+    },
   ];
 
   const brush = brushWidth(tool, size);
   return (
-    <div ref={pane} className="drawing-pane" tabIndex={-1}
+    <div
+      ref={pane}
+      className="drawing-pane"
+      tabIndex={-1}
       onKeyDown={onKeyDown}
       onCopy={onCopy}
-      onCut={(event) => { if (onCopy(event)) removeSelected(); }}
+      onCut={(event) => {
+        if (onCopy(event)) removeSelected();
+      }}
       onPaste={onPaste}
     >
       <div className="drawing-topbar">
-        <DrawingStyle tool={tool} color={color} ink={ink} size={size} onColor={pickColor} onSize={setSize} />
+        <DrawingStyle
+          tool={tool}
+          color={color}
+          ink={ink}
+          size={size}
+          onColor={pickColor}
+          onSize={setSize}
+        />
       </div>
       <div className="drawing-workspace">
         <DrawingTools
@@ -481,7 +605,11 @@ export function DrawingPane({ projectId }: { projectId: string }) {
                 if (event.key === "Escape") {
                   openText.current = null;
                   setTextAt(null);
-                } else if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                } else if (
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing
+                ) {
                   event.preventDefault();
                   commitText();
                 }
@@ -506,7 +634,15 @@ export function DrawingPane({ projectId }: { projectId: string }) {
           width={220}
           items={paperItems}
           trigger={({ id, open, toggle }) => (
-            <button id={id} type="button" className="btn" data-variant="ghost" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
+            <button
+              id={id}
+              type="button"
+              className="btn"
+              data-variant="ghost"
+              aria-haspopup="menu"
+              aria-expanded={open}
+              onClick={toggle}
+            >
               <ImageIcon size={15} />
               Paper
               <ChevronDownIcon size={14} />
@@ -527,7 +663,16 @@ export function DrawingPane({ projectId }: { projectId: string }) {
           width={220}
           items={moreItems}
           trigger={({ id, open, toggle }) => (
-            <button id={id} type="button" className="icon-btn" aria-label="More drawing options" title="More drawing options" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
+            <button
+              id={id}
+              type="button"
+              className="icon-btn"
+              aria-label="More drawing options"
+              title="More drawing options"
+              aria-haspopup="menu"
+              aria-expanded={open}
+              onClick={toggle}
+            >
               <MoreIcon size={16} />
             </button>
           )}

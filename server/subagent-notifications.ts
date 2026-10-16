@@ -10,14 +10,20 @@ function clip(text: string, limit: number, tail = false): string {
 }
 
 function finalText(child: Thread): string {
-  const message = child.messages.findLast((entry) => entry.role === "assistant" && entry.parts.some((part) => part.kind === "text"));
+  const message = child.messages.findLast(
+    (entry) => entry.role === "assistant" && entry.parts.some((part) => part.kind === "text"),
+  );
   const text = message?.parts.findLast((part) => part.kind === "text");
   return text?.kind === "text" ? text.text : "";
 }
 
-export function subagentFinishedNotification(child: Thread): Omit<AppNotification, "id" | "createdAt" | "read"> {
+export function subagentFinishedNotification(
+  child: Thread,
+): Omit<AppNotification, "id" | "createdAt" | "read"> {
   const failed = child.status === "error";
-  const detail = child.error ? clip(child.error, textLimit) : clip(finalText(child), textLimit, true);
+  const detail = child.error
+    ? clip(child.error, textLimit)
+    : clip(finalText(child), textLimit, true);
   const outcome = failed ? "failed" : "finished";
   return {
     title: `${clip(child.title, titleLimit)} ${outcome}`,

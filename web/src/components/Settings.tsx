@@ -43,7 +43,8 @@ export function Settings({
   const reducedMotion = useReducedMotion();
   const current = settingsSections.find((entry) => entry.name === section)!;
   const needle = query.trim().toLowerCase();
-  const matches = (entry: typeof current) => !needle || `${entry.name} ${entry.description}`.toLowerCase().includes(needle);
+  const matches = (entry: typeof current) =>
+    !needle || `${entry.name} ${entry.description}`.toLowerCase().includes(needle);
   const shown = settingsSections.filter((entry) => isSectionShown(entry, narrow) && matches(entry));
 
   return (
@@ -61,7 +62,10 @@ export function Settings({
         onClose();
       }}
     >
-      <nav className="section-nav settings-nav scroll sliding-selection" aria-label="Settings sections">
+      <nav
+        className="section-nav settings-nav scroll sliding-selection"
+        aria-label="Settings sections"
+      >
         <label className="thread-search settings-search">
           <SearchIcon size={16} />
           <input
@@ -80,18 +84,20 @@ export function Settings({
         {SETTINGS_GROUPS.map((group) => {
           const entries = shown.filter((entry) => entry.group === group);
           if (!entries.length) return null;
-          return <Fragment key={group}>
-            <h2 className="section-nav-label">{group}</h2>
-            {entries.map(({ name, icon }) => (
-              <SectionLink
-                key={name}
-                icon={icon}
-                label={name}
-                active={section === name}
-                onSelect={() => setSection(name)}
-              />
-            ))}
-          </Fragment>;
+          return (
+            <Fragment key={group}>
+              <h2 className="section-nav-label">{group}</h2>
+              {entries.map(({ name, icon }) => (
+                <SectionLink
+                  key={name}
+                  icon={icon}
+                  label={name}
+                  active={section === name}
+                  onSelect={() => setSection(name)}
+                />
+              ))}
+            </Fragment>
+          );
         })}
         {!shown.length && <p className="settings-nav-empty">No matching settings</p>}
       </nav>
@@ -100,12 +106,11 @@ export function Settings({
           <Fragment key={environment}>
             <header className="settings-heading">
               <div className="settings-heading-identity">
-                <span className="settings-heading-icon"><current.icon size={20} /></span>
+                <span className="settings-heading-icon">
+                  <current.icon size={20} />
+                </span>
                 <div>
-                  <h1
-                    className="settings-title"
-                    data-settings-section={section.toLowerCase()}
-                  >
+                  <h1 className="settings-title" data-settings-section={section.toLowerCase()}>
                     {section}
                   </h1>
                   <p>{current.description}</p>
@@ -138,7 +143,12 @@ export function Settings({
           <ApplicationSettings active={section === "Application"} />
         </div>
       </div>
-      <button className="icon-btn settings-close" type="button" aria-label="Close settings" onClick={onClose}>
+      <button
+        className="icon-btn settings-close"
+        type="button"
+        aria-label="Close settings"
+        onClick={onClose}
+      >
         <CloseIcon size={17} />
       </button>
     </motion.dialog>

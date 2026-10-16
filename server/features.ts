@@ -1,7 +1,16 @@
 import { listImportableSessions, importSession } from "./session-import/session-import.ts";
 import { isImportProvider } from "../shared/session-import.ts";
 import { descendants, processTable } from "./process-table.ts";
-import { createPairing, DEVICE_HEADER, fixTailscale, openFirewall, removeDevice, setSharing, setTailscaleSharing, sharingState } from "./sharing/sharing.ts";
+import {
+  createPairing,
+  DEVICE_HEADER,
+  fixTailscale,
+  openFirewall,
+  removeDevice,
+  setSharing,
+  setTailscaleSharing,
+  sharingState,
+} from "./sharing/sharing.ts";
 import { nodeRuntimeStatus, installNodeRuntime } from "./node-runtime.ts";
 import { gitRuntimeStatus, installGitRuntime } from "./git/git-runtime.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -19,28 +28,41 @@ import { answerQuestion } from "./questions.ts";
 import { stopShell } from "./terminals/shells.ts";
 import { dev, developmentOrigin } from "./config.ts";
 import { desktopRequest } from "./desktop.ts";
-import { reloadProviderSessions, providerBusy, runtimeFor, disposeRuntime, liveAgents, turnOffAgent, turnOffIdleAgents } from "./runtime.ts";
-import { assertWorkspaceIdle, restoreCheckpoint, redoCheckpoint, forkConversation, reviewChanges, reviewSummary, reviewFile } from "./checkpoints.ts";
+import {
+  reloadProviderSessions,
+  providerBusy,
+  runtimeFor,
+  disposeRuntime,
+  liveAgents,
+  turnOffAgent,
+  turnOffIdleAgents,
+} from "./runtime.ts";
+import {
+  assertWorkspaceIdle,
+  restoreCheckpoint,
+  redoCheckpoint,
+  forkConversation,
+  reviewChanges,
+  reviewSummary,
+  reviewFile,
+} from "./checkpoints.ts";
 import type { ReviewScope } from "../shared/review.ts";
 import { changeHunk, reviewWithModel } from "./review.ts";
 import { findContextPaths, findWorkspacePaths } from "./context.ts";
 import { copyToWorktree, removeWorktree } from "./git/worktree-actions.ts";
 import { appSignIn, startAppSignIn } from "./providers/provider-sign-in.ts";
-import { providerMaintenance, startProviderUpdate, startProviderUpdates, assertProviderReady } from "./providers/maintenance.ts";
+import {
+  providerMaintenance,
+  startProviderUpdate,
+  startProviderUpdates,
+  assertProviderReady,
+} from "./providers/maintenance.ts";
 import { readGlobalInstructions, saveGlobalInstructions } from "./providers/instructions.ts";
 import { waitForStoppedProcesses } from "./providers/process.ts";
 import { hasUsableAccount } from "../shared/provider-account.ts";
 import { GLOBAL_SWITCHES } from "../shared/project-settings.ts";
-import {
-  workspaceOptions,
-  workspacePath,
-} from "./workspaces.ts";
-import {
-  uploadAttachment,
-  removeAttachment,
-  previewFile,
-  serveAsset,
-} from "./assets.ts";
+import { workspaceOptions, workspacePath } from "./workspaces.ts";
+import { uploadAttachment, removeAttachment, previewFile, serveAsset } from "./assets.ts";
 import { changeSkill, listSkills, readSkill } from "./skills.ts";
 import { readCitropySkill, saveCitropySkill } from "./citropy-skills.ts";
 import type { CitropySkillDraft } from "../shared/features.ts";
@@ -50,9 +72,20 @@ import { serveToolVisual } from "./tools/tool-visuals.ts";
 import { handleConnections } from "./connections.ts";
 import { diagnostics } from "./diagnostics.ts";
 import { usageLimits, usageReport } from "./usage/usage.ts";
-import { configureAssistance, dismissGitActionError, generateThreadTitle, startGitAction } from "./assistance.ts";
+import {
+  configureAssistance,
+  dismissGitActionError,
+  generateThreadTitle,
+  startGitAction,
+} from "./assistance.ts";
 import { listCommands } from "./commands.ts";
-import { isProviderId, PROVIDER_IDS, type ProjectSettings, type ProviderId, type ProviderInfo } from "../shared/protocol.ts";
+import {
+  isProviderId,
+  PROVIDER_IDS,
+  type ProjectSettings,
+  type ProviderId,
+  type ProviderInfo,
+} from "../shared/protocol.ts";
 
 async function body(req: IncomingMessage, limit = 128 * 1024): Promise<Record<string, any>> {
   let size = 0;
@@ -71,8 +104,12 @@ async function body(req: IncomingMessage, limit = 128 * 1024): Promise<Record<st
 async function appSignInRequest(req: IncomingMessage) {
   const input = await body(req);
   if (!isProviderId(input.provider)) throw new Error("Choose a provider.");
-  if (input.instanceId !== undefined && typeof input.instanceId !== "string") throw new Error("Choose a provider account.");
-  return { ...appSignIn(input.provider, input.instanceId), input: input as { provider: ProviderId; instanceId?: string; address?: unknown } };
+  if (input.instanceId !== undefined && typeof input.instanceId !== "string")
+    throw new Error("Choose a provider account.");
+  return {
+    ...appSignIn(input.provider, input.instanceId),
+    input: input as { provider: ProviderId; instanceId?: string; address?: unknown },
+  };
 }
 
 function settings(
@@ -84,9 +121,12 @@ function settings(
     throw new Error("Invalid project settings");
   const out: ProjectSettings = {};
   if (input.provider !== undefined) {
-    if (input.provider !== null && !(shared
-      ? isProviderId(input.provider)
-      : providers.some((provider) => provider.id === input.provider)))
+    if (
+      input.provider !== null &&
+      !(shared
+        ? isProviderId(input.provider)
+        : providers.some((provider) => provider.id === input.provider))
+    )
       throw new Error("Unknown provider");
     out.provider = input.provider;
   }
@@ -99,18 +139,18 @@ function settings(
     if (!shared && !model) throw new Error("Select an available model.");
     out.model = input.model;
     if (input.effort) {
-      if (typeof input.effort !== "string" || input.effort.length > 80 || (!shared && !model?.efforts?.includes(input.effort)))
+      if (
+        typeof input.effort !== "string" ||
+        input.effort.length > 80 ||
+        (!shared && !model?.efforts?.includes(input.effort))
+      )
         throw new Error("This model does not support that effort.");
       out.effort = input.effort;
     }
   }
   if (input.effort && !out.model) throw new Error("Select a model before choosing its effort.");
   if (input.permissionMode) {
-    if (
-      !["manual", "acceptEdits", "plan", "bypass"].includes(
-        input.permissionMode,
-      )
-    )
+    if (!["manual", "acceptEdits", "plan", "bypass"].includes(input.permissionMode))
       throw new Error("Unknown permission mode");
     out.permissionMode = input.permissionMode;
   }
@@ -119,10 +159,9 @@ function settings(
       throw new Error("Unknown workspace preference");
     out.workspace = input.workspace;
   }
-  for (const key of ["autoPull", ...shared ? GLOBAL_SWITCHES : []] as const)
+  for (const key of ["autoPull", ...(shared ? GLOBAL_SWITCHES : [])] as const)
     if (input[key] !== undefined) {
-      if (typeof input[key] !== "boolean")
-        throw new Error(`Invalid ${key} setting`);
+      if (typeof input[key] !== "boolean") throw new Error(`Invalid ${key} setting`);
       out[key] = input[key];
     }
   return out;
@@ -143,9 +182,7 @@ export async function handleFeatures(
     return false;
   try {
     const host = new URL(`http://${req.headers.host || "localhost"}`);
-    const requestOrigin = req.headers.origin
-      ? new URL(req.headers.origin)
-      : undefined;
+    const requestOrigin = req.headers.origin ? new URL(req.headers.origin) : undefined;
     const local = ["127.0.0.1", "localhost", "[::1]"];
     if (
       !local.includes(host.hostname) ||
@@ -185,7 +222,12 @@ export async function handleFeatures(
             if (!agent.pid || !table.length) return agent;
             const tree = descendants(table, [agent.pid]);
             const entries = table.filter((entry) => tree.has(entry.pid));
-            return { ...agent, memory: entries.reduce((sum, entry) => sum + entry.memory, 0), cpu: entries.reduce((sum, entry) => sum + entry.cpu, 0), processes: entries.length };
+            return {
+              ...agent,
+              memory: entries.reduce((sum, entry) => sum + entry.memory, 0),
+              cpu: entries.reduce((sum, entry) => sum + entry.cpu, 0),
+              processes: entries.length,
+            };
           }),
         });
       }
@@ -207,21 +249,48 @@ export async function handleFeatures(
       respond(await openFirewall());
     } else if (url.pathname === "/api/sharing/pair" && req.method === "POST") {
       const route = url.searchParams.get("route");
-      if (route !== "lan" && route !== "tailscale") throw new Error(`Unknown sharing route: ${route}`);
+      if (route !== "lan" && route !== "tailscale")
+        throw new Error(`Unknown sharing route: ${route}`);
       respond(createPairing(route));
     } else if (url.pathname === "/api/sharing/devices" && req.method === "DELETE") {
       respond(removeDevice(url.searchParams.get("id") ?? ""));
     } else if (url.pathname === "/api/editor/search" && req.method === "GET") {
-      respond(await findWorkspacePaths(workspacePath(projectId ?? "", threadId), url.searchParams.get("query") ?? ""));
+      respond(
+        await findWorkspacePaths(
+          workspacePath(projectId ?? "", threadId),
+          url.searchParams.get("query") ?? "",
+        ),
+      );
     } else if (url.pathname === "/api/editor/tree" && req.method === "GET") {
-      respond(await tree(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? "", true));
+      respond(
+        await tree(
+          workspacePath(projectId ?? "", threadId),
+          url.searchParams.get("path") ?? "",
+          true,
+        ),
+      );
     } else if (url.pathname === "/api/editor/file" && req.method === "POST") {
-      respond(await createEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
+      respond(
+        await createEditorFile(
+          workspacePath(projectId ?? "", threadId),
+          url.searchParams.get("path") ?? "",
+        ),
+      );
     } else if (url.pathname === "/api/editor/file" && req.method === "GET") {
-      respond(await readEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? ""));
+      respond(
+        await readEditorFile(
+          workspacePath(projectId ?? "", threadId),
+          url.searchParams.get("path") ?? "",
+        ),
+      );
     } else if (url.pathname === "/api/editor/file" && req.method === "PUT") {
       const input = await body(req, 12 * 1024 * 1024 + 1024);
-      const saved = await saveEditorFile(workspacePath(projectId ?? "", threadId), url.searchParams.get("path") ?? "", input.text, input.revision);
+      const saved = await saveEditorFile(
+        workspacePath(projectId ?? "", threadId),
+        url.searchParams.get("path") ?? "",
+        input.text,
+        input.revision,
+      );
       respond({ revision: saved.revision });
     } else if (url.pathname === "/api/threads/question" && req.method === "POST") {
       const input = await body(req);
@@ -242,7 +311,7 @@ export async function handleFeatures(
     } else if (url.pathname === "/api/threads/hunk" && req.method === "POST") {
       const thread = store.threads.get(threadId ?? "");
       if (!thread) throw new Error("Conversation not found.");
-      await changeHunk(thread, await body(req) as Parameters<typeof changeHunk>[1]);
+      await changeHunk(thread, (await body(req)) as Parameters<typeof changeHunk>[1]);
       respond({ ok: true });
     } else if (url.pathname === "/api/threads/review-model" && req.method === "POST") {
       const thread = store.threads.get(threadId ?? "");
@@ -255,15 +324,20 @@ export async function handleFeatures(
       const scope = (url.searchParams.get("scope") || "lastTurn") as ReviewScope;
       const messageId = url.searchParams.get("messageId") || undefined;
       const path = url.searchParams.get("path");
-      if (path !== null) respond(await reviewFile(thread, scope, path, url.searchParams.get("revision") || "", messageId));
-      else if (url.searchParams.get("summary") === "1") respond(await reviewSummary(thread, scope, messageId));
+      if (path !== null)
+        respond(
+          await reviewFile(thread, scope, path, url.searchParams.get("revision") || "", messageId),
+        );
+      else if (url.searchParams.get("summary") === "1")
+        respond(await reviewSummary(thread, scope, messageId));
       else respond(await reviewChanges(thread, scope, messageId));
     } else if (url.pathname === "/api/threads/restore" && req.method === "POST") {
       const thread = store.threads.get(threadId ?? "");
       if (!thread) throw new Error("Conversation not found.");
       const input = await body(req);
       assertWorkspaceIdle(thread);
-      if (runtimeFor(thread.id).busy) throw new Error("Wait for the task to finish preparing or stopping.");
+      if (runtimeFor(thread.id).busy)
+        throw new Error("Wait for the task to finish preparing or stopping.");
       disposeRuntime(thread.id, true);
       if (input.redo === true) await redoCheckpoint(thread);
       else await restoreCheckpoint(thread, input.messageId, input.mode);
@@ -277,8 +351,10 @@ export async function handleFeatures(
       if (typeof id !== "string" || !id) throw new Error("Choose a running shell.");
       await stopShell(id);
       respond({ ok: true });
-    } else if (url.pathname === "/api/providers/assistance" && req.method === "GET") respond(store.assistance);
-    else if (url.pathname === "/api/providers/assistance" && req.method === "PATCH") respond(configureAssistance(await body(req), providers));
+    } else if (url.pathname === "/api/providers/assistance" && req.method === "GET")
+      respond(store.assistance);
+    else if (url.pathname === "/api/providers/assistance" && req.method === "PATCH")
+      respond(configureAssistance(await body(req), providers));
     else if (url.pathname === "/api/threads/git-action" && req.method === "POST") {
       const input = await body(req);
       respond(startGitAction(threadId ?? "", input.action, input.scope));
@@ -296,10 +372,13 @@ export async function handleFeatures(
       const input = await body(req);
       if (typeof input.id !== "string") throw new Error("Choose a session to import.");
       respond(await importSession(input.id));
-    } else if (url.pathname === "/api/providers/instances" && req.method === "GET") respond([...store.providerInstances.values()]);
+    } else if (url.pathname === "/api/providers/instances" && req.method === "GET")
+      respond([...store.providerInstances.values()]);
     else if (url.pathname === "/api/providers/instances" && req.method === "POST") {
       const input = await body(req);
-      const instance = store.saveProviderInstance(withAccountHome(input as Parameters<typeof store.saveProviderInstance>[0]));
+      const instance = store.saveProviderInstance(
+        withAccountHome(input as Parameters<typeof store.saveProviderInstance>[0]),
+      );
       await prepareAccountHome(instance);
       await refreshProvidersNow();
       respond(instance);
@@ -309,8 +388,10 @@ export async function handleFeatures(
       await removeProviderAccount(input.id);
       await refreshProvidersNow();
       respond({ ok: true });
-    } else if (url.pathname === "/api/providers/maintenance" && req.method === "GET") respond(await providerMaintenance(url.searchParams.get("refresh") === "1"));
-    else if (url.pathname === "/api/providers/sign-in" && req.method === "GET") respond(await refreshSignIns());
+    } else if (url.pathname === "/api/providers/maintenance" && req.method === "GET")
+      respond(await providerMaintenance(url.searchParams.get("refresh") === "1"));
+    else if (url.pathname === "/api/providers/sign-in" && req.method === "GET")
+      respond(await refreshSignIns());
     else if (url.pathname === "/api/providers/sign-in" && req.method === "POST") {
       const { input } = await appSignInRequest(req);
       respond(startAppSignIn(input.provider, input.instanceId, () => void refreshProvidersNow()));
@@ -320,7 +401,8 @@ export async function handleFeatures(
       respond({ ok: true });
     } else if (url.pathname === "/api/providers/sign-in/address" && req.method === "POST") {
       const { signIn, launch, input } = await appSignInRequest(req);
-      if (typeof input.address !== "string") throw new Error("Paste the address from your browser.");
+      if (typeof input.address !== "string")
+        throw new Error("Paste the address from your browser.");
       await signIn.complete(launch, input.address);
       respond({ ok: true });
     } else if (url.pathname === "/api/providers/sign-out" && req.method === "POST") {
@@ -328,45 +410,73 @@ export async function handleFeatures(
       await signIn.signOut(launch);
       await refreshProvidersNow();
       respond({ ok: true });
-    }
-    else if (url.pathname === "/api/runtimes/node" && req.method === "GET") respond(await nodeRuntimeStatus());
-    else if (url.pathname === "/api/runtimes/node" && req.method === "POST") respond(installNodeRuntime());
-    else if (url.pathname === "/api/runtimes/git" && req.method === "GET") respond(await gitRuntimeStatus());
-    else if (url.pathname === "/api/runtimes/git" && req.method === "POST") respond(installGitRuntime());
+    } else if (url.pathname === "/api/runtimes/node" && req.method === "GET")
+      respond(await nodeRuntimeStatus());
+    else if (url.pathname === "/api/runtimes/node" && req.method === "POST")
+      respond(installNodeRuntime());
+    else if (url.pathname === "/api/runtimes/git" && req.method === "GET")
+      respond(await gitRuntimeStatus());
+    else if (url.pathname === "/api/runtimes/git" && req.method === "POST")
+      respond(installGitRuntime());
     else if (url.pathname === "/api/providers/update-all" && req.method === "POST") {
       const maintenance = await providerMaintenance(true);
-      const eligible = maintenance.filter(entry =>
-        entry.available && !entry.install && entry.binaryPath && entry.updateStatus !== "current" && !providerBusy(entry.provider));
-      respond(startProviderUpdates(eligible.map(entry => entry.provider), async provider => {
-        if (providerBusy(provider)) throw new Error("Finish or stop this provider's active conversations before updating.");
-        reloadProviderSessions(new Set([provider]));
-        await waitForStoppedProcesses();
-      }, refreshProviders));
+      const eligible = maintenance.filter(
+        (entry) =>
+          entry.available &&
+          !entry.install &&
+          entry.binaryPath &&
+          entry.updateStatus !== "current" &&
+          !providerBusy(entry.provider),
+      );
+      respond(
+        startProviderUpdates(
+          eligible.map((entry) => entry.provider),
+          async (provider) => {
+            if (providerBusy(provider))
+              throw new Error(
+                "Finish or stop this provider's active conversations before updating.",
+              );
+            reloadProviderSessions(new Set([provider]));
+            await waitForStoppedProcesses();
+          },
+          refreshProviders,
+        ),
+      );
     } else if (url.pathname === "/api/providers/update" && req.method === "POST") {
       const input = await body(req);
       const provider = input.provider;
       if (!isProviderId(provider)) throw new Error("Unknown provider.");
-      if (providerBusy(provider)) throw new Error("Finish or stop this provider's active conversations before updating.");
-      respond(startProviderUpdate(provider, async () => {
-        reloadProviderSessions(new Set([provider]));
-        await waitForStoppedProcesses();
-      }, refreshProviders));
-    } else if (url.pathname === "/api/providers/instructions" && ["GET", "PUT"].includes(req.method || "")) {
+      if (providerBusy(provider))
+        throw new Error("Finish or stop this provider's active conversations before updating.");
+      respond(
+        startProviderUpdate(
+          provider,
+          async () => {
+            reloadProviderSessions(new Set([provider]));
+            await waitForStoppedProcesses();
+          },
+          refreshProviders,
+        ),
+      );
+    } else if (
+      url.pathname === "/api/providers/instructions" &&
+      ["GET", "PUT"].includes(req.method || "")
+    ) {
       const provider = url.searchParams.get("provider");
       if (!isProviderId(provider)) throw new Error("Unknown provider.");
       if (req.method === "GET") respond(readGlobalInstructions(provider));
       else {
         const input = await body(req);
         assertProviderReady(provider);
-        if (providerBusy(provider)) throw new Error("Finish or stop this provider's active conversations before saving global instructions.");
+        if (providerBusy(provider))
+          throw new Error(
+            "Finish or stop this provider's active conversations before saving global instructions.",
+          );
         const saved = saveGlobalInstructions(provider, input.content, input.revision);
         reloadProviderSessions(new Set([provider]));
         respond(saved);
       }
-    } else if (
-      url.pathname === "/api/assets" &&
-      ["GET", "HEAD"].includes(req.method ?? "")
-    )
+    } else if (url.pathname === "/api/assets" && ["GET", "HEAD"].includes(req.method ?? ""))
       await serveAsset(req, res, url.searchParams);
     else if (url.pathname === "/api/preview" && req.method === "GET")
       respond(await previewFile(url.searchParams));
@@ -377,13 +487,7 @@ export async function handleFeatures(
     else if (url.pathname === "/api/visual-pages" && ["GET", "HEAD"].includes(req.method ?? ""))
       await serveToolVisual(req, res, url.searchParams);
     else if (url.pathname === "/api/attachments" && req.method === "POST")
-      respond(
-        await uploadAttachment(
-          req,
-          threadId ?? "",
-          url.searchParams.get("name") ?? "",
-        ),
-      );
+      respond(await uploadAttachment(req, threadId ?? "", url.searchParams.get("name") ?? ""));
     else if (url.pathname === "/api/attachments" && req.method === "DELETE") {
       await removeAttachment(threadId ?? "", url.searchParams.get("id") ?? "");
       respond({ ok: true });
@@ -406,10 +510,7 @@ export async function handleFeatures(
       const input = await body(req);
       const project = store.projects.get(projectId ?? "");
       if (!project) throw new Error("Workspace not found");
-      const name =
-        typeof input.name === "string"
-          ? input.name.trim().slice(0, 80)
-          : project.name;
+      const name = typeof input.name === "string" ? input.name.trim().slice(0, 80) : project.name;
       if (!name) throw new Error("Project name cannot be empty.");
       respond(
         store.updateProject(project.id, {
@@ -419,15 +520,15 @@ export async function handleFeatures(
       );
     } else if (url.pathname === "/api/threads" && req.method === "POST") {
       const input = await body(req);
-      if (input.chat !== undefined && typeof input.chat !== "boolean") throw new Error("Invalid chat flag.");
+      if (input.chat !== undefined && typeof input.chat !== "boolean")
+        throw new Error("Invalid chat flag.");
       const thread = input.chat
-        ? await createRequestedThread({ ...input, projectId: store.chatsProject!.id }, providers, { title: "New chat" })
+        ? await createRequestedThread({ ...input, projectId: store.chatsProject!.id }, providers, {
+            title: "New chat",
+          })
         : await createRequestedThread(input, providers);
       respond(store.meta(thread));
-    } else if (
-      url.pathname === "/api/threads/organize" &&
-      req.method === "PATCH"
-    ) {
+    } else if (url.pathname === "/api/threads/organize" && req.method === "PATCH") {
       const input = await body(req);
       const patch: Parameters<typeof store.organizeThread>[1] = {};
       if (input.title !== undefined) {
@@ -437,8 +538,7 @@ export async function handleFeatures(
       }
       for (const key of ["pinned", "archived"] as const)
         if (input[key] !== undefined) {
-          if (typeof input[key] !== "boolean")
-            throw new Error("Invalid conversation state");
+          if (typeof input[key] !== "boolean") throw new Error("Invalid conversation state");
           patch[key] = input[key];
         }
       if (input.snoozedUntil !== undefined) {
@@ -454,19 +554,14 @@ export async function handleFeatures(
       if (input.pullRequest !== undefined) {
         if (
           input.pullRequest &&
-          !/^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/\d+$/.test(
-            input.pullRequest,
-          )
+          !/^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/\d+$/.test(input.pullRequest)
         )
           throw new Error("Enter a GitHub pull request URL.");
         patch.pullRequest = input.pullRequest || undefined;
       }
       store.organizeThread(threadId ?? "", patch);
       respond({ ok: true });
-    } else if (
-      url.pathname === "/api/threads/reorder" &&
-      req.method === "POST"
-    ) {
+    } else if (url.pathname === "/api/threads/reorder" && req.method === "POST") {
       const input = await body(req);
       if (
         !Array.isArray(input.ids) ||
@@ -492,15 +587,27 @@ export async function handleFeatures(
       respond({ ok: true });
     } else if (url.pathname === "/api/threads/transfer" && req.method === "POST") {
       const input = await body(req);
-      const provider = providers.find(entry => entry.id === input.provider);
-      if (!provider || typeof input.model !== "string" || !input.model || (input.providerInstanceId !== undefined && typeof input.providerInstanceId !== "string")) throw new Error("Choose a provider and model for the transfer.");
-      if ((input.effort !== undefined && typeof input.effort !== "string") || (input.contextWindow !== undefined && typeof input.contextWindow !== "number") || (input.fastMode !== undefined && typeof input.fastMode !== "boolean")) throw new Error("Transfer settings are invalid.");
-      await runtimeFor(threadId ?? "").transfer(provider, input.model, input.providerInstanceId, { effort: input.effort, contextWindow: input.contextWindow, fastMode: input.fastMode });
+      const provider = providers.find((entry) => entry.id === input.provider);
+      if (
+        !provider ||
+        typeof input.model !== "string" ||
+        !input.model ||
+        (input.providerInstanceId !== undefined && typeof input.providerInstanceId !== "string")
+      )
+        throw new Error("Choose a provider and model for the transfer.");
+      if (
+        (input.effort !== undefined && typeof input.effort !== "string") ||
+        (input.contextWindow !== undefined && typeof input.contextWindow !== "number") ||
+        (input.fastMode !== undefined && typeof input.fastMode !== "boolean")
+      )
+        throw new Error("Transfer settings are invalid.");
+      await runtimeFor(threadId ?? "").transfer(provider, input.model, input.providerInstanceId, {
+        effort: input.effort,
+        contextWindow: input.contextWindow,
+        fastMode: input.fastMode,
+      });
       respond({ ok: true });
-    } else if (
-      url.pathname === "/api/threads/compact" &&
-      req.method === "POST"
-    ) {
+    } else if (url.pathname === "/api/threads/compact" && req.method === "POST") {
       await runtimeFor(threadId ?? "").compact();
       respond({ ok: true });
     } else if (url.pathname === "/api/commands" && req.method === "GET") {
@@ -508,26 +615,17 @@ export async function handleFeatures(
       if (!thread) throw new Error("Conversation not found");
       if (store.disabledProviders.has(thread.provider))
         throw new Error("Enable this provider to load its commands.");
-      respond(
-        await listCommands(
-          thread.provider,
-          workspacePath(thread.projectId, thread.id),
-        ),
-      );
+      respond(await listCommands(thread.provider, workspacePath(thread.projectId, thread.id)));
     } else if (url.pathname === "/api/skills" && req.method === "GET") {
       const id = url.searchParams.get("id");
       respond(
-        id
-          ? { content: await readSkill(projectId, id) }
-          : await listSkills(projectId, threadId),
+        id ? { content: await readSkill(projectId, id) } : await listSkills(projectId, threadId),
       );
     } else if (url.pathname === "/api/tool-mentions" && req.method === "GET") {
       respond(await listToolMentions());
     } else if (url.pathname === "/api/skills" && req.method === "PATCH") {
       const input = await body(req);
-      reloadProviderSessions(
-        await changeSkill(projectId, input.id, input.action),
-      );
+      reloadProviderSessions(await changeSkill(projectId, input.id, input.action));
       respond(await listSkills(projectId));
     } else if (url.pathname === "/api/skills/citropy" && req.method === "GET") {
       respond(await readCitropySkill(url.searchParams.get("id") ?? ""));
@@ -543,17 +641,18 @@ export async function handleFeatures(
     else if (url.pathname === "/api/diagnostics" && req.method === "GET")
       respond(await diagnostics());
     else if (/^\/api\/connections(\/|$)/.test(url.pathname)) {
-      respond(await handleConnections(
-        req.method ?? "",
-        url.pathname.slice("/api/connections".length).replace(/^\//, ""),
-        req.method === "GET" ? {} : await body(req),
-      ));
+      respond(
+        await handleConnections(
+          req.method ?? "",
+          url.pathname.slice("/api/connections".length).replace(/^\//, ""),
+          req.method === "GET" ? {} : await body(req),
+        ),
+      );
     } else if (
       url.pathname.startsWith("/api/browser/") &&
       ["GET", "POST", "DELETE"].includes(req.method ?? "")
     ) {
-      if (!store.projects.has(projectId ?? ""))
-        throw new Error("Workspace not found");
+      if (!store.projects.has(projectId ?? "")) throw new Error("Workspace not found");
       const operation = url.pathname.slice("/api/browser/".length);
       if (!["profiles", "sources", "import", "clear"].includes(operation))
         throw new Error("Unknown browser action");

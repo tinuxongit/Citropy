@@ -7,8 +7,15 @@ import type { EditorFile } from "../../../../shared/editor.ts";
 
 const maxOpenDocuments = 24;
 const previewOnlyFileTypes: readonly FileType[] = [
-  "image", "video", "audio", "pdf", "document", "presentation",
-  "archive", "font", "binary",
+  "image",
+  "video",
+  "audio",
+  "pdf",
+  "document",
+  "presentation",
+  "archive",
+  "font",
+  "binary",
 ];
 
 interface DocumentBase {
@@ -42,10 +49,7 @@ export const useDocuments = create<{ documents: EditorDocument[] }>(() => ({
 }));
 const loading = new Map<string, Promise<EditorDocument>>();
 
-function update(
-  document: TextDocument,
-  changes: Partial<TextDocument>,
-): void {
+function update(document: TextDocument, changes: Partial<TextDocument>): void {
   Object.assign(document, changes);
   useDocuments.setState(({ documents }) => ({ documents: [...documents] }));
 }
@@ -56,24 +60,24 @@ export async function openDocument(
   query: string,
 ): Promise<EditorDocument> {
   const id = JSON.stringify([scope, path]);
-  const existing = useDocuments
-    .getState()
-    .documents.find((document) => document.id === id);
+  const existing = useDocuments.getState().documents.find((document) => document.id === id);
   if (existing) return existing;
   const pending = loading.get(id);
   if (pending) return pending;
   const environment = environmentId();
   const operation = (async () => {
-    if (
-      useDocuments.getState().documents.length + loading.size >=
-      maxOpenDocuments
-    )
+    if (useDocuments.getState().documents.length + loading.size >= maxOpenDocuments)
       throw new Error(
         `Close an editor tab before opening another file (${maxOpenDocuments} open files maximum).`,
       );
     if (previewOnlyFileTypes.includes(fileTypeFor(path))) {
       const document: PreviewDocument = {
-        kind: "preview", id, scope, environment, path, query,
+        kind: "preview",
+        id,
+        scope,
+        environment,
+        path,
+        query,
       };
       useDocuments.setState(({ documents }) => ({
         documents: [...documents, document],
@@ -123,12 +127,7 @@ export async function openDocument(
 }
 
 export async function saveDocument(document: TextDocument): Promise<void> {
-  if (
-    document.saving ||
-    !document.dirty ||
-    document.environment !== environmentId()
-  )
-    return;
+  if (document.saving || !document.dirty || document.environment !== environmentId()) return;
   const text = document.model.getValue(undefined, true);
   const version = document.model.getAlternativeVersionId();
   update(document, { saving: true, error: "" });

@@ -17,16 +17,23 @@ import { installAntigravity, antigravityInstallation } from "./antigravity/insta
 import { ANTIGRAVITY_RELEASE } from "./antigravity/release.ts";
 import type { ProviderMaintenance } from "../../shared/provider-settings.ts";
 import { claudeHome, codexHome } from "./config-folders.ts";
-import { installMuse, isMuseLauncher, latestMuseVersion, MUSE_INSTALL_DIRECTORY, MUSE_INSTALL_METHOD, museInstallable, MUSE_UPDATE_ARGS, MUSE_UPDATE_ENVIRONMENT, MUSE_UPDATE_METHOD } from "./muse/update.ts";
+import {
+  installMuse,
+  isMuseLauncher,
+  latestMuseVersion,
+  MUSE_INSTALL_DIRECTORY,
+  MUSE_INSTALL_METHOD,
+  museInstallable,
+  MUSE_UPDATE_ARGS,
+  MUSE_UPDATE_ENVIRONMENT,
+  MUSE_UPDATE_METHOD,
+} from "./muse/update.ts";
 import { comparableMuseVersion } from "./muse/version.ts";
 
 const run = promisify(execFile);
 const WHERE_NOT_FOUND = 1;
 const states = new Map<ProviderId, ProviderMaintenance>();
-const plans = new Map<
-  ProviderId,
-  { time: number; value: Promise<UpdatePlan> }
->();
+const plans = new Map<ProviderId, { time: number; value: Promise<UpdatePlan> }>();
 const packages: Record<Exclude<ProviderId, "opencode" | "antigravity" | "muse">, string> = {
   claude: "@anthropic-ai/claude-code",
   codex: "@openai/codex",
@@ -35,14 +42,8 @@ function packageFor(provider: Exclude<ProviderId, "antigravity" | "muse">): stri
   return provider === "opencode" ? openCodePackage() : packages[provider];
 }
 
-const versions = new Map<
-  ProviderId,
-  { time: number; value: Promise<string | undefined> }
->();
-const installed = new Map<
-  ProviderId,
-  { time: number; value: Promise<{ version?: string }> }
->();
+const versions = new Map<ProviderId, { time: number; value: Promise<string | undefined> }>();
+const installed = new Map<ProviderId, { time: number; value: Promise<{ version?: string }> }>();
 
 interface UpdatePlan {
   binaryPath?: string;
@@ -61,15 +62,16 @@ async function executablePath(binary: string): Promise<string | undefined> {
   if (process.platform === "win32") {
     try {
       const { stdout } = await run("where.exe", [binary], { timeout: 8000, windowsHide: true });
-      const first = stdout.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+      const first = stdout
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find(Boolean);
       if (first) return first;
     } catch (error) {
       if ((error as { code?: unknown }).code !== WHERE_NOT_FOUND) throw error;
     }
   } else {
-    for (const folder of (process.env.PATH || "")
-      .split(delimiter)
-      .filter(Boolean)) {
+    for (const folder of (process.env.PATH || "").split(delimiter).filter(Boolean)) {
       const path = join(folder, binary);
       try {
         await access(path, constants.X_OK);
@@ -116,30 +118,55 @@ async function antigravityPlan(): Promise<UpdatePlan> {
 }
 
 async function musePlan(binaryPath: string | undefined): Promise<UpdatePlan> {
-  if (!binaryPath) return museInstallable()
-    ? { install: true, method: MUSE_INSTALL_METHOD, download: installMuse }
-    : { install: true, reason: "Muse Code runs on macOS and Linux." };
-  if (!await isMuseLauncher(await realpath(binaryPath)))
-    return { binaryPath, reason: "This installation is managed outside Citropy. Update it with its original installer, then refresh models." };
-  return { binaryPath, method: MUSE_UPDATE_METHOD, executable: binaryPath, args: MUSE_UPDATE_ARGS, environment: MUSE_UPDATE_ENVIRONMENT };
+  if (!binaryPath)
+    return museInstallable()
+      ? { install: true, method: MUSE_INSTALL_METHOD, download: installMuse }
+      : { install: true, reason: "Muse Code runs on macOS and Linux." };
+  if (!(await isMuseLauncher(await realpath(binaryPath))))
+    return {
+      binaryPath,
+      reason:
+        "This installation is managed outside Citropy. Update it with its original installer, then refresh models.",
+    };
+  return {
+    binaryPath,
+    method: MUSE_UPDATE_METHOD,
+    executable: binaryPath,
+    args: MUSE_UPDATE_ARGS,
+    environment: MUSE_UPDATE_ENVIRONMENT,
+  };
 }
 
 async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
   if (provider === "antigravity") return antigravityPlan();
   if (provider === "muse") return musePlan(await executablePath(providers.muse.binary));
-  const binaryPath = await executablePath(provider === "opencode" ? openCodeBinary() : providers[provider].binary);
+  const binaryPath = await executablePath(
+    provider === "opencode" ? openCodeBinary() : providers[provider].binary,
+  );
   if (!binaryPath) {
     const packageName = packageFor(provider);
     const npm = await executablePath("npm");
-    if (!npm) return { install: true, reason: "Install Node.js and npm on this machine, then check again." };
-    const prefix = process.platform === "win32"
-      ? join(process.env.APPDATA || join(homedir(), "AppData", "Roaming"), "npm")
-      : join(homedir(), ".local");
+    if (!npm)
+      return {
+        install: true,
+        reason: "Install Node.js and npm on this machine, then check again.",
+      };
+    const prefix =
+      process.platform === "win32"
+        ? join(process.env.APPDATA || join(homedir(), "AppData", "Roaming"), "npm")
+        : join(homedir(), ".local");
     return {
       install: true,
       method: "npm",
       executable: npm,
-      args: ["install", "--global", "--prefix", prefix, `--allow-scripts=${packageName}`, `${packageName}@latest`],
+      args: [
+        "install",
+        "--global",
+        "--prefix",
+        prefix,
+        `--allow-scripts=${packageName}`,
+        `${packageName}@latest`,
+      ],
     };
   }
   const target = await realpath(binaryPath);
@@ -164,37 +191,29 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
       };
     return {
       binaryPath,
-      reason:
-        "This installation uses npm. Make npm available on PATH to update it.",
+      reason: "This installation uses npm. Make npm available on PATH to update it.",
     };
   }
   const brew = /^(.*)\/(Cellar|Caskroom)\/([^/]+)\/[^/]+\//.exec(target);
   if (brew) {
     const command = await executablePath("brew");
-    const name = ({
-      claude: "claude-code",
-      codex: "codex",
-      opencode: "opencode",
-    } satisfies Record<Exclude<ProviderId, "antigravity" | "muse">, string>)[provider];
-    if (
-      brew[3] === name &&
-      command &&
-      (await probe(command, ["--prefix"])) === brew[1]
-    )
+    const name = (
+      {
+        claude: "claude-code",
+        codex: "codex",
+        opencode: "opencode",
+      } satisfies Record<Exclude<ProviderId, "antigravity" | "muse">, string>
+    )[provider];
+    if (brew[3] === name && command && (await probe(command, ["--prefix"])) === brew[1])
       return {
         binaryPath,
         method: "Homebrew",
         executable: command,
-        args: [
-          "upgrade",
-          ...(brew[2] === "Caskroom" ? ["--cask"] : []),
-          brew[3]!,
-        ],
+        args: ["upgrade", ...(brew[2] === "Caskroom" ? ["--cask"] : []), brew[3]!],
       };
     return {
       binaryPath,
-      reason:
-        "Update this installation through its Homebrew installation, then refresh models.",
+      reason: "Update this installation through its Homebrew installation, then refresh models.",
     };
   }
   if (/\/pnpm\/global\//.test(target)) {
@@ -214,9 +233,19 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
   if (provider === "codex" && process.platform !== "win32") {
     const installDirectory = process.env.CODEX_INSTALL_DIR || join(homedir(), ".local", "bin");
     const standalone = join(codexHome(), "packages", "standalone", "releases");
-    if (binaryPath === join(installDirectory, "codex") && (target === binaryPath || target.startsWith(`${standalone}/`))) {
+    if (
+      binaryPath === join(installDirectory, "codex") &&
+      (target === binaryPath || target.startsWith(`${standalone}/`))
+    ) {
       const shell = await executablePath("sh");
-      if (shell) return { binaryPath, method: "Standalone installer", executable: shell, args: [], installer: "https://chatgpt.com/codex/install.sh" };
+      if (shell)
+        return {
+          binaryPath,
+          method: "Standalone installer",
+          executable: shell,
+          args: [],
+          installer: "https://chatgpt.com/codex/install.sh",
+        };
       return { binaryPath, reason: "The standalone installer needs sh on PATH." };
     }
   }
@@ -248,14 +277,10 @@ async function resolveUpdatePlan(provider: ProviderId): Promise<UpdatePlan> {
   };
 }
 
-function updatePlan(
-  provider: ProviderId,
-  refresh = false,
-): Promise<UpdatePlan> {
+function updatePlan(provider: ProviderId, refresh = false): Promise<UpdatePlan> {
   if (refresh) clearCommandCache();
   const cached = plans.get(provider);
-  if (!refresh && cached && Date.now() - cached.time < 30000)
-    return cached.value;
+  if (!refresh && cached && Date.now() - cached.time < 30000) return cached.value;
   const value = resolveUpdatePlan(provider).catch((error: Error) => ({
     reason: error.message,
   }));
@@ -269,16 +294,17 @@ export function providerUpdating(provider: ProviderId): boolean {
 
 function versionNumber(value?: string): string | undefined {
   return (
-    valid(
-      value?.match(
-        /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/,
-      )?.[0],
-    ) || undefined
+    valid(value?.match(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/)?.[0]) || undefined
   );
 }
 
-function updateAvailable(provider: ProviderId, installed?: string, latest?: string): boolean | undefined {
-  const comparable = (value?: string) => versionNumber(value && provider === "muse" ? comparableMuseVersion(value) : value);
+function updateAvailable(
+  provider: ProviderId,
+  installed?: string,
+  latest?: string,
+): boolean | undefined {
+  const comparable = (value?: string) =>
+    versionNumber(value && provider === "muse" ? comparableMuseVersion(value) : value);
   const current = comparable(installed);
   const target = comparable(latest);
   return current && target ? gt(target, current) : undefined;
@@ -290,8 +316,7 @@ async function latestVersion(
   fresh: boolean,
 ): Promise<string | undefined> {
   const cached = versions.get(provider);
-  if (!fresh && cached && Date.now() - cached.time < 300000)
-    return cached.value;
+  if (!fresh && cached && Date.now() - cached.time < 300000) return cached.value;
   const value = (async () => {
     if (provider === "antigravity") return plan.latestVersion;
     if (provider === "muse") return latestMuseVersion();
@@ -312,17 +337,13 @@ async function latestVersion(
       });
       if (!response.ok) throw new Error("Version check failed");
       const data = (await response.json()) as { tag_name?: string };
-      return data.tag_name?.startsWith("rust-v") ? versionNumber(data.tag_name.slice(6)) : undefined;
+      return data.tag_name?.startsWith("rust-v")
+        ? versionNumber(data.tag_name.slice(6))
+        : undefined;
     }
     let channel = "latest";
     if (provider === "claude" && plan.method === "Native updater") {
-      const settings = await readFile(
-        join(
-          claudeHome(),
-          "settings.json",
-        ),
-        "utf8",
-      )
+      const settings = await readFile(join(claudeHome(), "settings.json"), "utf8")
         .catch(ifMissing("{}"))
         .then(JSON.parse);
       if (settings.autoUpdatesChannel === "stable") channel = "stable";
@@ -385,12 +406,7 @@ export async function providerMaintenance(
         version,
         latestVersion: latest,
         checkedAt: versions.get(provider.id)?.time,
-        updateStatus:
-          newer === undefined
-            ? "unknown"
-            : newer
-              ? "available"
-              : "current",
+        updateStatus: newer === undefined ? "unknown" : newer ? "available" : "current",
         binaryPath: plan.binaryPath,
         method: plan.method,
         command: plan.executable
@@ -421,10 +437,7 @@ export function startProviderUpdateChecks(): () => void {
   return () => clearInterval(timer);
 }
 
-async function runUpdate(
-  plan: UpdatePlan,
-  state: ProviderMaintenance,
-): Promise<void> {
+async function runUpdate(plan: UpdatePlan, state: ProviderMaintenance): Promise<void> {
   let directory: string | undefined;
   let args = plan.args!;
   try {
@@ -432,7 +445,8 @@ async function runUpdate(
       const response = await fetch(plan.installer, { signal: AbortSignal.timeout(30000) });
       if (!response.ok) throw new Error("Could not download the official provider installer.");
       const script = await response.text();
-      if (script.length > 512 * 1024 || !script.startsWith("#!/bin/sh")) throw new Error("The provider installer response was invalid.");
+      if (script.length > 512 * 1024 || !script.startsWith("#!/bin/sh"))
+        throw new Error("The provider installer response was invalid.");
       directory = await mkdtemp(join(tmpdir(), "citropy-provider-install-"));
       const path = join(directory, "install.sh");
       await writeFile(path, script, { mode: 0o600, flag: "wx" });
@@ -443,12 +457,21 @@ async function runUpdate(
         cwd: homedir(),
         stdio: ["ignore", "pipe", "pipe"],
         detached: process.platform !== "win32",
-        env: { ...process.env, CI: "1", NO_COLOR: "1", TERM: "dumb", ...plan.environment, ...(plan.installer ? { CODEX_NON_INTERACTIVE: "1", CODEX_INSTALL_DIR: dirname(plan.binaryPath!) } : {}) },
+        env: {
+          ...process.env,
+          CI: "1",
+          NO_COLOR: "1",
+          TERM: "dumb",
+          ...plan.environment,
+          ...(plan.installer
+            ? { CODEX_NON_INTERACTIVE: "1", CODEX_INSTALL_DIR: dirname(plan.binaryPath!) }
+            : {}),
+        },
       });
       const append = (chunk: Buffer) => {
-        state.output = stripVTControlCharacters(
-          (state.output || "") + chunk.toString(),
-        ).slice(-10000);
+        state.output = stripVTControlCharacters((state.output || "") + chunk.toString()).slice(
+          -10000,
+        );
       };
       child.stdout.on("data", append);
       child.stderr.on("data", append);
@@ -514,16 +537,28 @@ export function startProviderUpdates(
   prepare: (provider: ProviderId) => Promise<void>,
   refresh: () => Promise<void>,
 ): ProviderMaintenance[] {
-  if ([...states.values()].some(state => state.status === "updating"))
+  if ([...states.values()].some((state) => state.status === "updating"))
     throw new Error("Wait for the current provider update to finish.");
-  const queued = [...new Set(ids)].map(provider => {
-    const state: ProviderMaintenance = { provider, status: "updating", available: true, install: false, message: "Queued for update…" };
+  const queued = [...new Set(ids)].map((provider) => {
+    const state: ProviderMaintenance = {
+      provider,
+      status: "updating",
+      available: true,
+      install: false,
+      message: "Queued for update…",
+    };
     states.set(provider, state);
     return state;
   });
   void (async () => {
     for (const state of queued)
-      await performProviderUpdate(state.provider, state, () => prepare(state.provider), refresh, false);
+      await performProviderUpdate(
+        state.provider,
+        state,
+        () => prepare(state.provider),
+        refresh,
+        false,
+      );
   })();
   return queued;
 }
@@ -538,46 +573,52 @@ async function performProviderUpdate(
   try {
     await prepare();
     const plan = await updatePlan(provider, true);
-    if (plan.install && !allowInstall) throw new Error("This provider is no longer installed. Install it separately.");
+    if (plan.install && !allowInstall)
+      throw new Error("This provider is no longer installed. Install it separately.");
     if (!plan.executable && !plan.download)
-      throw new Error(
-        plan.reason || "No updater is available for this installation.",
-      );
+      throw new Error(plan.reason || "No updater is available for this installation.");
     Object.assign(state, {
       binaryPath: plan.binaryPath,
       install: plan.install ?? false,
       method: plan.method,
-      command: plan.executable ? plan.installer || [plan.executable, ...plan.args!].join(" ") : undefined,
+      command: plan.executable
+        ? plan.installer || [plan.executable, ...plan.args!].join(" ")
+        : undefined,
     });
     const before = await providers[provider].detect();
     state.message = plan.install ? "Installing provider…" : "Checking for updates and installing…";
-    if (plan.download) await plan.download(message => { state.message = message; });
+    if (plan.download)
+      await plan.download((message) => {
+        state.message = message;
+      });
     else await runUpdate(plan, state);
     if (plan.install && (plan.method === "npm" || plan.method === MUSE_INSTALL_METHOD)) {
-      const bin = plan.method === MUSE_INSTALL_METHOD
-        ? MUSE_INSTALL_DIRECTORY
-        : process.platform === "win32" ? plan.args![3]! : join(homedir(), ".local", "bin");
+      const bin =
+        plan.method === MUSE_INSTALL_METHOD
+          ? MUSE_INSTALL_DIRECTORY
+          : process.platform === "win32"
+            ? plan.args![3]!
+            : join(homedir(), ".local", "bin");
       if (!(process.env.PATH || "").split(delimiter).includes(bin))
         process.env.PATH = `${bin}${delimiter}${process.env.PATH || ""}`;
     }
     clearCommandCache();
     const after = await providers[provider].detect();
     if (!after.available || !after.version)
-      throw new Error(
-        "The updater finished, but the CLI could not be verified. Check the output.",
-      );
+      throw new Error("The updater finished, but the CLI could not be verified. Check the output.");
     state.version = after.version;
     installed.delete(provider);
     versions.delete(provider);
     if (!plan.install && before.version === after.version) {
       const latest = await latestVersion(provider, plan, true);
       if (updateAvailable(provider, after.version, latest))
-        throw new Error(`The updater finished, but ${providers[provider].label} still reports ${after.version}; ${latest} is available for this installation. Check the update details and CLI path.`);
+        throw new Error(
+          `The updater finished, but ${providers[provider].label} still reports ${after.version}; ${latest} is available for this installation. Check the update details and CLI path.`,
+        );
     }
-    state.message =
-      plan.install
-        ? `Installed ${after.version}. Sign in to this provider to start using it.`
-        : before.version === after.version
+    state.message = plan.install
+      ? `Installed ${after.version}. Sign in to this provider to start using it.`
+      : before.version === after.version
         ? `Update check complete. Installed: ${after.version}.`
         : `Updated to ${after.version}.`;
     await refresh();

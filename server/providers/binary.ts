@@ -1,4 +1,9 @@
-import { execFile, spawn, type ChildProcessWithoutNullStreams, type SpawnOptions } from "node:child_process";
+import {
+  execFile,
+  spawn,
+  type ChildProcessWithoutNullStreams,
+  type SpawnOptions,
+} from "node:child_process";
 import { ifMissing } from "../../shared/expected-errors.mjs";
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
@@ -27,16 +32,24 @@ export interface ResolvedCommand {
 }
 
 /** The exact `spawn`/`execFile` call for a resolved command plus the caller's arguments. */
-export function invocation(resolved: ResolvedCommand, args: string[]): { file: string; args: string[]; verbatim: boolean } {
-  if (resolved.shell !== "cmd") return { file: resolved.file, args: [...resolved.prefix, ...args], verbatim: false };
+export function invocation(
+  resolved: ResolvedCommand,
+  args: string[],
+): { file: string; args: string[]; verbatim: boolean } {
+  if (resolved.shell !== "cmd")
+    return { file: resolved.file, args: [...resolved.prefix, ...args], verbatim: false };
   // Ported from cross-spawn: escape for cmd.exe, which strips the outer quotes because of /s.
   const command = resolved.path!.replace(/([()\][%!^"`<>&|;, *?])/g, "^$1");
   const escaped = args.map((argument) => {
-    let value = `"${argument.replace(/(\\*)"/g, "$1$1\\\"").replace(/(\\*)$/, "$1$1")}"`;
+    let value = `"${argument.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\*)$/, "$1$1")}"`;
     value = value.replace(/([()\][%!^"`<>&|;, *?])/g, "^$1");
     return value;
   });
-  return { file: resolved.file, args: ["/d", "/s", "/c", `"${[command, ...escaped].join(" ")}"`], verbatim: true };
+  return {
+    file: resolved.file,
+    args: ["/d", "/s", "/c", `"${[command, ...escaped].join(" ")}"`],
+    verbatim: true,
+  };
 }
 
 export interface ResolveInOptions {
@@ -57,7 +70,12 @@ export function clearCommandCache(): void {
   versions.clear();
 }
 
-function findInDirs(name: string, dirs: string[], exists: (path: string) => boolean, win: boolean): string | undefined {
+function findInDirs(
+  name: string,
+  dirs: string[],
+  exists: (path: string) => boolean,
+  win: boolean,
+): string | undefined {
   for (const dir of dirs) {
     const candidate = (win ? win32 : posix).join(dir, name);
     if (exists(candidate)) return candidate;
@@ -68,9 +86,18 @@ function findInDirs(name: string, dirs: string[], exists: (path: string) => bool
 /** Pure resolution against an explicit platform, directory list and existence check. */
 export function resolveIn(binary: string, options: ResolveInOptions): ResolvedCommand {
   const { platform, dirs, exists } = options;
-  if ((platform === "win32" ? win32.isAbsolute(binary) : posix.isAbsolute(binary)) && exists(binary)) {
-    if (platform === "win32" && /\.(cmd|bat)$/i.test(binary)) return { file: process.env.ComSpec ?? "cmd.exe", prefix: [], path: binary, shell: "cmd" };
-    if (platform === "win32" && /\.ps1$/i.test(binary)) return { file: "powershell.exe", prefix: ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", binary], path: binary };
+  if (
+    (platform === "win32" ? win32.isAbsolute(binary) : posix.isAbsolute(binary)) &&
+    exists(binary)
+  ) {
+    if (platform === "win32" && /\.(cmd|bat)$/i.test(binary))
+      return { file: process.env.ComSpec ?? "cmd.exe", prefix: [], path: binary, shell: "cmd" };
+    if (platform === "win32" && /\.ps1$/i.test(binary))
+      return {
+        file: "powershell.exe",
+        prefix: ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", binary],
+        path: binary,
+      };
     return { file: binary, prefix: [], path: binary };
   }
   if (platform !== "win32") {
@@ -92,14 +119,23 @@ export function resolveIn(binary: string, options: ResolveInOptions): ResolvedCo
         continue;
       }
       if (lower.endsWith(".cmd") || lower.endsWith(".bat"))
-        return { file: process.env.ComSpec ?? "cmd.exe", prefix: [], path: candidate, shell: "cmd" };
+        return {
+          file: process.env.ComSpec ?? "cmd.exe",
+          prefix: [],
+          path: candidate,
+          shell: "cmd",
+        };
       if (lower.endsWith(".exe") || lower.endsWith(".com"))
         return { file: candidate, prefix: [], path: candidate };
     }
   }
   if (powershell) {
     const file = findInDirs("pwsh.exe", dirs, exists, true) ? "pwsh.exe" : "powershell.exe";
-    return { file, prefix: ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", powershell], path: powershell };
+    return {
+      file,
+      prefix: ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", powershell],
+      path: powershell,
+    };
   }
   return { file: binary, prefix: [] };
 }
@@ -120,7 +156,10 @@ function windowsDirectories(): string[] {
 export function resolveCommand(binary: string): ResolvedCommand {
   const cached = cache.get(binary);
   if (cached && Date.now() - cached.at < CACHE_TTL) return cached.value;
-  const dirs = process.platform === "win32" ? [...pathDirectories(), ...windowsDirectories()] : pathDirectories();
+  const dirs =
+    process.platform === "win32"
+      ? [...pathDirectories(), ...windowsDirectories()]
+      : pathDirectories();
   const value = resolveIn(binary, {
     platform: process.platform,
     dirs,
@@ -138,7 +177,11 @@ export function spawnCommand(
   options: SpawnOptions,
 ): ChildProcessWithoutNullStreams {
   const call = invocation(resolveCommand(binary), args);
-  return spawn(call.file, call.args, { ...options, windowsHide: true, windowsVerbatimArguments: call.verbatim }) as ChildProcessWithoutNullStreams;
+  return spawn(call.file, call.args, {
+    ...options,
+    windowsHide: true,
+    windowsVerbatimArguments: call.verbatim,
+  }) as ChildProcessWithoutNullStreams;
 }
 
 /** The installed file behind a command, which changes whenever the CLI is installed, updated or removed. */
@@ -155,23 +198,36 @@ export function commandIdentity(binary: string): string | undefined {
 }
 
 /** Read the first non-empty version line from `binary --version`, or undefined if it fails. */
-export function commandVersion(binary: string, timeoutMs = 8000, environment?: Record<string, string>): Promise<string | undefined> {
+export function commandVersion(
+  binary: string,
+  timeoutMs = 8000,
+  environment?: Record<string, string>,
+): Promise<string | undefined> {
   const key = `${binary}\0${JSON.stringify(environment ?? {})}`;
   const identity = commandIdentity(binary);
   const cached = versions.get(key);
-  if (identity && cached?.identity === identity && Date.now() - cached.at < VERSION_TTL) return Promise.resolve(cached.version);
+  if (identity && cached?.identity === identity && Date.now() - cached.at < VERSION_TTL)
+    return Promise.resolve(cached.version);
   const call = invocation(resolveCommand(binary), ["--version"]);
   return new Promise((resolve) => {
     execFile(
       call.file,
       call.args,
-      { timeout: timeoutMs, windowsHide: true, windowsVerbatimArguments: call.verbatim, env: { ...process.env, ...environment } },
+      {
+        timeout: timeoutMs,
+        windowsHide: true,
+        windowsVerbatimArguments: call.verbatim,
+        env: { ...process.env, ...environment },
+      },
       (error, stdout, stderr) => {
         if (error) {
           resolve(undefined);
           return;
         }
-        const version = (stdout || stderr).split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+        const version = (stdout || stderr)
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .find(Boolean);
         if (identity && version) versions.set(key, { identity, at: Date.now(), version });
         resolve(version);
       },

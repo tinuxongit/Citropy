@@ -44,38 +44,28 @@ export async function mutate(
       });
       return { message: "Changes saved on GitHub." };
     case "comment":
-      await api(
-        `${prefix}/issues/${positive(mutation.number)}/comments`,
-        "POST",
-        { body: text(mutation.body, "comment", true) },
-      );
+      await api(`${prefix}/issues/${positive(mutation.number)}/comments`, "POST", {
+        body: text(mutation.body, "comment", true),
+      });
       return { message: "Comment posted." };
     case "state":
-      if (!["open", "closed"].includes(mutation.state))
-        throw new Error("Invalid state.");
+      if (!["open", "closed"].includes(mutation.state)) throw new Error("Invalid state.");
       await api(
         `${prefix}/${mutation.pull ? "pulls" : "issues"}/${positive(mutation.number)}`,
         "PATCH",
         { state: mutation.state },
       );
       return {
-        message:
-          mutation.state === "open"
-            ? "Reopened on GitHub."
-            : "Closed on GitHub.",
+        message: mutation.state === "open" ? "Reopened on GitHub." : "Closed on GitHub.",
       };
     case "review":
       if (!["APPROVE", "REQUEST_CHANGES", "COMMENT"].includes(mutation.event))
         throw new Error("Invalid review.");
-      await api(
-        `${prefix}/pulls/${positive(mutation.number)}/reviews`,
-        "POST",
-        {
-          event: mutation.event,
-          body: text(mutation.body, "review", mutation.event !== "APPROVE"),
-          commit_id: text(mutation.sha, "commit", true),
-        },
-      );
+      await api(`${prefix}/pulls/${positive(mutation.number)}/reviews`, "POST", {
+        event: mutation.event,
+        body: text(mutation.body, "review", mutation.event !== "APPROVE"),
+        commit_id: text(mutation.sha, "commit", true),
+      });
       return { message: "Review submitted." };
     case "merge": {
       if (
@@ -89,26 +79,16 @@ export async function mutate(
         { merge_method: mutation.method, sha: mutation.sha },
       );
       if (!result.merged)
-        throw new Error(
-          result.message || "GitHub did not merge the pull request.",
-        );
+        throw new Error(result.message || "GitHub did not merge the pull request.");
       return { message: "Pull request merged." };
     }
     case "ready":
-      await command("gh", [
-        "pr",
-        "ready",
-        String(positive(mutation.number)),
-        "--repo",
-        repo,
-      ]);
+      await command("gh", ["pr", "ready", String(positive(mutation.number)), "--repo", repo]);
       return { message: "Pull request marked ready for review." };
     case "requestReview":
-      await api(
-        `${prefix}/pulls/${positive(mutation.number)}/requested_reviewers`,
-        "POST",
-        { reviewers: names(mutation.reviewers) },
-      );
+      await api(`${prefix}/pulls/${positive(mutation.number)}/requested_reviewers`, "POST", {
+        reviewers: names(mutation.reviewers),
+      });
       return { message: "Review requested." };
     case "rerun":
       await api(
@@ -117,10 +97,7 @@ export async function mutate(
       );
       return { message: "Workflow rerun requested." };
     case "cancelRun":
-      await api(
-        `${prefix}/actions/runs/${positive(mutation.id)}/cancel`,
-        "POST",
-      );
+      await api(`${prefix}/actions/runs/${positive(mutation.id)}/cancel`, "POST");
       return { message: "Workflow cancellation requested." };
     case "dispatch":
       if (
@@ -128,21 +105,13 @@ export async function mutate(
         typeof mutation.inputs !== "object" ||
         Array.isArray(mutation.inputs) ||
         Object.keys(mutation.inputs).length > 25 ||
-        Object.values(mutation.inputs).some(
-          (value) => typeof value !== "string",
-        )
+        Object.values(mutation.inputs).some((value) => typeof value !== "string")
       )
-        throw new Error(
-          "Workflow inputs must be a JSON object with text values.",
-        );
-      await api(
-        `${prefix}/actions/workflows/${positive(mutation.id)}/dispatches`,
-        "POST",
-        {
-          ref: text(mutation.ref, "branch or tag", true),
-          inputs: mutation.inputs,
-        },
-      );
+        throw new Error("Workflow inputs must be a JSON object with text values.");
+      await api(`${prefix}/actions/workflows/${positive(mutation.id)}/dispatches`, "POST", {
+        ref: text(mutation.ref, "branch or tag", true),
+        inputs: mutation.inputs,
+      });
       return { message: "Workflow started. It may take a moment to appear." };
     case "fork": {
       const fork = await api<GitHubRepository>(`${prefix}/forks`, "POST");

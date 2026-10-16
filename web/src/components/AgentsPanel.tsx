@@ -44,41 +44,69 @@ export function AgentsPanel() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [busy, setBusy] = useState<string>();
 
-  const load = () => api<{ agents: Agent[] }>(open ? "agents?usage=1" : "agents").then((value) => setAgents(value.agents)).catch((error) => console.error("Loading agents failed:", error));
-  useEffect(() => { void load(); }, [open]);
+  const load = () =>
+    api<{ agents: Agent[] }>(open ? "agents?usage=1" : "agents")
+      .then((value) => setAgents(value.agents))
+      .catch((error) => console.error("Loading agents failed:", error));
+  useEffect(() => {
+    void load();
+  }, [open]);
   useVisibleInterval(load, open ? SETTINGS.openPollMs : SETTINGS.pollMs);
 
   useEffect(() => {
     if (!open) return;
-    const outside = (event: PointerEvent) => { if (!wrap.current?.contains(event.target as Node)) setOpen(false); };
+    const outside = (event: PointerEvent) => {
+      if (!wrap.current?.contains(event.target as Node)) setOpen(false);
+    };
     document.addEventListener("pointerdown", outside, true);
     return () => document.removeEventListener("pointerdown", outside, true);
   }, [open]);
 
   const turnOff = (path: string, key: string) => {
     setBusy(key);
-    api<{ agents: Agent[] }>(path, { method: "POST" }).then((value) => setAgents(value.agents)).catch(reportError).finally(() => setBusy(undefined));
+    api<{ agents: Agent[] }>(path, { method: "POST" })
+      .then((value) => setAgents(value.agents))
+      .catch(reportError)
+      .finally(() => setBusy(undefined));
   };
   const show = (agent: Agent) => {
     setOpen(false);
     if (agent.rosterId) return selectRosterEntry(agent.rosterId);
-    useApp.setState({ activeView: useApp.getState().threads[agent.threadId]?.chat ? "chats" : "chat" });
+    useApp.setState({
+      activeView: useApp.getState().threads[agent.threadId]?.chat ? "chats" : "chat",
+    });
     if (agent.projectId !== useApp.getState().activeProjectId) selectProject(agent.projectId);
     selectThread(agent.threadId);
     loadThread(agent.threadId);
   };
   const idle = agents.filter((agent) => agent.status === "idle").length;
   const titles = new Map(agents.map((agent) => [agent.threadId, agent.title]));
-  const sections = ([["Conversations", ConversationsIcon, agents.filter((agent) => !agent.rosterId)], ["Bots", BotsIcon, agents.filter((agent) => agent.rosterId)]] as const).filter(([, , list]) => list.length);
+  const sections = (
+    [
+      ["Conversations", ConversationsIcon, agents.filter((agent) => !agent.rosterId)],
+      ["Bots", BotsIcon, agents.filter((agent) => agent.rosterId)],
+    ] as const
+  ).filter(([, , list]) => list.length);
   const row = (agent: Agent) => (
     <li key={agent.threadId} data-status={agent.status}>
       <ProviderIcon provider={agent.provider} />
-      <button type="button" className="agents-thread" onClick={() => show(agent)} title={agent.rosterId ? "Open bot" : "Open conversation"}>
+      <button
+        type="button"
+        className="agents-thread"
+        onClick={() => show(agent)}
+        title={agent.rosterId ? "Open bot" : "Open conversation"}
+      >
         <strong className="truncate">{agent.title}</strong>
         <small className="truncate">
-          {agent.parentThreadId ? `${`Subagent of ${titles.get(agent.parentThreadId) ?? "another chat"}`} · ` : agent.rosterId ? "" : `${agent.projectName} · `}
+          {agent.parentThreadId
+            ? `${`Subagent of ${titles.get(agent.parentThreadId) ?? "another chat"}`} · `
+            : agent.rosterId
+              ? ""
+              : `${agent.projectName} · `}
           {statusLabel[agent.status]}
-          {agent.status === "idle" ? ` ${ago(agent.lastActive)}` : ` · ${duration(Date.now() - agent.started)}`}
+          {agent.status === "idle"
+            ? ` ${ago(agent.lastActive)}`
+            : ` · ${duration(Date.now() - agent.started)}`}
           {agent.memory !== undefined && ` · ${megabytes(agent.memory)}`}
         </small>
       </button>
@@ -88,7 +116,9 @@ export function AgentsPanel() {
         aria-label={`Turn off ${agent.title}`}
         title={agent.status === "idle" ? "Turn off" : "Stop and turn off"}
         disabled={busy !== undefined}
-        onClick={() => turnOff(`agents/turn-off?threadId=${encodeURIComponent(agent.threadId)}`, agent.threadId)}
+        onClick={() =>
+          turnOff(`agents/turn-off?threadId=${encodeURIComponent(agent.threadId)}`, agent.threadId)
+        }
       >
         <PowerIcon size={14} />
       </button>
@@ -96,7 +126,13 @@ export function AgentsPanel() {
   );
 
   return (
-    <div className="agents-control" ref={wrap} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}>
+    <div
+      className="agents-control"
+      ref={wrap}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setOpen(false);
+      }}
+    >
       <button
         ref={trigger}
         type="button"
@@ -109,27 +145,50 @@ export function AgentsPanel() {
       >
         <span className="strip-action-face">
           <AgentsIcon size={18} />
-          {agents.length > 0 && <span className="agents-count" aria-hidden="true">{agents.length}</span>}
+          {agents.length > 0 && (
+            <span className="agents-count" aria-hidden="true">
+              {agents.length}
+            </span>
+          )}
         </span>
       </button>
-      <StripPeek anchor={trigger.current} open={open} className="agents-peek" id={id} role="dialog" aria-label="Running agents">
+      <StripPeek
+        anchor={trigger.current}
+        open={open}
+        className="agents-peek"
+        id={id}
+        role="dialog"
+        aria-label="Running agents"
+      >
         {agents.length === 0 ? (
-          <p>No agents are running. An agent starts when you send a message and stays ready for an hour after it goes quiet.</p>
+          <p>
+            No agents are running. An agent starts when you send a message and stays ready for an
+            hour after it goes quiet.
+          </p>
         ) : (
           <div className="agents-sections">
             {sections.map(([label, Icon, list]) => (
               <section key={label} aria-label={label}>
-                {sections.length > 1 && <h3><Icon size={16} />{label}</h3>}
-                <ul className="agents-list">
-                  {list.map(row)}
-                </ul>
+                {sections.length > 1 && (
+                  <h3>
+                    <Icon size={16} />
+                    {label}
+                  </h3>
+                )}
+                <ul className="agents-list">{list.map(row)}</ul>
               </section>
             ))}
           </div>
         )}
         {idle > 0 && (
-          <button type="button" className="btn" disabled={busy !== undefined} onClick={() => turnOff("agents/turn-off-idle", "idle")}>
-            <PowerIcon size={14} />Turn off idle agents ({idle})
+          <button
+            type="button"
+            className="btn"
+            disabled={busy !== undefined}
+            onClick={() => turnOff("agents/turn-off-idle", "idle")}
+          >
+            <PowerIcon size={14} />
+            Turn off idle agents ({idle})
           </button>
         )}
       </StripPeek>

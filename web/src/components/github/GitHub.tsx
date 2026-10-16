@@ -20,12 +20,7 @@ import { GitHubReleases } from "./GitHubReleases.tsx";
 import { GitHubRepositories } from "./GitHubRepositories.tsx";
 import { GitHubNotifications } from "./GitHubNotifications.tsx";
 import { GitHubAccount, GitHubSignIn } from "./GitHubAccount.tsx";
-import {
-  GitHubDialog,
-  GitHubFeedback,
-  GitHubLink,
-  formText,
-} from "./GitHubShared.tsx";
+import { GitHubDialog, GitHubFeedback, GitHubLink, formText } from "./GitHubShared.tsx";
 import { Loader } from "../Loader.tsx";
 
 const sections = [
@@ -53,15 +48,10 @@ export function GitHub({
 }) {
   const connected = useApp((state) => state.connected);
   const projectId = useApp((state) => state.activeProjectId);
-  const project = useApp((state) =>
-    state.projects.find((project) => project.id === projectId),
-  );
+  const project = useApp((state) => state.projects.find((project) => project.id === projectId));
   const [section, setSection] = useState<Section>("Repositories");
   const [repo, setRepo] = useState("");
-  const repository = useGitHub(
-    "repository",
-    repo && status.data?.account ? { repo } : null,
-  );
+  const repository = useGitHub("repository", repo && status.data?.account ? { repo } : null);
   const [clone, setClone] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [fork, setFork] = useState(false);
@@ -73,59 +63,56 @@ export function GitHub({
     onNavigate();
   };
   useEffect(() => {
-    if (!repo && status.data?.repositories[0])
-      setRepo(status.data.repositories[0].repo);
+    if (!repo && status.data?.repositories[0]) setRepo(status.data.repositories[0].repo);
   }, [status.data, repo]);
   const workspaceHasRepo = Boolean(
     status.data?.repositories.some((remote) => remote.repo === repo),
   );
-  const global =
-    section === "Account" ||
-    sections.find((entry) => entry.name === section)?.global;
+  const global = section === "Account" || sections.find((entry) => entry.name === section)?.global;
   return (
     <section className="section-view github-view" aria-label="GitHub">
       <SectionSidebar activeItem={section} open={sidebarOpen} title="GitHub">
-          {sections.map(({ name, icon, global }) => (
-            <SectionLink
-              key={name}
-              icon={icon}
-              label={name}
-              active={section === name}
-              disabled={!global && !repo}
-              onSelect={() => {
-                setSection(name);
-                onNavigate();
-              }}
-            />
-          ))}
-          {repo && (
-            <div className="github-sidebar-repo">
-              <span>Selected repository</span>
-              <strong>{repo}</strong>
-            </div>
-          )}
-          <button
-            type="button"
-            className="github-sidebar-account"
-            aria-label={
-              status.data?.account
-                ? `Account settings for ${status.data.account.login}`
-                : "Connect GitHub account"
-            }
-            aria-current={section === "Account" ? "page" : undefined}
-            onClick={() => {
-              setSection("Account");
+        {sections.map(({ name, icon, global }) => (
+          <SectionLink
+            key={name}
+            icon={icon}
+            label={name}
+            active={section === name}
+            disabled={!global && !repo}
+            onSelect={() => {
+              setSection(name);
               onNavigate();
             }}
-          >
-            {status.data?.account ? (
-              <img src={status.data.account.avatar_url} alt="" />
-            ) : (
-              <UserIcon size={21} />
-            )}
-            <span>{status.data?.account?.login ?? "Connect GitHub"}</span>
-            {status.data?.account && <CheckIcon size={14} />}
-          </button>
+          />
+        ))}
+        {repo && (
+          <div className="github-sidebar-repo">
+            <span>Selected repository</span>
+            <strong>{repo}</strong>
+          </div>
+        )}
+        <button
+          type="button"
+          className="github-sidebar-account"
+          aria-label={
+            status.data?.account
+              ? `Account settings for ${status.data.account.login}`
+              : "Connect GitHub account"
+          }
+          aria-current={section === "Account" ? "page" : undefined}
+          onClick={() => {
+            setSection("Account");
+            onNavigate();
+          }}
+        >
+          {status.data?.account ? (
+            <img src={status.data.account.avatar_url} alt="" />
+          ) : (
+            <UserIcon size={21} />
+          )}
+          <span>{status.data?.account?.login ?? "Connect GitHub"}</span>
+          {status.data?.account && <CheckIcon size={14} />}
+        </button>
       </SectionSidebar>
       <div className="github-main">
         <header className="github-heading">
@@ -135,13 +122,12 @@ export function GitHub({
           </div>
           {!global && repository.data && (
             <div className="github-repo-actions">
-              <button
-                className="btn"
-                onClick={() => setSection("Repositories")}
-              >
-                <BookIcon size={15} />{" "}Browse{" "}</button>
+              <button className="btn" onClick={() => setSection("Repositories")}>
+                <BookIcon size={15} /> Browse{" "}
+              </button>
               <button className="btn" onClick={() => setClone(repo)}>
-                <DownloadIcon size={15} />{" "}Clone{" "}</button>
+                <DownloadIcon size={15} /> Clone{" "}
+              </button>
               <GitHubLink href={repository.data.html_url}>GitHub</GitHubLink>
             </div>
           )}
@@ -152,21 +138,14 @@ export function GitHub({
             <span>Reconnecting to Citropy… Your loaded pages will stay here.</span>
           </div>
         )}
-        <GitHubFeedback
-          error={status.error}
-          loading={status.loading && !status.data}
-        />
+        <GitHubFeedback error={status.error} loading={status.loading && !status.data} />
         {message && !status.data?.account && (
           <p className="github-notice" role="status">
             {message}
           </p>
         )}
         {status.data && !status.data.account && (
-          <GitHubSignIn
-            status={status.data}
-            onMessage={setMessage}
-            onRefresh={status.refresh}
-          />
+          <GitHubSignIn status={status.data} onMessage={setMessage} onRefresh={status.refresh} />
         )}
         {status.data?.account && (
           <>
@@ -179,18 +158,14 @@ export function GitHub({
               <GitHubRepositories
                 onSelect={chooseRepo}
                 onClone={setClone}
-                workspace={status.data.repositories.map(
-                  (remote) => remote.repo,
-                )}
+                workspace={status.data.repositories.map((remote) => remote.repo)}
                 workspaceName={project?.name}
                 projectId={projectId ?? undefined}
                 hasCommits={Boolean(status.data.hasCommits)}
                 onGit={onGit}
               />
             )}
-            {section === "Notifications" && (
-              <GitHubNotifications onSelect={chooseRepo} />
-            )}
+            {section === "Notifications" && <GitHubNotifications onSelect={chooseRepo} />}
             {section === "Account" && (
               <GitHubAccount
                 account={status.data.account}
@@ -220,14 +195,12 @@ export function GitHub({
                         <ForkIcon size={14} />
                         {repository.data.forks_count}
                       </span>
-                      <span>
-                        {repository.data.private ? "Private" : "Public"}
-                      </span>
+                      <span>{repository.data.private ? "Private" : "Public"}</span>
                       {repository.data.archived && <span>Archived</span>}
                       {projectId && !workspaceHasRepo && (
-                          <button onClick={() => setConnecting(true)}>{" "}Connect workspace{" "}</button>
-                        )}
-                      <button onClick={() => setFork(true)}>{" "}Fork repository{" "}</button>
+                        <button onClick={() => setConnecting(true)}> Connect workspace </button>
+                      )}
+                      <button onClick={() => setFork(true)}> Fork repository </button>
                     </div>
                     {section === "Pull requests" || section === "Issues" ? (
                       <GitHubItems
@@ -249,62 +222,74 @@ export function GitHub({
           </>
         )}
       </div>
-      <AnimatePresence>{clone && (
-        <GitHubDialog
-          title="Clone repository"
-          description={`Clone ${clone} into a new folder named ${clone.split("/")[1]!}. Choose its parent folder in the system file explorer.`}
-          submitLabel="Choose folder and clone"
-          onClose={() => setClone(null)}
-          onSubmit={async () => {
-            const result = await github("clone", { repo: clone });
-            if (result.project) {
-              selectProject(result.project.id);
-              onBack();
-            }
-          }}
-        >
-          <p className="github-meta">{" "}The repository will open as a workspace when the clone finishes. Existing folders will be preserved.{" "}</p>
-        </GitHubDialog>
-      )}</AnimatePresence>
-      <AnimatePresence>{connecting && projectId && (
-        <GitHubDialog
-          title="Connect workspace"
-          description={`Connect ${project?.name ?? ""} to ${repo}. This adds a Git remote without pulling or pushing any files.`}
-          submitLabel="Connect repository"
-          onClose={() => setConnecting(false)}
-          onSubmit={async (data) => {
-            setMessage(
-              (
-                await github("connectRepository", {
-                  projectId,
-                  repo,
-                  remote: formText(data, "remote"),
-                })
-              ).message,
-            );
-            status.refresh();
-          }}
-        >
-          <label className="git-field">{" "}Remote name{" "}<input name="remote" defaultValue="origin" required />
-          </label>
-        </GitHubDialog>
-      )}</AnimatePresence>
-      <AnimatePresence>{fork && (
-        <GitHubDialog
-          title="Fork repository"
-          description={`Create a copy of ${repo} in your GitHub account.`}
-          submitLabel="Create fork"
-          onClose={() => setFork(false)}
-          onSubmit={async () => {
-            const result = await github("mutate", {
-              repo,
-              mutation: { action: "fork" },
-            });
-            setMessage(result.message);
-            repository.refresh();
-          }}
-        />
-      )}</AnimatePresence>
+      <AnimatePresence>
+        {clone && (
+          <GitHubDialog
+            title="Clone repository"
+            description={`Clone ${clone} into a new folder named ${clone.split("/")[1]!}. Choose its parent folder in the system file explorer.`}
+            submitLabel="Choose folder and clone"
+            onClose={() => setClone(null)}
+            onSubmit={async () => {
+              const result = await github("clone", { repo: clone });
+              if (result.project) {
+                selectProject(result.project.id);
+                onBack();
+              }
+            }}
+          >
+            <p className="github-meta">
+              {" "}
+              The repository will open as a workspace when the clone finishes. Existing folders will
+              be preserved.{" "}
+            </p>
+          </GitHubDialog>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {connecting && projectId && (
+          <GitHubDialog
+            title="Connect workspace"
+            description={`Connect ${project?.name ?? ""} to ${repo}. This adds a Git remote without pulling or pushing any files.`}
+            submitLabel="Connect repository"
+            onClose={() => setConnecting(false)}
+            onSubmit={async (data) => {
+              setMessage(
+                (
+                  await github("connectRepository", {
+                    projectId,
+                    repo,
+                    remote: formText(data, "remote"),
+                  })
+                ).message,
+              );
+              status.refresh();
+            }}
+          >
+            <label className="git-field">
+              {" "}
+              Remote name <input name="remote" defaultValue="origin" required />
+            </label>
+          </GitHubDialog>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {fork && (
+          <GitHubDialog
+            title="Fork repository"
+            description={`Create a copy of ${repo} in your GitHub account.`}
+            submitLabel="Create fork"
+            onClose={() => setFork(false)}
+            onSubmit={async () => {
+              const result = await github("mutate", {
+                repo,
+                mutation: { action: "fork" },
+              });
+              setMessage(result.message);
+              repository.refresh();
+            }}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }

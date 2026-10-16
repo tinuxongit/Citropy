@@ -30,21 +30,46 @@ async function fixture(t) {
   t.mock.method(providers.claude, "detect", async () => ({ available: true }));
   const signIn = providers.claude.signIn;
   providers.claude.signIn = { kind: "app", status: async () => ({ signedIn: true }) };
-  t.after(() => { providers.claude.signIn = signIn; });
-  t.mock.method(providers.claude, "start", options => {
-    const session = { emit: options.emit, sent: [], send(prompt) { this.sent.push(prompt); }, dispose() {} };
+  t.after(() => {
+    providers.claude.signIn = signIn;
+  });
+  t.mock.method(providers.claude, "start", (options) => {
+    const session = {
+      emit: options.emit,
+      sent: [],
+      send(prompt) {
+        this.sent.push(prompt);
+      },
+      dispose() {},
+    };
     sessions.set(options.threadId, session);
     return session;
   });
-  const makeBot = profile => {
+  const makeBot = (profile) => {
     const id = uid("bot");
-    const thread = store.createThread({ projectId: project.id, provider: "claude", permissionMode: "manual", title: profile.name, botId: id });
+    const thread = store.createThread({
+      projectId: project.id,
+      provider: "claude",
+      permissionMode: "manual",
+      title: profile.name,
+      botId: id,
+    });
     return botStore.create(id, thread.id, profile);
   };
-  const makeGroup = bots => {
+  const makeGroup = (bots) => {
     const id = uid("grp");
-    const thread = store.createThread({ projectId: project.id, provider: "claude", permissionMode: "manual", title: "Group", groupId: id });
-    return groupStore.create(id, thread.id, bots.map(bot => bot.id));
+    const thread = store.createThread({
+      projectId: project.id,
+      provider: "claude",
+      permissionMode: "manual",
+      title: "Group",
+      groupId: id,
+    });
+    return groupStore.create(
+      id,
+      thread.id,
+      bots.map((bot) => bot.id),
+    );
   };
   t.after(async () => {
     store.closeProject(project.id);
@@ -56,75 +81,119 @@ async function fixture(t) {
 async function until(check) {
   for (let attempt = 0; attempt < 500; attempt++) {
     if (check()) return;
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
   assert.fail("Timed out waiting for the bot.");
 }
 
-test("a bot hands a task to another bot with its profile and sender attached", async t => {
+test("a bot hands a task to another bot with its profile and sender attached", async (t) => {
   const { makeBot, sessions } = await fixture(t);
   const scout = makeBot({ name: "Scout", title: "Research", description: "Always cite sources." });
   const writer = makeBot({ name: "Writer" });
-  await callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_message", arguments: { botId: writer.id, text: "Draft a summary of the findings." } });
+  await callWorkspaceTool(scout.threadId, "run_tool", {
+    name: "bots_message",
+    arguments: { botId: writer.id, text: "Draft a summary of the findings." },
+  });
   const prompt = sessions.get(writer.threadId).sent[0];
   assert.match(prompt, /You are Writer/);
   assert.match(prompt, /This message is from Scout/);
   assert.match(prompt, new RegExp(`botId ${scout.id}`));
   const message = store.threads.get(writer.threadId).messages.at(-1);
   assert.equal(message.parts[0].text, "Draft a summary of the findings.");
-  assert.deepEqual(message.origin, { kind: "bot", threadId: scout.threadId, botId: scout.id, name: "Scout", depth: 1 });
+  assert.deepEqual(message.origin, {
+    kind: "bot",
+    threadId: scout.threadId,
+    botId: scout.id,
+    name: "Scout",
+    depth: 1,
+  });
 });
 
-test("bot handoffs stop after the chain limit", async t => {
+test("bot handoffs stop after the chain limit", async (t) => {
   const { makeBot } = await fixture(t);
   const first = makeBot({ name: "First" });
   const second = makeBot({ name: "Second" });
-  store.addMessage(first.threadId, { id: uid("msg"), role: "user", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Reply" }], origin: { kind: "bot", threadId: second.threadId, botId: second.id, name: "Second", depth: 8 } });
+  store.addMessage(first.threadId, {
+    id: uid("msg"),
+    role: "user",
+    ts: Date.now(),
+    parts: [{ id: uid("prt"), kind: "text", text: "Reply" }],
+    origin: { kind: "bot", threadId: second.threadId, botId: second.id, name: "Second", depth: 8 },
+  });
   await assert.rejects(
-    callWorkspaceTool(first.threadId, "run_tool", { name: "bots_message", arguments: { botId: second.id, text: "Again" } }),
+    callWorkspaceTool(first.threadId, "run_tool", {
+      name: "bots_message",
+      arguments: { botId: second.id, text: "Again" },
+    }),
     /reached 8 handoffs/,
   );
 });
 
-test("deleting a bot's conversation deletes the bot", async t => {
+test("deleting a bot's conversation deletes the bot", async (t) => {
   const { makeBot } = await fixture(t);
   const bot = makeBot({ name: "Temporary" });
   await removeThread(bot.threadId);
   assert.equal(botStore.bots.has(bot.id), false);
 });
 
-test("a new bot runs in its own folder outside the open folders", async t => {
+test("a new bot runs in its own folder outside the open folders", async (t) => {
   await fixture(t);
-  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
-  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  for (const provider of Object.values(providers))
+    if (provider.id !== "claude")
+      t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [
+    { id: "test-model", label: "Test model" },
+  ]);
   await refreshProvidersNow();
   const sent = [];
-  await botRoutes["bot.create"]({ requestId: "apart", thread: { provider: "claude" }, profile: { name: "Apart" } }, message => sent.push(message));
+  await botRoutes["bot.create"](
+    { requestId: "apart", thread: { provider: "claude" }, profile: { name: "Apart" } },
+    (message) => sent.push(message),
+  );
   const thread = store.threads.get(sent[0].bot.threadId);
   t.after(() => removeThread(thread.id));
   const bots = store.botsProject;
   assert.equal(thread.projectId, bots.id);
-  assert.equal(workspacePath(thread.projectId, thread.id), join(process.env.CITROPY_DATA_DIR, "bots", sent[0].bot.id));
+  assert.equal(
+    workspacePath(thread.projectId, thread.id),
+    join(process.env.CITROPY_DATA_DIR, "bots", sent[0].bot.id),
+  );
   assert.ok(existsSync(workspacePath(thread.projectId, thread.id)));
   assert.ok(!store.visibleProjects().includes(bots));
   await assert.rejects(closeProject(bots.id), /Workspace not found/);
   assert.ok(store.threads.has(thread.id));
 });
 
-test("a bot made inside an open folder moves to its own folder and drops that folder's file changes", async t => {
+test("a bot made inside an open folder moves to its own folder and drops that folder's file changes", async (t) => {
   const { makeBot } = await fixture(t);
   const bot = makeBot({ name: "Mover" });
-  const message = store.addMessage(bot.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Done." }] });
-  store.addPart(bot.threadId, message.id, { id: uid("prt"), kind: "changes", checkpoint: message.id, files: [{ path: "web/src/App.tsx", added: 1, removed: 1 }] });
+  const message = store.addMessage(bot.threadId, {
+    id: uid("msg"),
+    role: "assistant",
+    ts: Date.now(),
+    parts: [{ id: uid("prt"), kind: "text", text: "Done." }],
+  });
+  store.addPart(bot.threadId, message.id, {
+    id: uid("prt"),
+    kind: "changes",
+    checkpoint: message.id,
+    files: [{ path: "web/src/App.tsx", added: 1, removed: 1 }],
+  });
   store.patchThread(bot.threadId, { externalId: "old-session", workspaceBranch: "main" });
   const reloaded = new Store().threads.get(bot.threadId);
   assert.equal(reloaded.projectId, store.botsProject.id);
   assert.equal(reloaded.workspacePath, join(process.env.CITROPY_DATA_DIR, "bots", bot.id));
-  assert.deepEqual([reloaded.externalId, reloaded.workspaceBranch, reloaded.rebuildContext], [undefined, undefined, true]);
-  assert.deepEqual(reloaded.messages.at(-1).parts.map(part => part.kind), ["text"]);
+  assert.deepEqual(
+    [reloaded.externalId, reloaded.workspaceBranch, reloaded.rebuildContext],
+    [undefined, undefined, true],
+  );
+  assert.deepEqual(
+    reloaded.messages.at(-1).parts.map((part) => part.kind),
+    ["text"],
+  );
 });
 
-test("renaming a bot renames its conversation and logs the change", async t => {
+test("renaming a bot renames its conversation and logs the change", async (t) => {
   const { makeBot } = await fixture(t);
   const bot = makeBot({ name: "Old" });
   botStore.update(bot.id, { name: "New" });
@@ -134,77 +203,146 @@ test("renaming a bot renames its conversation and logs the change", async t => {
   assert.throws(() => botStore.update(bot.id, { name: " " }), /Name cannot be empty/);
 });
 
-test("a bot keeps its chosen face and accessory and copies carry the look", async t => {
+test("a bot keeps its chosen face and accessory and copies carry the look", async (t) => {
   const { makeBot } = await fixture(t);
-  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
-  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  for (const provider of Object.values(providers))
+    if (provider.id !== "claude")
+      t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [
+    { id: "test-model", label: "Test model" },
+  ]);
   await refreshProvidersNow();
   const bot = makeBot({ name: "Bun" });
   assert.equal(bot.face, "neutral");
   assert.equal(bot.accessory, "none");
   botStore.update(bot.id, { shape: "heart", face: "happy", accessory: "bunny-ears" });
   assert.throws(() => botStore.update(bot.id, { face: "winking" }), /listed face options/);
-  assert.throws(() => botStore.update(bot.id, { accessory: "eyepatch" }), /listed accessory options/);
+  assert.throws(
+    () => botStore.update(bot.id, { accessory: "eyepatch" }),
+    /listed accessory options/,
+  );
   const sent = [];
-  await botRoutes["bot.duplicate"]({ id: bot.id, requestId: "copy" }, message => sent.push(message));
+  await botRoutes["bot.duplicate"]({ id: bot.id, requestId: "copy" }, (message) =>
+    sent.push(message),
+  );
   const copy = sent[0].bot;
   assert.equal(copy.name, "Bun copy");
   assert.deepEqual([copy.shape, copy.face, copy.accessory], ["heart", "happy", "bunny-ears"]);
 });
 
-test("every bot template creates a bot with its look and routine", async t => {
+test("every bot template creates a bot with its look and routine", async (t) => {
   const { makeBot } = await fixture(t);
-  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
-  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  for (const provider of Object.values(providers))
+    if (provider.id !== "claude")
+      t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [
+    { id: "test-model", label: "Test model" },
+  ]);
   await refreshProvidersNow();
   const thread = settingsOf(store.threads.get(makeBot({ name: "Seed" }).threadId));
   for (const template of BOT_TEMPLATES) {
     const sent = [];
     const { name, title, description, look } = template;
-    await botRoutes["bot.create"]({ requestId: template.id, thread, profile: { name, title, description, ...look }, template: template.id }, message => sent.push(message));
+    await botRoutes["bot.create"](
+      {
+        requestId: template.id,
+        thread,
+        profile: { name, title, description, ...look },
+        template: template.id,
+      },
+      (message) => sent.push(message),
+    );
     const bot = sent[0].bot;
-    assert.deepEqual([bot.name, bot.color, bot.shape, bot.face, bot.accessory], [name, look.color, look.shape, look.face, look.accessory]);
+    assert.deepEqual(
+      [bot.name, bot.color, bot.shape, bot.face, bot.accessory],
+      [name, look.color, look.shape, look.face, look.accessory],
+    );
     const routines = store.threads.get(bot.threadId).routines;
-    assert.deepEqual(routines.map(routine => [routine.name, routine.prompt]), [[template.routine.name, template.routine.prompt]]);
+    assert.deepEqual(
+      routines.map((routine) => [routine.name, routine.prompt]),
+      [[template.routine.name, template.routine.prompt]],
+    );
     assert.ok(routines[0].nextRunAt > Date.now());
   }
-  await assert.rejects(botRoutes["bot.create"]({ requestId: "x", thread, profile: { name: "X" }, template: "missing" }, () => {}), /no bot template named "missing"/);
+  await assert.rejects(
+    botRoutes["bot.create"](
+      { requestId: "x", thread, profile: { name: "X" }, template: "missing" },
+      () => {},
+    ),
+    /no bot template named "missing"/,
+  );
 });
 
-test("a bot shows its latest reply as a preview once the turn ends", async t => {
+test("a bot shows its latest reply as a preview once the turn ends", async (t) => {
   const { makeBot } = await fixture(t);
   const bot = makeBot({ name: "Writer" });
   store.patchThread(bot.threadId, { running: true });
-  store.addMessage(bot.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "  ## Draft\n- **Saved** to `draft.md`, see [notes](https://example.com).  " }] });
+  store.addMessage(bot.threadId, {
+    id: uid("msg"),
+    role: "assistant",
+    ts: Date.now(),
+    parts: [
+      {
+        id: uid("prt"),
+        kind: "text",
+        text: "  ## Draft\n- **Saved** to `draft.md`, see [notes](https://example.com).  ",
+      },
+    ],
+  });
   assert.equal(botStore.get(bot.id).preview, undefined);
   store.patchThread(bot.threadId, { running: false });
   assert.equal(botStore.get(bot.id).preview, "Draft Saved to draft.md, see notes.");
   assert.equal(botStore.get(bot.id).unread, true);
   botStore.update(bot.id, { unread: false });
-  store.addMessage(bot.threadId, { id: uid("msg"), role: "user", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "word ".repeat(80) }] });
+  store.addMessage(bot.threadId, {
+    id: uid("msg"),
+    role: "user",
+    ts: Date.now(),
+    parts: [{ id: uid("prt"), kind: "text", text: "word ".repeat(80) }],
+  });
   store.patchThread(bot.threadId, { running: true });
   store.patchThread(bot.threadId, { running: false });
   assert.equal(botStore.get(bot.id).unread, false);
   assert.match(botStore.get(bot.id).preview, /^word word .*word…$/);
 });
 
-test("running agents say which bot they work for, subagents included", async t => {
+test("running agents say which bot they work for, subagents included", async (t) => {
   const { makeBot, sessions } = await fixture(t);
   const bot = makeBot({ name: "Scout" });
-  const helper = store.createThread({ projectId: store.threads.get(bot.threadId).projectId, provider: "claude", permissionMode: "manual", title: "Helper", parentThreadId: bot.threadId });
-  const chat = store.createThread({ projectId: store.threads.get(bot.threadId).projectId, provider: "claude", permissionMode: "manual", title: "Chat" });
-  t.after(() => { for (const id of [bot.threadId, helper.id, chat.id]) disposeRuntime(id); });
+  const helper = store.createThread({
+    projectId: store.threads.get(bot.threadId).projectId,
+    provider: "claude",
+    permissionMode: "manual",
+    title: "Helper",
+    parentThreadId: bot.threadId,
+  });
+  const chat = store.createThread({
+    projectId: store.threads.get(bot.threadId).projectId,
+    provider: "claude",
+    permissionMode: "manual",
+    title: "Chat",
+  });
+  t.after(() => {
+    for (const id of [bot.threadId, helper.id, chat.id]) disposeRuntime(id);
+  });
   for (const id of [bot.threadId, helper.id, chat.id]) await runtimeFor(id).send("hello");
   assert.equal(sessions.size, 3);
-  const rosterIds = Object.fromEntries(liveAgents().map(agent => [agent.threadId, agent.rosterId]));
-  assert.deepEqual([rosterIds[bot.threadId], rosterIds[helper.id], rosterIds[chat.id]], [bot.id, bot.id, undefined]);
+  const rosterIds = Object.fromEntries(
+    liveAgents().map((agent) => [agent.threadId, agent.rosterId]),
+  );
+  assert.deepEqual(
+    [rosterIds[bot.threadId], rosterIds[helper.id], rosterIds[chat.id]],
+    [bot.id, bot.id, undefined],
+  );
 });
 
 function groupTexts(group) {
-  return store.readMessages(group.threadId).map(message => `${message.origin?.name ?? message.role}: ${message.parts[0].text}`);
+  return store
+    .readMessages(group.threadId)
+    .map((message) => `${message.origin?.name ?? message.role}: ${message.parts[0].text}`);
 }
 
-test("a group message goes to the mentioned bot and its reply is posted to the group", async t => {
+test("a group message goes to the mentioned bot and its reply is posted to the group", async (t) => {
   const { makeBot, makeGroup, sessions } = await fixture(t);
   const scout = makeBot({ name: "Scout" });
   const writer = makeBot({ name: "Launch Writer" });
@@ -217,19 +355,33 @@ test("a group message goes to the mentioned bot and its reply is posted to the g
   assert.match(session.sent[0], /addressed to you/);
   assert.deepEqual(groupStore.get(group.id).working, [writer.id]);
   store.patchThread(writer.threadId, { running: true });
-  store.addMessage(writer.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Draft ready. @Scout check the facts." }] });
+  store.addMessage(writer.threadId, {
+    id: uid("msg"),
+    role: "assistant",
+    ts: Date.now(),
+    parts: [{ id: uid("prt"), kind: "text", text: "Draft ready. @Scout check the facts." }],
+  });
   store.patchThread(writer.threadId, { running: false, status: "idle" });
   await until(() => sessions.get(scout.threadId)?.sent.length === 1);
-  assert.deepEqual(groupTexts(group), ["user: @LaunchWriter draft the post", "Launch Writer: Draft ready. @Scout check the facts."]);
+  assert.deepEqual(groupTexts(group), [
+    "user: @LaunchWriter draft the post",
+    "Launch Writer: Draft ready. @Scout check the facts.",
+  ]);
   assert.ok(!botStore.get(writer.id).unread);
-  assert.deepEqual(store.readMessages(group.threadId).map(message => message.mentions?.map(tag => tag.title)), [["Launch Writer"], ["Scout"]]);
+  assert.deepEqual(
+    store.readMessages(group.threadId).map((message) => message.mentions?.map((tag) => tag.title)),
+    [["Launch Writer"], ["Scout"]],
+  );
   assert.deepEqual(groupStore.get(group.id).working, [scout.id]);
   assert.match(sessions.get(scout.threadId).sent[0], /from Launch Writer, another bot/);
-  assert.equal(groupStore.get(group.id).preview, "Launch Writer: Draft ready. @Scout check the facts.");
+  assert.equal(
+    groupStore.get(group.id).preview,
+    "Launch Writer: Draft ready. @Scout check the facts.",
+  );
   assert.equal(groupStore.get(group.id).unread, true);
 });
 
-test("an unaddressed group message reaches every member and PASS replies stay out of the group", async t => {
+test("an unaddressed group message reaches every member and PASS replies stay out of the group", async (t) => {
   const { makeBot, makeGroup, sessions } = await fixture(t);
   const first = makeBot({ name: "First" });
   const second = makeBot({ name: "Second" });
@@ -238,13 +390,18 @@ test("an unaddressed group message reaches every member and PASS replies stay ou
   assert.match(sessions.get(first.threadId).sent[0], /reply with exactly PASS/);
   assert.match(sessions.get(second.threadId).sent[0], /reply with exactly PASS/);
   store.patchThread(first.threadId, { running: true });
-  store.addMessage(first.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "PASS" }] });
+  store.addMessage(first.threadId, {
+    id: uid("msg"),
+    role: "assistant",
+    ts: Date.now(),
+    parts: [{ id: uid("prt"), kind: "text", text: "PASS" }],
+  });
   store.patchThread(first.threadId, { running: false, status: "idle" });
   assert.deepEqual(groupTexts(group), ["user: Who owns the deploy?"]);
   assert.deepEqual(groupStore.get(group.id).working, [second.id]);
 });
 
-test("groups hold two to six bots and drop deleted members", async t => {
+test("groups hold two to six bots and drop deleted members", async (t) => {
   const { makeBot, makeGroup } = await fixture(t);
   const bots = Array.from({ length: 7 }, (_, index) => makeBot({ name: `Bot${index}` }));
   assert.throws(() => makeGroup(bots.slice(0, 1)), /2 to 6 bots/);
@@ -253,89 +410,210 @@ test("groups hold two to six bots and drop deleted members", async t => {
   await removeThread(bots[0].threadId);
   assert.deepEqual(groupStore.get(group.id).botIds, [bots[1].id, bots[2].id]);
   groupStore.update(group.id, { name: "Ops", botIds: [bots[1].id, bots[3].id] });
-  assert.deepEqual(groupTexts(group).slice(-3), ["system: Renamed to Ops", "system: Added Bot3", "system: Removed Bot2"]);
+  assert.deepEqual(groupTexts(group).slice(-3), [
+    "system: Renamed to Ops",
+    "system: Added Bot3",
+    "system: Removed Bot2",
+  ]);
 });
 
-test("a bot keeps its own memories and gets them in its next briefing", async t => {
+test("a bot keeps its own memories and gets them in its next briefing", async (t) => {
   const { makeBot, sessions } = await fixture(t);
   const scout = makeBot({ name: "Scout" });
   const writer = makeBot({ name: "Writer" });
-  const run = (name, args = {}) => callWorkspaceTool(writer.threadId, "run_tool", { name, arguments: args });
+  const run = (name, args = {}) =>
+    callWorkspaceTool(writer.threadId, "run_tool", { name, arguments: args });
   await run("bots_memory_save", { text: "The user wants summaries under five lines." });
   const [saved] = botStore.get(writer.id).memory;
-  await run("bots_memory_save", { id: saved.id, text: "The user wants summaries under three lines." });
+  await run("bots_memory_save", {
+    id: saved.id,
+    text: "The user wants summaries under three lines.",
+  });
   await run("bots_memory_save", { text: "Stale fact." });
   await run("bots_memory_remove", { id: botStore.get(writer.id).memory[1].id });
-  assert.deepEqual(botStore.get(writer.id).memory.map(entry => entry.text), ["The user wants summaries under three lines."]);
-  await callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_message", arguments: { botId: writer.id, text: "Summarize the launch." } });
-  assert.match(sessions.get(writer.threadId).sent[0], new RegExp(`\\[${saved.id}\\] The user wants summaries under three lines\\.`));
+  assert.deepEqual(
+    botStore.get(writer.id).memory.map((entry) => entry.text),
+    ["The user wants summaries under three lines."],
+  );
+  await callWorkspaceTool(scout.threadId, "run_tool", {
+    name: "bots_message",
+    arguments: { botId: writer.id, text: "Summarize the launch." },
+  });
+  assert.match(
+    sessions.get(writer.threadId).sent[0],
+    new RegExp(`\\[${saved.id}\\] The user wants summaries under three lines\\.`),
+  );
 });
 
-test("a bot creates a focused bot with its own provider settings", async t => {
+test("a bot creates a focused bot with its own provider settings", async (t) => {
   const { makeBot } = await fixture(t);
-  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
-  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  for (const provider of Object.values(providers))
+    if (provider.id !== "claude")
+      t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [
+    { id: "test-model", label: "Test model" },
+  ]);
   await refreshProvidersNow();
   const scout = makeBot({ name: "Scout" });
-  const result = JSON.parse((await callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_create", arguments: { name: "Tracker", title: "Release tracking", description: "Watch the release checklist." } }))[0].text);
+  const result = JSON.parse(
+    (
+      await callWorkspaceTool(scout.threadId, "run_tool", {
+        name: "bots_create",
+        arguments: {
+          name: "Tracker",
+          title: "Release tracking",
+          description: "Watch the release checklist.",
+        },
+      })
+    )[0].text,
+  );
   const tracker = botStore.get(result.id);
   assert.equal(tracker.description, "Watch the release checklist.");
   const thread = store.threads.get(tracker.threadId);
   assert.equal(thread.provider, "claude");
   assert.equal(thread.messages.at(-1).parts[0].text, "Created by Scout");
   store.patchThread(scout.threadId, { permissionMode: "plan" });
-  await assert.rejects(callWorkspaceTool(scout.threadId, "run_tool", { name: "bots_create", arguments: { name: "Another" } }), /Plan only/);
+  await assert.rejects(
+    callWorkspaceTool(scout.threadId, "run_tool", {
+      name: "bots_create",
+      arguments: { name: "Another" },
+    }),
+    /Plan only/,
+  );
 });
 
-test("each bot browses in its own profile, signed in only to its connections", async t => {
+test("each bot browses in its own profile, signed in only to its connections", async (t) => {
   const { makeBot } = await fixture(t);
-  for (const provider of Object.values(providers)) if (provider.id !== "claude") t.mock.method(provider, "detect", async () => ({ available: false }));
-  t.mock.method(providers.claude, "listModels", async () => [{ id: "test-model", label: "Test model" }]);
+  for (const provider of Object.values(providers))
+    if (provider.id !== "claude")
+      t.mock.method(provider, "detect", async () => ({ available: false }));
+  t.mock.method(providers.claude, "listModels", async () => [
+    { id: "test-model", label: "Test model" },
+  ]);
   await refreshProvidersNow();
-  const connection = (id, name, site) => ({ id, name, url: `https://${site}/`, site, sites: [site], description: site, accounts: [{ id: `${id}-account`, name, label: "", mention: id, signedIn: true, profileId: `connection-${id}-account` }] });
-  const connections = [connection("mail", "Mail", "mail.example"), connection("bank", "Bank", "bank.example")];
+  const connection = (id, name, site) => ({
+    id,
+    name,
+    url: `https://${site}/`,
+    site,
+    sites: [site],
+    description: site,
+    accounts: [
+      {
+        id: `${id}-account`,
+        name,
+        label: "",
+        mention: id,
+        signedIn: true,
+        profileId: `connection-${id}-account`,
+      },
+    ],
+  });
+  const connections = [
+    connection("mail", "Mail", "mail.example"),
+    connection("bank", "Bank", "bank.example"),
+  ];
   const listeners = {};
   const opened = [];
   const forgotten = [];
-  attachDesktop({ OPEN: 1, readyState: 1, on: (event, listener) => { listeners[event] = listener; }, close() {}, send(raw) {
-    const { id, method, params } = JSON.parse(raw);
-    if (method === "browser.open") opened.push(params);
-    if (method === "profiles.forget-bot") forgotten.push(params.profileId);
-    const result = method === "connections.list" ? connections : method === "browser.open" ? params : method === "focus" || method === "profiles.forget-bot" ? {} : undefined;
-    queueMicrotask(() => listeners.message(JSON.stringify(result ? { id, result } : { id, error: `Unexpected ${method}` })));
-  } });
+  attachDesktop({
+    OPEN: 1,
+    readyState: 1,
+    on: (event, listener) => {
+      listeners[event] = listener;
+    },
+    close() {},
+    send(raw) {
+      const { id, method, params } = JSON.parse(raw);
+      if (method === "browser.open") opened.push(params);
+      if (method === "profiles.forget-bot") forgotten.push(params.profileId);
+      const result =
+        method === "connections.list"
+          ? connections
+          : method === "browser.open"
+            ? params
+            : method === "focus" || method === "profiles.forget-bot"
+              ? {}
+              : undefined;
+      queueMicrotask(() =>
+        listeners.message(
+          JSON.stringify(result ? { id, result } : { id, error: `Unexpected ${method}` }),
+        ),
+      );
+    },
+  });
   t.after(() => listeners.close());
-  const run = (bot, name, args = {}) => callWorkspaceTool(bot.threadId, "run_tool", { name, arguments: args });
+  const run = (bot, name, args = {}) =>
+    callWorkspaceTool(bot.threadId, "run_tool", { name, arguments: args });
   const open = makeBot({ name: "Open" });
-  assert.deepEqual(JSON.parse((await run(open, "browser_connections"))[0].text).map(entry => entry.id), ["mail", "bank"]);
+  assert.deepEqual(
+    JSON.parse((await run(open, "browser_connections"))[0].text).map((entry) => entry.id),
+    ["mail", "bank"],
+  );
   const mailer = makeBot({ name: "Mailer" });
   botStore.update(mailer.id, { connections: ["mail"] });
-  assert.deepEqual(JSON.parse((await run(mailer, "browser_connections"))[0].text).map(entry => entry.id), ["mail"]);
+  assert.deepEqual(
+    JSON.parse((await run(mailer, "browser_connections"))[0].text).map((entry) => entry.id),
+    ["mail"],
+  );
   await run(mailer, "browser_open", { url: "https://www.bank.example/login" });
   await run(mailer, "browser_open", { url: "https://mail.example/inbox" });
   await run(open, "browser_open", { url: "https://www.bank.example/login" });
   await run(open, "browser_open", { url: "https://example.org/" });
-  assert.deepEqual(opened.map(tab => tab.profileId), [`bot-${mailer.id}`, "connection-mail-account", "connection-bank-account", `bot-${open.id}`]);
-  const tabs = async bot => JSON.parse((await run(bot, "browser_tabs"))[0].text).map(tab => tab.id);
-  assert.deepEqual(await tabs(mailer), opened.slice(0, 2).map(tab => tab.id));
-  assert.deepEqual(await tabs(open), opened.slice(2).map(tab => tab.id));
+  assert.deepEqual(
+    opened.map((tab) => tab.profileId),
+    [`bot-${mailer.id}`, "connection-mail-account", "connection-bank-account", `bot-${open.id}`],
+  );
+  const tabs = async (bot) =>
+    JSON.parse((await run(bot, "browser_tabs"))[0].text).map((tab) => tab.id);
+  assert.deepEqual(
+    await tabs(mailer),
+    opened.slice(0, 2).map((tab) => tab.id),
+  );
+  assert.deepEqual(
+    await tabs(open),
+    opened.slice(2).map((tab) => tab.id),
+  );
   await assert.rejects(run(mailer, "browser_snapshot", { tabId: opened[2].id }), /does not belong/);
-  await assert.rejects(run(mailer, "browser_open", { url: "https://mail.example/", account: "bank-account" }), /No account bank-account/);
-  const result = JSON.parse((await callWorkspaceTool(mailer.threadId, "run_tool", { name: "bots_create", arguments: { name: "Helper" } }))[0].text);
+  await assert.rejects(
+    run(mailer, "browser_open", { url: "https://mail.example/", account: "bank-account" }),
+    /No account bank-account/,
+  );
+  const result = JSON.parse(
+    (
+      await callWorkspaceTool(mailer.threadId, "run_tool", {
+        name: "bots_create",
+        arguments: { name: "Helper" },
+      })
+    )[0].text,
+  );
   assert.deepEqual(botStore.get(result.id).connections, ["mail"]);
   assert.throws(() => botStore.update(mailer.id, { connections: "mail" }), /Choose connections/);
   await removeThread(open.threadId);
   assert.deepEqual(forgotten, [`bot-${open.id}`]);
 });
 
-test("a reaction reaches the bot that wrote the message right away", async t => {
+test("a reaction reaches the bot that wrote the message right away", async (t) => {
   const { makeBot, makeGroup, sessions } = await fixture(t);
   const scout = makeBot({ name: "Scout" });
   const writer = makeBot({ name: "Writer" });
-  const reply = store.addMessage(writer.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Draft is ready." }] });
-  const ask = { id: uid("msg"), role: "user", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Hi" }] };
+  const reply = store.addMessage(writer.threadId, {
+    id: uid("msg"),
+    role: "assistant",
+    ts: Date.now(),
+    parts: [{ id: uid("prt"), kind: "text", text: "Draft is ready." }],
+  });
+  const ask = {
+    id: uid("msg"),
+    role: "user",
+    ts: Date.now(),
+    parts: [{ id: uid("prt"), kind: "text", text: "Hi" }],
+  };
   store.addMessage(writer.threadId, ask);
-  await assert.rejects(react(writer.threadId, ask.id, "like", true), /only react to a bot's message/);
+  await assert.rejects(
+    react(writer.threadId, ask.id, "like", true),
+    /only react to a bot's message/,
+  );
   await assert.rejects(react(writer.threadId, reply.id, "wave", true), /listed reactions/);
   await react(writer.threadId, reply.id, "like", true);
   const first = sessions.get(writer.threadId).sent[0];
@@ -345,11 +623,23 @@ test("a reaction reaches the bot that wrote the message right away", async t => 
   assert.equal(store.readMessages(writer.threadId).at(-1).origin.kind, "reaction");
   await react(writer.threadId, reply.id, "like", true);
   await react(writer.threadId, reply.id, "like", false);
-  assert.deepEqual(store.readMessages(writer.threadId).find(message => message.id === reply.id).reactions, []);
+  assert.deepEqual(
+    store.readMessages(writer.threadId).find((message) => message.id === reply.id).reactions,
+    [],
+  );
   const group = makeGroup([scout, writer]);
-  const post = store.addMessage(group.threadId, { id: uid("msg"), role: "assistant", ts: Date.now(), parts: [{ id: uid("prt"), kind: "text", text: "Shipped." }], origin: { kind: "bot", threadId: writer.threadId, botId: writer.id, name: "Writer", depth: 1 } });
+  const post = store.addMessage(group.threadId, {
+    id: uid("msg"),
+    role: "assistant",
+    ts: Date.now(),
+    parts: [{ id: uid("prt"), kind: "text", text: "Shipped." }],
+    origin: { kind: "bot", threadId: writer.threadId, botId: writer.id, name: "Writer", depth: 1 },
+  });
   await react(group.threadId, post.id, "love", true);
-  assert.deepEqual(store.threads.get(writer.threadId).queue.map(entry => entry.text), ['Reacted with heart to "Shipped."']);
+  assert.deepEqual(
+    store.threads.get(writer.threadId).queue.map((entry) => entry.text),
+    ['Reacted with heart to "Shipped."'],
+  );
   const writerSession = sessions.get(writer.threadId);
   writerSession.emit({ type: "block.start", blockId: "b1", block: "text" });
   writerSession.emit({ type: "block.delta", blockId: "b1", text: "PASS" });
@@ -357,5 +647,8 @@ test("a reaction reaches the bot that wrote the message right away", async t => 
   writerSession.emit({ type: "turn.end" });
   await until(() => sessions.get(writer.threadId).sent.length === 2);
   assert.match(sessions.get(writer.threadId).sent[1], /in the group chat "Scout, Writer"/);
-  assert.equal(store.notifications.filter(entry => entry.target.threadId === writer.threadId).length, 0);
+  assert.equal(
+    store.notifications.filter((entry) => entry.target.threadId === writer.threadId).length,
+    0,
+  );
 });

@@ -7,19 +7,32 @@ import { isRemote } from "../lib/environment.ts";
 import { useApp } from "../lib/store.ts";
 
 export function LinkActions() {
-  const projectId = useApp(state => state.activeProjectId);
-  const threadId = useApp(state => state.activeThreadId);
-  const connected = useApp(state => state.connected);
+  const projectId = useApp((state) => state.activeProjectId);
+  const threadId = useApp((state) => state.activeThreadId);
+  const connected = useApp((state) => state.connected);
   const sequence = useRef(0);
   const [link, setLink] = useState<{ anchor: HTMLAnchorElement; url: URL; id: number }>();
 
   useEffect(() => {
     const click = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-      const anchor = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      const anchor =
+        event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
       if (!anchor || anchor.hasAttribute("download")) return;
       let url: URL;
-      try { url = new URL(anchor.href); } catch { return; }
+      try {
+        url = new URL(anchor.href);
+      } catch {
+        return;
+      }
       if (!["http:", "https:"].includes(url.protocol) || url.origin === location.origin) return;
       event.preventDefault();
       setLink({ anchor, url, id: ++sequence.current });
@@ -30,22 +43,47 @@ export function LinkActions() {
 
   useEffect(() => setLink(undefined), [projectId, threadId]);
   if (!link) return null;
-  const browserHint = !window.citropyDesktop ? "Available in the desktop app" : isRemote() ? "Available in a local workspace" : !projectId ? "Open a workspace first." : !connected ? "Reconnect to continue." : undefined;
+  const browserHint = !window.citropyDesktop
+    ? "Available in the desktop app"
+    : isRemote()
+      ? "Available in a local workspace"
+      : !projectId
+        ? "Open a workspace first."
+        : !connected
+          ? "Reconnect to continue."
+          : undefined;
 
-  return <Menu
-    key={link.id}
-    anchor={link.anchor}
-    header={link.url.hostname}
-    width={300}
-    className="link-actions-menu"
-    controls={<div className="link-destination">{link.url.href}</div>}
-    onClose={() => setLink(current => current?.id === link.id ? undefined : current)}
-    items={[
-      { id: "in-app", label: "Open in Citropy", hint: browserHint, disabled: Boolean(browserHint), icon: <GlobeIcon size={17} />, onSelect: () => {
-        useApp.setState((state) => ({ activeView: state.activeView === "chats" ? "chats" : "chat", readingThreadId: null }));
-        openWorkbenchPanel("browser", link.url.href);
-      } },
-      { id: "external", label: "Open in external browser", icon: <ExternalLinkIcon size={17} />, onSelect: () => window.open(link.url.href, "_blank", "noopener,noreferrer") },
-    ]}
-  />;
+  return (
+    <Menu
+      key={link.id}
+      anchor={link.anchor}
+      header={link.url.hostname}
+      width={300}
+      className="link-actions-menu"
+      controls={<div className="link-destination">{link.url.href}</div>}
+      onClose={() => setLink((current) => (current?.id === link.id ? undefined : current))}
+      items={[
+        {
+          id: "in-app",
+          label: "Open in Citropy",
+          hint: browserHint,
+          disabled: Boolean(browserHint),
+          icon: <GlobeIcon size={17} />,
+          onSelect: () => {
+            useApp.setState((state) => ({
+              activeView: state.activeView === "chats" ? "chats" : "chat",
+              readingThreadId: null,
+            }));
+            openWorkbenchPanel("browser", link.url.href);
+          },
+        },
+        {
+          id: "external",
+          label: "Open in external browser",
+          icon: <ExternalLinkIcon size={17} />,
+          onSelect: () => window.open(link.url.href, "_blank", "noopener,noreferrer"),
+        },
+      ]}
+    />
+  );
 }

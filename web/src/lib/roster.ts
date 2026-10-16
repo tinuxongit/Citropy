@@ -10,14 +10,24 @@ export function lastActive(item: Bot | BotGroup, thread: ThreadMeta | undefined)
   return thread?.updatedAt ?? item.createdAt;
 }
 
-export function orderedRoster(state: Pick<AppState, "bots" | "botGroups" | "threads">): { shown: RosterEntry[]; hidden: RosterEntry[] } {
+export function orderedRoster(state: Pick<AppState, "bots" | "botGroups" | "threads">): {
+  shown: RosterEntry[];
+  hidden: RosterEntry[];
+} {
   const entries: RosterEntry[] = [
     ...Object.values(state.bots).map((item) => ({ kind: "bot" as const, item })),
     ...Object.values(state.botGroups).map((item) => ({ kind: "group" as const, item })),
   ];
-  const sorted = entries.sort((a, b) =>
-    Number(b.item.pinned) - Number(a.item.pinned) || lastActive(b.item, state.threads[b.item.threadId]) - lastActive(a.item, state.threads[a.item.threadId]));
-  return { shown: sorted.filter((entry) => !entry.item.hidden), hidden: sorted.filter((entry) => entry.item.hidden) };
+  const sorted = entries.sort(
+    (a, b) =>
+      Number(b.item.pinned) - Number(a.item.pinned) ||
+      lastActive(b.item, state.threads[b.item.threadId]) -
+        lastActive(a.item, state.threads[a.item.threadId]),
+  );
+  return {
+    shown: sorted.filter((entry) => !entry.item.hidden),
+    hidden: sorted.filter((entry) => entry.item.hidden),
+  };
 }
 
 export function searchMatcher(query: string): (text: string) => boolean {
@@ -26,14 +36,22 @@ export function searchMatcher(query: string): (text: string) => boolean {
 }
 
 export function entryText({ item }: RosterEntry): string {
-  return "title" in item ? `${item.name} ${item.title} ${item.description} ${item.preview ?? ""}` : `${item.name} ${item.preview ?? ""}`;
+  return "title" in item
+    ? `${item.name} ${item.title} ${item.description} ${item.preview ?? ""}`
+    : `${item.name} ${item.preview ?? ""}`;
 }
 
-export function rosterItem(state: Pick<AppState, "bots" | "botGroups">, id: string | null): Bot | BotGroup | undefined {
+export function rosterItem(
+  state: Pick<AppState, "bots" | "botGroups">,
+  id: string | null,
+): Bot | BotGroup | undefined {
   return state.bots[id ?? ""] ?? state.botGroups[id ?? ""];
 }
 
-export function neighborOf(state: Pick<AppState, "bots" | "botGroups" | "threads">, id: string): string | null {
+export function neighborOf(
+  state: Pick<AppState, "bots" | "botGroups" | "threads">,
+  id: string,
+): string | null {
   const { shown } = orderedRoster(state);
   const index = shown.findIndex((entry) => entry.item.id === id);
   if (index === -1) return null;

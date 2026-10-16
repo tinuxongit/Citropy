@@ -24,7 +24,11 @@ test("native workspace selection and cancellation", async () => {
   });
   syncBuiltinESMExports();
   const saved = new Map();
-  globalThis.localStorage = { getItem: (key) => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value), removeItem: (key) => saved.delete(key) };
+  globalThis.localStorage = {
+    getItem: (key) => saved.get(key) ?? null,
+    setItem: (key, value) => saved.set(key, value),
+    removeItem: (key) => saved.delete(key),
+  };
   try {
     const { chooseFolder } = await import("../server/folder-picker.ts");
     const first = chooseFolder();
@@ -39,7 +43,12 @@ test("native workspace selection and cancellation", async () => {
     result = { stdout: `${directory}/missing\n` };
     await assert.rejects(chooseFolder());
     const { useApp, applyEvent } = await import("../web/src/lib/store.ts");
-    const state = { ...useApp.getState(), activeProjectId: "existing", activeThreadId: "thread", choosingWorkspace: true };
+    const state = {
+      ...useApp.getState(),
+      activeProjectId: "existing",
+      activeThreadId: "thread",
+      choosingWorkspace: true,
+    };
     applyEvent(state, { t: "project.chosen", projectId: null });
     assert.equal(state.activeProjectId, "existing");
     assert.equal(state.activeThreadId, "thread");

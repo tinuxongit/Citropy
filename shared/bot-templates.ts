@@ -14,7 +14,7 @@ export interface BotTemplate {
 export const BOT_TEMPLATES = templates as BotTemplate[];
 
 export function botTemplate(id: string): BotTemplate {
-  const template = BOT_TEMPLATES.find(entry => entry.id === id);
+  const template = BOT_TEMPLATES.find((entry) => entry.id === id);
   if (!template) throw new Error(`There is no bot template named "${id}".`);
   return template;
 }

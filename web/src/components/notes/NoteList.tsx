@@ -10,7 +10,12 @@ import type { Note } from "./use-notes.ts";
 const MARKDOWN_PREFIX = /^\s*(#{1,6} |[-*+] \[[ xX]\] |[-*+] |\d+\. |> )/;
 
 function snippet(body: string): string {
-  return body.split("\n").map((line) => line.replace(MARKDOWN_PREFIX, "").trim()).find((line) => line && line !== "---") ?? "";
+  return (
+    body
+      .split("\n")
+      .map((line) => line.replace(MARKDOWN_PREFIX, "").trim())
+      .find((line) => line && line !== "---") ?? ""
+  );
 }
 
 function tasks(body: string): { done: number; total: number } {
@@ -18,7 +23,15 @@ function tasks(body: string): { done: number; total: number } {
   return { done: marks.filter((mark) => mark !== " ").length, total: marks.length };
 }
 
-export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (id: string) => void; onCreate: (template: NoteTemplate) => void }) {
+export function NoteList({
+  notes,
+  onOpen,
+  onCreate,
+}: {
+  notes: Note[];
+  onOpen: (id: string) => void;
+  onCreate: (template: NoteTemplate) => void;
+}) {
   const templates = useMemo(() => noteTemplates(), []);
   const [query, setQuery] = useState("");
   const shown = useMemo(() => {
@@ -38,8 +51,15 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
           </div>
           <div className="panel-starter-grid">
             {templates.map((template) => (
-              <button key={template.id} type="button" className="panel-starter-card note-starter-card" onClick={() => onCreate(template)}>
-                <span className="note-starter-icon"><template.icon size={18} /></span>
+              <button
+                key={template.id}
+                type="button"
+                className="panel-starter-card note-starter-card"
+                onClick={() => onCreate(template)}
+              >
+                <span className="note-starter-icon">
+                  <template.icon size={18} />
+                </span>
                 <span className="panel-starter-label">{template.label}</span>
                 <span className="panel-starter-hint">{template.hint}</span>
               </button>
@@ -55,7 +75,12 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
       <div className="note-list-heading">
         <label className="note-search">
           <SearchIcon size={14} />
-          <input aria-label="Find a note" placeholder="Find a note…" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input
+            aria-label="Find a note"
+            placeholder="Find a note…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
         </label>
         <Menu
           header="Start from"
@@ -69,7 +94,15 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
             onSelect: () => onCreate(template),
           }))}
           trigger={({ id, open, toggle }) => (
-            <button id={id} type="button" className="btn" data-variant="primary" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
+            <button
+              id={id}
+              type="button"
+              className="btn"
+              data-variant="primary"
+              aria-haspopup="menu"
+              aria-expanded={open}
+              onClick={toggle}
+            >
               <PlusIcon size={15} />
               New note
               <ChevronDownIcon size={14} />
@@ -84,18 +117,26 @@ export function NoteList({ notes, onOpen, onCreate }: { notes: Note[]; onOpen: (
           return (
             <li key={note.id}>
               <button type="button" className="note-row" onClick={() => onOpen(note.id)}>
-              <span className="note-row-title truncate">{note.title.trim() || "Untitled note"}</span>
-              {preview && <span className="note-row-snippet truncate">{preview}</span>}
-              <span className="note-row-meta">
-                {ago(note.updatedAt)}
-                {progress.total > 0 && <span>{progress.done} of {progress.total} done</span>}
-              </span>
+                <span className="note-row-title truncate">
+                  {note.title.trim() || "Untitled note"}
+                </span>
+                {preview && <span className="note-row-snippet truncate">{preview}</span>}
+                <span className="note-row-meta">
+                  {ago(note.updatedAt)}
+                  {progress.total > 0 && (
+                    <span>
+                      {progress.done} of {progress.total} done
+                    </span>
+                  )}
+                </span>
               </button>
             </li>
           );
         })}
       </ul>
-      {!shown.length && <p className="panel-quiet-empty note-list-empty">No notes match that search.</p>}
+      {!shown.length && (
+        <p className="panel-quiet-empty note-list-empty">No notes match that search.</p>
+      )}
     </div>
   );
 }

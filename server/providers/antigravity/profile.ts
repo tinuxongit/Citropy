@@ -52,7 +52,9 @@ export async function prepareProfile(profile: AntigravityProfile): Promise<void>
     await mkdir(folder, { recursive: true, mode: 0o700 });
     if (process.platform !== "win32") await chmod(folder, 0o700);
   }
-  await writeFile(join(settings, "settings.json"), `${JSON.stringify(PROFILE_SETTINGS)}\n`, { mode: 0o600 });
+  await writeFile(join(settings, "settings.json"), `${JSON.stringify(PROFILE_SETTINGS)}\n`, {
+    mode: 0o600,
+  });
 }
 
 let staleTempRemoved: Promise<void> | undefined;
@@ -69,18 +71,27 @@ function quote(part: string): string {
 }
 
 function browserCommand(): string {
-  const executable = process.platform === "win32" ? process.execPath.replaceAll("\\", "/") : process.execPath;
+  const executable =
+    process.platform === "win32" ? process.execPath.replaceAll("\\", "/") : process.execPath;
   const command = [executable, "-e", BROWSER_SCRIPT, "--", "%s"].map(quote).join(" ");
   // Why: Python splits BROWSER on the path delimiter before it reads any quotes.
   if (command.includes(delimiter) || /[\r\n\0]|%s/.test(executable))
-    throw new Error(`Antigravity cannot start from a Citropy folder whose path contains "${delimiter}". Move Citropy to another folder.`);
+    throw new Error(
+      `Antigravity cannot start from a Citropy folder whose path contains "${delimiter}". Move Citropy to another folder.`,
+    );
   return command;
 }
 
-export function launchEnvironment(installation: AntigravityInstallation, profile: AntigravityProfile, temp: string, account: Record<string, string> = {}): Record<string, string> {
+export function launchEnvironment(
+  installation: AntigravityInstallation,
+  profile: AntigravityProfile,
+  temp: string,
+  account: Record<string, string> = {},
+): Record<string, string> {
   const environment: Record<string, string> = {};
   for (const [key, value] of Object.entries({ ...process.env, ...account }))
-    if (value !== undefined && !INHERITED_CREDENTIALS.has(key.toUpperCase())) environment[key] = value;
+    if (value !== undefined && !INHERITED_CREDENTIALS.has(key.toUpperCase()))
+      environment[key] = value;
   return {
     ...environment,
     GEMINI_HOME: profile.home,

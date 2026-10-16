@@ -10,7 +10,12 @@ type SerializedMentionNode = SerializedLexicalNode & { name: string };
 function MentionChip({ name }: { name: string }) {
   const look = useContext(MentionLooks).get(name);
   if (!look) return `@${name}`;
-  return <>{look.icon}{look.label}</>;
+  return (
+    <>
+      {look.icon}
+      {look.label}
+    </>
+  );
 }
 
 export class MentionNode extends DecoratorNode<ReactNode> {

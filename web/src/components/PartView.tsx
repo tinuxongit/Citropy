@@ -22,7 +22,15 @@ export const PartView = memo(function PartView({ partId, live, mentions }: Props
 
   switch (part.kind) {
     case "text":
-      return <Prose partId={part.id} text={part.text} live={live && part.complete !== true} commands mentions={mentions} />;
+      return (
+        <Prose
+          partId={part.id}
+          text={part.text}
+          live={live && part.complete !== true}
+          commands
+          mentions={mentions}
+        />
+      );
     case "reasoning":
       return <Reasoning ids={[part.id]} live={live} />;
     case "tool":

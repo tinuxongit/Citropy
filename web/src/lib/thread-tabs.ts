@@ -32,8 +32,10 @@ function afterActive(state: TabState, id: string): string[] {
 
 export function withPreviewTab(state: TabState, id: string): Tabs {
   if (state.openThreadIds.includes(id)) return state;
-  const preview = state.previewThreadId === null ? -1 : state.openThreadIds.indexOf(state.previewThreadId);
-  const openThreadIds = preview < 0 ? afterActive(state, id) : state.openThreadIds.with(preview, id);
+  const preview =
+    state.previewThreadId === null ? -1 : state.openThreadIds.indexOf(state.previewThreadId);
+  const openThreadIds =
+    preview < 0 ? afterActive(state, id) : state.openThreadIds.with(preview, id);
   return { openThreadIds, previewThreadId: id };
 }
 

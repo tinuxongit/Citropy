@@ -8,7 +8,8 @@
   justify-items: center;
   gap: var(--space-24);
   min-height: 100dvh;
-  padding: calc(env(safe-area-inset-top) + var(--screen-edge)) var(--screen-edge) calc(env(safe-area-inset-bottom) + var(--screen-edge));
+  padding: calc(env(safe-area-inset-top) + var(--screen-edge)) var(--screen-edge)
+    calc(env(safe-area-inset-bottom) + var(--screen-edge));
   text-align: center;
 }
 .screen-logo {
@@ -20,7 +21,9 @@
   gap: var(--space-12);
   width: min(100%, var(--screen-width));
 }
-.screen section[hidden] { display: none; }
+.screen section[hidden] {
+  display: none;
+}
 .screen h1 {
   margin: 0;
   font-size: var(--text-lg);
@@ -31,7 +34,10 @@
   color: var(--text-2);
   font-size: var(--text-body);
 }
-.screen strong { color: var(--text); font-weight: 600; }
+.screen strong {
+  color: var(--text);
+  font-weight: 600;
+}
 .screen-button {
   display: grid;
   place-items: center;
@@ -64,7 +70,9 @@
   font: inherit;
   font-size: var(--text-body);
 }
-.screen-paste input::placeholder { color: var(--text-3); }
+.screen-paste input::placeholder {
+  color: var(--text-3);
+}
 .screen-error {
   max-width: var(--screen-width);
   margin: 0;

@@ -5,7 +5,14 @@ import { ActionError } from "../ActionError.tsx";
 import { api } from "../../lib/api.ts";
 import type { SkillInfo } from "../../../../shared/features.ts";
 
-export function SkillDetails({ skill, icon, source, projectId, actions, onClose }: {
+export function SkillDetails({
+  skill,
+  icon,
+  source,
+  projectId,
+  actions,
+  onClose,
+}: {
   skill: SkillInfo;
   icon: ReactNode;
   source: string;
@@ -34,10 +41,14 @@ export function SkillDetails({ skill, icon, source, projectId, actions, onClose 
       description={source}
       icon={icon}
       onClose={onClose}
-      footer={<>
-        {actions}
-        <button className="btn" data-cancel type="button" onClick={onClose}>Close</button>
-      </>}
+      footer={
+        <>
+          {actions}
+          <button className="btn" data-cancel type="button" onClick={onClose}>
+            Close
+          </button>
+        </>
+      }
     >
       {skill.description && <p>{skill.description}</p>}
       <p className="feature-path">{skill.path}</p>

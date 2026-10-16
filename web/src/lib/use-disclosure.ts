@@ -1,19 +1,13 @@
 import { useCallback, useState, type SetStateAction } from "react";
 import { useApp } from "./store.ts";
 
-export function useDisclosure(
-  id: string | undefined,
-  kind: string,
-  initial = false,
-) {
+export function useDisclosure(id: string | undefined, kind: string, initial = false) {
   const [local, setLocal] = useState<boolean>();
-  const open = useApp((state) =>
-    (id ? state.disclosures[id]?.[kind] : local) ?? initial,
-  );
+  const open = useApp((state) => (id ? state.disclosures[id]?.[kind] : local) ?? initial);
   const setOpen = useCallback(
     (value: SetStateAction<boolean>) => {
       if (!id) {
-        setLocal((current) => typeof value === "function" ? value(current ?? initial) : value);
+        setLocal((current) => (typeof value === "function" ? value(current ?? initial) : value));
         return;
       }
       useApp.setState((state) => {
@@ -23,10 +17,7 @@ export function useDisclosure(
             ...state.disclosures,
             [id]: {
               ...previous,
-              [kind]:
-                typeof value === "function"
-                  ? value(previous[kind] ?? initial)
-                  : value,
+              [kind]: typeof value === "function" ? value(previous[kind] ?? initial) : value,
             },
           },
         };

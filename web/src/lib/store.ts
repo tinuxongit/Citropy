@@ -42,7 +42,11 @@ export {
   viewportWidth,
 } from "./preferences.ts";
 
-export function environmentDefaults(projects: Project[], home: string, id?: string): EnvironmentSlice {
+export function environmentDefaults(
+  projects: Project[],
+  home: string,
+  id?: string,
+): EnvironmentSlice {
   return {
     shells: {},
     projectDefaults: {},
@@ -119,7 +123,10 @@ export function selectThread(id: string | null): void {
   useApp.setState((state) => {
     // Code and Chat show separate tabs, so a preview tab from the other section stays open.
     const preview = state.threads[state.previewThreadId ?? ""];
-    const kept = preview && Boolean(preview.chat) !== Boolean(thread?.chat) ? { ...state, previewThreadId: null } : state;
+    const kept =
+      preview && Boolean(preview.chat) !== Boolean(thread?.chat)
+        ? { ...state, previewThreadId: null }
+        : state;
     const tabs = id ? withPreviewTab(kept, id) : state;
     if (state.activeThreadId === id) return tabs === state ? state : { ...state, ...tabs };
     const git = { ...state.git };
@@ -139,15 +146,20 @@ export function selectRosterEntry(id: string | null): void {
 }
 
 export function showBotThread(id: string | null): void {
-  useApp.setState((state) => state.activeThreadId === id ? state : withActiveThread(state, id));
+  useApp.setState((state) => (state.activeThreadId === id ? state : withActiveThread(state, id)));
 }
 
 // Chats live in a hidden workspace, so showing one also makes its workspace the active one.
 export function showSectionThread(id: string | null): void {
   useApp.setState((state) => {
     const thread = state.threads[id ?? ""];
-    const kept = state.projects.some((project) => project.id === state.activeProjectId) ? state.activeProjectId : state.projects[0]?.id ?? null;
-    return { ...withActiveThread(state, thread ? thread.id : null), activeProjectId: thread?.projectId ?? kept };
+    const kept = state.projects.some((project) => project.id === state.activeProjectId)
+      ? state.activeProjectId
+      : (state.projects[0]?.id ?? null);
+    return {
+      ...withActiveThread(state, thread ? thread.id : null),
+      activeProjectId: thread?.projectId ?? kept,
+    };
   });
   const { activeProjectId, activeThreadId } = useApp.getState();
   if (activeProjectId) environmentStorage.setItem("citropy.project", activeProjectId);
@@ -156,7 +168,9 @@ export function showSectionThread(id: string | null): void {
 }
 
 /** The rail section that shows a conversation. */
-export function threadView(thread: { botId?: string; groupId?: string; chat?: boolean } | undefined): "chat" | "chats" | "bots" {
+export function threadView(
+  thread: { botId?: string; groupId?: string; chat?: boolean } | undefined,
+): "chat" | "chats" | "bots" {
   return inBotsView(thread) ? "bots" : thread?.chat ? "chats" : "chat";
 }
 
@@ -221,9 +235,7 @@ function focusedAnchor(): Confirmation["anchor"] {
   return right > left ? { top, right, bottom, left } : undefined;
 }
 
-export function confirmAction(
-  options: Omit<Confirmation, "resolve" | "anchor">,
-): Promise<boolean> {
+export function confirmAction(options: Omit<Confirmation, "resolve" | "anchor">): Promise<boolean> {
   if (useApp.getState().confirmation) return Promise.resolve(false);
   return new Promise((resolve) =>
     useApp.setState({ confirmation: { ...options, anchor: focusedAnchor(), resolve } }),

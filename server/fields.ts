@@ -15,5 +15,10 @@ export function flag(value: unknown, label: string): boolean {
 }
 
 export function addNotice(threadId: string, line: string): void {
-  store.addMessage(threadId, { id: uid("msg"), role: "system", ts: Date.now(), parts: [{ id: uid("prt"), kind: "notice", level: "info", text: line }] });
+  store.addMessage(threadId, {
+    id: uid("msg"),
+    role: "system",
+    ts: Date.now(),
+    parts: [{ id: uid("prt"), kind: "notice", level: "info", text: line }],
+  });
 }

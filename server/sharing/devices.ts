@@ -46,7 +46,9 @@ function load(): Saved {
     enabled: data.enabled === true,
     tailscale: data.tailscale === true,
     ...(typeof data.tailscalePort === "number" ? { tailscalePort: data.tailscalePort } : {}),
-    devices: Array.isArray(data.devices) ? data.devices.map((device) => ({ ...device, route: device.route ?? "lan" })) : [],
+    devices: Array.isArray(data.devices)
+      ? data.devices.map((device) => ({ ...device, route: device.route ?? "lan" }))
+      : [],
   };
 }
 
@@ -65,7 +67,8 @@ function sameHash(left: string, right: string): boolean {
 function deviceName(userAgent = ""): string {
   if (/iPad/i.test(userAgent)) return "iPad";
   if (/iPhone/i.test(userAgent)) return "iPhone";
-  if (/Android/i.test(userAgent)) return /Mobile/i.test(userAgent) ? "Android phone" : "Android tablet";
+  if (/Android/i.test(userAgent))
+    return /Mobile/i.test(userAgent) ? "Android phone" : "Android tablet";
   if (/Macintosh/i.test(userAgent)) return "Mac";
   if (/Windows/i.test(userAgent)) return "Windows computer";
   return "Browser";
@@ -79,14 +82,25 @@ export function createPairingCode(): { code: string; expiresAt: number } {
   return { code, expiresAt };
 }
 
-export function redeemPairingCode(code: string | null, route: Route, userAgent: string | undefined): string | undefined {
+export function redeemPairingCode(
+  code: string | null,
+  route: Route,
+  userAgent: string | undefined,
+): string | undefined {
   const key = code ? hash(code) : "";
   const expiresAt = pairings.get(key);
   if (!expiresAt || expiresAt < Date.now()) return undefined;
   pairings.delete(key);
   const token = randomBytes(32).toString("base64url");
   const now = Date.now();
-  sharingSettings.devices.push({ id: randomUUID(), name: deviceName(userAgent), route, tokenHash: hash(token), createdAt: now, lastSeen: now });
+  sharingSettings.devices.push({
+    id: randomUUID(),
+    name: deviceName(userAgent),
+    route,
+    tokenHash: hash(token),
+    createdAt: now,
+    lastSeen: now,
+  });
   saveSharingSettings();
   return token;
 }
@@ -96,7 +110,10 @@ export function clearPairingCodes(): void {
 }
 
 export function authenticate(req: IncomingMessage): Device | undefined {
-  const cookie = (req.headers.cookie ?? "").split(";").map((part) => part.trim()).find((part) => part.startsWith(`${DEVICE_COOKIE}=`));
+  const cookie = (req.headers.cookie ?? "")
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${DEVICE_COOKIE}=`));
   if (!cookie) return undefined;
   const supplied = hash(cookie.slice(DEVICE_COOKIE.length + 1));
   const device = sharingSettings.devices.find((entry) => sameHash(entry.tokenHash, supplied));

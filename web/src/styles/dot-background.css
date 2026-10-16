@@ -12,5 +12,6 @@
 .dot-grid {
   background:
     var(--dot-fade, none),
-    radial-gradient(var(--line-strong) var(--dot-size), transparent calc(var(--dot-size) + 0.5px)) 0 0 / var(--dot-gap) var(--dot-gap);
+    radial-gradient(var(--line-strong) var(--dot-size), transparent calc(var(--dot-size) + 0.5px)) 0
+      0 / var(--dot-gap) var(--dot-gap);
 }

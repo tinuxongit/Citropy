@@ -13,7 +13,13 @@ const EXTERNAL_ARROW = "M10.75 13.25L20.5 3.5M14 3.5H20.5V10";
 const EXTERNAL_BOX = { x: 2.5, y: 6.5, width: 15, height: 15, rx: 4 };
 
 function Arrow({ degrees, ...props }: IconProps & { degrees: number }) {
-  return <Icon {...props}><Turn degrees={degrees}><Line d={ARROW_UP} width={BOLD_LINE} /></Turn></Icon>;
+  return (
+    <Icon {...props}>
+      <Turn degrees={degrees}>
+        <Line d={ARROW_UP} width={BOLD_LINE} />
+      </Turn>
+    </Icon>
+  );
 }
 
 export function ArrowUpIcon(props: IconProps) {
@@ -33,31 +39,61 @@ export function ArrowLeftIcon(props: IconProps) {
 }
 
 export function ArrowUpRightIcon(props: IconProps) {
-  return <Icon {...props}><Line d={ARROW_UP_RIGHT} width={BOLD_LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={ARROW_UP_RIGHT} width={BOLD_LINE} />
+    </Icon>
+  );
 }
 
 export function SwapIcon(props: IconProps) {
-  return <Icon {...props}><Line d={SWAP} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={SWAP} />
+    </Icon>
+  );
 }
 
 export function CornerDownRightIcon(props: IconProps) {
-  return <Icon {...props}><Line d={CORNER_DOWN_RIGHT} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={CORNER_DOWN_RIGHT} />
+    </Icon>
+  );
 }
 
 export function ReplyIcon(props: IconProps) {
-  return <Icon {...props}><Line d={REPLY} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={REPLY} />
+    </Icon>
+  );
 }
 
 export function ArrowUpToLineIcon(props: IconProps) {
-  return <Icon {...props}><Line d={TO_LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={TO_LINE} />
+    </Icon>
+  );
 }
 
 export function ArrowDownToLineIcon(props: IconProps) {
-  return <Icon {...props}><Turn degrees={180}><Line d={TO_LINE} /></Turn></Icon>;
+  return (
+    <Icon {...props}>
+      <Turn degrees={180}>
+        <Line d={TO_LINE} />
+      </Turn>
+    </Icon>
+  );
 }
 
 export function ArrowUpFromLineIcon(props: IconProps) {
-  return <Icon {...props}><Line d={FROM_LINE} /></Icon>;
+  return (
+    <Icon {...props}>
+      <Line d={FROM_LINE} />
+    </Icon>
+  );
 }
 
 export function DownloadIcon(props: IconProps) {

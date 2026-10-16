@@ -6,7 +6,8 @@ import { uncachedInput } from "../../shared/usage-metrics.ts";
 import type { CostByType, UsagePricing, UsageSpeed } from "../../shared/features.ts";
 import type { ProviderId, Usage } from "../../shared/protocol.ts";
 
-const PRICES_URL = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
+const PRICES_URL =
+  "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
 const CACHE_VERSION = 2;
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 10_000;
@@ -42,17 +43,32 @@ function finite(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
-function ratesOf(entry: Record<string, unknown>, suffix: string, standard?: Rates): Rates | undefined {
+function ratesOf(
+  entry: Record<string, unknown>,
+  suffix: string,
+  standard?: Rates,
+): Rates | undefined {
   const input = finite(entry[`input_cost_per_token${suffix}`]);
   const output = finite(entry[`output_cost_per_token${suffix}`]);
   if (input === undefined || output === undefined) return;
   const cache = (name: string, field: "cacheRead" | "cacheWrite") =>
-    finite(entry[`${name}${suffix}`]) ?? (standard?.input ? standard[field] / standard.input * input : input);
-  return { input, output, cacheRead: cache("cache_read_input_token_cost", "cacheRead"), cacheWrite: cache("cache_creation_input_token_cost", "cacheWrite") };
+    finite(entry[`${name}${suffix}`]) ??
+    (standard?.input ? (standard[field] / standard.input) * input : input);
+  return {
+    input,
+    output,
+    cacheRead: cache("cache_read_input_token_cost", "cacheRead"),
+    cacheWrite: cache("cache_creation_input_token_cost", "cacheWrite"),
+  };
 }
 
 function scaled(rates: Rates, multiple: number): Rates {
-  return { input: rates.input * multiple, output: rates.output * multiple, cacheRead: rates.cacheRead * multiple, cacheWrite: rates.cacheWrite * multiple };
+  return {
+    input: rates.input * multiple,
+    output: rates.output * multiple,
+    cacheRead: rates.cacheRead * multiple,
+    cacheWrite: rates.cacheWrite * multiple,
+  };
 }
 
 function sameRate(a: ModelRate, b: ModelRate): boolean {
@@ -66,10 +82,16 @@ function parsePrices(document: Record<string, unknown>): Record<string, ModelRat
     const entry = raw as Record<string, unknown>;
     const standard = ratesOf(entry, "");
     if (!standard) continue;
-    const multiple = finite((entry.provider_specific_entry as Record<string, unknown> | undefined)?.fast);
+    const multiple = finite(
+      (entry.provider_specific_entry as Record<string, unknown> | undefined)?.fast,
+    );
     const fast = multiple ? scaled(standard, multiple) : ratesOf(entry, "_priority", standard);
     const ultrafast = ratesOf(entry, "_ultrafast", standard);
-    models[name.trim().toLowerCase()] = { ...standard, ...(fast ? { fast } : {}), ...(ultrafast ? { ultrafast } : {}) };
+    models[name.trim().toLowerCase()] = {
+      ...standard,
+      ...(fast ? { fast } : {}),
+      ...(ultrafast ? { ultrafast } : {}),
+    };
   }
   const aliases = new Map<string, ModelRate | null>();
   for (const [key, rate] of Object.entries(models)) {
@@ -83,32 +105,46 @@ function parsePrices(document: Record<string, unknown>): Record<string, ModelRat
 }
 
 function tableOf(saved: PriceCache, error?: string): PriceTable {
-  return { models: new Map(Object.entries(saved.models)), pricing: { fetchedAt: saved.fetchedAt, ...(error ? { error } : {}) } };
+  return {
+    models: new Map(Object.entries(saved.models)),
+    pricing: { fetchedAt: saved.fetchedAt, ...(error ? { error } : {}) },
+  };
 }
 
 async function download(): Promise<PriceCache> {
   const response = await fetch(PRICES_URL, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-  if (!response.ok) throw new Error(`Model prices could not be downloaded (HTTP ${response.status}).`);
-  const saved = { version: CACHE_VERSION, fetchedAt: Date.now(), models: parsePrices(await response.json() as Record<string, unknown>) };
+  if (!response.ok)
+    throw new Error(`Model prices could not be downloaded (HTTP ${response.status}).`);
+  const saved = {
+    version: CACHE_VERSION,
+    fetchedAt: Date.now(),
+    models: parsePrices((await response.json()) as Record<string, unknown>),
+  };
   saveJson(cacheFile, saved);
   return saved;
 }
 
 export function priceTable(): Promise<PriceTable> {
-  if (current && Date.now() - current.pricing.fetchedAt! < MAX_AGE_MS) return Promise.resolve(current);
+  if (current && Date.now() - current.pricing.fetchedAt! < MAX_AGE_MS)
+    return Promise.resolve(current);
   loading ??= (async () => {
-    const stored = existsSync(cacheFile) ? JSON.parse(readFileSync(cacheFile, "utf8")) as PriceCache : undefined;
-    if (!current && stored?.version === CACHE_VERSION && Date.now() - stored.fetchedAt < MAX_AGE_MS) return current = tableOf(stored);
+    const stored = existsSync(cacheFile)
+      ? (JSON.parse(readFileSync(cacheFile, "utf8")) as PriceCache)
+      : undefined;
+    if (!current && stored?.version === CACHE_VERSION && Date.now() - stored.fetchedAt < MAX_AGE_MS)
+      return (current = tableOf(stored));
     const saved = current ?? (stored && tableOf(stored));
     try {
-      return current = tableOf(await download());
+      return (current = tableOf(await download()));
     } catch (error) {
       const message = (error as Error).message;
-      return current = saved
+      return (current = saved
         ? { models: saved.models, pricing: { fetchedAt: saved.pricing.fetchedAt, error: message } }
-        : { models: new Map(), pricing: { error: message } };
+        : { models: new Map(), pricing: { error: message } });
     }
-  })().finally(() => { loading = undefined; });
+  })().finally(() => {
+    loading = undefined;
+  });
   return loading;
 }
 
@@ -119,7 +155,11 @@ function rateFor(table: PriceTable, model: string | undefined): ModelRate | unde
   return table.models.get(key) ?? table.models.get(key.slice(key.lastIndexOf("/") + 1));
 }
 
-export function isUnpriced(table: PriceTable, provider: ProviderId, model: string | undefined): boolean {
+export function isUnpriced(
+  table: PriceTable,
+  provider: ProviderId,
+  model: string | undefined,
+): boolean {
   return !rateFor(table, model) && !PROVIDERS_REPORTING_COST.has(provider);
 }
 

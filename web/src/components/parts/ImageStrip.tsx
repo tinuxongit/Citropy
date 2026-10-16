@@ -17,14 +17,18 @@ export function ImageStrip({ part, compact = false }: { part: ToolPart; compact?
     if (part.images?.length) {
       for (const image of part.images)
         collected.set(image.id, {
-          src: serverUrl(`/api/tool-images?threadId=${encodeURIComponent(threadId ?? "")}&id=${encodeURIComponent(image.id)}`),
+          src: serverUrl(
+            `/api/tool-images?threadId=${encodeURIComponent(threadId ?? "")}&id=${encodeURIComponent(image.id)}`,
+          ),
           name: part.headline || part.name,
           video: false,
         });
     } else {
       for (const file of part.imageFiles ?? [])
         collected.set(file.path, {
-          src: serverUrl(`/api/assets?${new URLSearchParams({ projectId: projectId ?? "", threadId: threadId ?? "", path: file.path })}`),
+          src: serverUrl(
+            `/api/assets?${new URLSearchParams({ projectId: projectId ?? "", threadId: threadId ?? "", path: file.path })}`,
+          ),
           name: file.label,
           video: VIDEO_FILE.test(file.path),
         });
@@ -46,7 +50,12 @@ export function ImageStrip({ part, compact = false }: { part: ToolPart; compact?
             title={source.name}
             onClick={() => setPreview(source.key)}
           >
-            <MediaThumb src={source.src} alt={source.name} video={source.video} size={compact ? "compact" : "strip"} />
+            <MediaThumb
+              src={source.src}
+              alt={source.name}
+              video={source.video}
+              size={compact ? "compact" : "strip"}
+            />
           </button>
         ))}
       </div>
@@ -54,7 +63,7 @@ export function ImageStrip({ part, compact = false }: { part: ToolPart; compact?
         <ImageViewer
           images={images}
           index={previewIndex}
-          onIndexChange={index => setPreview(images[index]?.key ?? null)}
+          onIndexChange={(index) => setPreview(images[index]?.key ?? null)}
           onClose={() => setPreview(null)}
         />
       )}

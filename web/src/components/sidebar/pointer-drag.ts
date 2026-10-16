@@ -17,7 +17,11 @@ export function canStartPointerDrag(event: ReactPointerEvent): boolean {
   return event.button === 0 && event.isPrimary && event.pointerType !== "touch";
 }
 
-export function followPointerDrag(event: ReactPointerEvent, handle: HTMLElement, handlers: PointerDragHandlers): () => void {
+export function followPointerDrag(
+  event: ReactPointerEvent,
+  handle: HTMLElement,
+  handlers: PointerDragHandlers,
+): () => void {
   const pointerId = event.pointerId;
   const origin = { x: event.clientX, y: event.clientY };
   const pointer = { ...origin };

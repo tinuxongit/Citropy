@@ -10,8 +10,23 @@ export type Tool = "select" | FreehandTool | ShapeTool | "text";
 export const INK = "ink";
 
 export type Mark = (
-  | { kind: "freehand"; tool: FreehandTool; color: string; size: number; points: Point[]; settled?: boolean }
-  | { kind: "shape"; tool: ShapeTool; color: string; size: number; filled: boolean; from: Point; to: Point }
+  | {
+      kind: "freehand";
+      tool: FreehandTool;
+      color: string;
+      size: number;
+      points: Point[];
+      settled?: boolean;
+    }
+  | {
+      kind: "shape";
+      tool: ShapeTool;
+      color: string;
+      size: number;
+      filled: boolean;
+      from: Point;
+      to: Point;
+    }
   | { kind: "text"; color: string; size: number; at: Point; text: string }
   | { kind: "image"; image: string; at: Point; width: number; height: number }
 ) & { hidden?: boolean };
@@ -27,8 +42,18 @@ const boxes = new WeakMap<Mark, Box>();
 export type Pattern = "blank" | "grid" | "dots" | "lines";
 export type Tone = "light" | "dark";
 export type FrameKind = "browser" | "phone";
-interface Frame { kind: FrameKind; x: number; y: number; width: number; height: number }
-export interface Paper { pattern: Pattern; tone: Tone; frame?: Frame }
+interface Frame {
+  kind: FrameKind;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+export interface Paper {
+  pattern: Pattern;
+  tone: Tone;
+  frame?: Frame;
+}
 
 export const BLANK_PAPER: Paper = { pattern: "blank", tone: "light" };
 
@@ -56,14 +81,34 @@ function frameFor(kind: FrameKind, width: number, height: number): Frame {
   if (kind === "browser") return { kind, x: FRAME_MARGIN, y: FRAME_MARGIN, ...room };
   const phoneHeight = Math.min(room.height, room.width / 0.48, 760);
   const phoneWidth = phoneHeight * 0.48;
-  return { kind, x: (width - phoneWidth) / 2, y: FRAME_MARGIN, width: phoneWidth, height: phoneHeight };
+  return {
+    kind,
+    x: (width - phoneWidth) / 2,
+    y: FRAME_MARGIN,
+    width: phoneWidth,
+    height: phoneHeight,
+  };
 }
 
-export function paperWith(paper: Paper, frame: FrameKind | undefined, width: number, height: number): Paper {
-  return { pattern: paper.pattern, tone: paper.tone, ...(frame ? { frame: frameFor(frame, width, height) } : {}) };
+export function paperWith(
+  paper: Paper,
+  frame: FrameKind | undefined,
+  width: number,
+  height: number,
+): Paper {
+  return {
+    pattern: paper.pattern,
+    tone: paper.tone,
+    ...(frame ? { frame: frameFor(frame, width, height) } : {}),
+  };
 }
 
-export function drawPaper(context: CanvasRenderingContext2D, paper: Paper, width: number, height: number): void {
+export function drawPaper(
+  context: CanvasRenderingContext2D,
+  paper: Paper,
+  width: number,
+  height: number,
+): void {
   const tone = TONES[paper.tone];
   context.fillStyle = tone.fill;
   context.fillRect(0, 0, width, height);
@@ -86,7 +131,8 @@ export function drawPaper(context: CanvasRenderingContext2D, paper: Paper, width
   context.stroke();
   if (paper.pattern === "dots") {
     for (let x = PATTERN_GAP; x < width; x += PATTERN_GAP)
-      for (let y = PATTERN_GAP; y < height; y += PATTERN_GAP) context.fillRect(x - 1, y - 1, 2.2, 2.2);
+      for (let y = PATTERN_GAP; y < height; y += PATTERN_GAP)
+        context.fillRect(x - 1, y - 1, 2.2, 2.2);
   }
   if (paper.frame) drawFrame(context, paper.frame, tone.frame);
 }
@@ -121,9 +167,18 @@ function drawFrame(context: CanvasRenderingContext2D, frame: Frame, color: strin
   context.fill();
 }
 
-export interface Shift { marks: ReadonlySet<Mark>; dx: number; dy: number }
+export interface Shift {
+  marks: ReadonlySet<Mark>;
+  dx: number;
+  dy: number;
+}
 
-export function drawMarks(context: CanvasRenderingContext2D, marks: Mark[], ink: string, shift?: Shift): void {
+export function drawMarks(
+  context: CanvasRenderingContext2D,
+  marks: Mark[],
+  ink: string,
+  shift?: Shift,
+): void {
   for (const mark of marks) {
     if (mark.hidden) continue;
     if (!shift?.marks.has(mark)) {
@@ -161,8 +216,11 @@ function drawMark(context: CanvasRenderingContext2D, mark: Mark, ink: string): v
   } else {
     context.font = textFont(mark.size);
     context.textBaseline = "top";
-    mark.text.split("\n").forEach((line, index) =>
-      context.fillText(line, mark.at[0], mark.at[1] + index * textFontSize(mark.size) * 1.3));
+    mark.text
+      .split("\n")
+      .forEach((line, index) =>
+        context.fillText(line, mark.at[0], mark.at[1] + index * textFontSize(mark.size) * 1.3),
+      );
   }
   context.restore();
 }
@@ -202,24 +260,45 @@ function hasPressure(mark: Freehand): boolean {
 
 export function settleStroke(mark: Freehand): Freehand {
   const pressured = hasPressure(mark);
-  const smoothed = getStrokePoints(mark.points as number[][], { size: strokeWidth(mark), streamline: STREAMLINE, last: true })
-    .map(({ point: [x, y], pressure }) => ({ x, y, pressure }));
+  const smoothed = getStrokePoints(mark.points as number[][], {
+    size: strokeWidth(mark),
+    streamline: STREAMLINE,
+    last: true,
+  }).map(({ point: [x, y], pressure }) => ({ x, y, pressure }));
   const kept = simplify(smoothed, SETTLE_TOLERANCE, true) as typeof smoothed;
   return {
     ...mark,
     settled: true,
-    points: kept.map(({ x, y, pressure }): Point => pressured ? [tenth(x), tenth(y), Math.round(pressure * 100) / 100] : [tenth(x), tenth(y)]),
+    points: kept.map(({ x, y, pressure }): Point =>
+      pressured ? [tenth(x), tenth(y), Math.round(pressure * 100) / 100] : [tenth(x), tenth(y)],
+    ),
   };
 }
 
-function traceShape(context: CanvasRenderingContext2D, mark: Extract<Mark, { kind: "shape" }>): void {
+function traceShape(
+  context: CanvasRenderingContext2D,
+  mark: Extract<Mark, { kind: "shape" }>,
+): void {
   const [fromX, fromY] = mark.from;
   const [toX, toY] = mark.to;
   context.beginPath();
   if (mark.tool === "rectangle") {
-    context.rect(Math.min(fromX, toX), Math.min(fromY, toY), Math.abs(toX - fromX), Math.abs(toY - fromY));
+    context.rect(
+      Math.min(fromX, toX),
+      Math.min(fromY, toY),
+      Math.abs(toX - fromX),
+      Math.abs(toY - fromY),
+    );
   } else if (mark.tool === "ellipse") {
-    context.ellipse((fromX + toX) / 2, (fromY + toY) / 2, Math.abs(toX - fromX) / 2, Math.abs(toY - fromY) / 2, 0, 0, Math.PI * 2);
+    context.ellipse(
+      (fromX + toX) / 2,
+      (fromY + toY) / 2,
+      Math.abs(toX - fromX) / 2,
+      Math.abs(toY - fromY) / 2,
+      0,
+      0,
+      Math.PI * 2,
+    );
   } else {
     context.moveTo(fromX, fromY);
     context.lineTo(toX, toY);
@@ -228,13 +307,21 @@ function traceShape(context: CanvasRenderingContext2D, mark: Extract<Mark, { kin
       const head = arrowHead(mark.size);
       for (const side of [-1, 1]) {
         context.moveTo(toX, toY);
-        context.lineTo(toX - head * Math.cos(angle + (side * Math.PI) / 7), toY - head * Math.sin(angle + (side * Math.PI) / 7));
+        context.lineTo(
+          toX - head * Math.cos(angle + (side * Math.PI) / 7),
+          toY - head * Math.sin(angle + (side * Math.PI) / 7),
+        );
       }
     }
   }
 }
 
-export interface Box { x: number; y: number; width: number; height: number }
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 const HIT_SLOP = 4;
 const SELECTION_COLOR = "#0090ff";
@@ -271,13 +358,21 @@ function textBox(context: CanvasRenderingContext2D, mark: Extract<Mark, { kind: 
   const lines = mark.text.split("\n");
   const width = Math.max(...lines.map((line) => context.measureText(line).width));
   context.restore();
-  return { x: mark.at[0], y: mark.at[1], width, height: lines.length * textFontSize(mark.size) * 1.3 };
+  return {
+    x: mark.at[0],
+    y: mark.at[1],
+    width,
+    height: lines.length * textFontSize(mark.size) * 1.3,
+  };
 }
 
 function geometryBox(mark: Exclude<Mark, { kind: "text" }>): Box {
-  if (mark.kind === "image") return { x: mark.at[0], y: mark.at[1], width: mark.width, height: mark.height };
+  if (mark.kind === "image")
+    return { x: mark.at[0], y: mark.at[1], width: mark.width, height: mark.height };
   const points = mark.kind === "freehand" ? mark.points : [mark.from, mark.to];
-  const pad = strokeWidth(mark) / 2 + (mark.kind === "shape" && mark.tool === "arrow" ? arrowHead(mark.size) : 0);
+  const pad =
+    strokeWidth(mark) / 2 +
+    (mark.kind === "shape" && mark.tool === "arrow" ? arrowHead(mark.size) : 0);
   const xs = points.map(([x]) => x);
   const ys = points.map(([, y]) => y);
   const x = Math.min(...xs) - pad;
@@ -295,10 +390,17 @@ export function isFillable(mark: Mark): mark is Extract<Mark, { kind: "shape" }>
 
 export function restack(marks: Mark[], picked: ReadonlySet<Mark>, step: 1 | -1): Mark[] {
   const next = [...marks];
-  const order = step === 1 ? next.map((_, index) => index).reverse() : next.map((_, index) => index);
+  const order =
+    step === 1 ? next.map((_, index) => index).reverse() : next.map((_, index) => index);
   for (const index of order) {
     const neighbor = index + step;
-    if (!picked.has(next[index]!) || neighbor < 0 || neighbor >= next.length || picked.has(next[neighbor]!)) continue;
+    if (
+      !picked.has(next[index]!) ||
+      neighbor < 0 ||
+      neighbor >= next.length ||
+      picked.has(next[neighbor]!)
+    )
+      continue;
     [next[index], next[neighbor]] = [next[neighbor]!, next[index]!];
   }
   return next;
@@ -311,35 +413,63 @@ export function moveLayer(marks: Mark[], from: number, to: number): Mark[] {
   return next;
 }
 
-export function markAt(context: CanvasRenderingContext2D, marks: Mark[], point: Point): Mark | undefined {
+export function markAt(
+  context: CanvasRenderingContext2D,
+  marks: Mark[],
+  point: Point,
+): Mark | undefined {
   return marks.findLast((mark) => isMovable(mark) && hits(context, mark, point));
 }
 
 function hits(context: CanvasRenderingContext2D, mark: Mark, [x, y]: Point): boolean {
   const box = markBox(context, mark);
-  const inBox = x >= box.x - HIT_SLOP && x <= box.x + box.width + HIT_SLOP && y >= box.y - HIT_SLOP && y <= box.y + box.height + HIT_SLOP;
-  if (!inBox || mark.kind === "text" || mark.kind === "image" || mark.tool === "rectangle" || mark.tool === "ellipse") return inBox;
+  const inBox =
+    x >= box.x - HIT_SLOP &&
+    x <= box.x + box.width + HIT_SLOP &&
+    y >= box.y - HIT_SLOP &&
+    y <= box.y + box.height + HIT_SLOP;
+  if (
+    !inBox ||
+    mark.kind === "text" ||
+    mark.kind === "image" ||
+    mark.tool === "rectangle" ||
+    mark.tool === "ellipse"
+  )
+    return inBox;
   const reach = strokeWidth(mark) / 2 + HIT_SLOP;
   const points = mark.kind === "freehand" ? mark.points : [mark.from, mark.to];
   if (points.length === 1) return Math.hypot(x - points[0]![0], y - points[0]![1]) <= reach;
-  return points.slice(1).some((to, index) => distanceToSegment([x, y], points[index]!, to) <= reach);
+  return points
+    .slice(1)
+    .some((to, index) => distanceToSegment([x, y], points[index]!, to) <= reach);
 }
 
 function distanceToSegment([x, y]: Point, [fromX, fromY]: Point, [toX, toY]: Point): number {
   const dx = toX - fromX;
   const dy = toY - fromY;
   const lengthSquared = dx * dx + dy * dy;
-  const along = lengthSquared ? Math.max(0, Math.min(1, ((x - fromX) * dx + (y - fromY) * dy) / lengthSquared)) : 0;
+  const along = lengthSquared
+    ? Math.max(0, Math.min(1, ((x - fromX) * dx + (y - fromY) * dy) / lengthSquared))
+    : 0;
   return Math.hypot(x - (fromX + along * dx), y - (fromY + along * dy));
 }
 
 export function boxAround(from: Point, to: Point): Box {
-  return { x: Math.min(from[0], to[0]), y: Math.min(from[1], to[1]), width: Math.abs(to[0] - from[0]), height: Math.abs(to[1] - from[1]) };
+  return {
+    x: Math.min(from[0], to[0]),
+    y: Math.min(from[1], to[1]),
+    width: Math.abs(to[0] - from[0]),
+    height: Math.abs(to[1] - from[1]),
+  };
 }
 
 export function contains(outer: Box, inner: Box): boolean {
-  return inner.x >= outer.x && inner.y >= outer.y
-    && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
+  return (
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
+  );
 }
 
 export function moveMark(mark: Mark, dx: number, dy: number): Mark {
@@ -349,13 +479,22 @@ export function moveMark(mark: Mark, dx: number, dy: number): Mark {
   return { ...mark, at: shift(mark.at) };
 }
 
-export function drawSelection(context: CanvasRenderingContext2D, boxes: Box[], marquee?: Box): void {
+export function drawSelection(
+  context: CanvasRenderingContext2D,
+  boxes: Box[],
+  marquee?: Box,
+): void {
   context.save();
   context.strokeStyle = SELECTION_COLOR;
   context.lineWidth = 1;
   context.setLineDash([4, 3]);
   for (const box of boxes) {
-    context.strokeRect(box.x - SELECTION_GAP, box.y - SELECTION_GAP, box.width + SELECTION_GAP * 2, box.height + SELECTION_GAP * 2);
+    context.strokeRect(
+      box.x - SELECTION_GAP,
+      box.y - SELECTION_GAP,
+      box.width + SELECTION_GAP * 2,
+      box.height + SELECTION_GAP * 2,
+    );
   }
   if (marquee) {
     context.setLineDash([]);
@@ -378,8 +517,15 @@ export function constrain(tool: ShapeTool, from: Point, to: Point): Point {
   return [from[0] + Math.cos(angle) * length, from[1] + Math.sin(angle) * length];
 }
 
-export async function renderImage(paper: Paper, marks: Mark[], width: number, height: number): Promise<Blob> {
-  await Promise.all(marks.flatMap((mark) => mark.kind === "image" ? [loadImage(mark.image)] : []));
+export async function renderImage(
+  paper: Paper,
+  marks: Mark[],
+  width: number,
+  height: number,
+): Promise<Blob> {
+  await Promise.all(
+    marks.flatMap((mark) => (mark.kind === "image" ? [loadImage(mark.image)] : [])),
+  );
   const scale = Math.max(2, window.devicePixelRatio);
   const layer = () => {
     const canvas = document.createElement("canvas");
@@ -395,5 +541,9 @@ export async function renderImage(paper: Paper, marks: Mark[], width: number, he
   drawMarks(ink.context, marks, inkColor(paper.tone));
   image.context.drawImage(ink.canvas, 0, 0, width, height);
   return new Promise((resolve, reject) =>
-    image.canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("The drawing could not be exported."))), "image/png"));
+    image.canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("The drawing could not be exported."))),
+      "image/png",
+    ),
+  );
 }

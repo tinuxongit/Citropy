@@ -20,10 +20,13 @@ export function transitionView(view: View, change: () => void): void {
     change();
     return;
   }
-  const transition = document.startViewTransition(() => new Promise<void>(shown => {
-    pending = { view, shown };
-    change();
-  }));
+  const transition = document.startViewTransition(
+    () =>
+      new Promise<void>((shown) => {
+        pending = { view, shown };
+        change();
+      }),
+  );
   transition.ready.catch(ignoreSkipped);
 }
 

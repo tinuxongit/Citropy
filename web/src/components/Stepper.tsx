@@ -11,10 +11,27 @@ interface Props {
   onStep: (by: 1 | -1) => void;
 }
 
-export function Stepper({ label, value, min, max, canIncrease = true, canDecrease = true, onInput, onStep }: Props) {
+export function Stepper({
+  label,
+  value,
+  min,
+  max,
+  canIncrease = true,
+  canDecrease = true,
+  onInput,
+  onStep,
+}: Props) {
   return (
     <div className="stepper">
-      <button type="button" className="stepper-step" aria-label={`Increase ${label.toLowerCase()}`} disabled={!canIncrease} onClick={() => onStep(1)}><ChevronUpIcon size={18} /></button>
+      <button
+        type="button"
+        className="stepper-step"
+        aria-label={`Increase ${label.toLowerCase()}`}
+        disabled={!canIncrease}
+        onClick={() => onStep(1)}
+      >
+        <ChevronUpIcon size={18} />
+      </button>
       <label className="stepper-amount">
         <input
           type="number"
@@ -29,7 +46,15 @@ export function Stepper({ label, value, min, max, canIncrease = true, canDecreas
         />
         <span>{label}</span>
       </label>
-      <button type="button" className="stepper-step" aria-label={`Decrease ${label.toLowerCase()}`} disabled={!canDecrease} onClick={() => onStep(-1)}><ChevronDownIcon size={18} /></button>
+      <button
+        type="button"
+        className="stepper-step"
+        aria-label={`Decrease ${label.toLowerCase()}`}
+        disabled={!canDecrease}
+        onClick={() => onStep(-1)}
+      >
+        <ChevronDownIcon size={18} />
+      </button>
     </div>
   );
 }

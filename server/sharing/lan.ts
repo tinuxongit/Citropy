@@ -25,10 +25,19 @@ function privateAddress(address: string): boolean {
 }
 
 function lanAddresses(): Map<string, string> {
-  return new Map(Object.values(networkInterfaces())
-    .flat()
-    .filter((entry) => entry && entry.family === "IPv4" && !entry.internal && privateAddress(entry.address) && entry.cidr)
-    .map((entry) => [entry!.address, entry!.cidr!]));
+  return new Map(
+    Object.values(networkInterfaces())
+      .flat()
+      .filter(
+        (entry) =>
+          entry &&
+          entry.family === "IPv4" &&
+          !entry.internal &&
+          privateAddress(entry.address) &&
+          entry.cidr,
+      )
+      .map((entry) => [entry!.address, entry!.cidr!]),
+  );
 }
 
 function listen(): void {
@@ -44,10 +53,15 @@ function listen(): void {
     const proxy = createDeviceProxy("lan");
     proxy.server.on("error", (error: NodeJS.ErrnoException) => {
       listeners.delete(address);
-      listenError = error.code === "EADDRINUSE" ? `Port ${port} on ${address} is already in use.` : error.message;
+      listenError =
+        error.code === "EADDRINUSE"
+          ? `Port ${port} on ${address} is already in use.`
+          : error.message;
       writeLog("error", "sharing", listenError);
     });
-    proxy.server.listen(port, address, () => { listenError = undefined; });
+    proxy.server.listen(port, address, () => {
+      listenError = undefined;
+    });
     listeners.set(address, proxy);
   }
 }

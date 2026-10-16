@@ -9,10 +9,13 @@ export interface TurnCheckpoint {
   overlapping?: boolean;
 }
 
-export function fileRestoreIssue(checkpoints: TurnCheckpoint[] | undefined, messageId: string): "missing" | "incomplete" | "shared" | undefined {
-  if (!checkpoints?.find(entry => entry.messageId === messageId)?.before) return "missing";
+export function fileRestoreIssue(
+  checkpoints: TurnCheckpoint[] | undefined,
+  messageId: string,
+): "missing" | "incomplete" | "shared" | undefined {
+  if (!checkpoints?.find((entry) => entry.messageId === messageId)?.before) return "missing";
   if (!checkpoints.at(-1)?.after) return "incomplete";
-  if (checkpoints.some(entry => entry.overlapping)) return "shared";
+  if (checkpoints.some((entry) => entry.overlapping)) return "shared";
 }
 
 export type ReviewScope = "lastTurn" | "task" | "unstaged" | "staged";

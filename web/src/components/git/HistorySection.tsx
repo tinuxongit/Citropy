@@ -31,8 +31,7 @@ export function HistorySection({
   offset: number;
   branch: string;
   selectedCommit:
-    | { hash: string; author: string; date: string; subject: string; refs: string }
-    | undefined;
+    { hash: string; author: string; date: string; subject: string; refs: string } | undefined;
   reviewChanges: ReactNode;
   setSelection: (value: GitSelection | null) => void;
   act: (
@@ -44,147 +43,119 @@ export function HistorySection({
 }) {
   return (
     <>
-    {!data.hasCommits ? (
-      <EmptyState
-        title="Your history starts with a commit"
-        action={reviewChanges}
-      >
-        <p>
-          Commits are saved checkpoints of your work. Review your changes to create the first one.
-        </p>
-      </EmptyState>
-    ) : (
-      <div
-        className="git-split"
-        data-detail={selection?.kind === "commit"}
-      >
-        <div className="git-history-list">
-          <header className="git-list-heading">
-            <h2>Commit history</h2>
-            <p>
-              <BranchIcon size={13} />
-              {branch}
-            </p>
-          </header>
-          <div className="scroll git-commits sliding-selection">
-            <SelectionHighlight value={selection?.kind === "commit" ? selection.hash : undefined} />
-            {data.commits.map((commit) => (
-              <button
-                className="git-history-row"
-                key={commit.hash}
-                aria-pressed={
-                  selection?.kind === "commit" &&
-                  selection.hash === commit.hash
-                }
-                onClick={() =>
-                  setSelection({
-                    kind: "commit",
-                    hash: commit.hash,
-                  })
-                }
-              >
-                <span>
-                  <strong>{commit.subject}</strong>
-                  <small>
-                    {commit.author} ·{" "}
-                    {formatDate(commit.date, { month: "short", day: "numeric" })} ·{" "}
-                    <code>{commit.hash.slice(0, 7)}</code>
-                  </small>
-                </span>
-                {commit.refs.split(", ").some((ref) => ref === "HEAD" || ref.startsWith("HEAD -> ")) && (
-                  <span className="git-tag">Latest</span>
-                )}
-              </button>
-            ))}
-            {!data.commits.length && (
-              <p className="git-list-hint">
-                No more commits on this page.
-              </p>
-            )}
-          </div>
-          <footer className="git-pagination">
-            <button
-              className="icon-btn"
-              aria-label="Previous commits page"
-              disabled={disabled || offset === 0}
-              onClick={() =>
-                void act(
-                  "history",
-                  undefined,
-                  Math.max(0, offset - 50),
-                )
-              }
-            >
-              <ChevronLeftIcon size={16} />
-            </button>
-            <span>
-              {data.commits.length
-                ? offset +
-                  1 +
-                  " - " +
-                  (offset + data.commits.length)
-                : "End of history"}
-            </span>
-            <button
-              className="icon-btn"
-              aria-label="Next commits page"
-              disabled={disabled || data.commits.length < 50}
-              onClick={() =>
-                void act("history", undefined, offset + 50)
-              }
-            >
-              <ChevronRightIcon size={16} />
-            </button>
-          </footer>
-        </div>
-        <ResizeHandle panel="git" inline />
-        <section
-          className="git-review-pane"
-          aria-label="Commit preview"
-        >
-          {selection?.kind === "commit" && selectedCommit ? (
-            <>
-              <header className="git-review-header">
-                <button
-                  className="icon-btn git-mobile-back"
-                  aria-label="Back to history"
-                  onClick={() => setSelection(null)}
-                >
-                  <ArrowLeftIcon size={17} />
-                </button>
-                <div>
-                  <h2>{selectedCommit.subject}</h2>
-                  <p>
-                    {selectedCommit.author} ·{" "}
-                    {dateTime(selectedCommit.date)}{" "}
-                    · <code>{selectedCommit.hash.slice(0, 8)}</code>
-                  </p>
-                  {selectedCommit.refs && (
-                    <span className="git-commit-refs">
-                      {selectedCommit.refs}
-                    </span>
-                  )}
-                </div>
-              </header>
-              <GitReview
-                key={selection.hash}
-                projectId={projectId}
-                selection={selection}
-                revision={revision}
-              />
-            </>
-          ) : (
-            <EmptyState
-              title="Review a saved change"
-            >
+      {!data.hasCommits ? (
+        <EmptyState title="Your history starts with a commit" action={reviewChanges}>
+          <p>
+            Commits are saved checkpoints of your work. Review your changes to create the first one.
+          </p>
+        </EmptyState>
+      ) : (
+        <div className="git-split" data-detail={selection?.kind === "commit"}>
+          <div className="git-history-list">
+            <header className="git-list-heading">
+              <h2>Commit history</h2>
               <p>
-                Select a commit to see its message and file changes.
+                <BranchIcon size={13} />
+                {branch}
               </p>
-            </EmptyState>
-          )}
-        </section>
-      </div>
-    )}
+            </header>
+            <div className="scroll git-commits sliding-selection">
+              <SelectionHighlight
+                value={selection?.kind === "commit" ? selection.hash : undefined}
+              />
+              {data.commits.map((commit) => (
+                <button
+                  className="git-history-row"
+                  key={commit.hash}
+                  aria-pressed={selection?.kind === "commit" && selection.hash === commit.hash}
+                  onClick={() =>
+                    setSelection({
+                      kind: "commit",
+                      hash: commit.hash,
+                    })
+                  }
+                >
+                  <span>
+                    <strong>{commit.subject}</strong>
+                    <small>
+                      {commit.author} ·{" "}
+                      {formatDate(commit.date, { month: "short", day: "numeric" })} ·{" "}
+                      <code>{commit.hash.slice(0, 7)}</code>
+                    </small>
+                  </span>
+                  {commit.refs
+                    .split(", ")
+                    .some((ref) => ref === "HEAD" || ref.startsWith("HEAD -> ")) && (
+                    <span className="git-tag">Latest</span>
+                  )}
+                </button>
+              ))}
+              {!data.commits.length && (
+                <p className="git-list-hint">No more commits on this page.</p>
+              )}
+            </div>
+            <footer className="git-pagination">
+              <button
+                className="icon-btn"
+                aria-label="Previous commits page"
+                disabled={disabled || offset === 0}
+                onClick={() => void act("history", undefined, Math.max(0, offset - 50))}
+              >
+                <ChevronLeftIcon size={16} />
+              </button>
+              <span>
+                {data.commits.length
+                  ? offset + 1 + " - " + (offset + data.commits.length)
+                  : "End of history"}
+              </span>
+              <button
+                className="icon-btn"
+                aria-label="Next commits page"
+                disabled={disabled || data.commits.length < 50}
+                onClick={() => void act("history", undefined, offset + 50)}
+              >
+                <ChevronRightIcon size={16} />
+              </button>
+            </footer>
+          </div>
+          <ResizeHandle panel="git" inline />
+          <section className="git-review-pane" aria-label="Commit preview">
+            {selection?.kind === "commit" && selectedCommit ? (
+              <>
+                <header className="git-review-header">
+                  <button
+                    className="icon-btn git-mobile-back"
+                    aria-label="Back to history"
+                    onClick={() => setSelection(null)}
+                  >
+                    <ArrowLeftIcon size={17} />
+                  </button>
+                  <div>
+                    <h2>{selectedCommit.subject}</h2>
+                    <p>
+                      {selectedCommit.author} · {dateTime(selectedCommit.date)} ·{" "}
+                      <code>{selectedCommit.hash.slice(0, 8)}</code>
+                    </p>
+                    {selectedCommit.refs && (
+                      <span className="git-commit-refs">{selectedCommit.refs}</span>
+                    )}
+                  </div>
+                </header>
+                <GitReview
+                  key={selection.hash}
+                  projectId={projectId}
+                  selection={selection}
+                  revision={revision}
+                />
+              </>
+            ) : (
+              <EmptyState title="Review a saved change">
+                <p>Select a commit to see its message and file changes.</p>
+              </EmptyState>
+            )}
+          </section>
+        </div>
+      )}
     </>
   );
 }

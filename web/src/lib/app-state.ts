@@ -6,7 +6,11 @@ import { readTabs } from "./thread-tabs.ts";
 import "./migrate-preferences.ts";
 import { isProviderId } from "../../../shared/protocol.ts";
 import { create } from "zustand";
-import { defaultAssistance, type AssistanceSettings, type WritingModel } from "../../../shared/assistance.ts";
+import {
+  defaultAssistance,
+  type AssistanceSettings,
+  type WritingModel,
+} from "../../../shared/assistance.ts";
 import type { GitHubUser } from "../../../shared/github.ts";
 import type { Bot, BotGroup } from "../../../shared/bots.ts";
 import type {
@@ -62,14 +66,28 @@ export interface Confirmation {
   resolve: (confirmed: boolean) => void;
 }
 
-const COLOR_THEMES = ["pink", "red", "orange", "yellow", "green", "teal", "blue", "purple"] as const;
-export type Theme = typeof COLOR_THEMES[number] | "neutral" | "custom";
+const COLOR_THEMES = [
+  "pink",
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "teal",
+  "blue",
+  "purple",
+] as const;
+export type Theme = (typeof COLOR_THEMES)[number] | "neutral" | "custom";
 const half = Math.ceil(COLOR_THEMES.length / 2);
-export const THEMES: readonly Theme[] = [...COLOR_THEMES.slice(0, half), "neutral", "custom", ...COLOR_THEMES.slice(half)];
+export const THEMES: readonly Theme[] = [
+  ...COLOR_THEMES.slice(0, half),
+  "neutral",
+  "custom",
+  ...COLOR_THEMES.slice(half),
+];
 export const SCHEMES = ["dark", "light"] as const;
-export type Scheme = typeof SCHEMES[number];
+export type Scheme = (typeof SCHEMES)[number];
 const STAGE_BACKGROUNDS = ["default", "ascii", "dots", "image"] as const;
-export type StageBackground = typeof STAGE_BACKGROUNDS[number];
+export type StageBackground = (typeof STAGE_BACKGROUNDS)[number];
 export const CHAT_WIDTHS = {
   comfortable: { label: "Comfortable", pixels: 780 },
   wide: { label: "Wide", pixels: 1080 },
@@ -95,7 +113,10 @@ export interface AppState {
   whatsNew: import("../../../shared/app-update.ts").ReleaseNotes | null;
   setupOpen: boolean;
   creatingThread: boolean;
-  threadDefaults: Pick<ThreadMeta, "provider" | "model" | "effort" | "contextWindow" | "fastMode"> | null;
+  threadDefaults: Pick<
+    ThreadMeta,
+    "provider" | "model" | "effort" | "contextWindow" | "fastMode"
+  > | null;
   favoriteModels: WritingModel[];
   notifications: AppNotification[];
   notificationPreferences: NotificationPreferences;
@@ -142,7 +163,10 @@ export interface AppState {
   git: Record<string, GitStatus>;
   permissions: PermissionRequest[];
   questions: QuestionRequest[];
-  questionDrafts: Record<string, { index: number; choices: Record<string, string[]>; text: Record<string, string> }>;
+  questionDrafts: Record<
+    string,
+    { index: number; choices: Record<string, string[]>; text: Record<string, string> }
+  >;
   toasts: Toast[];
   activeProjectId: string | null;
   activeThreadId: string | null;
@@ -197,7 +221,7 @@ export interface AppState {
 const REOPENED_VIEWS = ["chat", "chats", "bots"] as const;
 
 function oneOf<T extends string>(options: readonly T[], value: string, fallback: T): T {
-  return (options as readonly string[]).includes(value) ? value as T : fallback;
+  return (options as readonly string[]).includes(value) ? (value as T) : fallback;
 }
 
 function readPref<T extends string>(key: string, fallback: T, id?: string): T {
@@ -217,14 +241,16 @@ function readFlag(key: string, fallback: boolean): boolean {
   return value === null ? fallback : value === "1";
 }
 
-export const DEFAULT_UI_SCALE = typeof window !== "undefined" && window.matchMedia("(hover: none)").matches ? 100 : 90;
+export const DEFAULT_UI_SCALE =
+  typeof window !== "undefined" && window.matchMedia("(hover: none)").matches ? 100 : 90;
 const storedScale = Number(readPref("citropy.uiScale", String(DEFAULT_UI_SCALE)));
 const initialScale =
   Number.isFinite(storedScale) && storedScale >= 75 && storedScale <= 150
     ? storedScale
     : DEFAULT_UI_SCALE;
 export const NARROW_VIEWPORT = 720;
-const startsWide = typeof window !== "undefined" && window.innerWidth / (initialScale / 100) > NARROW_VIEWPORT;
+const startsWide =
+  typeof window !== "undefined" && window.innerWidth / (initialScale / 100) > NARROW_VIEWPORT;
 const storedSpeed = Number(readPref("citropy.typingSpeed", "100"));
 const storedVolume = Number(readPref("citropy.uiSoundVolume", "60"));
 const storedDim = Number(readPref("citropy.backgroundDim", "68"));
@@ -236,33 +262,51 @@ function readPanelWidths(): Partial<Record<PanelId, number>> {
   const stored = JSON.parse(readPref("citropy.panelWidths", "{}"));
   return Object.fromEntries(
     (["sidebar", "inspector", "git", "github"] as const)
-      .filter((key) => Number.isFinite(stored?.[key]) && stored[key] > 0 && (!WINDOW_SHARE_PANELS.includes(key) || stored[key] < 1))
+      .filter(
+        (key) =>
+          Number.isFinite(stored?.[key]) &&
+          stored[key] > 0 &&
+          (!WINDOW_SHARE_PANELS.includes(key) || stored[key] < 1),
+      )
       .map((key) => [key, stored[key]]),
   );
 }
 
 function readSidebarGroups(): Record<string, boolean> {
   const stored = JSON.parse(readPref("citropy.sidebarGroups", "{}"));
-  return Object.fromEntries(Object.entries(stored ?? {}).filter((entry): entry is [string, boolean] => typeof entry[1] === "boolean"));
+  return Object.fromEntries(
+    Object.entries(stored ?? {}).filter(
+      (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
+    ),
+  );
 }
 
 export function readOffline(id?: string): Record<string, QueuedMessage[]> {
   const stored = JSON.parse(readPref("citropy.offline", "{}", id));
-  return stored && typeof stored === "object" && !Array.isArray(stored)
-    ? stored
-    : {};
+  return stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
 }
 
 function readThreadDefaults(): AppState["threadDefaults"] {
   const value = JSON.parse(readPref("citropy.threadDefaults", "null"));
-  return value && isProviderId(value.provider) &&
+  return value &&
+    isProviderId(value.provider) &&
     (value.model === undefined || typeof value.model === "string") &&
-    (value.effort === undefined || typeof value.effort === "string") ? value : null;
+    (value.effort === undefined || typeof value.effort === "string")
+    ? value
+    : null;
 }
 
 function readFavoriteModels(): WritingModel[] {
   const value = JSON.parse(readPref("citropy.favoriteModels", "[]"));
-  return Array.isArray(value) ? value.filter((entry) => entry && isProviderId(entry.provider) && typeof entry.model === "string" && (entry.providerInstanceId === undefined || typeof entry.providerInstanceId === "string")) : [];
+  return Array.isArray(value)
+    ? value.filter(
+        (entry) =>
+          entry &&
+          isProviderId(entry.provider) &&
+          typeof entry.model === "string" &&
+          (entry.providerInstanceId === undefined || typeof entry.providerInstanceId === "string"),
+      )
+    : [];
 }
 
 export const useApp = create<AppState>(() => ({
@@ -301,7 +345,8 @@ export const useApp = create<AppState>(() => ({
   threadOrder: [],
   bots: {},
   botGroups: {},
-  activeRosterId: typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.bot"),
+  activeRosterId:
+    typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.bot"),
   chatThreadId: null,
   chatsThreadId: null,
   messages: {},
@@ -319,9 +364,13 @@ export const useApp = create<AppState>(() => ({
   questions: [],
   questionDrafts: {},
   toasts: [],
-  activeProjectId: typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.project"),
-  activeThreadId: typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.thread"),
-  ...(typeof localStorage === "undefined" ? { openThreadIds: [], previewThreadId: null } : readTabs()),
+  activeProjectId:
+    typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.project"),
+  activeThreadId:
+    typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.thread"),
+  ...(typeof localStorage === "undefined"
+    ? { openThreadIds: [], previewThreadId: null }
+    : readTabs()),
   followRequest: 0,
   readingThreadId: null,
   panels: [],
@@ -333,22 +382,39 @@ export const useApp = create<AppState>(() => ({
   tools: [],
   inspectorOpen: readFlag(
     "citropy.inspector",
-    typeof window !== "undefined" &&
-      window.innerWidth / (initialScale / 100) > 1150,
+    typeof window !== "undefined" && window.innerWidth / (initialScale / 100) > 1150,
   ),
   threadDetailsOpen: readFlag("citropy.threadDetails", false),
   botPanelOpen: readFlag("citropy.botPanel", startsWide),
   newBotChatOpen: false,
   newBotTemplate: null,
   sidebarOpen: readFlag("citropy.sidebar", startsWide),
-  searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
-  stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "default"), "default"),
-  chatWidth: oneOf(Object.keys(CHAT_WIDTHS) as ChatWidth[], readPref<string>("citropy.chatWidth", "comfortable"), "comfortable"),
-  codeFont: oneOf(Object.keys(CODE_FONTS) as CodeFont[], readPref<string>("citropy.codeFont", "citropy"), "citropy"),
+  searchEngine: oneOf(
+    Object.keys(SEARCH_ENGINES) as SearchEngine[],
+    readPref<string>("citropy.searchEngine", "google"),
+    "google",
+  ),
+  stageBackground: oneOf(
+    STAGE_BACKGROUNDS,
+    readPref<string>("citropy.stageBackground", "default"),
+    "default",
+  ),
+  chatWidth: oneOf(
+    Object.keys(CHAT_WIDTHS) as ChatWidth[],
+    readPref<string>("citropy.chatWidth", "comfortable"),
+    "comfortable",
+  ),
+  codeFont: oneOf(
+    Object.keys(CODE_FONTS) as CodeFont[],
+    readPref<string>("citropy.codeFont", "citropy"),
+    "citropy",
+  ),
   backgroundDim: Number.isFinite(storedDim) ? Math.max(0, Math.min(90, storedDim)) : 68,
   backgroundBlur: readLevel("citropy.backgroundBlur", 0, 40, 0),
   backgroundFocus: readLevel("citropy.backgroundFocus", 0, 100, 70),
-  backgroundFocusSpread: Number.isFinite(storedFocusSpread) ? Math.max(0, Math.min(400, storedFocusSpread)) : 140,
+  backgroundFocusSpread: Number.isFinite(storedFocusSpread)
+    ? Math.max(0, Math.min(400, storedFocusSpread))
+    : 140,
   asciiDim: readLevel("citropy.asciiDim", 0, 90, 0),
   asciiBlur: readLevel("citropy.asciiBlur", 0, 12, 0),
   asciiFocus: readLevel("citropy.asciiFocus", 0, 100, 0),
@@ -359,7 +425,11 @@ export const useApp = create<AppState>(() => ({
   threadQuery: "",
   searchFocusPending: false,
   theme: oneOf(THEMES, storedTheme, "neutral"),
-  scheme: oneOf(SCHEMES, readPref<string>("citropy.scheme", storedTheme === "light" ? "light" : "dark"), "dark"),
+  scheme: oneOf(
+    SCHEMES,
+    readPref<string>("citropy.scheme", storedTheme === "light" ? "light" : "dark"),
+    "dark",
+  ),
   customColor: isHexColor(storedCustomColor) ? storedCustomColor : DEFAULT_CUSTOM_COLOR,
   uiSize: initialScale,
   uiScale: initialScale,
@@ -367,17 +437,16 @@ export const useApp = create<AppState>(() => ({
   textStreaming: readFlag("citropy.textStreaming", true),
   typingAnimation: readFlag("citropy.typingAnimation", false),
   typingSpeed:
-    Number.isFinite(storedSpeed) && storedSpeed >= 20 && storedSpeed <= 300
-      ? storedSpeed
-      : 100,
+    Number.isFinite(storedSpeed) && storedSpeed >= 20 && storedSpeed <= 300 ? storedSpeed : 100,
   uiSounds: readFlag("citropy.uiSounds", true),
   uiAlertSounds: readFlag("citropy.uiAlertSounds", true),
-  uiSoundVolume: Number.isFinite(storedVolume)
-    ? Math.max(0, Math.min(100, storedVolume))
-    : 60,
+  uiSoundVolume: Number.isFinite(storedVolume) ? Math.max(0, Math.min(100, storedVolume)) : 60,
 }));
 
 useApp.subscribe((state, previous) => {
-  if (state.activeView !== previous.activeView && (REOPENED_VIEWS as readonly string[]).includes(state.activeView))
+  if (
+    state.activeView !== previous.activeView &&
+    (REOPENED_VIEWS as readonly string[]).includes(state.activeView)
+  )
     environmentStorage.setItem("citropy.view", state.activeView);
 });

@@ -25,8 +25,18 @@ function managedFolder(instance: ProviderInstance): string | undefined {
 
 export function withAccountHome<T extends AccountInput>(input: T): T {
   const home = accountHome(input.provider);
-  if (input.id || !home || !input.environment || typeof input.environment !== "object" || input.environment[home.variable]) return input;
-  return { ...input, environment: { ...input.environment, [home.variable]: join(root, uid(input.provider)) } };
+  if (
+    input.id ||
+    !home ||
+    !input.environment ||
+    typeof input.environment !== "object" ||
+    input.environment[home.variable]
+  )
+    return input;
+  return {
+    ...input,
+    environment: { ...input.environment, [home.variable]: join(root, uid(input.provider)) },
+  };
 }
 
 export async function prepareAccountHome(instance: ProviderInstance): Promise<void> {
@@ -39,7 +49,7 @@ export async function prepareAccountHome(instance: ProviderInstance): Promise<vo
   for (const item of shared.items) {
     const source = join(from, item);
     const found = await stat(source).catch(ifMissing(undefined));
-    if (!found || await stat(join(folder, item)).catch(ifMissing(undefined))) continue;
+    if (!found || (await stat(join(folder, item)).catch(ifMissing(undefined)))) continue;
     await symlink(source, join(folder, item), found.isDirectory() ? "junction" : "file");
   }
 }

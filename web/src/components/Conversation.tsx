@@ -5,15 +5,17 @@ import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import { MessageBlock } from "./MessageBlock.tsx";
 import { MessageNavigator } from "./MessageNavigator.tsx";
 import { scaled, useApp } from "../lib/store.ts";
-import { loadOlderThread, loadThread, readThread, readThreadNotifications, refreshGit } from "../lib/actions.ts";
+import {
+  loadOlderThread,
+  loadThread,
+  readThread,
+  readThreadNotifications,
+  refreshGit,
+} from "../lib/actions.ts";
 import { reportError } from "../lib/api.ts";
 import { trimOlderMessages } from "../lib/history-cache.ts";
 import { useStickToBottom } from "../lib/use-stick.ts";
-import {
-  timelineRows,
-  createTimelineSelector,
-  type TimelineRow,
-} from "../lib/timeline.ts";
+import { timelineRows, createTimelineSelector, type TimelineRow } from "../lib/timeline.ts";
 import { LatestButton } from "./LatestButton.tsx";
 import { SelectionQuote } from "./SelectionQuote.tsx";
 import { FindBar } from "./FindBar.tsx";
@@ -31,20 +33,18 @@ export function Conversation() {
   const ids = useApp((state) => (threadId ? state.order[threadId] : undefined));
   const selectRows = useMemo(() => createTimelineSelector(threadId), [threadId]);
   const rows = useApp(selectRows);
-  const status = useApp((state) =>
-    threadId ? state.threads[threadId]?.status : undefined,
-  );
-  const running = useApp((state) =>
-    threadId ? state.threads[threadId]?.running : false,
-  );
-  const error = useApp((state) =>
-    threadId ? state.threads[threadId]?.error : undefined,
-  );
+  const status = useApp((state) => (threadId ? state.threads[threadId]?.status : undefined));
+  const running = useApp((state) => (threadId ? state.threads[threadId]?.running : false));
+  const error = useApp((state) => (threadId ? state.threads[threadId]?.error : undefined));
   const usageLimited = useApp((state) => Boolean(threadId && state.threads[threadId]?.usageLimit));
-  const readingUnread = useApp((state) => Boolean(threadId && state.readingThreadId === threadId && state.threads[threadId]?.unread));
+  const readingUnread = useApp((state) =>
+    Boolean(threadId && state.readingThreadId === threadId && state.threads[threadId]?.unread),
+  );
   const connected = useApp((state) => state.connected);
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
-  const olderCursor = useApp((state) => threadId ? state.historyPages[threadId]?.next : undefined);
+  const olderCursor = useApp((state) =>
+    threadId ? state.historyPages[threadId]?.next : undefined,
+  );
   const followRequest = useApp((state) => state.followRequest);
   const uiScale = useApp((state) => state.uiScale);
   const [selectedMessageId, setSelectedMessageId] = useState<string>();
@@ -53,21 +53,14 @@ export function Conversation() {
   const olderRequests = useRef(new Set<string>());
   const failedOlder = useRef<{ threadId: string; cursor: string }>(undefined);
   const olderAnchor = useRef<RowAnchor & { threadId: string; cursor: string }>(undefined);
-  const {
-    viewport,
-    content,
-    atBottom,
-    nearBottom,
-    scrollToBottom,
-    stopFollowing,
-    following,
-  } = useStickToBottom<HTMLDivElement, HTMLDivElement>();
+  const { viewport, content, atBottom, nearBottom, scrollToBottom, stopFollowing, following } =
+    useStickToBottom<HTMLDivElement, HTMLDivElement>();
   const virtualized = rows.length > 40;
   const pinnedActivity = useRef<{ id: string }>(undefined);
   const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);
   const [savedPosition] = useState(() => {
     const saved = threadId ? readingPositions.get(threadId) : undefined;
-    const index = saved ? rows.findIndex(row => row.key === saved.key) : -1;
+    const index = saved ? rows.findIndex((row) => row.key === saved.key) : -1;
     return saved && index >= 0 ? { ...saved, index } : undefined;
   });
   const estimatedRowHeight = scaled(180);
@@ -75,7 +68,9 @@ export function Conversation() {
   const [topInset, setTopInset] = useState(0);
   useLayoutEffect(() => {
     const node = viewport.current!;
-    const observer = new ResizeObserver(() => setTopInset(parseFloat(getComputedStyle(node).getPropertyValue("--canvas-top-inset"))));
+    const observer = new ResizeObserver(() =>
+      setTopInset(parseFloat(getComputedStyle(node).getPropertyValue("--canvas-top-inset"))),
+    );
     observer.observe(node);
     return () => observer.disconnect();
   }, [viewport]);
@@ -86,7 +81,10 @@ export function Conversation() {
     getItemKey,
     anchorTo: "end",
     estimateSize: () => estimatedRowHeight,
-    initialOffset: () => savedPosition ? paddingStart + savedPosition.index * estimatedRowHeight : viewport.current?.scrollTop ?? rows.length * estimatedRowHeight,
+    initialOffset: () =>
+      savedPosition
+        ? paddingStart + savedPosition.index * estimatedRowHeight
+        : (viewport.current?.scrollTop ?? rows.length * estimatedRowHeight),
     paddingStart,
     overscan: virtualized ? 4 : 40,
     measureElement: (element, entry) => {
@@ -100,14 +98,25 @@ export function Conversation() {
     rangeExtractor: (range) => {
       const indexes = defaultRangeExtractor(range);
       if (!pinnedActivity.current) return indexes;
-      const pinned = rows.findIndex(row => row.row?.kind === "fold" && row.row.id === pinnedActivity.current!.id);
+      const pinned = rows.findIndex(
+        (row) => row.row?.kind === "fold" && row.row.id === pinnedActivity.current!.id,
+      );
       if (pinned < 0 || indexes.includes(pinned)) return indexes;
-      return defaultRangeExtractor({ ...range, startIndex: Math.min(range.startIndex, pinned), endIndex: Math.max(range.endIndex, pinned) });
+      return defaultRangeExtractor({
+        ...range,
+        startIndex: Math.min(range.startIndex, pinned),
+        endIndex: Math.max(range.endIndex, pinned),
+      });
     },
   });
-  useEffect(() => onPanelSettled(() => {
-    for (const row of viewport.current?.querySelectorAll(".timeline-row") ?? []) timeline.measureElement(row as HTMLDivElement);
-  }), [timeline]);
+  useEffect(
+    () =>
+      onPanelSettled(() => {
+        for (const row of viewport.current?.querySelectorAll(".timeline-row") ?? [])
+          timeline.measureElement(row as HTMLDivElement);
+      }),
+    [timeline],
+  );
   timeline.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) => {
     if (following()) return false;
     const offset = (instance.scrollOffset ?? 0) + instance.scrollAdjustments;
@@ -116,15 +125,24 @@ export function Conversation() {
   const virtualItems = timeline.getVirtualItems();
   const topRow = useCallback((): RowAnchor | undefined => {
     const canvas = viewport.current;
-    const item = timeline.getVirtualItems().find(item => item.end > (canvas?.scrollTop ?? 0));
+    const item = timeline.getVirtualItems().find((item) => item.end > (canvas?.scrollTop ?? 0));
     const element = item && timeline.elementsCache.get(item.key);
-    if (canvas && item && element) return { key: String(item.key), offset: element.getBoundingClientRect().top - canvas.getBoundingClientRect().top };
+    if (canvas && item && element)
+      return {
+        key: String(item.key),
+        offset: element.getBoundingClientRect().top - canvas.getBoundingClientRect().top,
+      };
   }, [viewport, timeline]);
-  const placeRow = useCallback((anchor: RowAnchor) => {
-    const canvas = viewport.current;
-    const element = timeline.elementsCache.get(anchor.key);
-    if (canvas && element?.isConnected) canvas.scrollTop += element.getBoundingClientRect().top - canvas.getBoundingClientRect().top - anchor.offset;
-  }, [viewport, timeline]);
+  const placeRow = useCallback(
+    (anchor: RowAnchor) => {
+      const canvas = viewport.current;
+      const element = timeline.elementsCache.get(anchor.key);
+      if (canvas && element?.isConnected)
+        canvas.scrollTop +=
+          element.getBoundingClientRect().top - canvas.getBoundingClientRect().top - anchor.offset;
+    },
+    [viewport, timeline],
+  );
   const loadOlder = useCallback(async () => {
     if (!threadId || !connected || olderRequests.current.has(threadId)) return;
     const cursor = useApp.getState().historyPages[threadId]?.next;
@@ -143,7 +161,7 @@ export function Conversation() {
       reportError(error);
     } finally {
       olderRequests.current.delete(threadId);
-      setLoadingOlderThread(current => current === threadId ? undefined : current);
+      setLoadingOlderThread((current) => (current === threadId ? undefined : current));
     }
   }, [threadId, connected, stopFollowing, topRow]);
   useLayoutEffect(() => {
@@ -159,27 +177,31 @@ export function Conversation() {
     restore(3);
     return () => cancelAnimationFrame(frame);
   }, [threadId, olderCursor, rows, placeRow]);
-  const transitionActivity = useCallback((id: string, update: () => void) => {
-    const canvas = viewport.current!;
-    const summary = () => document.getElementById(`fold-${id}`);
-    const offset = summary()!.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top;
-    const pin = { id };
-    pinnedActivity.current = pin;
-    flushSync(update);
-    const keepSummaryInPlace = (frames: number, expectedTop: number) => {
-      if (pinnedActivity.current !== pin) return;
-      const button = summary();
-      if (!button || frames === 0 || Math.abs(canvas.scrollTop - expectedTop) > 1) {
-        pinnedActivity.current = undefined;
-        return;
-      }
-      const drift = button.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top - offset;
-      if (Math.abs(drift) >= 1) canvas.scrollTop += drift;
-      const top = canvas.scrollTop;
-      requestAnimationFrame(() => keepSummaryInPlace(frames - 1, top));
-    };
-    keepSummaryInPlace(12, canvas.scrollTop);
-  }, [viewport]);
+  const transitionActivity = useCallback(
+    (id: string, update: () => void) => {
+      const canvas = viewport.current!;
+      const summary = () => document.getElementById(`fold-${id}`);
+      const offset = summary()!.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top;
+      const pin = { id };
+      pinnedActivity.current = pin;
+      flushSync(update);
+      const keepSummaryInPlace = (frames: number, expectedTop: number) => {
+        if (pinnedActivity.current !== pin) return;
+        const button = summary();
+        if (!button || frames === 0 || Math.abs(canvas.scrollTop - expectedTop) > 1) {
+          pinnedActivity.current = undefined;
+          return;
+        }
+        const drift =
+          button.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top - offset;
+        if (Math.abs(drift) >= 1) canvas.scrollTop += drift;
+        const top = canvas.scrollTop;
+        requestAnimationFrame(() => keepSummaryInPlace(frames - 1, top));
+      };
+      keepSummaryInPlace(12, canvas.scrollTop);
+    },
+    [viewport],
+  );
 
   useEffect(() => {
     if (threadId && connected) {
@@ -190,13 +212,15 @@ export function Conversation() {
   }, [threadId, connected]);
 
   useEffect(() => {
-    if (threadId && atBottom && following()) useApp.setState((state) => trimOlderMessages(state, threadId));
+    if (threadId && atBottom && following())
+      useApp.setState((state) => trimOlderMessages(state, threadId));
   }, [ids, threadId, atBottom, following]);
 
   const mountFollowRequest = useRef(followRequest);
   useLayoutEffect(() => {
     setSelectedMessageId(undefined);
-    if (!savedPosition || mountFollowRequest.current !== followRequest) return scrollToBottom("auto");
+    if (!savedPosition || mountFollowRequest.current !== followRequest)
+      return scrollToBottom("auto");
     stopFollowing();
     let frame = 0;
     const restore = (frames: number) => {
@@ -225,9 +249,7 @@ export function Conversation() {
   useLayoutEffect(() => {
     const update = () => {
       const readingThreadId =
-        nearBottom &&
-        document.visibilityState === "visible" &&
-        document.hasFocus()
+        nearBottom && document.visibilityState === "visible" && document.hasFocus()
           ? threadId
           : null;
       if (useApp.getState().readingThreadId !== readingThreadId) {
@@ -260,42 +282,76 @@ export function Conversation() {
     if (searchShellId) {
       if (state.shells[searchShellId]?.threadId !== threadId) return;
       for (const id of ids ?? []) {
-        partId = state.messages[id]?.partIds.find(id => {
+        partId = state.messages[id]?.partIds.find((id) => {
           const part = state.parts.get(id);
           return part?.kind === "tool" && `${threadId}:${part.callId}` === searchShellId;
         });
-        if (partId) { messageId = id; break; }
+        if (partId) {
+          messageId = id;
+          break;
+        }
       }
     }
     if (!threadId || !loaded) return;
-    if (!messageId || !ids?.includes(messageId) || searchShellId && !partId) {
+    if (!messageId || !ids?.includes(messageId) || (searchShellId && !partId)) {
       if (olderCursor) {
-        if (!loadingOlder && !(failedOlder.current?.threadId === threadId && failedOlder.current.cursor === olderCursor)) void loadOlder();
+        if (
+          !loadingOlder &&
+          !(
+            failedOlder.current?.threadId === threadId && failedOlder.current.cursor === olderCursor
+          )
+        )
+          void loadOlder();
         return;
       }
-      if (searchShellId) useApp.setState(state => {
+      if (searchShellId)
+        useApp.setState((state) => {
           if (state.searchShellId !== searchShellId) return state;
-          return { searchShellId: null, toasts: [...state.toasts, {
-            id: `shell-${searchShellId}`, level: "info", text: "This command is no longer in the conversation history. You can still stop it from conversation details.",
-          }] };
+          return {
+            searchShellId: null,
+            toasts: [
+              ...state.toasts,
+              {
+                id: `shell-${searchShellId}`,
+                level: "info",
+                text: "This command is no longer in the conversation history. You can still stop it from conversation details.",
+              },
+            ],
+          };
         });
-      else if (searchMessageId) useApp.setState(state => state.searchMessageId === searchMessageId ? { searchMessageId: null } : state);
+      else if (searchMessageId)
+        useApp.setState((state) =>
+          state.searchMessageId === searchMessageId ? { searchMessageId: null } : state,
+        );
       return;
     }
     stopFollowing();
-    const target = ({ row, messageId: owner }: TimelineRow) => partId
-      ? row?.kind === "group" && row.ids.includes(partId) || row?.kind === "part" && row.id === partId
-      : owner === messageId;
-    const activity = rows.find(row => row.row?.kind === "fold" && row.row.messageIds.includes(messageId))?.row;
-    const expanding = activity?.kind === "fold" && !activity.open && !rows.some(row => row.row !== activity && target(row));
-    let disclosures = expanding ? {
-      ...state.disclosures,
-      [activity.id]: { ...state.disclosures[activity.id], activity: true },
-    } : state.disclosures;
+    const target = ({ row, messageId: owner }: TimelineRow) =>
+      partId
+        ? (row?.kind === "group" && row.ids.includes(partId)) ||
+          (row?.kind === "part" && row.id === partId)
+        : owner === messageId;
+    const activity = rows.find(
+      (row) => row.row?.kind === "fold" && row.row.messageIds.includes(messageId),
+    )?.row;
+    const expanding =
+      activity?.kind === "fold" &&
+      !activity.open &&
+      !rows.some((row) => row.row !== activity && target(row));
+    let disclosures = expanding
+      ? {
+          ...state.disclosures,
+          [activity.id]: { ...state.disclosures[activity.id], activity: true },
+        }
+      : state.disclosures;
     const expandedRows = expanding ? timelineRows({ ...state, disclosures }, threadId) : rows;
     const index = expandedRows.findIndex(target);
     const group = expandedRows[index]?.row;
-    if (partId && (!disclosures[partId]?.tool || group?.kind === "group" && !disclosures[group.ids[0]!]?.group)) {
+    if (
+      partId &&
+      (!disclosures[partId]?.tool ||
+        (group?.kind === "group" && !disclosures[group.ids[0]!]?.group))
+    ) {
       disclosures = { ...disclosures };
       if (group?.kind === "group") {
         const id = group.ids[0]!;
@@ -317,16 +373,32 @@ export function Conversation() {
       frame = requestAnimationFrame(() => {
         const element = document.getElementById(`tool-${partId}`);
         const row = element?.closest<HTMLElement>(".timeline-row");
-        const item = timeline.getVirtualItems().find(item => item.index === index);
+        const item = timeline.getVirtualItems().find((item) => item.index === index);
         if (!element || !row || !item) return;
-        const offset = item.start + element.getBoundingClientRect().top - row.getBoundingClientRect().top - scaled(16);
+        const offset =
+          item.start +
+          element.getBoundingClientRect().top -
+          row.getBoundingClientRect().top -
+          scaled(16);
         timeline.scrollToOffset(offset, { align: "start" });
         element.querySelector<HTMLButtonElement>(".tool-head")?.focus({ preventScroll: true });
         useApp.setState({ searchShellId: null });
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [searchMessageId, searchShellId, threadId, loaded, olderCursor, loadingOlder, loadOlder, ids, rows, timeline, stopFollowing]);
+  }, [
+    searchMessageId,
+    searchShellId,
+    threadId,
+    loaded,
+    olderCursor,
+    loadingOlder,
+    loadOlder,
+    ids,
+    rows,
+    timeline,
+    stopFollowing,
+  ]);
 
   const visibleItem = virtualItems.find((item) => item.end > (timeline.scrollOffset ?? 0) + 30);
   const jumpToMessage = useCallback((messageId: string) => {
@@ -339,20 +411,35 @@ export function Conversation() {
         className="canvas scroll"
         ref={viewport}
         onScroll={rememberPosition}
-        onWheel={() => { olderAnchor.current = undefined; setSelectedMessageId(undefined); }}
-        onPointerDown={() => { olderAnchor.current = undefined; setSelectedMessageId(undefined); }}
+        onWheel={() => {
+          olderAnchor.current = undefined;
+          setSelectedMessageId(undefined);
+        }}
+        onPointerDown={() => {
+          olderAnchor.current = undefined;
+          setSelectedMessageId(undefined);
+        }}
         onKeyDown={(event) => {
-          if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) {
+          if (
+            ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)
+          ) {
             olderAnchor.current = undefined;
             setSelectedMessageId(undefined);
           }
         }}
       >
-        <div
-          className="canvas-inner"
-          ref={content}
-        >
-          {olderCursor && <button className="btn conversation-history" type="button" disabled={!connected || loadingOlder} aria-busy={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}
+        <div className="canvas-inner" ref={content}>
+          {olderCursor && (
+            <button
+              className="btn conversation-history"
+              type="button"
+              disabled={!connected || loadingOlder}
+              aria-busy={loadingOlder}
+              onClick={() => void loadOlder()}
+            >
+              {loadingOlder ? "Loading older messages…" : "Load older messages"}
+            </button>
+          )}
           <div
             className="timeline-rows"
             style={{
@@ -381,24 +468,32 @@ export function Conversation() {
                     stamp={row.stamp}
                     transitionActivity={transitionActivity}
                     last={row.last}
-                    streaming={
-                      Boolean(running) && row.messageId === ids?.at(-1)
-                    }
+                    streaming={Boolean(running) && row.messageId === ids?.at(-1)}
                   />
                 </div>
               );
             })}
           </div>
-          {status === "error" && error && threadId && (usageLimited
-            ? <UsageLimitLine threadId={threadId} />
-            : <div className="thread-error" role="alert">{error}</div>)}
+          {status === "error" &&
+            error &&
+            threadId &&
+            (usageLimited ? (
+              <UsageLimitLine threadId={threadId} />
+            ) : (
+              <div className="thread-error" role="alert">
+                {error}
+              </div>
+            ))}
           <div className="canvas-tail" />
         </div>
       </div>
 
       <MessageNavigator
         rows={rows}
-        activeMessageId={selectedMessageId ?? (atBottom ? rows.at(-1)?.messageId : visibleItem && rows[visibleItem.index]?.messageId)}
+        activeMessageId={
+          selectedMessageId ??
+          (atBottom ? rows.at(-1)?.messageId : visibleItem && rows[visibleItem.index]?.messageId)
+        }
         onSelect={jumpToMessage}
       />
 

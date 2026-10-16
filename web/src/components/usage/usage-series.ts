@@ -1,6 +1,17 @@
-import { USAGE_TOTAL_KEYS, emptyUsageTotals, localDay, promptTokens, type UsageTotals } from "../../../../shared/usage-metrics.ts";
+import {
+  USAGE_TOTAL_KEYS,
+  emptyUsageTotals,
+  localDay,
+  promptTokens,
+  type UsageTotals,
+} from "../../../../shared/usage-metrics.ts";
 import { cost, tokens } from "../../lib/format.ts";
-import { COST_TYPES, type CostByType, type UsageDay, type UsageSpeed } from "../../../../shared/features.ts";
+import {
+  COST_TYPES,
+  type CostByType,
+  type UsageDay,
+  type UsageSpeed,
+} from "../../../../shared/features.ts";
 import type { ProviderId } from "../../../../shared/protocol.ts";
 
 export type UsagePeriod = "daily" | "weekly" | "monthly";
@@ -24,7 +35,11 @@ function periodStart(period: UsagePeriod, date: Date): Date {
 
 function shiftPeriod(period: UsagePeriod, date: Date, count: number): Date {
   if (period === "monthly") return new Date(date.getFullYear(), date.getMonth() + count, 1);
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + count * (period === "weekly" ? 7 : 1));
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + count * (period === "weekly" ? 7 : 1),
+  );
 }
 
 function parseDay(day: string): Date {
@@ -41,13 +56,23 @@ export function formatMeasure(measure: UsageMeasure, value: number): string {
   return measure === "cost" ? cost(value) : tokens(Math.round(value));
 }
 
-export function measureOf(measure: UsageMeasure, provider: ProviderId, totals: UsageTotals): number {
+export function measureOf(
+  measure: UsageMeasure,
+  provider: ProviderId,
+  totals: UsageTotals,
+): number {
   if (measure === "cost") return totals.costUsd;
   if (measure === "output") return totals.output;
   return promptTokens(provider, totals) + totals.output;
 }
 
-export function usageBuckets(history: UsageDay[], period: UsagePeriod, providers: ProviderId[], now: Date, rangesBack = 0): UsageBucket[] {
+export function usageBuckets(
+  history: UsageDay[],
+  period: UsagePeriod,
+  providers: ProviderId[],
+  now: Date,
+  rangesBack = 0,
+): UsageBucket[] {
   const count = BUCKET_COUNT[period];
   const last = shiftPeriod(period, periodStart(period, now), -count * rangesBack);
   const buckets = Array.from({ length: count }, (_, index): UsageBucket => ({
@@ -59,7 +84,10 @@ export function usageBuckets(history: UsageDay[], period: UsagePeriod, providers
     if (!providers.includes(entry.provider)) continue;
     const bucket = byKey.get(localDay(periodStart(period, parseDay(entry.day)).getTime()));
     if (!bucket) continue;
-    bucket.byProvider[entry.provider] = addTotals(bucket.byProvider[entry.provider] ?? emptyUsageTotals(), entry);
+    bucket.byProvider[entry.provider] = addTotals(
+      bucket.byProvider[entry.provider] ?? emptyUsageTotals(),
+      entry,
+    );
   }
   return buckets;
 }
@@ -74,12 +102,18 @@ export function bucketTotal(bucket: UsageBucket, measure: UsageMeasure): number 
 export function rangeTotals(buckets: UsageBucket[]): Partial<Record<ProviderId, UsageTotals>> {
   const totals: Partial<Record<ProviderId, UsageTotals>> = {};
   for (const bucket of buckets)
-    for (const [provider, value] of Object.entries(bucket.byProvider) as Array<[ProviderId, UsageTotals]>)
+    for (const [provider, value] of Object.entries(bucket.byProvider) as Array<
+      [ProviderId, UsageTotals]
+    >)
       totals[provider] = addTotals(totals[provider] ?? emptyUsageTotals(), value);
   return totals;
 }
 
-export function modelTotals(history: UsageDay[], provider: ProviderId, from: Date): Array<{ model: string; totals: UsageTotals }> {
+export function modelTotals(
+  history: UsageDay[],
+  provider: ProviderId,
+  from: Date,
+): Array<{ model: string; totals: UsageTotals }> {
   const models = new Map<string, UsageTotals>();
   for (const entry of history) {
     if (entry.provider !== provider || parseDay(entry.day) < from) continue;
@@ -101,7 +135,8 @@ export function costSplit(history: UsageDay[], providers: ProviderId[], from: Da
   };
   for (const entry of history) {
     if (!providers.includes(entry.provider) || parseDay(entry.day) < from) continue;
-    if (entry.costByType) for (const type of COST_TYPES) split.byType[type] += entry.costByType[type];
+    if (entry.costByType)
+      for (const type of COST_TYPES) split.byType[type] += entry.costByType[type];
     else split.byType.other += entry.costUsd;
     split.bySpeed[entry.speed ?? "standard"] += entry.costUsd;
   }

@@ -2,7 +2,14 @@ import { useRef, useState } from "react";
 import { PinIcon } from "./icons/actions.tsx";
 import { CloseIcon, PlusIcon } from "./icons/marks.tsx";
 import { useApp } from "../lib/store.ts";
-import { closeTab, createChat, createThread, keepTab, moveTab, showThread } from "../lib/actions.ts";
+import {
+  closeTab,
+  createChat,
+  createThread,
+  keepTab,
+  moveTab,
+  showThread,
+} from "../lib/actions.ts";
 import { Menu } from "./Menu.tsx";
 import { ProviderIcon } from "./icons/ProviderIcon.tsx";
 import { useTabDrag } from "./use-tab-drag.tsx";
@@ -15,12 +22,22 @@ export function ThreadTabs({ chats }: { chats: boolean }) {
   const openThreadIds = useApp((state) => state.openThreadIds);
   const activeThreadId = useApp((state) => state.activeThreadId);
   const previewThreadId = useApp((state) => state.previewThreadId);
-  const canCreate = useApp((state) => state.connected && !state.creatingThread && (chats || Boolean(state.activeProjectId)));
+  const canCreate = useApp(
+    (state) =>
+      state.connected && !state.creatingThread && (chats || Boolean(state.activeProjectId)),
+  );
   const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement }>();
-  const open = openThreadIds.flatMap((id) => threads[id] && Boolean(threads[id].chat) === chats ? threads[id] : []);
+  const open = openThreadIds.flatMap((id) =>
+    threads[id] && Boolean(threads[id].chat) === chats ? threads[id] : [],
+  );
   const newLabel = chats ? "New chat" : "New thread";
   const strip = useRef<HTMLDivElement>(null);
-  const drag = useTabDrag({ strip, enabled: true, resetKey: openThreadIds.join(","), onMove: moveTab });
+  const drag = useTabDrag({
+    strip,
+    enabled: true,
+    resetKey: openThreadIds.join(","),
+    onMove: moveTab,
+  });
 
   return (
     <div ref={strip} className="thread-tabs" role="group" aria-label="Conversation tabs">
@@ -32,9 +49,14 @@ export function ThreadTabs({ chats }: { chats: boolean }) {
           data-active={thread.id === activeThreadId || undefined}
           data-preview={thread.id === previewThreadId || undefined}
           data-dragging={drag.dragging === thread.id}
-          onPointerDown={(event) => { if (event.target instanceof Element && event.target.closest(".thread-tab-open")) drag.start(event, thread.id); }}
+          onPointerDown={(event) => {
+            if (event.target instanceof Element && event.target.closest(".thread-tab-open"))
+              drag.start(event, thread.id);
+          }}
           onClickCapture={drag.suppressClickAfterDrag}
-          onAuxClick={(event) => { if (event.button === MIDDLE_BUTTON) closeTab(thread.id); }}
+          onAuxClick={(event) => {
+            if (event.button === MIDDLE_BUTTON) closeTab(thread.id);
+          }}
           onContextMenu={(event) => {
             event.preventDefault();
             setMenu({ id: thread.id, anchor: event.currentTarget });
@@ -51,23 +73,51 @@ export function ThreadTabs({ chats }: { chats: boolean }) {
             <ProviderIcon provider={thread.provider} />
             <span className="truncate">{thread.title}</span>
           </button>
-          <button type="button" className="thread-tab-close" aria-label={`Close ${thread.title}`} onClick={() => closeTab(thread.id)}>
+          <button
+            type="button"
+            className="thread-tab-close"
+            aria-label={`Close ${thread.title}`}
+            onClick={() => closeTab(thread.id)}
+          >
             <CloseIcon size={13} />
           </button>
         </div>
       ))}
-      <button type="button" className="thread-tabs-new" disabled={!canCreate} aria-label={newLabel} title={newLabel} onClick={() => void (chats ? createChat() : createThread())}>
+      <button
+        type="button"
+        className="thread-tabs-new"
+        disabled={!canCreate}
+        aria-label={newLabel}
+        title={newLabel}
+        onClick={() => void (chats ? createChat() : createThread())}
+      >
         <PlusIcon size={15} />
       </button>
-      {menu && <Menu
-        key={menu.id}
-        anchor={menu.anchor}
-        onClose={() => setMenu(undefined)}
-        items={[
-          ...(menu.id === previewThreadId ? [{ id: "keep", label: "Keep tab open", icon: <PinIcon size={15} />, onSelect: () => keepTab(menu.id) }] : []),
-          { id: "close", label: "Close tab", icon: <CloseIcon size={15} />, onSelect: () => closeTab(menu.id) },
-        ]}
-      />}
+      {menu && (
+        <Menu
+          key={menu.id}
+          anchor={menu.anchor}
+          onClose={() => setMenu(undefined)}
+          items={[
+            ...(menu.id === previewThreadId
+              ? [
+                  {
+                    id: "keep",
+                    label: "Keep tab open",
+                    icon: <PinIcon size={15} />,
+                    onSelect: () => keepTab(menu.id),
+                  },
+                ]
+              : []),
+            {
+              id: "close",
+              label: "Close tab",
+              icon: <CloseIcon size={15} />,
+              onSelect: () => closeTab(menu.id),
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }

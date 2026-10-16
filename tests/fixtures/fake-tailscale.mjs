@@ -19,17 +19,29 @@ function fail(message) {
 }
 
 if (args[0] === "status") {
-  if (!state.running) fail("failed to connect to local tailscaled; it doesn't appear to be running");
-  process.stdout.write(JSON.stringify({ BackendState: state.backend, Self: { DNSName: state.dns } }));
+  if (!state.running)
+    fail("failed to connect to local tailscaled; it doesn't appear to be running");
+  process.stdout.write(
+    JSON.stringify({ BackendState: state.backend, Self: { DNSName: state.dns } }),
+  );
 } else if (args[0] === "serve" && args[1] === "status") {
   const key = `${state.dns.replace(/\.$/, "")}:443`;
-  process.stdout.write(state.target ? JSON.stringify({ TCP: { 443: { HTTPS: true } }, Web: { [key]: { Handlers: { "/": { Proxy: state.target } } } } }) : "{}");
+  process.stdout.write(
+    state.target
+      ? JSON.stringify({
+          TCP: { 443: { HTTPS: true } },
+          Web: { [key]: { Handlers: { "/": { Proxy: state.target } } } },
+        })
+      : "{}",
+  );
 } else if (args[0] === "serve" && args.at(-1) === "off") {
   write({ ...read(), target: undefined });
 } else if (args[0] === "serve" && args[1] === "--bg") {
   if (state.denied) fail("Access denied: serve config denied");
   if (!state.approved) {
-    process.stdout.write("Serve is not enabled on your tailnet.\nTo enable, visit:\n\n         https://login.tailscale.com/f/serve?node=fake\n");
+    process.stdout.write(
+      "Serve is not enabled on your tailnet.\nTo enable, visit:\n\n         https://login.tailscale.com/f/serve?node=fake\n",
+    );
     while (!read().approved) await sleep(25);
   }
   write({ ...read(), target: args.at(-1) });

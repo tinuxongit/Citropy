@@ -55,7 +55,10 @@ export function GitHubRepositories({
                 : "Create your first commit in Source control before publishing this workspace."}
             </p>
           </div>
-          <button className="btn" onClick={onGit}>{" "}Source control{" "}</button>
+          <button className="btn" onClick={onGit}>
+            {" "}
+            Source control{" "}
+          </button>
           <button
             className="btn"
             disabled={!hasCommits}
@@ -63,12 +66,15 @@ export function GitHubRepositories({
               setPublishing(true);
               setCreating(true);
             }}
-          >{" "}Publish workspace{" "}</button>
+          >
+            {" "}
+            Publish workspace{" "}
+          </button>
         </div>
       )}
       {workspace.length > 0 && (
         <div className="github-workspace-repos">
-          <span>{workspaceName}{" "}workspace</span>
+          <span>{workspaceName} workspace</span>
           {workspace.map((repo) => (
             <button className="btn" key={repo} onClick={() => onSelect(repo)}>
               <FolderGitIcon size={15} />
@@ -89,9 +95,7 @@ export function GitHubRepositories({
           <SearchIcon size={16} />
           <input
             aria-label="Search repositories"
-            placeholder={
-              scope === "mine" ? "Find a repository…" : "Search all of GitHub…"
-            }
+            placeholder={scope === "mine" ? "Find a repository…" : "Search all of GitHub…"}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -125,14 +129,13 @@ export function GitHubRepositories({
             setCreating(true);
           }}
         >
-          <PlusIcon size={15} />{" "}New repository{" "}</button>
+          <PlusIcon size={15} /> New repository{" "}
+        </button>
       </div>
       <GitHubFeedback
         error={list.error}
         loading={list.loading && !list.data}
-        empty={
-          list.data?.items.length === 0 ? "No repositories found" : undefined
-        }
+        empty={list.data?.items.length === 0 ? "No repositories found" : undefined}
       />
       <div className="github-repositories">
         {list.data?.items.map((repo: GitHubRepository) => (
@@ -145,16 +148,14 @@ export function GitHubRepositories({
               width={36}
               height={36}
             />
-            <button
-              className="github-repository-copy"
-              onClick={() => onSelect(repo.full_name)}
-            >
+            <button className="github-repository-copy" onClick={() => onSelect(repo.full_name)}>
               <strong>{repo.full_name}</strong>
               {repo.description && <p>{repo.description}</p>}
               <div className="github-meta">
                 {repo.private ? (
                   <span>
-                    <LockIcon size={12} />{" "}Private{" "}</span>
+                    <LockIcon size={12} /> Private{" "}
+                  </span>
                 ) : (
                   <span>Public</span>
                 )}
@@ -165,60 +166,60 @@ export function GitHubRepositories({
               </div>
             </button>
             <button className="btn" onClick={() => onClone(repo.full_name)}>
-              <DownloadIcon size={14} />{" "}Clone{" "}</button>
+              <DownloadIcon size={14} /> Clone{" "}
+            </button>
           </article>
         ))}
       </div>
-      {list.data && (
-        <GitHubPagination
-          page={page}
-          more={list.data.more}
-          onChange={setPage}
-        />
-      )}
-      <AnimatePresence>{creating && (
-        <GitHubDialog
-          title={publishing ? "Publish workspace" : "Create repository"}
-          description={
-            publishing
-              ? `Create a GitHub repository for ${workspaceName ?? ""} and push the current branch. Only committed files are published.`
-              : "Create a repository in your GitHub account with an initial README. You can clone it after creation."
-          }
-          submitLabel={publishing ? "Create and publish" : "Create repository"}
-          onClose={() => setCreating(false)}
-          onSubmit={async (data) => {
-            const input = {
-              name: formText(data, "name"),
-              description: formText(data, "description"),
-              private: formText(data, "visibility") === "private",
-            };
-            const result =
-              publishing && projectId
-                ? await github("publishRepository", { ...input, projectId })
-                : await github("createRepository", input);
-            onSelect(result.full_name);
-          }}
-        >
-          <label className="git-field">{" "}Repository name{" "}<input
-              name="name"
-              placeholder="my-project"
-              required
-              pattern="[A-Za-z0-9_.\-]+"
-            />
-          </label>
-          <label className="git-field">{" "}Description{" "}<textarea name="description" rows={3} />
-          </label>
-          <label className="git-field">{" "}Visibility{" "}<Select
-              name="visibility"
-              defaultValue="private"
-              options={[
-                { value: "private", label: "Private" },
-                { value: "public", label: "Public" },
-              ]}
-            />
-          </label>
-        </GitHubDialog>
-      )}</AnimatePresence>
+      {list.data && <GitHubPagination page={page} more={list.data.more} onChange={setPage} />}
+      <AnimatePresence>
+        {creating && (
+          <GitHubDialog
+            title={publishing ? "Publish workspace" : "Create repository"}
+            description={
+              publishing
+                ? `Create a GitHub repository for ${workspaceName ?? ""} and push the current branch. Only committed files are published.`
+                : "Create a repository in your GitHub account with an initial README. You can clone it after creation."
+            }
+            submitLabel={publishing ? "Create and publish" : "Create repository"}
+            onClose={() => setCreating(false)}
+            onSubmit={async (data) => {
+              const input = {
+                name: formText(data, "name"),
+                description: formText(data, "description"),
+                private: formText(data, "visibility") === "private",
+              };
+              const result =
+                publishing && projectId
+                  ? await github("publishRepository", { ...input, projectId })
+                  : await github("createRepository", input);
+              onSelect(result.full_name);
+            }}
+          >
+            <label className="git-field">
+              {" "}
+              Repository name{" "}
+              <input name="name" placeholder="my-project" required pattern="[A-Za-z0-9_.\-]+" />
+            </label>
+            <label className="git-field">
+              {" "}
+              Description <textarea name="description" rows={3} />
+            </label>
+            <label className="git-field">
+              {" "}
+              Visibility{" "}
+              <Select
+                name="visibility"
+                defaultValue="private"
+                options={[
+                  { value: "private", label: "Private" },
+                  { value: "public", label: "Public" },
+                ]}
+              />
+            </label>
+          </GitHubDialog>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -22,7 +22,8 @@ let uiFontSource: Promise<ArrayBuffer> | undefined;
 
 function loadUiFont(): Promise<ArrayBuffer> {
   uiFontSource ??= fetch(UI_FONT.url).then((response) => {
-    if (!response.ok) throw new Error(`Loading ${UI_FONT.family} failed with status ${response.status}`);
+    if (!response.ok)
+      throw new Error(`Loading ${UI_FONT.family} failed with status ${response.status}`);
     return response.arrayBuffer();
   });
   return uiFontSource;
@@ -34,16 +35,27 @@ function frames(): HTMLIFrameElement[] {
 
 function sendTheme(frame: HTMLIFrameElement): void {
   const style = getComputedStyle(document.documentElement);
-  frame.contentWindow?.postMessage({
-    type: "citropy-theme",
-    scheme: useApp.getState().scheme,
-    variables: Object.fromEntries(Object.entries(THEME_VARIABLES).map(([name, source]) => [name, style.getPropertyValue(source).trim()])),
-  }, "*");
+  frame.contentWindow?.postMessage(
+    {
+      type: "citropy-theme",
+      scheme: useApp.getState().scheme,
+      variables: Object.fromEntries(
+        Object.entries(THEME_VARIABLES).map(([name, source]) => [
+          name,
+          style.getPropertyValue(source).trim(),
+        ]),
+      ),
+    },
+    "*",
+  );
 }
 
 async function sendFont(frame: HTMLIFrameElement): Promise<void> {
   const source = await loadUiFont();
-  frame.contentWindow?.postMessage({ type: "citropy-font", family: UI_FONT.family, source, descriptors: UI_FONT.descriptors }, "*");
+  frame.contentWindow?.postMessage(
+    { type: "citropy-font", family: UI_FONT.family, source, descriptors: UI_FONT.descriptors },
+    "*",
+  );
 }
 
 export function connectVisual(frame: HTMLIFrameElement): void {
@@ -53,12 +65,17 @@ export function connectVisual(frame: HTMLIFrameElement): void {
 
 addEventListener("message", (event) => {
   if (event.data?.type !== "citropy-visual-height" || typeof event.data.height !== "number") return;
-  const frame = frames().find(entry => entry.contentWindow === event.source);
+  const frame = frames().find((entry) => entry.contentWindow === event.source);
   if (!frame) return;
   const height = Math.ceil(event.data.height);
   frame.style.height = `${Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, height))}px`;
-  frame.contentWindow?.postMessage({ type: "citropy-visual-scrolls", scrolls: height > MAX_HEIGHT }, "*");
+  frame.contentWindow?.postMessage(
+    { type: "citropy-visual-scrolls", scrolls: height > MAX_HEIGHT },
+    "*",
+  );
 });
 
-new MutationObserver(() => requestAnimationFrame(() => frames().forEach(sendTheme)))
-  .observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class", "data-theme", "data-scheme"] });
+new MutationObserver(() => requestAnimationFrame(() => frames().forEach(sendTheme))).observe(
+  document.documentElement,
+  { attributes: true, attributeFilter: ["style", "class", "data-theme", "data-scheme"] },
+);

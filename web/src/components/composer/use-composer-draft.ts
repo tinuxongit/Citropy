@@ -6,9 +6,7 @@ import type { Attachment } from "../../../../shared/protocol.ts";
 export function useComposerDraft(threadId: string | null, scope: string) {
   const [draft] = useState(() => readDraft(threadId, scope));
   const [value, setValue] = useState(draft.text);
-  const [attachments, setAttachments] = useState<Attachment[]>(
-    draft.attachments,
-  );
+  const [attachments, setAttachments] = useState<Attachment[]>(draft.attachments);
   const [quotes, setQuotes] = useState<string[]>(draft.quotes);
   const pending = useRef<(() => void) | null>(null);
   useEffect(() => {
@@ -19,11 +17,12 @@ export function useComposerDraft(threadId: string | null, scope: string) {
       if (pending.current !== save) return;
       pending.current = null;
       if (empty) environmentStorage.removeItem(`citropy.draft.${threadId}`, scope);
-      else environmentStorage.setItem(
-        `citropy.draft.${threadId}`,
-        JSON.stringify({ text: value, attachments, quotes }),
-        scope,
-      );
+      else
+        environmentStorage.setItem(
+          `citropy.draft.${threadId}`,
+          JSON.stringify({ text: value, attachments, quotes }),
+          scope,
+        );
     };
     const timer = setTimeout(save, 300);
     pending.current = save;
@@ -32,7 +31,9 @@ export function useComposerDraft(threadId: string | null, scope: string) {
   }, [threadId, value, attachments, quotes, scope]);
   useEffect(() => {
     const save = () => pending.current?.();
-    const hidden = () => { if (document.hidden) save(); };
+    const hidden = () => {
+      if (document.hidden) save();
+    };
     window.addEventListener("pagehide", save);
     window.addEventListener("beforeunload", save);
     document.addEventListener("visibilitychange", hidden);

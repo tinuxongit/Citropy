@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { CheckIcon } from "../icons/marks.tsx";
-import { CherryIcon, CitrusIcon, DropletIcon, FlameIcon, FlowerIcon, LeafIcon, MoonIcon, SunIcon, WavesIcon } from "../icons/nature.tsx";
+import {
+  CherryIcon,
+  CitrusIcon,
+  DropletIcon,
+  FlameIcon,
+  FlowerIcon,
+  LeafIcon,
+  MoonIcon,
+  SunIcon,
+  WavesIcon,
+} from "../icons/nature.tsx";
 import { CircleIcon } from "../icons/status.tsx";
 import { PaletteIcon } from "../icons/PaletteIcon.tsx";
 import { PipetteIcon } from "../icons/drawing.tsx";
@@ -32,7 +42,14 @@ const SCHEME_DETAILS: Record<Scheme, { label: string; icon: typeof MoonIcon }> =
 
 function CustomColorPicker() {
   const saved = useApp((state) => state.customColor);
-  return <ColorPicker className="settings-group custom-color-picker" id="custom-color-picker" color={saved} onCommit={setCustomColor} />;
+  return (
+    <ColorPicker
+      className="settings-group custom-color-picker"
+      id="custom-color-picker"
+      color={saved}
+      onCommit={setCustomColor}
+    />
+  );
 }
 
 export function ThemePicker() {
@@ -47,7 +64,12 @@ export function ThemePicker() {
         {SCHEMES.map((value) => {
           const { label, icon: Icon } = SCHEME_DETAILS[value];
           return (
-            <button key={value} type="button" aria-pressed={scheme === value} onClick={() => setScheme(value)}>
+            <button
+              key={value}
+              type="button"
+              aria-pressed={scheme === value}
+              onClick={() => setScheme(value)}
+            >
               <Icon size={15} />
               {label}
             </button>
@@ -69,11 +91,7 @@ export function ThemePicker() {
                 setColorPickerOpen(false);
               }}
             >
-              <span
-                className="theme-preview"
-                data-theme={value}
-                aria-hidden="true"
-              >
+              <span className="theme-preview" data-theme={value} aria-hidden="true">
                 <span className="theme-preview-rail">
                   <i />
                   <i />

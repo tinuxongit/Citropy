@@ -14,7 +14,10 @@ export function migrateDesktopData(appData: string, override?: string) {
         try {
           cpSync(legacy, root, { recursive: true });
         } catch (copyError) {
-          console.error(`Citropy could not move the previous data folder from ${legacy} to ${root}.`, copyError);
+          console.error(
+            `Citropy could not move the previous data folder from ${legacy} to ${root}.`,
+            copyError,
+          );
         }
       }
     }

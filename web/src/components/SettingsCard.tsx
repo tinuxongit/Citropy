@@ -7,7 +7,14 @@ export interface CardToggle {
   onChange: () => void;
 }
 
-export function SettingsCard({ title, subtitle, description, icon, toggle, onOpen }: {
+export function SettingsCard({
+  title,
+  subtitle,
+  description,
+  icon,
+  toggle,
+  onOpen,
+}: {
   title: string;
   subtitle: string;
   description: string;
@@ -23,15 +30,17 @@ export function SettingsCard({ title, subtitle, description, icon, toggle, onOpe
         <small>{subtitle}</small>
         <span>{description}</span>
       </button>
-      {toggle && <input
-        className="setting-switch"
-        type="checkbox"
-        role="switch"
-        aria-label={toggle.label}
-        checked={toggle.checked}
-        disabled={toggle.disabled}
-        onChange={toggle.onChange}
-      />}
+      {toggle && (
+        <input
+          className="setting-switch"
+          type="checkbox"
+          role="switch"
+          aria-label={toggle.label}
+          checked={toggle.checked}
+          disabled={toggle.disabled}
+          onChange={toggle.onChange}
+        />
+      )}
     </article>
   );
 }

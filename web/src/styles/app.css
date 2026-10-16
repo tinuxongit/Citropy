@@ -21,7 +21,10 @@
   height: 100%;
   isolation: isolate;
 }
-.shell:has(> .shell-body > .sliding-panel[data-side="left"][data-shown="true"], > .shell-body > .stage > .section-view > .sliding-panel[data-side="left"][data-shown="true"]) {
+.shell:has(
+  > .shell-body > .sliding-panel[data-side="left"][data-shown="true"],
+  > .shell-body > .stage > .section-view > .sliding-panel[data-side="left"][data-shown="true"]
+) {
   --visible-rail: var(--rail);
 }
 .shell-body,
@@ -32,17 +35,16 @@
 .shell > .toasts {
   --inspector: clamp(
     260px,
-    var(
-      --inspector-width,
-      clamp(280px, calc(var(--viewport-width) * 0.29), 760px)
-    ),
+    var(--inspector-width, clamp(280px, calc(var(--viewport-width) * 0.29), 760px)),
     calc(var(--viewport-width) - var(--strip) - var(--visible-rail) - 360px)
   );
 }
 
 .shell-body {
   --visible-inspector: 0px;
-  --settled-stage-width: calc(var(--viewport-width) - var(--strip) - var(--visible-rail) - var(--visible-inspector));
+  --settled-stage-width: calc(
+    var(--viewport-width) - var(--strip) - var(--visible-rail) - var(--visible-inspector)
+  );
   display: flex;
   min-height: 0;
   position: relative;
@@ -61,23 +63,41 @@
   width: var(--panel-width);
   min-height: 0;
 }
-.sliding-panel[hidden] { display: none; }
-.sliding-panel[data-side="right"] { --panel-width: var(--inspector); }
+.sliding-panel[hidden] {
+  display: none;
+}
+.sliding-panel[data-side="right"] {
+  --panel-width: var(--inspector);
+}
 .sliding-panel > .rail,
 .sliding-panel > .inspector {
   height: 100%;
   width: var(--panel-width);
 }
-.sliding-panel[data-open="false"] { pointer-events: none; }
-.sliding-panel[data-side="left"][data-shown="false"] { margin-left: calc(-1 * var(--panel-width)); }
-.sliding-panel[data-side="right"][data-shown="false"] { margin-right: calc(-1 * var(--panel-width)); }
-.sliding-panel[data-animate="true"] { transition: margin var(--panel-duration) var(--ease-drawer); }
+.sliding-panel[data-open="false"] {
+  pointer-events: none;
+}
+.sliding-panel[data-side="left"][data-shown="false"] {
+  margin-left: calc(-1 * var(--panel-width));
+}
+.sliding-panel[data-side="right"][data-shown="false"] {
+  margin-right: calc(-1 * var(--panel-width));
+}
+.sliding-panel[data-animate="true"] {
+  transition: margin var(--panel-duration) var(--ease-drawer);
+}
 :root[data-resizing] .sliding-panel,
-:root[data-resizing] .sliding-panel > * { transition: none; }
+:root[data-resizing] .sliding-panel > * {
+  transition: none;
+}
 :root[data-page-hidden] *,
 :root[data-page-hidden] *::before,
-:root[data-page-hidden] *::after { animation-play-state: paused !important; }
-:root::view-transition { pointer-events: none; }
+:root[data-page-hidden] *::after {
+  animation-play-state: paused !important;
+}
+:root::view-transition {
+  pointer-events: none;
+}
 :root::view-transition-old(root),
 :root::view-transition-new(root) {
   animation-duration: var(--dur-fast);
@@ -118,7 +138,11 @@
     left: 0;
     width: var(--frame-corner);
     height: var(--frame-corner);
-    background: radial-gradient(circle at 100% 100%, transparent calc(var(--frame-corner) - 0.5px), var(--canvas-deep) var(--frame-corner));
+    background: radial-gradient(
+      circle at 100% 100%,
+      transparent calc(var(--frame-corner) - 0.5px),
+      var(--canvas-deep) var(--frame-corner)
+    );
     pointer-events: none;
   }
 }
@@ -165,15 +189,38 @@
   text-align: left;
   transition: background var(--dur-instant);
 }
-.model-picker-trigger:hover:not(:disabled) { background: var(--hover); }
-.model-picker-trigger[aria-expanded="true"] { background: var(--highlight); }
-.model-picker-trigger:disabled { opacity: 0.5; }
-.model-picker-trigger > .truncate { flex: 1; }
-.model-picker-trigger > svg { flex: none; }
-.model-picker-effort { flex: none; color: var(--text-3); font-size: var(--text-xs); }
-.menu.model-picker-menu { height: 360px; }
-.model-picker-menu .menu-list { align-content: start; max-height: none; }
-.model-picker-note { margin: 0 var(--space-10) var(--space-10); color: var(--text-3); font-size: var(--text-xs); }
+.model-picker-trigger:hover:not(:disabled) {
+  background: var(--hover);
+}
+.model-picker-trigger[aria-expanded="true"] {
+  background: var(--highlight);
+}
+.model-picker-trigger:disabled {
+  opacity: 0.5;
+}
+.model-picker-trigger > .truncate {
+  flex: 1;
+}
+.model-picker-trigger > svg {
+  flex: none;
+}
+.model-picker-effort {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.menu.model-picker-menu {
+  height: 360px;
+}
+.model-picker-menu .menu-list {
+  align-content: start;
+  max-height: none;
+}
+.model-picker-note {
+  margin: 0 var(--space-10) var(--space-10);
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
 
 .topbar-center {
   flex: 1;
@@ -225,8 +272,15 @@
   min-width: 0;
   white-space: nowrap;
 }
-.menu-group-chevron { flex: none; margin-left: auto; color: var(--text-3); transition: transform 160ms ease; }
-.menu-group-chevron[data-expanded="true"] { transform: rotate(90deg); }
+.menu-group-chevron {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-3);
+  transition: transform 160ms ease;
+}
+.menu-group-chevron[data-expanded="true"] {
+  transform: rotate(90deg);
+}
 
 .breadcrumb {
   display: flex;
@@ -326,7 +380,10 @@
   backdrop-filter: blur(22px);
 }
 .stage-focus-band {
-  --focus-offset: calc(var(--stage-center, 50%) - var(--stage-column, var(--reading)) / 2 - var(--focus-spread) * var(--ui-scale));
+  --focus-offset: calc(
+    var(--stage-center, 50%) - var(--stage-column, var(--reading)) / 2 - var(--focus-spread) *
+      var(--ui-scale)
+  );
   --focus-feather: min(50%, calc(120px * var(--ui-scale)));
   position: absolute;
   top: 0;
@@ -334,7 +391,13 @@
   left: 0;
   width: calc(var(--stage-column, var(--reading)) + 2 * var(--focus-spread) * var(--ui-scale));
   transform: translateX(var(--focus-offset));
-  mask-image: linear-gradient(to right, transparent, #000 var(--focus-feather), #000 calc(100% - var(--focus-feather)), transparent);
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--focus-feather),
+    #000 calc(100% - var(--focus-feather)),
+    transparent
+  );
   will-change: transform;
   pointer-events: none;
 }
@@ -353,10 +416,12 @@
   transition: opacity var(--dur-panel) var(--ease-out);
   clip-path: inset(var(--topbar) 0 0 calc(100% - var(--stage-right, 0px)) round var(--r-lg) 0 0 0);
 }
-.shell:has(> .shell-body > .sliding-panel[data-side="right"][data-shown="true"]) .stage-backdrop-inspector {
+.shell:has(> .shell-body > .sliding-panel[data-side="right"][data-shown="true"])
+  .stage-backdrop-inspector {
   opacity: 1;
 }
-.shell:has(> .shell-body > .sliding-panel[data-side="right"][data-animate="false"]) .stage-backdrop-inspector {
+.shell:has(> .shell-body > .sliding-panel[data-side="right"][data-animate="false"])
+  .stage-backdrop-inspector {
   transition: none;
 }
 .backdrop-layers[data-soft] > .shell-glass,
@@ -368,8 +433,16 @@
 }
 .shell[data-backdrop] {
   --panel: color-mix(in srgb, var(--panel-solid) calc(var(--ui-alpha) * 100%), transparent);
-  --overlay: color-mix(in srgb, var(--overlay-solid) calc(max(var(--ui-alpha) + 0.12, var(--popup-floor)) * 100%), transparent);
-  --menu: color-mix(in srgb, var(--menu-solid) calc(max(var(--ui-alpha) + 0.12, var(--popup-floor)) * 100%), transparent);
+  --overlay: color-mix(
+    in srgb,
+    var(--overlay-solid) calc(max(var(--ui-alpha) + 0.12, var(--popup-floor)) * 100%),
+    transparent
+  );
+  --menu: color-mix(
+    in srgb,
+    var(--menu-solid) calc(max(var(--ui-alpha) + 0.12, var(--popup-floor)) * 100%),
+    transparent
+  );
   --surface: color-mix(in srgb, var(--surface-solid) calc(var(--ui-alpha) * 100%), transparent);
   --raised: color-mix(in srgb, var(--raised-solid) calc(var(--ui-alpha) * 100%), transparent);
   --raised-2: color-mix(in srgb, var(--raised-2-solid) calc(var(--ui-alpha) * 100%), transparent);
@@ -386,30 +459,78 @@
 .shell[data-backdrop="image"] :is(.inspector, .composer-glass, .question-form, .permission-card) {
   backdrop-filter: blur(18px);
 }
-.shell[data-backdrop] :is([popover]:not(.strip-peek), dialog, .strip-peek-card, .details-card, .toast, .context-details, .composer-suggestions, .message-nav-preview, .remote-connection-banner, .app-update-popover) {
+.shell[data-backdrop]
+  :is(
+    [popover]:not(.strip-peek),
+    dialog,
+    .strip-peek-card,
+    .details-card,
+    .toast,
+    .context-details,
+    .composer-suggestions,
+    .message-nav-preview,
+    .remote-connection-banner,
+    .app-update-popover
+  ) {
   backdrop-filter: blur(28px) saturate(1.1);
 }
-.shell[data-backdrop] .composer-shell::before { background: none; }
-.shell[data-backdrop] .inspector :is(.editor-workspace, .editor-tabbar, .editor-tabs, .editor-explorer, .editor-resize, .browser-pane, .browser-toolbar, .browser-footer, .browser-viewport, .commit) {
+.shell[data-backdrop] .composer-shell::before {
+  background: none;
+}
+.shell[data-backdrop]
+  .inspector
+  :is(
+    .editor-workspace,
+    .editor-tabbar,
+    .editor-tabs,
+    .editor-explorer,
+    .editor-resize,
+    .browser-pane,
+    .browser-toolbar,
+    .browser-footer,
+    .browser-viewport,
+    .commit
+  ) {
   background: transparent;
 }
-.shell[data-backdrop] .inspector :is(.editor-main, .editor-document > .rich-preview, .editor-document .media-preview) {
+.shell[data-backdrop]
+  .inspector
+  :is(.editor-main, .editor-document > .rich-preview, .editor-document .media-preview) {
   background: color-mix(in srgb, var(--canvas) calc(var(--ui-alpha) * 50%), transparent);
 }
-.shell[data-backdrop="image"] :is([data-contrast], [data-contrast] *):is(.icon-btn, .thread-title, .breadcrumb-separator, .environment-breadcrumb, .window-controls button):not(:is([popover], dialog) *) {
+.shell[data-backdrop="image"]
+  :is([data-contrast], [data-contrast] *):is(
+    .icon-btn,
+    .thread-title,
+    .breadcrumb-separator,
+    .environment-breadcrumb,
+    .window-controls button
+  ):not(:is([popover], dialog) *) {
   color: var(--contrast-ink);
   transition: color var(--dur-fast) var(--ease-out);
 }
-[data-contrast="light"] { --contrast-ink: rgba(255, 255, 255, 0.92); }
-[data-contrast="dark"] { --contrast-ink: rgba(0, 0, 0, 0.82); }
+[data-contrast="light"] {
+  --contrast-ink: rgba(255, 255, 255, 0.92);
+}
+[data-contrast="dark"] {
+  --contrast-ink: rgba(0, 0, 0, 0.82);
+}
 @media (prefers-reduced-motion: reduce) {
   .backdrop-layers,
-  .stage-backdrop.stage-backdrop-inspector { transition: none; }
+  .stage-backdrop.stage-backdrop-inspector {
+    transition: none;
+  }
 }
-:root[data-resizing] .backdrop-layers { transition: none; }
+:root[data-resizing] .backdrop-layers {
+  transition: none;
+}
 
-.shell[data-backdrop] .git-manager { background: transparent; }
-.shell[data-backdrop][data-section] .rail { background: var(--canvas-deep); }
+.shell[data-backdrop] .git-manager {
+  background: transparent;
+}
+.shell[data-backdrop][data-section] .rail {
+  background: var(--canvas-deep);
+}
 
 .section-view {
   display: flex;
@@ -418,8 +539,12 @@
   min-height: 0;
   background: var(--canvas);
 }
-.shell[data-backdrop]:not([data-section]) .section-view { background: transparent; }
-.shell[data-section] .backdrop-layers { visibility: hidden; }
+.shell[data-backdrop]:not([data-section]) .section-view {
+  background: transparent;
+}
+.shell[data-section] .backdrop-layers {
+  visibility: hidden;
+}
 
 .sidebar-scrim {
   display: none;
@@ -544,7 +669,9 @@
   border-radius: 2px;
   background: var(--text-4);
   opacity: 0;
-  transition: background var(--dur-instant), opacity var(--dur-fast);
+  transition:
+    background var(--dur-instant),
+    opacity var(--dur-fast);
 }
 .panel-resize:hover::after,
 .panel-resize:focus-visible::after,
@@ -567,13 +694,39 @@
     --strip: 0px;
     --drawer: min(320px, calc(var(--viewport-width) * 0.85));
   }
-  .shell { --visible-rail: 0px; }
-  .shell[data-backdrop] .menu:not([data-side="edge"]) { background: var(--menu-solid); }
-  .shell[data-backdrop] :is(.menu[data-side="edge"], [popover]:not(.strip-peek, .menu), dialog, .strip-peek-card, .context-details, .composer-suggestions, .message-nav-preview, .app-update-popover) { background: var(--overlay-solid); }
-  :root .dev-triggers { bottom: calc(80px + env(safe-area-inset-bottom)); }
-  :root .dev-mark { bottom: calc(58px + env(safe-area-inset-bottom)); }
-  .topbar .thread-search { display: none; }
-  .shell .navigation-strip .app-update-control:not(:has([data-state="available"], [data-state="downloading"], [data-state="ready"])),
+  .shell {
+    --visible-rail: 0px;
+  }
+  .shell[data-backdrop] .menu:not([data-side="edge"]) {
+    background: var(--menu-solid);
+  }
+  .shell[data-backdrop]
+    :is(
+      .menu[data-side="edge"],
+      [popover]:not(.strip-peek, .menu),
+      dialog,
+      .strip-peek-card,
+      .context-details,
+      .composer-suggestions,
+      .message-nav-preview,
+      .app-update-popover
+    ) {
+    background: var(--overlay-solid);
+  }
+  :root .dev-triggers {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+  :root .dev-mark {
+    bottom: calc(58px + env(safe-area-inset-bottom));
+  }
+  .topbar .thread-search {
+    display: none;
+  }
+  .shell
+    .navigation-strip
+    .app-update-control:not(
+      :has([data-state="available"], [data-state="downloading"], [data-state="ready"])
+    ),
   .context-usage:not(:has([data-hot="true"])) {
     display: none;
   }
@@ -601,10 +754,20 @@
   .sliding-panel > .inspector {
     box-shadow: var(--shadow-md);
   }
-  .shell[data-backdrop] .sliding-panel[data-side="left"] > .rail { background: var(--canvas-deep); }
-  .shell[data-backdrop] .sliding-panel[data-side="right"] > .inspector { background: var(--panel-solid); }
-  .sliding-panel[data-side="left"][data-open="false"] > .rail { translate: -100% 0; opacity: 0; }
-  .sliding-panel[data-side="right"][data-open="false"] > .inspector { translate: 100% 0; opacity: 0; }
+  .shell[data-backdrop] .sliding-panel[data-side="left"] > .rail {
+    background: var(--canvas-deep);
+  }
+  .shell[data-backdrop] .sliding-panel[data-side="right"] > .inspector {
+    background: var(--panel-solid);
+  }
+  .sliding-panel[data-side="left"][data-open="false"] > .rail {
+    translate: -100% 0;
+    opacity: 0;
+  }
+  .sliding-panel[data-side="right"][data-open="false"] > .inspector {
+    translate: 100% 0;
+    opacity: 0;
+  }
   .shell-body,
   .shell-body .scroll {
     touch-action: pan-y pinch-zoom;

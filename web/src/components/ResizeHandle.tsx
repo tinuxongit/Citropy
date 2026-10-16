@@ -1,12 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import {
-  scaled,
-  setPanelWidth,
-  useApp,
-  viewportWidth,
-  type PanelId,
-} from "../lib/store.ts";
+import { scaled, setPanelWidth, useApp, viewportWidth, type PanelId } from "../lib/store.ts";
 
 let resizeSession = 0;
 
@@ -17,13 +11,7 @@ const labels: Record<PanelId, string> = {
   github: "GitHub list width",
 };
 
-export function ResizeHandle({
-  panel,
-  inline = false,
-}: {
-  panel: PanelId;
-  inline?: boolean;
-}) {
+export function ResizeHandle({ panel, inline = false }: { panel: PanelId; inline?: boolean }) {
   const handle = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
   const drag = useRef<{
@@ -44,32 +32,35 @@ export function ResizeHandle({
       : handle.current?.parentElement) as HTMLElement | null;
   const maximum = () => {
     const viewport = viewportWidth();
-    if (panel === "sidebar")
-      return Math.max(minimum, Math.min(440, viewport * 0.34));
+    if (panel === "sidebar") return Math.max(minimum, Math.min(440, viewport * 0.34));
     if (panel === "inspector") {
       const root = handle.current?.closest(".shell");
       const sidebar =
-        root?.querySelector('.shell-body > .sliding-panel[data-side="left"][data-open="true"] .rail')?.getBoundingClientRect()
-          .width ?? 0;
+        root
+          ?.querySelector('.shell-body > .sliding-panel[data-side="left"][data-open="true"] .rail')
+          ?.getBoundingClientRect().width ?? 0;
       const strip = root ? parseFloat(getComputedStyle(root).paddingLeft) : 0;
-      return Math.max(
-        minimum,
-        viewport - (sidebar + strip) / (uiScale / 100) - 360,
-      );
+      return Math.max(minimum, viewport - (sidebar + strip) / (uiScale / 100) - 360);
     }
-    const available =
-      (pane()?.parentElement?.getBoundingClientRect().width ?? 0) /
-      (uiScale / 100);
+    const available = (pane()?.parentElement?.getBoundingClientRect().width ?? 0) / (uiScale / 100);
     return Math.max(minimum, Math.min(640, available - 360));
   };
   const clamp = (value: number, limit = maximum()) =>
     Math.round(Math.max(minimum, Math.min(limit, value)));
   const liveTargets = (element: HTMLElement, root: HTMLElement): [HTMLElement, string][] => {
-    const found: [HTMLElement | null | undefined, string][] = panel === "sidebar"
-      ? [[element.parentElement, "width"], [element, "width"], [root.querySelector<HTMLElement>(".backdrop-layers"), "--visible-rail"]]
-      : panel === "inspector"
-        ? [[element.parentElement, "width"], [element, "width"]]
-        : [[element.parentElement, `--${panel}-width`]];
+    const found: [HTMLElement | null | undefined, string][] =
+      panel === "sidebar"
+        ? [
+            [element.parentElement, "width"],
+            [element, "width"],
+            [root.querySelector<HTMLElement>(".backdrop-layers"), "--visible-rail"],
+          ]
+        : panel === "inspector"
+          ? [
+              [element.parentElement, "width"],
+              [element, "width"],
+            ]
+          : [[element.parentElement, `--${panel}-width`]];
     return found.filter((target): target is [HTMLElement, string] => Boolean(target[0]));
   };
   const release = (current: NonNullable<typeof drag.current>) => {
@@ -90,9 +81,7 @@ export function ResizeHandle({
     if (!element) return;
     const measure = () => {
       if (drag.current) return;
-      setWidth(
-        Math.round(element.getBoundingClientRect().width / (uiScale / 100)),
-      );
+      setWidth(Math.round(element.getBoundingClientRect().width / (uiScale / 100)));
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -147,8 +136,12 @@ export function ResizeHandle({
         frame.current = requestAnimationFrame(() => {
           frame.current = 0;
           if (drag.current !== current) return;
-          const next = clamp(current.width + direction * (current.pointerX - current.x) / (uiScale / 100), current.limit);
-          for (const [element, property] of current.targets) element.style.setProperty(property, `${scaled(next)}px`);
+          const next = clamp(
+            current.width + (direction * (current.pointerX - current.x)) / (uiScale / 100),
+            current.limit,
+          );
+          for (const [element, property] of current.targets)
+            element.style.setProperty(property, `${scaled(next)}px`);
         });
       }}
       onPointerUp={(event) => {
@@ -161,17 +154,18 @@ export function ResizeHandle({
           event.currentTarget.releasePointerCapture(event.pointerId);
         if (current.moved) {
           const next = clamp(
-            current.width +
-              (direction * (event.clientX - current.x)) / (uiScale / 100),
+            current.width + (direction * (event.clientX - current.x)) / (uiScale / 100),
           );
           flushSync(() => setPanelWidth(panel, next));
           setWidth(next);
         }
         release(current);
         const session = resizeSession;
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          if (session === resizeSession) delete document.documentElement.dataset.resizing;
-        }));
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            if (session === resizeSession) delete document.documentElement.dataset.resizing;
+          }),
+        );
       }}
       onPointerCancel={cancel}
       onLostPointerCapture={cancel}
@@ -185,8 +179,7 @@ export function ResizeHandle({
           setPanelWidth(panel);
           return;
         }
-        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
-          return;
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
         event.preventDefault();
         const step = event.shiftKey ? 32 : 10;
         const next =
@@ -194,8 +187,7 @@ export function ResizeHandle({
             ? minimum
             : event.key === "End"
               ? maximum()
-              : width +
-                (event.key === "ArrowRight" ? 1 : -1) * direction * step;
+              : width + (event.key === "ArrowRight" ? 1 : -1) * direction * step;
         setPanelWidth(panel, clamp(next));
       }}
     />

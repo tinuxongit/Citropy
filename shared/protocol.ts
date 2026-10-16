@@ -1,7 +1,14 @@
 import type { DropEdge } from "./move-beside.ts";
 import type { QuestionPart, QuestionRequest } from "./questions.ts";
 import type { GitHubRequest, GitHubResponse } from "./github.ts";
-import type { BrowserAction, BrowserState, PanelKind, PanelTab, ToolConnection, ToolDefinition } from "./workbench.ts";
+import type {
+  BrowserAction,
+  BrowserState,
+  PanelKind,
+  PanelTab,
+  ToolConnection,
+  ToolDefinition,
+} from "./workbench.ts";
 
 export const PROVIDER_IDS = ["claude", "codex", "opencode", "antigravity", "muse"] as const;
 
@@ -12,13 +19,7 @@ export function isProviderId(value: unknown): value is ProviderId {
 }
 
 export type ThreadStatus =
-  | "idle"
-  | "queued"
-  | "thinking"
-  | "working"
-  | "awaiting"
-  | "error"
-  | "stopped";
+  "idle" | "queued" | "thinking" | "working" | "awaiting" | "error" | "stopped";
 
 type ToolStatus = "running" | "ok" | "error" | "denied" | "stopped";
 
@@ -160,7 +161,16 @@ export interface ChangesPart {
   files: ChangedFile[];
 }
 
-export type Part = TextPart | ReasoningPart | ToolPart | TodoPart | PatchPart | NoticePart | QuestionPart | ImagesPart | ChangesPart;
+export type Part =
+  | TextPart
+  | ReasoningPart
+  | ToolPart
+  | TodoPart
+  | PatchPart
+  | NoticePart
+  | QuestionPart
+  | ImagesPart
+  | ChangesPart;
 
 export interface Attachment {
   id?: string;
@@ -267,9 +277,19 @@ export interface WorkspaceChoice {
 }
 
 export interface ThreadMeta {
-  pendingConfig?: Pick<ThreadMeta, "model" | "effort" | "contextWindow" | "fastMode" | "permissionMode">;
+  pendingConfig?: Pick<
+    ThreadMeta,
+    "model" | "effort" | "contextWindow" | "fastMode" | "permissionMode"
+  >;
   transferContext?: string;
-  transfers?: Array<{ provider: ProviderId; providerInstanceId?: string; model?: string; externalId?: string; usage: Usage; at: number }>;
+  transfers?: Array<{
+    provider: ProviderId;
+    providerInstanceId?: string;
+    model?: string;
+    externalId?: string;
+    usage: Usage;
+    at: number;
+  }>;
   checkpoints?: import("./review.ts").TurnCheckpoint[];
   branchedFrom?: { threadId: string; messageId: string };
   rebuildContext?: boolean;
@@ -382,12 +402,25 @@ export interface ProviderInfo {
   binary?: string;
   models: ModelOption[];
   supportsPermissionPrompt: boolean;
-  capabilities?: { transport: "stdio" | "rpc" | "http"; steer: boolean; compact: boolean; stopShell: boolean };
+  capabilities?: {
+    transport: "stdio" | "rpc" | "http";
+    steer: boolean;
+    compact: boolean;
+    stopShell: boolean;
+  };
   signIn?: "terminal" | "app";
   steerHint?: string;
   modelsError?: string;
   modelsUpdatedAt?: number;
-  instances?: Array<{ id: string; name: string; available: boolean; signedIn?: boolean; version?: string; models: ModelOption[]; modelsError?: string }>;
+  instances?: Array<{
+    id: string;
+    name: string;
+    available: boolean;
+    signedIn?: boolean;
+    version?: string;
+    models: ModelOption[];
+    modelsError?: string;
+  }>;
   activeInstanceId?: string;
   openCodeVersion?: { setting: OpenCodeVersionSetting; active?: OpenCodeMajor };
 }
@@ -492,7 +525,11 @@ export type ServerEvent = (
   | { t: "tools.connection"; connection: ToolConnection }
   | { t: "github.result"; requestId: string; result?: GitHubResponse; error?: string }
   | { t: "git.manage"; requestId: string; result?: GitResult; error?: string }
-  | { t: "thread.search"; query: string; results: Array<{ threadId: string; messageId?: string; snippet: string }> }
+  | {
+      t: "thread.search";
+      query: string;
+      results: Array<{ threadId: string; messageId?: string; snippet: string }>;
+    }
   | { t: "thread.found"; requestId: string; messageIds: string[] }
   | { t: "project.chosen"; projectId: string | null; error?: string }
   | { t: "providers.update"; providers: ProviderInfo[] }
@@ -507,19 +544,39 @@ export type ServerEvent = (
   | { t: "bot.remove"; id: string }
   | { t: "group.upsert"; group: import("./bots.ts").BotGroup; requestId?: string }
   | { t: "group.remove"; id: string }
-  | { t: "thread.messages"; threadId: string; messages: Message[]; page?: HistoryPage; requestId?: string }
+  | {
+      t: "thread.messages";
+      threadId: string;
+      messages: Message[];
+      page?: HistoryPage;
+      requestId?: string;
+    }
   | { t: "message.add"; threadId: string; message: Message }
   | { t: "message.patch"; threadId: string; messageId: string; patch: MessagePatch }
   | { t: "part.add"; threadId: string; messageId: string; part: Part }
   | { t: "part.append"; threadId: string; messageId: string; partId: string; text: string }
-  | { t: "part.patch"; threadId: string; messageId: string; partId: string; patch: Record<string, unknown> }
+  | {
+      t: "part.patch";
+      threadId: string;
+      messageId: string;
+      partId: string;
+      patch: Record<string, unknown>;
+    }
   | { t: "permission.request"; request: PermissionRequest }
   | { t: "permission.close"; id: string }
   | { t: "question.request"; request: QuestionRequest }
   | { t: "question.close"; id: string }
   | { t: "git.status"; projectId: string; threadId?: string; status: GitStatus }
   | { t: "git.diff"; requestId: string; patch: FilePatch | null; error?: string }
-  | { t: "term.data"; termId: string; data: string; streamId?: string; reset?: boolean; offset?: number; sessionId?: string }
+  | {
+      t: "term.data";
+      termId: string;
+      data: string;
+      streamId?: string;
+      reset?: boolean;
+      offset?: number;
+      sessionId?: string;
+    }
   | { t: "term.exit"; termId: string; code: number; offset?: number; sessionId?: string }
   | { t: "toast"; level: "info" | "warn" | "error" | "success"; text: string }
 ) & { sequence?: number };
@@ -538,7 +595,15 @@ export type ClientEvent = (
       t: "notifications.configure";
       preferences: Partial<NotificationPreferences>;
     }
-  | { t: "panel.open"; projectId: string; kind: PanelKind; id?: string; threadId?: string; url?: string; background?: boolean }
+  | {
+      t: "panel.open";
+      projectId: string;
+      kind: PanelKind;
+      id?: string;
+      threadId?: string;
+      url?: string;
+      background?: boolean;
+    }
   | { t: "panel.close"; id: string }
   | { t: "panel.rename"; id: string; title: string }
   | { t: "panel.move"; id: string; targetId: string; edge: DropEdge }
@@ -555,7 +620,16 @@ export type ClientEvent = (
   | { t: "thread.finish"; id: string; finished: boolean }
   | { t: "thread.read"; id: string }
   | { t: "github.request"; requestId: string; request: GitHubRequest }
-  | { t: "git.manage"; requestId: string; projectId: string; threadId?: string; operation: GitOperation; value?: string; offset?: number; remote?: string }
+  | {
+      t: "git.manage";
+      requestId: string;
+      projectId: string;
+      threadId?: string;
+      operation: GitOperation;
+      value?: string;
+      offset?: number;
+      remote?: string;
+    }
   | { t: "thread.search"; query: string }
   | { t: "thread.find"; requestId: string; threadId: string; query: string }
   | { t: "project.choose"; path?: string }
@@ -595,19 +669,46 @@ export type ClientEvent = (
   | { t: "queue.move"; threadId: string; id: string; index: number }
   | { t: "queue.edit"; requestId: string; threadId: string; id: string }
   | { t: "thread.remove"; id: string }
-  | { t: "bot.create"; requestId: string; thread: BotThreadSettings; profile?: Partial<import("./bots.ts").BotProfile>; template?: string }
-  | { t: "bot.update"; requestId?: string; id: string; profile: Partial<import("./bots.ts").BotProfile> }
+  | {
+      t: "bot.create";
+      requestId: string;
+      thread: BotThreadSettings;
+      profile?: Partial<import("./bots.ts").BotProfile>;
+      template?: string;
+    }
+  | {
+      t: "bot.update";
+      requestId?: string;
+      id: string;
+      profile: Partial<import("./bots.ts").BotProfile>;
+    }
   | { t: "bot.duplicate"; requestId: string; id: string }
   | { t: "bot.remove"; id: string }
   | { t: "group.create"; requestId: string; thread: BotThreadSettings; botIds: string[] }
   | { t: "group.update"; requestId?: string; id: string; patch: import("./bots.ts").BotGroupPatch }
   | { t: "group.remove"; id: string }
-  | { t: "routine.save"; requestId: string; threadId: string; routine: import("./routines.ts").RoutineDraft }
+  | {
+      t: "routine.save";
+      requestId: string;
+      threadId: string;
+      routine: import("./routines.ts").RoutineDraft;
+    }
   | { t: "routine.remove"; threadId: string; id: string }
   | { t: "routine.run"; threadId: string; id: string }
   | { t: "memory.remove"; botId: string; id: string }
-  | { t: "message.react"; threadId: string; messageId: string; key: import("./reactions.ts").ReactionKey; on: boolean }
-  | { t: "thread.load"; id: string; page?: { before?: string; revision?: number }; requestId?: string }
+  | {
+      t: "message.react";
+      threadId: string;
+      messageId: string;
+      key: import("./reactions.ts").ReactionKey;
+      on: boolean;
+    }
+  | {
+      t: "thread.load";
+      id: string;
+      page?: { before?: string; revision?: number };
+      requestId?: string;
+    }
   | { t: "thread.subscribe"; ids: string[] }
   | {
       t: "thread.config";
@@ -631,7 +732,15 @@ export type ClientEvent = (
   | { t: "git.diff"; requestId: string; projectId: string; path: string; staged?: boolean }
   | { t: "git.commit"; projectId: string; message: string }
   | { t: "git.discard"; projectId: string; path: string }
-  | ({ t: "term.open"; termId: string; cols: number; rows: number; flowControl?: boolean; offset?: number; sessionId?: string } & TerminalTarget)
+  | ({
+      t: "term.open";
+      termId: string;
+      cols: number;
+      rows: number;
+      flowControl?: boolean;
+      offset?: number;
+      sessionId?: string;
+    } & TerminalTarget)
   | { t: "term.ack"; termId: string; count: number; streamId: string }
   | { t: "term.unsubscribe"; termId: string }
   | { t: "term.data"; termId: string; data: string }
@@ -650,7 +759,14 @@ export interface GitOverview {
   hasCommits: boolean;
   mergeInProgress: boolean;
   status?: GitStatus;
-  branches: Array<{ name: string; current: boolean; remote: boolean; upstream: string; subject: string; date: string }>;
+  branches: Array<{
+    name: string;
+    current: boolean;
+    remote: boolean;
+    upstream: string;
+    subject: string;
+    date: string;
+  }>;
   commits: Array<{ hash: string; author: string; date: string; subject: string; refs: string }>;
   remotes: Array<{ name: string; url: string }>;
   stashes: Array<{ ref: string; subject: string }>;
@@ -664,4 +780,29 @@ interface GitDetail {
 
 export type GitResult = GitOverview | GitDetail | string;
 
-export type GitOperation = "overview" | "history" | "show" | "showStash" | "init" | "stage" | "unstage" | "stageAll" | "unstageAll" | "commit" | "createBranch" | "switchBranch" | "deleteBranch" | "merge" | "abortMerge" | "fetch" | "pull" | "push" | "stash" | "applyStash" | "dropStash" | "addRemote" | "removeRemote" | "publish" | "discardWorktree";
+export type GitOperation =
+  | "overview"
+  | "history"
+  | "show"
+  | "showStash"
+  | "init"
+  | "stage"
+  | "unstage"
+  | "stageAll"
+  | "unstageAll"
+  | "commit"
+  | "createBranch"
+  | "switchBranch"
+  | "deleteBranch"
+  | "merge"
+  | "abortMerge"
+  | "fetch"
+  | "pull"
+  | "push"
+  | "stash"
+  | "applyStash"
+  | "dropStash"
+  | "addRemote"
+  | "removeRemote"
+  | "publish"
+  | "discardWorktree";

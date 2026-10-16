@@ -102,7 +102,9 @@ export function ansiToHtml(input: string): string {
     const chunk = cleaned.slice(last, match.index);
     if (chunk) {
       const declaration = css(style);
-      out += declaration ? `<span style="${declaration}">${escapeHtml(chunk)}</span>` : escapeHtml(chunk);
+      out += declaration
+        ? `<span style="${declaration}">${escapeHtml(chunk)}</span>`
+        : escapeHtml(chunk);
     }
     const codes = (match[1] ?? "").split(";").map((value) => Number(value || 0));
     style = apply(style, codes);
@@ -112,7 +114,9 @@ export function ansiToHtml(input: string): string {
   const rest = cleaned.slice(last);
   if (rest) {
     const declaration = css(style);
-    out += declaration ? `<span style="${declaration}">${escapeHtml(rest)}</span>` : escapeHtml(rest);
+    out += declaration
+      ? `<span style="${declaration}">${escapeHtml(rest)}</span>`
+      : escapeHtml(rest);
   }
   return out;
 }

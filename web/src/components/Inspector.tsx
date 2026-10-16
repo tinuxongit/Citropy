@@ -3,7 +3,15 @@ import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { isRemote } from "../lib/environment.ts";
 import { nextTabIndex } from "../lib/tab-strip.ts";
-import { lazy, Suspense, type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  type CSSProperties,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { GlobeIcon } from "./icons/GlobeIcon.tsx";
 import { TerminalIcon } from "./icons/squares.tsx";
 import { FileDiffIcon, FilesIcon } from "./icons/files.tsx";
@@ -29,8 +37,12 @@ import type { PanelKind } from "../../../shared/workbench.ts";
 
 const TAB_MIN_WIDTH = 80;
 
-const DrawingPane = lazy(() => import("./drawing/DrawingPane.tsx").then(module => ({ default: module.DrawingPane })));
-const NotesPane = lazy(() => import("./notes/NotesPane.tsx").then(module => ({ default: module.NotesPane })));
+const DrawingPane = lazy(() =>
+  import("./drawing/DrawingPane.tsx").then((module) => ({ default: module.DrawingPane })),
+);
+const NotesPane = lazy(() =>
+  import("./notes/NotesPane.tsx").then((module) => ({ default: module.NotesPane })),
+);
 
 const options = [
   {
@@ -105,12 +117,23 @@ export function Inspector({ visible }: { visible: boolean }) {
   const toggleExpanded = () => {
     const panel = inspector.current?.parentElement;
     const before = panel?.getBoundingClientRect();
-    flushSync(() => setExpandedProject(expanded ? undefined : projectId ?? undefined));
+    flushSync(() => setExpandedProject(expanded ? undefined : (projectId ?? undefined)));
     if (!panel || !before || reducedMotion) return;
     const after = panel.getBoundingClientRect();
     const timing = { duration: 280, easing: "cubic-bezier(0.32, 0.72, 0, 1)" };
-    if (expanded) panel.animate([{ transform: "translateX(-40px)", opacity: 0.6 }, { transform: "none", opacity: 1 }], timing);
-    else panel.animate([{ transform: `translateX(${before.left - after.left}px)` }, { transform: "none" }], timing);
+    if (expanded)
+      panel.animate(
+        [
+          { transform: "translateX(-40px)", opacity: 0.6 },
+          { transform: "none", opacity: 1 },
+        ],
+        timing,
+      );
+    else
+      panel.animate(
+        [{ transform: `translateX(${before.left - after.left}px)` }, { transform: "none" }],
+        timing,
+      );
   };
   const [tabCapacity, setTabCapacity] = useState<number | null>(null);
   const [overflowCapacity, setOverflowCapacity] = useState(1);
@@ -123,11 +146,13 @@ export function Inspector({ visible }: { visible: boolean }) {
   const tabGap = scaled(4);
   const tabSpan = scaled(TAB_MIN_WIDTH) + tabGap;
   const overflowButton = scaled(30);
-  const tabLimit = tabCapacity !== null && tabs.length > tabCapacity ? overflowCapacity : tabs.length;
+  const tabLimit =
+    tabCapacity !== null && tabs.length > tabCapacity ? overflowCapacity : tabs.length;
   const visibleTabs = tabs.slice(0, tabLimit);
-  const selectedTab = tabs.find(panel => panel.id === activeId);
-  if (selectedTab && !visibleTabs.includes(selectedTab)) visibleTabs[visibleTabs.length - 1] = selectedTab;
-  const hiddenTabs = tabs.filter(panel => !visibleTabs.includes(panel));
+  const selectedTab = tabs.find((panel) => panel.id === activeId);
+  if (selectedTab && !visibleTabs.includes(selectedTab))
+    visibleTabs[visibleTabs.length - 1] = selectedTab;
+  const hiddenTabs = tabs.filter((panel) => !visibleTabs.includes(panel));
 
   useEffect(() => {
     if (!visible || !activeId || !unseenPanels[activeId]) return;
@@ -153,7 +178,10 @@ export function Inspector({ visible }: { visible: boolean }) {
       });
     };
     const style = getComputedStyle(element);
-    measure(element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight), update => update());
+    measure(
+      element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+      (update) => update(),
+    );
     const observer = new ResizeObserver(([entry]) => {
       if (entry) measure(Math.floor(entry.contentRect.width), flushSync);
     });
@@ -189,7 +217,8 @@ export function Inspector({ visible }: { visible: boolean }) {
           aria-label="Open workspace panels"
           style={{ "--workbench-tab-min": `${TAB_MIN_WIDTH}px` } as CSSProperties}
           onKeyDown={(event) => {
-            if (!(event.target instanceof HTMLElement) || !event.target.closest('[role="tab"]')) return;
+            if (!(event.target instanceof HTMLElement) || !event.target.closest('[role="tab"]'))
+              return;
             const focused = event.target.closest('[role="tab"]')?.id;
             const index = tabs.findIndex((panel) => `panel-tab-${panel.id}` === focused);
             const next = nextTabIndex(event.key, index, tabs.length);
@@ -203,11 +232,12 @@ export function Inspector({ visible }: { visible: boolean }) {
             }
           }}
         >
-          <SelectionHighlight value={`${activeId}:${visibleTabs.map((panel) => panel.id).join(",")}`} selector='.workbench-tab[data-active="true"]' />
+          <SelectionHighlight
+            value={`${activeId}:${visibleTabs.map((panel) => panel.id).join(",")}`}
+            selector='.workbench-tab[data-active="true"]'
+          />
           {visibleTabs.map((panel) => {
-            const Icon = options.find(
-              (option) => option.kind === panel.kind,
-            )!.icon;
+            const Icon = options.find((option) => option.kind === panel.kind)!.icon;
             const title = panel.title;
             return (
               <div
@@ -224,14 +254,20 @@ export function Inspector({ visible }: { visible: boolean }) {
                   aria-label={title}
                   aria-selected={activeId === panel.id}
                   aria-controls={`panel-body-${panel.id}`}
-                  aria-keyshortcuts={panel.kind === "terminal" ? "F2 Alt+ArrowLeft Alt+ArrowRight" : "Alt+ArrowLeft Alt+ArrowRight"}
+                  aria-keyshortcuts={
+                    panel.kind === "terminal"
+                      ? "F2 Alt+ArrowLeft Alt+ArrowRight"
+                      : "Alt+ArrowLeft Alt+ArrowRight"
+                  }
                   tabIndex={activeId === panel.id ? 0 : -1}
                   title={title}
                   onClick={() => selectPanel(panel.id)}
                 >
                   <span className="unseen-anchor">
                     <Icon size={14} className={`panel-icon-${panel.kind}`} />
-                    {unseenPanels[panel.id] && <span className="unseen-dot" aria-label="New activity" />}
+                    {unseenPanels[panel.id] && (
+                      <span className="unseen-dot" aria-label="New activity" />
+                    )}
                   </span>
                   <span className="truncate">{title}</span>
                 </button>
@@ -248,46 +284,53 @@ export function Inspector({ visible }: { visible: boolean }) {
               </div>
             );
           })}
-          {hiddenTabs.length > 0 && <Menu
-            header="Open workspace panels"
-            align="end"
-            width={300}
-            items={hiddenTabs.map(panel => {
-              const Icon = options.find(option => option.kind === panel.kind)!.icon;
-              const title = panel.kind === "browser" || panel.kind === "terminal" ? panel.title : panel.title;
-              return {
-                id: panel.id,
-                label: title,
-                icon: <Icon size={16} className={`panel-icon-${panel.kind}`} />,
-                onSelect: () => {
-                  focusTab.current = true;
-                  selectPanel(panel.id);
-                },
-                action: connected ? {
-                  label: `Close ${title}`,
-                  icon: <CloseIcon size={13} />,
-                  onSelect: () => send({ t: "panel.close", id: panel.id }),
-                } : undefined,
-              };
-            })}
-            trigger={({ id, open, toggle }) => (
-              <button
-                id={id}
-                type="button"
-                className="workbench-overflow"
-                aria-label="More panels"
-                title="More panels"
-                aria-haspopup="menu"
-                aria-expanded={open}
-                onClick={toggle}
-              >
-                <span className="unseen-anchor">
-                  <MoreIcon size={16} />
-                  {hiddenTabs.some(panel => unseenPanels[panel.id]) && <span className="unseen-dot" aria-label="New activity" />}
-                </span>
-              </button>
-            )}
-          />}
+          {hiddenTabs.length > 0 && (
+            <Menu
+              header="Open workspace panels"
+              align="end"
+              width={300}
+              items={hiddenTabs.map((panel) => {
+                const Icon = options.find((option) => option.kind === panel.kind)!.icon;
+                const title =
+                  panel.kind === "browser" || panel.kind === "terminal" ? panel.title : panel.title;
+                return {
+                  id: panel.id,
+                  label: title,
+                  icon: <Icon size={16} className={`panel-icon-${panel.kind}`} />,
+                  onSelect: () => {
+                    focusTab.current = true;
+                    selectPanel(panel.id);
+                  },
+                  action: connected
+                    ? {
+                        label: `Close ${title}`,
+                        icon: <CloseIcon size={13} />,
+                        onSelect: () => send({ t: "panel.close", id: panel.id }),
+                      }
+                    : undefined,
+                };
+              })}
+              trigger={({ id, open, toggle }) => (
+                <button
+                  id={id}
+                  type="button"
+                  className="workbench-overflow"
+                  aria-label="More panels"
+                  title="More panels"
+                  aria-haspopup="menu"
+                  aria-expanded={open}
+                  onClick={toggle}
+                >
+                  <span className="unseen-anchor">
+                    <MoreIcon size={16} />
+                    {hiddenTabs.some((panel) => unseenPanels[panel.id]) && (
+                      <span className="unseen-dot" aria-label="New activity" />
+                    )}
+                  </span>
+                </button>
+              )}
+            />
+          )}
         </div>
         <button
           type="button"
@@ -305,15 +348,15 @@ export function Inspector({ visible }: { visible: boolean }) {
           className="workbench-panel-menu"
           width={292}
           align="end"
-          items={options.filter(option => !isRemote() || option.kind !== "browser").map((option) => ({
-            id: option.kind,
-            label: option.label,
-            hint: option.hint,
-            icon: (
-              <option.icon size={17} className={`panel-icon-${option.kind}`} />
-            ),
-            onSelect: () => openWorkbenchPanel(option.kind),
-          }))}
+          items={options
+            .filter((option) => !isRemote() || option.kind !== "browser")
+            .map((option) => ({
+              id: option.kind,
+              label: option.label,
+              hint: option.hint,
+              icon: <option.icon size={17} className={`panel-icon-${option.kind}`} />,
+              onSelect: () => openWorkbenchPanel(option.kind),
+            }))}
           trigger={({ id, open, toggle }) => (
             <button
               id={id}
@@ -332,39 +375,60 @@ export function Inspector({ visible }: { visible: boolean }) {
         />
       </div>
       <div className="inspector-body">
-        {panels.toSorted((a, b) => a.id.localeCompare(b.id)).map((panel) => {
-          const selected = panel.projectId === projectId && panel.id === activeId;
-          const active = visible && selected && panel.id !== takenOver;
-          return (
-            <div
-              key={panel.id}
-              id={`panel-body-${panel.id}`}
-              className="inspector-pane"
-              role="tabpanel"
-              aria-labelledby={`panel-tab-${panel.id}`}
-              data-show={selected}
-            >
-              {panel.kind === "browser" ? (
-                <BrowserPane panel={panel} active={active} />
-              ) : panel.kind === "terminal" ? (
-                <TerminalPane termId={panel.id} target={{ projectId: panel.projectId }} active={active} />
-              ) : panel.kind === "drawing" ? (
-                <Suspense fallback={<div className="pane-empty" role="status">Loading…</div>}><DrawingPane projectId={panel.projectId} /></Suspense>
-              ) : panel.kind === "notes" ? (
-                <Suspense fallback={<div className="pane-empty" role="status">Loading…</div>}><NotesPane projectId={panel.projectId} /></Suspense>
-              ) : panel.projectId !== projectId ? null : panel.kind ===
-                "files" ? (
-                <FileTree panelId={panel.id} active={active} />
-              ) : panel.kind === "changes" ? (
-                <Changes key={`${projectId}:${threadId}`} active={active} />
-              ) : panel.kind === "subagents" ? (
-                <SubagentsPane />
-              ) : (
-                <ToolsPane />
-              )}
-            </div>
-          );
-        })}
+        {panels
+          .toSorted((a, b) => a.id.localeCompare(b.id))
+          .map((panel) => {
+            const selected = panel.projectId === projectId && panel.id === activeId;
+            const active = visible && selected && panel.id !== takenOver;
+            return (
+              <div
+                key={panel.id}
+                id={`panel-body-${panel.id}`}
+                className="inspector-pane"
+                role="tabpanel"
+                aria-labelledby={`panel-tab-${panel.id}`}
+                data-show={selected}
+              >
+                {panel.kind === "browser" ? (
+                  <BrowserPane panel={panel} active={active} />
+                ) : panel.kind === "terminal" ? (
+                  <TerminalPane
+                    termId={panel.id}
+                    target={{ projectId: panel.projectId }}
+                    active={active}
+                  />
+                ) : panel.kind === "drawing" ? (
+                  <Suspense
+                    fallback={
+                      <div className="pane-empty" role="status">
+                        Loading…
+                      </div>
+                    }
+                  >
+                    <DrawingPane projectId={panel.projectId} />
+                  </Suspense>
+                ) : panel.kind === "notes" ? (
+                  <Suspense
+                    fallback={
+                      <div className="pane-empty" role="status">
+                        Loading…
+                      </div>
+                    }
+                  >
+                    <NotesPane projectId={panel.projectId} />
+                  </Suspense>
+                ) : panel.projectId !== projectId ? null : panel.kind === "files" ? (
+                  <FileTree panelId={panel.id} active={active} />
+                ) : panel.kind === "changes" ? (
+                  <Changes key={`${projectId}:${threadId}`} active={active} />
+                ) : panel.kind === "subagents" ? (
+                  <SubagentsPane />
+                ) : (
+                  <ToolsPane />
+                )}
+              </div>
+            );
+          })}
         {tabs.length === 0 && (
           <div className="workbench-empty">
             <p>Open files, a terminal, or a browser alongside the conversation.</p>
@@ -374,7 +438,8 @@ export function Inspector({ visible }: { visible: boolean }) {
               disabled={!connected}
               onClick={() => openWorkbenchPanel("files")}
             >
-              <FilesIcon size={15} />Open files
+              <FilesIcon size={15} />
+              Open files
             </button>
           </div>
         )}

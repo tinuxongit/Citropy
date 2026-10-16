@@ -15,7 +15,14 @@ interface Entry {
 }
 
 const cache = new Map<string, Entry>();
-const pending = new Map<string, { promise: Promise<{ type: string; body: Buffer } | undefined>; controller: AbortController; consumers: number }>();
+const pending = new Map<
+  string,
+  {
+    promise: Promise<{ type: string; body: Buffer } | undefined>;
+    controller: AbortController;
+    consumers: number;
+  }
+>();
 let cacheBytes = 0;
 
 function attribute(tag: string, name: string): string | undefined {
@@ -80,7 +87,10 @@ function isIcon(type: string, url: string): boolean {
   return /\.(ico|png|svg|gif|jpe?g|webp|avif)$/i.test(new URL(url).pathname);
 }
 
-export async function faviconFor(href: string, signal?: AbortSignal): Promise<{ type: string; body: Buffer } | undefined> {
+export async function faviconFor(
+  href: string,
+  signal?: AbortSignal,
+): Promise<{ type: string; body: Buffer } | undefined> {
   if (signal?.aborted) return undefined;
   if (!URL.canParse(href)) return undefined;
   const url = new URL(href);
@@ -98,7 +108,10 @@ export async function faviconFor(href: string, signal?: AbortSignal): Promise<{ 
     const entry = {
       controller,
       consumers: 0,
-      promise: loadFavicon(new URL(url.origin), AbortSignal.any([controller.signal, AbortSignal.timeout(6000)])).finally(() => {
+      promise: loadFavicon(
+        new URL(url.origin),
+        AbortSignal.any([controller.signal, AbortSignal.timeout(6000)]),
+      ).finally(() => {
         if (pending.get(url.origin) === entry) pending.delete(url.origin);
       }),
     };
@@ -107,7 +120,7 @@ export async function faviconFor(href: string, signal?: AbortSignal): Promise<{ 
   }
   const entry = current;
   entry.consumers++;
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     let settled = false;
     const finish = (result?: { type: string; body: Buffer }) => {
       if (settled) return;
@@ -131,18 +144,31 @@ export async function faviconFor(href: string, signal?: AbortSignal): Promise<{ 
 // Websites often refuse, time out, or have no icon; a miss is the normal answer, not a failure.
 const noIcon = () => undefined;
 
-async function loadFavicon(url: URL, signal: AbortSignal): Promise<{ type: string; body: Buffer } | undefined> {
-  const page = await download(url.href, "text/html,application/xhtml+xml", pageLimit, 2500, signal).catch(noIcon);
+async function loadFavicon(
+  url: URL,
+  signal: AbortSignal,
+): Promise<{ type: string; body: Buffer } | undefined> {
+  const page = await download(
+    url.href,
+    "text/html,application/xhtml+xml",
+    pageLimit,
+    2500,
+    signal,
+  ).catch(noIcon);
   const candidates = [
     ...new Set([
-      ...(page?.type.includes("html") ? iconLinks(page.body.toString("utf8"), page.url).slice(0, 3) : []),
+      ...(page?.type.includes("html")
+        ? iconLinks(page.body.toString("utf8"), page.url).slice(0, 3)
+        : []),
       new URL("/favicon.ico", url).href,
     ]),
   ];
   let found: { type: string; body: Buffer } | undefined;
   for (const candidate of candidates) {
     if (signal.aborted) return undefined;
-    const icon = await download(candidate, "image/*,*/*;q=0.8", iconLimit, 2500, signal).catch(noIcon);
+    const icon = await download(candidate, "image/*,*/*;q=0.8", iconLimit, 2500, signal).catch(
+      noIcon,
+    );
     if (icon && isIcon(icon.type, icon.url)) {
       found = { type: icon.type, body: icon.body };
       break;

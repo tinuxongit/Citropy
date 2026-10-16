@@ -1,6 +1,13 @@
 import type { CSSProperties, InputHTMLAttributes } from "react";
 
-export function Range({ value, min, max, className, style, ...rest }: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "min" | "max"> & {
+export function Range({
+  value,
+  min,
+  max,
+  className,
+  style,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "min" | "max"> & {
   value: number;
   min: number;
   max: number;

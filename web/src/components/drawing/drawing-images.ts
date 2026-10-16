@@ -34,9 +34,11 @@ export function loadImage(id: string): Promise<ImageBitmap> {
   if (cached) return Promise.resolve(cached);
   let pending = loading.get(id);
   if (!pending) {
-    pending = files.load(id)
+    pending = files
+      .load(id)
       .then((file) => {
-        if (!file) throw new Error(`A pasted image in this drawing is missing from this computer (${id}).`);
+        if (!file)
+          throw new Error(`A pasted image in this drawing is missing from this computer (${id}).`);
         return createImageBitmap(file);
       })
       .then((bitmap) => {

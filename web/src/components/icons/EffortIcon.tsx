@@ -9,7 +9,14 @@ export function EffortIcon({ size = 24, filled = 1 }: { size?: number; filled?: 
   const lit = Math.ceil(filled * BAR_HEIGHTS.length);
   const start = (24 - BAR_HEIGHTS.length * BAR_WIDTH - (BAR_HEIGHTS.length - 1) * BAR_GAP) / 2;
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      className="solid-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       {BAR_HEIGHTS.map((height, index) => (
         <rect
           key={height}

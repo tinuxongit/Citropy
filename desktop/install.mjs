@@ -27,7 +27,10 @@ writeFileSync(
 chmodSync(path, 0o755);
 refreshMenuIcon({ base, picturePath: join(root, "desktop/assets", `${base}.png`), data });
 const previous = join(directory, "loom.desktop");
-if (existsSync(previous) && readFileSync(previous, "utf8").includes(join(root, "desktop/start.mjs")))
+if (
+  existsSync(previous) &&
+  readFileSync(previous, "utf8").includes(join(root, "desktop/start.mjs"))
+)
   unlinkSync(previous);
 spawnSync("update-desktop-database", [directory], { stdio: "ignore" });
 console.log(`Installed ${name} in your application menu: ${path}`);

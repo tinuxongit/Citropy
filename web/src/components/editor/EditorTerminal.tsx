@@ -47,7 +47,8 @@ export function EditorTerminal({
           role="tablist"
           aria-label="Editor terminals"
           onKeyDown={(event) => {
-            if (!(event.target instanceof HTMLElement) || !event.target.matches('[role="tab"]')) return;
+            if (!(event.target instanceof HTMLElement) || !event.target.matches('[role="tab"]'))
+              return;
             const index = panels.findIndex((panel) => panel.id === selectedId);
             const next = nextTabIndex(event.key, index, panels.length);
             if (next === undefined) return;
@@ -55,12 +56,22 @@ export function EditorTerminal({
             const panel = panels[next];
             if (!panel) return;
             setEditorTerminal(panelId, panel.id);
-            document.getElementById(`editor-terminal-tab-${panelId}-${panel.id}`)?.focus({ preventScroll: true });
+            document
+              .getElementById(`editor-terminal-tab-${panelId}-${panel.id}`)
+              ?.focus({ preventScroll: true });
           }}
         >
-          <SelectionHighlight value={`${selected?.id}:${tabActions.orderKey}`} selector='.editor-terminal-tab[data-active="true"]' />
+          <SelectionHighlight
+            value={`${selected?.id}:${tabActions.orderKey}`}
+            selector='.editor-terminal-tab[data-active="true"]'
+          />
           {panels.map((panel) => (
-            <div className="editor-terminal-tab" key={panel.id} data-active={panel.id === selectedId} {...tabActions.tabProps(panel)}>
+            <div
+              className="editor-terminal-tab"
+              key={panel.id}
+              data-active={panel.id === selectedId}
+              {...tabActions.tabProps(panel)}
+            >
               <button
                 type="button"
                 role="tab"
@@ -82,7 +93,9 @@ export function EditorTerminal({
                 aria-label={`Close ${panel.title}`}
                 title={`Close ${panel.title}`}
                 onClick={() => {
-                  tabStrip.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus({ preventScroll: true });
+                  tabStrip.current
+                    ?.querySelector<HTMLElement>('[aria-selected="true"]')
+                    ?.focus({ preventScroll: true });
                   send({ t: "panel.close", id: panel.id });
                 }}
               >
@@ -111,18 +124,24 @@ export function EditorTerminal({
           <CloseIcon size={14} />
         </button>
       </div>
-      {panels.toSorted((a, b) => a.id.localeCompare(b.id)).map((panel) => (
-        <div
-          key={panel.id}
-          className="editor-terminal-body"
-          id={`editor-terminal-body-${panelId}-${panel.id}`}
-          role="tabpanel"
-          aria-labelledby={`editor-terminal-tab-${panelId}-${panel.id}`}
-          hidden={panel.id !== selectedId}
-        >
-          <TerminalPane termId={panel.id} target={{ projectId: panel.projectId }} active={active && visible && panel.id === selectedId} />
-        </div>
-      ))}
+      {panels
+        .toSorted((a, b) => a.id.localeCompare(b.id))
+        .map((panel) => (
+          <div
+            key={panel.id}
+            className="editor-terminal-body"
+            id={`editor-terminal-body-${panelId}-${panel.id}`}
+            role="tabpanel"
+            aria-labelledby={`editor-terminal-tab-${panelId}-${panel.id}`}
+            hidden={panel.id !== selectedId}
+          >
+            <TerminalPane
+              termId={panel.id}
+              target={{ projectId: panel.projectId }}
+              active={active && visible && panel.id === selectedId}
+            />
+          </div>
+        ))}
       {!selected && (
         <div className="pane-empty" role="status">
           Opening terminal…

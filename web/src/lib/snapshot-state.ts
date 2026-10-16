@@ -20,7 +20,11 @@ export function applySnapshot(state: AppState, snapshot: Snapshot, focused = tru
   state.logging = snapshot.logging ?? { enabled: false, file: "" };
   state.resumeAfterLimits = snapshot.resumeAfterLimits === true;
   if (focused && snapshot.setupNeeded) state.setupOpen = true;
-  state.questionDrafts = Object.fromEntries(Object.entries(state.questionDrafts).filter(([id]) => state.questions.some(question => question.id === id)));
+  state.questionDrafts = Object.fromEntries(
+    Object.entries(state.questionDrafts).filter(([id]) =>
+      state.questions.some((question) => question.id === id),
+    ),
+  );
   state.home = snapshot.home;
   state.projects = snapshot.projects;
   state.providers = snapshot.providers;
@@ -29,31 +33,28 @@ export function applySnapshot(state: AppState, snapshot: Snapshot, focused = tru
 }
 
 function restoreEnvironment(state: AppState, snapshot: Snapshot): void {
-  state.shells = Object.fromEntries((snapshot.shells ?? []).map(shell => [shell.id, shell]));
+  state.shells = Object.fromEntries((snapshot.shells ?? []).map((shell) => [shell.id, shell]));
   state.projectDefaults = snapshot.projectDefaults ?? {};
   state.assistance = snapshot.assistance ?? { ...defaultAssistance };
 }
 
 function restorePanels(state: AppState, snapshot: Snapshot): void {
-  state.panels = (snapshot.panels ?? []).filter(panel => String(panel.kind) !== "computer");
+  state.panels = (snapshot.panels ?? []).filter((panel) => String(panel.kind) !== "computer");
   state.browsers = Object.fromEntries(
     (snapshot.browsers ?? []).map((browser) => [browser.id, browser]),
   );
   state.tools = snapshot.tools ?? [];
   state.toolConnections = Object.fromEntries(
-    (snapshot.toolConnections ?? []).map((connection) => [
-      connection.threadId,
-      connection,
-    ]),
+    (snapshot.toolConnections ?? []).map((connection) => [connection.threadId, connection]),
   );
 }
 
 function restoreThreads(state: AppState, snapshot: Snapshot): void {
-  state.threads = Object.fromEntries(
-    snapshot.threads.map((thread) => [thread.id, thread]),
-  );
+  state.threads = Object.fromEntries(snapshot.threads.map((thread) => [thread.id, thread]));
   state.bots = Object.fromEntries((snapshot.bots ?? []).map((bot) => [bot.id, bot]));
-  state.botGroups = Object.fromEntries((snapshot.botGroups ?? []).map((group) => [group.id, group]));
+  state.botGroups = Object.fromEntries(
+    (snapshot.botGroups ?? []).map((group) => [group.id, group]),
+  );
   if (!rosterItem(state, state.activeRosterId)) state.activeRosterId = null;
   state.messages = {};
   state.parts = new Map();
@@ -68,9 +69,10 @@ function restoreThreads(state: AppState, snapshot: Snapshot): void {
 
 function restoreWorkspace(state: AppState, focused: boolean): void {
   state.editorTerminals = Object.fromEntries(
-    Object.entries(state.editorTerminals).filter(([filesId, terminal]) =>
-      state.panels.some((panel) => panel.id === filesId) &&
-      state.panels.some((panel) => panel.id === terminal.id),
+    Object.entries(state.editorTerminals).filter(
+      ([filesId, terminal]) =>
+        state.panels.some((panel) => panel.id === filesId) &&
+        state.panels.some((panel) => panel.id === terminal.id),
     ),
   );
   state.activePanels = Object.fromEntries(
@@ -79,30 +81,28 @@ function restoreWorkspace(state: AppState, focused: boolean): void {
     ),
   );
   state.git = Object.fromEntries(
-    Object.entries(state.git).filter(([id]) =>
-      state.projects.some((project) => project.id === id),
-    ),
+    Object.entries(state.git).filter(([id]) => state.projects.some((project) => project.id === id)),
   );
   const projects = state.projects;
   // Chats live in a hidden workspace, which stays active while one of its chats is open.
   const chat = state.threads[state.activeThreadId ?? ""];
   if (
     !state.activeProjectId ||
-    !(projects.some((p) => p.id === state.activeProjectId) || (chat?.chat && chat.projectId === state.activeProjectId))
+    !(
+      projects.some((p) => p.id === state.activeProjectId) ||
+      (chat?.chat && chat.projectId === state.activeProjectId)
+    )
   ) {
     state.activeProjectId = projects[0]?.id ?? null;
   }
-  if (state.activeThreadId && !state.threads[state.activeThreadId])
-    state.activeThreadId = null;
+  if (state.activeThreadId && !state.threads[state.activeThreadId]) state.activeThreadId = null;
   if (
     focused &&
     typeof window !== "undefined" &&
     window.citropyDesktop &&
     !Object.keys(state.activePanels).length
   ) {
-    const browser = state.panels.findLast(
-      (panel) => panel.kind === "browser",
-    );
+    const browser = state.panels.findLast((panel) => panel.kind === "browser");
     if (browser) {
       state.activeProjectId = browser.projectId;
       state.activeThreadId = browser.threadId ?? state.activeThreadId;

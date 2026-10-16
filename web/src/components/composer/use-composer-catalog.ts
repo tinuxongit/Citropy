@@ -65,13 +65,26 @@ export function useComposerCatalog({
     return () => controller.abort();
   }, [catalogMode, thread.id, thread.provider, thread.projectId]);
   useEffect(() => {
-    if (mode !== "skills") { setPaths([]); return; }
+    if (mode !== "skills") {
+      setPaths([]);
+      return;
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      const params = new URLSearchParams({ threadId: thread.id, query: mentionText.split("#")[0]! });
-      void api<PathEntry[]>(`threads/context?${params}`, { signal: controller.signal }).then(setPaths).catch(error => { if (!controller.signal.aborted) setError(error.message); });
+      const params = new URLSearchParams({
+        threadId: thread.id,
+        query: mentionText.split("#")[0]!,
+      });
+      void api<PathEntry[]>(`threads/context?${params}`, { signal: controller.signal })
+        .then(setPaths)
+        .catch((error) => {
+          if (!controller.signal.aborted) setError(error.message);
+        });
     }, PATH_SEARCH_DELAY_MS);
-    return () => { clearTimeout(timer); controller.abort(); };
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [mode, mentionText, thread.id]);
   return { skills, tools, nativeCommands, paths, loading, error };
 }

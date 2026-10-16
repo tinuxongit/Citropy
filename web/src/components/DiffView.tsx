@@ -36,7 +36,15 @@ function rows(patch: FilePatch, interactive = false): Row[] {
   let oldIndex = 0;
   let newIndex = 0;
   patch.hunks.forEach((hunk, h) => {
-    if (interactive) out.push({ key: `hunk-${h}`, type: "ctx", text: hunk.header, side: "both", index: -1, hunk: h });
+    if (interactive)
+      out.push({
+        key: `hunk-${h}`,
+        type: "ctx",
+        text: hunk.header,
+        side: "both",
+        index: -1,
+        hunk: h,
+      });
     hunk.lines.forEach((line, l) => {
       if (line.text === "…" && line.oldNo === undefined && line.newNo === undefined) {
         out.push({ ...line, key: `${h}-${l}`, side: "both", index: -1 });
@@ -58,17 +66,46 @@ function rows(patch: FilePatch, interactive = false): Row[] {
   return out;
 }
 
-export function DiffView({ patch, limit = 26, showHeader = true, showHunkHeaders = false, partId, expanded: controlledExpanded, onExpand, onComment, onHunk, staged, busy }: Props) {
+export function DiffView({
+  patch,
+  limit = 26,
+  showHeader = true,
+  showHunkHeaders = false,
+  partId,
+  expanded: controlledExpanded,
+  onExpand,
+  onComment,
+  onHunk,
+  staged,
+  busy,
+}: Props) {
   const [disclosed, setDisclosed] = useDisclosure(partId, "diff");
   const expanded = controlledExpanded ?? disclosed;
   const viewport = useRef<HTMLDivElement>(null);
 
-  const all = useMemo(() => rows(patch, showHunkHeaders || Boolean(onHunk)), [patch, showHunkHeaders, Boolean(onHunk)]);
-  const visible = useMemo(() => expanded ? all : all.slice(0, limit), [all, expanded, limit]);
+  const all = useMemo(
+    () => rows(patch, showHunkHeaders || Boolean(onHunk)),
+    [patch, showHunkHeaders, Boolean(onHunk)],
+  );
+  const visible = useMemo(() => (expanded ? all : all.slice(0, limit)), [all, expanded, limit]);
   const lang = langFor(patch.path);
 
-  const oldText = useMemo(() => visible.filter((row) => row.side !== "new" && row.index >= 0).map((row) => row.text).join("\n"), [visible]);
-  const newText = useMemo(() => visible.filter((row) => row.side !== "old" && row.index >= 0).map((row) => row.text).join("\n"), [visible]);
+  const oldText = useMemo(
+    () =>
+      visible
+        .filter((row) => row.side !== "new" && row.index >= 0)
+        .map((row) => row.text)
+        .join("\n"),
+    [visible],
+  );
+  const newText = useMemo(
+    () =>
+      visible
+        .filter((row) => row.side !== "old" && row.index >= 0)
+        .map((row) => row.text)
+        .join("\n"),
+    [visible],
+  );
   const oldLines = useHighlightedLines(oldText, lang);
   const newLines = useHighlightedLines(newText, lang);
   const getItemKey = useCallback((index: number) => visible[index]!.key, [visible]);
@@ -100,28 +137,98 @@ export function DiffView({ patch, limit = 26, showHeader = true, showHunkHeaders
           <LineCounts added={patch.added} removed={patch.removed} />
         </div>
       )}
-      <div className="diff-body scroll" ref={viewport} tabIndex={0} role="region" aria-label={`Diff for ${patch.path}`}>
+      <div
+        className="diff-body scroll"
+        ref={viewport}
+        tabIndex={0}
+        role="region"
+        aria-label={`Diff for ${patch.path}`}
+      >
         <div className="diff-lines" style={{ height: lines.getTotalSize() }}>
           {lines.getVirtualItems().map((item) => {
             const row = visible[item.index]!;
-            if (row.hunk !== undefined) return <div className="diff-hunk" key={item.key} data-index={item.index} ref={lines.measureElement} style={{ transform: `translateY(${item.start}px)` }}><span>{row.text || `Change ${row.hunk + 1}`}</span>{onHunk && <><button type="button" disabled={busy} onClick={() => onHunk(row.hunk!, staged ? "unstage" : "stage")}>{staged ? "Unstage hunk" : "Stage hunk"}</button>{!staged && <button type="button" disabled={busy} onClick={() => onHunk(row.hunk!, "revert")}>Revert hunk</button>}</>}</div>;
+            if (row.hunk !== undefined)
+              return (
+                <div
+                  className="diff-hunk"
+                  key={item.key}
+                  data-index={item.index}
+                  ref={lines.measureElement}
+                  style={{ transform: `translateY(${item.start}px)` }}
+                >
+                  <span>{row.text || `Change ${row.hunk + 1}`}</span>
+                  {onHunk && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => onHunk(row.hunk!, staged ? "unstage" : "stage")}
+                      >
+                        {staged ? "Unstage hunk" : "Stage hunk"}
+                      </button>
+                      {!staged && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => onHunk(row.hunk!, "revert")}
+                        >
+                          Revert hunk
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
             return (
-              <div className="diff-line" data-interactive={Boolean(onComment) || undefined} data-type={row.type} data-index={item.index} key={item.key} ref={lines.measureElement} style={{ transform: `translateY(${item.start}px)` }}>
+              <div
+                className="diff-line"
+                data-interactive={Boolean(onComment) || undefined}
+                data-type={row.type}
+                data-index={item.index}
+                key={item.key}
+                ref={lines.measureElement}
+                style={{ transform: `translateY(${item.start}px)` }}
+              >
                 <span className="diff-no">{row.oldNo ?? ""}</span>
                 <span className="diff-no">{row.newNo ?? ""}</span>
-                <span className="diff-sign">{row.type === "add" ? "+" : row.type === "del" ? "-" : " "}</span>
+                <span className="diff-sign">
+                  {row.type === "add" ? "+" : row.type === "del" ? "-" : " "}
+                </span>
                 <span className="diff-code" dangerouslySetInnerHTML={{ __html: render(row) }} />
-                {onComment && (row.newNo ?? row.oldNo) !== undefined && <button className="diff-comment" type="button" aria-label={`Comment on line ${row.newNo ?? row.oldNo!}`} onClick={() => onComment(row.type === "del" ? row.oldNo! : row.newNo!, row.type === "del" ? "old" : "new")}><NewMessageIcon size={13} /></button>}
+                {onComment && (row.newNo ?? row.oldNo) !== undefined && (
+                  <button
+                    className="diff-comment"
+                    type="button"
+                    aria-label={`Comment on line ${row.newNo ?? row.oldNo!}`}
+                    onClick={() =>
+                      onComment(
+                        row.type === "del" ? row.oldNo! : row.newNo!,
+                        row.type === "del" ? "old" : "new",
+                      )
+                    }
+                  >
+                    <NewMessageIcon size={13} />
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       </div>
       {hidden > 0 && (
-        <button className="diff-more" type="button" onClick={() => onExpand ? onExpand() : setDisclosed(true)}>{hidden === 1 ? `Show ${hidden} more line` : `Show ${hidden} more lines`}
+        <button
+          className="diff-more"
+          type="button"
+          onClick={() => (onExpand ? onExpand() : setDisclosed(true))}
+        >
+          {hidden === 1 ? `Show ${hidden} more line` : `Show ${hidden} more lines`}
         </button>
       )}
-      {patch.truncated && <div className="diff-more" data-static="true">Diff truncated</div>}
+      {patch.truncated && (
+        <div className="diff-more" data-static="true">
+          Diff truncated
+        </div>
+      )}
     </div>
   );
 }

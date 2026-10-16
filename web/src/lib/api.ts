@@ -8,8 +8,12 @@ export async function api<T>(
   options: RequestInit = {},
   environment = environmentId(),
 ): Promise<T> {
-  const requestSignal = options.signal ?? AbortSignal.timeout(path.startsWith("browser/import") ? 125_000 : 90_000);
-  const signal = environment === environmentId() ? AbortSignal.any([environmentSignal(), requestSignal]) : requestSignal;
+  const requestSignal =
+    options.signal ?? AbortSignal.timeout(path.startsWith("browser/import") ? 125_000 : 90_000);
+  const signal =
+    environment === environmentId()
+      ? AbortSignal.any([environmentSignal(), requestSignal])
+      : requestSignal;
   const response = await fetch(environmentUrl(environment, `/api/${path}`), {
     ...options,
     headers: { "content-type": "application/json", ...options.headers },
@@ -23,8 +27,7 @@ export async function api<T>(
     );
   const data = await response.json();
   signal.throwIfAborted();
-  if (!response.ok)
-    throw new Error(data.error || `Request failed (${response.status}).`);
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`);
   return data as T;
 }
 
@@ -32,9 +35,13 @@ export function reportError(error: unknown): void {
   if ((error as Error).name === "AbortError") return;
   logClientError(error);
   const text = (error as Error).message || "This action could not be completed.";
-  useApp.setState((state) => state.toasts.some((toast) => toast.level === "error" && toast.text === text) ? state : {
-    toasts: [...state.toasts, { id: randomId(), level: "error", text }],
-  });
+  useApp.setState((state) =>
+    state.toasts.some((toast) => toast.level === "error" && toast.text === text)
+      ? state
+      : {
+          toasts: [...state.toasts, { id: randomId(), level: "error", text }],
+        },
+  );
 }
 
 export function assetQuery(

@@ -6,7 +6,8 @@ export function normalizeTodos(value: unknown): TodoItem[] {
   for (const entry of value) {
     if (!entry || typeof entry !== "object") continue;
     const text = [entry.text, entry.content, entry.step]
-      .find((value): value is string => typeof value === "string" && value.trim().length > 0)?.trim();
+      .find((value): value is string => typeof value === "string" && value.trim().length > 0)
+      ?.trim();
     if (!text) continue;
     let status: TodoItem["status"] = "pending";
     if (entry.status === "in_progress" || entry.status === "inProgress") status = "in_progress";

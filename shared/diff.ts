@@ -6,7 +6,17 @@ function unquotePath(value: string): string {
   const quoted = /^"((?:\\.|[^"\\])*)"$/.exec(value);
   if (!quoted) return value;
   const input = quoted[1]!;
-  const escapes: Record<string, number> = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, "\\": 92, '"': 34 };
+  const escapes: Record<string, number> = {
+    a: 7,
+    b: 8,
+    t: 9,
+    n: 10,
+    v: 11,
+    f: 12,
+    r: 13,
+    "\\": 92,
+    '"': 34,
+  };
   const encoder = new TextEncoder();
   const parts: Uint8Array[] = [];
   let from = 0;
@@ -19,14 +29,17 @@ function unquotePath(value: string): string {
   parts.push(encoder.encode(input.slice(from)));
   const bytes = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
   let offset = 0;
-  for (const part of parts) { bytes.set(part, offset); offset += part.length; }
+  for (const part of parts) {
+    bytes.set(part, offset);
+    offset += part.length;
+  }
   return new TextDecoder().decode(bytes);
 }
 
 function headerPath(value: string, prefix: "a" | "b"): string {
   const path = value.startsWith('"')
-    ? /^"(?:\\.|[^"\\])*"/.exec(value)?.[0] ?? value
-    : value.split("\t")[0] ?? "";
+    ? (/^"(?:\\.|[^"\\])*"/.exec(value)?.[0] ?? value)
+    : (value.split("\t")[0] ?? "");
   const decoded = unquotePath(path);
   return decoded.startsWith(`${prefix}/`) ? decoded.slice(2) : decoded;
 }
@@ -37,14 +50,25 @@ function gitHeaderPath(value: string, fallback: string): string {
   const quotedDestination = value.indexOf(' "b/');
   if (quotedDestination >= 0) return headerPath(value.slice(quotedDestination + 1), "b");
   const middle = (value.length - 1) / 2;
-  if (Number.isInteger(middle) && value[middle] === " " && value.startsWith("a/") &&
-      value.slice(middle + 1, middle + 3) === "b/" && value.slice(2, middle) === value.slice(middle + 3))
+  if (
+    Number.isInteger(middle) &&
+    value[middle] === " " &&
+    value.startsWith("a/") &&
+    value.slice(middle + 1, middle + 3) === "b/" &&
+    value.slice(2, middle) === value.slice(middle + 3)
+  )
     return value.slice(middle + 3);
   const separator = value.indexOf(" b/");
   return separator < 0 ? fallback : value.slice(separator + 3);
 }
 
-function parseDiff(text: string, fallbackPath: string, includeLines: boolean, selectedPath: string | undefined, maxLines: number): FilePatch[] {
+function parseDiff(
+  text: string,
+  fallbackPath: string,
+  includeLines: boolean,
+  selectedPath: string | undefined,
+  maxLines: number,
+): FilePatch[] {
   const patches: FilePatch[] = [];
   let current: FilePatch | null = null;
   let hunk: PatchHunk | null = null;
@@ -56,13 +80,15 @@ function parseDiff(text: string, fallbackPath: string, includeLines: boolean, se
   let newRemaining = 0;
 
   const push = () => {
-    if (current && (selectedPath === undefined || current.path === selectedPath)) patches.push(current);
+    if (current && (selectedPath === undefined || current.path === selectedPath))
+      patches.push(current);
     current = null;
     hunk = null;
     hadHunks = false;
     budget = maxLines;
   };
-  const collect = () => includeLines && (selectedPath === undefined || current?.path === selectedPath);
+  const collect = () =>
+    includeLines && (selectedPath === undefined || current?.path === selectedPath);
 
   let offset = 0;
   while (offset <= text.length) {
@@ -71,7 +97,12 @@ function parseDiff(text: string, fallbackPath: string, includeLines: boolean, se
     offset = end < 0 ? text.length + 1 : end + 1;
     if (line.startsWith("diff --git ")) {
       push();
-      current = { path: gitHeaderPath(line.slice(11), fallbackPath), added: 0, removed: 0, hunks: [] };
+      current = {
+        path: gitHeaderPath(line.slice(11), fallbackPath),
+        added: 0,
+        removed: 0,
+        hunks: [],
+      };
       continue;
     }
     if (!hunk && line.startsWith("+++ ")) {
@@ -139,10 +170,19 @@ function parseDiff(text: string, fallbackPath: string, includeLines: boolean, se
   return patches;
 }
 
-export function parseUnifiedDiff(text: string, fallbackPath = "", selectedPath?: string, maxLines = MAX_LINES): FilePatch[] {
+export function parseUnifiedDiff(
+  text: string,
+  fallbackPath = "",
+  selectedPath?: string,
+  maxLines = MAX_LINES,
+): FilePatch[] {
   return parseDiff(text, fallbackPath, true, selectedPath, maxLines);
 }
 
 export function summarizeUnifiedDiff(text: string): ChangedFile[] {
-  return parseDiff(text, "", false, undefined, 0).map(({ path, added, removed }) => ({ path, added, removed }));
+  return parseDiff(text, "", false, undefined, 0).map(({ path, added, removed }) => ({
+    path,
+    added,
+    removed,
+  }));
 }

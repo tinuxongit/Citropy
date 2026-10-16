@@ -72,7 +72,12 @@ export function createSignInView(window: BrowserWindow) {
       const entry: SignIn = { view, error: undefined, finish: () => {} };
       const finished = new Promise<boolean>((resolve) => (entry.finish = resolve));
       current = entry;
-      for (const event of ["did-start-loading", "did-stop-loading", "did-navigate", "did-navigate-in-page"] as const)
+      for (const event of [
+        "did-start-loading",
+        "did-stop-loading",
+        "did-navigate",
+        "did-navigate-in-page",
+      ] as const)
         content.on(event as "did-start-loading", () => {
           if (event === "did-start-loading") entry.error = undefined;
           if (current === entry) publish(entry);

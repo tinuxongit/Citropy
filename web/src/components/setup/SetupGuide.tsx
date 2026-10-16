@@ -22,7 +22,13 @@ function finishSetup() {
   useApp.setState({ setupOpen: false });
 }
 
-function SetupSteps({ index, onIndex }: { index: number; onIndex: (index: number | undefined) => void }) {
+function SetupSteps({
+  index,
+  onIndex,
+}: {
+  index: number;
+  onIndex: (index: number | undefined) => void;
+}) {
   const reducedMotion = useReducedMotion();
   const step = SETUP_STEPS[index]!;
   const last = index === SETUP_STEPS.length - 1;
@@ -30,7 +36,14 @@ function SetupSteps({ index, onIndex }: { index: number; onIndex: (index: number
     <div className="setup-layout">
       <SetupRail index={index} onSelect={onIndex} />
       <main className="setup-stage">
-        <div className="setup-progress" role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={SETUP_STEPS.length} aria-valuenow={index + 1}>
+        <div
+          className="setup-progress"
+          role="progressbar"
+          aria-label="Setup progress"
+          aria-valuemin={1}
+          aria-valuemax={SETUP_STEPS.length}
+          aria-valuenow={index + 1}
+        >
           <span style={{ scale: `${(index + 1) / SETUP_STEPS.length} 1` }} />
         </div>
         <motion.div
@@ -41,17 +54,38 @@ function SetupSteps({ index, onIndex }: { index: number; onIndex: (index: number
           transition={{ duration: reducedMotion ? 0 : STEP_ENTER, ease: EASE_OUT }}
         >
           <header className="setup-stage-heading">
-            <p className="setup-eyebrow">Step {index + 1} of {SETUP_STEPS.length}</p>
+            <p className="setup-eyebrow">
+              Step {index + 1} of {SETUP_STEPS.length}
+            </p>
             <h1>{step.title}</h1>
             <p>{step.description}</p>
           </header>
-          <div className="setup-step settings-inner"><step.Body /></div>
+          <div className="setup-step settings-inner">
+            <step.Body />
+          </div>
         </motion.div>
         <footer className="setup-actions">
-          {!last && <button className="btn" data-variant="ghost" type="button" onClick={finishSetup}>Skip setup</button>}
-          <button className="btn" type="button" onClick={() => onIndex(index === 0 ? undefined : index - 1)}>Back</button>
-          <button className="btn setup-cta" data-variant="primary" data-primary type="button" onClick={last ? finishSetup : () => onIndex(index + 1)}>
-            {last ? "Start using Citropy" : "Continue"}<ArrowRightIcon size={15} />
+          {!last && (
+            <button className="btn" data-variant="ghost" type="button" onClick={finishSetup}>
+              Skip setup
+            </button>
+          )}
+          <button
+            className="btn"
+            type="button"
+            onClick={() => onIndex(index === 0 ? undefined : index - 1)}
+          >
+            Back
+          </button>
+          <button
+            className="btn setup-cta"
+            data-variant="primary"
+            data-primary
+            type="button"
+            onClick={last ? finishSetup : () => onIndex(index + 1)}
+          >
+            {last ? "Start using Citropy" : "Continue"}
+            <ArrowRightIcon size={15} />
           </button>
         </footer>
       </main>
@@ -83,9 +117,11 @@ function SetupScreen() {
     >
       <DotBackground className="setup-dots" />
       <div className="setup-titlebar">{window.citropyDesktop && <WindowControls />}</div>
-      {index === undefined
-        ? <SetupWelcome onStart={() => setIndex(0)} onSkip={finishSetup} />
-        : <SetupSteps index={index} onIndex={setIndex} />}
+      {index === undefined ? (
+        <SetupWelcome onStart={() => setIndex(0)} onSkip={finishSetup} />
+      ) : (
+        <SetupSteps index={index} onIndex={setIndex} />
+      )}
     </motion.dialog>
   );
 }

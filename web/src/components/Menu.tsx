@@ -34,11 +34,7 @@ export interface MenuItem {
 }
 
 interface Props {
-  trigger?: (props: {
-    open: boolean;
-    toggle: () => void;
-    id: string;
-  }) => ReactNode;
+  trigger?: (props: { open: boolean; toggle: () => void; id: string }) => ReactNode;
   items: MenuItem[];
   align?: "start" | "end";
   side?: "below" | "right";
@@ -65,8 +61,10 @@ interface Props {
 const EDGE_SLIDE_SECONDS = 0.24;
 const EDGE_OVERHANG = "32px";
 const CONFIRMATION = ".confirmation-card";
-const edgeClip = (left: string) => `inset(-${EDGE_OVERHANG} -${EDGE_OVERHANG} -${EDGE_OVERHANG} ${left})`;
-const inConfirmation = (target: EventTarget | null) => target instanceof Element && Boolean(target.closest(CONFIRMATION));
+const edgeClip = (left: string) =>
+  `inset(-${EDGE_OVERHANG} -${EDGE_OVERHANG} -${EDGE_OVERHANG} ${left})`;
+const inConfirmation = (target: EventTarget | null) =>
+  target instanceof Element && Boolean(target.closest(CONFIRMATION));
 
 export function Menu({
   trigger,
@@ -108,10 +106,10 @@ export function Menu({
   const contains = (item: MenuItem, words: string[]): boolean => {
     if (!words.length) return true;
     const text = `${item.label} ${item.id} ${item.hint ?? ""}`.toLowerCase();
-    return words.every(word => text.includes(word));
+    return words.every((word) => text.includes(word));
   };
   const matches = (item: MenuItem, words: string[]): boolean =>
-    contains(item, words) || Boolean(item.children?.some(child => matches(child, words)));
+    contains(item, words) || Boolean(item.children?.some((child) => matches(child, words)));
   const collect = (entries: MenuItem[], depth: number, words: string[]) => {
     for (const item of entries) {
       if (!matches(item, words)) continue;
@@ -122,22 +120,31 @@ export function Menu({
     }
   };
   collect(items, 0, terms);
-  const selectedItems = visibleItems.filter(item => item.selected);
+  const selectedItems = visibleItems.filter((item) => item.selected);
   const soleSelection = selectedItems.length === 1 ? selectedItems[0]!.id : undefined;
-  const toggleGroup = (itemId: string, collapse = !collapsed.has(itemId)) => setCollapsed(previous => {
-    const next = new Set(previous);
-    if (collapse) next.add(itemId); else next.delete(itemId);
-    return next;
-  });
+  const toggleGroup = (itemId: string, collapse = !collapsed.has(itemId)) =>
+    setCollapsed((previous) => {
+      const next = new Set(previous);
+      if (collapse) next.add(itemId);
+      else next.delete(itemId);
+      return next;
+    });
 
   useLayoutEffect(() => {
     const element = menu.current;
     if (!open || !element) return;
     element.showPopover();
     const position = () => {
-      if (anchor && !anchor.isConnected) { setOpen(false); return; }
+      if (anchor && !anchor.isConnected) {
+        setOpen(false);
+        return;
+      }
       const spanned = span ? wrap.current?.closest(span)?.getBoundingClientRect() : undefined;
-      const bounds = spanned ?? (anchor ?? (inline ? wrap.current?.firstElementChild : wrap.current))?.getBoundingClientRect();
+      const bounds =
+        spanned ??
+        (
+          anchor ?? (inline ? wrap.current?.firstElementChild : wrap.current)
+        )?.getBoundingClientRect();
       if (!bounds) return;
       const scale = uiScale / 100;
       if (sheet) {
@@ -160,9 +167,14 @@ export function Menu({
         element.style.top = `${scaled(Math.max(12, Math.min(bounds.top / scale, viewport - height - 12)))}px`;
         return;
       }
-      const clearance = clearOf ? wrap.current?.closest(clearOf)?.getBoundingClientRect() : undefined;
+      const clearance = clearOf
+        ? wrap.current?.closest(clearOf)?.getBoundingClientRect()
+        : undefined;
       const anchorLeft = (clearance?.left ?? bounds.left) / scale;
-      const menuWidth = Math.min(spanned ? spanned.width / scale : inline ? Math.max(width, bounds.width / scale) : width, viewportWidth() - 24 - 2 * gutter);
+      const menuWidth = Math.min(
+        spanned ? spanned.width / scale : inline ? Math.max(width, bounds.width / scale) : width,
+        viewportWidth() - 24 - 2 * gutter,
+      );
       const preferred = align === "end" ? bounds.right / scale - menuWidth : anchorLeft;
       element.style.width = `${scaled(menuWidth)}px`;
       element.style.maxHeight = "";
@@ -185,7 +197,8 @@ export function Menu({
       const available = upwards ? above : below;
       element.dataset.side = upwards ? "top" : "bottom";
       element.style.maxHeight = `${scaled(available)}px`;
-      if (parseFloat(getComputedStyle(element).minHeight) > scaled(available)) element.style.minHeight = `${scaled(available)}px`;
+      if (parseFloat(getComputedStyle(element).minHeight) > scaled(available))
+        element.style.minHeight = `${scaled(available)}px`;
       element.style.left = `${scaled(Math.max(12 + gutter, Math.min(preferred, viewportWidth() - menuWidth - 12 - gutter)))}px`;
       element.style.top = `${scaled(upwards ? top / scale - Math.min(height, available) - 6 : bottom / scale + 6)}px`;
     };
@@ -205,9 +218,11 @@ export function Menu({
     resize.observe(element);
     const source = anchor ?? wrap.current;
     if (source) resize.observe(source);
-    const removed = anchor ? new MutationObserver(() => {
-      if (!anchor.isConnected) setOpen(false);
-    }) : undefined;
+    const removed = anchor
+      ? new MutationObserver(() => {
+          if (!anchor.isConnected) setOpen(false);
+        })
+      : undefined;
     removed?.observe(document.body, { childList: true, subtree: true });
     const scroll = (event: Event) => {
       if (!element.contains(event.target as Node)) position();
@@ -220,12 +235,32 @@ export function Menu({
       window.removeEventListener("resize", position);
       window.removeEventListener("scroll", scroll, true);
     };
-  }, [open, width, gutter, align, side, searchable, touch, uiScale, anchor, clearOf, sheet, span, edge, inline]);
+  }, [
+    open,
+    width,
+    gutter,
+    align,
+    side,
+    searchable,
+    touch,
+    uiScale,
+    anchor,
+    clearOf,
+    sheet,
+    span,
+    edge,
+    inline,
+  ]);
 
   useEffect(() => {
     if (!open) return;
     const onPointer = (event: PointerEvent) => {
-      if (!wrap.current?.contains(event.target as Node) && !anchor?.contains(event.target as Node) && !inConfirmation(event.target)) setOpen(false);
+      if (
+        !wrap.current?.contains(event.target as Node) &&
+        !anchor?.contains(event.target as Node) &&
+        !inConfirmation(event.target)
+      )
+        setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !document.querySelector(CONFIRMATION)) {
@@ -251,17 +286,31 @@ export function Menu({
   const slidesFromEdge = Boolean(edge) && !sheet && !reducedMotion;
   const hidden = slidesFromEdge
     ? { x: "-100%", clipPath: edgeClip("100%") }
-    : { opacity: 0, scale: reducedMotion || sheet ? 1 : 0.985, y: sheet && !reducedMotion ? 48 : 0 };
+    : {
+        opacity: 0,
+        scale: reducedMotion || sheet ? 1 : 0.985,
+        y: sheet && !reducedMotion ? 48 : 0,
+      };
 
-  const list = <div className="menu-list scroll sliding-selection" data-large={visibleItems.length > 40} data-sliding={soleSelection ? true : undefined}>
-    {soleSelection && <SelectionHighlight value={soleSelection} selector=".menu-option[data-selected]" />}
-    {visibleItems.map((item, index) => (
+  const list = (
+    <div
+      className="menu-list scroll sliding-selection"
+      data-large={visibleItems.length > 40}
+      data-sliding={soleSelection ? true : undefined}
+    >
+      {soleSelection && (
+        <SelectionHighlight value={soleSelection} selector=".menu-option[data-selected]" />
+      )}
+      {visibleItems.map((item, index) => (
         <Fragment key={item.id}>
-          {item.section &&
-            item.section !== visibleItems[index - 1]?.section && (
-              <div className="menu-section">{item.section}</div>
-            )}
-          <div className="menu-option" data-selected={item.selected || undefined} data-group={item.children ? item.id : undefined}>
+          {item.section && item.section !== visibleItems[index - 1]?.section && (
+            <div className="menu-section">{item.section}</div>
+          )}
+          <div
+            className="menu-option"
+            data-selected={item.selected || undefined}
+            data-group={item.children ? item.id : undefined}
+          >
             <button
               type="button"
               disabled={item.disabled}
@@ -271,11 +320,22 @@ export function Menu({
               data-selected={item.selected || undefined}
               data-danger={item.danger || undefined}
               data-depth={item.depth || undefined}
-              style={item.depth ? { paddingInlineStart: `calc(10px + ${item.depth} * var(--menu-nesting-indent, 18px))` } : undefined}
-              aria-expanded={item.children ? Boolean(terms.length) || !collapsed.has(item.id) : undefined}
+              style={
+                item.depth
+                  ? {
+                      paddingInlineStart: `calc(10px + ${item.depth} * var(--menu-nesting-indent, 18px))`,
+                    }
+                  : undefined
+              }
+              aria-expanded={
+                item.children ? Boolean(terms.length) || !collapsed.has(item.id) : undefined
+              }
               title={item.hint}
               onClick={() => {
-                if (item.children) { toggleGroup(item.id); return; }
+                if (item.children) {
+                  toggleGroup(item.id);
+                  return;
+                }
                 if (!item.keepOpen) {
                   setOpen(false);
                   (anchor ?? document.getElementById(id))?.focus({ preventScroll: true });
@@ -283,41 +343,46 @@ export function Menu({
                 item.onSelect?.();
               }}
             >
-              {item.icon && (
-                <span className="menu-icon">{item.icon}</span>
-              )}
+              {item.icon && <span className="menu-icon">{item.icon}</span>}
               <span className="menu-copy">
-                <span className="menu-label truncate">
-                  {item.label}
-                </span>
+                <span className="menu-label truncate">{item.label}</span>
                 {item.hint && (
                   <span className="menu-hint">
                     <span className="truncate">{item.hint}</span>
                   </span>
                 )}
               </span>
-              {item.selected && (
-                <CheckIcon size={13} className="menu-check" />
+              {item.selected && <CheckIcon size={13} className="menu-check" />}
+              {item.children && (
+                <ChevronRightIcon
+                  size={13}
+                  className="menu-group-chevron"
+                  data-expanded={Boolean(terms.length) || !collapsed.has(item.id)}
+                />
               )}
-              {item.children && <ChevronRightIcon size={13} className="menu-group-chevron" data-expanded={Boolean(terms.length) || !collapsed.has(item.id)} />}
             </button>
-            {item.action && <button
-              type="button"
-              className="menu-item-action"
-              aria-label={item.action.label}
-              title={item.action.label}
-              aria-pressed={item.action.pressed}
-              onClick={item.action.onSelect}
-            >{item.action.icon}</button>}
+            {item.action && (
+              <button
+                type="button"
+                className="menu-item-action"
+                aria-label={item.action.label}
+                title={item.action.label}
+                aria-pressed={item.action.pressed}
+                onClick={item.action.onSelect}
+              >
+                {item.action.icon}
+              </button>
+            )}
           </div>
         </Fragment>
       ))}
-    {!visibleItems.length && (
-      <div className="menu-empty">
-        {terms.length ? "No matches" : emptyMessage ?? "No options available"}
-      </div>
-    )}
-  </div>;
+      {!visibleItems.length && (
+        <div className="menu-empty">
+          {terms.length ? "No matches" : (emptyMessage ?? "No options available")}
+        </div>
+      )}
+    </div>
+  );
 
   const menuWrap = (
     <div
@@ -326,10 +391,21 @@ export function Menu({
       ref={wrap}
       onBlur={(event) => {
         if (touch && !event.relatedTarget) return;
-        if (!event.currentTarget.contains(event.relatedTarget) && !inConfirmation(event.relatedTarget)) setOpen(false);
+        if (
+          !event.currentTarget.contains(event.relatedTarget) &&
+          !inConfirmation(event.relatedTarget)
+        )
+          setOpen(false);
       }}
     >
-      {trigger?.({ open, toggle: () => { if (!open) setQuery(""); setOpen((value) => !value); }, id })}
+      {trigger?.({
+        open,
+        toggle: () => {
+          if (!open) setQuery("");
+          setOpen((value) => !value);
+        },
+        id,
+      })}
       <AnimatePresence onExitComplete={onClose}>
         {open && (
           <motion.div
@@ -343,9 +419,16 @@ export function Menu({
             aria-labelledby={anchor ? undefined : id}
             aria-label={anchor ? header : undefined}
             initial={hidden}
-            animate={slidesFromEdge ? { x: "0%", clipPath: edgeClip("0%") } : { opacity: 1, scale: 1, y: 0 }}
+            animate={
+              slidesFromEdge
+                ? { x: "0%", clipPath: edgeClip("0%") }
+                : { opacity: 1, scale: 1, y: 0 }
+            }
             exit={{ ...hidden, pointerEvents: "none" }}
-            transition={{ duration: reducedMotion ? 0 : slidesFromEdge ? EDGE_SLIDE_SECONDS : 0.16, ease: [0.16, 1, 0.3, 1] }}
+            transition={{
+              duration: reducedMotion ? 0 : slidesFromEdge ? EDGE_SLIDE_SECONDS : 0.16,
+              ease: [0.16, 1, 0.3, 1],
+            }}
             onKeyDown={(event) => {
               if (event.target instanceof HTMLSelectElement) return;
               const option = (event.target as HTMLElement).closest(".menu-option");
@@ -356,16 +439,17 @@ export function Menu({
                 return;
               }
               if (option && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
-                const target = option.querySelector<HTMLButtonElement>(event.key === "ArrowRight" ? ".menu-item-action" : ".menu-item");
-                if (target) { event.preventDefault(); target.focus(); }
+                const target = option.querySelector<HTMLButtonElement>(
+                  event.key === "ArrowRight" ? ".menu-item-action" : ".menu-item",
+                );
+                if (target) {
+                  event.preventDefault();
+                  target.focus();
+                }
                 return;
               }
-              if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))
-                return;
-              if (
-                event.target instanceof HTMLInputElement &&
-                ["Home", "End"].includes(event.key)
-              )
+              if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+              if (event.target instanceof HTMLInputElement && ["Home", "End"].includes(event.key))
                 return;
               const buttons = Array.from(
                 menu.current?.querySelectorAll<HTMLButtonElement>(
@@ -375,7 +459,8 @@ export function Menu({
               if (!buttons.length) return;
               event.preventDefault();
               const current = buttons.indexOf(
-                (option?.querySelector(".menu-item") ?? document.activeElement) as HTMLButtonElement,
+                (option?.querySelector(".menu-item") ??
+                  document.activeElement) as HTMLButtonElement,
               );
               const next =
                 event.key === "Home"
@@ -404,7 +489,14 @@ export function Menu({
                 />
               </div>
             )}
-            {aside ? <div className="menu-columns">{aside}{list}</div> : (items.length > 0 || !controls) && list}
+            {aside ? (
+              <div className="menu-columns">
+                {aside}
+                {list}
+              </div>
+            ) : (
+              (items.length > 0 || !controls) && list
+            )}
             {footer}
           </motion.div>
         )}

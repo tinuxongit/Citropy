@@ -17,10 +17,15 @@ const { listSkills, changeSkill, citropySkills } = await import("../server/skill
 const { readCitropySkill, saveCitropySkill } = await import("../server/citropy-skills.ts");
 const { mcpInstructions } = await import("../server/mcp/mcp-instructions.ts");
 
-const citropyEntries = async () => (await listSkills()).filter((skill) => skill.scope === "citropy");
+const citropyEntries = async () =>
+  (await listSkills()).filter((skill) => skill.scope === "citropy");
 
 test("Citropy skills are saved once and offered to every provider", async () => {
-  const draft = { name: "release-notes", description: 'Use when asked for "release notes": one line each', instructions: "# Steps\n\nList user-facing changes." };
+  const draft = {
+    name: "release-notes",
+    description: 'Use when asked for "release notes": one line each',
+    instructions: "# Steps\n\nList user-facing changes.",
+  };
   await saveCitropySkill(undefined, draft);
   const entries = await citropyEntries();
   assert.deepEqual(entries.map((skill) => skill.provider).sort(), [...PROVIDER_IDS].sort());
@@ -29,20 +34,35 @@ test("Citropy skills are saved once and offered to every provider", async () => 
   assert.deepEqual(await readCitropySkill(entries[0].id), draft);
 
   await assert.rejects(saveCitropySkill(undefined, draft), /already exists/);
-  await assert.rejects(saveCitropySkill(undefined, { ...draft, name: "Release Notes" }), /lowercase letters/);
-  await assert.rejects(saveCitropySkill(undefined, { ...draft, name: "other", description: "two\nlines" }), /one line/);
+  await assert.rejects(
+    saveCitropySkill(undefined, { ...draft, name: "Release Notes" }),
+    /lowercase letters/,
+  );
+  await assert.rejects(
+    saveCitropySkill(undefined, { ...draft, name: "other", description: "two\nlines" }),
+    /one line/,
+  );
 
   await saveCitropySkill(entries[0].id, { ...draft, name: "changelog" });
   const renamed = await citropyEntries();
   assert.deepEqual([...new Set(renamed.map((skill) => skill.name))], ["changelog"]);
 
   const instructions = mcpInstructions(undefined, await citropySkills("codex"));
-  assert.match(instructions, /Citropy skills.*\n- changelog: Use when asked for "release notes": one line each \(.+SKILL\.md\)/s);
+  assert.match(
+    instructions,
+    /Citropy skills.*\n- changelog: Use when asked for "release notes": one line each \(.+SKILL\.md\)/s,
+  );
   assert.doesNotMatch(mcpInstructions(undefined, []), /Citropy skills/);
 
   await changeSkill(undefined, renamed[0].id, "disable");
-  assert.deepEqual((await citropySkills("claude")).map((skill) => skill.enabled), [false]);
+  assert.deepEqual(
+    (await citropySkills("claude")).map((skill) => skill.enabled),
+    [false],
+  );
   await saveCitropySkill(renamed[0].id, { ...draft, name: "changelog", instructions: "Edited." });
   assert.equal((await readCitropySkill(renamed[0].id)).instructions, "Edited.");
-  assert.deepEqual((await citropySkills("claude")).map((skill) => skill.enabled), [false]);
+  assert.deepEqual(
+    (await citropySkills("claude")).map((skill) => skill.enabled),
+    [false],
+  );
 });
