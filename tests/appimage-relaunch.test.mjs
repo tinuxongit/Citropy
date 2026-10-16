@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
-import { spawnAppImageRelaunch } from "../desktop/appimage-relaunch.mjs";
+import { spawnAppImageRelaunch } from "../desktop/appimage-relaunch.ts";
 
 const until = async (probe, message) => {
   const deadline = Date.now() + 8000;

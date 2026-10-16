@@ -1,4 +1,6 @@
-import { createServer, request } from "node:http";
+import { createServer, request, type ClientRequest, type IncomingMessage, type ServerResponse } from "node:http";
+import type { AddressInfo, Socket } from "node:net";
+import type { Duplex } from "node:stream";
 import { logFailure } from "../shared/expected-errors.mjs";
 import { REMOTE_TOKEN_HEADER } from "../shared/remote-connection.mjs";
 import { pipeline } from "node:stream";
@@ -8,27 +10,35 @@ import { pipeline } from "node:stream";
  * The returned controller switches environment targets and closes active connections;
  * allowedOrigin may be a string or a function returning the current origin.
  */
-export async function remoteProxy(allowedOrigin) {
-  let target;
-  const sockets = new Set();
-  const streams = new Set();
-  const requests = new Set();
+export interface ProxyTarget {
+  port: number;
+  remotePort: number;
+  token: string;
+}
+
+export type RemoteProxy = Awaited<ReturnType<typeof remoteProxy>>;
+
+export async function remoteProxy(allowedOrigin: string | (() => string)) {
+  let target: ProxyTarget | undefined;
+  const sockets = new Set<Socket>();
+  const streams = new Set<Duplex>();
+  const requests = new Set<{ upstream: ClientRequest; res: ServerResponse; req: IncomingMessage; cors: Record<string, string> }>();
   const origin = () => typeof allowedOrigin === "function" ? allowedOrigin() : allowedOrigin;
-  const trusted = req => {
-    const host = `127.0.0.1:${server.address().port}`;
+  const trusted = (req: IncomingMessage) => {
+    const host = `127.0.0.1:${(server.address() as AddressInfo).port}`;
     if (req.headers.host !== host) return false;
     if (req.headers.origin) return req.headers.origin === origin();
     if (req.headers["sec-fetch-site"] !== "cross-site") return true;
     try { return new URL(req.headers.referer || "").origin === origin(); } catch { return false; }
   };
-  const headersFor = req => ({ ...req.headers, host: `127.0.0.1:${target.remotePort}`, origin: `http://127.0.0.1:${target.remotePort}`, [REMOTE_TOKEN_HEADER]: target.token });
+  const headersFor = (req: IncomingMessage, { remotePort, token }: ProxyTarget) => ({ ...req.headers, host: `127.0.0.1:${remotePort}`, origin: `http://127.0.0.1:${remotePort}`, [REMOTE_TOKEN_HEADER]: token });
   const server = createServer((req, res) => {
     if (!trusted(req)) { res.writeHead(403).end(); return; }
     const cors = { "access-control-allow-origin": origin(), vary: "Origin" };
     if (!req.url?.startsWith("/api/") || req.url.startsWith("/api/remote/shutdown") || req.url.startsWith("/api/desktop") || req.url.startsWith("/api/updates/")) { res.writeHead(404, cors).end(); return; }
     if (req.method === "OPTIONS") { res.writeHead(204, { ...cors, "access-control-allow-methods": "GET, POST, PATCH, PUT, DELETE", "access-control-allow-headers": "Content-Type" }).end(); return; }
     if (!target) { res.writeHead(503, { ...cors, "content-type": "application/json" }).end(JSON.stringify({ error: "The environment connection is disconnected. Reconnect or switch to Local." })); return; }
-    const headers = headersFor(req);
+    const headers = headersFor(req, target);
     delete headers.cookie;
     const upstream = request({ hostname: "127.0.0.1", port: target.port, method: req.method, path: req.url, headers }, response => {
       if (res.writableEnded || res.destroyed) { response.destroy(); return; }
@@ -58,7 +68,7 @@ export async function remoteProxy(allowedOrigin) {
     if (!trusted(req) || req.url?.split("?")[0] !== "/socket" || !target) { client.destroy(); return; }
     streams.add(client);
     client.on("close", () => streams.delete(client));
-    const headers = headersFor(req);
+    const headers = headersFor(req, target);
     delete headers.cookie;
     const upstream = request({ hostname: "127.0.0.1", port: target.port, path: req.url, headers });
     upstream.on("upgrade", (response, socket, buffered) => {
@@ -79,10 +89,10 @@ export async function remoteProxy(allowedOrigin) {
     client.on("close", () => upstream.destroy());
     upstream.end();
   });
-  await new Promise((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
+  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
   return {
-    endpoint: `http://127.0.0.1:${server.address().port}`,
-    setTarget(value) {
+    endpoint: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+    setTarget(value: ProxyTarget | undefined) {
       target = value;
       for (const client of streams) client.destroy();
       for (const { upstream, res, req, cors } of requests) {
@@ -95,6 +105,6 @@ export async function remoteProxy(allowedOrigin) {
       }
       requests.clear();
     },
-    close() { target = undefined; for (const socket of sockets) socket.destroy(); return new Promise(resolve => server.close(resolve)); },
+    close() { target = undefined; for (const socket of sockets) socket.destroy(); return new Promise<void>(resolve => server.close(() => resolve())); },
   };
 }

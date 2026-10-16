@@ -4,7 +4,7 @@ import {
   createSecondInstanceFocus,
   prepareInitialWindowReveal,
   revealDesktopWindow,
-} from "../desktop/window-reveal.mjs";
+} from "../desktop/window-reveal.ts";
 
 function fakeWindow(flags = {}) {
   const calls = [];

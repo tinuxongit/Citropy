@@ -1,4 +1,6 @@
-export function revealDesktopWindow(window, { maximized = false } = {}) {
+import type { BrowserWindow } from "electron";
+
+export function revealDesktopWindow(window: BrowserWindow | null | undefined, { maximized = false } = {}) {
   if (!window || window.isDestroyed()) return;
   if (window.isMinimized()) window.restore();
   window.show();
@@ -7,8 +9,8 @@ export function revealDesktopWindow(window, { maximized = false } = {}) {
 }
 
 export function prepareInitialWindowReveal(
-  window,
-  { maximized = false, platform = process.platform } = {},
+  window: BrowserWindow,
+  { maximized = false, platform = process.platform as string } = {},
 ) {
   let initial = true;
   const reveal = () => {
@@ -22,7 +24,7 @@ export function prepareInitialWindowReveal(
   return reveal;
 }
 
-export function createSecondInstanceFocus(getFocus) {
+export function createSecondInstanceFocus(getFocus: () => (() => void) | null | undefined) {
   let pending = false;
   const focus = () => {
     const reveal = getFocus();

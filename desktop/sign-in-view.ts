@@ -1,30 +1,36 @@
-import { WebContentsView, session } from "electron";
-import { keepSessionCookies } from "./session-cookies.mjs";
+import { WebContentsView, session, type BrowserWindow, type Rectangle } from "electron";
+import { keepSessionCookies } from "./session-cookies.ts";
 
 const BACKGROUND = "#151515";
 const NAVIGATION_ABORTED = -3;
 
-function isWebAddress(url) {
+interface SignIn {
+  view: WebContentsView;
+  error: string | undefined;
+  finish: (signedIn: boolean) => void;
+}
+
+function isWebAddress(url: string) {
   return ["http:", "https:"].includes(new URL(url).protocol);
 }
 
-export function createSignInView(window) {
-  let current;
-  let bounds;
+export function createSignInView(window: BrowserWindow) {
+  let current: SignIn | undefined;
+  let bounds: Rectangle | undefined;
 
-  const publish = () => {
-    const content = current.view.webContents;
+  const publish = (entry: SignIn) => {
+    const content = entry.view.webContents;
     window.webContents.send("connections:sign-in-state", {
       url: content.getURL(),
       loading: content.isLoading(),
       canGoBack: content.navigationHistory.canGoBack(),
-      error: current.error,
+      error: entry.error,
     });
   };
 
   const show = () => {
     if (!current || !bounds) return current?.view.setVisible(false);
-    const [width, height] = window.getContentSize();
+    const [width = 0, height = 0] = window.getContentSize();
     const x = Math.max(0, Math.min(width, Math.round(bounds.x)));
     const y = Math.max(0, Math.min(height, Math.round(bounds.y)));
     current.view.setBounds({
@@ -38,13 +44,13 @@ export function createSignInView(window) {
     if (hidden) current.view.webContents.focus();
   };
 
-  const finish = (signedIn) => current?.finish(signedIn);
+  const finish = (signedIn: boolean) => current?.finish(signedIn);
 
   window.webContents.on("did-navigate", () => finish(false));
   window.webContents.on("render-process-gone", () => finish(false));
 
   return {
-    async open({ partition, url }) {
+    async open({ partition, url }: { partition: string; url: string }) {
       finish(false);
       const signInSession = session.fromPartition(partition);
       keepSessionCookies(signInSession);
@@ -63,18 +69,18 @@ export function createSignInView(window) {
       view.setVisible(false);
       window.contentView.addChildView(view);
       const content = view.webContents;
-      const entry = { view, error: undefined };
-      const finished = new Promise((resolve) => (entry.finish = resolve));
+      const entry: SignIn = { view, error: undefined, finish: () => {} };
+      const finished = new Promise<boolean>((resolve) => (entry.finish = resolve));
       current = entry;
-      for (const event of ["did-start-loading", "did-stop-loading", "did-navigate", "did-navigate-in-page"])
-        content.on(event, () => {
+      for (const event of ["did-start-loading", "did-stop-loading", "did-navigate", "did-navigate-in-page"] as const)
+        content.on(event as "did-start-loading", () => {
           if (event === "did-start-loading") entry.error = undefined;
-          if (current === entry) publish();
+          if (current === entry) publish(entry);
         });
       content.on("did-fail-load", (_, code, description, __, mainFrame) => {
         if (!mainFrame || code === NAVIGATION_ABORTED) return;
         entry.error = description;
-        if (current === entry) publish();
+        if (current === entry) publish(entry);
       });
       content.on("will-navigate", (event, address) => {
         if (!isWebAddress(address)) event.preventDefault();
@@ -91,11 +97,11 @@ export function createSignInView(window) {
       content.close();
       return signedIn;
     },
-    place(next) {
+    place(next: Rectangle | null | undefined) {
       bounds = next ?? undefined;
       show();
     },
-    command(command) {
+    command(command: string) {
       if (!current) return;
       const content = current.view.webContents;
       if (command === "back") content.navigationHistory.goBack();

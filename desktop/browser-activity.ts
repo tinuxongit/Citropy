@@ -1,14 +1,14 @@
 import { logFailure } from "../shared/expected-errors.mjs";
 
-export function browserActivity(render, activate) {
+export function browserActivity(render: (rendering: boolean) => void, activate: (focused: boolean) => unknown) {
   let presented = false;
   let rendering = false;
   let operations = 0;
-  let idle;
+  let idle: NodeJS.Timeout | undefined;
   let disposed = false;
   let focused = false;
-  let activation = Promise.resolve();
-  const focus = value => {
+  let activation: Promise<unknown> = Promise.resolve();
+  const focus = (value: boolean) => {
     if (value === focused) return activation;
     focused = value;
     activation = activation.catch(() => {}).then(() => {
@@ -29,7 +29,7 @@ export function browserActivity(render, activate) {
     get rendering() {
       return rendering;
     },
-    present(value) {
+    present(value: boolean) {
       presented = value;
       update();
     },
@@ -37,7 +37,7 @@ export function browserActivity(render, activate) {
       focused = false;
       update();
     },
-    async run(operation) {
+    async run<T>(operation: () => Promise<T>): Promise<T> {
       if (disposed) throw new Error("This browser tab is closed");
       clearTimeout(idle);
       idle = undefined;

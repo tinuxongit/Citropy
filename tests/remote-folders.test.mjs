@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { chooseNativeFolder, listRemoteFolder } from "../desktop/folder-picker.mjs";
+import { chooseNativeFolder, listRemoteFolder } from "../desktop/folder-picker.ts";
 
 function hasKdialog() {
   try { execFileSync("sh", ["-c", "command -v kdialog"], { stdio: "ignore" }); return true; } catch { return false; }

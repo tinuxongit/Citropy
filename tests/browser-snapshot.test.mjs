@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatTree } from "../desktop/browser-snapshot.mjs";
+import { formatTree } from "../desktop/browser-snapshot.ts";
 
 const node = (nodeId, role, name, childIds = [], extra = {}) => ({ nodeId, role: { value: role }, name: { value: name }, childIds, ...extra });
 

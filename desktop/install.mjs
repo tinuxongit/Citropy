@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync, chmodSync, existsSync, readFileSync, unlinkSy
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { dataDirectory, refreshMenuIcon } from "./menu-icon.mjs";
+import { dataDirectory, refreshMenuIcon } from "./menu-icon.ts";
 
 if (process.platform !== "linux")
   throw new Error(

@@ -1,20 +1,51 @@
 import { nodeVersion, nodeChecksums, downloadNodeArchive } from "../shared/node-runtime.mjs";
-import { logFailure } from "../shared/expected-errors.mjs";
+import { hasCode, logFailure } from "../shared/expected-errors.mjs";
 import { freePort } from "../shared/ports.mjs";
 import { readRemoteHealth } from "../shared/remote-connection.mjs";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, writeFile, rename, readdir, cp, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { validateContainer, startContainer, stopContainer } from "./containers.mjs";
-import { remoteProxy } from "./remote-proxy.mjs";
+import { validateContainer, startContainer, stopContainer } from "./containers.ts";
+import { remoteProxy, type RemoteProxy } from "./remote-proxy.ts";
 
-export const shellQuote = value => `'${String(value).replaceAll("'", "'\\''")}'`;
+export interface ConnectionFields {
+  kind?: "container";
+  name: string;
+  target: string;
+  port: number;
+  node: string;
+}
+
+export interface SshConnection extends ConnectionFields {
+  id: string;
+}
+
+interface Session {
+  status?: "connecting" | "connected" | "disconnected" | "error";
+  message?: string;
+  child?: ChildProcess;
+  proxy?: RemoteProxy;
+}
+
+export interface ConnectionInput {
+  id?: unknown;
+  kind?: unknown;
+  name?: unknown;
+  target?: unknown;
+  port?: unknown;
+  node?: unknown;
+}
+
+type ProjectDefaults = (settings: unknown, signal?: AbortSignal) => Promise<unknown>;
+type RemoteShell = (script: string, input?: Buffer, timeout?: number) => Promise<string>;
+
+export const shellQuote = (value: unknown) => `'${String(value).replaceAll("'", "'\\''")}'`;
 
 const checkNode = 'const [major,minor]=process.versions.node.split(".").map(Number);if(major<22||(major===22&&minor<18))process.exit(1);const {spawnSync}=require("node:child_process");const {dirname}=require("node:path");if(spawnSync("npm",["--version"],{env:{...process.env,PATH:dirname(process.execPath)+":"+process.env.PATH},stdio:"ignore",timeout:10000}).status!==0)process.exit(1);process.stdout.write("CITROPY_NODE "+JSON.stringify(process.execPath)+"\\n")';
 
-function nodePath(output) {
+function nodePath(output: string) {
   const line = output.split(/\r?\n/).find(line => line.startsWith("CITROPY_NODE "));
   if (!line) return;
   const path = JSON.parse(line.slice(13));
@@ -22,7 +53,7 @@ function nodePath(output) {
   return path;
 }
 
-function validateConnection(input) {
+function validateConnection(input: ConnectionInput | undefined): ConnectionFields {
   if (input?.kind === "container") return validateContainer(input);
   const name = String(input?.name || "").trim();
   const target = String(input?.target || "").trim();
@@ -35,17 +66,35 @@ function validateConnection(input) {
   return { name, target, port, node };
 }
 
-export function sshArguments(connection) {
+export function sshArguments(connection: { port?: number }) {
   return ["-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "ForwardAgent=no", "-o", "PermitLocalCommand=no", "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ForkAfterAuthentication=no", "-o", "ConnectTimeout=12", "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3", ...(connection.port ? ["-p", String(connection.port)] : [])];
 }
 
 export async function sshHosts(path = join(homedir(), ".ssh", "config")) {
-  const text = await readFile(path, "utf8").catch(error => { if (error.code === "ENOENT") return ""; throw error; });
+  const text = await readFile(path, "utf8").catch((error: unknown) => { if (hasCode(error, "ENOENT")) return ""; throw error; });
   return [...new Set(text.split(/\r?\n/).flatMap(line => /^\s*Host\s+/i.test(line) ? line.trim().split(/\s+/).slice(1).filter(host => /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(host)) : []))].sort();
 }
 
 export class SshEnvironments {
-  constructor({ directory, appRoot, origin, projectDefaults, changed = () => {} }) {
+  directory: string;
+  appRoot: string;
+  origin: string;
+  changed: (state: ReturnType<SshEnvironments["state"]>) => void;
+  projectDefaults: ProjectDefaults | undefined;
+  defaultsSync: Promise<unknown>;
+  connections: SshConnection[];
+  sessions: Map<string, Session>;
+  activeId: string;
+  pending: { id: string; controller: AbortController; done: Promise<void> } | null;
+  disposed: boolean;
+
+  constructor({ directory, appRoot, origin, projectDefaults, changed = () => {} }: {
+    directory: string;
+    appRoot: string;
+    origin: string;
+    projectDefaults?: ProjectDefaults;
+    changed?: (state: ReturnType<SshEnvironments["state"]>) => void;
+  }) {
     this.directory = directory;
     this.appRoot = appRoot;
     this.origin = origin;
@@ -60,10 +109,10 @@ export class SshEnvironments {
   }
 
   async load() {
-    const saved = await readFile(join(this.directory, "ssh.json"), "utf8").then(JSON.parse).catch(error => { if (error.code === "ENOENT") return []; throw error; });
+    const saved = await readFile(join(this.directory, "ssh.json"), "utf8").then(JSON.parse).catch((error: unknown) => { if (hasCode(error, "ENOENT")) return []; throw error; });
     if (!Array.isArray(saved)) throw new Error("The saved SSH connections could not be read.");
-    this.connections = saved.map(entry => {
-      if (!/^[a-f0-9-]{36}$/.test(entry.id || "")) throw new Error("Invalid saved SSH connection.");
+    this.connections = saved.map((entry: ConnectionInput) => {
+      if (typeof entry?.id !== "string" || !/^[a-f0-9-]{36}$/.test(entry.id)) throw new Error("Invalid saved SSH connection.");
       return { id: entry.id, ...validateConnection(entry) };
     });
   }
@@ -77,7 +126,7 @@ export class SshEnvironments {
 
   publish() { this.changed(this.state()); }
 
-  async save(input) {
+  async save(input: ConnectionInput | undefined) {
     if (this.pending) throw new Error("Wait for the current connection or cancel it first.");
     const previous = input?.id ? this.connections.find(entry => entry.id === input.id) : undefined;
     if (input?.id && !previous) throw new Error("This SSH connection was removed.");
@@ -95,7 +144,7 @@ export class SshEnvironments {
     return connection;
   }
 
-  async persist(connections) {
+  async persist(connections: SshConnection[]) {
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
     const path = join(this.directory, "ssh.json");
     await writeFile(`${path}.tmp`, JSON.stringify(connections), { mode: 0o600 });
@@ -103,7 +152,7 @@ export class SshEnvironments {
     this.connections = connections;
   }
 
-  async remove(id) {
+  async remove(id: string) {
     if (id === this.activeId) throw new Error("Switch to Local before removing this connection.");
     const connection = this.connections.find(entry => entry.id === id);
     if (connection?.kind === "container") await this.stop(id);
@@ -114,16 +163,16 @@ export class SshEnvironments {
     this.publish();
   }
 
-  async stopChild(child) {
+  async stopChild(child: ChildProcess | undefined) {
     if (!child?.pid || child.exitCode !== null || child.signalCode !== null) return;
-    await new Promise(resolve => {
+    await new Promise<void>(resolve => {
       const timer = setTimeout(() => child.kill("SIGKILL"), 1500);
       child.once("exit", () => { clearTimeout(timer); resolve(); });
       child.kill("SIGTERM");
     });
   }
 
-  async disconnect(id) {
+  async disconnect(id: string) {
     if (this.pending?.id === id) {
       this.pending.controller.abort();
       await this.pending.done;
@@ -139,7 +188,7 @@ export class SshEnvironments {
     this.publish();
   }
 
-  async stop(id) {
+  async stop(id: string) {
     const connection = this.connections.find(entry => entry.id === id);
     if (connection?.kind !== "container") throw new Error("Choose a container environment.");
     await this.disconnect(id);
@@ -153,15 +202,15 @@ export class SshEnvironments {
     return this.state();
   }
 
-  syncProjectDefaults(settings, connecting, signal) {
+  syncProjectDefaults(settings: unknown, connecting?: Session, signal?: AbortSignal) {
     const sync = this.defaultsSync.then(async () => {
       if (!this.projectDefaults) return;
       signal?.throwIfAborted();
       const defaults = await this.projectDefaults(settings, signal);
       signal?.throwIfAborted();
-      const failures = [];
+      const failures: string[] = [];
       await Promise.all([...this.sessions].map(async ([id, session]) => {
-        if (connecting ? session !== connecting : session.status !== "connected") return;
+        if ((connecting ? session !== connecting : session.status !== "connected") || !session.proxy) return;
         try {
           const response = await fetch(`${session.proxy.endpoint}/api/projects/defaults`, {
             method: "PATCH",
@@ -169,7 +218,7 @@ export class SshEnvironments {
             body: JSON.stringify({ settings: defaults }),
             signal: AbortSignal.any([AbortSignal.timeout(10000), ...(signal ? [signal] : [])]),
           });
-          if (!response.ok) throw new Error((await response.json()).error || `Request failed (${response.status}).`);
+          if (!response.ok) throw new Error(((await response.json()) as { error?: string }).error || `Request failed (${response.status}).`);
           await response.arrayBuffer();
         } catch (error) {
           if (signal?.aborted) throw error;
@@ -177,8 +226,8 @@ export class SshEnvironments {
           session.child = undefined;
           session.proxy?.setTarget(undefined);
           session.status = "error";
-          session.message = `Reconnect to apply global project defaults. ${error.message}`;
-          failures.push(`${this.connections.find(entry => entry.id === id)?.name || id}: ${error.message}`);
+          session.message = `Reconnect to apply global project defaults. ${(error as Error).message}`;
+          failures.push(`${this.connections.find(entry => entry.id === id)?.name || id}: ${(error as Error).message}`);
           await this.stopChild(child);
         }
       }));
@@ -192,7 +241,7 @@ export class SshEnvironments {
     return sync;
   }
 
-  async command(command, args, { signal, input, timeout = 120000 } = {}) {
+  async command(command: string, args: string[], { signal, input, timeout = 120000 }: { signal?: AbortSignal; input?: Buffer; timeout?: number } = {}) {
     signal?.throwIfAborted();
     const child = spawn(command, args, { stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
@@ -206,7 +255,7 @@ export class SshEnvironments {
     child.stdin.on("error", logFailure("Writing to", command));
     child.stdin.end(input);
     try {
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         child.once("error", reject);
         child.once("close", code => code === 0 && !aborted ? resolve() : reject(new Error(aborted ? "SSH connection cancelled or timed out." : stderr.trim() || `${command} exited with code ${code}.`)));
       });
@@ -218,19 +267,19 @@ export class SshEnvironments {
     }
   }
 
-  async bundle(signal) {
+  async bundle(signal?: AbortSignal) {
     const directory = await mkdtemp(join(tmpdir(), "citropy-ssh-"));
     try {
       const payload = join(directory, "payload");
       await mkdir(payload);
       for (const name of ["server", "shared", "package.json", "desktop/ssh-bootstrap.mjs", "desktop/remote-builds.mjs"])
         await cp(join(this.appRoot, name), join(payload, name), { recursive: true });
-      await cp(join(this.appRoot, "package-lock.json"), join(payload, "package-lock.json")).catch(async error => {
-        if (error.code !== "ENOENT") throw error;
+      await cp(join(this.appRoot, "package-lock.json"), join(payload, "package-lock.json")).catch(async (error: unknown) => {
+        if (!hasCode(error, "ENOENT")) throw error;
         await cp(join(this.appRoot, "desktop/remote-package-lock.json"), join(payload, "package-lock.json"));
       });
       const hash = createHash("sha256");
-      const walk = async relative => {
+      const walk = async (relative: string) => {
         for (const entry of (await readdir(join(payload, relative), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
           const path = join(relative, entry.name);
           if (entry.isDirectory()) await walk(path);
@@ -245,12 +294,12 @@ export class SshEnvironments {
     } finally { await rm(directory, { recursive: true, force: true }); }
   }
 
-  async runtimeArchive(platform, signal) {
+  async runtimeArchive(platform: string, signal: AbortSignal) {
     if (!Object.hasOwn(nodeChecksums, platform)) throw new Error("Automatic Node setup supports Linux and macOS on x64 or ARM64. Install Node 22.18+ and npm, then set its absolute path in SSH options.");
     return downloadNodeArchive(platform, signal);
   }
 
-  async prepareRuntime(connection, ssh, signal, progress) {
+  async prepareRuntime(connection: SshConnection, ssh: RemoteShell, signal: AbortSignal, progress: (message: string) => void) {
     const output = await ssh(`set -eu
 command -v tar >/dev/null || { echo 'Install tar on the SSH host, then reconnect.' >&2; exit 1; }
 printf 'CITROPY_PLATFORM %s %s\\n' "$(uname -s)" "$(uname -m)"
@@ -260,7 +309,7 @@ ${shellQuote(connection.node)} -e ${shellQuote(checkNode)} 2>/dev/null || true`,
     if (connection.node !== "node") throw new Error("The configured Node path needs Node 22.18+ and npm. Set Remote Node path to node to let Citropy set them up automatically.");
     const platformLine = output.split(/\r?\n/).find(line => line.startsWith("CITROPY_PLATFORM "));
     const [, os, arch] = platformLine?.split(" ") || [];
-    const platform = `${{ Linux: "linux", Darwin: "darwin" }[os]}-${{ x86_64: "x64", amd64: "x64", aarch64: "arm64", arm64: "arm64" }[arch]}`;
+    const platform = `${({ Linux: "linux", Darwin: "darwin" } as Record<string, string>)[os ?? ""]}-${({ x86_64: "x64", amd64: "x64", aarch64: "arm64", arm64: "arm64" } as Record<string, string>)[arch ?? ""]}`;
     if (!Object.hasOwn(nodeChecksums, platform)) throw new Error("Automatic Node setup supports Linux and macOS on x64 or ARM64. Install Node 22.18+ and npm, then set its absolute path in SSH options.");
     const packageName = `node-v${nodeVersion}-${platform}`;
     const runtime = `"$HOME"/.citropy/runtimes/${packageName}`;
@@ -285,13 +334,13 @@ ${runtime}/bin/node -e ${shellQuote(checkNode)}`, archive, 180000);
     return path;
   }
 
-  async connect(id) {
+  async connect(id: string) {
     if (id === "local") return this.local();
     if (this.disposed) throw new Error("Citropy is closing.");
     if (this.pending) throw new Error("Another SSH connection is in progress.");
     const connection = this.connections.find(entry => entry.id === id);
     if (!connection) throw new Error("This SSH connection was removed.");
-    const session = this.sessions.get(id) || {};
+    const session: Session = this.sessions.get(id) || {};
     if (session.status === "connected") {
       await this.syncProjectDefaults(undefined, session);
       this.activeId = id;
@@ -299,12 +348,12 @@ ${runtime}/bin/node -e ${shellQuote(checkNode)}`, archive, 180000);
       return this.state();
     }
     const controller = new AbortController();
-    let completed;
-    this.pending = { id, controller, done: new Promise(resolve => { completed = resolve; }) };
+    let completed = () => {};
+    this.pending = { id, controller, done: new Promise<void>(resolve => { completed = resolve; }) };
     this.sessions.set(id, session);
-    const progress = message => { session.status = "connecting"; session.message = message; this.publish(); };
+    const progress = (message: string) => { session.status = "connecting"; session.message = message; this.publish(); };
     const signal = controller.signal;
-    const ssh = (script, input, timeout) => this.command("ssh", [...sshArguments(connection), connection.target, `sh -c ${shellQuote(script)}`], { signal, input, timeout });
+    const ssh: RemoteShell = (script, input, timeout) => this.command("ssh", [...sshArguments(connection), connection.target, `sh -c ${shellQuote(script)}`], { signal, input, timeout });
     try {
       if (connection.kind === "container") {
         const target = await startContainer(this, connection, signal, progress);
@@ -375,7 +424,7 @@ ${runtime}/bin/node -e ${shellQuote(checkNode)}`, archive, 180000);
       await this.stopChild(child);
       session.proxy?.setTarget(undefined);
       session.status = signal.aborted ? "disconnected" : "error";
-      session.message = signal.aborted ? undefined : error.message;
+      session.message = signal.aborted ? undefined : (error as Error).message;
       this.publish();
       throw error;
     } finally {

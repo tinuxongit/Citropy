@@ -213,7 +213,7 @@ export function clearFakes(): void {
 export async function fakeWhatsNew(): Promise<void> {
   const [{ default: changelog }, { parseReleaseNotes }] = await Promise.all([
     import("../../../CHANGELOG.md?raw"),
-    import("../../../desktop/release-notes.mjs"),
+    import("../../../desktop/release-notes.ts"),
   ]);
   const [, version, body] = /^## (\S+)\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(changelog) ?? [];
   if (!version) throw new Error("CHANGELOG.md has no release section to show.");

@@ -1,1 +1,1 @@
-await import("./main.mjs");
+await import("./main.ts");

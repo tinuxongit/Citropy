@@ -1,15 +1,16 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { Cookie, CookiesSetDetails, Session } from "electron";
 import { ifMissing, logFailure } from "../shared/expected-errors.mjs";
 
 const BROWSER_LONGEST_COOKIE_DAYS = 400;
 const DAY_SECONDS = 86_400;
 const KEPT_LIST_FILE = "kept-session-cookies.json";
 
-const renewals = new WeakMap();
+const renewals = new WeakMap<Session, Promise<void>>();
 
-export function persistentCopy(cookie, nowSeconds) {
-  const host = cookie.domain.replace(/^\./, "");
+export function persistentCopy(cookie: Cookie, nowSeconds: number): CookiesSetDetails {
+  const host = (cookie.domain ?? "").replace(/^\./, "");
   return {
     url: `${cookie.secure ? "https" : "http"}://${host}${cookie.path}`,
     name: cookie.name,
@@ -23,14 +24,15 @@ export function persistentCopy(cookie, nowSeconds) {
   };
 }
 
-const keyOf = (cookie) => JSON.stringify([cookie.domain, cookie.path, cookie.name]);
+const keyOf = (cookie: Cookie) => JSON.stringify([cookie.domain, cookie.path, cookie.name]);
 
-export function keepSessionCookies(target) {
+export function keepSessionCookies(target: Session) {
   if (renewals.has(target)) return renewals.get(target);
+  if (!target.storagePath) throw new Error("Only a saved browser profile can keep sign-in cookies.");
   const file = join(target.storagePath, KEPT_LIST_FILE);
-  const keys = new Set();
+  const keys = new Set<string>();
   let saving = Promise.resolve();
-  const extend = (cookie) =>
+  const extend = (cookie: Cookie) =>
     target.cookies.set(persistentCopy(cookie, Date.now() / 1000)).catch(logFailure("Keeping a sign-in cookie", cookie.domain, cookie.name));
   const renewed = readFile(file, "utf8")
     .catch(ifMissing("[]"))

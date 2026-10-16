@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { mkdtemp, mkdir, rm, writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { chooseNativeFolder, remoteFolderLocation, remoteFolderPath } from "../desktop/folder-picker.mjs";
+import { chooseNativeFolder, remoteFolderLocation, remoteFolderPath } from "../desktop/folder-picker.ts";
 
 test("native SSH folder selections preserve names and reject folders from other hosts", () => {
   const location = { url: "sftp://dev@buildbox:2222/home/dev/", hostname: "buildbox.local" };

@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { keepSessionCookies, persistentCopy } from "../desktop/session-cookies.mjs";
+import { keepSessionCookies, persistentCopy } from "../desktop/session-cookies.ts";
 
 const LONGEST_SECONDS = 400 * 86_400;
 const cookie = { name: "sid", value: "abc", domain: ".example.com", hostOnly: false, path: "/", secure: true, httpOnly: true, sameSite: "lax", session: true };

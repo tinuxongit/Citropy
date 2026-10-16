@@ -1,9 +1,10 @@
 import { logFailure } from "../shared/expected-errors.mjs";
 import { defaultPort, portAvailable } from "../shared/ports.mjs";
 import { Worker } from "node:worker_threads";
+import type { DiagnosticDetails } from "./diagnostics.ts";
 
-function waitForExit(running) {
-  return new Promise((resolve, reject) => {
+function waitForExit(running: Worker) {
+  return new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => {
       running.off("exit", exited);
       void running.terminate();
@@ -22,8 +23,8 @@ function waitForExit(running) {
   });
 }
 
-export function packagedBackend(env, diagnose = () => {}) {
-  let worker;
+export function packagedBackend(env: NodeJS.ProcessEnv, diagnose: (event: string, details?: DiagnosticDetails) => void = () => {}) {
+  let worker: Worker | undefined;
   const start = async () => {
     if (worker) return;
     if (!(await portAvailable(Number(env.CITROPY_PORT || defaultPort())))) throw new Error("Another server is using Citropy's port. Close it before opening this release.");
@@ -50,7 +51,7 @@ export function packagedBackend(env, diagnose = () => {}) {
       if (worker === running) worker = undefined;
     });
     try {
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(
           () =>
             finish(
@@ -60,7 +61,7 @@ export function packagedBackend(env, diagnose = () => {}) {
             ),
           60000,
         );
-        const ready = (message) => {
+        const ready = (message: { t?: string } | undefined) => {
           if (message?.t === "ready") {
             diagnose("backend.ready", { threadId });
             finish();
@@ -74,7 +75,7 @@ export function packagedBackend(env, diagnose = () => {}) {
                 : `Citropy's server could not start.${output ? `\n${output.trim().slice(-600)}` : ""}`,
             ),
           );
-        const finish = (error) => {
+        const finish = (error?: Error) => {
           clearTimeout(timer);
           running.off("message", ready);
           running.off("exit", failed);

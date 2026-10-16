@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { refreshMenuIcon } from "../desktop/menu-icon.mjs";
+import { refreshMenuIcon } from "../desktop/menu-icon.ts";
 
 async function setup(t) {
   const directory = await mkdtemp(join(tmpdir(), "citropy-menu-icon-"));

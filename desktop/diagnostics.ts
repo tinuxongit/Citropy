@@ -2,9 +2,21 @@ import { appendFileSync, chmodSync, existsSync, mkdirSync, renameSync, statSync 
 import { logFailure } from "../shared/expected-errors.mjs";
 import { join } from "node:path";
 
-export function desktopDiagnostics(directory) {
+export interface DiagnosticDetails {
+  version?: string;
+  electron?: string;
+  platform?: string;
+  packaged?: boolean;
+  threadId?: number;
+  code?: number | null;
+  signal?: string | null;
+  reason?: string;
+  type?: string;
+}
+
+export function desktopDiagnostics(directory: string) {
   const file = join(directory, "desktop.log");
-  return (event, { version, electron, platform, packaged, threadId, code, signal, reason, type } = {}) => {
+  return (event: string, { version, electron, platform, packaged, threadId, code, signal, reason, type }: DiagnosticDetails = {}) => {
     try {
       const line = `${JSON.stringify({ time: new Date().toISOString(), pid: process.pid, event, version, electron, platform, packaged, threadId, code, signal, reason, type })}\n`;
       const bytes = Buffer.byteLength(line);

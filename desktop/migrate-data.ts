@@ -1,7 +1,7 @@
 import { cpSync, existsSync, readdirSync, renameSync } from "node:fs";
 import { join } from "node:path";
 
-export function migrateDesktopData(appData, override) {
+export function migrateDesktopData(appData: string, override?: string) {
   const root = override ?? join(appData, "Citropy");
   const previous = join(appData, "Loom");
   const lemon = join(appData, "Citropy Lemon");

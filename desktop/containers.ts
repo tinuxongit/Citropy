@@ -2,11 +2,19 @@ import { randomBytes, createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, writeFile, rm, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { tmpdir } from "node:os";
+import { hasCode } from "../shared/expected-errors.mjs";
 import { readRemoteHealth } from "../shared/remote-connection.mjs";
+import type { ConnectionFields, SshConnection, SshEnvironments } from "./ssh.ts";
+
+interface ContainerInfo {
+  State: { Running: boolean };
+  Config: { Labels: Record<string, string> };
+  NetworkSettings?: { Ports?: Record<string, Array<{ HostIp: string; HostPort: string }> | null> };
+}
 
 const CONTAINER_PORT = 4177;
 
-export function validateContainer(input) {
+export function validateContainer(input: { name?: unknown; target?: unknown } | undefined): ConnectionFields {
   const name = String(input?.name || "").trim();
   const target = String(input?.target || "").trim();
   if (!name || name.length > 80) throw new Error("Enter an environment name of up to 80 characters.");
@@ -14,32 +22,32 @@ export function validateContainer(input) {
   return { kind: "container", name, target, port: 0, node: "node" };
 }
 
-function containerName(id) {
+function containerName(id: string) {
   if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("Invalid environment identifier.");
   return `citropy-${id}`;
 }
 
-async function inspect(manager, connection, signal) {
+async function inspect(manager: SshEnvironments, connection: SshConnection, signal?: AbortSignal): Promise<ContainerInfo | null> {
   const output = await manager.command("docker", ["container", "ls", "--all", "--filter", `name=^/${containerName(connection.id)}$`, "--format", "{{.ID}}"], { signal });
   if (!output.trim()) return null;
-  const entries = JSON.parse(await manager.command("docker", ["inspect", containerName(connection.id)], { signal }));
+  const entries: ContainerInfo[] = JSON.parse(await manager.command("docker", ["inspect", containerName(connection.id)], { signal }));
   const entry = entries[0];
   if (entry?.Config?.Labels?.["app.citropy.environment"] !== connection.id) throw new Error("A container with this name belongs to another application.");
   return entry;
 }
 
-export async function startContainer(manager, connection, signal, progress) {
+export async function startContainer(manager: SshEnvironments, connection: SshConnection, signal: AbortSignal, progress: (message: string) => void) {
   progress("Checking Docker…");
   await manager.command("docker", ["info", "--format", "{{.OSType}}"], { signal, timeout: 15000 }).then(output => {
     if (output.trim() !== "linux") throw new Error("Switch Docker to Linux containers.");
-  }).catch(error => { throw new Error(`Start Docker Engine or Docker Desktop, then reconnect. ${error.message}`); });
+  }).catch((error: unknown) => { throw new Error(`Start Docker Engine or Docker Desktop, then reconnect. ${(error as Error).message}`); });
   const source = await realpath(connection.target);
   if (!(await stat(source)).isDirectory()) throw new Error("The mounted folder is no longer available.");
   const directory = join(manager.directory, "containers", connection.id);
   const home = join(directory, "home");
   await mkdir(home, { recursive: true, mode: 0o700 });
   const tokenFile = join(directory, "connection-token");
-  let token = await readFile(tokenFile, "utf8").catch(error => { if (error.code === "ENOENT") return ""; throw error; });
+  let token = await readFile(tokenFile, "utf8").catch((error: unknown) => { if (hasCode(error, "ENOENT")) return ""; throw error; });
   if (!token) { token = randomBytes(32).toString("hex"); await writeFile(tokenFile, token, { mode: 0o600, flag: "wx" }); }
   if (!/^[a-f0-9]{64}$/.test(token)) throw new Error("The saved container connection token is invalid.");
   progress("Preparing container backend…");
@@ -96,7 +104,7 @@ CMD ["node", "--experimental-strip-types", "--optimize-for-size", "server/main.t
   throw new Error("The container backend did not become ready. Check Docker and reconnect.");
 }
 
-export async function stopContainer(manager, connection) {
+export async function stopContainer(manager: SshEnvironments, connection: SshConnection) {
   const container = await inspect(manager, connection);
   if (container?.State.Running) await manager.command("docker", ["stop", "--time", "15", containerName(connection.id)], { timeout: 30000 });
 }

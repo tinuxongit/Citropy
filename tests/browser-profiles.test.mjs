@@ -18,7 +18,7 @@ test("browser profiles isolate imported cookies and preserve source databases", 
     fs.rmSync(directory, { recursive: true, force: true });
   });
   const { initializeProfiles, handleProfiles, browserProfile, decryptCookie } =
-    await import("../desktop/browser-profiles.mjs");
+    await import("../desktop/browser-profiles.ts");
   await initializeProfiles(directory);
   const partitions = new Map();
   const session = {
@@ -176,7 +176,7 @@ test("browser profiles isolate imported cookies and preserve source databases", 
 });
 
 test("each bot gets its own browser profile and other ids are refused", async () => {
-  const { botProfile } = await import("../desktop/browser-profiles.mjs");
+  const { botProfile } = await import("../desktop/browser-profiles.ts");
   assert.deepEqual(botProfile("bot-bot_abc"), { id: "bot-bot_abc", name: "Bot", partition: "persist:citropy-bot-bot_abc" });
   assert.equal(botProfile("workspace"), undefined);
   assert.equal(botProfile("bot-../x"), undefined);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createServer, request } from 'node:http';
-import { remoteProxy } from '../desktop/remote-proxy.mjs';
+import { remoteProxy } from '../desktop/remote-proxy.ts';
 
 const origin = 'http://127.0.0.1:4177';
 /** Connect a real loopback proxy to a controlled backend and register teardown. */

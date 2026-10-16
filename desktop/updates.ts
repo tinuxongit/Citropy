@@ -1,5 +1,16 @@
 import { gt, valid } from "semver";
+import type { AppUpdater } from "electron-updater";
 import { logFailure } from "../shared/expected-errors.mjs";
+import type { AppUpdateState, ReleaseNoteSection } from "../shared/app-update.ts";
+
+type Action = "check" | "download" | "install";
+
+// Installs releases outside electron-updater, such as the macOS script install.
+interface ExternalUpdates {
+  check(): Promise<string | undefined>;
+  download(version: string): Promise<void>;
+  install(version: string): Promise<void>;
+}
 
 const STARTUP_CHECK_DELAY_MS = 5000;
 const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
@@ -21,19 +32,20 @@ const MESSAGES = {
     "The update is downloaded and verified. Restart Citropy to apply it.",
 };
 
-const errorMessage = (error, action) => {
-  const code = String(error?.code || "");
-  const detail = String(error?.message || "");
-  if (code.includes("SHA512") || detail.includes("checksum"))
+const errorMessage = (error: unknown, action: Action) => {
+  const { code, message, userMessage } = (error ?? {}) as { code?: unknown; message?: unknown; userMessage?: string };
+  const detail = String(message || "");
+  const codeText = String(code || "");
+  if (codeText.includes("SHA512") || detail.includes("checksum"))
     return MESSAGES.verification;
-  if (/404|403|401|token|release|not found/i.test(`${code} ${detail}`))
+  if (/404|403|401|token|release|not found/i.test(`${codeText} ${detail}`))
     return MESSAGES.noRelease;
-  if (action === "install" && error?.userMessage) return error.userMessage;
+  if (action === "install" && userMessage) return userMessage;
   return MESSAGES.failed[action];
 };
 
 export function createAppUpdater({
-  updater,
+  updater: releaseUpdater,
   version,
   unavailable,
   external,
@@ -42,23 +54,35 @@ export function createAppUpdater({
   prepareInstall,
   recoverInstall = async () => {},
   releaseNotes,
+}: {
+  updater?: AppUpdater;
+  version: string;
+  unavailable?: string;
+  external?: ExternalUpdates;
+  applyInstall?: (file: string) => Promise<void>;
+  emit: (state: AppUpdateState) => void;
+  prepareInstall: () => Promise<void>;
+  recoverInstall?: () => Promise<void>;
+  releaseNotes?: (version: string) => Promise<ReleaseNoteSection[]>;
 }) {
-  let state = {
+  let state: AppUpdateState = {
     status: unavailable ? "unsupported" : "idle",
     currentVersion: version,
     message: unavailable,
   };
-  let operation;
+  let operation: Action | undefined;
   let disposed = false;
-  let recovering;
-  let downloadedFile;
-  const listeners = [];
-  const publish = (patch) => {
+  let recovering: Promise<void> | undefined;
+  // Only read when updates are available and no external installer handles them, which is when the caller passes one.
+  const updater = releaseUpdater as AppUpdater;
+  let downloadedFile: string | undefined;
+  const listeners: Array<() => void> = [];
+  const publish = (patch: Partial<AppUpdateState>) => {
     if (disposed) return;
     state = { ...state, ...patch };
     emit({ ...state });
   };
-  const fail = async (error, action) => {
+  const fail = async (error: unknown, action: Action) => {
     if (disposed || recovering) return;
     if (action === "install") {
       recovering = recoverInstall();
@@ -74,17 +98,17 @@ export function createAppUpdater({
     }
     publish({ status: "error", retry: action, message: errorMessage(error, action) });
   };
-  const loadNotes = (target) => {
+  const loadNotes = (target: string | undefined) => {
     if (!releaseNotes || !target || state.notes?.version === target) return;
     releaseNotes(target).then(
       (sections) => {
         if (sections.length) publish({ notes: { version: target, sections } });
       },
-      (error) => publish({ notesError: String(error?.message || error) }),
+      (error: unknown) => publish({ notesError: String((error as Error)?.message || error) }),
     );
   };
-  const publishAvailability = (latest) => {
-    if (!valid(latest) || !gt(latest, version)) {
+  const publishAvailability = (latest?: string) => {
+    if (!latest || !valid(latest) || !gt(latest, version)) {
       publish({
         status: "current",
         version: undefined,
@@ -102,9 +126,10 @@ export function createAppUpdater({
     });
     loadNotes(latest);
   };
-  const listen = (name, handler) => {
+  const listen: AppUpdater["on"] = (name, handler) => {
     updater.on(name, handler);
-    listeners.push([name, handler]);
+    listeners.push(() => updater.off(name, handler));
+    return updater;
   };
   if (!unavailable && !external) {
     updater.autoDownload = false;
@@ -134,10 +159,10 @@ export function createAppUpdater({
       void fail(error, operation || "check");
     });
   }
-  const command = async (request) => {
-    const action = typeof request === "string" ? request : request?.action;
+  const command = async (request: unknown) => {
+    const action = typeof request === "string" ? request : (request as { action?: unknown } | undefined)?.action;
     if (disposed || unavailable || operation || recovering) return { ...state };
-    if (!["check", "download", "install"].includes(action))
+    if (action !== "check" && action !== "download" && action !== "install")
       throw new Error("Unknown update action");
     if (
       action === "check" &&
@@ -183,7 +208,7 @@ export function createAppUpdater({
           const result = await updater.checkForUpdates();
           if (!result) throw new Error("No release feed is available");
         } else if (action === "download" && external) {
-          await external.download(state.version);
+          await external.download(state.version ?? "");
           publish({
             status: "ready",
             percent: 100,
@@ -195,7 +220,7 @@ export function createAppUpdater({
             throw new Error("The download did not pass verification");
         } else {
           await prepareInstall();
-          if (external) await external.install(state.version);
+          if (external) await external.install(state.version ?? "");
           else if (applyInstall) {
             if (typeof downloadedFile !== "string" || !downloadedFile)
               throw new Error("The downloaded update file is missing.");
@@ -232,7 +257,7 @@ export function createAppUpdater({
       disposed = true;
       clearTimeout(startup);
       clearInterval(interval);
-      for (const [name, listener] of listeners) updater.off(name, listener);
+      for (const remove of listeners) remove();
     },
   };
 }

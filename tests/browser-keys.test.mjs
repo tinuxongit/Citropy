@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { keyEvents, pressKey } from "../desktop/browser-keys.mjs";
+import { keyEvents, pressKey } from "../desktop/browser-keys.ts";
 
 test("printable keys and Enter send text, shortcuts do not", () => {
   assert.deepEqual(keyEvents("a"), [

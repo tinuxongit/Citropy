@@ -4,7 +4,7 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { SshEnvironments, shellQuote } from "../desktop/ssh.mjs";
+import { SshEnvironments, shellQuote } from "../desktop/ssh.ts";
 
 test("SSH setup installs a missing runtime atomically and reuses it without altering existing Node", async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-runtime-"));

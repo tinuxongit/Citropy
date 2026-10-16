@@ -1,5 +1,7 @@
 import { logFailure } from "../shared/expected-errors.mjs";
 
+type Send = (method: string, params?: Record<string, unknown>) => Promise<unknown>;
+
 const fill = { r: 250, g: 250, b: 250, a: 0.96 };
 const outline = { r: 20, g: 20, b: 20, a: 0.9 };
 const pressedFill = { r: 244, g: 211, b: 78, a: 0.96 };
@@ -7,22 +9,22 @@ const flashFill = { r: 244, g: 211, b: 78, a: 0.16 };
 const flashOutline = { r: 244, g: 211, b: 78, a: 0.9 };
 const frameMs = 16;
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const easeOut = (t) => 1 - (1 - t) ** 3;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const easeOut = (t: number) => 1 - (1 - t) ** 3;
 
-function arrow(x, y, size) {
+function arrow(x: number, y: number, size: number) {
   return [x, y, x, y + 19 * size, x + 5.5 * size, y + 14.5 * size, x + 13 * size, y + 14 * size];
 }
 
-function dot(x, y, size) {
+function dot(x: number, y: number, size: number) {
   const r = 11 * size;
   return [x, y - r, x + r, y, x, y + r, x - r, y];
 }
 
-export function createPointer(send, watched, touch, zoom) {
-  let position;
+export function createPointer(send: Send, watched: () => boolean, touch: () => boolean, zoom: () => number) {
+  let position: { x: number; y: number } | undefined;
 
-  const draw = (x, y, pressed = false) => {
+  const draw = (x: number, y: number, pressed = false) => {
     const size = 1 / Math.min(1, Math.max(zoom(), 0.12));
     return send("Overlay.highlightQuad", { quad: touch() ? dot(x, y, size) : arrow(x, y, size), color: pressed ? pressedFill : fill, outlineColor: outline }).catch(logFailure("Drawing the browser pointer"));
   };
@@ -30,7 +32,7 @@ export function createPointer(send, watched, touch, zoom) {
 
   return {
     watched,
-    async moveTo(x, y, duration = 260) {
+    async moveTo(x: number, y: number, duration = 260) {
       const from = position ?? { x: x - 60, y: y - 40 };
       position = { x, y };
       if (!watched()) return;
@@ -41,11 +43,11 @@ export function createPointer(send, watched, touch, zoom) {
         await sleep(frameMs);
       }
     },
-    async drawAt(x, y, pressed = false) {
+    async drawAt(x: number, y: number, pressed = false) {
       position = { x, y };
       if (watched()) await draw(x, y, pressed);
     },
-    async press(box) {
+    async press(box?: { left: number; top: number; right: number; bottom: number }) {
       if (!watched() || !position) return;
       if (box) {
         await send("Overlay.highlightRect", {

@@ -10,7 +10,7 @@ const NAME_HASH_LENGTH = 12;
 export const dataDirectory = () => process.env.XDG_DATA_HOME || join(homedir(), ".local/share");
 
 // Desktops cache icons by name for the whole session, so each new picture gets a new name.
-export function refreshMenuIcon({ base, picturePath, data = dataDirectory() }) {
+export function refreshMenuIcon({ base, picturePath, data = dataDirectory() }: { base: string; picturePath: string; data?: string }) {
   const entry = join(data, "applications", `${base}.desktop`);
   if (!existsSync(entry)) return false;
   const picture = readFileSync(picturePath);

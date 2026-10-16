@@ -4,11 +4,13 @@ import { homedir } from "node:os";
 import { isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stat } from "node:fs/promises";
-import { sshArguments, shellQuote } from "./ssh.mjs";
+import type { OpenDialogOptions, OpenDialogReturnValue } from "electron";
+import { hasCode } from "../shared/expected-errors.mjs";
+import { sshArguments, shellQuote, type SshConnection } from "./ssh.ts";
 
 const run = promisify(execFile);
 
-export function remoteFolderPath(value, location) {
+export function remoteFolderPath(value: string, location: { url: string; hostname: string }) {
   let selected;
   try { selected = new URL(value); }
   catch { throw new Error("Choose a folder on the selected SSH host."); }
@@ -24,14 +26,14 @@ export function remoteFolderPath(value, location) {
   return path;
 }
 
-export async function remoteFolderLocation(connection, path, signal) {
+export async function remoteFolderLocation(connection: SshConnection, path: string | undefined, signal?: AbortSignal) {
   const args = sshArguments(connection);
   const { stdout } = await run("ssh", [...args, "-G", connection.target], { signal, timeout: 15000, maxBuffer: 128 * 1024 });
   const config = Object.fromEntries(stdout.split(/\r?\n/).map(line => { const space = line.indexOf(" "); return [line.slice(0, space), line.slice(space + 1)]; }));
   const target = connection.target.slice(connection.target.lastIndexOf("@") + 1);
   const url = new URL(`sftp://${target}`);
-  url.username = config.user;
-  url.port = config.port;
+  url.username = config.user ?? "";
+  url.port = config.port ?? "";
   if (path && (!path.startsWith("/") || /[\r\n\0]/.test(path))) throw new Error("Choose an absolute remote folder path.");
   if (!path) {
     const result = await run("ssh", [...args, connection.target, `sh -c ${shellQuote('printf "CITROPY_HOME %s\\n" "$HOME"')}`], { signal, timeout: 20000, maxBuffer: 64 * 1024 });
@@ -39,7 +41,7 @@ export async function remoteFolderLocation(connection, path, signal) {
     if (!path?.startsWith("/")) throw new Error("Could not read the SSH account's home folder.");
   }
   url.pathname = `${path.replace(/\/$/, "")}/`.split("/").map(encodeURIComponent).join("/");
-  return { url: url.href, hostname: config.hostname.toLowerCase() };
+  return { url: url.href, hostname: (config.hostname ?? "").toLowerCase() };
 }
 
 // Lists a folder on an SSH host for Citropy's own folder browser, used where no SFTP-capable
@@ -50,14 +52,14 @@ printf 'CITROPY_DIR %s\\0' "$(pwd)"
 for entry in * .[!.]* ..?*; do [ -d "$entry" ] && printf '%s\\0' "$entry"; done
 exit 0`;
 
-export async function listRemoteFolder(connection, path = "", signal) {
+export async function listRemoteFolder(connection: SshConnection, path: unknown = "", signal?: AbortSignal) {
   if (typeof path !== "string" || path.length > 4096 || /[\r\n\0]/.test(path) || (path && !/^(\/|~(\/|$))/.test(path)))
     throw new Error("Enter an absolute folder path on the SSH host.");
   let stdout;
   try {
     ({ stdout } = await run("ssh", [...sshArguments(connection), connection.target, `sh -c ${shellQuote(listing)} citropy ${shellQuote(path)}`], { signal, timeout: 20000, maxBuffer: 8 * 1024 * 1024 }));
   } catch (error) {
-    if (error.code === 3) throw new Error("That folder does not exist on the SSH host or cannot be opened.");
+    if ((error as { code?: unknown }).code === 3) throw new Error("That folder does not exist on the SSH host or cannot be opened.");
     throw error;
   }
   const start = stdout.indexOf("CITROPY_DIR ");
@@ -69,7 +71,10 @@ export async function listRemoteFolder(connection, path = "", signal) {
   return { path: current, parent: current === "/" ? null : current.slice(0, current.lastIndexOf("/")) || "/", folders };
 }
 
-export async function chooseNativeFolder({ connection, path, signal }, showOpenDialog) {
+export async function chooseNativeFolder(
+  { connection, path, signal }: { connection?: SshConnection; path?: string; signal?: AbortSignal },
+  showOpenDialog: (options: OpenDialogOptions) => Promise<OpenDialogReturnValue>,
+) {
   signal?.throwIfAborted();
   const browse = { browse: true, path: path || "" };
   if (connection && process.platform !== "linux") return browse;
@@ -81,8 +86,8 @@ export async function chooseNativeFolder({ connection, path, signal }, showOpenD
       const result = await run("kdialog", ["--getexistingdirectory", location?.url || path || homedir(), "--title", title], { signal, maxBuffer: 64 * 1024 });
       value = result.stdout.replace(/\r?\n$/, "");
     } catch (error) {
-      if (error.code === 1) return null;
-      if (error.code !== "ENOENT") throw error;
+      if ((error as { code?: unknown }).code === 1) return null;
+      if (!hasCode(error, "ENOENT")) throw error;
       if (connection) return browse;
     }
   }

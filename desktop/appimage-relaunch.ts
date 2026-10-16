@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const script = fileURLToPath(new URL("./apply-appimage-update.sh", import.meta.url));
 
-function absolutePath(value, label) {
+function absolutePath(value: unknown, label: string) {
   if (typeof value !== "string" || !value || !isAbsolute(value) || /[\0\r\n]/.test(value))
     throw new Error(`${label} must be an absolute path.`);
   return value;
@@ -16,7 +16,7 @@ export function spawnAppImageRelaunch({
   downloadedFile,
   parentPid,
   logFile,
-}) {
+}: { appImage: string; downloadedFile?: string; parentPid: number; logFile: string }) {
   const dest = absolutePath(appImage, "The installed AppImage");
   const source =
     downloadedFile === undefined
@@ -28,7 +28,7 @@ export function spawnAppImageRelaunch({
     throw new Error("The running Citropy process id is missing.");
   const stream = openSync(log, "a");
   try {
-    const env = {
+    const env: NodeJS.ProcessEnv = {
       ...process.env,
       CITROPY_APPIMAGE: dest,
       CITROPY_PARENT_PID: String(parentPid),

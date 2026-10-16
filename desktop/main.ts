@@ -1,25 +1,25 @@
-import { SshEnvironments, sshHosts } from "./ssh.mjs";
-import { chooseNativeFolder, listRemoteFolder } from "./folder-picker.mjs";
+import { SshEnvironments, sshHosts, type ConnectionInput as SshInput } from "./ssh.ts";
+import { chooseNativeFolder, listRemoteFolder } from "./folder-picker.ts";
 import { randomBytes } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { release } from "node:os";
 import v8 from "node:v8";
-import { createAppUpdater } from "./updates.mjs";
-import { stageScriptUpdate } from "./script-update.mjs";
-import { fetchReleaseHistory, fetchReleaseNotes } from "./release-notes.mjs";
-import { spawnAppImageRelaunch } from "./appimage-relaunch.mjs";
-import { refreshMenuIcon } from "./menu-icon.mjs";
-import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-reveal.mjs";
-import { packagedBackend } from "./backend.mjs";
-import { desktopDiagnostics } from "./diagnostics.mjs";
-import { initializeProfiles, botProfile, browserProfile, handleProfiles } from "./browser-profiles.mjs";
-import { initializeConnections, connectionProfile, accountOfProfile, handleConnections, signInTarget } from "./connections.mjs";
-import { createSignInView } from "./sign-in-view.mjs";
-import { keepSessionCookies } from "./session-cookies.mjs";
-import { browserActivity } from "./browser-activity.mjs";
-import { formatTree } from "./browser-snapshot.mjs";
-import { createPointer } from "./browser-pointer.mjs";
-import { pressKey } from "./browser-keys.mjs";
+import { createAppUpdater } from "./updates.ts";
+import { stageScriptUpdate } from "./script-update.ts";
+import { fetchReleaseHistory, fetchReleaseNotes } from "./release-notes.ts";
+import { spawnAppImageRelaunch } from "./appimage-relaunch.ts";
+import { refreshMenuIcon } from "./menu-icon.ts";
+import { createSecondInstanceFocus, prepareInitialWindowReveal } from "./window-reveal.ts";
+import { packagedBackend } from "./backend.ts";
+import { desktopDiagnostics } from "./diagnostics.ts";
+import { initializeProfiles, botProfile, browserProfile, handleProfiles, type ProfileInput } from "./browser-profiles.ts";
+import { initializeConnections, connectionProfile, accountOfProfile, handleConnections, signInTarget, type ConnectionInput } from "./connections.ts";
+import { createSignInView } from "./sign-in-view.ts";
+import { keepSessionCookies } from "./session-cookies.ts";
+import { browserActivity } from "./browser-activity.ts";
+import { formatTree, type AXNode } from "./browser-snapshot.ts";
+import { createPointer } from "./browser-pointer.ts";
+import { pressKey } from "./browser-keys.ts";
 import {
   app,
   dialog,
@@ -31,14 +31,97 @@ import {
   shell,
   session,
   webContents,
+  type IpcMainEvent,
+  type IpcMainInvokeEvent,
+  type NativeImage,
+  type Session,
+  type WebContents,
 } from "electron";
 import { WebSocket } from "ws";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { basename, join, resolve, sep } from "node:path";
 import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, accessSync, constants, existsSync, statSync } from "node:fs";
-import { migrateDesktopData } from "./migrate-data.mjs";
+import { migrateDesktopData } from "./migrate-data.ts";
 import { logFailure } from "../shared/expected-errors.mjs";
 import { defaultPort } from "../shared/ports.mjs";
+import type { BrowserAction, BrowserState } from "../shared/workbench.ts";
+
+interface LogEntry {
+  time: number;
+  kind: string;
+  level: string;
+  text: string;
+}
+
+interface Tab {
+  partition: string;
+  contents: WebContents | undefined;
+  activity: ReturnType<typeof browserActivity>;
+  visible: boolean;
+  scale: number;
+  state: BrowserState;
+  logs: LogEntry[];
+  requests: Map<string, string>;
+  frames: Map<string, { sessionId: string; targetId: string }>;
+  frameCount: number;
+  pointer: ReturnType<typeof createPointer>;
+  media: { colorScheme: string; reducedMotion: string };
+  metrics?: string;
+  layout?: Promise<unknown>;
+  metricsParams?: Record<string, unknown>;
+  attached?: Promise<void>;
+  attach?: { resolve: () => void; reject: (error: Error) => void };
+}
+
+// A page node, a node inside a frame session, or a script object, as CDP commands address them.
+interface DomNode {
+  backendNodeId?: number;
+  objectId?: string;
+  session?: string;
+  frameId?: string;
+}
+
+interface Locator {
+  ref?: string | number;
+  selector?: string;
+  role?: string;
+  name?: string;
+  x?: number;
+  y?: number;
+}
+
+type FrameNode = AXNode & { parentId?: string; session?: string; refPrefix?: string };
+
+interface RemoteObject {
+  type: string;
+  value?: unknown;
+  unserializableValue?: string;
+  description?: string;
+}
+
+// The Citropy server sends these over the token-checked desktop socket.
+interface Notice {
+  id: string;
+  title: string;
+  text: string;
+  silent?: boolean;
+  target?: unknown;
+}
+
+interface BrowserRequest {
+  id: string;
+  input: BrowserAction;
+  clear?: boolean;
+  selector?: string;
+  ref?: string;
+  tree?: boolean;
+  screenshot?: boolean;
+  fullPage?: boolean;
+}
+
+type FolderRequest = { id?: unknown; path?: unknown } | undefined;
+
+const finite = (value: unknown): value is number => Number.isFinite(value);
 
 const development = !app.isPackaged && process.env.CITROPY_DEVELOPMENT === "1";
 const { version } = JSON.parse(
@@ -71,7 +154,7 @@ process.on("SIGTERM", () => {
   }, 15000);
   timer.unref();
 });
-let focusDesktopWindow;
+let focusDesktopWindow: (() => void) | undefined;
 const secondInstance = createSecondInstanceFocus(() => focusDesktopWindow);
 app.on("second-instance", () => secondInstance.focus());
 if (process.platform === "linux") {
@@ -79,7 +162,7 @@ if (process.platform === "linux") {
   try {
     if (refreshMenuIcon({ base: desktopId, picturePath: appIcon })) diagnose("menu-icon.refreshed", {});
   } catch (error) {
-    diagnose("menu-icon.failed", { reason: error.message });
+    diagnose("menu-icon.failed", { reason: (error as Error).message });
   }
 }
 if (app.isPackaged) {
@@ -97,11 +180,11 @@ app.commandLine.appendSwitch("disable-features", "AudioServiceOutOfProcess");
 // Chromium redraws only changed regions over the stage background, rounding them one shade off and leaving visible rectangles behind running turns.
 app.commandLine.appendSwitch("ui-disable-partial-swap");
 const backend = app.isPackaged ? packagedBackend({ ...process.env }, diagnose) : undefined;
-let updates;
-let environments;
-let folderChoice;
+let updates: ReturnType<typeof createAppUpdater> | undefined;
+let environments: SshEnvironments | undefined;
+let folderChoice: AbortController | undefined;
 let applyingUpdate = false;
-let connectDesktop;
+let connectDesktop: () => void;
 const base = new URL(process.env.CITROPY_URL ?? `http://127.0.0.1:${defaultPort()}`);
 const ui = new URL(process.env.CITROPY_UI_URL ?? base.href);
 if (
@@ -116,18 +199,18 @@ const token = process.env.CITROPY_DESKTOP_TOKEN;
 if (!token) throw new Error("Start Citropy desktop through npm run desktop");
 delete process.env.CITROPY_DESKTOP_TOKEN;
 const windowFile = join(app.getPath("userData"), "window.json");
-const tabs = new Map();
-let window;
-let socket;
+const tabs = new Map<string, Tab>();
+let window: BrowserWindow;
+let socket: WebSocket | undefined;
 let quitting = false;
-const notifications = new Set();
+const notifications = new Set<Notification>();
 app.on("before-quit", (event) => {
   if (quitting) return;
   event.preventDefault();
   quitting = true;
   diagnose("app.quitting");
   folderChoice?.abort();
-  void (environments?.dispose() ?? Promise.resolve()).then(() => backend?.stop()).catch((error) => diagnose("app.quit-cleanup-failed", { reason: error.message })).finally(() => {
+  void (environments?.dispose() ?? Promise.resolve()).then(() => backend?.stop()).catch((error: Error) => diagnose("app.quit-cleanup-failed", { reason: error.message })).finally(() => {
     updates?.dispose();
     for (const notification of notifications) notification.close();
     for (const tab of tabs.values())
@@ -137,7 +220,7 @@ app.on("before-quit", (event) => {
   });
 });
 
-const emit = (event) => {
+const emit = (event: object) => {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
 };
 
@@ -150,7 +233,7 @@ function macScriptUpdates() {
   return !/Authority=Developer ID Application/.test(`${result.stdout}${result.stderr}`);
 }
 
-function address(raw) {
+function address(raw: unknown) {
   if (typeof raw !== "string" || raw.length > 16000)
     throw new Error("Enter a valid web address");
   const value = raw.trim();
@@ -164,7 +247,7 @@ function address(raw) {
   return url.href;
 }
 
-function state(tab) {
+function state(tab: Tab): BrowserState {
   const content = tab.contents;
   if (!content || content.isDestroyed())
     return { ...tab.state, loading: true, account: accountOfProfile(tab.state.profileId) };
@@ -182,26 +265,30 @@ function state(tab) {
   };
 }
 
-function publish(tab) {
+function publish(tab: Tab) {
   if (tabs.get(tab.state.id) !== tab) return;
   const browser = state(tab);
   Object.assign(tab.state, { url: browser.url, title: browser.title });
   emit({ t: "browser.state", browser });
 }
 
-function cdp(tab, method, params = {}, sessionId) {
+function contentsOf(tab: Tab) {
   if (!tab.contents || tab.contents.isDestroyed()) throw new Error("This browser tab is reconnecting. Try again.");
-  const debuggerApi = tab.contents.debugger;
+  return tab.contents;
+}
+
+function cdp(tab: Tab, method: string, params: object = {}, sessionId?: string) {
+  const debuggerApi = contentsOf(tab).debugger;
   if (!debuggerApi.isAttached()) debuggerApi.attach("1.3");
   return sessionId ? debuggerApi.sendCommand(method, params, sessionId) : debuggerApi.sendCommand(method, params);
 }
 
-function nodeParams(node) {
+function nodeParams(node: DomNode) {
   const { session: _, frameId: __, ...params } = node;
   return params;
 }
 
-async function elementBox(tab, node, { scroll = true, quad = "content" } = {}) {
+async function elementBox(tab: Tab, node: DomNode, { scroll = true, quad = "content" }: { scroll?: boolean; quad?: "content" | "border" } = {}) {
   if (scroll) await cdp(tab, "DOM.scrollIntoViewIfNeeded", nodeParams(node), node.session);
   const { model } = await cdp(tab, "DOM.getBoxModel", nodeParams(node), node.session);
   const points = model[quad];
@@ -218,9 +305,9 @@ async function elementBox(tab, node, { scroll = true, quad = "content" } = {}) {
   return { left: Math.min(...xs) + offsetX, top: Math.min(...ys) + offsetY, right: Math.max(...xs) + offsetX, bottom: Math.max(...ys) + offsetY };
 }
 
-const centre = (box) => ({ x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 });
+const centre = (box: { left: number; top: number; right: number; bottom: number }) => ({ x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 });
 
-function applyViewport(tab) {
+function applyViewport(tab: Tab) {
   const { width, height, mobile } = tab.state;
   const metrics = JSON.stringify([width, height, Boolean(mobile)]);
   if (metrics === tab.metrics && tab.layout) return tab.layout;
@@ -240,10 +327,10 @@ function applyViewport(tab) {
   return tab.layout;
 }
 
-async function applyMobileMode(tab) {
+async function applyMobileMode(tab: Tab) {
   const mobile = Boolean(tab.state.mobile);
   const chrome = process.versions.chrome;
-  const major = chrome.split(".")[0];
+  const major = chrome.split(".")[0]!;
   await cdp(tab, "Emulation.setUserAgentOverride", mobile ? {
     userAgent: `Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Mobile Safari/537.36`,
     platform: "Linux armv8l",
@@ -276,12 +363,12 @@ async function applyMobileMode(tab) {
   });
 }
 
-async function prepareTab(tab) {
+async function prepareTab(tab: Tab) {
   if (environments?.activeId !== "local" && environments?.activeId) throw new Error("Switch to Local to use desktop browser tools.");
   await tab.layout;
 }
 
-async function behindCover(tab, work) {
+async function behindCover<T>(tab: Tab, work: () => Promise<T>) {
   if (!tab.visible || !window.isVisible() || window.isMinimized()) return work();
   const id = tab.state.id;
   const still = (await capture(tab))?.toDataURL();
@@ -296,7 +383,7 @@ async function behindCover(tab, work) {
   }
 }
 
-async function showCover(tab, still) {
+async function showCover(tab: Tab, still: string) {
   window.webContents.send("browser:cover", tab.state.id, still);
   await window.webContents.executeJavaScript(`new Promise((resolve) => {
     const started = performance.now();
@@ -309,16 +396,16 @@ async function showCover(tab, still) {
   })`).catch(logFailure("Waiting for the browser cover", tab.state.id));
 }
 
-async function waitForPaint(tab) {
+async function waitForPaint(tab: Tab) {
   await cdp(tab, "Runtime.evaluate", { expression: "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))", awaitPromise: true, timeout: 500 }).catch(logFailure("Waiting for the browser to paint", tab.state.id));
 }
 
-async function capture(tab) {
-  let timer;
+async function capture(tab: Tab) {
+  let timer: NodeJS.Timeout | undefined;
   try {
     return await Promise.race([
-      tab.contents.capturePage(),
-      new Promise((_, reject) => {
+      contentsOf(tab).capturePage(),
+      new Promise<NativeImage>((_, reject) => {
         timer = setTimeout(() => reject(new Error("Screenshot timed out")), 800);
       }),
     ]);
@@ -343,14 +430,14 @@ function publishGuests() {
   if (!window.isDestroyed()) window.webContents.send("browser:guests", guests());
 }
 
-function awaitGuest(tab) {
-  tab.attached = new Promise((resolve, reject) => {
+function awaitGuest(tab: Tab) {
+  tab.attached = new Promise<void>((resolve, reject) => {
     tab.attach = { resolve, reject };
   });
   tab.attached.catch(() => {});
 }
 
-async function open(input) {
+async function open(input: BrowserState) {
   const existing = tabs.get(input.id);
   if (existing) return state(existing);
   const url = address(input.url ?? "about:blank");
@@ -363,7 +450,7 @@ async function open(input) {
     callback(false),
   );
   browserSession.setPermissionCheckHandler(() => false);
-  const tab = {
+  const tab: Tab = {
     partition: profile.partition,
     contents: undefined,
     activity: browserActivity(publishGuests, enabled => {
@@ -386,15 +473,14 @@ async function open(input) {
     requests: new Map(),
     frames: new Map(),
     frameCount: 0,
-    pointer: undefined,
+    pointer: createPointer(
+      (method, params) => cdp(tab, method, params),
+      () => tab.visible && window.isVisible() && !window.isMinimized(),
+      () => Boolean(tab.state.mobile),
+      () => tab.scale,
+    ),
     media: { colorScheme: "", reducedMotion: "" },
   };
-  tab.pointer = createPointer(
-    (method, params) => cdp(tab, method, params),
-    () => tab.visible && window.isVisible() && !window.isMinimized(),
-    () => Boolean(tab.state.mobile),
-    () => tab.scale,
-  );
   awaitGuest(tab);
   tabs.set(input.id, tab);
   publishGuests();
@@ -402,16 +488,16 @@ async function open(input) {
   return state(tab);
 }
 
-function attachGuest(tab, contents) {
-  const { resolve, reject } = tab.attach;
-  bind(tab, contents).then(resolve, (error) => {
+function attachGuest(tab: Tab, contents: WebContents) {
+  const { resolve, reject } = tab.attach!;
+  bind(tab, contents).then(resolve, (error: Error) => {
     reject(error);
     tab.state.error = error.message;
     publish(tab);
   });
 }
 
-async function bind(tab, content) {
+async function bind(tab: Tab, content: WebContents) {
   const id = tab.state.id;
   const url = tab.state.url;
   tab.contents = content;
@@ -426,8 +512,8 @@ async function bind(tab, content) {
     "did-navigate",
     "did-navigate-in-page",
     "page-title-updated",
-  ])
-    content.on(event, () => publish(tab));
+  ] as const)
+    content.on(event as "did-start-loading", () => publish(tab));
   content.on("did-fail-load", (_, code, description, __, mainFrame) => {
     if (!mainFrame || code === -3) return;
     tab.state.error = description;
@@ -489,7 +575,7 @@ async function bind(tab, content) {
     if (method === "Target.attachedToTarget" && params.targetInfo.type === "iframe") {
       const key = `f${++tab.frameCount}`;
       tab.frames.set(key, { sessionId: params.sessionId, targetId: params.targetInfo.targetId });
-      for (const [domain, options] of [["Runtime.enable", {}], ["Log.enable", {}], ["Network.enable", { maxTotalBufferSize: 0, maxResourceBufferSize: 0, maxPostDataSize: 0 }], ["Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }]])
+      for (const [domain, options] of [["Runtime.enable", {}], ["Log.enable", {}], ["Network.enable", { maxTotalBufferSize: 0, maxResourceBufferSize: 0, maxPostDataSize: 0 }], ["Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }]] as const)
         void cdp(tab, domain, options, params.sessionId).catch(logFailure(`Browser frame ${domain}`, id));
       return;
     }
@@ -526,7 +612,7 @@ async function bind(tab, content) {
   publish(tab);
 }
 
-async function target(tab, input) {
+async function target(tab: Tab, input: Locator): Promise<DomNode | null> {
   if (input.ref !== undefined) {
     const [key, id] = String(input.ref).includes(".") ? String(input.ref).split(".") : [undefined, String(input.ref)];
     const backendNodeId = Number(id);
@@ -549,8 +635,8 @@ async function target(tab, input) {
     return { objectId: result.result.objectId };
   }
   if (input.role) {
-    const { nodes } = await cdp(tab, "Accessibility.getFullAXTree");
-    const normalize = (value) =>
+    const { nodes }: { nodes: AXNode[] } = await cdp(tab, "Accessibility.getFullAXTree");
+    const normalize = (value: unknown) =>
       String(value ?? "")
         .trim()
         .replace(/\s+/g, " ");
@@ -561,20 +647,21 @@ async function target(tab, input) {
         (input.name === undefined ||
           normalize(node.name?.value) === normalize(input.name)),
     );
-    if (matches.length !== 1 || !matches[0].backendDOMNodeId)
+    const match = matches.length === 1 ? matches[0] : undefined;
+    if (!match?.backendDOMNodeId)
       throw new Error("Choose a role and name that match exactly one element");
-    return { backendNodeId: matches[0].backendDOMNodeId };
+    return { backendNodeId: match.backendDOMNodeId };
   }
   return null;
 }
 
-async function click(tab, input) {
+async function click(tab: Tab, input: Locator) {
   const node = await target(tab, input);
   let x = input.x;
   let y = input.y;
   const box = node ? await elementBox(tab, node) : undefined;
   if (box) ({ x, y } = centre(box));
-  if (!Number.isFinite(x) || !Number.isFinite(y))
+  if (!finite(x) || !finite(y))
     throw new Error("Choose an element or valid click coordinates");
   await tab.pointer.moveTo(x, y);
   await tab.pointer.press(box);
@@ -615,9 +702,9 @@ async function click(tab, input) {
   return node;
 }
 
-const watchedSessions = new WeakSet();
+const watchedSessions = new WeakSet<Session>();
 
-function uniquePath(directory, name) {
+function uniquePath(directory: string, name: string) {
   const dot = name.lastIndexOf(".");
   const stem = dot > 0 ? name.slice(0, dot) : name;
   const extension = dot > 0 ? name.slice(dot) : "";
@@ -627,7 +714,7 @@ function uniquePath(directory, name) {
   }
 }
 
-function watchDownloads(browserSession) {
+function watchDownloads(browserSession: Session) {
   if (watchedSessions.has(browserSession)) return;
   watchedSessions.add(browserSession);
   browserSession.on("will-download", (_, item, contents) => {
@@ -645,14 +732,15 @@ function watchDownloads(browserSession) {
   });
 }
 
-function remoteText(value) {
+function remoteText(value: RemoteObject) {
   if (value.type === "string") return value.value;
   if ("value" in value) return JSON.stringify(value.value);
   return value.unserializableValue ?? value.description ?? value.type;
 }
 
-function collectLog(tab, method, params) {
-  const add = (kind, level, text) => {
+// CDP event parameters differ per method, so each branch reads the fields its event defines.
+function collectLog(tab: Tab, method: string, params: Record<string, any>) {
+  const add = (kind: string, level: string, text: unknown) => {
     tab.logs.push({ time: Date.now(), kind, level, text: String(text).slice(0, 2000) });
     if (tab.logs.length > 300) tab.logs.splice(0, tab.logs.length - 300);
   };
@@ -666,23 +754,23 @@ function collectLog(tab, method, params) {
   else if (method === "Log.entryAdded" && params.entry.source !== "network" && ["error", "warning"].includes(params.entry.level)) add("browser", params.entry.level, `${params.entry.text}${params.entry.url ? ` (${params.entry.url})` : ""}`);
   else if (method === "Network.requestWillBeSent") {
     tab.requests.set(params.requestId, params.request.url);
-    if (tab.requests.size > 500) tab.requests.delete(tab.requests.keys().next().value);
+    if (tab.requests.size > 500) tab.requests.delete(tab.requests.keys().next().value!);
   } else if (method === "Network.responseReceived" && params.response.status >= 400) add("network", "error", `${params.response.status} ${params.response.url}`);
   else if (method === "Network.loadingFailed" && !params.canceled) add("network", "error", `${params.errorText} ${tab.requests.get(params.requestId) ?? ""}`.trim());
 }
 
-async function hover(tab, input) {
+async function hover(tab: Tab, input: Locator) {
   const node = await target(tab, input);
   let x = input.x;
   let y = input.y;
   if (node) ({ x, y } = centre(await elementBox(tab, node)));
-  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Choose an element or valid hover coordinates");
+  if (!finite(x) || !finite(y)) throw new Error("Choose an element or valid hover coordinates");
   await tab.pointer.moveTo(x, y);
   await cdp(tab, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
   await tab.pointer.release();
 }
 
-async function waitFor(tab, input) {
+async function waitFor(tab: Tab, input: { selector?: string; text?: string; timeout?: number }) {
   const timeout = input.timeout ?? 5000;
   if (!Number.isFinite(timeout) || timeout < 0 || timeout > 30000) throw new Error("Use a wait timeout from 0 to 30000 milliseconds");
   if (input.selector === undefined && input.text === undefined) {
@@ -704,8 +792,8 @@ async function waitFor(tab, input) {
 
 const mediaValues = { colorScheme: ["light", "dark"], reducedMotion: ["reduce", "no-preference"] };
 
-async function emulate(tab, input) {
-  for (const key of Object.keys(mediaValues)) {
+async function emulate(tab: Tab, input: { colorScheme?: string; reducedMotion?: string }) {
+  for (const key of ["colorScheme", "reducedMotion"] as const) {
     const value = input[key];
     if (value === undefined) continue;
     if (value !== "none" && !mediaValues[key].includes(value)) throw new Error(`${key} must be ${mediaValues[key].join(", ")} or none`);
@@ -718,16 +806,16 @@ async function emulate(tab, input) {
   return `Emulating color scheme ${tab.media.colorScheme || "system"} and reduced motion ${tab.media.reducedMotion || "system"}`;
 }
 
-async function withFrames(tab, nodes) {
+async function withFrames(tab: Tab, nodes: FrameNode[]) {
   const all = [...nodes];
   const queue = [...nodes];
   while (queue.length) {
-    const node = queue.shift();
+    const node = queue.shift()!;
     if (node.role?.value !== "Iframe" || !node.backendDOMNodeId) continue;
     const frameId = (await cdp(tab, "DOM.describeNode", { backendNodeId: node.backendDOMNodeId }, node.session).catch(logFailure("Reading a browser frame")))?.node?.frameId;
     if (!frameId) continue;
-    let inner = (await cdp(tab, "Accessibility.getFullAXTree", { frameId }, node.session).catch(logFailure("Reading a browser frame", frameId)))?.nodes;
-    let frame;
+    let inner: FrameNode[] | undefined = (await cdp(tab, "Accessibility.getFullAXTree", { frameId }, node.session).catch(logFailure("Reading a browser frame", frameId)))?.nodes;
+    let frame: { key: string; sessionId: string } | undefined;
     if (!inner?.length || inner.length === 1) {
       const entry = [...tab.frames].find(([, value]) => value.targetId === frameId);
       if (entry) {
@@ -746,7 +834,7 @@ async function withFrames(tab, nodes) {
       ...(entry.backendDOMNodeId && refPrefix ? { ref: `${refPrefix}${entry.backendDOMNodeId}` } : {}),
       ...(session ? { session, refPrefix } : {}),
     }));
-    const root = renamed.find((entry) => !entry.parentId) ?? renamed[0];
+    const root = renamed.find((entry) => !entry.parentId) ?? renamed[0]!;
     node.childIds = [...(node.childIds ?? []), root.nodeId];
     all.push(...renamed);
     queue.push(...renamed);
@@ -754,15 +842,14 @@ async function withFrames(tab, nodes) {
   return all;
 }
 
-async function swipe(tab, input) {
-  const values = [input.x, input.y, input.toX, input.toY];
-  if (!values.every(Number.isFinite)) throw new Error("A swipe needs x, y, toX and toY coordinates");
+async function swipe(tab: Tab, input: { x: number; y: number; toX: number; toY: number; duration?: number }): Promise<string | undefined> {
+  const { x, y, toX, toY } = input;
+  if (![x, y, toX, toY].every(Number.isFinite)) throw new Error("A swipe needs x, y, toX and toY coordinates");
   const duration = input.duration ?? 300;
   if (!Number.isFinite(duration) || duration < 0 || duration > 5000) throw new Error("Use a swipe duration from 0 to 5000 milliseconds");
-  const [x, y, toX, toY] = values;
   const steps = Math.max(2, Math.round(duration / 16));
-  const point = (step) => ({ x: x + ((toX - x) * step) / steps, y: y + ((toY - y) * step) / steps });
-  const pause = async (step) => {
+  const point = (step: number) => ({ x: x + ((toX - x) * step) / steps, y: y + ((toY - y) * step) / steps });
+  const pause = async (step?: number) => {
     if (step !== undefined) await tab.pointer.drawAt(point(step).x, point(step).y, true);
     await new Promise((resolve) => setTimeout(resolve, duration / steps));
   };
@@ -777,9 +864,9 @@ async function swipe(tab, input) {
     await tab.pointer.release();
     return;
   }
-  const content = tab.contents;
-  let dragData;
-  const intercept = (_, method, params) => { if (method === "Input.dragIntercepted") dragData = params.data; };
+  const content = contentsOf(tab);
+  let dragData: { items?: Array<{ mimeType: string }> } | undefined;
+  const intercept = (_: unknown, method: string, params: { data?: typeof dragData }) => { if (method === "Input.dragIntercepted") dragData = params.data; };
   content.debugger.on("message", intercept);
   await cdp(tab, "Input.setInterceptDrags", { enabled: true });
   try {
@@ -802,7 +889,7 @@ async function swipe(tab, input) {
   return dragData ? `Dragged ${dragData.items?.map((item) => item.mimeType).join(", ") || "content"} and dropped it at the end point` : undefined;
 }
 
-async function evaluate(tab, expression) {
+async function evaluate(tab: Tab, expression: unknown) {
   if (typeof expression !== "string" || !expression.trim() || expression.length > 20000) throw new Error("Provide a JavaScript expression to evaluate");
   const { result, exceptionDetails } = await cdp(tab, "Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true, timeout: 10000, userGesture: false });
   if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text ?? "The expression failed");
@@ -810,18 +897,18 @@ async function evaluate(tab, expression) {
   return value.length > 20000 ? `${value.slice(0, 20000)}… (truncated)` : value;
 }
 
-async function closeTopLayer(tab) {
+async function closeTopLayer(tab: Tab) {
   const { result } = await cdp(tab, "Runtime.evaluate", {
     expression: "Boolean(document.querySelector('dialog:modal, :popover-open'))",
     returnByValue: true,
   });
   if (!result.value) return false;
-  pressKey(tab.contents, "Escape");
+  pressKey(contentsOf(tab), "Escape");
   return true;
 }
 
-async function performAction(tab, input) {
-  const content = tab.contents;
+async function performAction(tab: Tab, input: BrowserAction) {
+  const content = contentsOf(tab);
   tab.state.error = undefined;
   if (tab.state.dialog && input.action !== "dialog")
     throw new Error(
@@ -829,7 +916,7 @@ async function performAction(tab, input) {
     );
   if (["click", "type", "press", "scroll", "swipe", "hover"].includes(input.action))
     await prepareTab(tab);
-  let result;
+  let result: string | undefined;
   const since = Date.now();
   let navigationStarted = false;
   const startedLoading = () => { navigationStarted = true; };
@@ -883,7 +970,7 @@ async function performAction(tab, input) {
       if (typeof input.text !== "string" || input.text.length > 100000)
         throw new Error("Invalid browser text");
       if (input.ref !== undefined || input.selector || input.role) {
-        const node = await click(tab, input);
+        const node = (await click(tab, input))!;
         const object = node.objectId
           ? node
           : (await cdp(tab, "DOM.resolveNode", nodeParams(node), node.session)).object;
@@ -1010,12 +1097,12 @@ async function performAction(tab, input) {
   return { ...state(tab), ...(result === undefined ? {} : { result }), ...(events.length ? { events } : {}) };
 }
 
-async function settle(tab, navigationStarted) {
-  const content = tab.contents;
+async function settle(tab: Tab, navigationStarted: () => boolean) {
+  const content = contentsOf(tab);
   await new Promise((resolve) => setTimeout(resolve, 200));
   if (!navigationStarted() && !content.isLoadingMainFrame()) return;
   if (!content.isLoadingMainFrame()) return;
-  await new Promise((resolve) => {
+  await new Promise<void>((resolve) => {
     const timer = setTimeout(done, 10000);
     function done() {
       clearTimeout(timer);
@@ -1026,25 +1113,27 @@ async function settle(tab, navigationStarted) {
   });
 }
 
-async function action(tab, input) {
+async function action(tab: Tab, input: BrowserAction) {
   if (input.action === "dialog") return performAction(tab, input);
-  let onDialog;
-  const opened = new Promise((resolve) => {
+  const content = contentsOf(tab);
+  let onDialog!: (event: unknown, method: string) => void;
+  const opened = new Promise<BrowserState>((resolve) => {
     onDialog = (_, method) => {
       if (method === "Page.javascriptDialogOpening") resolve(state(tab));
     };
-    tab.contents.debugger.on("message", onDialog);
+    content.debugger.on("message", onDialog);
   });
   try {
     return await Promise.race([performAction(tab, input), opened]);
   } finally {
-    tab.contents.debugger.off("message", onDialog);
+    content.debugger.off("message", onDialog);
   }
 }
 
-async function request(method, params) {
+async function request(method: string, body: unknown) {
   if (method === "notification") {
     if (!Notification.isSupported() || window.isFocused()) return;
+    const params = body as Notice;
     const notification = new Notification({
       title: params.title,
       body: params.text.slice(0, 500),
@@ -1068,9 +1157,9 @@ async function request(method, params) {
     window.focus();
     return;
   }
-  if (method.startsWith("profiles.")) return handleProfiles(method.slice(9), params, session, tabs);
+  if (method.startsWith("profiles.")) return handleProfiles(method.slice(9), body as ProfileInput, session, tabs);
   if (method.startsWith("connections.")) {
-    const result = await handleConnections(method.slice(12), params, session, tabs);
+    const result = await handleConnections(method.slice(12), body as ConnectionInput, session, tabs);
     for (const tab of tabs.values()) if (accountOfProfile(tab.state.profileId)) publish(tab);
     return result;
   }
@@ -1084,13 +1173,14 @@ async function request(method, params) {
     ...(Number.isFinite(entry.creationTime) && entry.creationTime > 0 ? { startedAt: `electron:${entry.creationTime}` } : {}),
     memory: entry.memory.workingSetSize * 1024,
   }));
-  if (method === "browser.open") return open(params);
+  if (method === "browser.open") return open(body as BrowserState);
+  const params = body as BrowserRequest;
   const tab = tabs.get(params.id);
   if (!tab) throw new Error("This browser tab is closed");
   if (method === "browser.close") {
     tabs.delete(params.id);
     tab.activity.dispose();
-    tab.attach.reject(new Error("This browser tab is closed"));
+    tab.attach?.reject(new Error("This browser tab is closed"));
     publishGuests();
     return;
   }
@@ -1111,13 +1201,14 @@ async function request(method, params) {
   }
   if (method === "browser.snapshot") return tab.activity.run(async () => {
     await prepareTab(tab);
-    let scope;
+    let scope: DomNode | null | undefined;
     if (params.selector !== undefined) {
       scope = await target(tab, { selector: params.selector });
-      const { node } = await cdp(tab, "DOM.describeNode", scope);
+      const { node } = await cdp(tab, "DOM.describeNode", scope!);
       scope = { ...scope, backendNodeId: node.backendNodeId };
     } else if (params.ref !== undefined) scope = await target(tab, { ref: params.ref });
-    const scopeRef = scope && (scope.session ? `${[...tab.frames].find(([, value]) => value.sessionId === scope.session)?.[0]}.${scope.backendNodeId}` : scope.backendNodeId);
+    const session = scope?.session;
+    const scopeRef = scope ? (session ? `${[...tab.frames].find(([, value]) => value.sessionId === session)?.[0]}.${scope.backendNodeId}` : scope.backendNodeId) : undefined;
     const nodes = params.tree === false ? [] : await withFrames(tab, (await cdp(tab, "Accessibility.getFullAXTree")).nodes);
     const lines = formatTree(nodes, scopeRef);
     let image;
@@ -1151,7 +1242,7 @@ async function request(method, params) {
             fromSurface: true,
             captureBeyondViewport: Boolean(scope) || params.fullPage === true,
             clip: { ...clip, scale: cssVisualViewport.scale },
-          }).then((result) => result.data, logFailure("Taking a browser screenshot"));
+          }).then((result) => result.data as string, logFailure("Taking a browser screenshot"));
         } finally {
           await tab.pointer.release();
         }
@@ -1162,7 +1253,7 @@ async function request(method, params) {
     const tree = body.length > limit ? `${body.slice(0, limit)}\n… truncated. Snapshot a selector or ref to see the rest.` : body;
     const errors = tab.logs.filter((entry) => entry.level === "error").length;
     return {
-      text: `${tab.contents.getTitle()}\n${tab.contents.getURL()}\nViewport: ${tab.state.width} × ${tab.state.height}${tab.state.mobile ? " (mobile)" : " (desktop)"}. Screenshot coordinates use these dimensions. Use [ref=N] values with browser_action ref.${errors ? ` ${errors} unread error${errors === 1 ? "" : "s"} in browser_logs.` : ""}\n\n${tree}`,
+      text: `${contentsOf(tab).getTitle()}\n${contentsOf(tab).getURL()}\nViewport: ${tab.state.width} × ${tab.state.height}${tab.state.mobile ? " (mobile)" : " (desktop)"}. Screenshot coordinates use these dimensions. Use [ref=N] values with browser_action ref.${errors ? ` ${errors} unread error${errors === 1 ? "" : "s"} in browser_logs.` : ""}\n\n${tree}`,
       image,
     };
   });
@@ -1221,7 +1312,7 @@ app
           { mode: 0o600 },
         );
       } catch (error) {
-        diagnose("window.save-failed", { reason: error.message });
+        diagnose("window.save-failed", { reason: (error as Error).message });
       }
     });
     window.on("closed", () => {
@@ -1240,11 +1331,11 @@ app
     await initializeProfiles(app.getPath("userData"));
     await initializeConnections(app.getPath("userData"));
     Menu.setApplicationMenu(null);
-    const trusted = (event) =>
+    const trusted = (event: IpcMainEvent | IpcMainInvokeEvent) =>
       event.sender === window.webContents &&
       event.senderFrame === window.webContents.mainFrame &&
       new URL(event.senderFrame.url).origin === ui.origin;
-    environments = new SshEnvironments({ directory: app.getPath("userData"), appRoot: fileURLToPath(new URL("..", import.meta.url)), origin: ui.origin, projectDefaults: async (settings, signal) => {
+    const sshEnvironments = new SshEnvironments({ directory: app.getPath("userData"), appRoot: fileURLToPath(new URL("..", import.meta.url)), origin: ui.origin, projectDefaults: async (settings, signal) => {
       const response = await fetch(new URL("/api/projects/defaults", base), {
         method: settings === undefined ? "GET" : "PATCH",
         headers: { "content-type": "application/json" },
@@ -1257,33 +1348,41 @@ app
     }, changed: state => {
       if (!window.isDestroyed()) window.webContents.send("environments:state", state);
     } });
+    environments = sshEnvironments;
     await started;
-    await environments.load();
-    for (const [channel, action] of Object.entries({
-      state: () => environments.state(),
+    await sshEnvironments.load();
+    // Inputs come from the renderer. Ids must be strings, and the environment methods reject unknown ones.
+    const idOf = (value: unknown) => {
+      if (typeof value !== "string") throw new Error("This SSH connection was removed.");
+      return value;
+    };
+    for (const [channel, action] of Object.entries<(input: unknown) => unknown>({
+      state: () => sshEnvironments.state(),
       hosts: () => sshHosts(),
-      save: input => environments.save(input),
-      "project-defaults": settings => environments.syncProjectDefaults(settings),
+      save: input => sshEnvironments.save(input as SshInput | undefined),
+      "project-defaults": settings => sshEnvironments.syncProjectDefaults(settings),
       connect: async id => {
-        return environments.connect(id);
+        return sshEnvironments.connect(idOf(id));
       },
-      disconnect: id => environments.disconnect(id),
-      remove: id => environments.remove(id),
-      stop: id => environments.stop(id),
-      "choose-folder": async input => {
+      disconnect: id => sshEnvironments.disconnect(idOf(id)),
+      remove: id => sshEnvironments.remove(idOf(id)),
+      stop: id => sshEnvironments.stop(idOf(id)),
+      "choose-folder": async request => {
+        const input = request as FolderRequest;
         if (folderChoice) throw new Error("Finish choosing the current folder first.");
-        const connection = input?.id === "local" ? undefined : environments.connections.find(entry => entry.id === input?.id);
+        const connection = input?.id === "local" ? undefined : sshEnvironments.connections.find(entry => entry.id === input?.id);
         if (input?.id !== "local" && !connection) throw new Error("This SSH connection was removed.");
         if (connection?.kind === "container") return "/workspace";
         const controller = new AbortController();
         folderChoice = controller;
-        try { return await chooseNativeFolder({ connection, path: typeof input.path === "string" ? input.path : undefined, signal: controller.signal }, options => dialog.showOpenDialog(window, options)); }
+        try { return await chooseNativeFolder({ connection, path: typeof input?.path === "string" ? input.path : undefined, signal: controller.signal }, options => dialog.showOpenDialog(window, options)); }
         finally { if (folderChoice === controller) folderChoice = undefined; }
       },
-      "list-folder": async input => {
-        const connection = environments.connections.find(entry => entry.id === input?.id);
+      "list-folder": async request => {
+        const input = request as FolderRequest;
+        const connection = sshEnvironments.connections.find(entry => entry.id === input?.id);
         if (!connection || connection.kind === "container") throw new Error("This SSH connection was removed.");
-        return listRemoteFolder(connection, typeof input.path === "string" ? input.path : "", AbortSignal.timeout(25000));
+        return listRemoteFolder(connection, typeof input?.path === "string" ? input.path : "", AbortSignal.timeout(25000));
       },
     })) ipcMain.handle(`environments:${channel}`, (event, input) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
@@ -1296,21 +1395,21 @@ app
         : undefined;
     const scriptedUpdates = !unavailableUpdate && macScriptUpdates();
     const autoUpdater = unavailableUpdate || scriptedUpdates ? undefined : (await import("electron-updater").then(module => module.default || module)).autoUpdater;
-    let stagedUpdate;
+    let stagedUpdate: Awaited<ReturnType<typeof stageScriptUpdate>> | undefined;
     const scriptInstaller = {
       check: async () => {
         const response = await fetch(`https://github.com/${updateRepository}/releases/latest`, { signal: AbortSignal.timeout(10000) });
         if (!response.ok) throw new Error(`GitHub answered ${response.status} for the latest release.`);
         return response.url.match(/\/releases\/tag\/v?([^/?#]+)$/)?.[1];
       },
-      download: async target => {
+      download: async (target: string) => {
         const architecture = app.runningUnderARM64Translation ? "arm64" : process.arch;
         stagedUpdate = await stageScriptUpdate(updateRepository, target, architecture, app.getPath("userData"));
       },
-      install: async target => {
+      install: async (target: string) => {
         if (stagedUpdate?.version !== target) throw new Error("Download and verify this release before applying it.");
         const script = stagedUpdate.script;
-        const env = { ...process.env, CITROPY_RELAUNCH: "1", CITROPY_PARENT_PID: String(process.pid), CITROPY_VERSION: target, CITROPY_STAGED_DOWNLOAD: stagedUpdate.directory };
+        const env: NodeJS.ProcessEnv = { ...process.env, CITROPY_RELAUNCH: "1", CITROPY_PARENT_PID: String(process.pid), CITROPY_VERSION: target, CITROPY_STAGED_DOWNLOAD: stagedUpdate.directory };
         for (const name of ["CITROPY_BASE_URL", "CITROPY_BIN_DIR", "CITROPY_BIN_PATH", "CITROPY_APP_DIR"]) delete env[name];
         if (process.platform === "darwin") {
           const directory = resolve(process.execPath, "..", "..", "..", "..");
@@ -1339,17 +1438,18 @@ app
         app.quit();
       },
     };
-    updates = createAppUpdater({
+    const appImage = process.env.APPIMAGE;
+    const appUpdates = createAppUpdater({
       updater: autoUpdater,
       version,
       unavailable: unavailableUpdate,
       external: scriptedUpdates ? scriptInstaller : undefined,
       releaseNotes: (target) => fetchReleaseNotes(updateRepository, target),
       applyInstall:
-        process.platform === "linux" && process.env.APPIMAGE
+        process.platform === "linux" && appImage
           ? async (file) => {
               spawnAppImageRelaunch({
-                appImage: process.env.APPIMAGE,
+                appImage,
                 downloadedFile: file,
                 parentPid: process.pid,
                 logFile: join(app.getPath("userData"), "update.log"),
@@ -1365,9 +1465,7 @@ app
       prepareInstall: async () => {
         const response = await fetch(new URL("/api/updates/prepare", base), { method: "POST", headers: { "x-citropy-desktop-token": token }, signal: AbortSignal.timeout(10000) });
         if (!response.ok) {
-          const error = new Error("Update is blocked");
-          error.userMessage = (await response.json()).error;
-          throw error;
+          throw Object.assign(new Error("Update is blocked"), { userMessage: (await response.json()).error });
         }
         applyingUpdate = true;
         diagnose("app.update-preparing");
@@ -1375,25 +1473,26 @@ app
           await profile.cookies.flushStore();
           profile.flushStorageData();
         }
-        await backend.stop();
+        await backend?.stop();
         app.releaseSingleInstanceLock();
       },
       recoverInstall: async () => {
         if (!applyingUpdate) return;
         if (!app.requestSingleInstanceLock()) throw new Error("Another Citropy instance is already open.");
-        await backend.start();
+        await backend?.start();
         await fetch(new URL("/api/updates/cancel", base), { method: "POST", headers: { "x-citropy-desktop-token": token }, signal: AbortSignal.timeout(10000) });
         if (!socket || socket.readyState !== WebSocket.OPEN) connectDesktop();
         applyingUpdate = false;
       },
     });
+    updates = appUpdates;
     ipcMain.handle("updates:state", (event) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
-      return updates.state();
+      return appUpdates.state();
     });
     ipcMain.handle("updates:command", (event, request) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
-      return updates.command(request);
+      return appUpdates.command(request);
     });
     ipcMain.handle("updates:history", (event) => {
       if (!trusted(event)) throw new Error("Unavailable outside Citropy");
@@ -1477,13 +1576,13 @@ app
       "unmaximize",
       "enter-full-screen",
       "leave-full-screen",
-    ])
-      window.on(event, publishWindow);
+    ] as const)
+      window.on(event as "maximize", publishWindow);
     // Why: on KDE Wayland Chromium keeps stale off-shade rectangles over the stage background after the window is restored or maximized.
-    for (const event of ["show", "restore", "maximize", "unmaximize"])
-      window.on(event, () => window.webContents.invalidate());
-    for (const event of ["show", "hide", "minimize", "restore"])
-      window.on(event, () => {
+    for (const event of ["show", "restore", "maximize", "unmaximize"] as const)
+      window.on(event as "show", () => window.webContents.invalidate());
+    for (const event of ["show", "hide", "minimize", "restore"] as const)
+      window.on(event as "show", () => {
         for (const tab of tabs.values())
           tab.activity.present(tab.visible && window.isVisible() && !window.isMinimized());
       });
@@ -1533,7 +1632,7 @@ app
       if (!trusted(event)) return;
       const tab = tabs.get(id);
       if (!tab) return;
-      tab.visible = Boolean(visible) && environments.activeId === "local";
+      tab.visible = Boolean(visible) && sshEnvironments.activeId === "local";
       if (Number.isFinite(scale) && scale > 0) tab.scale = scale;
       tab.activity.present(tab.visible && window.isVisible() && !window.isMinimized());
     });
@@ -1558,7 +1657,7 @@ app
           result: await request(message.method, message.params ?? {}),
         });
       } catch (error) {
-        emit({ id: message.id, error: error.message });
+        emit({ id: message.id, error: (error as Error).message });
       }
     });
     connection.on("error", () => {

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { initializeConnections, handleConnections, connectionProfile, accountOfProfile, matchConnection, signInTarget } from "../desktop/connections.mjs";
+import { initializeConnections, handleConnections, connectionProfile, accountOfProfile, matchConnection, signInTarget } from "../desktop/connections.ts";
 import { siteOf } from "../shared/connection-sites.mjs";
 
 test("connected sites match their own subdomains and prefer the most specific site", () => {

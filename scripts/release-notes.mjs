@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { parseReleaseNotes, RELEASE_NOTE_HEADINGS } from "../desktop/release-notes.mjs";
+import { parseReleaseNotes, RELEASE_NOTE_HEADINGS } from "../desktop/release-notes.ts";
 
 const version = process.argv[2];
 if (!version) throw new Error("Usage: node scripts/release-notes.mjs VERSION");

@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { stageScriptUpdate } from "../desktop/script-update.mjs";
+import { stageScriptUpdate } from "../desktop/script-update.ts";
 
 test("scripted updates pin and verify the release before publishing a staged installation", async t => {
   const directory = await mkdtemp(join(tmpdir(), "citropy-script-update-"));

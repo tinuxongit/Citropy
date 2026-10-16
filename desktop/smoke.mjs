@@ -25,7 +25,7 @@ try {
     assert.ok(notices.includes(await readFile(new URL(`../node_modules/${path}`, import.meta.url), "utf8")), `Missing bundled dependency notice: ${path}`);
   }
   await access(join(appRoot, "desktop/apply-appimage-update.sh"));
-  await access(join(appRoot, "desktop/appimage-relaunch.mjs"));
+  await access(join(appRoot, "desktop/appimage-relaunch.ts"));
   for (const path of [".env", "tests", ".git", "web", "desktop/start.mjs", "desktop/install.mjs", "desktop/smoke.mjs", "desktop/smoke-mac.mjs", "desktop/smoke-win.mjs", "desktop/smoke-terminal.mjs", "node_modules/vite", "node_modules/playwright", "node_modules/shiki", "node_modules/motion"]) {
     const present = await access(join(appRoot, path)).then(() => true, () => false);
     assert.equal(present, false, `Development file in release: ${path}`);

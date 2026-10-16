@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createServer } from "node:http";
-import { remoteProxy } from "../desktop/remote-proxy.mjs";
+import { remoteProxy } from "../desktop/remote-proxy.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { desktopDiagnostics } from "../desktop/diagnostics.mjs";
+import { desktopDiagnostics } from "../desktop/diagnostics.ts";
 
 test("desktop diagnostics persist only lifecycle metadata with private permissions", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "citropy-diagnostics-"));

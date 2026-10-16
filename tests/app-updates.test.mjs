@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { EventEmitter } from "node:events";
-import { createAppUpdater } from "../desktop/updates.mjs";
-import { parseReleaseNotes } from "../desktop/release-notes.mjs";
+import { createAppUpdater } from "../desktop/updates.ts";
+import { parseReleaseNotes } from "../desktop/release-notes.ts";
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 function fixture(overrides = {}) {

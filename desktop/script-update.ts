@@ -4,8 +4,9 @@ import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promise
 import { join } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import type { ReadableStream } from "node:stream/web";
 
-export async function stageScriptUpdate(repository, version, architecture, directory) {
+export async function stageScriptUpdate(repository: string, version: string, architecture: string, directory: string) {
   if (!/^\d+\.\d+\.\d+$/.test(version) || !["arm64", "x64"].includes(architecture))
     throw new Error("Choose a supported release.");
   await mkdir(directory, { recursive: true });
@@ -16,9 +17,9 @@ export async function stageScriptUpdate(repository, version, architecture, direc
     await writeFile(join(temporary, "install.sh"), await readFile(new URL("../scripts/install.sh", import.meta.url)), { mode: 0o600 });
     const response = await fetch(`${base}/SHA256SUMS`, { signal: AbortSignal.timeout(15000) });
     if (!response.ok || !response.body) throw new Error(`Could not download SHA256SUMS (${response.status}).`);
-    const chunks = [];
+    const chunks: Uint8Array[] = [];
     let length = 0;
-    for await (const chunk of response.body) {
+    for await (const chunk of response.body as ReadableStream<Uint8Array>) {
       length += chunk.length;
       if (length > 1024 * 1024) throw new Error("The SHA256SUMS response is too large.");
       chunks.push(chunk);
@@ -27,12 +28,12 @@ export async function stageScriptUpdate(repository, version, architecture, direc
     await writeFile(join(temporary, "SHA256SUMS"), checksums, { mode: 0o600 });
     const expected = checksums.toString().split(/\r?\n/)
       .map(line => line.trim().split(/\s+/)).find(parts => parts[1] === asset)?.[0];
-    if (!/^[a-f0-9]{64}$/i.test(expected || "")) throw new Error("The release checksum is missing.");
+    if (!expected || !/^[a-f0-9]{64}$/i.test(expected)) throw new Error("The release checksum is missing.");
     const download = await fetch(`${base}/${asset}`, { signal: AbortSignal.timeout(10 * 60_000) });
     if (!download.ok || !download.body) throw new Error(`Could not download the update (${download.status}).`);
     const hash = createHash("sha256");
     let size = 0;
-    await pipeline(Readable.fromWeb(download.body), new Transform({
+    await pipeline(Readable.fromWeb(download.body as ReadableStream<Uint8Array>), new Transform({
       transform(chunk, _, done) {
         size += chunk.length;
         if (size > 2 * 1024 * 1024 * 1024) { done(new Error("The update download is too large.")); return; }

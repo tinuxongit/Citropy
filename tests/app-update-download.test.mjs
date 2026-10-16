@@ -70,7 +70,7 @@ test(
       `
 import { app, BrowserWindow } from "electron";
 import updaterModule from ${JSON.stringify(join(root, "node_modules/electron-updater/out/main.js"))};
-import { createAppUpdater } from ${JSON.stringify(join(root, "desktop/updates.mjs"))};
+import { createAppUpdater } from ${JSON.stringify(join(root, "desktop/updates.ts"))};
 app.setPath('userData', ${JSON.stringify(join(folder, "user-data"))});
 app.setPath('cache', ${JSON.stringify(join(folder, "cache"))});
 app.whenReady().then(async () => {

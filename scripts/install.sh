@@ -212,7 +212,7 @@ main() {
     bundled="usr/share/icons/hicolor/512x512/apps/$command_name.png"
     if (cd "$tmp" && "$tmp/$asset" --appimage-extract "$bundled" >/dev/null 2>&1) &&
       [ -f "$tmp/squashfs-root/$bundled" ]; then
-      # Desktops cache icons by name for the whole session, so each new picture gets a new name. The app's desktop/menu-icon.mjs uses the same name.
+      # Desktops cache icons by name for the whole session, so each new picture gets a new name. The app's desktop/menu-icon.ts uses the same name.
       icon="$command_name-icon-$(hash_file "$tmp/squashfs-root/$bundled" | cut -c1-12)"
       mkdir -p "$apps"
       cp "$tmp/squashfs-root/$bundled" "$apps/$icon.png"

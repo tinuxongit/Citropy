@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
-import { parseReleaseNotes } from "../../desktop/release-notes.mjs";
+import { parseReleaseNotes } from "../../desktop/release-notes.ts";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, contextTokens: 0, contextMax: 200000, turns: 1 };

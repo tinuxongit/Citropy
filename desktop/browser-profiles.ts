@@ -11,14 +11,60 @@ import {
 import { isUtf8 } from "node:buffer";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import type { CookiesSetDetails, Session, session as sessions } from "electron";
 import { ifMissing, logFailure, unlessCode } from "../shared/expected-errors.mjs";
 
+interface ProjectSettings {
+  selected: string;
+  profiles: Array<{ id: string; name: string }>;
+}
+
+type Source = { id: string; name: string; browser: string; path: string } & (
+  | { engine: "chromium"; application: string }
+  | { engine: "firefox" }
+);
+
+// Firefox rows carry the camel-case columns and Chromium rows the snake-case ones.
+interface CookieRow {
+  host: string;
+  host_key: string;
+  name: string;
+  value: string;
+  path: string;
+  encrypted_value: Uint8Array;
+  originAttributes: string;
+  top_frame_site_key: string;
+  partition_key: string;
+  expiry: number;
+  expires_utc: number;
+  isSecure: number;
+  is_secure: number;
+  isHttpOnly: number;
+  is_httponly: number;
+  sameSite: number;
+  samesite: number;
+}
+
+// Comes from the renderer, so lookups below reject anything that is not a known id.
+export interface ProfileInput {
+  projectId: string;
+  profileId?: string;
+  method?: string;
+  selected?: string;
+  name?: unknown;
+  id?: string;
+  kind?: string;
+  sourceId?: string;
+}
+
+type ProfileTabs = Map<string, { state: { projectId?: string; profileId?: string } }>;
+
 const run = promisify(execFile);
-let preferences = {};
-let file;
+let preferences: Record<string, ProjectSettings> = {};
+let file = "";
 let operations = Promise.resolve();
 
-export async function initializeProfiles(userData) {
+export async function initializeProfiles(userData: string) {
   await mkdir(userData, { recursive: true });
   file = join(userData, "browser-profiles.json");
   preferences = JSON.parse(await readFile(file, "utf8").catch(ifMissing("{}")));
@@ -30,8 +76,8 @@ async function save() {
   await rename(temporary, file);
 }
 
-function projectProfiles(projectId) {
-  if (!/^[a-zA-Z0-9_-]+$/.test(projectId)) throw new Error("Invalid workspace");
+function projectProfiles(projectId: unknown) {
+  if (typeof projectId !== "string" || !/^[a-zA-Z0-9_-]+$/.test(projectId)) throw new Error("Invalid workspace");
   preferences[projectId] ??= {
     selected: "workspace",
     profiles: [{ id: "workspace", name: "Workspace" }],
@@ -40,12 +86,12 @@ function projectProfiles(projectId) {
 }
 
 // Each bot browses in its own profile, so one bot's sign-ins never reach another.
-export function botProfile(profileId) {
+export function botProfile(profileId: unknown) {
   if (typeof profileId !== "string" || !/^bot-[a-zA-Z0-9_-]+$/.test(profileId)) return undefined;
   return { id: profileId, name: "Bot", partition: `persist:citropy-${profileId}` };
 }
 
-export function browserProfile(projectId, profileId) {
+export function browserProfile(projectId: string, profileId?: string) {
   const settings = projectProfiles(projectId);
   const profile = settings.profiles.find(
     (entry) => entry.id === (profileId ?? settings.selected),
@@ -68,7 +114,7 @@ async function sources() {
     : process.platform === "darwin"
       ? join(home, "Library/Application Support")
       : process.env.LOCALAPPDATA;
-  const locations = chromeRoot
+  const locations: Array<[string, string, string]> = chromeRoot
     ? [
         ["Chrome", linux ? "google-chrome" : "Google/Chrome", "chrome"],
         ["Chromium", linux ? "chromium" : "Chromium", "chromium"],
@@ -82,8 +128,8 @@ async function sources() {
         ["Helium", linux ? "helium" : "Helium", "helium"],
       ]
     : [];
-  const result = [];
-  if (process.platform !== "win32")
+  const result: Source[] = [];
+  if (chromeRoot && process.platform !== "win32")
     for (const [browser, relative, application] of locations) {
       const root = join(chromeRoot, relative);
       const entries = await readdir(root, { withFileTypes: true }).catch(
@@ -132,7 +178,7 @@ async function sources() {
   return result;
 }
 
-export function decryptCookie(encrypted, host, version, keys) {
+export function decryptCookie(encrypted: Uint8Array, host: string, version: number, keys: Record<string, Buffer | undefined>) {
   const buffer = Buffer.from(encrypted);
   const prefix = buffer.subarray(0, 3).toString();
   if (!["v10", "v11"].includes(prefix)) return null;
@@ -159,13 +205,13 @@ export function decryptCookie(encrypted, host, version, keys) {
   }
 }
 
-async function readCookies(source) {
+async function readCookies(source: Source) {
   const { DatabaseSync } = await import("node:sqlite");
   const database = new DatabaseSync(source.path, {
     readOnly: true,
     timeout: 3000,
   });
-  let rows;
+  let rows: CookieRow[];
   let version = 0;
   try {
     database.exec("BEGIN");
@@ -175,7 +221,7 @@ async function readCookies(source) {
           ? "SELECT host, name, value, path, expiry, isSecure, isHttpOnly, sameSite, originAttributes FROM moz_cookies LIMIT 50000"
           : "SELECT * FROM cookies LIMIT 50000",
       )
-      .all();
+      .all() as unknown as CookieRow[];
     if (source.engine === "chromium")
       version = Number(
         database.prepare("SELECT value FROM meta WHERE key = 'version'").get()
@@ -185,7 +231,7 @@ async function readCookies(source) {
   } finally {
     database.close();
   }
-  const keys = { v10: pbkdf2Sync("peanuts", "saltysalt", 1, 16, "sha1") };
+  const keys: Record<string, Buffer | undefined> = { v10: pbkdf2Sync("peanuts", "saltysalt", 1, 16, "sha1") };
   if (source.engine === "chromium") {
     const needsSecret =
       process.platform === "darwin" ||
@@ -221,7 +267,7 @@ async function readCookies(source) {
         );
     }
   }
-  const cookies = [];
+  const cookies: CookiesSetDetails[] = [];
   let skipped = 0;
   for (const row of rows) {
     const firefox = source.engine === "firefox";
@@ -250,7 +296,7 @@ async function readCookies(source) {
       skipped++;
       continue;
     }
-    const cookie = {
+    const cookie: CookiesSetDetails = {
       url: `${secure ? "https" : "http"}://${host.replace(/^\./, "")}${row.path || "/"}`,
       name: row.name,
       value,
@@ -258,9 +304,9 @@ async function readCookies(source) {
       secure,
       httpOnly: Boolean(firefox ? row.isHttpOnly : row.is_httponly),
       sameSite:
-        { 0: "no_restriction", 1: "lax", 2: "strict" }[
+        (["no_restriction", "lax", "strict"] as const)[
           firefox ? row.sameSite : row.samesite
-        ] || "unspecified",
+        ] ?? "unspecified",
     };
     if (host.startsWith(".") && !row.name.startsWith("__Host-"))
       cookie.domain = host;
@@ -270,7 +316,7 @@ async function readCookies(source) {
   return { cookies, skipped };
 }
 
-export function handleProfiles(operation, input, session, tabs) {
+export function handleProfiles(operation: string, input: ProfileInput, session: typeof sessions, tabs: ProfileTabs) {
   const result = operations.then(() =>
     applyProfiles(operation, input, session, tabs),
   );
@@ -281,13 +327,13 @@ export function handleProfiles(operation, input, session, tabs) {
   return result;
 }
 
-export async function clearProfileData(target) {
+export async function clearProfileData(target: Session) {
   await target.clearStorageData();
   await target.clearCache();
   await target.clearCodeCaches({});
 }
 
-async function applyProfiles(operation, input, session, tabs) {
+async function applyProfiles(operation: string, input: ProfileInput, session: typeof sessions, tabs: ProfileTabs) {
   if (operation === "forget-bot") {
     const profile = botProfile(input.profileId);
     if (!profile) throw new Error("Bot profile not found");
@@ -295,7 +341,7 @@ async function applyProfiles(operation, input, session, tabs) {
     return { ok: true };
   }
   const settings = projectProfiles(input.projectId);
-  const getSession = (id) =>
+  const getSession = (id?: string) =>
     session.fromPartition(browserProfile(input.projectId, id).partition);
   if (operation === "forget") {
     for (const profile of settings.profiles)
