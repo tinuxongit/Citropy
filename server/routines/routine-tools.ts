@@ -27,13 +27,11 @@ function summary(routine: Routine) {
     when: describeSchedule(routine.schedule),
     paused: routine.paused,
     ...(routine.nextRunAt ? { nextRunAt: new Date(routine.nextRunAt).toISOString() } : {}),
-    recentRuns: routine.runs
-      .slice(0, LISTED_RUNS)
-      .map((run) => ({
-        status: run.status,
-        startedAt: new Date(run.startedAt).toISOString(),
-        ...(run.error ? { error: run.error } : {}),
-      })),
+    recentRuns: routine.runs.slice(0, LISTED_RUNS).map((run) => ({
+      status: run.status,
+      startedAt: new Date(run.startedAt).toISOString(),
+      ...(run.error ? { error: run.error } : {}),
+    })),
   };
 }
 

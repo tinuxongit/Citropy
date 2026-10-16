@@ -78,13 +78,11 @@ export async function remoteProxy(allowedOrigin: string | (() => string)) {
       return;
     }
     if (!target) {
-      res
-        .writeHead(503, { ...cors, "content-type": "application/json" })
-        .end(
-          JSON.stringify({
-            error: "The environment connection is disconnected. Reconnect or switch to Local.",
-          }),
-        );
+      res.writeHead(503, { ...cors, "content-type": "application/json" }).end(
+        JSON.stringify({
+          error: "The environment connection is disconnected. Reconnect or switch to Local.",
+        }),
+      );
       return;
     }
     const headers = headersFor(req, target);
@@ -111,13 +109,11 @@ export async function remoteProxy(allowedOrigin: string | (() => string)) {
     upstream.on("error", () => {
       if (res.writableEnded) return;
       if (!res.headersSent)
-        res
-          .writeHead(502, { ...cors, "content-type": "application/json" })
-          .end(
-            JSON.stringify({
-              error: "The environment backend could not be reached. Reconnect and try again.",
-            }),
-          );
+        res.writeHead(502, { ...cors, "content-type": "application/json" }).end(
+          JSON.stringify({
+            error: "The environment backend could not be reached. Reconnect and try again.",
+          }),
+        );
       else res.destroy();
     });
     upstream.setTimeout(300000, () => upstream.destroy());
@@ -185,13 +181,11 @@ export async function remoteProxy(allowedOrigin: string | (() => string)) {
         req.unpipe(upstream);
         req.resume();
         if (!res.headersSent)
-          res
-            .writeHead(503, { ...cors, "content-type": "application/json" })
-            .end(
-              JSON.stringify({
-                error: "The environment connection changed. Try again after reconnecting.",
-              }),
-            );
+          res.writeHead(503, { ...cors, "content-type": "application/json" }).end(
+            JSON.stringify({
+              error: "The environment connection changed. Try again after reconnecting.",
+            }),
+          );
         else res.destroy();
         upstream.destroy();
       }

@@ -50,14 +50,12 @@ function groups(bot: Bot) {
     .map((group) => ({
       id: group.id,
       name: group.name,
-      members: groupStore
-        .members(group)
-        .map((member) => ({
-          botId: member.id,
-          name: member.name,
-          handle: `@${botHandle(member.name)}`,
-          title: member.title,
-        })),
+      members: groupStore.members(group).map((member) => ({
+        botId: member.id,
+        name: member.name,
+        handle: `@${botHandle(member.name)}`,
+        title: member.title,
+      })),
     }));
 }
 
