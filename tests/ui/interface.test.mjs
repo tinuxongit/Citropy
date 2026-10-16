@@ -201,6 +201,8 @@ async function app(
   return { page, sent, push: (event) => live.send(JSON.stringify(event)) };
 }
 
+const settingsDialog = (page) => page.getByRole("dialog", { name: "Settings", exact: true });
+
 let fixtures = 0;
 async function fixture(t, body) {
   const path = `/fixture-${++fixtures}.html`;
@@ -421,7 +423,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     });
 
   for (const width of [1280, 380])
-    check(`settings preserve the current screen while loading at ${width}px`, async (t) => {
+    check(`settings open over the current screen while loading at ${width}px`, async (t) => {
       let release;
       const loading = new Promise((resolve) => {
         release = resolve;
@@ -437,17 +439,18 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
             await route.continue();
           }),
       });
-      await page.evaluate(async () => {
-        const { useApp } = await import("/web/src/lib/store.ts");
-        useApp.setState({ activeView: "settings" });
+      await page.evaluate(() => {
+        const focused = document.activeElement;
+        if (focused instanceof HTMLElement) focused.blur();
       });
+      await page.keyboard.press("Control+,");
       await page.waitForTimeout(150);
       assert.equal(await page.locator(".composer-shell").isVisible(), true);
       assert.equal(await page.getByRole("status").filter({ hasText: "Loading…" }).count(), 0);
       release();
-      await page.getByRole("region", { name: "Settings", exact: true }).waitFor();
+      await settingsDialog(page).waitFor();
       assert.equal(await page.locator(".settings-title").innerText(), "General");
-      assert.equal(await page.locator(".composer-shell").count(), 0);
+      assert.equal(await page.locator(".composer-shell").count(), 1);
     });
 
   check(
@@ -465,7 +468,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       await page.keyboard.press("Control+,");
       await page.keyboard.press("Control+o");
       await page.waitForTimeout(150);
-      assert.equal(await page.getByRole("region", { name: "Settings", exact: true }).count(), 0);
+      assert.equal(await settingsDialog(page).count(), 0);
       assert.equal(chooses(), 0);
       await page.evaluate(() => {
         const host = document.createElement("div");
@@ -477,7 +480,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       await page.keyboard.press("Control+,");
       await page.keyboard.press("Control+o");
       await page.waitForTimeout(150);
-      assert.equal(await page.getByRole("region", { name: "Settings", exact: true }).count(), 0);
+      assert.equal(await settingsDialog(page).count(), 0);
       assert.equal(chooses(), 0);
       await page.evaluate(() => {
         const note = document.createElement("div");
@@ -490,16 +493,16 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       await page.keyboard.press("Control+,");
       await page.keyboard.press("Control+o");
       await page.waitForTimeout(150);
-      assert.equal(await page.getByRole("region", { name: "Settings", exact: true }).count(), 0);
+      assert.equal(await settingsDialog(page).count(), 0);
       assert.equal(chooses(), 0);
       await page.evaluate(() => {
         const focused = document.activeElement;
         if (focused instanceof HTMLElement) focused.blur();
       });
-      await page.keyboard.press("Control+,");
-      await page.getByRole("region", { name: "Settings", exact: true }).waitFor();
       await page.keyboard.press("Control+o");
       await expect(() => chooses() > 0);
+      await page.keyboard.press("Control+,");
+      await settingsDialog(page).waitFor();
     },
   );
 
