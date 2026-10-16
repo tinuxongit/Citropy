@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { discard, fileDiff, manage, stage, status, workingDiff } from '../server/git.ts';
+import { discard, fileDiff, manage, stage, status, workingDiff } from '../server/git/git.ts';
 import { parseUnifiedDiff } from '../server/diff.ts';
 
 /** Create an isolated real Git repository; every destructive operation targets this fixture. */
@@ -204,7 +204,7 @@ test('inherited Git glob and case-folding modes cannot broaden a file selection'
   const { cwd, git, names } = await fixture(t, { [path]: 'base\n', 'item0.txt': 'base\n' });
   await rm(join(cwd, path));
   await writeFile(join(cwd, 'item0.txt'), 'valuable edits\n');
-  const module = new URL('../server/git.ts', import.meta.url).href;
+  const module = new URL('../server/git/git.ts', import.meta.url).href;
   for (const variable of ['GIT_GLOB_PATHSPECS', 'GIT_NOGLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS']) {
     git('reset', '-q', 'HEAD');
     execFileSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e',

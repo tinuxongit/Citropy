@@ -13,8 +13,8 @@ process.env.XDG_DATA_HOME = join(root, "data");
 await mkdir(process.env.CITROPY_DATA_DIR, { recursive: true });
 const { store } = await import("../server/store.ts");
 const { eventJournal } = await import("../server/event-journal.ts");
-const { listImportableSessions, importSession } = await import("../server/session-import.ts");
-const { providerLogUsage } = await import("../server/provider-log-usage.ts");
+const { listImportableSessions, importSession } = await import("../server/session-import/session-import.ts");
+const { providerLogUsage } = await import("../server/usage/provider-log-usage.ts");
 const { IMPORT_MAX_BYTES } = await import("../shared/session-import.ts");
 
 after(async () => {

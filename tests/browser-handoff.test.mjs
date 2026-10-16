@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { callWorkspaceTool } from "../server/mcp-workspace.ts";
+import { callWorkspaceTool } from "../server/mcp/mcp-workspace.ts";
 import { answer, ask, pendingRequests } from "../server/permissions.ts";
 import { store } from "../server/store.ts";
 import { normalizeQuestions } from "../shared/questions.ts";

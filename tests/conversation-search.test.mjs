@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { spawnSync } from "node:child_process";
-import { ConversationSearch, findInMessages, searchConversations } from "../server/conversation-search.ts";
+import { ConversationSearch, findInMessages, searchConversations } from "../server/search/conversation-search.ts";
 import { EventJournal } from "../server/event-journal.ts";
 
 function fixture(t, count = 2) {
@@ -162,7 +162,7 @@ test("a source crash and an interrupted index transaction recover committed sear
   await search.close();
   journal.close();
   const journalModule = new URL("../server/event-journal.ts", import.meta.url).href;
-  const indexModule = new URL("../server/conversation-search-index.ts", import.meta.url).href;
+  const indexModule = new URL("../server/search/conversation-search-index.ts", import.meta.url).href;
   const source = spawnSync(process.execPath, ["--experimental-strip-types", "--input-type=module", "-e", `
     const { EventJournal } = await import(${JSON.stringify(journalModule)});
     const journal = new EventJournal(${JSON.stringify(path)});

@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { assertWorkspaceIdle, reviewChanges, reviewSummary } from "./checkpoints.ts";
 import { workspacePath } from "./workspaces.ts";
 import { inside } from "./files.ts";
-import { serialized, workingDiff } from "./git.ts";
+import { serialized, workingDiff } from "./git/git.ts";
 import { generateText } from "./text-generation.ts";
 import { readBounded } from "./context.ts";
 import { writingModel } from "./assistance.ts";

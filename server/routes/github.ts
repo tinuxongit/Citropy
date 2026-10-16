@@ -1,4 +1,4 @@
-import { handleGitHub } from "../github.ts";
+import { handleGitHub } from "../github/github.ts";
 import { store } from "../store.ts";
 import type { Routes } from "./types.ts";
 

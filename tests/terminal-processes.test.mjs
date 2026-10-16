@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseTerminalProcesses, terminalProcesses } from "../server/terminal-processes.ts";
+import { parseTerminalProcesses, terminalProcesses } from "../server/terminals/terminal-processes.ts";
 
 test("process snapshots preserve names and exclude zombie children", () => {
   assert.deepEqual(parseTerminalProcesses(" 10 1 Ss /bin/bash\n 11 10 S+ /usr/bin/sleep\n12 10 Z defunct\n13 10 Sl My Program\ninvalid"), [

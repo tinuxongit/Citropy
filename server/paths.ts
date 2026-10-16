@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, posix, win32 } from "node:path";
 import { dev } from "./config.ts";
-import { minGitCommands } from "./mingit.ts";
+import { minGitCommands } from "./git/mingit.ts";
 
 export const appDataSwitch = join(homedir(), ".citropy-dev", "use-app-data");
 export const usingAppData = dev && !process.env.CITROPY_DATA_DIR && existsSync(appDataSwitch) && readFileSync(appDataSwitch, "utf8").trim() === "1";

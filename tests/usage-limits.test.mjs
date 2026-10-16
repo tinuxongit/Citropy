@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { limitAfterError } from '../server/usage-limits.ts';
+import { limitAfterError } from '../server/usage/usage-limits.ts';
 
 test('Claude session and weekly limits count as usage limits with their reset time', () => {
   const now = new Date(2026, 8, 27, 19, 44).getTime();

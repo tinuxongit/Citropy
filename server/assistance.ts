@@ -1,10 +1,10 @@
 import { store } from "./store.ts";
 import { logFailure } from "../shared/expected-errors.mjs";
-import { providerInfo } from "./provider-registry.ts";
+import { providerInfo } from "./providers/provider-registry.ts";
 import { generateText } from "./text-generation.ts";
 import { workspacePath } from "./workspaces.ts";
 import { assertApplicationReady } from "./update-lock.ts";
-import * as git from "./git.ts";
+import * as git from "./git/git.ts";
 import { bus } from "./bus.ts";
 import { gitActionBusy, type AssistanceSettings, type GitActionState, type WritingModel } from "../shared/assistance.ts";
 import { providerAccount } from "../shared/provider-account.ts";

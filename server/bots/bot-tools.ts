@@ -1,4 +1,4 @@
-import { required } from "../mcp-workspace.ts";
+import { required } from "../mcp/mcp-workspace.ts";
 import { runtimeFor } from "../runtime.ts";
 import { store } from "../store.ts";
 import { botStore } from "./bot-store.ts";

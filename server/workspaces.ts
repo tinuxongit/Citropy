@@ -3,7 +3,7 @@ import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { uid } from "./ids.ts";
 import { store } from "./store.ts";
-import { git, isRepo, tryGit } from "./git.ts";
+import { git, isRepo, tryGit } from "./git/git.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
 import type { Project, WorkspaceChoice } from "../shared/protocol.ts";
 import type { WorkspaceOptions } from "../shared/features.ts";

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 test("closing an interactive shell, which ignores the terminate signal, ends it right away", { skip: process.platform === "win32" }, async () => {
-  const { TerminalHost } = await import("../server/terminal-host.ts");
+  const { TerminalHost } = await import("../server/terminals/terminal-host.ts");
   let prompted;
   const prompt = new Promise((resolve) => { prompted = resolve; });
   const terminals = new TerminalHost((event) => { if (event.type === "data") prompted(); });

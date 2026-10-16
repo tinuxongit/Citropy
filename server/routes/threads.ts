@@ -1,11 +1,11 @@
 import { postFromUser } from "../bots/group-chat.ts";
-import { checkUsageResume } from "../usage-resume.ts";
+import { checkUsageResume } from "../usage/usage-resume.ts";
 import { answer as answerPermission } from "../permissions.ts";
-import { providerInfo } from "../provider-registry.ts";
-import { usableProviderAccount } from "../provider-account.ts";
+import { providerInfo } from "../providers/provider-registry.ts";
+import { usableProviderAccount } from "../providers/provider-account.ts";
 import { disposeRuntime, runtimeFor, runtimeIfExists } from "../runtime.ts";
 import { store } from "../store.ts";
-import { findInMessages } from "../conversation-search.ts";
+import { findInMessages } from "../search/conversation-search.ts";
 import { chooseThreadWorkspace, workspacePath } from "../workspaces.ts";
 import { cleanupCheckpoints } from "../checkpoints.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../shared/model-options.ts";

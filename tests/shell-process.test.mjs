@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { test } from "node:test";
-import { parseCommandProcesses, shellProcessTree, stopCommandProcess } from "../server/shell-process.ts";
+import { parseCommandProcesses, shellProcessTree, stopCommandProcess } from "../server/terminals/shell-process.ts";
 
 test("process lists parse on Unix and Windows", () => {
   assert.deepEqual(parseCommandProcesses("  10     1 node server.js\n  11    10 /bin/bash -c npm   test\n"), [

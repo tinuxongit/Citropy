@@ -6,8 +6,8 @@ import { join } from "node:path";
 const dataDirectory = mkdtempSync(join(tmpdir(), "citropy-terminal-data-"));
 process.env.CITROPY_DATA_DIR = dataDirectory;
 const { openPanel, closePanel, panelList } = await import("../server/panels.ts");
-const terminals = await import("../server/terminals.ts");
-const { shellList, stopShell } = await import("../server/shells.ts");
+const terminals = await import("../server/terminals/terminals.ts");
+const { shellList, stopShell } = await import("../server/terminals/shells.ts");
 const { waitForStoppedProcesses } = await import("../server/providers/process.ts");
 const { bus } = await import("../server/bus.ts");
 

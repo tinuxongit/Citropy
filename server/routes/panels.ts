@@ -1,7 +1,7 @@
 import * as browser from "../browser.ts";
 import { closePanel, movePanel, openPanel, panelList, renameTerminal } from "../panels.ts";
 import { store } from "../store.ts";
-import * as terminals from "../terminals.ts";
+import * as terminals from "../terminals/terminals.ts";
 import { resolveWorkspace } from "../workspaces.ts";
 import type { Routes } from "./types.ts";
 

@@ -4,7 +4,7 @@ import { desktopConnected, desktopRequest } from "./desktop.ts";
 import { store } from "./store.ts";
 import { panelList } from "./panels.ts";
 import { browserStates } from "./browser.ts";
-import { servicePid } from "./terminals.ts";
+import { servicePid } from "./terminals/terminals.ts";
 import { processCpuPercent, processTable, type ProcessCpuSample, type ProcessEntry } from "./process-table.ts";
 import { protocolLog } from "./providers/events.ts";
 import type { DiagnosticReport } from "../shared/features.ts";

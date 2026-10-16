@@ -1,4 +1,4 @@
-import { usableProviderAccount } from "./provider-account.ts";
+import { usableProviderAccount } from "./providers/provider-account.ts";
 import { store } from "./store.ts";
 import { chooseThreadWorkspace } from "./workspaces.ts";
 import { modelSettings } from "../shared/model-options.ts";

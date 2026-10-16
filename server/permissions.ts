@@ -1,7 +1,7 @@
 import { bus } from "./bus.ts";
 import { uid } from "./ids.ts";
 import { store } from "./store.ts";
-import { describeTool } from "./tools.ts";
+import { describeTool } from "./tools/tools.ts";
 import { resumeIfAnswered } from "./questions.ts";
 import type { PermissionRequest } from "../shared/protocol.ts";
 

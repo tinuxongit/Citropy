@@ -1,6 +1,6 @@
 import { bus } from "../bus.ts";
-import * as git from "../git.ts";
-import { refreshGit } from "../git-monitor.ts";
+import * as git from "../git/git.ts";
+import { refreshGit } from "../git/git-monitor.ts";
 import { store } from "../store.ts";
 import { resolveWorkspace } from "../workspaces.ts";
 import type { GitOperation } from "../../shared/protocol.ts";

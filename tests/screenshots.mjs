@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { chromium } from "playwright";
-import { framedVisual } from "../server/tool-visuals.ts";
+import { framedVisual } from "../server/tools/tool-visuals.ts";
 import { composeArt } from "./readme-art/compose.mjs";
 
 const DESKTOP = { width: 1600, height: 1000 };

@@ -7,12 +7,12 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { store } from "../server/store.ts";
-import { handleMcp } from "../server/mcp.ts";
-import { connectTools, disconnectTools } from "../server/mcp-access.ts";
-import { callWorkspaceTool } from "../server/mcp-workspace.ts";
+import { handleMcp } from "../server/mcp/mcp.ts";
+import { connectTools, disconnectTools } from "../server/mcp/mcp-access.ts";
+import { callWorkspaceTool } from "../server/mcp/mcp-workspace.ts";
 import { answer, pendingRequests } from "../server/permissions.ts";
 import { previewFile } from "../server/assets.ts";
-import { serveToolImage } from "../server/tool-images.ts";
+import { serveToolImage } from "../server/tools/tool-images.ts";
 
 const picture = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=", "base64");
 

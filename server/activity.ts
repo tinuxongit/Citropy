@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { nodeRuntimeInstalling } from "./node-runtime.ts";
-import { gitRuntimeInstalling } from "./git-runtime.ts";
+import { gitRuntimeInstalling } from "./git/git-runtime.ts";
 import { assistanceBusy } from "./assistance.ts";
 import { pendingRequests } from "./permissions.ts";
 import { providerUpdating } from "./providers/maintenance.ts";

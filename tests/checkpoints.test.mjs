@@ -12,7 +12,7 @@ import { dataRoot } from "../server/paths.ts";
 import { store } from "../server/store.ts";
 import { beginCheckpoint, finishCheckpoint, restoreCheckpoint, redoCheckpoint, checkpointLock, forkConversation } from "../server/checkpoints.ts";
 import { uploadAttachment } from "../server/assets.ts";
-import { saveToolImages } from "../server/tool-images.ts";
+import { saveToolImages } from "../server/tools/tool-images.ts";
 import { providers } from "../server/providers/index.ts";
 import { runtimeFor } from "../server/runtime.ts";
 import { removeThread } from "../server/routes/threads.ts";

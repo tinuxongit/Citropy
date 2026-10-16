@@ -1,4 +1,4 @@
-import { publishProviderStatus, refreshProviders, refreshProvidersNow } from "../provider-registry.ts";
+import { publishProviderStatus, refreshProviders, refreshProvidersNow } from "../providers/provider-registry.ts";
 import { disposeRuntime } from "../runtime.ts";
 import { store } from "../store.ts";
 import type { Routes } from "./types.ts";

@@ -45,7 +45,7 @@ test("terminal snapshot replies cannot discard the live ANSI updates immediately
     });
   });
   await new Promise(resolve => server.listen(address, resolve));
-  const terminals = await import("../server/terminals.ts");
+  const terminals = await import("../server/terminals/terminals.ts");
   const { eventJournal } = await import("../server/event-journal.ts");
   t.after(async () => {
     terminals.detach();

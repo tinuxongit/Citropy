@@ -1,10 +1,10 @@
 import { homedir } from "node:os";
 import { isProviderId, signInTerminalId, type ClientEvent } from "../../shared/protocol.ts";
 import { panelList } from "../panels.ts";
-import { providerSignInCommand } from "../provider-sign-in.ts";
-import { resolveProviderAccount } from "../provider-account.ts";
+import { providerSignInCommand } from "../providers/provider-sign-in.ts";
+import { resolveProviderAccount } from "../providers/provider-account.ts";
 import { providers } from "../providers/index.ts";
-import * as terminals from "../terminals.ts";
+import * as terminals from "../terminals/terminals.ts";
 import { resolveWorkspace, workspacePath } from "../workspaces.ts";
 import type { Routes } from "./types.ts";
 

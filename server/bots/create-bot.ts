@@ -1,5 +1,5 @@
 import { uid } from "../ids.ts";
-import { providerInfo } from "../provider-registry.ts";
+import { providerInfo } from "../providers/provider-registry.ts";
 import { removeThread } from "../routes/threads.ts";
 import { store } from "../store.ts";
 import { createRequestedThread } from "../thread-request.ts";

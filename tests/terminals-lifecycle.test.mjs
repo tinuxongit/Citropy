@@ -13,7 +13,7 @@ test("a terminal that fails to spawn can be opened again without a stale session
     return { onData() {}, onExit(callback) { exited = callback; return { dispose() {} }; }, kill() { exited?.({ exitCode: 0 }); }, destroy() { exited?.({ exitCode: 0 }); }, write: (text) => writes.push(text) };
   };
   try {
-    const { TerminalHost } = await import("../server/terminal-host.ts");
+    const { TerminalHost } = await import("../server/terminals/terminal-host.ts");
     const terminals = new TerminalHost(() => {});
     assert.throws(() => terminals.open({ id: "retry", cwd: "/workspace", cols: 80, rows: 24 }), /spawn failed/);
     failure = false;

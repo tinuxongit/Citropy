@@ -1,5 +1,5 @@
 import { botStore } from "../bots/bot-store.ts";
-import { required } from "../mcp-workspace.ts";
+import { required } from "../mcp/mcp-workspace.ts";
 import * as routines from "./routine-store.ts";
 import { describeSchedule } from "../../shared/routines.ts";
 import type { Routine, RoutineSchedule } from "../../shared/routines.ts";

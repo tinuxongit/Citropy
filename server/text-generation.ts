@@ -12,7 +12,7 @@ import { assertProviderReady } from "./providers/maintenance.ts";
 import { stopProcess } from "./providers/process.ts";
 import { assertApplicationReady } from "./update-lock.ts";
 import { store } from "./store.ts";
-import { resolveProviderAccount } from "./provider-account.ts";
+import { resolveProviderAccount } from "./providers/provider-account.ts";
 import type { WritingModel } from "../shared/assistance.ts";
 
 const jobs = new Map<AbortController, string>();

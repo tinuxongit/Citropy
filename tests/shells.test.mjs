@@ -8,7 +8,7 @@ const directory = mkdtempSync(join(tmpdir(), "citropy-shells-"));
 process.env.CITROPY_DATA_DIR = directory;
 const { bus } = await import("../server/bus.ts");
 const { eventJournal } = await import("../server/event-journal.ts");
-const { shellList, shellActivity, startShell, shellOutput, endShell, endThreadShells, stopShell } = await import("../server/shells.ts");
+const { shellList, shellActivity, startShell, shellOutput, endShell, endThreadShells, stopShell } = await import("../server/terminals/shells.ts");
 test.after(() => { eventJournal.close(); rmSync(directory, { recursive: true, force: true }); });
 
 test("shell registry tracks independent owners, bounded output and background lifetime", async (t) => {

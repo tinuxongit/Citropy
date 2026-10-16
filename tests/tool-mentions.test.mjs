@@ -5,7 +5,7 @@ import { test } from "node:test";
 
 const { store } = await import("../server/store.ts");
 const { attachDesktop } = await import("../server/desktop.ts");
-const { listToolMentions, mentionedTools, withToolMentions } = await import("../server/tool-mentions.ts");
+const { listToolMentions, mentionedTools, withToolMentions } = await import("../server/tools/tool-mentions.ts");
 const { toolTag } = await import("../shared/mention-tags.ts");
 const { connectionMention } = await import("../shared/connection-sites.mjs");
 const { handleFeatures } = await import("../server/features.ts");

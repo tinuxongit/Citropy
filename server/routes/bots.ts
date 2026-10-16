@@ -4,7 +4,7 @@ import { createBot, settingsOf } from "../bots/create-bot.ts";
 import { flag } from "../fields.ts";
 import { react } from "../bots/reactions.ts";
 import { uid } from "../ids.ts";
-import { providerInfo } from "../provider-registry.ts";
+import { providerInfo } from "../providers/provider-registry.ts";
 import { store } from "../store.ts";
 import { createRequestedThread } from "../thread-request.ts";
 import * as routines from "../routines/routine-store.ts";

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 const root = await mkdtemp(join(tmpdir(), "citropy-terminal-service-"));
 process.env.CITROPY_DATA_DIR = root;
 if (process.platform !== "win32") process.env.SHELL = "/bin/sh";
-const terminals = await import("../server/terminals.ts");
+const terminals = await import("../server/terminals/terminals.ts");
 const { openPanel } = await import("../server/panels.ts");
 const { eventJournal } = await import("../server/event-journal.ts");
 const { bus } = await import("../server/bus.ts");
@@ -32,7 +32,7 @@ test("shells retain their process and history when the backend client disconnect
 
 test("terminal activity follows child processes without treating an idle shell as busy", { skip: process.platform === "win32" }, async () => {
   const panel = openPanel("project", "terminal");
-  const { shellList } = await import("../server/shells.ts");
+  const { shellList } = await import("../server/terminals/shells.ts");
   const tracked = () => shellList(false).find(shell => shell.panelId === panel.id);
   try {
     await terminals.open(panel.id, root, 80, 24);

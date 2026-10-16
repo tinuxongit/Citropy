@@ -15,7 +15,7 @@ after(() => rmSync(home, { recursive: true, force: true }));
 
 const { listSkills, changeSkill, citropySkills } = await import("../server/skills.ts");
 const { readCitropySkill, saveCitropySkill } = await import("../server/citropy-skills.ts");
-const { mcpInstructions } = await import("../server/mcp-instructions.ts");
+const { mcpInstructions } = await import("../server/mcp/mcp-instructions.ts");
 
 const citropyEntries = async () => (await listSkills()).filter((skill) => skill.scope === "citropy");
 

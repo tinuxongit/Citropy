@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { callWorkspaceTool } from "../server/mcp-workspace.ts";
+import { callWorkspaceTool } from "../server/mcp/mcp-workspace.ts";
 import { providers } from "../server/providers/index.ts";
 import * as routines from "../server/routines/routine-store.ts";
 import { checkRoutines, runRoutine } from "../server/routines/scheduler.ts";

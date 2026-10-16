@@ -6,10 +6,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { store } from "../server/store.ts";
-import { disconnectTools } from "../server/mcp-access.ts";
-import { callWorkspaceTool } from "../server/mcp-workspace.ts";
-import { framedVisual, serveToolVisual } from "../server/tool-visuals.ts";
-import { mcpInstructions } from "../server/mcp-instructions.ts";
+import { disconnectTools } from "../server/mcp/mcp-access.ts";
+import { callWorkspaceTool } from "../server/mcp/mcp-workspace.ts";
+import { framedVisual, serveToolVisual } from "../server/tools/tool-visuals.ts";
+import { mcpInstructions } from "../server/mcp/mcp-instructions.ts";
 import { resolveProjectSettings } from "../shared/project-settings.ts";
 
 test("framing a visual keeps its doctype first and adds the theme setup once", () => {

@@ -21,7 +21,7 @@ test("Git refresh keeps conversation branches synchronized with their actual wor
   ({ store } = await import("../server/store.ts"));
   const { bus } = await import("../server/bus.ts");
   ({ eventJournal: journal } = await import("../server/event-journal.ts"));
-  const { refreshGit, forgetGit } = await import("../server/git-monitor.ts");
+  const { refreshGit, forgetGit } = await import("../server/git/git-monitor.ts");
   const events = [];
   unsubscribe = bus.subscribe(event => events.push(event));
   const git = (cwd, ...args) => execFileSync("git", args, {

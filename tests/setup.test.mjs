@@ -7,8 +7,8 @@ import { join } from "node:path";
 
 const dataDir = mkdtempSync(join(tmpdir(), "citropy-setup-data-"));
 process.env.CITROPY_DATA_DIR = dataDir;
-const { gitInstallPlan } = await import("../server/git-runtime.ts");
-const { git, isRepo } = await import("../server/git.ts");
+const { gitInstallPlan } = await import("../server/git/git-runtime.ts");
+const { git, isRepo } = await import("../server/git/git.ts");
 const { claudeProvider } = await import("../server/providers/claude.ts");
 const { codexProvider } = await import("../server/providers/codex.ts");
 const { opencodeProvider } = await import("../server/providers/opencode.ts");

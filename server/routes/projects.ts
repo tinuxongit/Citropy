@@ -1,11 +1,11 @@
 import * as browser from "../browser.ts";
 import { chooseFolder } from "../folder-picker.ts";
-import { forgetGit, refreshGit } from "../git-monitor.ts";
+import { forgetGit, refreshGit } from "../git/git-monitor.ts";
 import { closePanel, openPanel, panelList, renameTerminal } from "../panels.ts";
 import { remoteId, workspaceDirectory } from "../remote.ts";
 import { removeThread } from "./threads.ts";
 import { store } from "../store.ts";
-import * as terminals from "../terminals.ts";
+import * as terminals from "../terminals/terminals.ts";
 import { workspacePath } from "../workspaces.ts";
 import { PROJECT_SCRIPT_LIMITS as SCRIPT_LIMITS } from "../../shared/project-scripts.ts";
 import type { ProjectScript } from "../../shared/protocol.ts";

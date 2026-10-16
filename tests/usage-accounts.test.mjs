@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { store } from '../server/store.ts';
-import { providerLimits } from '../server/usage.ts';
+import { providerLimits } from '../server/usage/usage.ts';
 
 test('usage limits use each selected account and invalidate changed launch settings', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'citropy-usage-accounts-'));

@@ -10,7 +10,7 @@ process.env.CLAUDE_CONFIG_DIR = join(root, "claude");
 process.env.CODEX_HOME = join(root, "codex");
 process.env.XDG_DATA_HOME = join(root, "data");
 await mkdir(process.env.CITROPY_DATA_DIR, { recursive: true });
-const { providerLogUsage } = await import("../server/provider-log-usage.ts");
+const { providerLogUsage } = await import("../server/usage/provider-log-usage.ts");
 const { localDay } = await import("../shared/usage-metrics.ts");
 
 after(() => rm(root, { recursive: true, force: true }));
