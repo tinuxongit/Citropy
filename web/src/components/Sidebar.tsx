@@ -2,15 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { defaultRangeExtractor, useVirtualizer, type Range } from "@tanstack/react-virtual";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { hasUsableAccount } from "../../../shared/provider-account.ts";
-import { createThread, openOnEnvironment, reorderThreads } from "../lib/actions.ts";
+import { createChat, createThread, openOnEnvironment, reorderThreads } from "../lib/actions.ts";
 import { reportError } from "../lib/api.ts";
 import { environmentId, useEnvironments, useWorkspaceCatalog } from "../lib/environment.ts";
 import { environmentSlice, useBackgroundEnvironments } from "../lib/live-environments.ts";
 import { scaled, selectProject, useApp } from "../lib/store.ts";
 import { useVisibleInterval } from "../lib/use-visible-interval.ts";
+import { useNarrowViewport } from "../lib/use-narrow-viewport.ts";
 import { Collapsible } from "./Collapsible.tsx";
 import { ResizeHandle } from "./ResizeHandle.tsx";
 import { NewMessageIcon } from "./icons/messages.tsx";
+import { GitHubIcon, GitIcon } from "./BrandIcon.tsx";
 import { SelectionHighlight } from "./SelectionHighlight.tsx";
 import { ThreadPreview } from "./ThreadPreview.tsx";
 import { canConnectServers, WorkspaceDialogs, type WorkspaceDialog, type WorkspaceScope } from "./WorkspaceSelector.tsx";
@@ -39,7 +41,9 @@ function estimateRowHeight(row: { item?: SidebarThread; empty: boolean } | undef
   return 38;
 }
 
-export function Sidebar({ onConversation }: { onConversation: () => void }) {
+// Chat lists only chats; Code lists the project conversations.
+export function Sidebar({ section, onConversation, onView }: { section: "chats" | "code"; onConversation: () => void; onView: (view: "git" | "github") => void }) {
+  const chats = section === "chats";
   const threadMap = useApp((state) => state.threads);
   const order = useApp((state) => state.threadOrder);
   const activeProjectId = useApp((state) => state.activeProjectId);
@@ -53,11 +57,12 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
   const background = useBackgroundEnvironments();
   const catalog = useWorkspaceCatalog();
   const query = useApp((state) => state.threadQuery);
+  const narrow = useNarrowViewport();
   const [focusedRow, setFocusedRow] = useState<string>();
   const [dialog, setDialog] = useState<WorkspaceDialog>();
   const [now, setNow] = useState(Date.now);
   useVisibleInterval(() => setNow(Date.now()), ROW_TIME_REFRESH_MS);
-  const sections = useMemo((): WorkspaceScope[] => canConnectServers() ? ["local", "servers"] : ["local"], []);
+  const sections = useMemo((): WorkspaceScope[] => chats ? [] : canConnectServers() ? ["local", "servers"] : ["local"], [chats]);
   const viewport = useRef<HTMLDivElement>(null);
   const threadList = useRef<HTMLDivElement>(null);
   useEffect(() => useApp.setState({ threadQuery: "" }), [activeProjectId, environment]);
@@ -69,25 +74,27 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
     ...Object.entries(background).filter(([, slice]) => slice.connected).map(([id, slice]) => [id, slice.threads]),
   ] as [string, Record<string, ThreadMeta>][]), [environment, threadMap, background]);
   const threads = useMemo((): SidebarThread[] => {
+    // Chats always run on this machine.
+    const inSection = (thread: ThreadMeta, id: string) => chats ? Boolean(thread.chat) && id === "local" : !thread.chat;
     if (query.trim()) return (matches ?? []).flatMap((match): SidebarThread[] => {
       const thread = threadsByEnvironment[match.environment]?.[match.threadId];
-      return thread ? [{ thread, environment: match.environment }] : [];
+      return thread && inSection(thread, match.environment) ? [{ thread, environment: match.environment }] : [];
     });
     return Object.entries(threadsByEnvironment).filter(([id]) => id !== environment || connected).flatMap(([id, map]): SidebarThread[] => {
       const ids = id === environment ? order : background[id]!.threadOrder;
-      return ids.flatMap((threadId): SidebarThread[] => map[threadId] ? [{ thread: map[threadId]!, environment: id }] : []);
+      return ids.flatMap((threadId): SidebarThread[] => map[threadId] && inSection(map[threadId], id) ? [{ thread: map[threadId]!, environment: id }] : []);
     });
-  }, [query, matches, environment, connected, threadsByEnvironment, order, background]);
+  }, [chats, query, matches, environment, connected, threadsByEnvironment, order, background]);
   const activeRoot = rootThread(threadMap, activeThreadId);
   const projectSets = useMemo(() => Object.fromEntries(["local", ...connections.map(connection => connection.id)].map(id =>
     [id, id === environment && connected ? projects : background[id]?.connected ? background[id].projects : catalog[id]?.projects ?? []],
   )), [environment, connections, connected, projects, background, catalog]);
   const { orderedProjects, moveProject } = useProjectOrder(projectSets);
-  const environments = useMemo(() => ["local", ...connections.map((connection) => connection.id)].flatMap((id): EnvironmentFolders[] => {
+  const environments = useMemo(() => chats ? [] : ["local", ...connections.map((connection) => connection.id)].flatMap((id): EnvironmentFolders[] => {
     const live = id === environment ? connected : background[id]?.connected;
     if (!live && !catalog[id]?.projects.length) return [];
     return [{ environment: id, server: id !== "local", projects: orderedProjects[id] ?? [], cachedThreads: live ? undefined : catalog[id]?.threads ?? [] }];
-  }), [environment, connections, connected, background, catalog, orderedProjects]);
+  }), [chats, environment, connections, connected, background, catalog, orderedProjects]);
   const { groups, rows, selected, revealFinished } = useThreadGroups({ threads, query, environments, sections, activeEnvironment: environment, activeRoot, activeThreadId });
   const trees = useThreadTree(threadsByEnvironment, environment, activeThreadId);
   const rowOrder = useMemo(() => rows.map((row) => row.key).join("\0"), [rows]);
@@ -184,6 +191,11 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
     }).catch(reportError);
   };
 
+  const startChat = () => {
+    onConversation();
+    void createChat();
+  };
+
   const renderEmpty = (group: ThreadGroup) => (
     <button className="global-project-empty" type="button" disabled={!canCreateIn(group)} onClick={() => startThread(group)}>
       <NewMessageIcon size={14} aria-hidden="true" />
@@ -252,17 +264,24 @@ export function Sidebar({ onConversation }: { onConversation: () => void }) {
     {renderGroup(group)}
   </section>;
 
+  const noun = chats ? "chats" : "conversations";
   const emptyMessage = !query
-    ? "Your conversations will appear here."
+    ? `Your ${noun} will appear here.`
     : !connected && !Object.values(background).some((slice) => slice.connected)
-      ? "Reconnect to search conversations."
+      ? `Reconnect to search ${noun}.`
       : !matches
         ? "Searching…"
-        : "No matching conversations.";
+        : `No matching ${noun}.`;
 
   return (
-    <aside className="rail" aria-label="Conversations">
+    <aside className="rail" aria-label={chats ? "Chats" : "Conversations"}>
       <div className="thread-toolbar"><ThreadSearch /></div>
+      {chats ? <nav className="rail-nav" aria-label="Chat">
+        <button className="rail-nav-link" type="button" disabled={!canCreateThread} onClick={startChat}><NewMessageIcon size={16} />New chat</button>
+      </nav> : !narrow && <nav className="rail-nav" aria-label="Code">
+        <button className="rail-nav-link" type="button" onClick={() => onView("git")}><GitIcon size={16} />Source control</button>
+        <button className="rail-nav-link" type="button" onClick={() => onView("github")}><GitHubIcon size={16} />GitHub</button>
+      </nav>}
       <div className="rail-scroll">
         <div className="rail-list scroll" ref={viewport}
           {...picking.bind}

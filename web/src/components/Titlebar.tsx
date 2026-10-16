@@ -12,7 +12,7 @@ import { BotAvatar } from "./bots/BotAvatar.tsx";
 import { botMood, workingLine } from "../lib/roster.ts";
 import { GroupAvatar } from "./bots/GroupAvatar.tsx";
 import { useGroupMembers } from "./bots/use-group-members.ts";
-import { createThread } from "../lib/actions.ts";
+import { createChat, createThread } from "../lib/actions.ts";
 import { WindowControls } from "./WindowControls.tsx";
 import { ThreadTabs } from "./ThreadTabs.tsx";
 import { ThreadDetailsButton } from "./thread-details/ThreadDetails.tsx";
@@ -41,7 +41,9 @@ export function Titlebar({
   const members = useGroupMembers(group);
   const botPanelOpen = useApp((state) => state.botPanelOpen);
   const panelActivity = useApp((state) => state.panels.some((panel) => panel.projectId === state.activeProjectId && state.unseenPanels[panel.id]));
-  const canCreateThread = useApp((state) => state.connected && !state.creatingThread && Boolean(state.activeProjectId));
+  const canCreateThread = useApp((state) => state.connected && !state.creatingThread && (view === "chats" || Boolean(state.activeProjectId)));
+  const conversationView = view === "chat" || view === "chats";
+  const newLabel = view === "chats" ? "New chat" : "New thread";
 
   const project = projects.find((entry) => entry.id === activeProjectId);
   // The project-level Git cache can still describe a previously selected worktree.
@@ -90,11 +92,11 @@ export function Titlebar({
         data-view={view}
         aria-label="Current workspace and view"
       >
-        {view === "chat" && <ThreadTabs />}
+        {conversationView && <ThreadTabs chats={view === "chats"} />}
         {workspaceContext && <div className="workspace-breadcrumb">
           {isRemote() && <span className="environment-breadcrumb" title={environmentName()}><ServerIcon size={13} /><span className="truncate">{environmentName()}</span></span>}
         </div>}
-        {view === "chat" && thread && (
+        {conversationView && thread && (
           <>
             {workspaceContext && <span className="breadcrumb-separator" aria-hidden="true">/</span>}
             <span className="thread-title truncate">{thread.title}</span>
@@ -124,19 +126,19 @@ export function Titlebar({
 
       <div className="topbar-right">
         {view === "chat" && <ThreadDetailsButton />}
-        {view === "chat" && (
+        {conversationView && (
           <button
             className="icon-btn topbar-new-thread"
             type="button"
-            onClick={() => void createThread()}
+            onClick={() => void (view === "chats" ? createChat() : createThread())}
             disabled={!canCreateThread}
-            aria-label="New thread"
-            title="New thread"
+            aria-label={newLabel}
+            title={newLabel}
           >
             <ComposeIcon size={17} />
           </button>
         )}
-        {view === "chat" && (
+        {(view === "chat" || (view === "chats" && thread)) && (
           <button
             className="icon-btn inspector-toggle"
             type="button"

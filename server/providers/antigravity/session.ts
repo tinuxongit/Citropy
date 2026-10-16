@@ -15,6 +15,8 @@ import { describeTool, mergeTool, toolResult, type ToolState } from "./tools.ts"
 
 const QUESTION_PREFIX = "interaction_";
 const QUESTION_ID = "answer";
+// Chats may only ask to read, search, or fetch. Anything else is turned down without asking the user.
+const CHAT_KINDS = new Set(["read", "search", "fetch", "think"]);
 const STOP_REASONS: Record<PromptResponse["stopReason"], string | undefined> = {
   end_turn: undefined,
   cancelled: undefined,
@@ -301,7 +303,7 @@ export class AntigravitySession implements AgentSession {
       const option = options.find(entry => entry.name === result.answers[QUESTION_ID]?.[0]);
       return { outcome: !result.cancelled && option ? { outcome: "selected", optionId: option.optionId } : { outcome: "cancelled" } };
     }
-    if (this.#readOnly) return choose(["reject_once", "reject_always"]);
+    if (this.#readOnly || (this.#options.readOnly && !CHAT_KINDS.has(tool.kind ?? ""))) return choose(["reject_once", "reject_always"]);
     const { name, input } = describeTool(tool);
     this.#options.emit({ type: "status", status: "awaiting" });
     const decision = await ask(this.#options.threadId, name, input);

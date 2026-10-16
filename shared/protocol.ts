@@ -233,6 +233,7 @@ export interface Project {
   branch?: string;
   lastOpened: number;
   bots?: boolean;
+  chats?: boolean;
   settings?: FolderSettings;
   scripts?: ProjectScript[];
 }
@@ -311,6 +312,7 @@ export interface ThreadMeta {
   nativeLaunchId?: string;
   botId?: string;
   groupId?: string;
+  chat?: boolean;
   routines?: import("./routines.ts").Routine[];
   error?: string;
   usageLimit?: UsageLimitState;

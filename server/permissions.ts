@@ -55,7 +55,7 @@ export function ask(threadId: string, tool: string, input: unknown, options: { s
   if (!thread || thread.status === "stopped" || options.signal?.aborted) return Promise.resolve("deny");
   if (alwaysAllowed.get(threadId)?.has(tool)) return Promise.resolve("allow");
   const project = store.projects.get(thread.projectId);
-  const root = project?.path ?? "";
+  const root = (project?.chats ? thread.workspacePath : project?.path) ?? "";
   const described = describeTool(tool, input, root);
   const request: PermissionRequest = {
     id: uid("prm"),

@@ -2,9 +2,9 @@
 import { AccountMenu } from "./AccountMenu.tsx";
 import { AgentsPanel } from "./AgentsPanel.tsx";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
-import { GitHubIcon, GitIcon } from "./BrandIcon.tsx";
 import { ConversationsIcon } from "./ConversationsIcon.tsx";
 import { BotsIcon } from "./icons/bots.tsx";
+import { CodeSectionIcon } from "./icons/editing.tsx";
 import { NotificationCenter } from "./NotificationCenter.tsx";
 import { SettingsIcon } from "./SettingsIcon.tsx";
 import { UsageIcon } from "./UsageIcon.tsx";
@@ -26,18 +26,16 @@ interface StripButton {
 
 export function NavigationStrip({
   onChat,
+  onCode,
   onBots,
-  onGit,
-  onGitHub,
   onSettings,
   onUsage,
   onNotification,
   activeView,
 }: {
   onChat: () => void;
+  onCode: () => void;
   onBots: () => void;
-  onGit: () => void;
-  onGitHub: () => void;
   onSettings: () => void;
   onUsage: () => void;
   onNotification: (target: NotificationTarget) => void;
@@ -47,12 +45,9 @@ export function NavigationStrip({
   const { activeId: environment } = useEnvironments();
   const [accountOpen, setAccountOpen] = useState(true);
   const narrow = useNarrowViewport();
-  const conversations: StripButton = { name: "Conversations", icon: ConversationsIcon, run: onChat, view: "chat" };
+  const chat: StripButton = { name: "Chat", icon: ConversationsIcon, run: onChat, view: "chats" };
+  const code: StripButton = { name: "Code", icon: CodeSectionIcon, run: onCode, view: "chat" };
   const bots: StripButton = { name: "Bots", icon: BotsIcon, run: onBots, view: "bots" };
-  const code: StripButton[] = [
-    { name: "Source control", icon: GitIcon, run: onGit, view: "git", desktopOnly: true },
-    { name: "GitHub", icon: GitHubIcon, run: onGitHub, view: "github", desktopOnly: true },
-  ];
   const usage: StripButton = { name: "Usage", icon: UsageIcon, run: onUsage, view: "usage", desktopOnly: true };
   const settings = { name: "Settings", icon: SettingsIcon, run: onSettings, view: "settings" };
   const button = ({ name, icon: Icon, run, view, desktopOnly }: StripButton) => narrow && desktopOnly ? null : (
@@ -77,9 +72,9 @@ export function NavigationStrip({
     <nav className="navigation-strip sliding-selection" aria-label="Workspace navigation">
       <div className="navigation-strip-brand" aria-hidden="true" />
       <SelectionHighlight value={activeView} layout={String(accountOpen)} selector='.strip-action[aria-current="page"] > .strip-action-face' />
-      {button(conversations)}
+      {button(chat)}
+      {button(code)}
       {button(bots)}
-      {code.map(button)}
       <div className="navigation-strip-group" key={environment}>
         <AgentsPanel />
         <NotificationCenter onOpen={onNotification} />

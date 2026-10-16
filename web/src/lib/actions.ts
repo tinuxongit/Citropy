@@ -7,7 +7,7 @@ import type {
   GitHubResponses,
   GitHubRequest,
 } from "../../../shared/github.ts";
-import { selectProject, selectThread, selectPanel, setEditorTerminal, useApp, confirmAction, type AppState } from "./store.ts";
+import { selectProject, selectThread, selectPanel, setEditorTerminal, useApp, confirmAction, threadView, type AppState } from "./store.ts";
 import { neighborTab, rememberClosedTab, saveTabs, stepTab, takeClosedTab, withKeptTab, withMovedTab, withoutTab, type Tabs } from "./thread-tabs.ts";
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
@@ -227,6 +227,37 @@ export async function createThread(provider?: ProviderId, options = false): Prom
   }
 }
 
+export async function createChat(): Promise<void> {
+  // Chats always run on this machine, even while a server is active.
+  if (environmentId() !== "local") {
+    try { await selectEnvironment("local"); } catch (error) { return reportError(error); }
+    if (environmentId() !== "local") return;
+  }
+  const signal = environmentSignal();
+  const state = useApp.getState();
+  if (!state.connected || state.creatingThread) return;
+  const settings = newThreadSettings();
+  if (!settings) return;
+  useApp.setState({ creatingThread: true });
+  try {
+    const thread = await api<ThreadMeta>("threads", {
+      method: "POST",
+      body: JSON.stringify({ ...settings, chat: true }),
+    });
+    if (signal.aborted) return;
+    useApp.setState((state) => ({
+      threads: { ...state.threads, [thread.id]: thread },
+      threadOrder: state.threadOrder.includes(thread.id) ? state.threadOrder : [thread.id, ...state.threadOrder],
+    }));
+    rememberThreadSettings(thread);
+    showThread(thread.id);
+  } catch (error) {
+    reportError(error);
+  } finally {
+    if (!signal.aborted) useApp.setState({ creatingThread: false });
+  }
+}
+
 export function showThread(id: string): void {
   const thread = useApp.getState().threads[id];
   if (!thread) throw new Error(`Conversation ${id} is not loaded`);
@@ -235,7 +266,8 @@ export function showThread(id: string): void {
   }
   selectThread(id);
   loadThread(id);
-  if (!inBotsView(thread)) useApp.setState({ activeView: "chat" });
+  const view = threadView(thread);
+  if (view !== "bots") useApp.setState({ activeView: view });
 }
 
 function updateTabs(change: (state: AppState) => Tabs): void {
@@ -265,9 +297,12 @@ export function closeTab(id: string): void {
   if (unused) send({ t: "thread.remove", id });
   else rememberClosedTab(id);
   if (id !== activeThreadId) return;
-  const next = neighborTab(openThreadIds.filter((open) => threads[open]), id);
-  if (next) showThread(next);
-  else selectThread(null);
+  // Stay in the closed tab's section.
+  const chat = Boolean(threads[id]?.chat);
+  const next = neighborTab(openThreadIds.filter((open) => open === id || threads[open] && Boolean(threads[open].chat) === chat), id);
+  if (next) return showThread(next);
+  selectThread(null);
+  useApp.setState(chat ? { chatsThreadId: null } : { chatThreadId: null });
 }
 
 export function reopenClosedTab(): void {
@@ -277,8 +312,9 @@ export function reopenClosedTab(): void {
 }
 
 export function showNextTab(step: number): void {
-  const { threads, openThreadIds, activeThreadId } = useApp.getState();
-  const next = stepTab(openThreadIds.filter((open) => threads[open]), activeThreadId, step);
+  const { threads, openThreadIds, activeThreadId, activeView } = useApp.getState();
+  const shown = openThreadIds.filter((open) => threads[open] && Boolean(threads[open].chat) === (activeView === "chats"));
+  const next = stepTab(shown, activeThreadId, step);
   if (next && next !== activeThreadId) showThread(next);
 }
 

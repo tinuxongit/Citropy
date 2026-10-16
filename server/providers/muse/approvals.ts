@@ -20,6 +20,10 @@ const AUTO_APPROVED: Record<PermissionMode, string[]> = {
 
 const AUTO_APPROVABLE_SUBJECTS = new Set(["fileAccess", "tool"]);
 
+// Chats look things up on the web without asking each time.
+const CHAT_APPROVED = new Set(["WebFetch", "WebSearch"]);
+const CHAT_SUBJECTS = new Set(["network", "tool"]);
+
 export const SETTLED_ELSEWHERE = new Set(["approvalAlreadyResolved", "approvalRequirementStale"]);
 
 const PREFERENCES: Record<Decision, Array<{ decision: string; scope?: string }>> = {
@@ -45,8 +49,11 @@ export function approvalTool(params: ApprovalRequestParams): MuseTool {
   };
 }
 
-export function autoApproved(permissionMode: PermissionMode, params: ApprovalRequestParams): boolean {
-  return !params.protectedWrite && AUTO_APPROVABLE_SUBJECTS.has(params.subject.kind) && AUTO_APPROVED[permissionMode].includes(approvalTool(params).name);
+export function autoApproved(permissionMode: PermissionMode, params: ApprovalRequestParams, chat = false): boolean {
+  if (params.protectedWrite) return false;
+  const name = approvalTool(params).name;
+  if (chat) return CHAT_SUBJECTS.has(params.subject.kind) && CHAT_APPROVED.has(name);
+  return AUTO_APPROVABLE_SUBJECTS.has(params.subject.kind) && AUTO_APPROVED[permissionMode].includes(name);
 }
 
 export function approvalChoice(choices: ApprovalChoice[], decision: Decision): ApprovalChoice {

@@ -42,7 +42,7 @@ export function LinkActions() {
     onClose={() => setLink(current => current?.id === link.id ? undefined : current)}
     items={[
       { id: "in-app", label: "Open in Citropy", hint: browserHint, disabled: Boolean(browserHint), icon: <GlobeIcon size={17} />, onSelect: () => {
-        useApp.setState({ activeView: "chat", readingThreadId: null });
+        useApp.setState((state) => ({ activeView: state.activeView === "chats" ? "chats" : "chat", readingThreadId: null }));
         openWorkbenchPanel("browser", link.url.href);
       } },
       { id: "external", label: "Open in external browser", icon: <ExternalLinkIcon size={17} />, onSelect: () => window.open(link.url.href, "_blank", "noopener,noreferrer") },

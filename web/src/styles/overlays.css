@@ -72,6 +72,8 @@
   color: var(--text);
   overflow: auto;
   transition: display 160ms allow-discrete, overlay 160ms allow-discrete;
+  /* The desktop topbar drags the window even under the top layer, so a dialog reaching it would lose its clicks. */
+  -webkit-app-region: no-drag;
 }
 .citropy-dialog::backdrop {
   background: transparent;

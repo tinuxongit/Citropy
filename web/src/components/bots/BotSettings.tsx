@@ -5,6 +5,7 @@ import { updateBot } from "../../lib/bots.ts";
 import { BotConnections } from "./BotConnections.tsx";
 import { BotLookPicker } from "./BotLookPicker.tsx";
 import { BotMemory } from "./BotMemory.tsx";
+import { BotModel } from "./BotModel.tsx";
 import { BotProfileFields, type ProfileDraft, type TextField } from "./BotProfileFields.tsx";
 
 export function BotSettings({ bot }: { bot: Bot }) {
@@ -22,6 +23,7 @@ export function BotSettings({ bot }: { bot: Bot }) {
     <div className="bot-settings">
       <BotLookPicker look={bot} onChange={save} />
       <BotProfileFields draft={draft} onChange={setDraft} onCommit={commit} />
+      <BotModel threadId={bot.threadId} />
       <label className="bot-notify">
         <span>
           <strong>Notifications</strong>

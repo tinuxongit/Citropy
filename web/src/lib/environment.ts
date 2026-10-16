@@ -104,6 +104,12 @@ export async function selectEnvironment(id: string, projectId?: string, threadId
     if (turn !== selection) return;
     if (id !== "local" && !/^http:\/\/127\.0\.0\.1:\d+$/.test(snapshot.endpoint)) throw new Error("The SSH environment has no local tunnel endpoint.");
     const [{ connect, connectEnvironment, hasLiveConnection, prepareConnection, refreshBackgroundEnvironments, switchConnection, syncConnections, waitForLiveConnection, waitUntilConnected }, { environmentDefaults, selectProject, selectThread, useApp }] = await Promise.all([import("./socket.ts"), import("./store.ts")]);
+    // Chats belong to a hidden workspace that the project list never includes.
+    const canOpen = (projectId: string, threadId?: string) => {
+      const { projects, threads } = useApp.getState();
+      const thread = threadId ? threads[threadId] : undefined;
+      return projects.some(project => project.id === projectId) || Boolean(thread?.chat && thread.projectId === projectId);
+    };
     if (turn !== selection) return;
     if (id !== initial.activeId) {
       const endpoint = id === "local" ? "" : snapshot.endpoint;
@@ -127,7 +133,7 @@ export async function selectEnvironment(id: string, projectId?: string, threadId
       refreshBackgroundEnvironments();
       syncConnections(initial);
       publish();
-      if (projectId && useApp.getState().projects.some(project => project.id === projectId) && (useApp.getState().activeProjectId !== projectId || (!threadId && useApp.getState().activeThreadId !== null))) selectProject(projectId);
+      if (projectId && canOpen(projectId, threadId) && (useApp.getState().activeProjectId !== projectId || (!threadId && useApp.getState().activeThreadId !== null))) selectProject(projectId);
       if (threadId && useApp.getState().threads[threadId]?.projectId === projectId) selectThread(threadId);
       if (useApp.getState().connected && Object.keys(useApp.getState().offline).length)
         void import("./offline.ts").then(({ flushHeld }) => flushHeld());
@@ -143,7 +149,7 @@ export async function selectEnvironment(id: string, projectId?: string, threadId
     await waitUntilConnected(controller.signal);
     if (turn !== selection) return;
     if (projectId && (useApp.getState().activeProjectId !== projectId || (!threadId && useApp.getState().activeThreadId !== null))) {
-      if (!useApp.getState().projects.some(project => project.id === projectId)) throw new Error("This workspace is no longer open on that host.");
+      if (!canOpen(projectId, threadId)) throw new Error("This workspace is no longer open on that host.");
       selectProject(projectId);
     }
     if (threadId) {

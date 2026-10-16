@@ -418,7 +418,11 @@ export async function handleFeatures(
         }),
       );
     } else if (url.pathname === "/api/threads" && req.method === "POST") {
-      const thread = await createRequestedThread(await body(req), providers);
+      const input = await body(req);
+      if (input.chat !== undefined && typeof input.chat !== "boolean") throw new Error("Invalid chat flag.");
+      const thread = input.chat
+        ? await createRequestedThread({ ...input, projectId: store.chatsProject!.id }, providers, { title: "New chat" })
+        : await createRequestedThread(input, providers);
       respond(store.meta(thread));
     } else if (
       url.pathname === "/api/threads/organize" &&

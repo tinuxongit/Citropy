@@ -71,6 +71,7 @@ export function environmentDefaults(projects: Project[], home: string, id?: stri
     botGroups: {},
     activeRosterId: environmentStorage.getItem("citropy.bot", id),
     chatThreadId: null,
+    chatsThreadId: null,
     messages: {},
     parts: new Map(),
     reveals: {},
@@ -116,7 +117,10 @@ export function selectThread(id: string | null): void {
   const rosterId = thread?.botId ?? thread?.groupId;
   if (rosterId) return selectRosterEntry(rosterId);
   useApp.setState((state) => {
-    const tabs = id ? withPreviewTab(state, id) : state;
+    // Code and Chat show separate tabs, so a preview tab from the other section stays open.
+    const preview = state.threads[state.previewThreadId ?? ""];
+    const kept = preview && Boolean(preview.chat) !== Boolean(thread?.chat) ? { ...state, previewThreadId: null } : state;
+    const tabs = id ? withPreviewTab(kept, id) : state;
     if (state.activeThreadId === id) return tabs === state ? state : { ...state, ...tabs };
     const git = { ...state.git };
     const projectId = id ? state.threads[id]?.projectId : state.activeProjectId;
@@ -135,11 +139,25 @@ export function selectRosterEntry(id: string | null): void {
 }
 
 export function showBotThread(id: string | null): void {
+  useApp.setState((state) => state.activeThreadId === id ? state : withActiveThread(state, id));
+}
+
+// Chats live in a hidden workspace, so showing one also makes its workspace the active one.
+export function showSectionThread(id: string | null): void {
   useApp.setState((state) => {
-    if (state.activeThreadId === id) return state;
-    const current = state.threads[state.activeThreadId ?? ""];
-    return { ...withActiveThread(state, id), chatThreadId: current && !inBotsView(current) ? current.id : state.chatThreadId };
+    const thread = state.threads[id ?? ""];
+    const kept = state.projects.some((project) => project.id === state.activeProjectId) ? state.activeProjectId : state.projects[0]?.id ?? null;
+    return { ...withActiveThread(state, thread ? thread.id : null), activeProjectId: thread?.projectId ?? kept };
   });
+  const { activeProjectId, activeThreadId } = useApp.getState();
+  if (activeProjectId) environmentStorage.setItem("citropy.project", activeProjectId);
+  if (activeThreadId) environmentStorage.setItem("citropy.thread", activeThreadId);
+  else environmentStorage.removeItem("citropy.thread");
+}
+
+/** The rail section that shows a conversation. */
+export function threadView(thread: { botId?: string; groupId?: string; chat?: boolean } | undefined): "chat" | "chats" | "bots" {
+  return inBotsView(thread) ? "bots" : thread?.chat ? "chats" : "chat";
 }
 
 export function selectProject(id: string): void {

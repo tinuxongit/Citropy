@@ -15,16 +15,18 @@ const SESSION_MCP = "sessionMcp";
 export const MUSE_BINARY = "muse";
 export const MUSE_PROVIDER = "meta";
 
-export type HostAccess = "workspace" | "unsandboxed" | "readOnly";
+export type HostAccess = "workspace" | "unsandboxed" | "readOnly" | "chat";
 
 const SERVE_ARGS: Record<HostAccess, string[]> = {
   workspace: ["--trust-workspace"],
   unsandboxed: ["--trust-workspace", "--disable-sandbox"],
   readOnly: ["--trust-workspace", "--disable-shell", "--disable-write"],
+  // Chats can't write or run commands either, but unlike readOnly they keep Citropy's tools.
+  chat: ["--trust-workspace", "--disable-shell", "--disable-write"],
 };
 
-export function hostAccess(permissionMode: PermissionMode): HostAccess {
-  return permissionMode === "bypass" ? "unsandboxed" : permissionMode === "plan" ? "readOnly" : "workspace";
+export function hostAccess(permissionMode: PermissionMode, chat = false): HostAccess {
+  return chat ? "chat" : permissionMode === "bypass" ? "unsandboxed" : permissionMode === "plan" ? "readOnly" : "workspace";
 }
 
 export const NO_AUTO_UPDATE = { MUSE_NO_AUTO_UPDATE: "1" };

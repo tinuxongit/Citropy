@@ -31,14 +31,13 @@ import { Toasts } from "./components/Toasts.tsx";
 import { ConfirmationDialog } from "./components/ConfirmationDialog.tsx";
 import { RemoteFolderDialog } from "./components/RemoteFolderDialog.tsx";
 import type { NotificationTarget } from "../../shared/protocol.ts";
-import { Welcome } from "./components/Welcome.tsx";
+import { ChatWelcome, Welcome } from "./components/Welcome.tsx";
 import { BotRoster } from "./components/bots/BotRoster.tsx";
 import { BotPanel } from "./components/bots/BotPanel.tsx";
 import { BotsEmpty } from "./components/bots/BotsEmpty.tsx";
 import { NewChatDialog } from "./components/bots/NewChatDialog.tsx";
 import { orderedRoster, rosterItem } from "./lib/roster.ts";
 import { visitNextEntry, visitPreviousEntry } from "./lib/roster-history.ts";
-import { inBotsView } from "../../shared/bots.ts";
 import { openNewBotChat } from "./lib/bots.ts";
 import { openChatFind } from "./lib/find-in-chat.ts";
 import {
@@ -48,13 +47,15 @@ import {
   toggleBotPanel,
   toggleInspector,
   toggleSidebar,
+  threadView,
   panelWidthValue,
   type PanelId,
 } from "./lib/store.ts";
 import { isNarrowViewport, useNarrowViewport } from "./lib/use-narrow-viewport.ts";
 import { send } from "./lib/socket.ts";
 import { useUiSounds } from "./lib/use-ui-sounds.ts";
-import { chooseWorkspace, closeTab, createThread, reopenClosedTab, showNextTab } from "./lib/actions.ts";
+import { useForgivingPresses } from "./lib/use-forgiving-presses.ts";
+import { chooseWorkspace, closeTab, createChat, createThread, reopenClosedTab, showNextTab } from "./lib/actions.ts";
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
 import { BrowserGuests } from "./components/BrowserGuests.tsx";
@@ -75,7 +76,7 @@ export function App() {
   const requestedView = useApp((state) => state.activeView);
   const view = useDeferredValue(requestedView);
   const setView = (activeView: typeof view) => useApp.setState({ activeView });
-  const [settingsSection, setSettingsSection] = useState("General");
+  const [settingsSection, setSettingsSection] = useState<string | null>(null);
   const [sectionSidebarOpen, setSectionSidebarOpen] = useState(
     !isNarrowViewport(),
   );
@@ -98,24 +99,30 @@ export function App() {
   });
   const hasActiveThread = useApp((state) => Boolean(state.threads[state.activeThreadId ?? ""]));
   const newestThread = useApp((state) => {
-    if (state.activeThreadId || !state.activeProjectId) return undefined;
+    if (state.activeView !== "chat" || state.activeThreadId || !state.activeProjectId) return undefined;
     return state.threadOrder.find((id) => {
       const thread = state.threads[id];
       return thread?.projectId === state.activeProjectId &&
         !thread.parentThreadId && !thread.archived && !thread.snoozedUntil;
     });
   });
-  const hasProject = useApp((state) => state.projects.length > 0);
-  const panelsShown = view === "chat";
-  const conversationShown = view === "chat" || view === "bots";
-  const navigationOpen = view === "chat" ? sidebarOpen : sectionSidebarOpen;
+  // An open chat counts as a workspace even when no project is open.
+  const hasProject = useApp((state) => state.projects.length > 0 || Boolean(state.threads[state.activeThreadId ?? ""]?.chat));
+  // Code and Chat share the sidebar and the conversation layout.
+  const conversationView = view === "chat" || view === "chats";
+  const panelsShown = view === "chat" || (view === "chats" && hasActiveThread);
+  const conversationShown = conversationView || view === "bots";
+  const hasBots = useApp((state) => Object.keys(state.bots).length > 0);
+  // The bot roster stays hidden until the first bot exists; the empty state covers creation.
+  const rosterHidden = view === "bots" && !hasBots;
+  const navigationOpen = conversationView ? sidebarOpen : sectionSidebarOpen && !rosterHidden;
   const shellBody = useRef<HTMLDivElement>(null);
   useDrawerGestures(shellBody, {
     left: {
       enabled: true,
       open: navigationOpen,
       setOpen: (open) => {
-        if (view !== "chat") setSectionSidebarOpen(open);
+        if (!conversationView) setSectionSidebarOpen(open);
         else if (useApp.getState().sidebarOpen !== open) toggleSidebar();
       },
     },
@@ -138,6 +145,7 @@ export function App() {
     else useApp.setState({ sidebarOpen: false });
   }, [panelsShown, sidebarOpen, inspectorOpen]);
   useUiSounds();
+  useForgivingPresses();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -162,7 +170,7 @@ export function App() {
   const showView = (next: typeof view) => {
     if (next !== "chat") useApp.setState({ readingThreadId: null });
     setView(next);
-    if (next === "chat") {
+    if (next === "chat" || next === "chats") {
       if (isNarrowViewport() && useApp.getState().sidebarOpen)
         toggleSidebar();
     } else {
@@ -171,16 +179,13 @@ export function App() {
   };
   const openView = (next: typeof view) => transitionView(next, () => showView(next));
   const toggleNavigation = () => {
-    if (view === "chat") toggleSidebar();
+    if (conversationView) toggleSidebar();
     else setSectionSidebarOpen((open) => !open);
   };
   const closeSectionSidebarOnNarrow = () => {
     if (isNarrowViewport()) setSectionSidebarOpen(false);
   };
-  const openSettings = (open = openView) => {
-    setSettingsSection("General");
-    open("settings");
-  };
+  const openSettings = (section = "General") => setSettingsSection(section);
 
   useEffect(() => {
     if (githubStatus.data)
@@ -188,18 +193,20 @@ export function App() {
   }, [githubStatus.data]);
 
   const openNotification = (target: NotificationTarget) => {
-    if (target.view === "settings") setSettingsSection(target.section ?? "General");
     const state = useApp.getState();
+    const thread = state.threads[target.threadId ?? ""];
+    // Chats live in a workspace the project list leaves out.
     if (
       target.projectId &&
-      state.projects.some((project) => project.id === target.projectId)
+      (state.projects.some((project) => project.id === target.projectId) || thread?.projectId === target.projectId)
     ) {
       useApp.setState({ activeProjectId: target.projectId });
       environmentStorage.setItem("citropy.project", target.projectId);
     }
-    if (target.threadId && state.threads[target.threadId])
-      selectThread(target.threadId);
-    openView(inBotsView(state.threads[target.threadId ?? ""]) ? "bots" : target.view);
+    if (thread) selectThread(thread.id);
+    const shown = threadView(thread);
+    if (target.view === "settings") openSettings(target.section);
+    else openView(shown === "chat" ? target.view : shown);
   };
 
   useEffect(
@@ -217,7 +224,7 @@ export function App() {
   useEffect(
     () =>
       window.citropyDesktop?.onBrowserSelect((panel) => {
-        setView("chat");
+        setView(useApp.getState().threads[panel.threadId ?? ""]?.chat ? "chats" : "chat");
         useApp.setState((state) => ({
           activeProjectId: panel.projectId,
           activePanels: { ...state.activePanels, [panel.projectId]: panel.id },
@@ -271,29 +278,29 @@ export function App() {
         if (inTextEntry(event.target)) return;
         event.preventDefault();
         if (event.repeat) return;
-        if (key === ",") openSettings(showView);
+        if (key === ",") setSettingsSection((section) => section ?? "General");
         else chooseWorkspace();
       } else if (view === "bots" && (event.shiftKey ? event.code === "Comma" : event.altKey && key === "b")) {
         event.preventDefault();
         toggleBotPanel();
       } else if (key === "b") {
         event.preventDefault();
-        if (view === "chat") toggleSidebar();
+        if (conversationView) toggleSidebar();
         else setSectionSidebarOpen((open) => !open);
       } else if (key === "j") {
         event.preventDefault();
-        setView("chat");
+        if (view !== "chats") setView("chat");
         toggleInspector();
       } else if (view === "bots" && !event.altKey && (event.shiftKey ? key === "f" : key === "k")) {
         event.preventDefault();
         setSectionSidebarOpen(true);
         useApp.setState({ searchFocusPending: true });
-      } else if (key === "f" && !event.altKey && !event.shiftKey && !inTerminal(event.target) && (view === "chat" || view === "bots") && useApp.getState().activeThreadId) {
+      } else if (key === "f" && !event.altKey && !event.shiftKey && !inTerminal(event.target) && (conversationView || view === "bots") && useApp.getState().activeThreadId) {
         event.preventDefault();
         openChatFind();
       } else if (key === "k" && !event.altKey && !event.shiftKey) {
         event.preventDefault();
-        setView("chat");
+        if (view !== "chats") setView("chat");
         if (!useApp.getState().sidebarOpen) toggleSidebar();
         useApp.setState({ searchFocusPending: true });
       } else if ((key === "i" || key === "l") && !event.altKey && !event.shiftKey) {
@@ -315,9 +322,10 @@ export function App() {
           openNewBotChat();
           return;
         }
+        if (view === "chats") return void createChat();
         setView("chat");
         createThread();
-      } else if (view === "chat" && !event.altKey && !inTerminal(event.target) && (key === "w" || key === "t" || key === "tab")) {
+      } else if (conversationView && !event.altKey && !inTerminal(event.target) && (key === "w" || key === "t" || key === "tab")) {
         const activeThreadId = useApp.getState().activeThreadId;
         if (key === "w" && !event.shiftKey && activeThreadId) closeTab(activeThreadId);
         else if (key === "t" && event.shiftKey) reopenClosedTab();
@@ -335,7 +343,7 @@ export function App() {
       className="shell"
       data-inspector={inspectorOpen && panelsShown}
       data-composer={conversationShown && hasProject && hasActiveThread}
-      data-section={view !== "chat" && !backgroundEverywhere || undefined}
+      data-section={!conversationView && !backgroundEverywhere || undefined}
       data-backdrop={stageBackground !== "default" ? stageBackground : undefined}
       style={{
         ...Object.fromEntries(
@@ -351,18 +359,17 @@ export function App() {
       <StageBackdrop />
       <NavigationStrip
         activeView={view}
-        onChat={() => (view === "chat" ? toggleSidebar() : openView("chat"))}
+        onChat={() => (view === "chats" ? toggleSidebar() : openView("chats"))}
+        onCode={() => (view === "chat" ? toggleSidebar() : openView("chat"))}
         onBots={() => (view === "bots" ? toggleNavigation() : openView("bots"))}
-        onGit={() => (view === "git" ? toggleNavigation() : openView("git"))}
-        onGitHub={() => (view === "github" ? toggleNavigation() : openView("github"))}
-        onSettings={() => (view === "settings" ? toggleNavigation() : openSettings())}
+        onSettings={() => openSettings()}
         onUsage={() => (view === "usage" ? toggleNavigation() : openView("usage"))}
         onNotification={openNotification}
       />
       <Titlebar
         view={view}
         sidebarOpen={navigationOpen}
-        sidebarToggle={narrow}
+        sidebarToggle={narrow && !rosterHidden}
         onToggleSidebar={toggleNavigation}
       />
       <RemoteConnectionBanner />
@@ -378,12 +385,15 @@ export function App() {
             onClick={toggleNavigation}
           />
         )}
-        {view === "chat" && <SlidingPanel open={sidebarOpen} side="left" keepMounted pauseHidden>
+        {conversationView && <SlidingPanel open={sidebarOpen} side="left" keepMounted pauseHidden>
           <Sidebar
-            onConversation={() => openView("chat")}
+            key={view}
+            section={view === "chats" ? "chats" : "code"}
+            onConversation={() => openView(view)}
+            onView={openView}
           />
         </SlidingPanel>}
-        {view === "bots" && <SlidingPanel open={sectionSidebarOpen} side="left" keepMounted pauseHidden>
+        {view === "bots" && <SlidingPanel open={navigationOpen} side="left" keepMounted pauseHidden>
           <BotRoster onOpen={closeSectionSidebarOnNarrow} />
         </SlidingPanel>}
         <main className="stage" data-view={view}>
@@ -413,14 +423,10 @@ export function App() {
                 onNavigate={closeSectionSidebarOnNarrow}
                 onBack={() => openView("chat")}
               />
-            ) : view === "settings" ? (
-              <Settings
-                initialSection={settingsSection}
-                sidebarOpen={sectionSidebarOpen}
-                onNavigate={closeSectionSidebarOnNarrow}
-              />
             ) : view === "bots" && !activeThreadId ? (
               <BotsEmpty />
+            ) : view === "chats" && !activeThreadId ? (
+              <ChatWelcome />
             ) : hasProject && activeThreadId ? (
               <Fragment key={`${environment}:${activeThreadId}`}>
                 <Conversation />
@@ -428,10 +434,7 @@ export function App() {
                 {view === "chat" && <ThreadDetailsPanel />}
                 <Composer
                   onUsage={() => openView("usage")}
-                  onSkills={() => {
-                    setSettingsSection("Skills");
-                    openView("settings");
-                  }}
+                  onSkills={() => openSettings("Skills")}
                 />
               </Fragment>
             ) : (
@@ -454,12 +457,12 @@ export function App() {
       <RemoteFolderDialog />
       <LinkActions />
       <Toasts onOpen={openNotification} />
-      <WhatsNew
-        onOpenSettings={(section) => {
-          setSettingsSection(section);
-          openView("settings");
-        }}
-      />
+      <AnimatePresence>{settingsSection && (
+        <Suspense key="settings" fallback={null}>
+          <Settings initialSection={settingsSection} onClose={() => setSettingsSection(null)} />
+        </Suspense>
+      )}</AnimatePresence>
+      <WhatsNew onOpenSettings={openSettings} />
       <SetupGuide />
       <DevTriggers />
       {window.citropyDesktop && <BrowserGuests />}

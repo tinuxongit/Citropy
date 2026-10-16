@@ -2,21 +2,23 @@ import { useRef, useState } from "react";
 import { PinIcon } from "./icons/actions.tsx";
 import { CloseIcon, PlusIcon } from "./icons/marks.tsx";
 import { useApp } from "../lib/store.ts";
-import { closeTab, createThread, keepTab, moveTab, showThread } from "../lib/actions.ts";
+import { closeTab, createChat, createThread, keepTab, moveTab, showThread } from "../lib/actions.ts";
 import { Menu } from "./Menu.tsx";
 import { ProviderIcon } from "./ProviderIcon.tsx";
 import { useTabDrag } from "./use-tab-drag.tsx";
 
 const MIDDLE_BUTTON = 1;
 
-export function ThreadTabs() {
+// Code and Chat each show only their own tabs.
+export function ThreadTabs({ chats }: { chats: boolean }) {
   const threads = useApp((state) => state.threads);
   const openThreadIds = useApp((state) => state.openThreadIds);
   const activeThreadId = useApp((state) => state.activeThreadId);
   const previewThreadId = useApp((state) => state.previewThreadId);
-  const canCreate = useApp((state) => state.connected && !state.creatingThread && Boolean(state.activeProjectId));
+  const canCreate = useApp((state) => state.connected && !state.creatingThread && (chats || Boolean(state.activeProjectId)));
   const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement }>();
-  const open = openThreadIds.flatMap((id) => threads[id] ?? []);
+  const open = openThreadIds.flatMap((id) => threads[id] && Boolean(threads[id].chat) === chats ? threads[id] : []);
+  const newLabel = chats ? "New chat" : "New thread";
   const strip = useRef<HTMLDivElement>(null);
   const drag = useTabDrag({ strip, enabled: true, resetKey: openThreadIds.join(","), onMove: moveTab });
 
@@ -54,7 +56,7 @@ export function ThreadTabs() {
           </button>
         </div>
       ))}
-      <button type="button" className="thread-tabs-new" disabled={!canCreate} aria-label="New thread" title="New thread" onClick={() => void createThread()}>
+      <button type="button" className="thread-tabs-new" disabled={!canCreate} aria-label={newLabel} title={newLabel} onClick={() => void (chats ? createChat() : createThread())}>
         <PlusIcon size={15} />
       </button>
       {menu && <Menu

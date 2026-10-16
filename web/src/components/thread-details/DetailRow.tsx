@@ -2,6 +2,8 @@ import { useId, type ReactNode } from "react";
 import { ChevronDownIcon } from "../icons/chevrons.tsx";
 import { PlusIcon } from "../icons/marks.tsx";
 import { Menu, type MenuItem } from "../Menu.tsx";
+import { Collapsible } from "../Collapsible.tsx";
+import { setSidebarGroupOpen, useApp } from "../../lib/store.ts";
 
 interface RowProps {
   icon: ReactNode;
@@ -38,14 +40,18 @@ export function DetailSplitRow({ menu, menuLabel, extra, onMenuOpen, ...primary 
 
 export function DetailSection({ icon, title, addLabel, onAdd, addDisabled, children }: { icon: ReactNode; title: string; addLabel: string; onAdd: () => void; addDisabled?: boolean; children: ReactNode }) {
   const heading = useId();
+  // Kept with the sidebar's folded groups, so a folded section stays folded in every conversation.
+  const key = `details:${title}`;
+  const open = useApp(state => state.sidebarGroups[key] ?? true);
   return (
     <div className="details-section" aria-labelledby={heading}>
       <div className="details-head">
-        {icon}
-        <h3 id={heading} className="details-title">{title}</h3>
+        <h3 id={heading} className="details-title">
+          <button type="button" className="details-toggle" aria-expanded={open} onClick={() => setSidebarGroupOpen(key, !open)}>{icon}<span className="truncate">{title}</span></button>
+        </h3>
         <button type="button" className="details-add" aria-label={addLabel} title={addLabel} disabled={addDisabled} onClick={onAdd}><PlusIcon size={14} /></button>
       </div>
-      <div className="details-children">{children}</div>
+      <Collapsible open={open} className="details-fold"><div className="details-children">{children}</div></Collapsible>
     </div>
   );
 }

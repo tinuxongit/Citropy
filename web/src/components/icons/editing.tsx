@@ -13,6 +13,9 @@ const LIST_DOT = { cx: 4.75, r: 1.75 };
 const NUMBERS = "M3.75 4.5H5V9.5M3.5 14.6A1.4 1.4 0 0 1 6.25 14.75C6.25 16 3.5 17.25 3.5 19.5H6.25";
 const CODE = "M8 7L3 12L8 17M16 7L21 12L16 17";
 const CODE_SLASH = "M13.75 4.5L10.25 19.5";
+// Heavy enough to sit with the solid rail icons. The arms beside the slash are shorter so every end clears it by the same gap.
+const CODE_SECTION = "M7.5 6.75L2.75 12L6.125 15.75M17.875 8.25L21.25 12L16.5 17.25M13.25 3.75L10.75 20.25";
+const SECTION_LINE = 3.5;
 const BRACE = "M8.5 3.5H7.5A2.25 2.25 0 0 0 5.25 5.75V9.75A2.25 2.25 0 0 1 3 12A2.25 2.25 0 0 1 5.25 14.25V18.25A2.25 2.25 0 0 0 7.5 20.5H8.5";
 const WRAP = "M3.5 6H20.5M3.5 18H9M3.5 12H17A3 3 0 0 1 17 18H13M15 15.75L12.75 18L15 20.25";
 const JUSTIFY = "M4 5.5H20M4 10H20M4 14.5H20M4 19H20";
@@ -63,6 +66,10 @@ export function CodeIcon(props: IconProps) {
 
 export function CodeXmlIcon(props: IconProps) {
   return <Glyph {...props} d={`${CODE}${CODE_SLASH}`} weight={BOLD_LINE} />;
+}
+
+export function CodeSectionIcon(props: IconProps) {
+  return <Glyph {...props} d={CODE_SECTION} weight={SECTION_LINE} />;
 }
 
 export function BracesIcon(props: IconProps) {

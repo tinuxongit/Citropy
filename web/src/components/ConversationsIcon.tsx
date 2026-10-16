@@ -5,10 +5,10 @@ const BACK_BUBBLE = "M11 2h9a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3v3l-3.5-3H11a3 3 0 0 1
 const BUBBLE_GAP = 3;
 const TYPING_DOTS = [4.5, 8, 11.5];
 
-export function ConversationsIcon({ size = 24 }: { size?: number }) {
+export function ConversationsIcon({ size = 24, className }: { size?: number; className?: string }) {
   const id = useId();
   return (
-    <svg className="solid-icon" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg className={className ? `solid-icon ${className}` : "solid-icon"} width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <defs>
         <mask id={`${id}-back`}>
           <rect width="24" height="24" fill="white" />

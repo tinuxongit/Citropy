@@ -17,12 +17,12 @@
 }
 
 @container application (width > 720px) {
-  .shell .breadcrumb[data-view="chat"] {
+  .shell .breadcrumb:is([data-view="chat"], [data-view="chats"]) {
     align-self: stretch;
     padding-left: 0;
   }
 
-  .breadcrumb[data-view="chat"] > :is(.thread-title, .breadcrumb-separator) {
+  .breadcrumb:is([data-view="chat"], [data-view="chats"]) > :is(.thread-title, .breadcrumb-separator) {
     display: none;
   }
 }

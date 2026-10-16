@@ -96,7 +96,7 @@ export function ConversationMenu({
         items={[
           ...(tabbable ? [{ id: "open-tab", label: "Open in new tab", icon: <SquarePlusIcon size={15} />, onSelect: () => openInNewTab(thread.id) }] : []),
           ...(project?.isGit ? [{ id: "worktree", label: "Continue in new worktree…", icon: <ForkIcon size={15} />, disabled: thread.running || busy, onSelect: () => { void worktree("copy"); } }] : []),
-          ...(thread.archived && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: "Remove worktree…", icon: <TrashIcon size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
+          ...(thread.archived && !thread.chat && thread.workspacePath && thread.workspacePath !== project?.path ? [{ id: "remove-worktree", label: "Remove worktree…", icon: <TrashIcon size={15} />, danger: true, disabled: busy, onSelect: () => { void worktree("remove"); } }] : []),
           ...(thread.canRedo ? [{ id: "redo", label: "Redo restored turn", icon: <RefreshIcon size={15} />, disabled: thread.running, onSelect: () => { void api(`threads/restore?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ redo: true }) }, environment).catch(reportError); } }] : []),
           {
             id: "pin",
@@ -110,14 +110,14 @@ export function ConversationMenu({
             icon: <EditIcon size={15} />,
             onSelect: () => edit("title"),
           },
-          {
+          ...(!thread.chat ? [{
             id: "pr",
             label: thread.pullRequest
               ? "Edit pull request link…"
               : "Link pull request…",
             icon: <PullRequestIcon size={15} />,
             onSelect: () => edit("pullRequest"),
-          },
+          }] : []),
           ...(!thread.running
             ? [
                 {

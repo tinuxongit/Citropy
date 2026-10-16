@@ -764,6 +764,8 @@
   padding-right: var(--space-6);
 }
 .composer-model > .model-picker-chevron { display: none; }
+/* In a narrow chat the model name truncates first, so the controls after it stay in view. */
+.composer-bar-group > .menu-wrap:has(> .composer-model) { flex-shrink: 1; min-width: 0; }
 .model-tuning {
   display: grid;
   gap: var(--space-10);

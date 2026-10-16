@@ -103,6 +103,13 @@ function summary(child: Thread) {
   };
 }
 
+// Chats read and look things up. They can't run commands or set up scripts, routines, or bots.
+const CHAT_BLOCKED = ["terminal", "script", "routine", "bots"];
+
+function chatBlocked(name: string): boolean {
+  return CHAT_BLOCKED.some((category) => name === category || name.startsWith(`${category}_`));
+}
+
 export async function callWorkspaceTool(
   threadId: string,
   name: string,
@@ -120,6 +127,7 @@ export async function callWorkspaceTool(
   if (name === "tool_help") {
     const category = required(args, "category");
     if (!toolCategories.includes(category)) throw new Error(`Unknown tool category ${category}. Use one of ${toolCategories.join(", ")}.`);
+    if (thread.chat && chatBlocked(category)) throw new Error(`Chats can only read and look things up, so ${category} tools are unavailable here.`);
     return text(workspaceTools.filter(tool =>
       (tool.name.startsWith(`${category}_`) || (category === "workspace" && tool.name === "open_panel")) &&
       (!tool.name.startsWith("browser_") || browserAllowed) &&
@@ -132,6 +140,7 @@ export async function callWorkspaceTool(
     if (!args.arguments || typeof args.arguments !== "object" || Array.isArray(args.arguments)) throw new Error("Tool arguments must be an object");
     args = args.arguments as Record<string, unknown>;
   }
+  if (thread.chat && chatBlocked(name)) throw new Error(`Chats can only read and look things up, so ${name} is unavailable here.`);
   if (name === "approve") {
     const input = args.input ?? {};
     if (args.tool_name === "AskUserQuestion") {

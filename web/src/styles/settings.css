@@ -11,6 +11,90 @@
   max-width: var(--reading);
   margin: 0 auto;
 }
+
+/* Settings opens as a window over the app: the section list on the left, the page on the right.
+   It skips .citropy-dialog, whose compact cards and buttons would change how the pages look. */
+.settings-dialog {
+  width: min(1024px, calc(var(--viewport-width) - 48px));
+  height: min(800px, calc(var(--viewport-height) - 48px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  pointer-events: auto;
+  white-space: normal;
+  color: var(--text);
+  transition: display 160ms allow-discrete, overlay 160ms allow-discrete;
+  border: 1px solid var(--line);
+  border-radius: var(--r-popup);
+  background: var(--canvas);
+  overflow: hidden;
+}
+.settings-dialog[open] {
+  display: grid;
+  grid-template: minmax(0, 1fr) / 220px minmax(0, 1fr);
+}
+.settings-dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+  transition: background 160ms, display 160ms allow-discrete, overlay 160ms allow-discrete;
+}
+.settings-dialog:not([open])::backdrop { background: transparent; }
+@starting-style {
+  .settings-dialog[open]::backdrop { background: transparent; }
+}
+.settings-nav {
+  --rail-heading: 32px;
+  --rail-section: 30px;
+  --rail-tab-gap: var(--space-8);
+  --rail-tab-pad: var(--space-8);
+  --rail-tab-shape: var(--r-md);
+  padding: var(--space-12) 0;
+  background: var(--canvas-deep);
+}
+.settings-search {
+  margin: 0 var(--rail-tab-gap) var(--space-12);
+}
+.settings-nav .section-nav-label:first-of-type {
+  margin-top: 0;
+}
+.settings-nav-empty {
+  padding: var(--space-8) var(--rail-tab-pad);
+  margin: 0 var(--rail-tab-gap);
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+.settings-dialog .settings {
+  padding-top: var(--space-48);
+}
+.settings-close {
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-12);
+}
+@container application (max-width: 720px) {
+  .settings-dialog {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .settings-dialog[open] {
+    grid-template: auto minmax(0, 1fr) / minmax(0, 1fr);
+  }
+  /* Phones show only a few sections, so they sit in one row above the page. */
+  .settings-nav {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-12) 56px var(--space-12) var(--space-12);
+    overflow-x: auto;
+  }
+  .settings-nav :is(.settings-search, .section-nav-label) { display: none; }
+  .settings-nav .section-link { flex: none; margin: 0; }
+  .settings-dialog .settings { padding-top: var(--space-24); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-dialog, .settings-dialog::backdrop { transition: none; }
+}
 .settings-heading {
   display: flex;
   justify-content: space-between;

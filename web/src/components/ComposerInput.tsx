@@ -254,7 +254,9 @@ export function ComposerInput({
               ? "Queue a follow-up…"
               : group || botName
                 ? `Message ${group?.name ?? botName}`
-                : "Ask a question or describe a change…"
+                : thread.chat
+                  ? "Ask anything…"
+                  : "Ask a question or describe a change…"
         }
         onKey={(event) => {
           if (visible && event.key === "Escape") {

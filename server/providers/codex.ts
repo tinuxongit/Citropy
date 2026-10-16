@@ -138,7 +138,8 @@ class CodexSession implements AgentSession {
     const result = await this.#request(
       resuming ? "thread/resume" : "thread/start",
       {
-        ...MODES[this.#options.permissionMode],
+        // A read-only sandbox lets chats look at files but not change them.
+        ...MODES[this.#options.readOnly ? "plan" : this.#options.permissionMode],
         cwd: this.#options.cwd,
         serviceTier: this.#options.fastMode ? this.#options.fastModeTier ?? "priority" : "default",
         ...(this.#options.model && this.#options.model !== "default"

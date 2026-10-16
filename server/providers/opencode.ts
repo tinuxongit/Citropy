@@ -31,7 +31,9 @@ interface Instance {
 function launch(options: StartOptions, signal: AbortSignal, textOnly = false): Promise<Instance> {
   return new Promise((resolve, reject) => {
     const inherited = JSON.parse(options.environment?.OPENCODE_CONFIG_CONTENT ?? process.env.OPENCODE_CONFIG_CONTENT ?? "{}");
-    const permission = options.permissionMode === "bypass" ? { "*": "allow" } : { "*": options.permissionMode === "plan" ? "deny" : "ask", read: "allow", glob: "allow", grep: "allow", list: "allow", task: "allow", question: "allow", edit: options.permissionMode === "acceptEdits" ? "allow" : options.permissionMode === "plan" ? "deny" : "ask", "citropy_*": "allow" };
+    // Chats can read and look things up but nothing else. Attachments sit outside the chat folder, so those reads ask first.
+    const permission = options.readOnly ? { "*": "deny", read: "allow", glob: "allow", grep: "allow", list: "allow", question: "allow", webfetch: "allow", websearch: "allow", external_directory: "ask", "citropy_*": "allow" }
+      : options.permissionMode === "bypass" ? { "*": "allow" } : { "*": options.permissionMode === "plan" ? "deny" : "ask", read: "allow", glob: "allow", grep: "allow", list: "allow", task: "allow", question: "allow", edit: options.permissionMode === "acceptEdits" ? "allow" : options.permissionMode === "plan" ? "deny" : "ask", "citropy_*": "allow" };
     const citropy = options.mcp ? { citropy: { type: "remote", ...options.mcp, oauth: false, enabled: true, timeout: 1_860_000 } } : {};
     const config = { ...inherited, permission: textOnly ? { "*": "deny" } : permission, mcp: { ...inherited.mcp, ...citropy } };
     const child = spawnCommand(options.binary ?? "opencode", ["serve", "--port", "0", "--hostname", "127.0.0.1"], {

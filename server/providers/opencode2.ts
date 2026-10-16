@@ -198,7 +198,13 @@ export async function generateOpenCode2Text(cwd: string, model: string, effort: 
   }
 }
 
-function permissionRules(mode: PermissionMode): Array<{ action: string; resource: string; effect: "allow" | "deny" | "ask" }> {
+function permissionRules(mode: PermissionMode, readOnly = false): Array<{ action: string; resource: string; effect: "allow" | "deny" | "ask" }> {
+  // Chats can read and look things up but nothing else. Attachments sit outside the chat folder, so those reads ask first.
+  if (readOnly) return [
+    { action: "*", resource: "*", effect: "deny" },
+    ...["read", "glob", "grep", "question", "webfetch", "websearch", "citropy_*"].map((action) => ({ action, resource: "*", effect: "allow" as const })),
+    { action: "external_directory", resource: "*", effect: "ask" },
+  ];
   if (mode === "bypass") return [{ action: "*", resource: "*", effect: "allow" }];
   const allowed = ["read", "glob", "grep", "skill", "question", "subagent", "citropy_*", ...(mode === "acceptEdits" ? ["edit", "write", "patch"] : [])];
   return [
@@ -291,7 +297,7 @@ export class OpenCode2Session implements AgentSession {
   }
 
   async #boot(): Promise<void> {
-    const { cwd, externalId, model, effort, permissionMode, mcp } = this.#options;
+    const { cwd, externalId, model, effort, permissionMode, readOnly, mcp } = this.#options;
     const server = await startServer(cwd, this.#options, this.#abort.signal, mcp);
     if (this.#abort.signal.aborted) { stopProcess(server.child, true); return; }
     this.#server = server;
@@ -304,7 +310,7 @@ export class OpenCode2Session implements AgentSession {
       this.dispose();
     });
     const agent = permissionMode === "plan" ? "plan" : "build";
-    const permissions = permissionRules(permissionMode);
+    const permissions = permissionRules(permissionMode, readOnly);
     let sessionId = externalId;
     if (sessionId) {
       const saved = await this.#api<{ data: { location: { directory: string } } }>("GET", `/api/session/${encodeURIComponent(sessionId)}`).catch((error: unknown) => {

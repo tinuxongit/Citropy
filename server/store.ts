@@ -49,6 +49,7 @@ const settingsFile = join(root, "settings.json");
 const projectsFile = join(root, "projects.json");
 const notificationsFile = join(root, "notifications.json");
 const botsDir = join(root, "bots");
+const chatsDir = join(root, "chats");
 
 mkdirSync(threadsDir, { recursive: true });
 
@@ -149,6 +150,7 @@ export class Store {
     }));
     for (const project of [...this.projects.values()]) if ((project as Project & { chat?: boolean }).chat) this.closeProject(project.id);
     this.#separateBots();
+    this.#separateChats();
   }
 
   // Bots run in their own folders under a hidden workspace, so they never see or report another conversation's files.
@@ -167,6 +169,28 @@ export class Store {
     }
   }
 
+  // Chats belong to no project, so each one gets an empty folder under a hidden workspace.
+  #separateChats(): void {
+    let chats = this.chatsProject;
+    if (!chats) {
+      chats = { id: uid("prj"), path: chatsDir, name: "Chats", isGit: false, lastOpened: 0, chats: true };
+      this.projects.set(chats.id, chats);
+    }
+    chats.path = chatsDir;
+    mkdirSync(chatsDir, { recursive: true, mode: 0o700 });
+    this.flush();
+  }
+
+  get chatsProject(): Project | undefined {
+    return [...this.projects.values()].find(project => project.chats);
+  }
+
+  chatFolder(): string {
+    const path = join(chatsDir, uid("chat"));
+    mkdirSync(path, { recursive: true, mode: 0o700 });
+    return path;
+  }
+
   get botsProject(): Project | undefined {
     return [...this.projects.values()].find(project => project.bots);
   }
@@ -178,7 +202,7 @@ export class Store {
   }
 
   visibleProjects(): Project[] {
-    return [...this.projects.values()].filter(project => !project.bots).sort((a, b) => b.lastOpened - a.lastOpened);
+    return [...this.projects.values()].filter(project => !project.bots && !project.chats).sort((a, b) => b.lastOpened - a.lastOpened);
   }
 
   #track(record: Omit<Thread, "messages">): Thread {
@@ -492,7 +516,7 @@ export class Store {
 
   updateProject(id: string, patch: Pick<Partial<Project>, "name" | "settings" | "scripts">): Project {
     const project = this.projects.get(id);
-    if (!project || project.bots) throw new Error("Workspace not found");
+    if (!project || project.bots || project.chats) throw new Error("Workspace not found");
     Object.assign(project, patch);
     this.flush();
     bus.emit({ t: "project.upsert", project });
@@ -513,6 +537,7 @@ export class Store {
     const now = Date.now();
     const thread = this.#track({
       ...input,
+      ...(this.projects.get(input.projectId)?.chats ? { chat: true, permissionMode: "manual" as const } : {}),
       ...(input.parentThreadId ? { parentMessageId: this.threads.get(input.parentThreadId)?.messages.findLast((message) => message.role === "user")?.id } : {}),
       ...(input.parentThreadId ? {} : { position: this.#topPosition(input.projectId) }),
       id: uid("thr"),

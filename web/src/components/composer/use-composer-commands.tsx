@@ -35,6 +35,8 @@ export function useComposerCommands({
   permissionButton: RefObject<HTMLButtonElement | null>;
 }) {
   const threadId = thread?.id;
+  // Bot chats keep their model and effort in bot settings, so the composer has no buttons for these to open.
+  const pickers = !thread?.botId;
   return [
     ...(provider?.capabilities?.compact
       ? [
@@ -64,14 +66,18 @@ export function useComposerCommands({
       idleOnly: false,
       run: () => onSkills?.(),
     },
-    {
-      id: "model",
-      label: "/model",
-      hint: "Choose a model",
-      icon: <BrainIcon size={16} />,
-      idleOnly: false,
-      run: () => modelButton.current?.click(),
-    },
+    ...(pickers
+      ? [
+          {
+            id: "model",
+            label: "/model",
+            hint: "Choose a model",
+            icon: <BrainIcon size={16} />,
+            idleOnly: false,
+            run: () => modelButton.current?.click(),
+          },
+        ]
+      : []),
     {
       id: "plan",
       label: "/plan",
@@ -82,7 +88,7 @@ export function useComposerCommands({
         if (threadId) configureThread(threadId, { permissionMode: "plan" });
       },
     },
-    ...(model?.efforts?.length || model?.fastMode
+    ...(pickers && (model?.efforts?.length || model?.fastMode)
       ? [
           {
             id: "effort",
@@ -109,13 +115,17 @@ export function useComposerCommands({
           },
         ]
       : []),
-    {
-      id: "permissions",
-      label: "/permissions",
-      hint: "Choose tool permissions",
-      icon: <ShieldCheckIcon size={16} />,
-      idleOnly: false,
-      run: () => permissionButton.current?.click(),
-    },
+    ...(!thread?.chat
+      ? [
+          {
+            id: "permissions",
+            label: "/permissions",
+            hint: "Choose tool permissions",
+            icon: <ShieldCheckIcon size={16} />,
+            idleOnly: false,
+            run: () => permissionButton.current?.click(),
+          },
+        ]
+      : []),
   ];
 }

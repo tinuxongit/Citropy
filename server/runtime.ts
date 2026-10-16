@@ -358,9 +358,10 @@ class ThreadRuntime {
     };
     store.addMessage(this.#thread.id, message);
     store.raiseThread(this.id);
-    if (!this.#thread.title || this.#thread.title === "New thread") {
+    const untitled = this.#thread.chat ? "New chat" : "New thread";
+    if (!this.#thread.title || this.#thread.title === untitled) {
       const title = (text.trim().split("\n")[0] || attachments.map((file) => file.label).join(", ")).slice(0, 64);
-      this.#autoTitle = title || "New thread";
+      this.#autoTitle = title || untitled;
       store.patchThread(this.#thread.id, { title: this.#autoTitle });
       void generateThreadTitle(this.id, true);
     }
@@ -569,6 +570,7 @@ class ThreadRuntime {
       fastMode: this.#thread.fastMode,
       fastModeTier: models.find((model) => model.id === this.#thread.model)?.fastModeTier,
       permissionMode: this.#thread.permissionMode,
+      readOnly: this.#thread.chat,
       externalId: this.#thread.externalId,
       subagentLaunches: Object.fromEntries(store.subagentsOf(this.#thread.id).flatMap(child => child.nativeLaunchId && child.nativeAgentId ? [[child.nativeLaunchId, child.nativeAgentId]] : [])),
       usage: { ...this.#thread.usage },

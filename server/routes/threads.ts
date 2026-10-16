@@ -167,7 +167,7 @@ export const threadRoutes: Routes = {
     const selection = nextTurnSettings(thread);
     const { changedProvider, changedInstance, instanceId, settings } = resolveConfig(thread, event);
     const changedModel = changedProvider || changedInstance || settings.model !== thread.model;
-    const permissionMode = event.permissionMode ?? selection.permissionMode;
+    const permissionMode = thread.chat ? "manual" : event.permissionMode ?? selection.permissionMode;
     const restart =
       changedProvider || changedInstance ||
       Object.entries(settings).some(([key, value]) => thread[key as keyof Settings] !== value) ||

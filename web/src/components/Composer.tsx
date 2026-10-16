@@ -11,7 +11,6 @@ import { withQuotes } from "../lib/quotes.ts";
 import { QueueList } from "./QueueList.tsx";
 import { api, reportError } from "../lib/api.ts";
 import type { QueuedMessage } from "../../../shared/protocol.ts";
-import type { WritingModel } from "../../../shared/assistance.ts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PlusIcon } from "./icons/marks.tsx";
 import { StopIcon } from "./icons/squares.tsx";
@@ -28,7 +27,7 @@ import {
   loadThread,
   finishThread,
 } from "../lib/actions.ts";
-import { confirmAction, selectThread, useApp } from "../lib/store.ts";
+import { selectThread, useApp } from "../lib/store.ts";
 import { playUiSound } from "../lib/ui-sound.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
@@ -36,10 +35,9 @@ import { Loader } from "./Loader.tsx";
 import {
   ContextMenu,
   EffortMenu,
-  ModelTuning,
   PermissionMenu,
-  type TuningSettings,
 } from "./composer/ComposerOptions.tsx";
+import { useModelTransfer } from "./composer/use-model-transfer.tsx";
 import { useComposerDraft } from "./composer/use-composer-draft.ts";
 import { hasConversation, threadStarted } from "../lib/thread-started.ts";
 import { onComposerDelivery, takeComposerDeliveries, type ComposerDelivery } from "../lib/composer-inbox.ts";
@@ -80,7 +78,6 @@ export function Composer({
       setAttachments((previous) => [...previous, attachment]),
   });
   const [sending, setSending] = useState(false);
-  const [transferring, setTransferring] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const modelButton = useRef<HTMLButtonElement>(null);
@@ -93,30 +90,6 @@ export function Composer({
         method: "POST",
       }).catch(reportError);
   }, [threadId]);
-  const [transferSettings, setTransferSettings] = useState<{ key: string; settings: TuningSettings }>({ key: "", settings: {} });
-  const transferKey = (choice: WritingModel) => `${choice.provider}:${choice.providerInstanceId ?? ""}:${choice.model}`;
-  const settingsFor = (choice: WritingModel) => transferSettings.key === transferKey(choice) ? transferSettings.settings : {};
-  const modelFor = (choice: WritingModel) => {
-    const target = providers.find((entry) => entry.id === choice.provider);
-    return selectedModel(providerAccount(target, choice.providerInstanceId).models, choice.model);
-  };
-  const transfer = async (choice: WritingModel) => {
-    if (!thread || transferring) return;
-    const target = providers.find((entry) => entry.id === choice.provider);
-    const { instance } = providerAccount(target, choice.providerInstanceId);
-    const name = modelFor(choice)?.label ?? choice.model;
-    if (!await confirmAction({
-      title: `Transfer to ${name}?`,
-      description: "A new agent reads the conversation and continues here. This uses extra usage on the selected provider and may cost more. Your chat history, workspace and draft stay in place.",
-      context: instance ? `${target?.label} · ${instance.name}` : target?.label,
-      label: "Transfer and continue",
-    }) || scopeSignal.aborted || !useApp.getState().connected) return;
-    setTransferring(true);
-    try {
-      await api(`threads/transfer?threadId=${thread.id}`, { method: "POST", body: JSON.stringify({ ...choice, ...settingsFor(choice) }) });
-    } catch (error) { reportError(error); }
-    finally { if (!scopeSignal.aborted) setTransferring(false); }
-  };
   const place = useCallback(({ text, attachments = [], quotes = [], placement }: Pick<QueuedMessage, "text" | "attachments"> & Pick<ComposerDelivery, "quotes" | "placement">) => {
     const before = placement === "before";
     if (text) setValue((previous) =>
@@ -135,6 +108,7 @@ export function Composer({
     return onComposerDelivery(receive);
   }, [threadId, place]);
 
+  const { transferring, transfer, tuning } = useModelTransfer(thread);
   const running = thread?.running ?? false;
   const provider = providers.find((entry) => entry.id === thread?.provider);
   const { instance, models, usable } = providerAccount(provider, thread?.providerInstanceId);
@@ -196,13 +170,13 @@ export function Composer({
       transferDisabled={Boolean(!conversing || running || thread.queue?.length || thread.compacting || gitActionBusy(thread.gitAction))}
       onChange={(choice) => { if (choice) configureThread(thread.id, { ...choice, providerInstanceId: choice.providerInstanceId ?? null, effort: null }); }}
       menuClearOf=".composer-shell"
-      tuning={(target) => target && <ModelTuning key={transferKey(target)} settings={settingsFor(target)} model={modelFor(target)} onChange={(patch) => setTransferSettings({ key: transferKey(target), settings: { ...settingsFor(target), ...patch } })} />}
+      tuning={(target) => target && tuning(target)}
     />
 
     <ContextMenu thread={configuredThread!} model={model} disabled={!connected || sending || transferring} />
 
     <EffortMenu thread={configuredThread!} model={model} disabled={!connected || sending || transferring} buttonRef={effortButton} />
-  </>, [thread, configuredThread, model, provider, providers, connected, sending, transferring, running, conversing, transferSettings, scopeSignal]);
+  </>, [thread, configuredThread, model, connected, sending, transferring, transfer, tuning, running, conversing]);
 
   const submit = async () => {
     const text = message;
@@ -424,14 +398,14 @@ export function Composer({
       <div className="composer-bar">
         <div className="composer-bar-group">
           {attachButton("composer-attach", <AttachIcon size={18} />)}
-          {!thread.groupId && <PermissionMenu
+          {!thread.groupId && !thread.chat && <PermissionMenu
             thread={configuredThread!}
             disabled={!connected || sending || transferring}
             buttonRef={permissionButton}
           />}
         </div>
         {!thread.groupId && <div className="composer-bar-group">
-          {settingsBar}
+          {!thread.botId && settingsBar}
           <ContextUsage onCompact={compact} draft={message} />
         </div>}
       </div>

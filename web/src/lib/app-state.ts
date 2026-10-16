@@ -89,7 +89,8 @@ export interface AppState {
   shells: Record<string, ShellProcess>;
   projectDefaults: ProjectSettings;
   assistance: AssistanceSettings;
-  activeView: "chat" | "bots" | "git" | "github" | "settings" | "usage";
+  /** "chat" is the Code section, where project work happens; "chats" is Chat. */
+  activeView: "chat" | "chats" | "bots" | "git" | "github" | "usage";
   newThreadProvider: import("../../../shared/protocol.ts").ProviderId | null;
   whatsNew: import("../../../shared/app-update.ts").ReleaseNotes | null;
   setupOpen: boolean;
@@ -125,7 +126,9 @@ export interface AppState {
   bots: Record<string, Bot>;
   botGroups: Record<string, BotGroup>;
   activeRosterId: string | null;
+  /** The last conversations Code and Chat showed, so switching back returns to them. */
   chatThreadId: string | null;
+  chatsThreadId: string | null;
   messages: Record<string, MessageShell>;
   parts: Map<string, Part>;
   reveals: Record<string, true>;
@@ -159,6 +162,7 @@ export interface AppState {
   threadDetailsOpen: boolean;
   botPanelOpen: boolean;
   newBotChatOpen: boolean;
+  newBotTemplate: string | null;
   searchEngine: SearchEngine;
   stageBackground: StageBackground;
   chatWidth: ChatWidth;
@@ -190,7 +194,7 @@ export interface AppState {
   uiSoundVolume: number;
 }
 
-const REOPENED_VIEWS = ["chat", "bots"] as const;
+const REOPENED_VIEWS = ["chat", "chats", "bots"] as const;
 
 function oneOf<T extends string>(options: readonly T[], value: string, fallback: T): T {
   return (options as readonly string[]).includes(value) ? value as T : fallback;
@@ -299,6 +303,7 @@ export const useApp = create<AppState>(() => ({
   botGroups: {},
   activeRosterId: typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.bot"),
   chatThreadId: null,
+  chatsThreadId: null,
   messages: {},
   parts: new Map(),
   reveals: {},
@@ -334,6 +339,7 @@ export const useApp = create<AppState>(() => ({
   threadDetailsOpen: readFlag("citropy.threadDetails", false),
   botPanelOpen: readFlag("citropy.botPanel", startsWide),
   newBotChatOpen: false,
+  newBotTemplate: null,
   sidebarOpen: readFlag("citropy.sidebar", startsWide),
   searchEngine: oneOf(Object.keys(SEARCH_ENGINES) as SearchEngine[], readPref<string>("citropy.searchEngine", "google"), "google"),
   stageBackground: oneOf(STAGE_BACKGROUNDS, readPref<string>("citropy.stageBackground", "default"), "default"),

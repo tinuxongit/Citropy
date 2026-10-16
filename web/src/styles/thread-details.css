@@ -119,8 +119,11 @@ button.details-row:disabled { opacity: 0.5; }
 }
 .details-chevron[aria-expanded="true"] { background: var(--highlight); }
 
-.details-head { display: flex; align-items: center; gap: var(--space-10); height: var(--details-row-height); padding: 0 var(--space-4) 0 var(--space-10); }
-.details-head > svg { flex: none; color: var(--text-2); }
+.details-head { display: flex; align-items: center; height: var(--details-row-height); padding-right: var(--space-4); border-radius: var(--details-row-radius); transition: background var(--dur-instant) var(--ease-out); }
+.details-toggle { display: flex; align-items: center; gap: var(--space-10); width: 100%; height: 100%; padding: 0 var(--space-10); text-align: left; }
+.details-toggle > svg { flex: none; color: var(--text-2); }
+.details-toggle > span { opacity: 0.8; }
+.details-toggle[aria-expanded="false"] > :is(svg, span) { color: var(--text-3); }
 .details-children { display: flex; flex-direction: column; margin-left: var(--details-nest); }
 .details-children .details-row { position: relative; font-weight: 400; }
 .details-children .details-row::before,
@@ -129,7 +132,7 @@ button.details-row:disabled { opacity: 0.5; }
 .details-children .details-row::after { top: 0; width: calc(var(--details-nest) - var(--space-10) - 9px); height: 50%; border-left-width: 1.5px; border-bottom-width: 1.5px; border-bottom-left-radius: 8px; }
 .details-children > .details-row:last-child::before,
 .details-children > :last-child > .details-row::before { display: none; }
-.details-title { flex: 1; min-width: 0; margin: 0; color: var(--text); font-size: var(--text-sm); font-weight: 500; opacity: 0.8; }
+.details-title { flex: 1; min-width: 0; height: 100%; margin: 0; color: var(--text); font-size: var(--text-sm); font-weight: 500; }
 .details-add { display: grid; flex: none; place-items: center; width: 24px; height: 24px; border-radius: 6px; color: var(--text-3); transition: background var(--dur-instant) var(--ease-out); }
 .details-add:disabled { opacity: 0.5; }
 .details-item-action { color: var(--text-3); }
@@ -137,6 +140,7 @@ button.details-row:disabled { opacity: 0.5; }
 .details-routine-icon > .bot-run-dot { position: absolute; top: -2px; right: -2px; width: 6px; height: 6px; box-shadow: 0 0 0 1.5px var(--overlay); }
 
 @media (hover: hover) and (pointer: fine) {
+  .details-head:hover,
   .details-add:hover:not(:disabled) { background: var(--hover); }
   .details-item:not(:hover, :focus-within) > .details-item-action { opacity: 0; }
   .details-children .details-row:hover { scale: none; }

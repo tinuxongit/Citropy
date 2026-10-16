@@ -58,6 +58,8 @@ export interface StartOptions extends ProviderLaunch {
   fastMode?: boolean;
   fastModeTier?: "priority" | "fast";
   permissionMode: PermissionMode;
+  /** Chats may read and use the web but never write files or run commands, whatever permissionMode says. */
+  readOnly?: boolean;
   externalId?: string;
   subagentLaunches?: Record<string, string>;
   usage?: Partial<Usage>;

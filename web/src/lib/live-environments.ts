@@ -9,7 +9,7 @@ export const ENVIRONMENT_KEYS = [
   "notifications", "notificationPreferences", "searchResult", "searchMessageId",
   "searchShellId", "connected", "development", "usingAppData", "logging", "resumeAfterLimits", "githubAccount", "offline",
   "choosingWorkspace", "home", "projects", "providers", "threads", "threadOrder",
-  "bots", "botGroups", "activeRosterId", "chatThreadId",
+  "bots", "botGroups", "activeRosterId", "chatThreadId", "chatsThreadId",
   "messages", "parts", "reveals", "order", "loaded", "historyPaging", "historyPages", "historyBytes",
   "timelineVersions", "disclosures", "git", "permissions", "questions",
   "questionDrafts", "activeProjectId", "activeThreadId", "openThreadIds", "previewThreadId", "followRequest",

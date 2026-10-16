@@ -11,7 +11,8 @@
   width: 200px;
 }
 .project-option-control .model-picker-trigger,
-.new-conversation-field .model-picker-trigger {
+.new-conversation-field .model-picker-trigger,
+.bot-model .model-picker-trigger {
   width: 100%;
   height: 36px;
   padding: 0 var(--space-12);

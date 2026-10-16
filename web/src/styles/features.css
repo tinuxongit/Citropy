@@ -32,9 +32,10 @@
 .feature-field > span > svg {
   color: var(--text-3);
 }
-.feature-field input,
-.feature-field textarea,
-.feature-field .select,
+/* A field can hold a menu (the model picker's opens inside it), so these stop at menus to leave their controls alone. */
+.feature-field input:not(:where(.menu *)),
+.feature-field textarea:not(:where(.menu *)),
+.feature-field .select:not(:where(.menu *)),
 .feature-inline > input,
 .feature-filters .select,
 .feature-section-heading .select {
@@ -49,15 +50,15 @@
   font-size: var(--text-sm);
 }
 .feature-field textarea { height: auto; padding: var(--space-10) var(--space-12); line-height: 1.6; resize: vertical; }
-.feature-field textarea:focus,
-.feature-field input:focus,
-.feature-field .select:focus-visible,
+.feature-field textarea:focus:not(:where(.menu *)),
+.feature-field input:focus:not(:where(.menu *)),
+.feature-field .select:focus-visible:not(:where(.menu *)),
 .feature-inline input:focus {
   outline: none;
   box-shadow: var(--field-focus-ring);
 }
-.feature-field input:disabled,
-.feature-field .select:disabled {
+.feature-field input:disabled:not(:where(.menu *)),
+.feature-field .select:disabled:not(:where(.menu *)) {
   opacity: 0.5;
 }
 .feature-form-grid {

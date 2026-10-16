@@ -4,7 +4,7 @@ import type { Connection } from "../../../../shared/features.ts";
 import { api } from "../../lib/api.ts";
 import { SiteIcon } from "../SiteIcon.tsx";
 
-export function BotConnections({ bot, onChange }: { bot: Bot; onChange: (profile: Partial<BotProfile>) => void }) {
+export function BotConnections({ bot, onChange }: { bot: Pick<Bot, "name" | "connections">; onChange: (profile: Partial<BotProfile>) => void }) {
   const [connections, setConnections] = useState<Connection[]>();
   const [error, setError] = useState("");
   useEffect(() => {

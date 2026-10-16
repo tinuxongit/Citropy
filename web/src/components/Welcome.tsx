@@ -1,6 +1,7 @@
 import { NewMessageIcon } from "./icons/messages.tsx";
 import { FolderIcon, FolderOpenIcon } from "./icons/folders.tsx";
-import { createThread, openProject, chooseWorkspace } from "../lib/actions.ts";
+import { ConversationsIcon } from "./ConversationsIcon.tsx";
+import { createChat, createThread, openProject, chooseWorkspace } from "../lib/actions.ts";
 import { shortPath } from "../lib/format.ts";
 import { useApp } from "../lib/store.ts";
 import { hasUsableAccount } from "../../../shared/provider-account.ts";
@@ -55,6 +56,25 @@ export function Welcome() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+export function ChatWelcome() {
+  const providers = useApp((state) => state.providers);
+  const creating = useApp((state) => state.creatingThread);
+  const connected = useApp((state) => state.connected);
+  const canStart = providers.some(hasUsableAccount);
+  return (
+    <div className="welcome">
+      <div className="welcome-inner">
+        <ConversationsIcon size={36} className="welcome-mark" />
+        <h1>Chat</h1>
+        <p className="welcome-path">Ask anything. Chats can't change your files.</p>
+        <button className="btn" type="button" data-variant="primary" onClick={() => void createChat()} disabled={!connected || creating || !canStart}>
+          <NewMessageIcon size={14} />New chat</button>
+        {!canStart && <p className="settings-note">Enable a provider in Settings to start a chat.</p>}
       </div>
     </div>
   );

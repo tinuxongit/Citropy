@@ -84,9 +84,11 @@ function restoreWorkspace(state: AppState, focused: boolean): void {
     ),
   );
   const projects = state.projects;
+  // Chats live in a hidden workspace, which stays active while one of its chats is open.
+  const chat = state.threads[state.activeThreadId ?? ""];
   if (
     !state.activeProjectId ||
-    !projects.some((p) => p.id === state.activeProjectId)
+    !(projects.some((p) => p.id === state.activeProjectId) || (chat?.chat && chat.projectId === state.activeProjectId))
   ) {
     state.activeProjectId = projects[0]?.id ?? null;
   }

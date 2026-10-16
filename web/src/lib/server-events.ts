@@ -259,14 +259,18 @@ function applyThreadEvent(
     case "thread.remove": {
       if (rosterItem(state, state.activeRosterId)?.threadId === event.id) state.activeRosterId = neighborOf(state, state.activeRosterId!);
       const { [event.id]: removed, ...rest } = state.threads;
-      void removed;
       state.threads = rest;
       removeMessages(state, event.id);
       const { [event.id]: connection, ...remainingConnections } =
         state.toolConnections;
       state.toolConnections = remainingConnections;
       sortThreads(state);
-      if (state.activeThreadId === event.id) state.activeThreadId = null;
+      if (state.activeThreadId === event.id) {
+        state.activeThreadId = null;
+        // The hidden Chats workspace has no welcome screen, so leave it with its last chat.
+        if (removed?.chat && !Object.values(rest).some((thread) => thread.chat && !thread.parentThreadId && !thread.archived && !thread.snoozedUntil))
+          state.activeProjectId = state.projects[0]?.id ?? null;
+      }
       Object.assign(state, withoutTab(state, event.id));
       return;
     }

@@ -52,7 +52,7 @@ function toggleDetails() {
 export function ThreadDetailsButton() {
   const thread = useRootThread();
   const open = useDetailsShown();
-  if (!thread) return null;
+  if (!thread || thread.chat) return null;
   const busy = gitActionBusy(thread.gitAction);
   const failed = thread.gitAction?.status === "error";
   return <button type="button" className="icon-btn thread-details-toggle" aria-label="Conversation details" aria-pressed={open} data-active={open} data-error={failed || undefined} title="Conversation details" onClick={toggleDetails}>

@@ -91,7 +91,7 @@ export class MuseSession implements AgentSession {
 
   constructor(options: StartOptions) {
     this.#options = options;
-    this.#access = hostAccess(options.permissionMode);
+    this.#access = hostAccess(options.permissionMode, options.readOnly);
     this.#permissionMode = options.permissionMode;
     this.#model = options.model && options.model !== "default" ? options.model : undefined;
     this.#effort = options.effort;
@@ -161,7 +161,7 @@ export class MuseSession implements AgentSession {
   async configure(config: SessionConfig): Promise<void> {
     await this.#ready;
     if (config.permissionMode !== undefined && config.permissionMode !== this.#permissionMode) {
-      if (hostAccess(config.permissionMode) !== this.#access) throw new Error("Muse Code restarts to change what it may access.");
+      if (hostAccess(config.permissionMode, this.#options.readOnly) !== this.#access) throw new Error("Muse Code restarts to change what it may access.");
       await this.#host!.command("session/setApprovalMode", { sessionId: this.#sessionId, mode: APPROVAL_MODES[config.permissionMode] });
       this.#permissionMode = config.permissionMode;
     }
@@ -545,7 +545,7 @@ export class MuseSession implements AgentSession {
     const tool = approvalTool(pending.params);
     const emit = this.#options.emit;
     let decision: Awaited<ReturnType<typeof ask>> = "allow";
-    if (!autoApproved(this.#permissionMode, pending.params)) {
+    if (!autoApproved(this.#permissionMode, pending.params, this.#options.readOnly)) {
       emit({ type: "status", status: "awaiting" });
       decision = await ask(this.#options.threadId, tool.name, tool.input, { signal: pending.prompt.signal });
     }

@@ -3,6 +3,7 @@ import { CircleCheckIcon, ClockIcon } from "../icons/status.tsx";
 import { MonitorIcon } from "../icons/hardware.tsx";
 import { PinIcon } from "../icons/actions.tsx";
 import { FolderIcon } from "../icons/folders.tsx";
+import { MessageIcon } from "../icons/messages.tsx";
 import type { Project, ThreadMeta } from "../../../../shared/protocol.ts";
 import { moveBeside, type DropEdge } from "../../../../shared/move-beside.ts";
 import type { CachedThread } from "../../lib/environment.ts";
@@ -64,6 +65,7 @@ function categoryOf({ pinned, finished, archived, snoozedUntil }: Pick<ThreadMet
 function placeThreads(threads: SidebarThread[], environments: EnvironmentFolders[], searching: boolean) {
   const cached = searching ? [] : environments.flatMap(({ environment, cachedThreads }) => (cachedThreads ?? []).map((thread): SidebarThread => ({ thread, environment, cached: true })));
   const categories: Record<Category, SidebarThread[]> = { pinned: [], snoozed: [], finished: [] };
+  const chats: SidebarThread[] = [];
   const byProject = new Map<string, SidebarThread[]>();
   for (const item of [...threads, ...cached]) {
     if (!item.cached && item.thread.parentThreadId && !searching) continue;
@@ -73,13 +75,17 @@ function placeThreads(threads: SidebarThread[], environments: EnvironmentFolders
       continue;
     }
     if (item.cached && item.thread.archived) continue;
+    if (!item.cached && item.thread.chat) {
+      chats.push(item);
+      continue;
+    }
     const key = `${item.environment}:${item.thread.projectId}`;
     const entry = byProject.get(key);
     if (entry) entry.push(item);
     else byProject.set(key, [item]);
   }
-  for (const list of Object.values(categories)) list.sort(sortItems);
-  return { categories, byProject };
+  for (const list of [...Object.values(categories), chats]) list.sort(sortItems);
+  return { categories, chats, byProject };
 }
 
 function revealedCategory(root: ThreadMeta | undefined): Category | undefined {
@@ -174,8 +180,11 @@ export function useThreadGroups({ threads, query, environments, sections, active
       const heading = group({ id: `section:${id}`, label, icon, threads: [], section: id }, `section:${id}`);
       return [heading, ...(heading.open ? foldersOf(server).map((folder) => ({ ...folder, parent: heading.id })) : [])];
     });
+    // Chat has no projects, so its conversations sit in one list.
+    const recents = placed.chats.length ? [group({ id: "recents", label: "Recents", icon: MessageIcon, threads: placed.chats }, "recents")] : [];
     return [
       ...(placed.categories.pinned.length ? [category("pinned", placed.categories.pinned)] : []),
+      ...recents,
       ...folders,
       ...(placed.categories.snoozed.length ? [category("snoozed", placed.categories.snoozed)] : []),
       ...(placed.categories.finished.length ? [category("finished", placed.categories.finished)] : []),

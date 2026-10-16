@@ -62,7 +62,7 @@ export function AgentsPanel() {
   const show = (agent: Agent) => {
     setOpen(false);
     if (agent.rosterId) return selectRosterEntry(agent.rosterId);
-    useApp.setState({ activeView: "chat" });
+    useApp.setState({ activeView: useApp.getState().threads[agent.threadId]?.chat ? "chats" : "chat" });
     if (agent.projectId !== useApp.getState().activeProjectId) selectProject(agent.projectId);
     selectThread(agent.threadId);
     loadThread(agent.threadId);

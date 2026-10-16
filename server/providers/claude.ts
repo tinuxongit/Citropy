@@ -9,8 +9,10 @@ import { SLASH_COMMAND } from "./skill-prompt.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { onJson, onLines } from "../lines.ts";
 import { ANSWER_WAIT_MS, permissionToolName } from "../permissions.ts";
+import { dataRoot } from "../paths.ts";
 import type { AgentEvent, AgentSession, Provider, SessionConfig, StartOptions, TranscriptEvent } from "./types.ts";
 import type { Attachment, PermissionMode, ThreadStatus, TodoItem } from "../../shared/protocol.ts";
 import { normalizeTodos } from "../../shared/todos.ts";
@@ -19,6 +21,10 @@ import { claudeHome } from "./config-folders.ts";
 const SHARED_SETTINGS = ["settings.json", "CLAUDE.md", "agents", "commands", "skills", "plugins"];
 const DEFAULT_CONTEXT_MAX = 200_000;
 const EXTENDED_CONTEXT_MAX = 1_000_000;
+
+// Chats only get tools that read or look things up. Attachments live outside the chat folder, so reading them is allowed up front.
+const CHAT_TOOLS = ["Read", "Glob", "Grep", "WebFetch", "WebSearch", "AskUserQuestion"];
+const chatAllowed = (threadId: string) => ["WebFetch", "WebSearch", `Read(/${join(dataRoot, "attachments", threadId)}/**)`];
 
 const PLAN_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskView"]);
 const AGENT_TASK_TYPES = new Set(["local_agent", "remote_agent"]);
@@ -134,7 +140,10 @@ class ClaudeSession implements AgentSession {
         },
       }),
     ];
-    if (options.mcp) args.push("--permission-prompt-tool", permissionToolName, "--allowedTools", "mcp__citropy");
+    if (options.readOnly) args.push("--tools", CHAT_TOOLS.join(","));
+    const allowed = [...(options.mcp ? ["mcp__citropy"] : []), ...(options.readOnly ? chatAllowed(options.threadId) : [])];
+    if (options.mcp) args.push("--permission-prompt-tool", permissionToolName);
+    if (allowed.length) args.push("--allowedTools", allowed.join(","));
     if (options.effort) args.push("--effort", options.effort);
     if (options.model)
       args.push(
