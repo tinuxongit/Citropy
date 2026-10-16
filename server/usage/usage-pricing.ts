@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { dataRoot } from "../paths.ts";
-import { saveJson } from "../save-json.ts";
+import { saveJson } from "../../shared/save-json.ts";
 import { uncachedInput } from "../../shared/usage-metrics.ts";
 import type { CostByType, UsagePricing, UsageSpeed } from "../../shared/features.ts";
 import type { ProviderId, Usage } from "../../shared/protocol.ts";

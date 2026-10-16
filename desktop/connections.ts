@@ -1,7 +1,8 @@
-import { readFile, writeFile, rename } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { ifMissing } from "../shared/expected-errors.mjs";
+import { saveJson } from "../shared/save-json.ts";
 import { connectionMention, siteOf } from "../shared/connection-sites.mjs";
 import suggestions from "../shared/connection-suggestions.json" with { type: "json" };
 import type { session as sessions } from "electron";
@@ -57,12 +58,6 @@ export async function initializeConnections(userData: string) {
   connections = JSON.parse(await readFile(file, "utf8").catch(ifMissing("[]"))).map(
     fromSingleAccountFormat,
   );
-}
-
-async function save() {
-  const temporary = `${file}.${randomUUID()}.tmp`;
-  await writeFile(temporary, JSON.stringify(connections), { mode: 0o600 });
-  await rename(temporary, file);
 }
 
 function suggestionOf(connection: { url: string }) {
@@ -240,7 +235,7 @@ async function apply(
       connection.accounts = connection.accounts.filter((entry) => entry !== account);
     else connections = connections.filter((entry) => entry !== connection);
   } else if (operation !== "list") throw new Error("Unknown connections action");
-  if (operation !== "list") await save();
+  if (operation !== "list") saveJson(file, connections);
   return connections.map(view);
 }
 

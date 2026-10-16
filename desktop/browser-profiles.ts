@@ -1,4 +1,4 @@
-import { readdir, readFile, writeFile, rename, mkdir } from "node:fs/promises";
+import { readdir, readFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, basename } from "node:path";
@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { CookiesSetDetails, Session, session as sessions } from "electron";
 import { ifMissing, logFailure, unlessCode } from "../shared/expected-errors.mjs";
+import { saveJson } from "../shared/save-json.ts";
 
 interface ProjectSettings {
   selected: string;
@@ -62,12 +63,6 @@ export async function initializeProfiles(userData: string) {
   await mkdir(userData, { recursive: true });
   file = join(userData, "browser-profiles.json");
   preferences = JSON.parse(await readFile(file, "utf8").catch(ifMissing("{}")));
-}
-
-async function save() {
-  const temporary = `${file}.${randomUUID()}.tmp`;
-  await writeFile(temporary, JSON.stringify(preferences), { mode: 0o600 });
-  await rename(temporary, file);
 }
 
 function projectProfiles(projectId: unknown) {
@@ -323,7 +318,7 @@ async function applyProfiles(
   if (operation === "forget") {
     for (const profile of settings.profiles) await clearProfileData(getSession(profile.id));
     delete preferences[input.projectId];
-    await save();
+    saveJson(file, preferences);
     return { ok: true };
   }
   if (operation === "sources")
@@ -348,7 +343,7 @@ async function applyProfiles(
         settings.profiles.push({ id, name });
         settings.selected = id;
       }
-      await save();
+      saveJson(file, preferences);
     } else if (input.method === "DELETE") {
       if (input.id === "workspace") throw new Error("The workspace profile cannot be deleted.");
       browserProfile(input.projectId, input.id);
@@ -361,7 +356,7 @@ async function applyProfiles(
       await clearProfileData(getSession(input.id));
       settings.profiles = settings.profiles.filter((entry) => entry.id !== input.id);
       if (settings.selected === input.id) settings.selected = "workspace";
-      await save();
+      saveJson(file, preferences);
     }
     return {
       selected: settings.selected,

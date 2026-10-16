@@ -2,9 +2,10 @@ import { nodeVersion, nodeChecksums, downloadNodeArchive } from "../shared/node-
 import { hasCode, logFailure } from "../shared/expected-errors.mjs";
 import { freePort } from "../shared/ports.mjs";
 import { readRemoteHealth } from "../shared/remote-connection.mjs";
+import { saveJson } from "../shared/save-json.ts";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, readFile, writeFile, rename, readdir, cp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, cp, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { validateContainer, startContainer, stopContainer } from "./containers.ts";
@@ -245,9 +246,7 @@ export class SshEnvironments {
 
   async persist(connections: SshConnection[]) {
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
-    const path = join(this.directory, "ssh.json");
-    await writeFile(`${path}.tmp`, JSON.stringify(connections), { mode: 0o600 });
-    await rename(`${path}.tmp`, path);
+    saveJson(join(this.directory, "ssh.json"), connections);
     this.connections = connections;
   }
 

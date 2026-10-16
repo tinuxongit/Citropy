@@ -8,7 +8,7 @@ import { bus } from "./bus.ts";
 import { eventJournal } from "./event-journal.ts";
 import { removeToolImages } from "./tools/tool-images.ts";
 import { uid } from "./ids.ts";
-import { saveJson } from "./save-json.ts";
+import { saveJson } from "../shared/save-json.ts";
 import { ConversationSearch } from "./search/conversation-search.ts";
 import { onShutdown } from "./lifecycle.ts";
 import { subagentFinishedNotification } from "./subagent-notifications.ts";

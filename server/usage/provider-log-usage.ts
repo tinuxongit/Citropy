@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { dataRoot } from "../paths.ts";
-import { saveJson } from "../save-json.ts";
+import { saveJson } from "../../shared/save-json.ts";
 import { openOpenCodeDatabase, providerLogRoots } from "../providers/provider-logs.ts";
 import {
   USAGE_TOTAL_KEYS,
