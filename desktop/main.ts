@@ -64,6 +64,11 @@ const appName = development ? "Citropy Dev" : "Citropy";
 const desktopId = development ? "citropy-dev" : "citropy";
 const appIcon = fileURLToPath(new URL(`./assets/${desktopId}.png`, import.meta.url));
 app.setName(appName);
+// Electron adds "Citropy/<version>" and "Electron/<version>" tokens, which make sites like WhatsApp Web reject the browser. Pages see a plain Chrome user agent instead.
+app.userAgentFallback = app.userAgentFallback.replace(
+  /\) [^(]*$/,
+  `) Chrome/${process.versions.chrome.split(".")[0]}.0.0.0 Safari/537.36`,
+);
 app.setPath(
   "userData",
   migrateDesktopData(

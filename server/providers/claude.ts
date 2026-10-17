@@ -28,6 +28,8 @@ import { claudeHome } from "./config-folders.ts";
 const SHARED_SETTINGS = ["settings.json", "CLAUDE.md", "agents", "commands", "skills", "plugins"];
 const DEFAULT_CONTEXT_MAX = 200_000;
 const EXTENDED_CONTEXT_MAX = 1_000_000;
+const STEER_NOTE =
+  "The user sent this while you were working. Answer any question in it in your visible reply, not only in your thinking.";
 
 // Chats only get tools that read or look things up. Attachments live outside the chat folder, so reading them is allowed up front.
 const CHAT_TOOLS = ["Read", "Glob", "Grep", "WebFetch", "WebSearch", "AskUserQuestion"];
@@ -244,6 +246,9 @@ class ClaudeSession implements AgentSession {
     skills: Array<{ name: string; path: string }> = [],
   ): Promise<boolean> {
     const content = await this.#content(text, attachments, skills);
+    // Answers to mid-run messages sometimes landed only in thinking, which the user sees as a
+    // collapsed summary.
+    content.push({ type: "text", text: STEER_NOTE });
     if (!this.#active) throw new Error("Claude Code already finished this turn.");
     const id = randomUUID();
     this.#write(content, id);

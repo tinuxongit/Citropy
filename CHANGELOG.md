@@ -2,6 +2,17 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.14.1
+
+### Added
+- The menu that opens when you click a link has a Copy link option.
+
+### Fixed
+- WhatsApp Web and other sites that check the browser now load in Citropy's browser and sign-in window instead of asking you to update Chrome.
+- When you message the agent mid-run, it answers any question in its reply instead of only in its collapsed thinking.
+- The running spinner no longer jumps sideways for a frame in the desktop app.
+- Opening a step list while the agent works no longer fades in the old messages as if they were new.
+
 ## 0.14.0
 
 ### Added

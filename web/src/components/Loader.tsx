@@ -1,8 +1,9 @@
 import type { CSSProperties, HTMLAttributes } from "react";
 import { onWindowActiveChange, windowActive } from "../lib/window-active.ts";
 
-// The spinner is a strip of pre-drawn frames stepped by a compositor transform, so running it
-// costs no paint and no filter work. Frame strip idea from Hermes Agent (MIT).
+// The spinner is a strip of pre-drawn frames stepped through by mask position, so each step
+// repaints a 1em box and does no filter work. Frame strip idea from Hermes Agent (MIT).
+// Sliding the strip with a compositor transform showed a one-frame sideways jump in the desktop app.
 const VIEW_BOX = 24;
 const CENTER = VIEW_BOX / 2;
 const FILTER_MARGIN = 4;
@@ -74,10 +75,10 @@ const OFFSETS = Array.from(
 const KEYFRAMES: Keyframe[] = [
   ...OFFSETS.map((offset, frame) => ({
     offset,
-    transform: `translateY(${-frame}em)`,
+    maskPosition: `0 ${-frame}em`,
     easing: "step-end",
   })),
-  { offset: 1, transform: `translateY(${-(FRAMES - 1)}em)` },
+  { offset: 1, maskPosition: `0 ${-(FRAMES - 1)}em` },
 ];
 
 const strips = new Map<number, string>();
@@ -105,7 +106,7 @@ function strip(size: number): string {
 }
 
 // Every spinner starts at the document timeline's zero, so they all show the same frame.
-// The compositor keeps drawing them while another app has focus, so they pause with the window.
+// They keep animating while another app has focus, so they pause with the window.
 const running = new Set<Animation>();
 
 function sync(animation: Animation): void {
@@ -138,13 +139,15 @@ export function Loader({
       aria-hidden={rest["aria-label"] ? undefined : true}
       {...rest}
       className={className ? `loader ${className}` : "loader"}
-      style={{ fontSize: size, ...style }}
-    >
-      <span
-        ref={animate}
-        className="loader-strip"
-        style={{ "--loader-strip": strip(size), height: `${FRAMES}em` } as CSSProperties}
-      />
-    </span>
+      ref={animate}
+      style={
+        {
+          fontSize: size,
+          "--loader-strip": strip(size),
+          "--loader-height": `${FRAMES}em`,
+          ...style,
+        } as CSSProperties
+      }
+    />
   );
 }

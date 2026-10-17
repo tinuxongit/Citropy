@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { CopyIcon } from "./icons/actions.tsx";
 import { ExternalLinkIcon } from "./icons/arrows.tsx";
 import { GlobeIcon } from "./icons/GlobeIcon.tsx";
 import { Menu } from "./Menu.tsx";
 import { openWorkbenchPanel } from "../lib/actions.ts";
+import { reportError } from "../lib/api.ts";
+import { copyText } from "../lib/copy-text.ts";
 import { isRemote } from "../lib/environment.ts";
 import { useApp } from "../lib/store.ts";
 
@@ -82,6 +85,12 @@ export function LinkActions() {
           label: "Open in external browser",
           icon: <ExternalLinkIcon size={17} />,
           onSelect: () => window.open(link.url.href, "_blank", "noopener,noreferrer"),
+        },
+        {
+          id: "copy",
+          label: "Copy link",
+          icon: <CopyIcon size={17} />,
+          onSelect: () => void copyText(link.url.href).catch(reportError),
         },
       ]}
     />

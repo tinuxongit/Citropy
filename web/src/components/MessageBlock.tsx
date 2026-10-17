@@ -15,6 +15,13 @@ import { BotAvatar } from "./bots/BotAvatar.tsx";
 
 const AUTHOR_AVATAR_SIZE = 20;
 
+// Opening a fold mid-run mounts old rows while streaming; they shouldn't fade in like new ones.
+let revealedAt = -Infinity;
+
+export function markRevealed(): void {
+  revealedAt = performance.now();
+}
+
 function originLabel(origin: MessageOrigin): string {
   switch (origin.kind) {
     case "group":
@@ -72,7 +79,10 @@ export const MessageBlock = memo(function MessageBlock({
   const author = useApp((state) =>
     authorOrigin ? state.bots[authorOrigin.botId ?? ""] : undefined,
   );
-  const [fresh] = useState(() => (first ? Date.now() - timestamp < 2000 : streaming));
+  const [fresh] = useState(
+    () =>
+      performance.now() - revealedAt > 300 && (first ? Date.now() - timestamp < 2000 : streaming),
+  );
 
   if (!shell && (messageId !== undefined || !threadId)) return null;
 

@@ -469,6 +469,13 @@ test("Claude Code", async (t) => {
       await tick();
       const steer = child.messages.at(-1);
       assert.equal(steer.priority, "next");
+      assert.deepEqual(
+        steer.message.content.map((block) => block.text),
+        [
+          "Now say banana",
+          "The user sent this while you were working. Answer any question in it in your visible reply, not only in your thinking.",
+        ],
+      );
       child.receive(result);
       await tick();
       assert.equal(

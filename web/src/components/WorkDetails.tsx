@@ -8,6 +8,7 @@ import type { FoldRow } from "../lib/timeline.ts";
 import { WarningIcon } from "./icons/status.tsx";
 import { ChevronRightIcon } from "./icons/chevrons.tsx";
 import { CheckIcon } from "./icons/marks.tsx";
+import { markRevealed } from "./MessageBlock.tsx";
 
 function partEndedAt(part: Part | undefined): number {
   if (part?.kind === "tool") return part.endedAt ?? part.startedAt;
@@ -48,6 +49,7 @@ export function WorkDetails({
       type="button"
       aria-expanded={open}
       onClick={() => {
+        if (!open) markRevealed();
         const update = () => setOpen((value) => !value);
         if (transitionActivity) transitionActivity(id, update);
         else update();

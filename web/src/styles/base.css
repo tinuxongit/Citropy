@@ -636,15 +636,9 @@ kbd {
   flex: none;
   width: 1em;
   height: 1em;
-  overflow: hidden;
   vertical-align: middle;
-}
-
-.loader-strip {
-  display: block;
   background: currentColor;
-  mask: var(--loader-strip) 0 0 / 100% 100% no-repeat;
-  will-change: transform;
+  mask: var(--loader-strip) 0 0 / 1em var(--loader-height) no-repeat;
 }
 
 .file-type-icon {
