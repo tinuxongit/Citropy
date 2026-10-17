@@ -729,16 +729,6 @@
   background: var(--text);
   box-shadow: 0 0 0 1.5px var(--surface);
 }
-.limit-pace {
-  color: var(--text-3);
-}
-.limit-pace b {
-  color: var(--text-2);
-  font-weight: 500;
-}
-.limit-window[data-pace="fast"] .limit-pace b {
-  color: var(--warn);
-}
 .limit-window[data-level="low"] {
   --fill: var(--warn);
 }

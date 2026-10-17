@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.16.1
+
+### Changed
+- Usage limits no longer show a pace line under each bar. The tick and amber band stay.
+
 ## 0.16.0
 
 ### Added
