@@ -1,5 +1,4 @@
 import { environmentStorage } from "./environment.ts";
-import { withoutTab } from "./thread-tabs.ts";
 import { resolveResponse } from "./requests.ts";
 import type { ServerEvent, ThreadMeta } from "../../../shared/protocol.ts";
 import type { AppState } from "./app-state.ts";
@@ -288,7 +287,6 @@ function applyThreadEvent(
         )
           state.activeProjectId = state.projects[0]?.id ?? null;
       }
-      Object.assign(state, withoutTab(state, event.id));
       return;
     }
     case "thread.accepted":

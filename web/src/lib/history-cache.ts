@@ -31,6 +31,7 @@ function messageShell(message: Message, partIds: string[]): AppState["messages"]
     mentions: message.mentions,
     origin: message.origin,
     reactions: message.reactions,
+    pending: message.pending,
     partIds,
   };
 }

@@ -15,7 +15,6 @@ import { attachDesktop } from "../server/desktop.ts";
 import { callWorkspaceTool } from "../server/mcp/mcp-workspace.ts";
 import { refreshProvidersNow } from "../server/providers/provider-registry.ts";
 import { providers } from "../server/providers/index.ts";
-import { disposeRuntime, liveAgents, runtimeFor } from "../server/runtime.ts";
 import { botRoutes } from "../server/routes/bots.ts";
 import { removeThread } from "../server/routes/threads.ts";
 import { closeProject } from "../server/routes/projects.ts";
@@ -304,36 +303,6 @@ test("a bot shows its latest reply as a preview once the turn ends", async (t) =
   store.patchThread(bot.threadId, { running: false });
   assert.equal(botStore.get(bot.id).unread, false);
   assert.match(botStore.get(bot.id).preview, /^word word .*word…$/);
-});
-
-test("running agents say which bot they work for, subagents included", async (t) => {
-  const { makeBot, sessions } = await fixture(t);
-  const bot = makeBot({ name: "Scout" });
-  const helper = store.createThread({
-    projectId: store.threads.get(bot.threadId).projectId,
-    provider: "claude",
-    permissionMode: "manual",
-    title: "Helper",
-    parentThreadId: bot.threadId,
-  });
-  const chat = store.createThread({
-    projectId: store.threads.get(bot.threadId).projectId,
-    provider: "claude",
-    permissionMode: "manual",
-    title: "Chat",
-  });
-  t.after(() => {
-    for (const id of [bot.threadId, helper.id, chat.id]) disposeRuntime(id);
-  });
-  for (const id of [bot.threadId, helper.id, chat.id]) await runtimeFor(id).send("hello");
-  assert.equal(sessions.size, 3);
-  const rosterIds = Object.fromEntries(
-    liveAgents().map((agent) => [agent.threadId, agent.rosterId]),
-  );
-  assert.deepEqual(
-    [rosterIds[bot.threadId], rosterIds[helper.id], rosterIds[chat.id]],
-    [bot.id, bot.id, undefined],
-  );
 });
 
 function groupTexts(group) {

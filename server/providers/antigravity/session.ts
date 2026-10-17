@@ -82,10 +82,6 @@ export class AntigravitySession implements AgentSession {
   #readOnly = false;
   #totals: Pick<Usage, "input" | "output" | "cacheRead" | "cacheWrite">;
 
-  get pid(): number | undefined {
-    return this.#agent?.child.pid;
-  }
-
   constructor(options: StartOptions) {
     this.#options = options;
     this.instanceId = options.instanceId;

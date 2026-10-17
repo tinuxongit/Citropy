@@ -5,7 +5,6 @@ import { AnimatePresence } from "motion/react";
 import { NewConversation } from "./components/NewConversation.tsx";
 import {
   Fragment,
-  lazy,
   Suspense,
   useDeferredValue,
   useEffect,
@@ -55,34 +54,21 @@ import { isNarrowViewport, useNarrowViewport } from "./lib/use-narrow-viewport.t
 import { send } from "./lib/socket.ts";
 import { useUiSounds } from "./lib/use-ui-sounds.ts";
 import { useForgivingPresses } from "./lib/use-forgiving-presses.ts";
-import {
-  chooseWorkspace,
-  closeTab,
-  createChat,
-  createThread,
-  reopenClosedTab,
-  showNextTab,
-} from "./lib/actions.ts";
+import { chooseWorkspace, createChat, createThread } from "./lib/actions.ts";
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
 import { BrowserGuests } from "./components/BrowserGuests.tsx";
 import { transitionView, viewShown } from "./lib/view-transition.ts";
-import { VIEW_MODULES } from "./lib/view-modules.ts";
+import { lazyView } from "./lib/view-modules.ts";
 import { BrowserTakeover } from "./components/BrowserTakeover.tsx";
 
 const INSPECTOR_MIN_WIDTH = 260;
 const CONVERSATION_MIN_WIDTH = 360;
 
-const GitHub = lazy(() => VIEW_MODULES.github().then((module) => ({ default: module.GitHub })));
-const GitManager = lazy(() =>
-  VIEW_MODULES.git().then((module) => ({ default: module.GitManager })),
-);
-const Settings = lazy(() =>
-  VIEW_MODULES.settings().then((module) => ({ default: module.Settings })),
-);
-const UsageView = lazy(() =>
-  VIEW_MODULES.usage().then((module) => ({ default: module.UsageView })),
-);
+const GitHub = lazyView("github", (module) => module.GitHub);
+const GitManager = lazyView("git", (module) => module.GitManager);
+const Settings = lazyView("settings", (module) => module.Settings);
+const UsageView = lazyView("usage", (module) => module.UsageView);
 
 export function App() {
   const { activeId: environment } = useEnvironments();
@@ -383,18 +369,6 @@ export function App() {
         if (view === "chats") return void createChat();
         setView("chat");
         createThread();
-      } else if (
-        conversationView &&
-        !event.altKey &&
-        !inTerminal(event.target) &&
-        (key === "w" || key === "t" || key === "tab")
-      ) {
-        const activeThreadId = useApp.getState().activeThreadId;
-        if (key === "w" && !event.shiftKey && activeThreadId) closeTab(activeThreadId);
-        else if (key === "t" && event.shiftKey) reopenClosedTab();
-        else if (key === "tab") showNextTab(event.shiftKey ? -1 : 1);
-        else return;
-        event.preventDefault();
       }
     };
     window.addEventListener("keydown", onKey);

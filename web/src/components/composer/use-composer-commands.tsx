@@ -6,7 +6,8 @@ import { BrainIcon } from "../icons/objects.tsx";
 import { PlanIcon } from "../icons/PlanIcon.tsx";
 import { ShieldCheckIcon } from "../icons/status.tsx";
 import { BoltIcon } from "../icons/BoltIcon.tsx";
-import { configureThread } from "../../lib/actions.ts";
+import { EraserIcon } from "../icons/drawing.tsx";
+import { clearThread, configureThread } from "../../lib/actions.ts";
 import type { ModelOption, ProviderInfo, ThreadMeta } from "../../../../shared/protocol.ts";
 
 export function useComposerCommands({
@@ -43,6 +44,18 @@ export function useComposerCommands({
             icon: <CollapseIcon size={16} />,
             idleOnly: true,
             run: onCompact,
+          },
+        ]
+      : []),
+    ...(threadId && !thread.botId
+      ? [
+          {
+            id: "clear",
+            label: "/clear",
+            hint: "Clear this conversation and start over",
+            icon: <EraserIcon size={16} />,
+            idleOnly: true,
+            run: () => void clearThread(threadId),
           },
         ]
       : []),

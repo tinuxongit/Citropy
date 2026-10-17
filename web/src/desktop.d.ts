@@ -3,6 +3,8 @@ export {};
 export interface DesktopWindowState {
   maximized: boolean;
   fullscreen: boolean;
+  // Missing until the desktop app restarts after an update that added it.
+  focused?: boolean;
   platform: string;
   development: boolean;
   version: string;
@@ -62,6 +64,7 @@ declare global {
       releaseHistory(): Promise<import("../../shared/app-update.ts").ReleaseNotes[]>;
       windowState(): Promise<DesktopWindowState>;
       titlebarHeight(height: number): void;
+      windowBackground?(color: string): void;
       captureWindow(): Promise<string>;
       openFolder?(path: string): Promise<void>;
       windowCommand(

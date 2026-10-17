@@ -37,9 +37,8 @@ export function Conversation() {
   const running = useApp((state) => (threadId ? state.threads[threadId]?.running : false));
   const error = useApp((state) => (threadId ? state.threads[threadId]?.error : undefined));
   const usageLimited = useApp((state) => Boolean(threadId && state.threads[threadId]?.usageLimit));
-  const readingUnread = useApp((state) =>
-    Boolean(threadId && state.readingThreadId === threadId && state.threads[threadId]?.unread),
-  );
+  const unread = useApp((state) => Boolean(threadId && state.threads[threadId]?.unread));
+  const [visible, setVisible] = useState(() => document.visibilityState === "visible");
   const connected = useApp((state) => state.connected);
   const loaded = useApp((state) => Boolean(threadId && state.loaded[threadId]));
   const olderCursor = useApp((state) =>
@@ -248,6 +247,7 @@ export function Conversation() {
 
   useLayoutEffect(() => {
     const update = () => {
+      setVisible(document.visibilityState === "visible");
       const readingThreadId =
         nearBottom && document.visibilityState === "visible" && document.hasFocus()
           ? threadId
@@ -270,9 +270,10 @@ export function Conversation() {
     };
   }, [threadId, nearBottom]);
 
+  // An open conversation counts as seen, even when scrolled up or the window lacks focus.
   useEffect(() => {
-    if (readingUnread && threadId) readThread(threadId);
-  }, [readingUnread, threadId]);
+    if (visible && unread && threadId) readThread(threadId);
+  }, [visible, unread, threadId]);
 
   useEffect(() => {
     if (!searchMessageId && !searchShellId) return;

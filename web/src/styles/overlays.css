@@ -227,101 +227,6 @@
 .notification-trigger[data-unread] {
   color: var(--text);
 }
-.agents-count {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 var(--space-2);
-  border-radius: var(--r-full);
-  background: var(--raised-2);
-  color: var(--text);
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  line-height: 14px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-.agents-control {
-  position: relative;
-  display: grid;
-}
-.agents-peek .strip-peek-card {
-  gap: var(--space-6);
-  padding: var(--space-8);
-}
-.agents-peek p {
-  margin: 0;
-  padding: var(--space-6);
-}
-.agents-sections {
-  display: grid;
-  gap: var(--space-8);
-  max-height: min(420px, 60vh);
-  overflow-y: auto;
-}
-.agents-sections h3 {
-  display: flex;
-  align-items: center;
-  /* Lines the icon and label up with each row's provider icon and title below. */
-  gap: calc(var(--space-8) + var(--space-6));
-  margin: 0;
-  padding: var(--space-2) 0;
-  color: var(--text-3);
-  font-size: var(--text-2xs);
-  font-weight: 600;
-}
-.agents-sections h3::after {
-  content: "";
-  flex: 1;
-  min-width: var(--space-16);
-  height: 1px;
-  background: linear-gradient(to right, var(--line), transparent);
-}
-.agents-list {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.agents-list li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  min-width: 0;
-}
-.agents-list .provider-icon {
-  flex: none;
-  width: 16px;
-  height: 16px;
-}
-.agents-thread {
-  display: grid;
-  flex: 1;
-  min-width: 0;
-  padding: var(--space-6) var(--space-6);
-  border-radius: var(--r-sm);
-  text-align: left;
-}
-.agents-thread:hover {
-  background: var(--hover);
-}
-.agents-thread strong {
-  color: var(--text);
-  font-weight: 500;
-}
-.agents-thread small {
-  color: var(--text-3);
-}
-.agents-list li[data-status="working"] small,
-.agents-list li[data-status="waiting"] small {
-  color: var(--text-2);
-}
-.agents-peek .strip-peek-card > .btn {
-  justify-self: start;
-}
 .inbox-peek {
   --strip-peek-width: 380px;
 }
@@ -358,20 +263,6 @@
 .notification-unread-toggle[aria-pressed="true"] {
   background: var(--highlight);
   color: var(--text);
-}
-.notification-tabs {
-  margin: 0 var(--space-10);
-}
-.notification-tabs button span {
-  min-width: 16px;
-  padding: 0 var(--space-4);
-  border-radius: var(--r-full);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  line-height: 16px;
-  font-variant-numeric: tabular-nums;
 }
 .notification-list {
   max-height: min(440px, calc(var(--viewport-height) - 230px));

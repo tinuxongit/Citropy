@@ -12,7 +12,6 @@ import { ClockIcon } from "./icons/status.tsx";
 import { MoreIcon } from "./icons/marks.tsx";
 import { EditIcon } from "./icons/pencil.tsx";
 import { RefreshIcon } from "./icons/rotation.tsx";
-import { SquarePlusIcon } from "./icons/squares.tsx";
 import { Menu, type MenuItem } from "./Menu.tsx";
 import { Modal } from "./Modal.tsx";
 import { SnoozeMenu } from "./SnoozeMenu.tsx";
@@ -20,8 +19,6 @@ import { api, reportError } from "../lib/api.ts";
 import type { ThreadMeta } from "../../../shared/protocol.ts";
 import { environmentSlice } from "../lib/live-environments.ts";
 import { useApp, confirmAction, viewportWidth } from "../lib/store.ts";
-import { environmentId } from "../lib/environment.ts";
-import { openInNewTab } from "../lib/actions.ts";
 import { ActionError } from "./ActionError.tsx";
 
 export async function organizeConversation(id: string, patch: object, environment?: string) {
@@ -45,11 +42,6 @@ export function ConversationMenu({
   rowActions?: MenuItem[];
 }) {
   const projects = useApp((state) => state.projects);
-  const tabbable = useApp(
-    (state) =>
-      (environment ?? environmentId()) === environmentId() &&
-      !state.openThreadIds.includes(thread.id),
-  );
   const project = (environment ? environmentSlice(environment)?.projects : projects)?.find(
     (project) => project.id === thread.projectId,
   );
@@ -132,16 +124,6 @@ export function ConversationMenu({
         sheet={viewportWidth() <= 600}
         triggerId={menuId}
         items={[
-          ...(tabbable
-            ? [
-                {
-                  id: "open-tab",
-                  label: "Open in new tab",
-                  icon: <SquarePlusIcon size={15} />,
-                  onSelect: () => openInNewTab(thread.id),
-                },
-              ]
-            : []),
           ...(project?.isGit
             ? [
                 {

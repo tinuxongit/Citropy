@@ -1,5 +1,4 @@
 import { AccountMenu } from "./AccountMenu.tsx";
-import { AgentsPanel } from "./AgentsPanel.tsx";
 import { AppUpdateControl } from "./AppUpdateControl.tsx";
 import { ConversationsIcon } from "./icons/ConversationsIcon.tsx";
 import { BotsIcon } from "./icons/bots.tsx";
@@ -87,14 +86,11 @@ export function NavigationStrip({
         layout={String(accountOpen)}
         selector='.strip-action[aria-current="page"] > .strip-action-face'
       />
-      {button(chat)}
       {button(code)}
+      {button(chat)}
       {button(bots)}
-      <div className="navigation-strip-group" key={environment}>
-        <AgentsPanel />
-        <NotificationCenter onOpen={onNotification} />
-      </div>
       <div className="navigation-strip-end">
+        <NotificationCenter onOpen={onNotification} key={environment} />
         <AppUpdateControl variant="strip" />
         <AccountMenu open={accountOpen} onOpenChange={setAccountOpen}>
           {button(usage)}

@@ -43,7 +43,6 @@
     box-shadow: var(--phone-float-shadow);
   }
   .shell .navigation-strip-end,
-  .shell .navigation-strip-group,
   .shell .account-menu,
   .shell .navigation-strip .account-menu > .account-menu-items {
     display: contents;
@@ -51,14 +50,14 @@
   .shell .navigation-strip .account-menu > .account-menu-items {
     visibility: visible;
   }
-  .shell .navigation-strip :is(.navigation-strip-group, .account-menu)::before {
+  .shell .navigation-strip .account-menu::before {
     display: none;
   }
   .shell .account-menu-button,
   .shell .navigation-strip-brand {
     display: none;
   }
-  .shell .navigation-strip-group > * {
+  .shell .notifications-wrap {
     flex: 1;
   }
   .shell .strip-action,
@@ -248,7 +247,6 @@
   .composer-stop {
     width: var(--phone-send);
     height: var(--phone-send);
-    border-radius: var(--r-full);
   }
   .composer:not(:focus-within, :has(.composer-bar [aria-expanded="true"])) .composer-bar {
     display: none;

@@ -178,7 +178,7 @@
 }
 .editor-context-menu {
   min-width: 220px;
-  padding: var(--space-4) 0;
+  padding: var(--space-4);
 }
 .editor-context-group + .editor-context-group {
   margin-top: var(--space-4);
@@ -188,7 +188,7 @@
 .editor-context-menu .menu-item {
   width: 100%;
   justify-content: space-between;
-  padding: var(--space-6) var(--space-16);
+  padding: var(--space-6) var(--space-12);
 }
 .editor-context-menu kbd {
   color: var(--text-4);

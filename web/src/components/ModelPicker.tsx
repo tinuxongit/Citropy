@@ -38,6 +38,7 @@ export function ModelPicker({
   tuning: customTuning,
   tune,
   menuClearOf,
+  note,
 }: {
   value: WritingModel | null;
   fallback?: WritingModel;
@@ -60,6 +61,7 @@ export function ModelPicker({
     only?: TuningTab[];
   };
   menuClearOf?: string;
+  note?: string;
 }) {
   const providers = useApp((state) => state.providers);
   const connected = useApp((state) => state.connected);
@@ -232,6 +234,11 @@ export function ModelPicker({
             <p className="model-picker-note" role="status">
               Choose a model for a new agent in this chat. Reading the conversation again uses extra
               usage.
+            </p>
+          )}
+          {note && !transferring && (
+            <p className="model-picker-note" role="status">
+              {note}
             </p>
           )}
           {catalog?.modelsError && (

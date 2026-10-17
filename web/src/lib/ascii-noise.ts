@@ -1,4 +1,5 @@
 import { onAnimationTick } from "./animation-clock.ts";
+import { onWindowActiveChange, windowActive } from "./window-active.ts";
 
 const GLYPHS = "0123456789abcdefghijkmnopqrstuvwxyz#$%&=+-*:.";
 const CELL_HEIGHT = 12;
@@ -460,17 +461,15 @@ export function startAsciiNoise(
   const layers = canvas.parentElement!;
   const moved = () => noise.setStage(stage());
   layers.addEventListener("stage-metrics", moved);
-  const visibility = () => noise.setHidden(document.hidden);
+  const activity = () => noise.setHidden(!windowActive());
   const stopTicks = animate ? onAnimationTick(noise.tick) : undefined;
-  if (animate) {
-    document.addEventListener("visibilitychange", visibility);
-    visibility();
-  }
+  const stopActivity = animate ? onWindowActiveChange(activity) : undefined;
+  if (animate) activity();
   return () => {
     stopTicks?.();
+    stopActivity?.();
     observer.disconnect();
     layers.removeEventListener("stage-metrics", moved);
-    document.removeEventListener("visibilitychange", visibility);
     noise.stop();
   };
 }

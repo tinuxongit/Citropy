@@ -50,14 +50,8 @@ useApp.subscribe((state, previous) => {
         previous.activeView !== "chats" &&
         state.projects.some((project) => project.id === state.activeProjectId);
   if (!inBotsView(active) && (!entered || fits)) return;
-  // What each section last showed is not kept across reloads, so fall back to its first open tab.
   const wanted = chats ? state.chatsThreadId : state.chatThreadId;
-  const shown =
-    wanted && state.threads[wanted]
-      ? wanted
-      : (state.openThreadIds.find(
-          (id) => state.threads[id] && Boolean(state.threads[id].chat) === chats,
-        ) ?? null);
+  const shown = wanted && state.threads[wanted] ? wanted : null;
   showSectionThread(shown);
   if (shown) loadThread(shown);
 });

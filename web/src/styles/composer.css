@@ -209,7 +209,7 @@
   width: 34px;
   height: 34px;
   padding: 0;
-  border-radius: var(--r-lg);
+  border-radius: var(--r-full);
 }
 
 .composer-send:disabled {
@@ -358,7 +358,6 @@
   display: grid;
   flex: 1;
   min-height: 0;
-  margin-inline: calc(-1 * var(--space-8));
   max-height: min(360px, calc(var(--viewport-height) * 0.55));
 }
 .menu-list > .selection-highlight {
@@ -384,7 +383,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  padding: var(--space-8) var(--space-16);
+  padding: var(--space-8);
   border-radius: var(--r-xs);
   color: var(--text-2);
   font-size: var(--text-sm);
@@ -496,7 +495,7 @@
 }
 
 .menu-empty {
-  padding: var(--space-10) var(--space-16);
+  padding: var(--space-10) var(--space-8);
   color: var(--text-3);
   font-size: var(--text-sm);
 }
@@ -576,53 +575,10 @@
 }
 
 .context-section + .context-section,
-.context-totals,
 .context-compacting,
 .context-connection,
 .context-actions {
   border-top: 1px solid var(--line);
-}
-
-.context-totals {
-  margin: 0;
-  padding: 0 var(--space-16);
-}
-
-.context-totals > summary {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  min-height: 44px;
-  color: var(--text-2);
-  list-style: none;
-}
-
-.context-totals > summary::-webkit-details-marker {
-  display: none;
-}
-.context-totals > summary > span {
-  flex: 1;
-}
-.context-totals > summary > strong {
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-.context-totals > summary > svg {
-  flex: none;
-  color: var(--text-3);
-  transition: transform var(--dur-fast);
-}
-.context-totals[open] > summary > svg {
-  transform: rotate(180deg);
-}
-.context-details .context-totals > p {
-  margin: -2px 0 var(--space-12);
-  line-height: 1.45;
-  font-size: var(--text-xs);
-}
-
-.context-totals[open] {
-  padding-bottom: var(--space-16);
 }
 
 .context-heading {
@@ -637,15 +593,13 @@
   font-weight: 600;
 }
 
-.context-percentage,
-.context-details dt {
+.context-percentage {
   color: var(--text-3);
 }
 
 .context-percentage,
 .context-stat-value,
-.context-summary,
-.context-details dd {
+.context-summary {
   font-variant-numeric: tabular-nums;
 }
 
@@ -659,8 +613,7 @@
   color: var(--text-2);
 }
 
-.context-meter,
-.context-cache-bar {
+.context-meter {
   display: flex;
   height: 7px;
   overflow: hidden;
@@ -678,21 +631,6 @@
   background: var(--bad);
 }
 
-.context-cache-bar {
-  margin: var(--space-10) 0 var(--space-8);
-}
-
-.context-cache-bar > span {
-  min-width: 0;
-}
-
-.context-cache-bar > [data-part="hit"] {
-  background: var(--text-2);
-}
-.context-cache-bar > :is([data-part="fresh"], [data-part="write"]) {
-  background: var(--text-4);
-}
-
 .context-cache-note,
 .context-estimate {
   margin: 0;
@@ -705,28 +643,7 @@
   margin-top: var(--space-8);
 }
 
-.context-speed {
-  padding-block: var(--space-12);
-}
-
 .context-stat-value {
-  color: var(--text-2);
-}
-
-.context-details dl {
-  margin: 0;
-  display: grid;
-  gap: var(--space-8);
-}
-
-.context-details dl > div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-12);
-}
-
-.context-details dd {
-  margin: 0;
   color: var(--text-2);
 }
 
@@ -780,9 +697,6 @@
   .context-section {
     padding-inline: var(--space-16);
   }
-  .context-totals {
-    padding-inline: var(--space-16);
-  }
   .context-actions {
     padding: var(--space-10);
   }
@@ -820,7 +734,7 @@
 }
 
 .menu-section {
-  padding: var(--space-12) var(--space-16) var(--space-6);
+  padding: var(--space-12) var(--space-8) var(--space-6);
   font-size: var(--text-xs);
   letter-spacing: 0.065em;
   text-transform: uppercase;

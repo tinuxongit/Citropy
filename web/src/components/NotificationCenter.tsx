@@ -1,5 +1,4 @@
-import { SelectionHighlight } from "./SelectionHighlight.tsx";
-import { useEffect, useId, useRef, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { CheckCheckIcon, CheckIcon, CloseIcon } from "./icons/marks.tsx";
 import { TrashIcon } from "./icons/actions.tsx";
 import { CircleAlertIcon } from "./icons/status.tsx";
@@ -15,49 +14,12 @@ import type { AppNotification, NotificationTarget } from "../../../shared/protoc
 
 type Kind = AppNotification["kind"];
 
-interface InboxTab {
-  id: string;
-  label: string;
-  kinds?: Kind[];
-  empty: string;
-}
-
-const TABS: InboxTab[] = [
-  {
-    id: "all",
-    label: "All",
-    empty: "Chat replies, updates, and finished Git or GitHub actions will appear here.",
-  },
-  {
-    id: "chat",
-    label: "Chats",
-    kinds: ["chat"],
-    empty: "Replies and questions from your conversations will appear here.",
-  },
-  {
-    id: "code",
-    label: "Code",
-    kinds: ["git", "github"],
-    empty: "Finished commits, pushes, and GitHub actions will appear here.",
-  },
-  {
-    id: "update",
-    label: "Updates",
-    kinds: ["update"],
-    empty: "New versions of Citropy and your coding tools will appear here.",
-  },
-];
-
 const KIND_ICONS: Record<Kind, ComponentType<{ size?: number }>> = {
   chat: ConversationsIcon,
   git: GitIcon,
   github: GitHubIcon,
   update: DownloadIcon,
 };
-
-function inTab(tab: InboxTab, entry: AppNotification) {
-  return !tab.kinds || tab.kinds.includes(entry.kind);
-}
 
 function byDay(entries: AppNotification[]) {
   const groups = new Map<string, AppNotification[]>();
@@ -74,17 +36,12 @@ export function NotificationCenter({ onOpen }: { onOpen: (target: NotificationTa
   const notifications = useApp((state) => state.notifications);
   const connected = useApp((state) => state.connected);
   const [open, setOpen] = useState(false);
-  const [tabId, setTabId] = useState(TABS[0]!.id);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const id = useId();
-  const tab = TABS.find((entry) => entry.id === tabId)!;
-  const unread = notifications.filter((entry) => !entry.read).length;
-  const tabUnread = notifications.filter((entry) => !entry.read && inTab(tab, entry));
-  const visible = notifications.filter(
-    (entry) => inTab(tab, entry) && (!unreadOnly || !entry.read),
-  );
+  const unreadEntries = notifications.filter((entry) => !entry.read);
+  const unread = unreadEntries.length;
+  const visible = unreadOnly ? unreadEntries : notifications;
   const close = () => {
     setOpen(false);
     trigger.current?.focus();
@@ -158,9 +115,9 @@ export function NotificationCenter({ onOpen }: { onOpen: (target: NotificationTa
             type="button"
             aria-label="Mark all read"
             title="Mark all read"
-            disabled={!tabUnread.length || !connected}
+            disabled={!unread || !connected}
             onClick={() =>
-              send({ t: "notifications.read", ids: tabUnread.map((entry) => entry.id) })
+              send({ t: "notifications.read", ids: unreadEntries.map((entry) => entry.id) })
             }
           >
             <CheckCheckIcon size={16} />
@@ -175,36 +132,7 @@ export function NotificationCenter({ onOpen }: { onOpen: (target: NotificationTa
             <CloseIcon size={16} />
           </button>
         </header>
-        <div
-          className="segmented-tabs notification-tabs sliding-selection"
-          role="tablist"
-          aria-label="Notification types"
-        >
-          <SelectionHighlight value={tabId} />
-          {TABS.map((entry) => {
-            const count = notifications.filter((item) => !item.read && inTab(entry, item)).length;
-            return (
-              <button
-                key={entry.id}
-                type="button"
-                role="tab"
-                id={`${id}-${entry.id}`}
-                aria-selected={entry.id === tabId}
-                aria-controls={`${id}-panel`}
-                onClick={() => setTabId(entry.id)}
-              >
-                {entry.label}
-                {count > 0 && <span>{count}</span>}
-              </button>
-            );
-          })}
-        </div>
-        <div
-          className="notification-list scroll"
-          role="tabpanel"
-          id={`${id}-panel`}
-          aria-labelledby={`${id}-${tabId}`}
-        >
+        <div className="notification-list scroll">
           {byDay(visible).map(([label, entries]) => (
             <section className="notification-day" key={label} aria-label={label}>
               <h3>{label}</h3>
@@ -260,7 +188,7 @@ export function NotificationCenter({ onOpen }: { onOpen: (target: NotificationTa
                 <InboxIcon size={28} />
               </span>
               <strong>{unreadOnly ? "All caught up" : "Nothing here yet"}</strong>
-              <p>{tab.empty}</p>
+              <p>Chat replies, updates, and finished Git or GitHub actions will appear here.</p>
             </div>
           )}
         </div>

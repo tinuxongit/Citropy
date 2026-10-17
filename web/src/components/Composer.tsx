@@ -28,6 +28,7 @@ import { AttachIcon } from "./icons/AttachIcon.tsx";
 import { nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { ContextUsage } from "./ContextUsage.tsx";
+import { tokens } from "../lib/format.ts";
 import {
   configureThread,
   sendMessage,
@@ -56,6 +57,7 @@ import { CacheTab } from "./composer/CacheTab.tsx";
 import { PlanTab } from "./composer/PlanTab.tsx";
 
 const START_QUESTION = "What's next";
+const SWITCH_NOTE_TOKENS = 20_000;
 
 export function Composer({ onUsage, onSkills }: { onUsage?: () => void; onSkills?: () => void }) {
   const [scope] = useState(environmentId);
@@ -239,6 +241,13 @@ export function Composer({ onUsage, onSkills }: { onUsage?: () => void; onSkills
             }}
             menuClearOf=".composer-shell"
             tuning={(target) => target && tuning(target)}
+            note={
+              // Each model has its own prompt cache, so switching while it's warm starts over.
+              (thread.usage.cacheExpiresAt ?? 0) > Date.now() &&
+              thread.usage.contextTokens >= SWITCH_NOTE_TOKENS
+                ? `Switching models re-reads ${tokens(thread.usage.contextTokens)} tokens at full price.`
+                : undefined
+            }
           />
 
           <ContextMenu
@@ -452,30 +461,17 @@ export function Composer({ onUsage, onSkills }: { onUsage?: () => void; onSkills
               commands={commands}
             />
             <div className="composer-actions">
-              {running ? (
-                <>
-                  <button
-                    className="btn"
-                    type="button"
-                    data-variant="primary"
-                    data-ui-sound="off"
-                    onClick={submit}
-                    disabled={(!message && !attachments.length) || !canSend}
-                  >
-                    <ArrowUpIcon size={13} />
-                    Queue
-                  </button>
-                  <button
-                    className="btn composer-stop"
-                    type="button"
-                    data-variant="primary"
-                    aria-label="Stop"
-                    title="Stop"
-                    onClick={stopThread}
-                  >
-                    <StopIcon size={18} />
-                  </button>
-                </>
+              {running && !message && !attachments.length ? (
+                <button
+                  className="btn composer-stop"
+                  type="button"
+                  data-variant="primary"
+                  aria-label="Stop"
+                  title="Stop"
+                  onClick={stopThread}
+                >
+                  <StopIcon size={18} />
+                </button>
               ) : (
                 <button
                   className="btn composer-send"

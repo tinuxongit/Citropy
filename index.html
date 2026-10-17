@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="neutral">
 
 <head>
   <meta charset="utf-8" />
@@ -9,17 +9,24 @@
   <link rel="icon" type="image/svg+xml" href="/citropy.svg" />
   <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
   <link rel="apple-touch-icon" href="/app-icon-192.png" />
+  <link rel="preload" href="/fonts/CitropySans.woff2" as="font" type="font/woff2" crossorigin />
   <script>
-    if (localStorage.getItem("citropy.scheme") === "light") document.documentElement.dataset.scheme = "light";
+    {
+      // Mirrors the theme startup in main.tsx so the boot screen has the right color from the first frame.
+      const root = document.documentElement;
+      const theme = localStorage.getItem("citropy.theme") || "neutral";
+      root.dataset.theme = theme;
+      root.dataset.scheme = localStorage.getItem("citropy.scheme") || (theme === "light" ? "light" : "dark");
+      const customColor = localStorage.getItem("citropy.customColor") || "";
+      root.style.setProperty("--custom-accent", /^#[0-9a-f]{6}$/i.test(customColor) ? customColor : "#4f8cff");
+    }
   </script>
   <style>
     :root { color-scheme: dark; }
     :root[data-scheme="light"] { color-scheme: light; }
     .boot-screen {
-      --boot-logo: 64px;
-      --boot-fade: 200ms;
-      --boot-logo-in: 320ms;
-      --boot-ease: cubic-bezier(0.16, 1, 0.3, 1);
+      --boot-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --boot-progress: 0.12;
       position: fixed;
       inset: 0;
       z-index: 2147483647;
@@ -27,27 +34,92 @@
       place-items: center;
       background: var(--canvas, Canvas);
       -webkit-app-region: drag;
-      transition: opacity var(--boot-fade) var(--boot-ease);
+      transition: opacity 420ms var(--boot-ease) 60ms;
     }
     .boot-screen[data-done] { opacity: 0; pointer-events: none; }
-    .boot-screen > img {
-      width: var(--boot-logo);
-      height: var(--boot-logo);
-      animation: boot-logo-in var(--boot-logo-in) var(--boot-ease) both;
+    .boot-brand {
+      display: grid;
+      justify-items: center;
+      transition: opacity 320ms var(--boot-ease), transform 420ms var(--boot-ease), filter 420ms var(--boot-ease);
     }
-    @keyframes boot-logo-in {
-      from { opacity: 0; transform: scale(0.96); }
+    .boot-screen[data-done] .boot-brand { opacity: 0; transform: scale(1.04); filter: blur(6px); }
+    .boot-icon {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      overflow: hidden;
+      border-radius: 22%;
+      box-shadow: 0 16px 36px -12px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.18);
+      animation: boot-icon-in 760ms var(--boot-ease) both;
+    }
+    .boot-icon > img { display: block; width: 100%; height: 100%; }
+    .boot-icon::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.2) 50%, transparent 65%);
+      transform: translateX(-120%);
+      animation: boot-sheen 1100ms var(--boot-ease) 380ms both;
+    }
+    .boot-name {
+      margin: 22px 0 0;
+      font: 600 22px/1 var(--font-ui, system-ui), sans-serif;
+      letter-spacing: -0.01em;
+      color: var(--text, CanvasText);
+      animation: boot-name-in 900ms var(--boot-ease) 140ms both;
+    }
+    /* Fades in late, so it only shows when startup takes a moment. */
+    .boot-progress {
+      width: 120px;
+      height: 3px;
+      margin-top: 30px;
+      overflow: hidden;
+      border-radius: 3px;
+      background: color-mix(in srgb, var(--text, CanvasText) 12%, transparent);
+      animation: boot-fade-in 400ms ease 700ms both;
+    }
+    .boot-progress::before {
+      content: "";
+      display: block;
+      width: calc(var(--boot-progress) * 100%);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--text-2, GrayText);
+      transition: width 900ms var(--boot-ease);
+    }
+    @keyframes boot-icon-in {
+      from { opacity: 0; transform: translateY(6px) scale(0.86); filter: blur(12px); }
+    }
+    @keyframes boot-sheen {
+      to { transform: translateX(120%); }
+    }
+    @keyframes boot-name-in {
+      from { opacity: 0; letter-spacing: 0.24em; filter: blur(6px); }
+    }
+    @keyframes boot-fade-in {
+      from { opacity: 0; }
     }
     @media (prefers-reduced-motion: reduce) {
-      @keyframes boot-logo-in {
+      @keyframes boot-icon-in {
         from { opacity: 0; }
       }
+      @keyframes boot-name-in {
+        from { opacity: 0; }
+      }
+      .boot-icon::after { content: none; }
+      .boot-screen[data-done] .boot-brand { transform: none; filter: none; }
     }
   </style>
 </head>
 
 <body>
-  <div class="boot-screen" id="boot-screen"><img src="/citropy.svg" alt="Citropy" /></div>
+  <div class="boot-screen" id="boot-screen">
+    <div class="boot-brand">
+      <div class="boot-icon"><img src="/citropy.svg" alt="" /></div>
+      <p class="boot-name">Citropy</p>
+      <div class="boot-progress" role="progressbar" aria-label="Loading Citropy"></div>
+    </div>
+  </div>
   <div id="root"></div>
   <script type="module" src="/web/src/main.tsx"></script>
 </body>

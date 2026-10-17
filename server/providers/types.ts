@@ -62,6 +62,7 @@ export type AgentEvent =
   | { type: "usage"; usage: Partial<Usage> }
   | { type: "plan.accepted" }
   | { type: "turn.end"; error?: string }
+  | { type: "steer.read" }
   | { type: "notice"; level: "info" | "warn" | "error"; text: string }
   | { type: "exit"; code: number };
 
@@ -101,7 +102,6 @@ export interface SessionConfig {
 }
 
 export interface AgentSession {
-  readonly pid?: number;
   /**
    * Apply new settings to the running session in place. Only defined by providers whose protocol
    * supports it. Rejects when the
@@ -114,11 +114,12 @@ export interface AgentSession {
     attachments?: Attachment[],
     skills?: Array<{ name: string; path: string }>,
   ): void | Promise<void>;
+  /** Resolves true when the agent reads the message later and emits steer.read then. */
   steer?(
     text: string,
     attachments?: Attachment[],
     skills?: Array<{ name: string; path: string }>,
-  ): Promise<void>;
+  ): Promise<boolean | void>;
   compact?(): Promise<void>;
   interrupt(): void | Promise<void>;
   dispose(): void;

@@ -76,21 +76,18 @@
   margin-top: auto;
   padding-bottom: var(--space-10);
 }
-:where(.navigation-strip) :is(.navigation-strip-group, .account-menu) {
+:where(.navigation-strip) .account-menu {
   position: relative;
   display: flex;
   flex-direction: column;
   width: calc(var(--strip-action-face) + 2 * var(--strip-blob-inset));
-  margin: var(--strip-blob-gap) auto;
+  margin: var(--strip-blob-gap) auto 0;
   padding: calc(
       var(--strip-blob-inset) - (var(--strip-action-height) - var(--strip-action-face)) / 2
     )
     0;
 }
-:where(.navigation-strip) .account-menu {
-  margin-bottom: 0;
-}
-:where(.navigation-strip) :is(.navigation-strip-group, .account-menu)::before {
+:where(.navigation-strip) .account-menu::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -571,7 +568,7 @@
   padding: 0 var(--rail-tab-pad);
   text-align: left;
   color: var(--text);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
 }
 .thread-card:is(:hover, :has(:focus-visible), :has(.thread-row-actions [aria-expanded="true"]))
   .thread-row {
@@ -588,8 +585,8 @@
 }
 .thread-row .provider-icon {
   flex: none;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 .thread-row-time {
   flex: none;
@@ -840,7 +837,7 @@
   padding: 0 var(--rail-pad);
   color: inherit;
   text-align: left;
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 500;
 }
 .global-project-toggle > svg {

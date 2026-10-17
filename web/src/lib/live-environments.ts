@@ -55,8 +55,6 @@ export const ENVIRONMENT_KEYS = [
   "questionDrafts",
   "activeProjectId",
   "activeThreadId",
-  "openThreadIds",
-  "previewThreadId",
   "followRequest",
   "readingThreadId",
   "panels",

@@ -81,7 +81,6 @@ async function fixture(panels, threads = [], width = 1600) {
       });
     if (url.pathname === "/api/assets")
       return route.fulfill({ contentType: "image/png", body: picture });
-    if (url.pathname === "/api/agents") return route.fulfill({ json: { agents: [] } });
     return route.fulfill({ json: {} });
   });
   await page.routeWebSocket("**/socket*", (socket) => {
@@ -128,6 +127,8 @@ async function fixture(panels, threads = [], width = 1600) {
   await cdp.send("Performance.enable");
   await page.goto(appUrl);
   await page.getByRole("button", { name: "Expand workspace", exact: true }).waitFor();
+  // The startup intro covers the app and takes its clicks until it fades out.
+  await page.locator("#boot-screen").waitFor({ state: "detached" });
   assert.ok(
     compressedResponses.some((url) => url.endsWith(".js")),
     "production JavaScript must use negotiated compression",

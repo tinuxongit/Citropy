@@ -209,6 +209,7 @@ function validateAgentEvent(raw: unknown): AgentEvent {
       return { type: "usage", usage };
     }
     case "plan.accepted":
+    case "steer.read":
       break;
     case "turn.end":
       text("error", true);

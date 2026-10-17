@@ -192,9 +192,11 @@ export interface Message {
   mentions?: import("./mention-tags.ts").MentionTag[];
   origin?: import("./bots.ts").MessageOrigin;
   reactions?: import("./reactions.ts").Reaction[];
+  /** A message sent mid-run that the agent hasn't read yet. */
+  pending?: boolean;
 }
 
-export type MessagePatch = Partial<Pick<Message, "reactions">>;
+export type MessagePatch = Partial<Pick<Message, "reactions" | "pending">>;
 
 export interface HistoryPage {
   before?: string;

@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("citropyDesktop", {
   captureWindow: () => ipcRenderer.invoke("window:capture"),
   openFolder: (path) => ipcRenderer.invoke("window:open-folder", path),
   titlebarHeight: (height) => ipcRenderer.send("window:titlebar-height", height),
+  windowBackground: (color) => ipcRenderer.send("window:background", color),
   onWindowState: (callback) => {
     const listener = (_, state) => callback(state);
     ipcRenderer.on("window:state", listener);

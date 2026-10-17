@@ -140,11 +140,6 @@ export function decimal(value: number, fractionDigits = 1): string {
   return formatter.format(value);
 }
 
-export function tokenRate(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "0";
-  return decimal(value);
-}
-
 export function cost(value: number): string {
   if (value === 0) return "$0";
   if (value < 0.01) return `$${value.toFixed(4)}`;

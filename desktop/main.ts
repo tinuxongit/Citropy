@@ -145,6 +145,9 @@ if (!token) throw new Error("Start Citropy desktop through npm run desktop");
 delete process.env.CITROPY_DESKTOP_TOKEN;
 const windowFile = join(app.getPath("userData"), "window.json");
 let window: BrowserWindow;
+// The theme's frame color, which the window shows before the page draws.
+let windowBackground = "#0a0a09";
+const hexColor = /^#[0-9a-f]{6}$/i;
 let socket: WebSocket | undefined;
 let quitting = false;
 const notifications = new Set<Notification>();
@@ -247,6 +250,7 @@ app
   .whenReady()
   .then(async () => {
     const saved = existsSync(windowFile) ? JSON.parse(readFileSync(windowFile, "utf8")) : {};
+    if (hexColor.test(saved.background)) windowBackground = saved.background;
     const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const minWidth = Math.min(960, workArea.width);
     const minHeight = Math.min(640, workArea.height);
@@ -282,7 +286,7 @@ app
         ? { titleBarStyle: "hidden", trafficLightPosition: { x: 15, y: 14 } }
         : {}),
       show: false,
-      backgroundColor: "#0a0a09",
+      backgroundColor: windowBackground,
       autoHideMenuBar: true,
       webPreferences: {
         preload: fileURLToPath(new URL("./preload.cjs", import.meta.url)),
@@ -303,6 +307,7 @@ app
             width: bounds.width,
             height: bounds.height,
             maximized: window.isMaximized(),
+            background: windowBackground,
           }),
           { mode: 0o600 },
         );
@@ -576,6 +581,7 @@ app
     const windowState = () => ({
       maximized: window.isMaximized(),
       fullscreen: window.isFullScreen(),
+      focused: window.isFocused(),
       platform: process.platform,
       development,
       version,
@@ -646,11 +652,18 @@ app
         y: Math.round((height - buttonHeight) / 2),
       });
     });
+    ipcMain.on("window:background", (event, color) => {
+      if (!trusted(event) || typeof color !== "string" || !hexColor.test(color)) return;
+      windowBackground = color;
+      if (!window.isDestroyed()) window.setBackgroundColor(color);
+    });
     for (const event of [
       "maximize",
       "unmaximize",
       "enter-full-screen",
       "leave-full-screen",
+      "focus",
+      "blur",
     ] as const)
       window.on(event as "maximize", publishWindow);
     // Why: on KDE Wayland Chromium keeps stale off-shade rectangles over the stage background after the window is restored or maximized.

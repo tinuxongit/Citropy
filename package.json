@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test": "node --experimental-strip-types --test --test-concurrency=4 tests/*.test.mjs",
     "test:ui": "node --experimental-strip-types --test --test-concurrency=1 tests/ui/*.test.mjs",
     "desktop": "npm run build && node desktop/start.mjs",
     "setup:desktop": "node node_modules/electron/install.js",

@@ -101,6 +101,7 @@ export const MessageBlock = memo(function MessageBlock({
           id={`message-${messageId}`}
           className="turn turn-user"
           data-fresh={fresh || undefined}
+          data-pending={shell.pending || undefined}
         >
           <div className="message-content">
             {shell.origin && <span className="turn-origin">{originLabel(shell.origin)}</span>}

@@ -69,6 +69,9 @@ export function ComposerInput({
   const connected = useApp((state) => state.connected);
   const botName = useApp((state) => state.bots[thread.botId ?? ""]?.name);
   const group = useApp((state) => state.botGroups[thread.groupId ?? ""]);
+  const steer = useApp(
+    (state) => state.providers.find((entry) => entry.id === thread.provider)?.capabilities?.steer,
+  );
   const members = useGroupMembers(group);
   const mention = /(?:^|\s)@([^\s\[\]]*)$/.exec(value.slice(0, caret));
   const slash = !group && /^\/[\w.:-]*$/.test(value) ? value : undefined;
@@ -284,7 +287,9 @@ export function ComposerInput({
           !connected
             ? "Citropy is reconnecting. Your message will wait…"
             : thread.running
-              ? "Queue a follow-up…"
+              ? steer
+                ? "Steer the agent…"
+                : "Queue a follow-up…"
               : group || botName
                 ? `Message ${group?.name ?? botName}`
                 : thread.chat

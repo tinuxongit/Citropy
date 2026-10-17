@@ -1193,6 +1193,10 @@
 }
 .turn-user .message-content {
   max-width: 100%;
+  transition: opacity var(--dur-fast) ease;
+}
+.turn-user[data-pending] .message-content {
+  opacity: 0.5;
 }
 .turn-user .attachments {
   justify-content: flex-end;

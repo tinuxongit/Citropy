@@ -256,7 +256,7 @@
   align-content: start;
 }
 .workspace-menu .menu-section {
-  padding: var(--space-8) var(--space-16) var(--space-4);
+  padding: var(--space-8) var(--space-8) var(--space-4);
   margin-top: 0;
 }
 .workspace-menu .menu-item {

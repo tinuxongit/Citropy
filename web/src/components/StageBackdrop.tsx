@@ -14,6 +14,7 @@ import { DotBackground } from "./DotBackground.tsx";
 import { useApp } from "../lib/store.ts";
 import type { StageBackground } from "../lib/app-state.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { onWindowActiveChange, windowActive } from "../lib/window-active.ts";
 
 const READING_COLUMN = ".settings, .github-main, .git-manager, .canvas-inner";
 
@@ -35,10 +36,13 @@ function useStageMetrics(root: RefObject<HTMLElement | null>): RefObject<StageMe
       const outer = shell.getBoundingClientRect();
       const inner = stage.getBoundingClientRect();
       const column = reading?.getBoundingClientRect() ?? inner;
-      const left = Math.round(inner.left - outer.left);
-      const center = Math.round(column.left - outer.left + column.width / 2);
-      const right = Math.round(outer.right - inner.right);
-      const width = reading ? Math.round(column.width) : undefined;
+      // Measure in layout pixels. The app scales in at startup, and ResizeObserver doesn't fire
+      // when that transform ends, so scaled measurements would stick.
+      const scale = outer.width / shell.offsetWidth || 1;
+      const left = Math.round((inner.left - outer.left) / scale);
+      const center = Math.round((column.left - outer.left + column.width / 2) / scale);
+      const right = Math.round((outer.right - inner.right) / scale);
+      const width = reading ? Math.round(column.width / scale) : undefined;
       const last = metrics.current;
       if (
         left === last.left &&
@@ -413,7 +417,7 @@ function useAnimation(
     let index = 0;
     let loops = 0;
     const advance = async () => {
-      if (document.hidden) return;
+      if (!windowActive()) return;
       const started = performance.now();
       index = (index + 1) % track.frameCount;
       if (index === 0 && ++loops > track.repetitionCount) return;
@@ -430,7 +434,7 @@ function useAnimation(
     };
     const resume = () => {
       clearTimeout(timer);
-      if (!document.hidden) void advance().catch(reportError);
+      if (windowActive()) void advance().catch(reportError);
     };
     void decoder
       .decode({ frameIndex: 0 })
@@ -440,11 +444,11 @@ function useAnimation(
         if (live) timer = window.setTimeout(() => void advance().catch(reportError), duration);
       })
       .catch(reportError);
-    document.addEventListener("visibilitychange", resume);
+    const stopActivity = onWindowActiveChange(resume);
     return () => {
       live = false;
       clearTimeout(timer);
-      document.removeEventListener("visibilitychange", resume);
+      stopActivity();
     };
   }, [decoder, first]);
   useEffect(() => () => frame?.close(), [frame]);

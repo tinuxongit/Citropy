@@ -17,24 +17,11 @@ import {
   useApp,
   confirmAction,
   threadView,
-  type AppState,
 } from "./store.ts";
-import {
-  neighborTab,
-  rememberClosedTab,
-  saveTabs,
-  stepTab,
-  takeClosedTab,
-  withKeptTab,
-  withMovedTab,
-  withoutTab,
-  type Tabs,
-} from "./thread-tabs.ts";
 import { awaitResponse } from "./requests.ts";
 import { requestId, send } from "./socket.ts";
 import { flushHeld, holdMessage } from "./offline.ts";
 import { claimHistoryRequest } from "./history-cache.ts";
-import { isUnusedThread } from "./thread-started.ts";
 import { api, reportError } from "./api.ts";
 import { modelSettings, nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { resolveProjectSettings } from "../../../shared/project-settings.ts";
@@ -56,7 +43,6 @@ import type { PanelKind } from "../../../shared/workbench.ts";
 import { movePanelTab } from "../../../shared/workbench.ts";
 import type { DropEdge } from "../../../shared/move-beside.ts";
 import { randomId } from "./random-id.ts";
-import { inBotsView } from "../../../shared/bots.ts";
 
 export async function saveProjectDefaults(settings: ProjectSettings): Promise<void> {
   const desktop = window.citropyDesktop ?? window.loomDesktop;
@@ -293,6 +279,19 @@ export async function createChat(): Promise<void> {
   }
 }
 
+// Like Claude Code's /clear: empties this conversation and starts the agent over with no context.
+// The files stay as they are, and Redo in the conversation menu brings the history back.
+export async function clearThread(threadId: string): Promise<void> {
+  try {
+    await api(`threads/restore?threadId=${threadId}`, {
+      method: "POST",
+      body: JSON.stringify({ clear: true }),
+    });
+  } catch (error) {
+    reportError(error);
+  }
+}
+
 export function showThread(id: string): void {
   const thread = useApp.getState().threads[id];
   if (!thread) throw new Error(`Conversation ${id} is not loaded`);
@@ -303,61 +302,6 @@ export function showThread(id: string): void {
   loadThread(id);
   const view = threadView(thread);
   if (view !== "bots") useApp.setState({ activeView: view });
-}
-
-function updateTabs(change: (state: AppState) => Tabs): void {
-  useApp.setState(change);
-  saveTabs(useApp.getState());
-}
-
-export function keepTab(id: string): void {
-  if (inBotsView(useApp.getState().threads[id])) return;
-  updateTabs((state) => withKeptTab(state, id));
-}
-
-export function moveTab(id: string, targetId: string, edge: DropEdge): void {
-  updateTabs((state) => withMovedTab(state, id, targetId, edge));
-}
-
-export function openInNewTab(id: string): void {
-  keepTab(id);
-  showThread(id);
-}
-
-export function closeTab(id: string): void {
-  const state = useApp.getState();
-  const { activeThreadId, openThreadIds, threads } = state;
-  const unused = state.connected && isUnusedThread(state, id);
-  updateTabs((state) => withoutTab(state, id));
-  if (unused) send({ t: "thread.remove", id });
-  else rememberClosedTab(id);
-  if (id !== activeThreadId) return;
-  // Stay in the closed tab's section.
-  const chat = Boolean(threads[id]?.chat);
-  const next = neighborTab(
-    openThreadIds.filter(
-      (open) => open === id || (threads[open] && Boolean(threads[open].chat) === chat),
-    ),
-    id,
-  );
-  if (next) return showThread(next);
-  selectThread(null);
-  useApp.setState(chat ? { chatsThreadId: null } : { chatThreadId: null });
-}
-
-export function reopenClosedTab(): void {
-  const { threads, openThreadIds } = useApp.getState();
-  const id = takeClosedTab((closed) => Boolean(threads[closed]) && !openThreadIds.includes(closed));
-  if (id) openInNewTab(id);
-}
-
-export function showNextTab(step: number): void {
-  const { threads, openThreadIds, activeThreadId, activeView } = useApp.getState();
-  const shown = openThreadIds.filter(
-    (open) => threads[open] && Boolean(threads[open].chat) === (activeView === "chats"),
-  );
-  const next = stepTab(shown, activeThreadId, step);
-  if (next && next !== activeThreadId) showThread(next);
 }
 
 export function loadThread(id: string): void {
@@ -434,7 +378,6 @@ export async function sendMessage(
   const state = useApp.getState();
   const thread = state.threads[threadId];
   if (thread) rememberThreadSettings(thread);
-  keepTab(threadId);
   if (!state.connected || state.offline[threadId]?.length) {
     holdMessage(threadId, text, attachments);
     void flushHeld();

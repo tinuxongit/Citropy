@@ -2,18 +2,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { useVisibleInterval } from "../lib/use-visible-interval.ts";
 import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { ChevronDownIcon } from "./icons/chevrons.tsx";
 import { CollapseIcon } from "./icons/media.tsx";
-import { cost, decimal, since, tokenRate, tokens, until } from "../lib/format.ts";
+import { decimal, since, tokens, until } from "../lib/format.ts";
 import { scaled, useApp, viewportWidth } from "../lib/store.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
-import {
-  estimateTokensFromChars,
-  newInputTokens,
-  reportedContext,
-  uncachedInput,
-} from "../../../shared/usage-metrics.ts";
+import { estimateTokensFromChars, reportedContext } from "../../../shared/usage-metrics.ts";
 
 const PANEL_WIDTH = 304;
 // Above this, re-reading the whole context uncached costs more than compacting it first.
@@ -49,26 +43,12 @@ export const ContextUsage = memo(function ContextUsage({
   );
   const canCompact = provider?.capabilities?.compact !== false;
   const usage = thread?.usage;
-  const totals = [...(thread?.transfers ?? []), ...(thread ? [thread] : [])].reduce(
-    (sum, session) => ({
-      input: sum.input + uncachedInput(session.provider, session.usage),
-      newInput: sum.newInput + newInputTokens(session.provider, session.usage),
-      output: sum.output + session.usage.output,
-      cacheRead: sum.cacheRead + session.usage.cacheRead,
-      cacheWrite: sum.cacheWrite + session.usage.cacheWrite,
-      costUsd: sum.costUsd + session.usage.costUsd,
-    }),
-    { input: 0, newInput: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0 },
-  );
   const model = selectedModel(
     providerAccount(provider, thread?.providerInstanceId).models,
     thread?.model,
   );
   const contextMax = (usage?.contextMax || thread?.contextWindow || model?.contextMax) ?? 0;
   const reported = Boolean(usage && reportedContext(usage.contextTokens, contextMax));
-  const hasTotals = Boolean(
-    totals.input || totals.output || totals.cacheRead || totals.cacheWrite || totals.costUsd,
-  );
   const fresh =
     !thread?.externalId &&
     !thread?.running &&
@@ -79,14 +59,8 @@ export const ContextUsage = memo(function ContextUsage({
   const shown = Boolean(!fresh && (reported || draftTokens > 0));
   const known = Boolean(contextMax > 0 && (shown || fresh));
   const estimatedNote = !reported && shown;
-  const cacheShare = totals.newInput + totals.cacheRead;
-  const cacheRate = cacheShare > 0 ? totals.cacheRead / cacheShare : 0;
-  const hasCache = Boolean(totals.cacheRead || totals.cacheWrite);
-  const speed = usage?.tokensPerSecond ?? 0;
-  const totalProcessed = totals.newInput + totals.cacheRead + totals.output;
   const fill = known ? Math.max(0, Math.min(contextTokens / contextMax, 1)) : 0;
   const contextPercent = percentage(fill);
-  const cachePercent = percentage(cacheRate);
   const [, tick] = useState(0);
   const now = Date.now();
   const cacheExpiresAt = usage?.cacheExpiresAt;
@@ -263,79 +237,6 @@ export const ContextUsage = memo(function ContextUsage({
                     : `Your next message re-reads ${tokens(contextTokens)} tokens at full price.${suggestCompact ? " Compacting first makes that smaller." : ""}`}
                 </p>
               </section>
-            )}
-            {hasCache && (
-              <section className="context-section context-cache" aria-labelledby={`${id}-cache`}>
-                <div className="context-heading">
-                  <strong id={`${id}-cache`}>Cache hits</strong>
-                  <span className="context-percentage">{cachePercent}% reused</span>
-                </div>
-                <div
-                  className="context-cache-bar"
-                  role="meter"
-                  aria-label="Cache hit rate"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={cacheRate * 100}
-                  aria-valuetext={`${cachePercent}% reused`}
-                >
-                  {totals.cacheRead > 0 && (
-                    <span data-part="hit" style={{ flex: totals.cacheRead }} />
-                  )}
-                  {totals.input > 0 && <span data-part="fresh" style={{ flex: totals.input }} />}
-                  {totals.cacheWrite > 0 && (
-                    <span data-part="write" style={{ flex: totals.cacheWrite }} />
-                  )}
-                </div>
-                <p
-                  className="context-cache-note"
-                  title={`${exactTokens(totals.cacheRead)} reused · ${exactTokens(totals.newInput)} new`}
-                >
-                  {tokens(totals.cacheRead)} reused · {tokens(totals.newInput)} new
-                </p>
-              </section>
-            )}
-            {speed > 0 && (
-              <section className="context-section context-speed" aria-labelledby={`${id}-speed`}>
-                <div className="context-heading">
-                  <strong id={`${id}-speed`}>Tokens per second</strong>
-                  <span className="context-stat-value">{tokenRate(speed)} tok/s</span>
-                </div>
-              </section>
-            )}
-            {usage && hasTotals && (
-              <details className="context-totals">
-                <summary>
-                  <span>Total processed</span>
-                  <strong title={exactTokens(totalProcessed)}>{tokens(totalProcessed)}</strong>
-                  <ChevronDownIcon size={13} aria-hidden="true" />
-                </summary>
-                <p>Across all requests, including reused context.</p>
-                <dl>
-                  <div>
-                    <dt>Uncached input</dt>
-                    <dd>{exactTokens(totals.input)}</dd>
-                  </div>
-                  <div>
-                    <dt>Output</dt>
-                    <dd>{exactTokens(totals.output)}</dd>
-                  </div>
-                  <div>
-                    <dt>Cache read</dt>
-                    <dd>{exactTokens(totals.cacheRead)}</dd>
-                  </div>
-                  <div>
-                    <dt>Cache write</dt>
-                    <dd>{exactTokens(totals.cacheWrite)}</dd>
-                  </div>
-                  {totals.costUsd > 0 && (
-                    <div>
-                      <dt>Estimated cost</dt>
-                      <dd>{cost(totals.costUsd)}</dd>
-                    </div>
-                  )}
-                </dl>
-              </details>
             )}
             {thread?.compacting ? (
               <div className="context-compacting" role="status">

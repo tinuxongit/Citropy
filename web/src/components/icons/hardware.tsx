@@ -41,7 +41,6 @@ const PLUG = {
   cord: "M12 17.5V21.5",
 };
 const UNPLUGGED_TILT = 45;
-const POWER = { ring: "M7.13 5.04A8.5 8.5 0 1 0 16.87 5.04", stem: "M12 2.5V11" };
 
 export function MonitorIcon(props: IconProps) {
   return (
@@ -154,14 +153,6 @@ export function DisconnectedIcon(props: IconProps) {
       <Turn degrees={UNPLUGGED_TILT}>
         <Plug />
       </Turn>
-    </Icon>
-  );
-}
-
-export function PowerIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <Line d={`${POWER.ring}${POWER.stem}`} width={LINE + 0.25} />
     </Icon>
   );
 }

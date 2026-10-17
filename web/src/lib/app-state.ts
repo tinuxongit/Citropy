@@ -2,7 +2,6 @@ import type { QuestionRequest } from "../../../shared/questions.ts";
 import { SEARCH_ENGINES, type SearchEngine } from "./web-search.ts";
 import { environmentStorage } from "./environment.ts";
 import { DEFAULT_CUSTOM_COLOR, isHexColor } from "./custom-theme.ts";
-import { readTabs } from "./thread-tabs.ts";
 import "./migrate-preferences.ts";
 import { isProviderId } from "../../../shared/protocol.ts";
 import { create } from "zustand";
@@ -46,6 +45,7 @@ interface MessageShell {
   mentions?: Message["mentions"];
   origin?: Message["origin"];
   reactions?: Message["reactions"];
+  pending?: Message["pending"];
 }
 
 export interface Toast {
@@ -170,8 +170,6 @@ export interface AppState {
   toasts: Toast[];
   activeProjectId: string | null;
   activeThreadId: string | null;
-  openThreadIds: string[];
-  previewThreadId: string | null;
   followRequest: number;
   readingThreadId: string | null;
   panels: PanelTab[];
@@ -368,9 +366,6 @@ export const useApp = create<AppState>(() => ({
     typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.project"),
   activeThreadId:
     typeof localStorage === "undefined" ? null : environmentStorage.getItem("citropy.thread"),
-  ...(typeof localStorage === "undefined"
-    ? { openThreadIds: [], previewThreadId: null }
-    : readTabs()),
   followRequest: 0,
   readingThreadId: null,
   panels: [],

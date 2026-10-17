@@ -191,8 +191,6 @@ async function app(
   });
   await page.route("**/api/**", (route) => {
     const request = route.request();
-    if (new URL(request.url()).pathname === "/api/agents")
-      return route.fulfill({ json: { agents: [] } });
     return route.fulfill({ json: request.method() === "POST" ? { ok: true } : [] });
   });
   await beforeNavigate?.(page);
@@ -262,63 +260,6 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.getByRole("button", { name: "Development triggers" }).click();
     await page.getByRole("menuitem", { name: /^Setup/ }).click();
     await setup.getByRole("heading", { name: "Welcome to Citropy" }).waitFor();
-  });
-
-  check("conversation tabs preview, keep, and close conversations", async (t) => {
-    const { page, push } = await app(t, {
-      messages: history(2),
-      preferences: { sidebar: "1" },
-      threadPatch: { running: false, status: "idle" },
-    });
-    for (const [id, title] of [
-      ["second", "Second conversation"],
-      ["third", "Third conversation"],
-    ])
-      push({
-        t: "thread.upsert",
-        thread: { ...thread, id, title, running: false, status: "idle", updatedAt: 2 },
-      });
-    const tabs = page.locator(".thread-tab");
-    const titles = () =>
-      tabs
-        .locator(".thread-tab-open")
-        .evaluateAll((buttons) => buttons.map((button) => button.title));
-    await expect(async () => (await titles()).join() === "Build a small world");
-    await page.locator('.thread-row[aria-label="Second conversation"]').click();
-    await expect(async () => (await titles()).join() === "Build a small world,Second conversation");
-    await page.locator('.thread-row[aria-label="Third conversation"]').click();
-    await expect(async () => (await titles()).join() === "Build a small world,Third conversation");
-    const third = tabs.filter({ hasText: "Third conversation" });
-    assert.equal(await third.getAttribute("data-preview"), "true");
-    await page.screenshot({
-      path: `${root}/node_modules/.vite-tests/thread-tabs.png`,
-      clip: { x: 0, y: 0, width: 1280, height: 80 },
-    });
-    await third.locator(".thread-tab-open").dblclick();
-    assert.equal(await third.getAttribute("data-preview"), null);
-    const from = await third.locator(".thread-tab-open").boundingBox();
-    const to = await tabs.first().boundingBox();
-    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(to.x + 4, to.y + to.height / 2, { steps: 8 });
-    await expect(
-      async () =>
-        (await tabs.first().evaluate((tab) => new DOMMatrix(getComputedStyle(tab).transform).m41)) >
-        0,
-    );
-    await page.mouse.up();
-    await expect(async () => (await titles()).join() === "Third conversation,Build a small world");
-    assert.equal(await third.getAttribute("data-active"), "true");
-    const end = await tabs.last().boundingBox();
-    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(end.x + end.width + 200, end.y + end.height / 2, { steps: 8 });
-    await page.mouse.up();
-    await expect(async () => (await titles()).join() === "Build a small world,Third conversation");
-    await tabs.first().locator(".thread-tab-open").click();
-    await tabs.first().locator(".thread-tab-close").click();
-    await expect(async () => (await titles()).join() === "Third conversation");
-    assert.equal(await third.getAttribute("data-active"), "true");
   });
 
   check("sent messages show mentions as named tags", async (t) => {

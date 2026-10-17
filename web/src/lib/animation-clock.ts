@@ -1,3 +1,5 @@
+import { onWindowActiveChange, windowActive } from "./window-active.ts";
+
 const FRAME_MS = 40;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const listeners = new Set<() => void>();
@@ -16,12 +18,12 @@ function sync(): void {
   clearInterval(timer);
   timer = undefined;
   shown = -1;
-  if (!listeners.size || document.hidden || reducedMotion.matches) return;
+  if (!listeners.size || !windowActive() || reducedMotion.matches) return;
   tick();
   timer = setInterval(tick, FRAME_MS);
 }
 
-document.addEventListener("visibilitychange", sync);
+onWindowActiveChange(sync);
 reducedMotion.addEventListener("change", sync);
 
 export function onAnimationTick(listener: () => void): () => void {

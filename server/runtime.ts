@@ -88,6 +88,8 @@ class ThreadRuntime {
   #preparing = false;
   #configuring: Promise<void> | null = null;
   #steering = false;
+  /** Steered messages the agent hasn't read yet, oldest first. */
+  #unreadSteers: string[] = [];
   #turnsEnded = 0;
   #checkpointCompletion: Promise<void> | null = null;
   #enqueuing: Promise<void> | undefined;
@@ -102,7 +104,6 @@ class ThreadRuntime {
   #autoTitle: string | undefined;
   #transcript: ThreadTranscript;
   #subagents: SubagentTranscripts;
-  #sessionStarted = 0;
   #scheduleCalls = new Set<string>();
   #scheduledSession: AgentSession | null = null;
 
@@ -140,10 +141,6 @@ class ThreadRuntime {
 
   get scheduled(): boolean {
     return this.#session !== null && this.#scheduledSession === this.#session;
-  }
-
-  get session(): { started: number; pid?: number } | undefined {
-    return this.#session ? { started: this.#sessionStarted, pid: this.#session.pid } : undefined;
   }
 
   get turnActive(): boolean {
@@ -188,8 +185,22 @@ class ThreadRuntime {
       this.#thread.running ||
       this.#enqueuing ||
       (this.#resume && this.#thread.queue?.length)
-    )
-      return this.#enqueue(text, files, origin);
+    ) {
+      // Like Claude desktop, a message sent mid-run steers the agent instead of waiting in the queue.
+      const id = await this.#enqueue(text, files, origin);
+      if (
+        this.#thread.running &&
+        this.#session?.steer &&
+        !this.#preparing &&
+        !this.#steering &&
+        !this.#stopping &&
+        !this.#thread.compacting &&
+        !SLASH_COMMAND.test(text.trim()) &&
+        this.#thread.queue?.some((entry) => entry.id === id)
+      )
+        await this.sendNow(id);
+      return;
+    }
     this.#limitResume = limitResume;
     this.#preparing = true;
     this.#resume = false;
@@ -331,8 +342,9 @@ class ThreadRuntime {
       const prepared = await this.#prepare(item.text, item.attachments ?? [], item.origin);
       this.#checkSession(prepared.generation);
       if (turn === this.#turnsEnded) {
-        await session.steer(prepared.prompt, prepared.attachments, prepared.skills);
-        this.#addUserMessage(prepared);
+        const pending = await session.steer(prepared.prompt, prepared.attachments, prepared.skills);
+        this.#addUserMessage(prepared, pending === true);
+        if (pending === true) this.#unreadSteers.push(prepared.messageId);
         steered = true;
       }
     } catch (error) {
@@ -384,26 +396,25 @@ class ThreadRuntime {
       throw new Error("Enter a message or attach a file.");
   }
 
-  #enqueue(text: string, files: Attachment[], origin?: MessageOrigin): Promise<void> {
+  #enqueue(text: string, files: Attachment[], origin?: MessageOrigin): Promise<string> {
     const pending = (this.#enqueuing ?? Promise.resolve()).then(async () => {
       this.#checkSession();
       this.#check(text, files);
       const attachments = await validateAttachments(this.id, files);
       this.#checkSession();
+      const id = uid("que");
       store.patchThread(this.id, {
         queue: [
           ...(this.#thread.queue ?? []),
-          {
-            id: uid("que"),
-            text,
-            attachments,
-            ...(origin ? { origin } : {}),
-            createdAt: Date.now(),
-          },
+          { id, text, attachments, ...(origin ? { origin } : {}), createdAt: Date.now() },
         ],
       });
+      return id;
     });
-    const tail = pending.catch(() => {});
+    const tail = pending.then(
+      () => {},
+      () => {},
+    );
     this.#enqueuing = tail;
     void tail.then(() => {
       if (this.#enqueuing === tail) this.#enqueuing = undefined;
@@ -461,14 +472,10 @@ class ThreadRuntime {
     };
   }
 
-  #addUserMessage({
-    messageId,
-    text,
-    attachments,
-    contextSources,
-    mentions,
-    origin,
-  }: Prepared): void {
+  #addUserMessage(
+    { messageId, text, attachments, contextSources, mentions, origin }: Prepared,
+    pending = false,
+  ): void {
     if (this.#thread.finished) store.setThreadFinished(this.#thread.id, false);
     const message: Message = {
       id: messageId,
@@ -479,6 +486,7 @@ class ThreadRuntime {
       contextSources,
       ...(mentions.length ? { mentions } : {}),
       ...(origin ? { origin } : {}),
+      ...(pending ? { pending } : {}),
     };
     store.addMessage(this.#thread.id, message);
     store.raiseThread(this.id);
@@ -784,7 +792,6 @@ class ThreadRuntime {
     if (!project) throw new Error(`thread ${this.#thread.id} has no project`);
     if (models.length) store.patchThread(this.#thread.id, modelSettings(models, this.#thread));
     const generation = ++this.#sessionGeneration;
-    this.#sessionStarted = Date.now();
     this.#session = provider.start({
       ...launch,
       mcp: connectTools(this.#thread.id),
@@ -820,6 +827,7 @@ class ThreadRuntime {
   #closeSession(): void {
     const session = this.#session;
     this.#session = null;
+    this.#unreadSteers = [];
     this.#sessionGeneration += 1;
     session?.dispose();
   }
@@ -980,6 +988,11 @@ class ThreadRuntime {
       case "turn.end":
         this.#onTurnEnd(event);
         return;
+      case "steer.read": {
+        const id = this.#unreadSteers.shift();
+        if (id) store.patchMessage(this.id, id, { pending: false });
+        return;
+      }
       case "notice":
         if (event.level !== "info") this.#transcript.notice(event.level, event.text);
         return;
@@ -1109,6 +1122,8 @@ class ThreadRuntime {
     if (!this.#thread.running && !this.#stopping) return;
     const generation = this.#stopGeneration;
     this.#turnsEnded += 1;
+    // Steers still unread here were dropped by a stop, so they stay dimmed.
+    this.#unreadSteers = [];
     cancelQuestions(this.#thread.id, {
       blockingOnly: !event.error && this.#thread.status !== "stopped",
     });
@@ -1312,70 +1327,6 @@ export function closeIdleSessions(now = Date.now()): void {
     runtimes.delete(id);
     store.releaseMessages(id);
   }
-}
-
-export interface LiveAgent {
-  threadId: string;
-  parentThreadId?: string;
-  title: string;
-  projectId: string;
-  projectName: string;
-  /** The bot or bot group this agent works for, so bots list apart from conversations. */
-  rosterId?: string;
-  provider: string;
-  model?: string;
-  status: "working" | "waiting" | "idle";
-  started: number;
-  lastActive: number;
-  pid?: number;
-}
-
-function childrenBusy(threadId: string): boolean {
-  return store
-    .subagentsOf(threadId)
-    .some((child) => child.running || child.status === "awaiting" || runtimes.get(child.id)?.busy);
-}
-
-export function liveAgents(): LiveAgent[] {
-  const agents: LiveAgent[] = [];
-  for (const [id, runtime] of runtimes) {
-    const session = runtime.session;
-    const thread = store.threads.get(id);
-    if (!session || !thread) continue;
-    const busy = runtime.busy || childrenBusy(id);
-    let root = thread;
-    while (root.parentThreadId && store.threads.has(root.parentThreadId))
-      root = store.threads.get(root.parentThreadId)!;
-    const rosterId = root.botId ?? root.groupId;
-    agents.push({
-      threadId: id,
-      ...(thread.parentThreadId ? { parentThreadId: thread.parentThreadId } : {}),
-      title: thread.title,
-      projectId: thread.projectId,
-      projectName: store.projects.get(thread.projectId)?.name ?? "",
-      ...(rosterId ? { rosterId } : {}),
-      provider: thread.provider,
-      ...(thread.model ? { model: thread.model } : {}),
-      status: thread.status === "awaiting" ? "waiting" : busy ? "working" : "idle",
-      started: session.started,
-      lastActive: thread.updatedAt,
-      ...(session.pid ? { pid: session.pid } : {}),
-    });
-  }
-  return agents.sort((a, b) => b.lastActive - a.lastActive);
-}
-
-export function turnOffAgent(threadId: string): void {
-  if (!runtimes.get(threadId)?.session) throw new Error("That agent is no longer running.");
-  disposeRuntime(threadId);
-}
-
-export function turnOffIdleAgents(): number {
-  const idle = liveAgents()
-    .filter((agent) => agent.status === "idle")
-    .map((agent) => agent.threadId);
-  for (const threadId of idle) disposeRuntime(threadId);
-  return idle.length;
 }
 
 export function reloadProviderSessions(providerIds: Set<string>): void {

@@ -7,7 +7,6 @@ const DASH = "3.6 2.9";
 const STOP = { x: 5, y: 5, width: 14, height: 14, rx: 3 };
 const SCREEN = { x: 2, y: 3.5, width: 20, height: 17, rx: 4 };
 const GLYPH_WIDTH = 2;
-const PLUS = "M12 8V16M8 12H16";
 const MENU = "M7.5 8.5H16.5M7.5 12H16.5M7.5 15.5H13";
 const ROW_CUTS = "M0 8.75H24M0 15.25H24";
 const GRID_CUTS = "M8.75 0V24M15.25 0V24M0 8.75H24M0 15.25H24";
@@ -54,10 +53,6 @@ export function SquareDashedIcon(props: IconProps) {
       />
     </Icon>
   );
-}
-
-export function SquarePlusIcon(props: IconProps) {
-  return <Tile {...props} cuts={<Line d={PLUS} width={GLYPH_WIDTH} />} />;
 }
 
 export function SquareMenuIcon(props: IconProps) {

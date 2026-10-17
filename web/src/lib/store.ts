@@ -3,7 +3,6 @@ import { defaultAssistance } from "../../../shared/assistance.ts";
 import type { Project } from "../../../shared/protocol.ts";
 import { useApp, readOffline, type AppState, type Confirmation } from "./app-state.ts";
 import { trimHistories } from "./history-cache.ts";
-import { readTabs, saveTabs, withPreviewTab } from "./thread-tabs.ts";
 import type { EnvironmentSlice } from "./live-environments.ts";
 import { inBotsView } from "../../../shared/bots.ts";
 
@@ -92,7 +91,6 @@ export function environmentDefaults(
     questionDrafts: {},
     activeProjectId: environmentStorage.getItem("citropy.project", id),
     activeThreadId: environmentStorage.getItem("citropy.thread", id),
-    ...readTabs(id),
     followRequest: 0,
     readingThreadId: null,
     panels: [],
@@ -121,22 +119,14 @@ export function selectThread(id: string | null): void {
   const rosterId = thread?.botId ?? thread?.groupId;
   if (rosterId) return selectRosterEntry(rosterId);
   useApp.setState((state) => {
-    // Code and Chat show separate tabs, so a preview tab from the other section stays open.
-    const preview = state.threads[state.previewThreadId ?? ""];
-    const kept =
-      preview && Boolean(preview.chat) !== Boolean(thread?.chat)
-        ? { ...state, previewThreadId: null }
-        : state;
-    const tabs = id ? withPreviewTab(kept, id) : state;
-    if (state.activeThreadId === id) return tabs === state ? state : { ...state, ...tabs };
+    if (state.activeThreadId === id) return state;
     const git = { ...state.git };
     const projectId = id ? state.threads[id]?.projectId : state.activeProjectId;
     if (projectId) delete git[projectId];
-    return { ...withActiveThread({ ...state, ...tabs }, id), git };
+    return { ...withActiveThread(state, id), git };
   });
   if (id) environmentStorage.setItem("citropy.thread", id);
   else environmentStorage.removeItem("citropy.thread");
-  saveTabs(useApp.getState());
 }
 
 export function selectRosterEntry(id: string | null): void {

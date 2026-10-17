@@ -1,6 +1,5 @@
 import { listImportableSessions, importSession } from "./session-import/session-import.ts";
 import { isImportProvider } from "../shared/session-import.ts";
-import { descendants, processTable } from "./process-table.ts";
 import {
   createPairing,
   DEVICE_HEADER,
@@ -28,15 +27,7 @@ import { answerQuestion } from "./questions.ts";
 import { stopShell } from "./terminals/shells.ts";
 import { dev, developmentOrigin } from "./config.ts";
 import { desktopRequest } from "./desktop.ts";
-import {
-  reloadProviderSessions,
-  providerBusy,
-  runtimeFor,
-  disposeRuntime,
-  liveAgents,
-  turnOffAgent,
-  turnOffIdleAgents,
-} from "./runtime.ts";
+import { reloadProviderSessions, providerBusy, runtimeFor, disposeRuntime } from "./runtime.ts";
 import {
   assertWorkspaceIdle,
   restoreCheckpoint,
@@ -212,32 +203,7 @@ export async function handleFeatures(
   try {
     if (url.pathname.startsWith("/api/sharing") && req.headers[DEVICE_HEADER])
       throw new Error("Manage phone access from the computer running Citropy.");
-    if (url.pathname === "/api/agents" && req.method === "GET") {
-      const agents = liveAgents();
-      if (url.searchParams.get("usage") !== "1") respond({ agents });
-      else {
-        const table = await processTable();
-        respond({
-          agents: agents.map((agent) => {
-            if (!agent.pid || !table.length) return agent;
-            const tree = descendants(table, [agent.pid]);
-            const entries = table.filter((entry) => tree.has(entry.pid));
-            return {
-              ...agent,
-              memory: entries.reduce((sum, entry) => sum + entry.memory, 0),
-              cpu: entries.reduce((sum, entry) => sum + entry.cpu, 0),
-              processes: entries.length,
-            };
-          }),
-        });
-      }
-    } else if (url.pathname === "/api/agents/turn-off" && req.method === "POST") {
-      turnOffAgent(url.searchParams.get("threadId") ?? "");
-      respond({ agents: liveAgents() });
-    } else if (url.pathname === "/api/agents/turn-off-idle" && req.method === "POST") {
-      const count = turnOffIdleAgents();
-      respond({ count, agents: liveAgents() });
-    } else if (url.pathname === "/api/sharing" && req.method === "GET") {
+    if (url.pathname === "/api/sharing" && req.method === "GET") {
       respond(sharingState());
     } else if (url.pathname === "/api/sharing" && req.method === "PUT") {
       respond(setSharing((await body(req)).enabled === true));
@@ -340,7 +306,12 @@ export async function handleFeatures(
         throw new Error("Wait for the task to finish preparing or stopping.");
       disposeRuntime(thread.id, true);
       if (input.redo === true) await redoCheckpoint(thread);
-      else await restoreCheckpoint(thread, input.messageId, input.mode);
+      else if (input.clear === true) {
+        // /clear rewinds to before the first message and keeps the files.
+        const first = thread.messages.find((message) => message.role === "user");
+        if (!first) throw new Error("This conversation is already empty.");
+        await restoreCheckpoint(thread, first.id, "conversation");
+      } else await restoreCheckpoint(thread, input.messageId, input.mode);
       respond({ ok: true });
     } else if (url.pathname === "/api/threads/fork" && req.method === "POST") {
       const thread = store.threads.get(threadId ?? "");

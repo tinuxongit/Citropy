@@ -30,10 +30,11 @@
   border-radius: var(--r-popup);
   background: var(--canvas);
   overflow: hidden;
+  /* The layout stays outside [open] so the closing fade keeps it. */
+  grid-template: minmax(0, 1fr) / 220px minmax(0, 1fr);
 }
 .settings-dialog[open] {
   display: grid;
-  grid-template: minmax(0, 1fr) / 220px minmax(0, 1fr);
 }
 .settings-dialog::backdrop {
   background: rgb(0 0 0 / 0.45);
@@ -86,8 +87,6 @@
     max-width: none;
     border: 0;
     border-radius: 0;
-  }
-  .settings-dialog[open] {
     grid-template: auto minmax(0, 1fr) / minmax(0, 1fr);
   }
   /* Phones show only a few sections, so they sit in one row above the page. */

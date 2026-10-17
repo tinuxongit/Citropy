@@ -2,6 +2,34 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.14.0
+
+### Added
+- Chat and Code are separate sections. Chat holds plain conversations that can't change files, with its own sidebar and welcome screen. Code keeps your projects, with Local and Servers under their own headings.
+- The + menu in Code adds a project from an existing folder, a GitHub clone or past conversations, and can set up a server with a container or SSH.
+- A message sent while the agent works now steers it instead of waiting in the queue. The message stays dimmed until the agent reads it.
+- `/clear` starts the conversation over and keeps your files.
+- Agents can save project scripts, and `@routine` and `@script` mention them. Citropy's own tools come first in the @ menu.
+- Switching models in a chat with a warm prompt cache warns how many tokens the new model will re-read at full price.
+
+### Changed
+- Conversation tabs and the Agents panel are gone. The sidebar is the one place to switch conversations, and its text is larger.
+- Notifications show as one list instead of tabs, at the bottom of the left strip.
+- The context ring's panel is simpler. Cache hits, tokens per second and total processed are gone.
+- A new startup screen with Citropy's name and a progress bar that shows when startup takes a moment.
+- The ASCII background drifts in soft directional streaks.
+- The composer has a flat 1px border.
+- Bots stay out of the sidebar until you make one.
+
+### Fixed
+- Claude chats signed in with an API key keep their prompt cache for an hour instead of 5 minutes, so a short break no longer re-reads the whole conversation at full price.
+- Writing titles and commit messages reuses the provider's prompt cache instead of missing it every time.
+- The running spinner no longer redraws the window every frame, which used a lot of CPU while an agent worked.
+- Animated backgrounds and spinners pause while Citropy is in the background or another app has focus.
+- Opening a conversation marks it read, even when scrolled up.
+- Views opened from the left strip show as soon as they load instead of holding back for a moment.
+- The window opens in your theme's color instead of flashing a default one.
+
 ## 0.13.2
 
 ### Fixed

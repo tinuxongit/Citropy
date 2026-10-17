@@ -297,7 +297,7 @@ export function PermissionMenu({
     PERMISSION_MODES.find((entry) => entry.id === thread.permissionMode) ?? PERMISSION_MODES[0]!;
   return (
     <Menu
-      width={290}
+      width={330}
       items={PERMISSION_MODES.map((entry) => ({
         id: entry.id,
         label: entry.label,

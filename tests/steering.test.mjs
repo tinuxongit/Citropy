@@ -43,6 +43,8 @@ async function fixture(t, permissionMode = "manual", configure) {
     sent: [],
     sentModes: [],
     steered: [],
+    // Off for tests that need messages to wait in the queue instead of steering the run.
+    canSteer: true,
     starts: [],
     emit: undefined,
     finishInterrupt: undefined,
@@ -55,8 +57,12 @@ async function fixture(t, permissionMode = "manual", configure) {
         provider.sent.push(prompt);
         provider.sentModes.push(thread.permissionMode);
       },
-      steer: async (prompt) => {
-        provider.steered.push(prompt);
+      get steer() {
+        if (!provider.canSteer) return undefined;
+        return async (prompt) => {
+          provider.steered.push(prompt);
+          return true;
+        };
       },
       interrupt: () =>
         new Promise((resolve) => {
@@ -82,6 +88,7 @@ test("idle sessions with paused queues release their process and retain resumabl
   for (const reason of ["stop", "usage limit"]) {
     await t.test(reason, async (t) => {
       const { thread, runtime, provider } = await fixture(t);
+      provider.canSteer = false;
       await runtime.send("First");
       await runtime.send("Queued request");
       store.patchThread(thread.id, { externalId: "saved-session" });
@@ -169,6 +176,7 @@ test("automatic compaction shows while it runs and still lets messages queue", a
 
 test("changing settings does not resume messages left queued by Stop", async (t) => {
   const { thread, runtime, provider } = await fixture(t, "manual", async () => {});
+  provider.canSteer = false;
   await runtime.send("First");
   await runtime.send("Still queued");
   runtime.stop();
@@ -282,9 +290,11 @@ test("settings updated while a queued change is applying reach the next turn", a
 
 test("Send now delivers normally when the turn ends before the steer goes out", async (t) => {
   const { thread, runtime, provider } = await fixture(t);
+  provider.canSteer = false;
   await runtime.send("First");
   await runtime.send("Steer me");
   await runtime.send("Later");
+  provider.canSteer = true;
   const pending = runtime.sendNow(thread.queue[0].id);
   provider.emit({ type: "turn.end" });
   await pending;
@@ -297,6 +307,7 @@ test("Send now delivers normally when the turn ends before the steer goes out", 
 
 test("A message sent while the queue is draining joins the back of the queue", async (t) => {
   const { thread, runtime, provider } = await fixture(t);
+  provider.canSteer = false;
   await runtime.send("First");
   await runtime.send("Queued");
   provider.emit({ type: "turn.end" });
@@ -304,6 +315,20 @@ test("A message sent while the queue is draining joins the back of the queue", a
   await until(() => provider.sent.length === 2);
   assert.deepEqual(provider.sent, ["First", "Queued"]);
   assert.deepEqual(texts(thread), ["Newest"]);
+});
+
+test("A message sent mid-run steers the agent and stays pending until it is read", async (t) => {
+  const { thread, runtime, provider } = await fixture(t);
+  await runtime.send("First");
+  await runtime.send("Steer me");
+  assert.deepEqual(provider.steered, ["Steer me"]);
+  assert.deepEqual(texts(thread), []);
+  const steered = thread.messages.at(-1);
+  assert.equal(steered.pending, true);
+  provider.emit({ type: "steer.read" });
+  assert.equal(steered.pending, false);
+  await runtime.send("/review");
+  assert.deepEqual(texts(thread), ["/review"]);
 });
 
 test("Messages sent while a stop finishes go out one at a time", async (t) => {
@@ -322,8 +347,10 @@ test("Messages sent while a stop finishes go out one at a time", async (t) => {
 
 test("Stopping while Send now is preparing keeps the message queued without an error", async (t) => {
   const { thread, runtime, provider } = await fixture(t);
+  provider.canSteer = false;
   await runtime.send("First");
   await runtime.send("Steer me");
+  provider.canSteer = true;
   const pending = runtime.sendNow(thread.queue[0].id);
   runtime.stop();
   await pending;
@@ -336,6 +363,7 @@ test("stopping an accepted plan during its mode change prevents automatic implem
     await t.test(outcome, async (t) => {
       const { promise, resolve, reject } = Promise.withResolvers();
       const { thread, runtime, provider } = await fixture(t, "plan", () => promise);
+      provider.canSteer = false;
       await runtime.send("Make a plan");
       await runtime.send("Queued request");
       provider.emit({ type: "plan.accepted" });

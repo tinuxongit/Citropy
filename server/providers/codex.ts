@@ -108,10 +108,6 @@ function elicitationContent(schema: unknown): Record<string, unknown> | undefine
 class CodexSession implements AgentSession {
   #options: StartOptions;
   #child: ChildProcessWithoutNullStreams | undefined;
-
-  get pid(): number | undefined {
-    return this.#child?.pid;
-  }
   #ready: Promise<void>;
   #requests = new Map<
     number,

@@ -323,7 +323,7 @@ export function Menu({
               style={
                 item.depth
                   ? {
-                      paddingInlineStart: `calc(10px + ${item.depth} * var(--menu-nesting-indent, 18px))`,
+                      paddingInlineStart: `calc(2px + ${item.depth} * var(--menu-nesting-indent, 18px))`,
                     }
                   : undefined
               }

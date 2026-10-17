@@ -4,6 +4,10 @@
   font-weight: 300 800;
   font-style: oblique 0deg 10deg;
   font-display: swap;
+  /* The font's own metrics (97% / 29%) sit text about 1px above the icons next to it.
+     The total stays the same, so line heights don't change. */
+  ascent-override: 105.5%;
+  descent-override: 20.5%;
 }
 
 @font-face {
@@ -628,39 +632,19 @@ kbd {
 }
 
 .loader {
+  display: inline-block;
   flex: none;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
   vertical-align: middle;
 }
 
-.loader-turn {
-  transform-box: view-box;
-  transform-origin: center;
-  animation: citropy-loader-turn var(--loader-loop) var(--loader-turn-ease) var(--loader-start)
-    infinite;
-}
-
-.loader-drop {
-  animation: citropy-loader-split var(--loader-loop) var(--ease-in-out) var(--loader-start) infinite;
-}
-
-@keyframes citropy-loader-turn {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(var(--loader-turn));
-  }
-}
-
-@keyframes citropy-loader-split {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  30%,
-  70% {
-    transform: translate(var(--loader-dx), var(--loader-dy));
-  }
+.loader-strip {
+  display: block;
+  background: currentColor;
+  mask: var(--loader-strip) 0 0 / 100% 100% no-repeat;
+  will-change: transform;
 }
 
 .file-type-icon {

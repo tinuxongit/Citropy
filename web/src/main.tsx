@@ -4,7 +4,6 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/choice-inputs.css";
 import "./styles/app.css";
-import "./styles/thread-tabs.css";
 import "./styles/sidebar.css";
 import "./styles/settings.css";
 import "./styles/providers.css";
@@ -37,21 +36,29 @@ import { applyReleaseDefaults } from "./lib/release-defaults.ts";
 import { applyCustomColor } from "./lib/custom-theme.ts";
 import { followVisualViewport } from "./lib/visual-viewport.ts";
 
+function bootProgress(value: number) {
+  document.getElementById("boot-screen")?.style.setProperty("--boot-progress", String(value));
+}
+
 async function start() {
   followVisualViewport();
   await initializeEnvironment();
+  bootProgress(0.4);
   applyReleaseDefaults();
   const [
     { App },
     { connect, logClientError },
     { useApp, applyUiScale, applyCodeFont, followWindowSize },
     { hideBootScreenWhenConnected },
+    { followWindowBackground },
   ] = await Promise.all([
     import("./App.tsx"),
     import("./lib/socket.ts"),
     import("./lib/store.ts"),
     import("./lib/boot-screen.ts"),
+    import("./lib/window-background.ts"),
   ]);
+  bootProgress(0.75);
 
   if (!window.citropyDesktop && window.loomDesktop) window.citropyDesktop = window.loomDesktop;
 
@@ -62,6 +69,7 @@ async function start() {
   applyCodeFont(codeFont);
   applyUiScale();
   followWindowSize();
+  followWindowBackground();
   hideBootScreenWhenConnected();
   connect();
   window.addEventListener("error", (event) => logClientError(event.error ?? event.message));

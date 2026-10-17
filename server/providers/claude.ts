@@ -90,10 +90,6 @@ function currentContextTokens(usage: ClaudeUsage): number | undefined {
 
 class ClaudeSession implements AgentSession {
   #child: ChildProcessWithoutNullStreams;
-
-  get pid(): number | undefined {
-    return this.#child.pid;
-  }
   #emit: (event: AgentEvent) => void;
   #turn = 0;
   #disposed = false;
@@ -120,6 +116,7 @@ class ClaudeSession implements AgentSession {
   #requestStarted = 0;
   #cacheTtl?: number;
   #cacheExpiresAt?: number;
+  #hourCache = false;
   #manualCompaction = false;
   #compacted = false;
   #effort?: string;
@@ -245,12 +242,13 @@ class ClaudeSession implements AgentSession {
     text: string,
     attachments: Attachment[] = [],
     skills: Array<{ name: string; path: string }> = [],
-  ): Promise<void> {
+  ): Promise<boolean> {
     const content = await this.#content(text, attachments, skills);
     if (!this.#active) throw new Error("Claude Code already finished this turn.");
     const id = randomUUID();
     this.#write(content, id);
     this.#steers.add(id);
+    return true;
   }
 
   async #content(
@@ -675,6 +673,15 @@ class ClaudeSession implements AgentSession {
 
     if (type === "system" && message.subtype === "init") {
       if (typeof message.model === "string") this.#model = message.model;
+      // API keys default to a 5-minute cache, so a short break re-reads the whole conversation at
+      // full price. Subscriptions already get an hour.
+      if (!this.#hourCache && message.apiKeySource && message.apiKeySource !== "none") {
+        this.#hourCache = true;
+        this.#control(
+          { subtype: "apply_flag_settings", settings: { promptCacheTtl: "1h" } },
+          "Claude did not confirm the cache setting.",
+        ).catch(logFailure("Setting Claude's cache lifetime"));
+      }
       this.#emit({
         type: "session",
         externalId: String(message.session_id ?? ""),
@@ -740,7 +747,7 @@ class ClaudeSession implements AgentSession {
     }
 
     if (type === "user" && message.isReplay) {
-      this.#steers.delete(String(message.uuid));
+      if (this.#steers.delete(String(message.uuid))) this.#emit({ type: "steer.read" });
       this.#userMessageUnread = false;
       return;
     }

@@ -14,7 +14,6 @@ import { GroupAvatar } from "./bots/GroupAvatar.tsx";
 import { useGroupMembers } from "./bots/use-group-members.ts";
 import { createChat, createThread } from "../lib/actions.ts";
 import { WindowControls } from "./WindowControls.tsx";
-import { ThreadTabs } from "./ThreadTabs.tsx";
 import { ThreadDetailsButton } from "./thread-details/ThreadDetails.tsx";
 
 /** Render workspace navigation using branch metadata scoped to the selected checkout. */
@@ -101,7 +100,6 @@ export function Titlebar({
         data-view={view}
         aria-label="Current workspace and view"
       >
-        {conversationView && <ThreadTabs chats={view === "chats"} />}
         {workspaceContext && (
           <div className="workspace-breadcrumb">
             {isRemote() && (

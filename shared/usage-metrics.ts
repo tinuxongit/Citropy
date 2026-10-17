@@ -31,13 +31,6 @@ export function uncachedInput(
     : usage.input;
 }
 
-export function newInputTokens(
-  provider: ProviderId,
-  usage: Pick<Usage, "input" | "cacheRead" | "cacheWrite">,
-): number {
-  return uncachedInput(provider, usage) + usage.cacheWrite;
-}
-
 function tokensPerSecond(tokens: number, elapsedMs: number): number {
   if (!(tokens > 0) || !(elapsedMs >= 250)) return 0;
   return tokens / (elapsedMs / 1000);
