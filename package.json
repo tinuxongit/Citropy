@@ -1,6 +1,6 @@
 {
   "name": "citropy",
-  "version": "0.14.4",
+  "version": "0.15.0",
   "private": true,
   "type": "module",
   "description": "A painted control surface for terminal coding agents",
