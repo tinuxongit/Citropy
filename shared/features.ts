@@ -59,6 +59,8 @@ export interface UsageWindow {
   label: string;
   usedPercent: number;
   resetsAt?: number;
+  /** How long the window lasts, so pace can compare spend against the clock. */
+  minutes?: number;
 }
 
 export interface ProviderUsage {

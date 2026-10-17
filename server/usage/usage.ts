@@ -29,6 +29,13 @@ const CLAUDE_WINDOW_LABELS: Record<string, string> = {
   weekly_all: "Weekly",
   weekly_scoped: "Weekly",
 };
+const CLAUDE_WINDOW_MINUTES: Record<string, number> = {
+  five_hour: SESSION_MINUTES,
+  seven_day: WEEK_MINUTES,
+  session: SESSION_MINUTES,
+  weekly_all: WEEK_MINUTES,
+  weekly_scoped: WEEK_MINUTES,
+};
 
 function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, value));
@@ -54,13 +61,15 @@ function codexWindows(result: Record<string, any>): UsageWindow[] {
           : MONTHLY_PLANS.has(bucket?.planType)
             ? MONTH_MINUTES
             : SESSION_MINUTES;
-      const label = durationLabel(window.windowDurationMins || fallback);
+      const minutes = window.windowDurationMins || fallback;
+      const label = durationLabel(minutes);
       const name = bucket?.limitName || (id === "codex" ? "" : id);
       return [
         {
           label: name ? `${name} · ${label}` : label,
           usedPercent: clampPercent(window.usedPercent),
           resetsAt: Number.isFinite(window.resetsAt) ? window.resetsAt * 1000 : undefined,
+          minutes,
         },
       ];
     }),
@@ -78,6 +87,7 @@ function claudeWindows(limits: Record<string, any>): UsageWindow[] {
           label: scope ? `${label} · ${scope}` : label,
           usedPercent: clampPercent(entry.percent),
           resetsAt: Date.parse(entry.resets_at) || undefined,
+          minutes: CLAUDE_WINDOW_MINUTES[entry.kind],
         };
       });
   const windows: UsageWindow[] = [];
@@ -88,6 +98,7 @@ function claudeWindows(limits: Record<string, any>): UsageWindow[] {
         label: CLAUDE_WINDOW_LABELS[key]!,
         usedPercent: clampPercent(window.utilization),
         resetsAt: Date.parse(window.resets_at) || undefined,
+        minutes: CLAUDE_WINDOW_MINUTES[key],
       });
   }
   for (const window of limits.model_scoped ?? [])
@@ -96,6 +107,7 @@ function claudeWindows(limits: Record<string, any>): UsageWindow[] {
         label: `Weekly · ${window.display_name}`,
         usedPercent: clampPercent(window.utilization),
         resetsAt: Date.parse(window.resets_at) || undefined,
+        minutes: WEEK_MINUTES,
       });
   return windows;
 }
@@ -116,11 +128,13 @@ function museLimits(usage: SubscriptionUsage | undefined): ProviderUsage {
         label: durationLabel(usage.window.windowDurationMins),
         usedPercent: clampPercent(usage.window.usedPercent),
         resetsAt: usage.window.resetsAtMs,
+        minutes: usage.window.windowDurationMins,
       },
       {
         label: durationLabel(WEEK_MINUTES),
         usedPercent: clampPercent(usage.weekly.usedPercent),
         resetsAt: usage.weekly.resetsAtMs,
+        minutes: WEEK_MINUTES,
       },
     ],
     plan: usage.tier,

@@ -2,6 +2,12 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.16.0
+
+### Added
+- Usage limits show your pace. A tick on each bar marks where you'd be if you spent evenly, and spend ahead of it shows in amber.
+- Each limit says whether you're using it fast, steadily or lightly, and when it would run out or how much would be left at reset.
+
 ## 0.15.0
 
 ### Added

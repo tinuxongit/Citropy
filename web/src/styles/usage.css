@@ -704,9 +704,40 @@
 }
 .limit-window i {
   --fill: var(--text-2);
+  --ahead: color-mix(in oklab, var(--warn) 45%, var(--line-strong));
+  position: relative;
   height: 4px;
   border-radius: var(--r-full);
-  background: linear-gradient(90deg, var(--fill) var(--left), var(--line-strong) var(--left));
+  /* Spend past the clock's mark shows as its own band; otherwise it has no width. */
+  background: linear-gradient(
+    90deg,
+    var(--fill) var(--left),
+    var(--ahead) var(--left) var(--pace, var(--left)),
+    var(--line-strong) var(--pace, var(--left))
+  );
+}
+/* Where the bar would end if spend kept time with the clock. */
+.limit-window[data-pace] i::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: var(--pace);
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text);
+  box-shadow: 0 0 0 1.5px var(--surface);
+}
+.limit-pace {
+  color: var(--text-3);
+}
+.limit-pace b {
+  color: var(--text-2);
+  font-weight: 500;
+}
+.limit-window[data-pace="fast"] .limit-pace b {
+  color: var(--warn);
 }
 .limit-window[data-level="low"] {
   --fill: var(--warn);

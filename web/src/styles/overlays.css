@@ -526,7 +526,12 @@
   border-radius: var(--r-full);
 }
 .usage-peek .limit-reset {
+  grid-area: 1 / 3;
   justify-content: end;
+}
+.usage-peek .limit-pace {
+  grid-column: 1 / -1;
+  margin-top: calc(var(--space-4) - var(--space-12));
 }
 .usage-peek .limit-reset > span:not(:first-child) {
   display: none;
