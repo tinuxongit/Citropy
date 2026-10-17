@@ -231,6 +231,15 @@ export function App() {
 
   useEffect(
     () =>
+      useApp.subscribe((state, previous) => {
+        if (state.readingThreadId !== previous.readingThreadId)
+          window.citropyDesktop?.readingThread?.(state.readingThreadId);
+      }),
+    [],
+  );
+
+  useEffect(
+    () =>
       window.citropyDesktop?.onBrowserSelect((panel) => {
         setView(useApp.getState().threads[panel.threadId ?? ""]?.chat ? "chats" : "chat");
         useApp.setState((state) => ({

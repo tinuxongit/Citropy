@@ -53,7 +53,8 @@ interface Notice {
   title: string;
   text: string;
   silent?: boolean;
-  target?: unknown;
+  toasts?: boolean;
+  target?: { threadId?: string };
 }
 
 type FolderRequest = { id?: unknown; path?: unknown } | undefined;
@@ -156,6 +157,8 @@ const hexColor = /^#[0-9a-f]{6}$/i;
 let socket: WebSocket | undefined;
 let quitting = false;
 const notifications = new Set<Notification>();
+// The chat the user is reading in the window, as the renderer reports it.
+let readingThreadId: string | null = null;
 app.on("before-quit", (event) => {
   if (quitting) return;
   event.preventDefault();
@@ -191,8 +194,14 @@ function macScriptUpdates() {
 
 async function request(method: string, body: unknown) {
   if (method === "notification") {
-    if (!Notification.isSupported() || window.isFocused()) return;
     const params = body as Notice;
+    // A focused window shows notifications as toasts. With toasts off, only the chat being read
+    // counts as seen.
+    if (
+      !Notification.isSupported() ||
+      (window.isFocused() && (params.toasts || params.target?.threadId === readingThreadId))
+    )
+      return;
     const notification = new Notification({
       title: params.title,
       body: params.text.slice(0, 500),
@@ -656,6 +665,9 @@ app
         x: 15,
         y: Math.round((height - buttonHeight) / 2),
       });
+    });
+    ipcMain.on("window:reading", (event, threadId) => {
+      if (trusted(event)) readingThreadId = typeof threadId === "string" ? threadId : null;
     });
     ipcMain.on("window:background", (event, color) => {
       if (!trusted(event) || typeof color !== "string" || !hexColor.test(color)) return;

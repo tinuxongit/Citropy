@@ -57,6 +57,20 @@ export const workspaceTools = (
       annotations: { readOnlyHint: true },
     },
     {
+      name: "notify_user",
+      description:
+        "Send the user a notification and keep working. Use it rarely, only for something they need to notice now while you continue: a problem that needs them soon, or a result they asked to hear about as soon as it happens. Never use it for progress updates or to say you finished, since the end of your reply already notifies them. Use ask_user when you need an answer. Allowed once a minute.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          title: { type: "string", maxLength: 80 },
+          text: { type: "string", maxLength: 300 },
+        },
+        required: ["title", "text"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: "browser_open",
       description:
         "Open a real Chromium tab in Citropy's browser panel at a fixed 1920 × 1080 desktop resolution, scaled to fit the panel. The user sees and can interact with the same page. Use browser_snapshot to inspect it, or browser_action resize to test another resolution.",

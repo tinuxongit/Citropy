@@ -108,7 +108,7 @@ export async function handleMcp(
       id,
       result: {
         tools: [
-          ...workspaceTools.filter((tool) => tool.name === "ask_user"),
+          ...workspaceTools.filter((tool) => ["ask_user", "notify_user"].includes(tool.name)),
           ...discoveryTools,
           ...(thread.provider === "claude" ? [approvalTool] : []),
         ],

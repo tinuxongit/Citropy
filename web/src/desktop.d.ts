@@ -65,6 +65,7 @@ declare global {
       windowState(): Promise<DesktopWindowState>;
       titlebarHeight(height: number): void;
       windowBackground?(color: string): void;
+      readingThread?(threadId: string | null): void;
       captureWindow(): Promise<string>;
       openFolder?(path: string): Promise<void>;
       windowCommand(

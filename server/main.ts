@@ -81,6 +81,7 @@ bus.subscribe((event) => {
     void desktopRequest("notification", {
       ...event.notification,
       silent: !store.notificationPreferences.sound,
+      toasts: store.notificationPreferences.toasts,
     }).catch((error) => console.error("Desktop notification failed:", error));
 });
 

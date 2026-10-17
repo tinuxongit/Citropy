@@ -40,6 +40,7 @@ import { workspaceTools, toolCategories } from "./mcp-catalog.ts";
 import { callBotTool } from "../bots/bot-tools.ts";
 import { callRoutineTool } from "../routines/routine-tools.ts";
 import { callScriptTool } from "../tools/script-tools.ts";
+import { botStore } from "../bots/bot-store.ts";
 
 type Content = { type: "text"; text: string } | { type: "image"; data: string; mimeType: string };
 export const text = (value: unknown): Content[] => [
@@ -58,6 +59,8 @@ export function required(args: Record<string, unknown>, key: string): string {
 
 const MAX_RUNNING_SUBAGENTS = 4;
 const MAX_SUBAGENT_DEPTH = 3;
+const NOTIFY_INTERVAL_MS = 60_000;
+const notifiedAt = new Map<string, number>();
 
 function assertSubagentSlot(parentId: string): void {
   const running = [...store.threads.values()].filter(
@@ -275,6 +278,26 @@ export async function callWorkspaceTool(
           `No browser tab ${missing.browserTab} is open in this workspace. Check browser_tabs.`,
         );
       return text(await askQuestion(threadId, args.questions, { signal }));
+    }
+    case "notify_user": {
+      const title = required(args, "title").trim().slice(0, 80);
+      const body = required(args, "text").trim().slice(0, 300);
+      if (botStore.muted(threadId))
+        return text("The user turned off notifications for this bot. Nothing was sent.");
+      const wait = (notifiedAt.get(threadId) ?? 0) + NOTIFY_INTERVAL_MS - Date.now();
+      if (wait > 0)
+        throw new Error(
+          `You notified the user less than a minute ago. Wait ${Math.ceil(wait / 1000)} seconds.`,
+        );
+      notifiedAt.set(threadId, Date.now());
+      store.notify({
+        kind: "chat",
+        level: "info",
+        title,
+        text: body,
+        target: { view: "chat", projectId: thread.projectId, threadId },
+      });
+      return text("The user was notified.");
     }
     case "browser_open": {
       const account = typeof args.account === "string" ? args.account : undefined;

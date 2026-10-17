@@ -2,6 +2,14 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.14.3
+
+### Added
+- Agents can send you a notification while they keep working, for things you need to notice right away.
+
+### Fixed
+- Desktop notifications now arrive while Citropy's window has focus when in-app toasts are off, unless you're reading that chat.
+
 ## 0.14.2
 
 ### Added
