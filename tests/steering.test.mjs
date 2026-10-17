@@ -379,6 +379,32 @@ test("A message a stop dropped can be canceled before the next message", async (
   assert.equal(provider.sent.at(-1), "Keep me\n\nNext");
 });
 
+test("Messages a stop dropped can be sent now without a new message", async (t) => {
+  const { thread, runtime, provider } = await fixture(t);
+  await runtime.send("First");
+  await runtime.send("Steer one");
+  await runtime.send("Steer two");
+  const dropped = thread.messages.slice(-2);
+  await assert.rejects(runtime.sendDropped(dropped[1].id), /already sent/);
+  const stopping = runtime.stop();
+  provider.emit({ type: "turn.end" });
+  provider.finishInterrupt();
+  await stopping;
+  const count = thread.messages.length;
+  await runtime.sendDropped(dropped[1].id);
+  assert.equal(provider.sent.at(-1), "Steer one\n\nSteer two");
+  assert.equal(thread.messages.length, count);
+  assert.deepEqual(
+    dropped.map((message) => message.pending),
+    [false, false],
+  );
+  assert.equal(thread.running, true);
+  await assert.rejects(runtime.sendDropped(dropped[0].id), /already sent/);
+  provider.emit({ type: "turn.end" });
+  await runtime.send("After");
+  assert.equal(provider.sent.at(-1), "After");
+});
+
 test("Messages sent while a stop finishes go out one at a time", async (t) => {
   const { thread, runtime, provider } = await fixture(t);
   await runtime.send("First");

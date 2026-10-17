@@ -380,12 +380,33 @@ class ThreadRuntime {
     await Promise.all(orphaned.map((file) => removeAttachment(this.id, String(file.id))));
   }
 
+  // Starts a turn with every steer a stop dropped, in the order they were sent.
+  async sendDropped(id: string): Promise<void> {
+    if (this.#thread.running || !this.#droppedSteers.some((steer) => steer.messageId === id))
+      throw new Error("This message was already sent.");
+    if (this.#preparing || this.#steering || this.#enqueuing)
+      throw new Error("Your last message is still on its way. Try again in a moment.");
+    if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");
+    if (store.disabledProviders.has(this.#thread.provider))
+      throw new Error("This provider is disabled. Enable it in Settings > Providers.");
+    this.#preparing = true;
+    this.#resume = false;
+    try {
+      await this.#ready();
+      await this.#deliver(undefined);
+    } finally {
+      this.#preparing = false;
+      this.#pump();
+    }
+  }
+
   // Only steers a stop dropped can be canceled. The agent already has the ones still unread.
   async cancelSteer(id: string): Promise<void> {
     const message = this.#thread.messages.find((entry) => entry.id === id);
     if (
       !message?.pending ||
       this.#thread.running ||
+      this.#preparing ||
       this.#unreadSteers.some((steer) => steer.messageId === id)
     )
       throw new Error("This message was already sent.");
@@ -458,7 +479,7 @@ class ThreadRuntime {
       throw new Error("This session has stopped. Send your message again.");
   }
 
-  async #prepare(text: string, files: Attachment[], origin?: MessageOrigin): Promise<Prepared> {
+  async #ready(): Promise<number> {
     assertApplicationReady();
     assertProviderReady(this.#thread.provider);
     const generation = this.#stopGeneration;
@@ -469,6 +490,11 @@ class ThreadRuntime {
     this.#checkSession(generation);
     if (workspaceGitBusy(this.#cwd))
       throw new Error("Wait for the Git action to finish before sending a message.");
+    return generation;
+  }
+
+  async #prepare(text: string, files: Attachment[], origin?: MessageOrigin): Promise<Prepared> {
+    const generation = await this.#ready();
     this.#check(text, files);
     if (this.#thread.compacting) throw new Error("Wait for context compaction to finish.");
     const attachments = await validateAttachments(this.id, files);
@@ -568,22 +594,27 @@ class ThreadRuntime {
     }
   }
 
+  // Without a prepared message, the turn sends only the dropped steers.
   async #deliver(
-    prepared: Prepared,
+    prepared: Prepared | undefined,
     queued?: { item: QueuedMessage; index: number },
   ): Promise<void> {
+    const generation = prepared?.generation ?? this.#stopGeneration;
+    const lead = prepared ?? this.#droppedSteers[0];
+    if (!lead) throw new Error("This message was already sent.");
     try {
       if (this.#stopping) await this.#stopping.promise;
-      this.#checkSession(prepared.generation);
+      this.#checkSession(generation);
       if (workspaceGitBusy(this.#cwd))
         throw new Error("Wait for the Git action to finish before sending a message.");
-      await beginCheckpoint(this.#thread, prepared.messageId);
-      this.#checkSession(prepared.generation);
+      await beginCheckpoint(this.#thread, lead.messageId);
+      this.#checkSession(generation);
     } catch (error) {
       if (queued) this.#requeue(queued.item, queued.index);
       throw error;
     }
-    this.#addUserMessage(prepared);
+    if (prepared) this.#addUserMessage(prepared);
+    else if (this.#thread.finished) store.setThreadFinished(this.#thread.id, false);
     if (this.#thread.canRedo) store.patchThread(this.id, { canRedo: false });
     this.#outputAtTurnStart = this.#thread.usage.output;
     this.#usagePulse = 0;
@@ -597,8 +628,9 @@ class ThreadRuntime {
       snoozedUntil: undefined,
     });
     // A command has to start the prompt, so dropped steers wait for the next plain message.
-    const dropped = SLASH_COMMAND.test(prepared.text.trim()) ? [] : this.#droppedSteers.splice(0);
-    const steers = [...dropped, prepared];
+    const dropped =
+      prepared && SLASH_COMMAND.test(prepared.text.trim()) ? [] : this.#droppedSteers.splice(0);
+    const steers = prepared ? [...dropped, prepared] : dropped;
     try {
       await this.#ensureSession().send(
         steers.map((steer) => steer.prompt).join("\n\n"),
@@ -608,7 +640,7 @@ class ThreadRuntime {
       for (const steer of dropped) store.patchMessage(this.id, steer.messageId, { pending: false });
     } catch (error) {
       this.#droppedSteers.unshift(...dropped);
-      if (!this.#disposed && prepared.generation === this.#stopGeneration) {
+      if (!this.#disposed && generation === this.#stopGeneration) {
         this.#resume = false;
         store.patchThread(this.id, {
           status: "error",

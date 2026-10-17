@@ -238,6 +238,25 @@ test(
       );
     });
 
+    await t.test("collapsed folders keep finished chats until they are read", async () => {
+      await page.evaluate(() => window.setup(3));
+      await page.evaluate(() => {
+        window.updateThread("t0", { status: "working", running: true });
+        window.sidebarStore.setState({ sidebarGroups: { "project:project": false } });
+      });
+      const entry = (id) => page.locator(`.thread-entry[data-thread-id="${id}"]`);
+      await entry("t1").waitFor({ state: "detached" });
+      assert.equal(await entry("t0").count(), 1);
+
+      await page.evaluate(() =>
+        window.updateThread("t0", { status: "idle", running: false, unread: true }),
+      );
+      await entry("t0").locator('[aria-label="Finished, not opened yet"]').waitFor();
+
+      await page.evaluate(() => window.updateThread("t0", { unread: undefined }));
+      await entry("t0").waitFor({ state: "detached" });
+    });
+
     await t.test("snoozed chats count down to when they wake", async () => {
       await page.evaluate(() => window.setup(2));
       await page.evaluate(() => {
@@ -252,6 +271,28 @@ test(
           .getAttribute("aria-description"),
         /^Wakes /,
       );
+    });
+
+    await t.test("chats show a flame when their prompt cache is about to cool", async () => {
+      await page.evaluate(() => window.setup(3));
+      await page.evaluate(() => {
+        const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, turns: 1 };
+        window.updateThread("t0", {
+          usage: { ...usage, cacheExpiresAt: Date.now() + 6.5 * 60_000 },
+        });
+        window.updateThread("t1", {
+          usage: { ...usage, cacheExpiresAt: Date.now() + 30 * 60_000 },
+        });
+        window.updateThread("t2", { usage: { ...usage, cacheExpiresAt: Date.now() - 60_000 } });
+      });
+      const row = (id) => page.locator(`.thread-entry[data-thread-id="${id}"]`);
+      assert.equal(await row("t0").locator(".thread-row-cache").textContent(), "7m");
+      assert.equal(
+        await row("t0").locator(".thread-row").getAttribute("aria-description"),
+        "Prompt cache cools down in 7m",
+      );
+      assert.equal(await row("t1").locator(".thread-row-cache").count(), 0);
+      assert.equal(await row("t2").locator(".thread-row-cache").count(), 0);
     });
   },
 );

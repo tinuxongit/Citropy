@@ -603,6 +603,12 @@
   background: var(--accent-soft);
   color: var(--accent-text);
 }
+.thread-row-cache {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--warn);
+}
 .thread-row-title {
   flex: 1;
   min-width: 0;

@@ -61,7 +61,7 @@ export const shownThreads = (
     : group.threads.filter(
         (item) =>
           threadKey(item.environment, item.thread.id) === selected ||
-          (!item.cached && threadIsActive(item.thread)),
+          (!item.cached && (threadIsActive(item.thread) || Boolean(item.thread.unread))),
       );
 
 export const threadKey = (environment: string, id: string) => `thread:${environment}:${id}`;

@@ -13,6 +13,7 @@ import { send } from "../lib/socket.ts";
 import { clock, day } from "../lib/format.ts";
 import type { MessageOrigin } from "../../../shared/bots.ts";
 import { BotAvatar } from "./bots/BotAvatar.tsx";
+import { ArrowUpIcon } from "./icons/arrows.tsx";
 import { CloseIcon } from "./icons/marks.tsx";
 
 const AUTHOR_AVATAR_SIZE = 20;
@@ -109,7 +110,8 @@ export const MessageBlock = memo(function MessageBlock({
 
   if (shell?.role === "user") {
     const bubble = <UserBubble partIds={shell.partIds} mentions={shell.mentions} />;
-    // A message still dimmed after the run stopped was dropped unread and waits for the next one.
+    // A message still dimmed after the run stopped was dropped unread. It goes out with the next
+    // one unless it is sent now or canceled.
     const cancelable = Boolean(shell.pending && !running && threadId && messageId);
     return (
       <>
@@ -127,6 +129,17 @@ export const MessageBlock = memo(function MessageBlock({
             ) : null}
             {cancelable ? (
               <div className="pending-bubble">
+                <button
+                  type="button"
+                  className="btn pending-send"
+                  data-variant="primary"
+                  aria-label="Send now"
+                  title="Send now"
+                  disabled={!connected}
+                  onClick={() => send({ t: "message.send", threadId: threadId!, id: messageId! })}
+                >
+                  <ArrowUpIcon size={14} />
+                </button>
                 <button
                   type="button"
                   className="icon-btn"

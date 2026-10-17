@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, type CSSProperties } from "react";
 import { PullRequestIcon } from "../icons/git.tsx";
 import { CheckIcon } from "../icons/marks.tsx";
 import { RotateCcwIcon } from "../icons/rotation.tsx";
+import { FlameIcon } from "../icons/nature.tsx";
 import { CircleCheckIcon, HourglassIcon } from "../icons/status.tsx";
 import { TrashIcon } from "../icons/actions.tsx";
 import type { ThreadMeta } from "../../../../shared/protocol.ts";
@@ -23,6 +24,8 @@ import type { ThreadPreviewControls } from "./use-thread-preview.ts";
 import type { SearchMatch } from "./use-thread-search.ts";
 import { finishBlocked, type ThreadTree } from "./use-thread-tree.ts";
 import { threadKey } from "./thread-groups.ts";
+
+const CACHE_WARNING_MS = 10 * 60_000;
 
 function pullRequestNumber(url: string): string | undefined {
   return url.split("/").at(-1);
@@ -71,6 +74,9 @@ export const ThreadRow = memo(function ThreadRow({
     if (working) wasWorking.current = true;
   }, [working]);
   const snoozedUntil = thread.snoozedUntil && !thread.archived ? thread.snoozedUntil : undefined;
+  const cacheLeft = (thread.usage.cacheExpiresAt ?? 0) - now;
+  const cacheMinutes =
+    cacheLeft > 0 && cacheLeft <= CACHE_WARNING_MS ? Math.ceil(cacheLeft / 60_000) : undefined;
   const busy = thread.running || thread.status === "awaiting";
   const blocked = finishBlocked(thread, tree);
   const finishLabel = `${thread.finished ? "Reopen" : "Finish"} ${thread.title}`;
@@ -158,7 +164,11 @@ export const ThreadRow = memo(function ThreadRow({
           data-active={active}
           aria-label={thread.title}
           aria-description={
-            snoozedUntil ? `Wakes ${dateTime(snoozedUntil)}` : dateTime(thread.updatedAt)
+            snoozedUntil
+              ? `Wakes ${dateTime(snoozedUntil)}`
+              : cacheMinutes
+                ? `Prompt cache cools down in ${cacheMinutes}m`
+                : dateTime(thread.updatedAt)
           }
           aria-describedby={describedBy}
           aria-current={active ? "page" : undefined}
@@ -202,6 +212,14 @@ export const ThreadRow = memo(function ThreadRow({
               <HourglassIcon size={11} />
               {until(Math.max(snoozedUntil, now + 60_000), now)}
             </time>
+          ) : cacheMinutes ? (
+            <span
+              className="thread-row-time thread-row-cache"
+              title={`Prompt cache cools down in ${cacheMinutes}m`}
+            >
+              <FlameIcon size={11} aria-hidden="true" />
+              {cacheMinutes}m
+            </span>
           ) : (
             <time className="thread-row-time" dateTime={new Date(thread.updatedAt).toISOString()}>
               {since(thread.updatedAt, now)}

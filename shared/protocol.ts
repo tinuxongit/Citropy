@@ -670,6 +670,7 @@ export type ClientEvent = (
   | { t: "queue.remove"; threadId: string; id: string }
   | { t: "queue.move"; threadId: string; id: string; index: number }
   | { t: "queue.edit"; requestId: string; threadId: string; id: string }
+  | { t: "message.send"; threadId: string; id: string }
   | { t: "message.cancel"; threadId: string; id: string }
   | { t: "thread.remove"; id: string }
   | {

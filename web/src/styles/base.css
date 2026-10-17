@@ -632,13 +632,24 @@ kbd {
 }
 
 .loader {
+  position: relative;
   display: inline-block;
   flex: none;
   width: 1em;
   height: 1em;
   vertical-align: middle;
+}
+.loader > span {
+  position: absolute;
+  inset: 0.3em;
+  border-radius: 50%;
   background: currentColor;
-  mask: var(--loader-strip) 0 0 / 1em var(--loader-height) no-repeat;
+}
+.loader > span:nth-child(2) {
+  rotate: 120deg;
+}
+.loader > span:nth-child(3) {
+  rotate: 240deg;
 }
 
 .file-type-icon {

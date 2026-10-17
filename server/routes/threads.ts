@@ -286,6 +286,11 @@ export const threadRoutes: Routes = {
     runtimeFor(event.threadId).takeQueued(event.id);
     send({ t: "thread.accepted", requestId: event.requestId });
   },
+  "message.send": async (event) => {
+    if (typeof event.threadId !== "string" || typeof event.id !== "string")
+      throw new Error("Choose a message to send.");
+    await runtimeFor(event.threadId).sendDropped(event.id);
+  },
   "message.cancel": async (event) => {
     if (typeof event.threadId !== "string" || typeof event.id !== "string")
       throw new Error("Choose a message to cancel.");

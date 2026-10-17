@@ -1211,6 +1211,14 @@
 .pending-bubble .user-card {
   margin-left: 0;
 }
+.pending-send {
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--r-full);
+}
 .turn-user .attachments {
   justify-content: flex-end;
 }

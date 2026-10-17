@@ -2,6 +2,19 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.14.4
+
+### Added
+- Messages a stop dropped can be sent right away with the arrow button next to them, without writing a new message.
+- A chat in the sidebar shows a flame and the minutes left when its prompt cache cools down within 10 minutes.
+
+### Changed
+- Citropy builds with TypeScript 7 and Vite 8.
+
+### Fixed
+- A finished chat stays visible in a collapsed folder until you open it, like a working one.
+- The thinking spinner was rebuilt so it no longer drifts sideways.
+
 ## 0.14.3
 
 ### Added
