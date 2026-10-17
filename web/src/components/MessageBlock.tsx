@@ -9,9 +9,11 @@ import { MessageActions } from "./MessageActions.tsx";
 import { UserBubble } from "./UserBubble.tsx";
 import type { TimelineRow } from "../lib/timeline.ts";
 import { useApp } from "../lib/store.ts";
+import { send } from "../lib/socket.ts";
 import { clock, day } from "../lib/format.ts";
 import type { MessageOrigin } from "../../../shared/bots.ts";
 import { BotAvatar } from "./bots/BotAvatar.tsx";
+import { CloseIcon } from "./icons/marks.tsx";
 
 const AUTHOR_AVATAR_SIZE = 20;
 
@@ -60,6 +62,8 @@ export const MessageBlock = memo(function MessageBlock({
     state.activeThreadId && state.threads[state.activeThreadId] ? state.activeThreadId : undefined,
   );
   const projectId = useApp((state) => state.threads[threadId ?? ""]?.projectId);
+  const running = useApp((state) => Boolean(state.threads[threadId ?? ""]?.running));
+  const connected = useApp((state) => state.connected);
   const timestamp = useApp((state) => {
     const thread = state.threads[threadId ?? ""];
     return shell ? shell.ts : (thread?.runStartedAt ?? thread?.updatedAt ?? 0);
@@ -104,6 +108,9 @@ export const MessageBlock = memo(function MessageBlock({
   }
 
   if (shell?.role === "user") {
+    const bubble = <UserBubble partIds={shell.partIds} mentions={shell.mentions} />;
+    // A message still dimmed after the run stopped was dropped unread and waits for the next one.
+    const cancelable = Boolean(shell.pending && !running && threadId && messageId);
     return (
       <>
         {stampLine}
@@ -118,7 +125,23 @@ export const MessageBlock = memo(function MessageBlock({
             {shell.attachments?.length && threadId && projectId ? (
               <Attachments files={shell.attachments} projectId={projectId} threadId={threadId} />
             ) : null}
-            <UserBubble partIds={shell.partIds} mentions={shell.mentions} />
+            {cancelable ? (
+              <div className="pending-bubble">
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Cancel this message"
+                  title="Cancel this message"
+                  disabled={!connected}
+                  onClick={() => send({ t: "message.cancel", threadId: threadId!, id: messageId! })}
+                >
+                  <CloseIcon size={14} />
+                </button>
+                {bubble}
+              </div>
+            ) : (
+              bubble
+            )}
             <div className="turn-meta">
               <time>{clock(shell.ts)}</time>
               {threadId && messageId && (

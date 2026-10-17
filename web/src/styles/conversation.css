@@ -1193,10 +1193,23 @@
 }
 .turn-user .message-content {
   max-width: 100%;
+}
+.turn-user .message-content > *,
+.turn-user .user-card {
   transition: opacity var(--dur-fast) ease;
 }
-.turn-user[data-pending] .message-content {
+.turn-user[data-pending] .message-content > :not(.pending-bubble),
+.turn-user[data-pending] .pending-bubble .user-card {
   opacity: 0.5;
+}
+.pending-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+.pending-bubble .user-card {
+  margin-left: 0;
 }
 .turn-user .attachments {
   justify-content: flex-end;

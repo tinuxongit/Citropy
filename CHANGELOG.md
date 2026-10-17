@@ -7,6 +7,10 @@ Each release publishes its section below as the release notes, which the app sho
 ### Added
 - A bot's screen shows tabs when the bot has more than one page open. Pick a tab to watch that page.
 - A bot's screen has back, forward and reload buttons.
+- Messages a stop dropped before Claude Code read them can be canceled with the × next to them.
+
+### Fixed
+- Messages sent while Claude Code was working, and dropped by a stop before it read them, now go out with your next message.
 
 ## 0.14.1
 

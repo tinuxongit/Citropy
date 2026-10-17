@@ -752,10 +752,8 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await page.waitForFunction(
       () => document.querySelector(".image-surface img")?.naturalWidth > 0,
     );
-    assert.equal(
-      await page.getByRole("button", { name: "Fit image", exact: true }).isVisible(),
-      true,
-    );
+    // The zoom controls appear once React handles the image's load event, a moment after naturalWidth is set.
+    await page.getByRole("button", { name: "Fit image", exact: true }).waitFor();
   });
 
   check(

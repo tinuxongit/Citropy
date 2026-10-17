@@ -328,8 +328,8 @@ class ClaudeSession implements AgentSession {
         level: "warn",
         text:
           this.#steers.size === 1
-            ? "Stopped before Claude Code read your latest message. Send it again to run it."
-            : `Stopped before Claude Code read your last ${this.#steers.size} messages. Send them again to run them.`,
+            ? "Stopped before Claude Code read your latest message. It goes out with your next message."
+            : `Stopped before Claude Code read your last ${this.#steers.size} messages. They go out with your next message.`,
       });
     this.#steers.clear();
     if (this.#child.exitCode !== null || this.#child.signalCode !== null) return Promise.resolve();

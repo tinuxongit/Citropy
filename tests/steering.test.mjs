@@ -331,6 +331,54 @@ test("A message sent mid-run steers the agent and stays pending until it is read
   assert.deepEqual(texts(thread), ["/review"]);
 });
 
+test("Messages a stop dropped unread go out with the next message", async (t) => {
+  const { thread, runtime, provider } = await fixture(t);
+  await runtime.send("First");
+  await runtime.send("Steer one");
+  await runtime.send("Steer two");
+  const dropped = thread.messages.slice(-2);
+  const stopping = runtime.stop();
+  provider.emit({ type: "turn.end" });
+  provider.finishInterrupt();
+  await stopping;
+  assert.deepEqual(
+    dropped.map((message) => message.pending),
+    [true, true],
+  );
+  await runtime.send("/review");
+  assert.equal(provider.sent.at(-1), "/review");
+  provider.emit({ type: "turn.end" });
+  await runtime.send("Next");
+  assert.equal(provider.sent.at(-1), "Steer one\n\nSteer two\n\nNext");
+  assert.deepEqual(
+    dropped.map((message) => message.pending),
+    [false, false],
+  );
+  provider.emit({ type: "turn.end" });
+  await runtime.send("After");
+  assert.equal(provider.sent.at(-1), "After");
+});
+
+test("A message a stop dropped can be canceled before the next message", async (t) => {
+  const { thread, runtime, provider } = await fixture(t);
+  await runtime.send("First");
+  await runtime.send("Keep me");
+  await runtime.send("Cancel me");
+  const canceled = thread.messages.at(-1);
+  await assert.rejects(runtime.cancelSteer(canceled.id), /already sent/);
+  const stopping = runtime.stop();
+  provider.emit({ type: "turn.end" });
+  provider.finishInterrupt();
+  await stopping;
+  await runtime.cancelSteer(canceled.id);
+  assert.equal(
+    thread.messages.some((message) => message.id === canceled.id),
+    false,
+  );
+  await runtime.send("Next");
+  assert.equal(provider.sent.at(-1), "Keep me\n\nNext");
+});
+
 test("Messages sent while a stop finishes go out one at a time", async (t) => {
   const { thread, runtime, provider } = await fixture(t);
   await runtime.send("First");

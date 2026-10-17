@@ -75,6 +75,13 @@ interface Prepared {
   origin?: MessageOrigin;
 }
 
+interface Steer {
+  messageId: string;
+  prompt: string;
+  attachments: Attachment[];
+  skills: Array<{ name: string; path: string }>;
+}
+
 export interface SendOptions {
   limitResume?: boolean;
   origin?: MessageOrigin;
@@ -89,7 +96,9 @@ class ThreadRuntime {
   #configuring: Promise<void> | null = null;
   #steering = false;
   /** Steered messages the agent hasn't read yet, oldest first. */
-  #unreadSteers: string[] = [];
+  #unreadSteers: Steer[] = [];
+  /** Steered messages a stop dropped unread. They go out with the next message. */
+  #droppedSteers: Steer[] = [];
   #turnsEnded = 0;
   #checkpointCompletion: Promise<void> | null = null;
   #enqueuing: Promise<void> | undefined;
@@ -344,7 +353,7 @@ class ThreadRuntime {
       if (turn === this.#turnsEnded) {
         const pending = await session.steer(prepared.prompt, prepared.attachments, prepared.skills);
         this.#addUserMessage(prepared, pending === true);
-        if (pending === true) this.#unreadSteers.push(prepared.messageId);
+        if (pending === true) this.#unreadSteers.push(prepared);
         steered = true;
       }
     } catch (error) {
@@ -369,6 +378,25 @@ class ThreadRuntime {
     );
     const orphaned = (item.attachments ?? []).filter((file) => !stillQueued.has(String(file.id)));
     await Promise.all(orphaned.map((file) => removeAttachment(this.id, String(file.id))));
+  }
+
+  // Only steers a stop dropped can be canceled. The agent already has the ones still unread.
+  async cancelSteer(id: string): Promise<void> {
+    const message = this.#thread.messages.find((entry) => entry.id === id);
+    if (
+      !message?.pending ||
+      this.#thread.running ||
+      this.#unreadSteers.some((steer) => steer.messageId === id)
+    )
+      throw new Error("This message was already sent.");
+    this.#droppedSteers = this.#droppedSteers.filter((steer) => steer.messageId !== id);
+    store.replaceMessages(
+      this.id,
+      this.#thread.messages.filter((entry) => entry !== message),
+    );
+    await Promise.all(
+      (message.attachments ?? []).map((file) => removeAttachment(this.id, String(file.id))),
+    );
   }
 
   takeQueued(id: string): QueuedMessage {
@@ -568,9 +596,18 @@ class ThreadRuntime {
       archived: false,
       snoozedUntil: undefined,
     });
+    // A command has to start the prompt, so dropped steers wait for the next plain message.
+    const dropped = SLASH_COMMAND.test(prepared.text.trim()) ? [] : this.#droppedSteers.splice(0);
+    const steers = [...dropped, prepared];
     try {
-      await this.#ensureSession().send(prepared.prompt, prepared.attachments, prepared.skills);
+      await this.#ensureSession().send(
+        steers.map((steer) => steer.prompt).join("\n\n"),
+        steers.flatMap((steer) => steer.attachments),
+        steers.flatMap((steer) => steer.skills),
+      );
+      for (const steer of dropped) store.patchMessage(this.id, steer.messageId, { pending: false });
     } catch (error) {
+      this.#droppedSteers.unshift(...dropped);
       if (!this.#disposed && prepared.generation === this.#stopGeneration) {
         this.#resume = false;
         store.patchThread(this.id, {
@@ -827,9 +864,16 @@ class ThreadRuntime {
   #closeSession(): void {
     const session = this.#session;
     this.#session = null;
-    this.#unreadSteers = [];
+    this.#dropUnreadSteers();
     this.#sessionGeneration += 1;
     session?.dispose();
+  }
+
+  // Steers still unread when a turn ends or the session closes were dropped by a stop. They stay
+  // dimmed until they go out with the next message.
+  #dropUnreadSteers(): void {
+    this.#droppedSteers.push(...this.#unreadSteers);
+    this.#unreadSteers = [];
   }
 
   #applyUsage(incoming?: Partial<Usage>): void {
@@ -989,8 +1033,8 @@ class ThreadRuntime {
         this.#onTurnEnd(event);
         return;
       case "steer.read": {
-        const id = this.#unreadSteers.shift();
-        if (id) store.patchMessage(this.id, id, { pending: false });
+        const steer = this.#unreadSteers.shift();
+        if (steer) store.patchMessage(this.id, steer.messageId, { pending: false });
         return;
       }
       case "notice":
@@ -1122,8 +1166,7 @@ class ThreadRuntime {
     if (!this.#thread.running && !this.#stopping) return;
     const generation = this.#stopGeneration;
     this.#turnsEnded += 1;
-    // Steers still unread here were dropped by a stop, so they stay dimmed.
-    this.#unreadSteers = [];
+    this.#dropUnreadSteers();
     cancelQuestions(this.#thread.id, {
       blockingOnly: !event.error && this.#thread.status !== "stopped",
     });
