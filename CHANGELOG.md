@@ -2,6 +2,12 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.14.2
+
+### Added
+- A bot's screen shows tabs when the bot has more than one page open. Pick a tab to watch that page.
+- A bot's screen has back, forward and reload buttons.
+
 ## 0.14.1
 
 ### Added
