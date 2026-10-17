@@ -15,6 +15,7 @@ import {
   runtimeIfExists,
   disposeRuntime,
   closeIdleSessions,
+  refreshToolsWhenCold,
 } from "../server/runtime.ts";
 import { store } from "../server/store.ts";
 import { threadRoutes } from "../server/routes/threads.ts";
@@ -120,6 +121,27 @@ test("idle sessions with paused queues release their process and retain resumabl
       assert.deepEqual(texts(thread), []);
     });
   }
+});
+
+test("sessions pick up new MCP tools only once their prompt cache is cold", async (t) => {
+  const { thread, runtime, provider } = await fixture(t);
+  await runtime.send("First");
+  provider.emit({ type: "turn.end" });
+  await until(() => !runtime.busy);
+  const now = Date.now();
+  store.patchThread(thread.id, {
+    usage: { ...thread.usage, turns: 1, cacheExpiresAt: now + 60_000 },
+  });
+  closeIdleSessions(now + 60_000);
+  assert.equal(runtimeIfExists(thread.id), runtime);
+  refreshToolsWhenCold();
+  closeIdleSessions(now + 59_999);
+  assert.equal(runtimeIfExists(thread.id), runtime);
+  const { messages } = thread;
+  closeIdleSessions(now + 60_000);
+  assert.equal(runtimeIfExists(thread.id), undefined);
+  assert.equal(provider.disposed, true);
+  assert.equal(thread.messages, messages);
 });
 
 test("finished replies stay unread until the conversation is read", async (t) => {

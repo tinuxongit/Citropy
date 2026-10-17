@@ -6,6 +6,7 @@ import { mcpInstructions } from "./mcp-instructions.ts";
 import { citropySkills } from "../skills.ts";
 import { workspaceTools, approvalTool, discoveryTools } from "./mcp-catalog.ts";
 import { callWorkspaceTool, text } from "./mcp-workspace.ts";
+import { callHubTool, hubInstructions, hubTools } from "./mcp-servers.ts";
 
 export { workspaceTools };
 
@@ -96,10 +97,11 @@ export async function handleMcp(
           : "2025-06-18",
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "citropy", version: packageInfo.version },
-        instructions: mcpInstructions(
-          store.projectDefaults,
-          (await citropySkills(thread.provider)).filter((skill) => skill.enabled),
-        ),
+        instructions:
+          mcpInstructions(
+            store.projectDefaults,
+            (await citropySkills(thread.provider)).filter((skill) => skill.enabled),
+          ) + (await hubInstructions()),
       },
     });
   } else if (method === "tools/list") {
@@ -111,6 +113,7 @@ export async function handleMcp(
           ...workspaceTools.filter((tool) => ["ask_user", "notify_user"].includes(tool.name)),
           ...discoveryTools,
           ...(thread.provider === "claude" ? [approvalTool] : []),
+          ...(await hubTools()),
         ],
       },
     });
@@ -126,13 +129,14 @@ export async function handleMcp(
       const args = params?.arguments;
       if (args !== undefined && (!args || Array.isArray(args) || typeof args !== "object"))
         throw new Error("Tool arguments must be an object");
-      const content = await callWorkspaceTool(
-        threadId,
-        String(params?.name ?? ""),
-        (args ?? {}) as Record<string, unknown>,
-        controller.signal,
-      );
-      reply(res, { jsonrpc: "2.0", id, result: { content, isError: false } });
+      const name = String(params?.name ?? "");
+      const input = (args ?? {}) as Record<string, unknown>;
+      const result = await callHubTool(threadId, name, input, controller.signal);
+      if (result) reply(res, { jsonrpc: "2.0", id, result });
+      else {
+        const content = await callWorkspaceTool(threadId, name, input, controller.signal);
+        reply(res, { jsonrpc: "2.0", id, result: { content, isError: false } });
+      }
     } catch (error) {
       reply(res, {
         jsonrpc: "2.0",

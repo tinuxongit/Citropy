@@ -20,6 +20,7 @@ import { useModalDialog } from "../lib/use-modal-dialog.ts";
 import { useNarrowViewport } from "../lib/use-narrow-viewport.ts";
 import { useReducedMotion } from "../lib/use-reduced-motion.ts";
 import { InboxSettings } from "./InboxSettings.tsx";
+import { McpSettings } from "./McpSettings.tsx";
 import { ProjectSettings } from "./ProjectSettings.tsx";
 import { ProviderSettings } from "./ProviderSettings.tsx";
 import { SectionLink } from "./SectionSidebar.tsx";
@@ -130,6 +131,7 @@ export function Settings({
             {section === "Environments" && <EnvironmentSettings />}
             {section === "Projects" && <ProjectSettings />}
             {section === "Skills" && <SkillsSettings />}
+            {section === "MCP servers" && <McpSettings />}
             {section === "AI assistance" && <AssistanceSettings />}
             {section === "Browser" && <BrowserProfiles />}
             {section === "Connections" && <ConnectionsSettings />}

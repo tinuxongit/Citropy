@@ -61,6 +61,7 @@ import { serveFavicon } from "./favicons.ts";
 import { serveToolImage } from "./tools/tool-images.ts";
 import { serveToolVisual } from "./tools/tool-visuals.ts";
 import { handleConnections } from "./connections.ts";
+import { handleMcpSettings } from "./mcp/mcp-servers.ts";
 import { diagnostics } from "./diagnostics.ts";
 import { usageLimits, usageReport } from "./usage/usage.ts";
 import {
@@ -166,7 +167,7 @@ export async function handleFeatures(
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", "http://localhost");
   if (
-    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|visual-pages|tool-mentions|connections|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|providers|runtimes|shells|sharing|agents)(\/|$)/.test(
+    !/^\/api\/(editor|attachments|assets|preview|favicon|tool-images|visual-pages|tool-mentions|connections|workspaces|projects|threads|commands|skills|usage|diagnostics|browser|providers|runtimes|shells|sharing|agents|mcp)(\/|$)/.test(
       url.pathname,
     )
   )
@@ -616,6 +617,14 @@ export async function handleFeatures(
         await handleConnections(
           req.method ?? "",
           url.pathname.slice("/api/connections".length).replace(/^\//, ""),
+          req.method === "GET" ? {} : await body(req),
+        ),
+      );
+    } else if (/^\/api\/mcp(\/|$)/.test(url.pathname)) {
+      respond(
+        await handleMcpSettings(
+          req.method ?? "",
+          url.pathname.slice("/api/mcp".length).replace(/^\//, ""),
           req.method === "GET" ? {} : await body(req),
         ),
       );

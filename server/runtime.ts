@@ -1324,10 +1324,24 @@ class ThreadRuntime {
 
 const runtimes = new Map<string, ThreadRuntime>();
 
+// Sessions started before Citropy's MCP tools changed. A new tool list makes the next message
+// reread the whole conversation, so each session switches only once its prompt cache is cold.
+const outdatedTools = new WeakSet<ThreadRuntime>();
+
+function takesNewTools(runtime: ThreadRuntime, thread: Thread, now: number): boolean {
+  if (!outdatedTools.has(runtime) || runtime.busy || runtime.scheduled) return false;
+  // Providers that don't report their cache wait for the idle close below.
+  const expires = thread.usage.cacheExpiresAt;
+  return thread.usage.turns === 0 || (expires !== undefined && expires <= now);
+}
+
 export function runtimeFor(threadId: string): ThreadRuntime {
   const existing = runtimes.get(threadId);
-  if (existing) return existing;
   const thread = store.threads.get(threadId);
+  if (existing && thread && takesNewTools(existing, thread, Date.now())) {
+    existing.dispose(true);
+    runtimes.delete(threadId);
+  } else if (existing) return existing;
   if (!thread) throw new Error(`unknown thread ${threadId}`);
   const runtime = new ThreadRuntime(thread);
   runtimes.set(threadId, runtime);
@@ -1397,11 +1411,17 @@ export function closeIdleSessions(now = Date.now()): void {
     }
     const since = idleSince.get(runtime) ?? now;
     idleSince.set(runtime, since);
-    if (now - since < IDLE_SESSION_MS) continue;
+    const idle = now - since >= IDLE_SESSION_MS;
+    if (!idle && !takesNewTools(runtime, thread, now)) continue;
     runtime.dispose(true);
     runtimes.delete(id);
-    store.releaseMessages(id);
+    if (idle) store.releaseMessages(id);
   }
+}
+
+export function refreshToolsWhenCold(): void {
+  for (const runtime of runtimes.values()) outdatedTools.add(runtime);
+  closeIdleSessions();
 }
 
 export function reloadProviderSessions(providerIds: Set<string>): void {

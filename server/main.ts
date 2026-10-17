@@ -27,6 +27,8 @@ import { cancelThreadSearch } from "./routes/threads.ts";
 import { refreshGit } from "./git/git-monitor.ts";
 import { pendingRequests } from "./permissions.ts";
 import { handleMcp, workspaceTools } from "./mcp/mcp.ts";
+import { SIGN_IN_PATH } from "./mcp/mcp-sign-in.ts";
+import { handleSignInReturn, startMcpServers, stopMcpServers } from "./mcp/mcp-servers.ts";
 import { toolConnections } from "./mcp/mcp-access.ts";
 import * as browser from "./browser.ts";
 import {
@@ -171,6 +173,10 @@ const server = createServer(
     }
     if (await handleFeatures(req, res, providerInfo(), () => refreshProviders(true))) return;
 
+    if (url.split("?")[0] === SIGN_IN_PATH && req.method === "GET") {
+      await handleSignInReturn(new URL(url, origin), res);
+      return;
+    }
     if (url.startsWith("/mcp/")) {
       const threadId = url.slice(5).split("?")[0] ?? "";
       await handleMcp(threadId, req, res);
@@ -465,6 +471,7 @@ onShutdown(async () => {
     closed,
     browser.closeBrowsers(),
     waitForStoppedProcesses(),
+    stopMcpServers(),
   ]);
   for (const result of results)
     if (result.status === "rejected")
@@ -483,6 +490,7 @@ server.listen(port, host, async () => {
     }
   }
   await terminals.restore();
+  startMcpServers();
   void refreshProviders().then(() => {
     if (shuttingDown()) return;
     stopProviderUpdateChecks = startProviderUpdateChecks();

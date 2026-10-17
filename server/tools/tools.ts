@@ -159,7 +159,10 @@ export function describeTool(name: string, rawInput: unknown, root = ""): ToolDe
     default: {
       if (name.startsWith("mcp__")) {
         const parts = name.split("__");
-        return { shape: "generic", headline: parts.slice(2).join(" ") || name, detail: parts[1] };
+        // Servers added in Citropy's settings reach agents as mcp__citropy__<server>__<tool>.
+        const [server, ...tool] =
+          parts[1] === "citropy" && parts.length > 3 ? parts.slice(2) : parts.slice(1);
+        return { shape: "generic", headline: tool.join(" ") || name, detail: server };
       }
       return { shape: "generic", headline: name, detail: firstLine(JSON.stringify(input), 90) };
     }

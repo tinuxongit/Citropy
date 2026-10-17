@@ -290,3 +290,290 @@
   flex: 1;
   min-width: 0;
 }
+
+/* MCP servers */
+.mcp-paste {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-lg);
+  transition:
+    border-color var(--dur-instant) var(--ease-out),
+    background var(--dur-instant) var(--ease-out);
+}
+.mcp-paste:focus-within,
+.mcp-paste[data-dragging] {
+  border-color: var(--text-3);
+  background: var(--surface);
+}
+.mcp-paste[data-ready] {
+  border-style: solid;
+  background: var(--surface);
+}
+.mcp-paste-field {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-8);
+  color: var(--text-3);
+  cursor: text;
+}
+.mcp-paste-field > svg {
+  flex: none;
+  margin-top: 3px;
+}
+.mcp-paste-field textarea {
+  flex: 1;
+  min-height: 24px;
+  max-height: 220px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  field-sizing: content;
+  background: none;
+  /* The dashed box shows focus instead. */
+  box-shadow: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-base);
+  line-height: 24px;
+}
+.mcp-paste-field textarea::placeholder {
+  color: var(--text-3);
+}
+.mcp-paste-field textarea:not(:placeholder-shown) {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.mcp-paste-hint {
+  margin: 0 0 0 42px;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+.mcp-paste-found {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-16);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--line);
+}
+.mcp-paste-found ul {
+  display: grid;
+  flex: 1;
+  gap: var(--space-10);
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  list-style: none;
+}
+.mcp-paste-found li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+.mcp-paste-found li > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.mcp-paste-found small,
+.mcp-server-open small {
+  display: block;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mcp-kind {
+  flex: none;
+  padding: 2px var(--space-8);
+  border-radius: var(--r-full);
+  background: var(--raised);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+.mcp-server-icon {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.mcp-found .setting-row {
+  justify-content: flex-start;
+}
+.mcp-found .setting-row > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.mcp-found-icons {
+  display: flex;
+  flex: none;
+}
+.mcp-found-icons > .connection-icon {
+  box-shadow: 0 0 0 3px var(--surface);
+}
+.mcp-found-icons > .connection-icon + .connection-icon {
+  margin-left: -10px;
+}
+.feature-stack > .settings-group:has(> .mcp-server) {
+  padding: 0;
+}
+/* A fixed slot keeps the chevrons in line whatever the status says. */
+.mcp-server .row-actions {
+  justify-content: flex-end;
+  min-width: 170px;
+}
+.mcp-server + .mcp-server {
+  border-top: 1px solid var(--line);
+}
+.mcp-server[data-enabled="false"] .mcp-server-open > :not(.mcp-chevron) {
+  opacity: 0.5;
+}
+.mcp-server-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mcp-server-open > span:nth-child(2) {
+  min-width: 0;
+}
+.mcp-chevron {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-3);
+  transition: rotate var(--dur-instant) var(--ease-out);
+}
+.mcp-server[data-open] .mcp-chevron {
+  rotate: 180deg;
+}
+.mcp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0 var(--space-8);
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+.mcp-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.mcp-status[data-status="connected"] .mcp-dot {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+.mcp-status[data-status="failed"] {
+  color: var(--bad);
+}
+.mcp-status[data-status="failed"] .mcp-dot {
+  box-shadow: 0 0 0 3px var(--bad-soft);
+}
+.mcp-server-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-12);
+  padding: 0 var(--settings-inset) var(--space-16) calc(var(--settings-inset) + 44px);
+}
+.mcp-error {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+}
+.mcp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-12);
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+.mcp-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.mcp-legend > span:first-of-type {
+  margin-left: auto;
+}
+.mcp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+.mcp-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 28px;
+  padding: 0 var(--space-10);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    background var(--dur-instant) var(--ease-out),
+    color var(--dur-instant) var(--ease-out),
+    border-color var(--dur-instant) var(--ease-out);
+}
+.mcp-tool > svg,
+.mcp-legend svg {
+  color: var(--text-3);
+}
+.mcp-tool[data-access="allow"],
+.mcp-legend [data-access="allow"] svg {
+  color: var(--ok);
+}
+.mcp-tool[data-access="allow"] {
+  border-color: transparent;
+  background: var(--ok-soft);
+}
+.mcp-tool[data-access="allow"] > svg {
+  color: inherit;
+}
+.mcp-tool[data-access="off"] {
+  border-style: dashed;
+  color: var(--text-4);
+  text-decoration: line-through;
+}
+.mcp-tool[data-access="off"] > svg {
+  color: var(--text-4);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mcp-tool:hover:not(:disabled) {
+    border-color: var(--text-4);
+  }
+}
+.mcp-server-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}
+.mcp-server-footer code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  margin-right: var(--space-8);
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

@@ -169,6 +169,48 @@ export interface ConnectionAccount {
   profileId: string;
 }
 
+export type McpToolAccess = "ask" | "allow" | "off";
+
+export interface McpTool {
+  name: string;
+  description: string;
+  access: McpToolAccess;
+}
+
+/** Where a server runs: an address online, or a command Citropy starts on this computer. */
+export interface McpServerAddress {
+  name: string;
+  url?: string;
+  command?: string;
+  args?: string[];
+}
+
+/** A server you add once in Citropy. Every provider gets its tools through Citropy. */
+export interface McpServerDraft extends McpServerAddress {
+  env?: Record<string, string>;
+  headers?: Record<string, string>;
+}
+
+// Environment values and headers stay on the server: they often hold keys.
+export interface McpServer extends McpServerAddress {
+  id: string;
+  enabled: boolean;
+  status: "connected" | "starting" | "signin" | "failed";
+  error?: string;
+  signInUrl?: string;
+  tools: McpTool[];
+}
+
+/** A server a provider already has in its own settings, which Citropy can bring in. */
+export interface McpFound extends McpServerAddress {
+  providers: ProviderId[];
+}
+
+export interface McpOverview {
+  servers: McpServer[];
+  found: McpFound[];
+}
+
 export interface ImportBrowser {
   id: string;
   name: string;

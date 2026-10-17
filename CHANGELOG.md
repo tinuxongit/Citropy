@@ -2,6 +2,15 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.15.0
+
+### Added
+- Settings has an MCP servers section. Paste a server's link, command or config and every provider gets its tools in every project.
+- Servers already set up in Claude Code, Codex or OpenCode can be added everywhere with one click.
+- Servers that need an account open their sign-in page in your browser, and Citropy keeps you signed in.
+- Each tool can ask first, run without asking, or be turned off. Tools that only read run without asking by default.
+- Open conversations switch to new tools once their prompt cache cools, so they don't reread their history.
+
 ## 0.14.4
 
 ### Added

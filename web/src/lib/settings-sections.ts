@@ -6,6 +6,7 @@ import { InboxIcon } from "../components/icons/InboxIcon.tsx";
 import { LockIcon } from "../components/icons/LockIcon.tsx";
 import { PaletteIcon } from "../components/icons/PaletteIcon.tsx";
 import { PhoneIcon } from "../components/icons/PhoneIcon.tsx";
+import { PlugIcon } from "../components/icons/hardware.tsx";
 import { PulseIcon } from "../components/icons/PulseIcon.tsx";
 import { ServerIcon } from "../components/icons/ServerIcon.tsx";
 import { SlidersIcon } from "../components/icons/SlidersIcon.tsx";
@@ -86,6 +87,13 @@ export const settingsSections: SettingsSection[] = [
       "Skills you write once for every provider, and skills each provider has installed.",
     group: "Agents",
     icon: BookIcon,
+    desktopOnly: true,
+  },
+  {
+    name: "MCP servers",
+    description: "Tools from MCP servers, added once for every provider.",
+    group: "Agents",
+    icon: PlugIcon,
     desktopOnly: true,
   },
   {

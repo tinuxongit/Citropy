@@ -152,7 +152,10 @@ function shownName({ name, input }: Pick<ToolPart, "name" | "input">): string {
     typeof input.name === "string"
       ? input.name
       : undefined;
-  return inner ? `citropy_${inner}` : name.replace(/^mcp__citropy__/, "citropy_");
+  if (inner) return `citropy_${inner}`;
+  // Servers added in Citropy's settings reach agents as mcp__citropy__<server>__<tool>.
+  if (/^mcp__citropy__[a-z0-9-]+__/.test(name)) return name.replace("mcp__citropy__", "mcp__");
+  return name.replace(/^mcp__citropy__/, "citropy_");
 }
 
 export function toolLabel(part: Pick<ToolPart, "name" | "input" | "status">): string {
