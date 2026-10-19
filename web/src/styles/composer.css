@@ -1,5 +1,5 @@
 .composer {
-  padding: 12px var(--chat-gutter) 18px;
+  padding: 12px var(--chat-gutter) 26px;
   position: relative;
   z-index: 5;
 }
@@ -25,7 +25,7 @@
   display: none;
 }
 .composer-dock > :not(:first-child) {
-  box-shadow: inset 0 1px 0 var(--line);
+  box-shadow: inset 0 1px 0 var(--divider);
 }
 .composer-dock .composer-finished {
   border-radius: 0;
@@ -91,6 +91,7 @@
   mask-size: 100% 100%;
   mask-repeat: no-repeat;
   background: var(--surface);
+  backdrop-filter: blur(16px);
   transition: background-color var(--dur-base) var(--ease-in-out);
 }
 
@@ -111,6 +112,23 @@
   border-radius: inherit;
   background: inherit;
   box-shadow: var(--shadow-md-drop);
+}
+/* The strip casts its own shadow, so the card's must not fall across it. */
+.composer-column:has(> .composer-strip) .composer-shell::before {
+  clip-path: polygon(
+    -50px -50px,
+    calc(100% + 50px) -50px,
+    calc(100% + 50px) calc(100% + 50px),
+    calc(100% - 22px) calc(100% + 50px),
+    calc(100% - 22px) 100%,
+    22px 100%,
+    22px calc(100% + 50px),
+    -50px calc(100% + 50px)
+  );
+}
+.composer-strip {
+  box-shadow: var(--shadow-md-drop);
+  clip-path: inset(0 -50px -50px);
 }
 
 .composer-focus-ring {
@@ -168,17 +186,36 @@
 .composer-row .composer-placeholder {
   padding: var(--space-12) var(--space-8) var(--space-12) var(--space-20);
 }
+@container application (width > 720px) {
+  .composer-attach-inline {
+    flex: none;
+    margin: calc((var(--space-12) * 2 + var(--text-body) * 1.6 - 32px) / 2) 0
+      calc((var(--space-12) * 2 + var(--text-body) * 1.6 - 32px) / 2) var(--space-8);
+    border-radius: var(--r-full);
+  }
+  .composer-row:has(> .composer-attach-inline) :is(.composer-input, .composer-placeholder) {
+    padding-left: var(--space-4);
+  }
+}
 
+/* A drawer under the card, after T3 Code's composer context strip. ComposerFrame draws its glass
+   and outline as part of the card. */
 .composer-bar {
-  --bar-gap: var(--space-8);
+  --bar-gap: var(--space-4);
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--bar-gap);
-  margin-top: 8px;
-  padding-inline: var(--space-8);
+  height: 36px;
+  margin-inline: 22px;
+  /* Centered in the box, the controls read low under the card, so they sit 3px above center. */
+  padding: 0 var(--space-6) 6px;
+  border-radius: 0 0 16px 16px;
+  color: var(--text-3);
+  font-size: var(--text-xs);
 }
 .composer-bar-group {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--bar-gap);
@@ -188,9 +225,59 @@
   position: relative;
   flex: none;
 }
-.composer-bar > :last-child {
-  flex-shrink: 1;
-  min-width: 0;
+.composer-bar-group > * + * {
+  margin-left: var(--space-6);
+}
+.composer-bar-group > * + *::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc((var(--space-6) + var(--bar-gap)) / -2);
+  height: 14px;
+  border-left: 1px solid var(--divider);
+  translate: 0 -50%;
+}
+/* 6px inside the strip's 16px corners, so a 10px radius keeps the highlight concentric. */
+.composer-bar .composer-select {
+  gap: var(--space-4);
+  height: 24px;
+  padding: 0 var(--space-8);
+  border-radius: 10px;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  transition:
+    background var(--hover-fade) var(--ease-out),
+    color var(--hover-fade) var(--ease-out),
+    scale var(--dur-fast) var(--ease-out);
+}
+.composer-bar .composer-select:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.composer-bar .composer-select[aria-expanded="true"] {
+  background: var(--highlight);
+  color: var(--text);
+}
+.composer-bar .composer-select > svg:first-child {
+  width: 14px;
+  height: 14px;
+}
+.composer-bar .composer-model > .model-picker-chevron {
+  display: inline;
+  opacity: 0.6;
+}
+/* A grey logo keeps the strip one quiet row; it takes its colour back while the control is in use. */
+.composer-bar .composer-model > .provider-icon {
+  filter: grayscale(1);
+  opacity: 0.8;
+  transition:
+    filter var(--hover-fade) var(--ease-out),
+    opacity var(--hover-fade) var(--ease-out);
+}
+.composer-bar .composer-model:is(:hover, [aria-expanded="true"]) > .provider-icon {
+  filter: none;
+  opacity: 1;
 }
 
 .composer-actions {
@@ -235,7 +322,7 @@
   font-weight: 500;
   white-space: nowrap;
   transition:
-    background var(--dur-instant) var(--ease-out),
+    background var(--hover-fade) var(--ease-out),
     color var(--dur-instant) var(--ease-out),
     scale var(--dur-fast) var(--ease-out);
 }
@@ -389,7 +476,7 @@
   font-size: var(--text-sm);
   text-align: left;
   transition:
-    background var(--dur-instant) var(--ease-out),
+    background var(--hover-fade) var(--ease-out),
     color var(--dur-instant) var(--ease-out);
 }
 .menu-option {
@@ -578,7 +665,7 @@
 .context-compacting,
 .context-connection,
 .context-actions {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--divider);
 }
 
 .context-heading {
@@ -708,7 +795,7 @@
   display: grid;
   align-items: center;
   margin: 0 calc(-1 * var(--space-8)) var(--space-6);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--divider);
 }
 .menu-search-field > svg {
   position: absolute;
@@ -822,7 +909,7 @@
   border-radius: var(--r-sm);
   color: var(--text-3);
   transition:
-    background var(--dur-instant) var(--ease-out),
+    background var(--hover-fade) var(--ease-out),
     color var(--dur-instant) var(--ease-out);
 }
 .tuning-tabs button:hover:not(:disabled) {
@@ -845,7 +932,7 @@
   min-height: 0;
   padding: var(--space-6);
   overflow-y: auto;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--divider);
   scrollbar-width: none;
 }
 .model-picker-providers > .selection-highlight {
@@ -863,7 +950,7 @@
   font-size: var(--text-sm);
   text-align: left;
   transition:
-    background var(--dur-instant) var(--ease-out),
+    background var(--hover-fade) var(--ease-out),
     color var(--dur-instant) var(--ease-out);
 }
 .model-picker-row > .truncate {
@@ -1188,7 +1275,7 @@
   border-radius: var(--r-sm);
   color: var(--text);
   font-size: var(--text-sm);
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .composer-queue-item:hover {
   background: var(--hover);
@@ -1293,7 +1380,7 @@
   text-align: left;
   color: var(--text-3);
   font-size: var(--text-sm);
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .permission-toggle:hover {
   background: var(--hover);
@@ -1447,7 +1534,7 @@
   text-align: left;
   color: var(--text-3);
   font-size: var(--text-sm);
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .composer-wide-tab-raise:hover {
   background: var(--hover);
@@ -1624,7 +1711,7 @@
   gap: var(--space-16);
   padding: var(--space-8);
   border-radius: var(--r-sm);
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .usage-limit-action:hover:has(:enabled) {
   background: var(--hover);

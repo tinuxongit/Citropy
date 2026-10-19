@@ -294,7 +294,7 @@ export function ComposerInput({
                 ? `Message ${group?.name ?? botName}`
                 : thread.chat
                   ? "Ask anything…"
-                  : "Ask a question or describe a change…"
+                  : "Ask anything, @ for files and skills, / for commands"
         }
         onKey={(event) => {
           if (visible && event.key === "Escape") {

@@ -213,16 +213,55 @@ button.markdown-image:focus-visible {
   background: transparent;
 }
 
-.prose a {
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 22%, transparent);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
-  transition: text-decoration-color var(--dur-instant) var(--ease-out);
+/* Links read as outlined chips, so they stand out from the text and the backdrop behind it.
+   Each wrapped line gets its own rounded ends. */
+.prose a:not(:has(.markdown-image)) {
+  /* Links are mostly lowercase, so the letters are centered on their x-height rather than the
+     line box, which sits them high in it. */
+  padding: 0 0.65em 0.24em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--accent) 8%, var(--raised-solid));
+  text-decoration: none;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition:
+    background var(--hover-fade) var(--ease-out),
+    border-color var(--dur-instant) var(--ease-out);
 }
-
-.prose a:hover {
-  text-decoration-color: currentColor;
+.prose a:not(:has(.markdown-image)):hover {
+  border-color: var(--accent-line);
+  background: color-mix(in srgb, var(--accent) 14%, var(--raised-solid));
+  text-decoration: none;
+}
+/* The favicon sits as far from the chip's round end as from its top and bottom. */
+.prose a:not(:has(.markdown-image)):has(> .link-site-icon) {
+  padding-left: 0.3em;
+}
+/* A long bare URL would otherwise move whole to the next line, leaving its icon alone in an empty
+   chip; breaking anywhere keeps it beside the icon. */
+.prose a[data-bare] {
+  word-break: break-all;
+}
+.prose a:not(:has(.markdown-image)):has(> .link-file-icon) {
+  padding-left: 0.4em;
+}
+.link-file-icon {
+  display: inline-block;
+  margin-inline-end: var(--space-4);
+  vertical-align: -2px;
+}
+.link-file-icon > svg {
+  display: block;
+}
+.prose a > .link-site-icon {
+  margin-inline-end: var(--space-4);
+}
+/* Sites draw their favicons for a light page, so dark ones like GitHub's vanish on a dark chip. */
+.prose .link-site-icon > img {
+  padding: 1.5px;
+  border-radius: 50%;
+  background: #fff;
 }
 
 .prose strong {

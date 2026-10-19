@@ -113,9 +113,7 @@ export function ToolCard({ part }: { part: ToolPart }) {
 }
 
 function StatusMark({ status }: { status: ToolPart["status"] }) {
-  if (status === "running")
-    return <Loader size={12} className="tool-spin" role="img" aria-label="running" />;
-  if (status === "ok") return null;
+  if (status === "running" || status === "ok") return null;
   if (status === "denied") return <BanIcon size={12} className="tool-bad" aria-label="denied" />;
   if (status === "stopped")
     return <StopIcon size={10} className="tool-stopped" aria-label="stopped" />;

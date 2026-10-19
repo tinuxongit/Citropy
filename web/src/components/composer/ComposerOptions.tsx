@@ -420,7 +420,6 @@ export function EffortMenu({
   const effort = effectiveEffort(model, thread.effort);
   if (!effort && !model?.fastMode) return null;
   const label = effort ? formatEffort(effort) : thread.fastMode ? "Fast" : "Standard";
-  const choices = effort ? efforts.map(formatEffort) : ["Standard", "Fast"];
   return (
     <TuningMenu
       thread={thread}
@@ -436,13 +435,7 @@ export function EffortMenu({
       ) : (
         <BoltIcon size={BAR_ICON_SIZE} />
       )}
-      <span className="composer-label composer-label-stack">
-        {choices.map((choice) => (
-          <span key={choice} data-current={choice === label || undefined}>
-            {choice}
-          </span>
-        ))}
-      </span>
+      <span className="composer-label">{label}</span>
       {effort && thread.fastMode && <BoltIcon size={FAST_BADGE_SIZE} />}
     </TuningMenu>
   );

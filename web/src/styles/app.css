@@ -21,6 +21,19 @@
   height: 100%;
   isolation: isolate;
 }
+/* Frameless desktop windows get a hairline edge; macOS draws its own and maximized windows need none.
+   The compositor rounds the window itself (8px on Windows 11 and KWin 6.7), so the edge follows that
+   curve instead of being clipped at the corners. */
+:root:not([data-platform="darwin"], [data-maximized])
+  .shell:has(> .topbar[data-desktop="true"])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  pointer-events: none;
+}
 .shell:has(
   > .shell-body > .sliding-panel[data-side="left"][data-shown="true"],
   > .shell-body > .stage > .section-view > .sliding-panel[data-side="left"][data-shown="true"]
@@ -145,6 +158,25 @@
     );
     pointer-events: none;
   }
+  /* Outlines the workspace frame along the titlebar and strip, following the rounded corner. */
+  .shell-body::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    border-top-left-radius: var(--r-lg);
+    pointer-events: none;
+  }
+  .rail::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 20;
+    border-right: 1px solid var(--line);
+    pointer-events: none;
+  }
 }
 
 .topbar-right {
@@ -187,7 +219,7 @@
   color: var(--text-2);
   font-size: var(--text-sm);
   text-align: left;
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .model-picker-trigger:hover:not(:disabled) {
   background: var(--hover);
@@ -610,7 +642,7 @@
   font-size: var(--text-sm);
   text-align: left;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 
@@ -670,7 +702,7 @@
   background: var(--text-4);
   opacity: 0;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     opacity var(--dur-fast);
 }
 .panel-resize:hover::after,

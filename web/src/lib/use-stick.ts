@@ -17,6 +17,9 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
   const pointerHeld = useRef(false);
   const lastInput = useRef(0);
   const shownEnd = useRef(0);
+  // Rows still settle into their measured heights right after the view is placed at the end;
+  // gliding those corrections makes a freshly opened chat drift into place.
+  const placedAt = useRef(0);
   const [atBottom, setAtBottom] = useState(true);
   const [nearBottom, setNearBottom] = useState(true);
   const stopFollowing = useCallback(() => {
@@ -31,6 +34,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     stuck.current = true;
     readingExpanded.current = false;
     setAtBottom(true);
+    if (behavior !== "smooth") placedAt.current = performance.now();
     node.scrollTo({ top: node.scrollHeight, behavior });
     if (content.current) shownEnd.current = contentEnd(content.current);
     lastTop.current = node.scrollTop;
@@ -126,6 +130,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
       if (
         !distance ||
         Math.abs(distance) >= node.clientHeight ||
+        performance.now() - placedAt.current < SETTLE_MS ||
         scrolling() ||
         matchMedia("(prefers-reduced-motion: reduce)").matches
       )
@@ -171,6 +176,7 @@ export function useStickToBottom<T extends HTMLElement, C extends HTMLElement>()
     window.addEventListener("touchcancel", onPointerUp);
     node.addEventListener("keydown", onKeyDown);
     if (stuck.current) node.scrollTop = node.scrollHeight;
+    placedAt.current = performance.now();
     shownEnd.current = contentEnd(inner);
     lastTop.current = node.scrollTop;
     lastHeight.current = node.scrollHeight;

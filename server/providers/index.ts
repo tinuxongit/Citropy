@@ -20,6 +20,14 @@ import { store } from "../store.ts";
 const lastInfo = new Map<ProviderId, ProviderInfo>();
 const modelLists = new Map<string, { identity: string; at: number; models: ModelOption[] }>();
 
+// One provider failing to detect shows as unavailable instead of failing every provider's refresh.
+function detect(provider: Provider, launch?: ProviderLaunch) {
+  return provider.detect(launch).catch((error: unknown) => {
+    process.stderr.write(`Could not detect ${provider.label}: ${(error as Error).message}\n`);
+    return { available: false, version: undefined };
+  });
+}
+
 async function listModels(
   provider: Provider,
   key: string,
@@ -42,7 +50,7 @@ export async function describeProviders(modelsMaxAge = 0): Promise<ProviderInfo[
       const previous = lastInfo.get(provider.id);
       const detected = store.disabledProviders.has(provider.id)
         ? { available: previous?.available ?? false, version: previous?.version }
-        : await provider.detect();
+        : await detect(provider);
       let models = previous?.models ?? provider.models;
       let modelsError: string | undefined;
       let modelsUpdatedAt = previous?.modelsUpdatedAt;
@@ -88,7 +96,7 @@ export async function describeProviders(modelsMaxAge = 0): Promise<ProviderInfo[
                     available: previousInstance?.available ?? false,
                     version: previousInstance?.version,
                   }
-                : await provider.detect(launch);
+                : await detect(provider, launch);
               let models = previousInstance?.models ?? [];
               let modelsError: string | undefined;
               if (detected.available && !store.disabledProviders.has(provider.id)) {

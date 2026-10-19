@@ -409,6 +409,7 @@ test("Messages a stop dropped can be sent now without a new message", async (t) 
   const dropped = thread.messages.slice(-2);
   await assert.rejects(runtime.sendDropped(dropped[1].id), /already sent/);
   const stopping = runtime.stop();
+  provider.emit({ type: "notice", level: "warn", text: "Stopped before the steers were read." });
   provider.emit({ type: "turn.end" });
   provider.finishInterrupt();
   await stopping;
@@ -416,6 +417,9 @@ test("Messages a stop dropped can be sent now without a new message", async (t) 
   await runtime.sendDropped(dropped[1].id);
   assert.equal(provider.sent.at(-1), "Steer one\n\nSteer two");
   assert.equal(thread.messages.length, count);
+  // They went out after the stopped turn's output, so they now start the new turn.
+  assert.deepEqual(thread.messages.slice(-2), dropped);
+  assert.equal(thread.messages.at(-3).role, "assistant");
   assert.deepEqual(
     dropped.map((message) => message.pending),
     [false, false],

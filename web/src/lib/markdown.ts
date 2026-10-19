@@ -4,7 +4,14 @@ import { highlight } from "./highlight.ts";
 import { rawCode } from "./raw-code.ts";
 import { serverUrl } from "./environment.ts";
 import { faviconUrl } from "./favicon.ts";
-import { BOOK_ICON, COPIED_ICON, COPY_ICON, RUN_ICON, SITE_ICON } from "./markdown-icons.ts";
+import {
+  BOOK_ICON,
+  COPIED_ICON,
+  COPY_ICON,
+  RUN_ICON,
+  SITE_ICON,
+  fileIconMarkup,
+} from "./markdown-icons.ts";
 import type { MentionTag } from "../../../shared/mention-tags.ts";
 
 interface CodeToken extends Tokens.Code {
@@ -20,6 +27,21 @@ interface MentionToken extends Tokens.Generic {
 function siteIcon(origin: string): string {
   const favicon = escapeHtml(faviconUrl(origin));
   return `<span class="link-site-icon" aria-hidden="true">${SITE_ICON}<img class="link-favicon" src="${favicon}" width="16" height="16" alt="" decoding="async" referrerpolicy="no-referrer"/></span>`;
+}
+
+// Agents (Codex especially) link files as [name](/abs/path#L10) or [name](src/file.ts:10). Those
+// open in the editor; the line suffix is dropped since the editor opens whole files.
+function localFile(href: string): string | undefined {
+  let path = href;
+  try {
+    path = decodeURI(href);
+  } catch {
+    // A malformed escape is still a usable path as written.
+  }
+  path = path.replace(/^file:\/\//i, "");
+  if (!path || /^[#?]/.test(path) || /^[a-z][a-z0-9+.-]*:(?![\\/]|\d+(?::\d+)?$)/i.test(path))
+    return undefined;
+  return path.replace(/#L\d+(?:C\d+)?(?:-L?\d+(?:C\d+)?)?$/, "").replace(/:\d+(?::\d+)?$/, "");
 }
 
 function mentionIcon(tag: MentionTag): string {
@@ -172,7 +194,16 @@ function createParser(
       link(token) {
         const link = token as Tokens.Link;
         const href = escapeHtml(link.href ?? "");
-        if (!/^(https?:|mailto:)/i.test(href)) return this.parser.parseInline(link.tokens);
+        if (!/^(https?:|mailto:)/i.test(href)) {
+          // A linked image already opens in the viewer, so it stays a plain image.
+          const file = link.tokens.some((token) => token.type === "image")
+            ? undefined
+            : localFile(link.href ?? "");
+          const body = this.parser.parseInline(link.tokens);
+          if (!file) return body;
+          const path = escapeHtml(file);
+          return `<a href="#" data-file="${path}" title="${path}"><span class="link-file-icon" aria-hidden="true">${fileIconMarkup(file)}</span>${body}</a>`;
+        }
         let icon = "";
         try {
           const url = new URL(link.href);
@@ -182,7 +213,8 @@ function createParser(
         linkedImage = true;
         const body = this.parser.parseInline(link.tokens);
         linkedImage = previous;
-        return `<a href="${href}" target="_blank" rel="noreferrer noopener">${icon}${body}</a>`;
+        const bare = /^(https?:|mailto:)/i.test(link.text) ? " data-bare" : "";
+        return `<a href="${href}" target="_blank" rel="noreferrer noopener"${bare}>${icon}${body}</a>`;
       },
     },
   });

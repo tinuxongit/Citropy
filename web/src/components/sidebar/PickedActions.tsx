@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { Project, ThreadMeta } from "../../../../shared/protocol.ts";
 import {
   closeProject,
@@ -69,6 +70,27 @@ export function PickedActions({
       projects.map((item) => closeProject(item.project.id, item.environment)),
     ).catch(reportError);
   };
+  const removePicked = useRef(async () => {});
+  removePicked.current = async () => {
+    if (live.length) await remove();
+    if (projects.length) await removeProjects();
+  };
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if ((event.key !== "Delete" && event.key !== "Backspace") || event.repeat) return;
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement;
+      if (
+        target.isContentEditable ||
+        target.closest('input, textarea, select, dialog, [role="dialog"], [role="alertdialog"]')
+      )
+        return;
+      event.preventDefault();
+      void removePicked.current().catch(reportError);
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, []);
 
   return (
     <div className="picked-actions" role="toolbar" aria-label="Selected items">

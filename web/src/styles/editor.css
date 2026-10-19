@@ -102,7 +102,7 @@
   max-width: 240px;
   border-radius: var(--r-sm);
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
   color: var(--text-3);
 }
@@ -183,7 +183,7 @@
 .editor-context-group + .editor-context-group {
   margin-top: var(--space-4);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--divider);
 }
 .editor-context-menu .menu-item {
   width: 100%;
@@ -343,7 +343,7 @@
   background: var(--text-4);
   opacity: 0.35;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     opacity var(--dur-fast);
 }
 .editor-resize:hover::after,

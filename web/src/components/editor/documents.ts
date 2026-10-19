@@ -44,7 +44,8 @@ interface PreviewDocument extends DocumentBase {
 
 export type EditorDocument = TextDocument | PreviewDocument;
 
-export const useDocuments = create<{ documents: EditorDocument[] }>(() => ({
+// `requested` is a project-relative path that another part of the app asked the editor to open.
+export const useDocuments = create<{ documents: EditorDocument[]; requested?: string }>(() => ({
   documents: [],
 }));
 const loading = new Map<string, Promise<EditorDocument>>();

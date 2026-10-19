@@ -12,7 +12,7 @@
   padding: var(--space-12) var(--settings-inset);
 }
 .environment-list > .environment-row + .environment-row {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--divider);
 }
 .environment-icon {
   display: grid;

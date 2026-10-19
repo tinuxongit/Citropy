@@ -34,10 +34,18 @@ function hideBootScreen(): void {
   );
 }
 
+// Without this the splash waits silently forever when the server is down or unreachable.
+const SLOW_MS = 8000;
+
 export function hideBootScreenWhenConnected(): void {
+  const slow = setTimeout(() => {
+    const status = document.getElementById("boot-status");
+    if (status) status.textContent = "Still waiting for the Citropy server…";
+  }, SLOW_MS);
   const stop = useApp.subscribe((state) => {
     if (!state.connected) return;
     stop();
+    clearTimeout(slow);
     hideBootScreen();
   });
 }

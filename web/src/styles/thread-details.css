@@ -94,6 +94,7 @@
 }
 
 .details-card {
+  border: 1px solid var(--line);
   border-radius: var(--details-card-radius);
   background: var(--overlay);
   text-align: left;
@@ -105,7 +106,7 @@
   padding: var(--space-8) var(--space-8) var(--space-10);
 }
 .details-section + .details-section {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--divider);
 }
 
 .details-row {
@@ -122,7 +123,7 @@
   font-weight: 500;
   text-align: left;
   transition:
-    background var(--dur-instant) var(--ease-out),
+    background var(--hover-fade) var(--ease-out),
     scale var(--dur-fast) var(--ease-out);
 }
 .details-row > svg,
@@ -149,16 +150,11 @@ button.details-row:disabled {
   display: flex;
   align-items: center;
   border-radius: var(--details-row-radius);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .details-split > .details-row {
   flex: 1;
   border-radius: var(--details-row-radius) 0 0 var(--details-row-radius);
-}
-.details-separator {
-  flex: none;
-  width: 1px;
-  height: 16px;
-  background: var(--line);
 }
 .details-chevron {
   display: grid;
@@ -168,12 +164,24 @@ button.details-row:disabled {
   height: var(--details-row-height);
   border-radius: 0 var(--details-row-radius) var(--details-row-radius) 0;
   color: var(--text-3);
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
+}
+/* Rows that open a menu read as one button, with the menu split off at its end. */
+.details-menu-row {
+  margin-block: var(--space-2);
+}
+.details-menu-row .details-chevron {
+  border-left: 1px solid var(--divider);
 }
 .details-split > .menu-wrap {
   flex: none;
 }
 
+:is(button.details-row, .details-chevron) {
+  transition:
+    background var(--hover-fade) var(--ease-out),
+    scale var(--dur-fast) var(--ease-out);
+}
 @media (hover: hover) and (pointer: fine) {
   :is(button.details-row, .details-chevron):hover:not(:disabled) {
     background: var(--hover);
@@ -189,7 +197,7 @@ button.details-row:disabled {
   height: var(--details-row-height);
   padding-right: var(--space-4);
   border-radius: var(--details-row-radius);
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .details-toggle {
   display: flex;
@@ -258,9 +266,9 @@ button.details-row:disabled {
   place-items: center;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: calc(var(--details-row-radius) - 4px);
   color: var(--text-3);
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .details-add:disabled {
   opacity: 0.5;

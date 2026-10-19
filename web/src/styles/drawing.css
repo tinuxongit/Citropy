@@ -72,7 +72,7 @@
   height: 26px;
   border-radius: var(--r-sm);
   cursor: pointer;
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .drawing-swatch::before {
   content: "";

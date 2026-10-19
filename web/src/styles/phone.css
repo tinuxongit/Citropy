@@ -1,4 +1,3 @@
-.composer-attach-inline,
 .sidebar-toggle-menu {
   display: none;
 }
@@ -204,9 +203,7 @@
     --canvas-top-inset: calc(var(--phone-header) + var(--phone-fade) / 2);
     mask-image: linear-gradient(
       transparent calc(var(--phone-header) - var(--phone-fade) / 2),
-      #000 calc(var(--phone-header) + var(--phone-fade) / 2),
-      #000 calc(100% - var(--edge-fade)),
-      transparent
+      #000 calc(var(--phone-header) + var(--phone-fade) / 2)
     );
   }
 
@@ -235,9 +232,6 @@
     height: var(--phone-pill);
     border-radius: var(--r-full);
     color: var(--text-2);
-  }
-  .composer-attach {
-    display: none;
   }
   .composer-actions {
     min-height: var(--phone-pill);

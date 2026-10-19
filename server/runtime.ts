@@ -631,6 +631,7 @@ class ThreadRuntime {
     const dropped =
       prepared && SLASH_COMMAND.test(prepared.text.trim()) ? [] : this.#droppedSteers.splice(0);
     const steers = prepared ? [...dropped, prepared] : dropped;
+    if (dropped.length) this.#moveToTurnStart(steers.map((steer) => steer.messageId));
     try {
       await this.#ensureSession().send(
         steers.map((steer) => steer.prompt).join("\n\n"),
@@ -899,6 +900,19 @@ class ThreadRuntime {
     this.#dropUnreadSteers();
     this.#sessionGeneration += 1;
     session?.dispose();
+  }
+
+  // Dropped steers were written during the stopped turn but only go out now. Left where they were
+  // written, the stopped turn's last steps and this turn's output would read as one turn under them.
+  #moveToTurnStart(ids: string[]): void {
+    const messages = this.#thread.messages;
+    const moved = ids.flatMap((id) => messages.filter((message) => message.id === id));
+    const now = Date.now();
+    for (const message of moved) message.ts = now;
+    store.replaceMessages(this.id, [
+      ...messages.filter((message) => !moved.includes(message)),
+      ...moved,
+    ]);
   }
 
   // Steers still unread when a turn ends or the session closes were dropped by a stop. They stay

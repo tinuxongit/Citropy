@@ -64,10 +64,14 @@ async function terminalStatus(
   }
 }
 
-function accountStatus(provider: Provider, launch: Launch) {
-  return provider.signIn.kind === "terminal"
-    ? terminalStatus(provider, provider.signIn, launch)
-    : provider.signIn.status(launch);
+// One provider's failure is reported on its own card instead of failing every provider's refresh.
+async function accountStatus(provider: Provider, launch: Launch) {
+  if (provider.signIn.kind === "terminal") return terminalStatus(provider, provider.signIn, launch);
+  try {
+    return await provider.signIn.status(launch);
+  } catch (error) {
+    return { error: `Could not check sign-in: ${(error as Error).message}` };
+  }
 }
 
 export function providerSignIns(): Promise<ProviderSignIn[]> {

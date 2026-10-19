@@ -52,7 +52,7 @@ export function DetailSplitRow({
   ...primary
 }: RowProps & { menu: MenuItem[]; menuLabel: string; extra?: ReactNode; onMenuOpen?: () => void }) {
   return (
-    <div className="details-split">
+    <div className="details-split details-menu-row">
       <button
         type="button"
         className="details-row"
@@ -63,7 +63,6 @@ export function DetailSplitRow({
         <RowContent icon={primary.icon} label={primary.label} hint={primary.hint} />
       </button>
       {extra}
-      <span className="details-separator" aria-hidden="true" />
       <Menu
         items={menu}
         span=".details-split"

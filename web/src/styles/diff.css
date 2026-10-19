@@ -114,7 +114,7 @@
   font-size: var(--text-xs);
   text-align: left;
   transition:
-    background var(--dur-instant) var(--ease-out),
+    background var(--hover-fade) var(--ease-out),
     color var(--dur-instant) var(--ease-out);
 }
 

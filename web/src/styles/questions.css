@@ -76,7 +76,7 @@
   gap: var(--space-10);
   padding: var(--space-10) var(--space-12);
   border-radius: var(--r-sm);
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 
 .question-option:hover {

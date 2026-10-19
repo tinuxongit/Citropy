@@ -374,7 +374,7 @@
   border-radius: var(--r-sm);
   min-width: 0;
   padding: 0 var(--space-2) 0 var(--space-4);
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 
 .git-file-row:hover {
@@ -715,7 +715,7 @@
   border-radius: var(--r-sm);
   text-align: left;
   width: 100%;
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .git-history-row > svg {
   margin-top: var(--space-2);
@@ -876,7 +876,7 @@
   padding: var(--space-10) var(--space-12);
   border-radius: var(--r-sm);
   min-width: 0;
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .git-branch-row:hover,
 .git-remote-row:hover {

@@ -108,6 +108,13 @@ function Workspace({
   const showExplorer = explorer || !current;
   const request = useRef(0);
   const tabStrip = useRef<HTMLDivElement>(null);
+  const requested = useDocuments((state) => state.requested);
+
+  useEffect(() => {
+    if (!requested) return;
+    useDocuments.setState({ requested: undefined });
+    void open(requested);
+  }, [requested]);
 
   useEffect(() => {
     if (active) setStarted(true);

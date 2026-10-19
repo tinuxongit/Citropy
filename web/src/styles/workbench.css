@@ -37,7 +37,7 @@
   border-radius: var(--r-md);
   color: var(--text-3);
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 .workbench-open:hover:not(:disabled) {
@@ -65,7 +65,7 @@
   z-index: -1;
   border-radius: inherit;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     transform var(--dur-fast) var(--ease-out);
   pointer-events: none;
 }
@@ -75,18 +75,13 @@
   left: calc(var(--tab-gap) / -2);
   width: 1px;
   height: var(--tab-separator-height);
-  background: var(--line);
+  background: var(--divider);
   transition: opacity var(--dur-instant);
   pointer-events: none;
 }
 .workbench-tab:is(:hover, [data-active="true"])::before,
 .workbench-tab:is(:hover, [data-active="true"]) + .workbench-tab::before {
   opacity: 0;
-}
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .workbench-tab:not([data-active="true"]):hover::after {
-    transform: scale(var(--hover-grow));
-  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .workbench-tab:active {
@@ -111,7 +106,7 @@
   border-radius: var(--r-md);
   isolation: isolate;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant),
     transform var(--dur-fast) var(--ease-out);
 }
@@ -839,7 +834,7 @@
   background: var(--raised);
   text-align: left;
   cursor: pointer;
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .panel-starter-card:hover {
   background: var(--hover);

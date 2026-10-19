@@ -126,7 +126,7 @@
   font-size: var(--text-sm);
   text-align: left;
   transition:
-    background var(--dur-instant) var(--ease-out),
+    background var(--hover-fade) var(--ease-out),
     color var(--dur-instant) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {

@@ -5,7 +5,7 @@ import { useApp } from "../../lib/store.ts";
 import { useTextReveal } from "../../lib/use-text-reveal.ts";
 import { ImageViewer, type ViewerImage } from "../ImageViewer.tsx";
 import { copyText } from "../../lib/copy-text.ts";
-import { runCommand } from "../../lib/actions.ts";
+import { openFileInEditor, runCommand } from "../../lib/actions.ts";
 import { reportError } from "../../lib/api.ts";
 import { connectVisual } from "../../lib/visual-frames.ts";
 import type { MentionTag } from "../../../../shared/mention-tags.ts";
@@ -67,6 +67,15 @@ export function Prose({
             } catch (error) {
               reportError(error);
             }
+            return;
+          }
+          const file =
+            event.target instanceof Element
+              ? event.target.closest<HTMLAnchorElement>("a[data-file]")
+              : null;
+          if (file?.dataset.file && root.current?.contains(file)) {
+            event.preventDefault();
+            openFileInEditor(file.dataset.file);
             return;
           }
           const copy =

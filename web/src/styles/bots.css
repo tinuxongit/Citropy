@@ -295,7 +295,7 @@
   isolation: isolate;
   margin: 0 var(--space-8);
   border-radius: var(--r-lg);
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .bot-card:not([data-active="true"]):is(:hover, :has(:focus-visible)) {
   background: var(--hover);
@@ -597,7 +597,7 @@
   background: var(--raised);
   color: var(--text);
   text-align: left;
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .bot-routine-row:hover,
 .bot-settings-link:hover {
@@ -739,7 +739,7 @@
   width: var(--bot-option-size);
   height: var(--bot-option-size);
   border-radius: var(--r-md);
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .bot-shape:hover {
   background: var(--hover);
@@ -859,7 +859,7 @@
   border-radius: var(--r-md);
   background: var(--surface);
   text-align: left;
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 .bot-template-card:hover:not(:disabled) {
   background: color-mix(in oklab, var(--surface), var(--text) 4%);
@@ -1018,7 +1018,7 @@
   color: var(--text);
   text-align: left;
   cursor: pointer;
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .new-chat-row:hover,
 .new-chat-row:has(:focus-visible),
@@ -1137,7 +1137,7 @@
   height: 36px;
   border-radius: var(--r-sm);
   background: var(--raised);
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .bot-identity-avatar:hover:not(:disabled),
 .bot-identity-avatar[aria-expanded="true"] {

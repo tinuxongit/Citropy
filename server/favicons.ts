@@ -59,6 +59,8 @@ async function read(response: Response, limit: number): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+class RefusedError extends Error {}
+
 async function download(
   url: string,
   accept: string,
@@ -73,7 +75,7 @@ async function download(
   });
   if (!response.ok) {
     await response.body?.cancel();
-    throw new Error("Request failed");
+    throw new RefusedError(`Request failed with ${response.status}`);
   }
   return {
     url: response.url,
@@ -148,13 +150,13 @@ async function loadFavicon(
   url: URL,
   signal: AbortSignal,
 ): Promise<{ type: string; body: Buffer } | undefined> {
-  const page = await download(
-    url.href,
-    "text/html,application/xhtml+xml",
-    pageLimit,
-    2500,
-    signal,
-  ).catch(noIcon);
+  const loadPage = () =>
+    download(url.href, "text/html,application/xhtml+xml", pageLimit, 2500, signal);
+  // Bot checks (Uber Eats, for one) often refuse the first request on a new connection and let the
+  // next one through, and the fallback /favicon.ico is frequently missing on those same sites.
+  const page = await loadPage()
+    .catch((error) => (error instanceof RefusedError ? loadPage() : undefined))
+    .catch(noIcon);
   const candidates = [
     ...new Set([
       ...(page?.type.includes("html")

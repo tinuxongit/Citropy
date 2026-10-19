@@ -208,7 +208,7 @@
   color: var(--text-3);
   text-align: left;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -336,7 +336,7 @@ li[data-state="done"] .setup-rail-number {
   justify-content: flex-end;
   gap: var(--space-10);
   padding: var(--space-16) max(var(--setup-gutter), (100% - var(--setup-column)) / 2);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--divider);
 }
 .setup-actions > [data-variant="ghost"] {
   margin-right: auto;

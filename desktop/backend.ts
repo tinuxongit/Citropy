@@ -2,6 +2,7 @@ import { logFailure } from "../shared/expected-errors.mjs";
 import { defaultPort, portAvailable } from "../shared/ports.mjs";
 import { Worker } from "node:worker_threads";
 import type { DiagnosticDetails } from "./diagnostics.ts";
+import { applyLoginShellPath } from "./login-path.ts";
 
 function waitForExit(running: Worker) {
   return new Promise<void>((resolve, reject) => {
@@ -32,6 +33,8 @@ export function packagedBackend(
       throw new Error(
         "Another server is using Citropy's port. Close it before opening this release.",
       );
+    await applyLoginShellPath(env).catch(logFailure("Reading the login shell's PATH"));
+    if (worker) return;
     worker = new Worker(new URL("../server/main.ts", import.meta.url), {
       argv: ["--packaged"],
       execArgv: [],

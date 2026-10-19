@@ -38,6 +38,7 @@
     }
     .boot-screen[data-done] { opacity: 0; pointer-events: none; }
     .boot-brand {
+      position: relative;
       display: grid;
       justify-items: center;
       transition: opacity 320ms var(--boot-ease), transform 420ms var(--boot-ease), filter 420ms var(--boot-ease);
@@ -87,6 +88,16 @@
       background: var(--text-2, GrayText);
       transition: width 900ms var(--boot-ease);
     }
+    /* Hangs below the bar so it doesn't shift the centered brand when it appears. */
+    .boot-status {
+      position: absolute;
+      top: calc(100% + 16px);
+      margin: 0;
+      white-space: nowrap;
+      font: 400 13px/1.4 var(--font-ui, system-ui), sans-serif;
+      color: var(--text-3, GrayText);
+    }
+    .boot-status:not(:empty) { animation: boot-fade-in 400ms ease both; }
     @keyframes boot-icon-in {
       from { opacity: 0; transform: translateY(6px) scale(0.86); filter: blur(12px); }
     }
@@ -118,6 +129,7 @@
       <div class="boot-icon"><img src="/citropy.svg" alt="" /></div>
       <p class="boot-name">Citropy</p>
       <div class="boot-progress" role="progressbar" aria-label="Loading Citropy"></div>
+      <p class="boot-status" id="boot-status" role="status"></p>
     </div>
   </div>
   <div id="root"></div>

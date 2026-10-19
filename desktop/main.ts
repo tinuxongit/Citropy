@@ -152,7 +152,7 @@ delete process.env.CITROPY_DESKTOP_TOKEN;
 const windowFile = join(app.getPath("userData"), "window.json");
 let window: BrowserWindow;
 // The theme's frame color, which the window shows before the page draws.
-let windowBackground = "#0a0a09";
+let windowBackground = "#0a0a0a";
 const hexColor = /^#[0-9a-f]{6}$/i;
 let socket: WebSocket | undefined;
 let quitting = false;

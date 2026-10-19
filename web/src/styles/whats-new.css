@@ -154,7 +154,7 @@
   font-weight: 500;
   line-height: 1.6;
   vertical-align: middle;
-  transition: background var(--dur-instant) var(--ease-out);
+  transition: background var(--hover-fade) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
   .whats-new-place:hover {

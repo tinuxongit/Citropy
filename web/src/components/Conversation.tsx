@@ -74,6 +74,20 @@ export function Conversation() {
     return () => observer.disconnect();
   }, [viewport]);
   const paddingStart = topInset + scaled(olderCursor ? 76 : 30);
+  // The virtualizer anchors the end of its rows to the end of the scroll area, so it has to count
+  // what sits below them (errors, the tail that clears the composer) or it scrolls them out of view.
+  const rowsElement = useRef<HTMLDivElement>(null);
+  const [endInset, setEndInset] = useState(0);
+  useLayoutEffect(() => {
+    const inner = content.current!;
+    const rowList = rowsElement.current!;
+    const measure = () =>
+      setEndInset(inner.offsetHeight - rowList.offsetTop - rowList.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [content]);
   const timeline = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: rows.length,
     getScrollElement: () => viewport.current,
@@ -85,6 +99,7 @@ export function Conversation() {
         ? paddingStart + savedPosition.index * estimatedRowHeight
         : (viewport.current?.scrollTop ?? rows.length * estimatedRowHeight),
     paddingStart,
+    paddingEnd: endInset,
     overscan: virtualized ? 4 : 40,
     measureElement: (element, entry) => {
       const cached = rowHeights.current.get(element);
@@ -443,9 +458,10 @@ export function Conversation() {
           )}
           <div
             className="timeline-rows"
+            ref={rowsElement}
             style={{
               paddingTop: virtualItems[0]?.start ?? 0,
-              paddingBottom: timeline.getTotalSize() - (virtualItems.at(-1)?.end ?? 0),
+              paddingBottom: timeline.getTotalSize() - endInset - (virtualItems.at(-1)?.end ?? 0),
             }}
           >
             {virtualItems.map((item) => {

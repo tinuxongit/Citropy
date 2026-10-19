@@ -560,7 +560,7 @@
   gap: var(--space-12);
   margin-top: var(--space-4);
   padding: var(--space-10) var(--space-10) var(--space-6);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--divider);
 }
 .dev-data-toggle > span {
   display: grid;

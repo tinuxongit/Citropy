@@ -96,7 +96,7 @@
   color: var(--text-2);
   font-size: var(--text-xs);
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 .routine-day:hover {

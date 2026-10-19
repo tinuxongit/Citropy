@@ -4,6 +4,8 @@ const CHECK = "M4.5 12.75L9.5 17.75L19.5 6.75";
 const DOUBLE_CHECK = "M1.75 12.75L6.25 17.25L16 6.75M12.25 16L13.5 17.25L23 7";
 const CROSS = "M6 6L18 18M18 6L6 18";
 const PLUS = "M12 4.5V19.5M4.5 12H19.5";
+const ADD = "M12 6V18M6 12H18";
+const HEAVY_LINE = 3.25;
 const MINUS = "M4.5 12H19.5";
 const MENU = "M6 9H18M6 15H18";
 const HASH = "M9.75 3.5L7.75 20.5M16.25 3.5L14.25 20.5M4 8.75H20.5M3.5 15.25H20";
@@ -40,6 +42,15 @@ export function PlusIcon(props: IconProps) {
   return (
     <Icon {...props}>
       <Line d={PLUS} width={BOLD_LINE} />
+    </Icon>
+  );
+}
+
+/** A shorter, heavier plus that sits with the solid icons beside it. */
+export function AddIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <Line d={ADD} width={HEAVY_LINE} />
     </Icon>
   );
 }

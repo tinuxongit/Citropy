@@ -43,6 +43,7 @@ import type { PanelKind } from "../../../shared/workbench.ts";
 import { movePanelTab } from "../../../shared/workbench.ts";
 import type { DropEdge } from "../../../shared/move-beside.ts";
 import { randomId } from "./random-id.ts";
+import { useDocuments } from "../components/editor/documents.ts";
 
 export async function saveProjectDefaults(settings: ProjectSettings): Promise<void> {
   const desktop = window.citropyDesktop ?? window.loomDesktop;
@@ -97,6 +98,26 @@ export function openWorkbenchPanel(kind: PanelKind, url?: string): void {
     threadId: state.activeThreadId ?? undefined,
     ...(kind === "browser" && url ? { url } : {}),
   });
+}
+
+/** Opens a file from a reply in the Files panel. Absolute paths must be inside the workspace. */
+export function openFileInEditor(path: string): void {
+  const state = useApp.getState();
+  const thread = state.threads[state.activeThreadId ?? ""];
+  const project = state.projects.find((entry) => entry.id === state.activeProjectId);
+  const root = (thread?.workspacePath ?? project?.path)?.replaceAll("\\", "/");
+  const file = path.replaceAll("\\", "/");
+  const relative = !/^([a-z]:)?\//i.test(file)
+    ? file.replace(/^\.\//, "")
+    : root && file.startsWith(`${root}/`)
+      ? file.slice(root.length + 1)
+      : undefined;
+  if (!relative) {
+    reportError(new Error(`${path} is outside this project, so it can't open in the editor.`));
+    return;
+  }
+  openWorkbenchPanel("files");
+  useDocuments.setState({ requested: relative });
 }
 
 export function openEditorTerminal(filesId: string, create = false): void {

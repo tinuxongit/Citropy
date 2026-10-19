@@ -20,11 +20,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { PlusIcon } from "./icons/marks.tsx";
+import { AddIcon } from "./icons/marks.tsx";
 import { StopIcon } from "./icons/squares.tsx";
 import { CircleCheckIcon } from "./icons/status.tsx";
 import { ArrowUpIcon } from "./icons/arrows.tsx";
-import { AttachIcon } from "./icons/AttachIcon.tsx";
 import { nextTurnSettings, selectedModel } from "../../../shared/model-options.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { ContextUsage } from "./ContextUsage.tsx";
@@ -186,6 +185,23 @@ export function Composer({ onUsage, onSkills }: { onUsage?: () => void; onSkills
     });
   }, [starting, reducedMotion]);
 
+  // The conversation scrolls under the composer, so its end is padded by the composer's height.
+  useLayoutEffect(() => {
+    const element = composerRef.current;
+    const stage = element?.parentElement;
+    if (!element || !stage || starting) return;
+    // Measured now as well, since the observer reports after the first frame is painted.
+    const measure = () =>
+      stage.style.setProperty("--composer-overlay", `${element.offsetHeight}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      stage.style.removeProperty("--composer-overlay");
+    };
+  }, [starting]);
+
   const tabs = useMemo(
     () =>
       thread && (
@@ -316,7 +332,7 @@ export function Composer({ onUsage, onSkills }: { onUsage?: () => void; onSkills
   if (!thread) return null;
   if (thread.nativeAgentId && thread.parentThreadId)
     return (
-      <div className="composer">
+      <div className="composer" ref={composerRef}>
         <div className="subagent-managed">
           This subagent is managed by its parent conversation.
           <button
@@ -450,7 +466,7 @@ export function Composer({ onUsage, onSkills }: { onUsage?: () => void; onSkills
             </div>
           )}
           <div className="composer-row">
-            {attachButton("composer-attach-inline", <PlusIcon size={20} />)}
+            {attachButton("composer-attach-inline", <AddIcon size={22} />)}
             <ComposerInput
               value={value}
               onChange={setValue}
@@ -461,6 +477,7 @@ export function Composer({ onUsage, onSkills }: { onUsage?: () => void; onSkills
               commands={commands}
             />
             <div className="composer-actions">
+              {!thread.groupId && <ContextUsage onCompact={compact} draft={message} />}
               {running && !message && !attachments.length ? (
                 <button
                   className="btn composer-stop"
@@ -489,24 +506,20 @@ export function Composer({ onUsage, onSkills }: { onUsage?: () => void; onSkills
             </div>
           </div>
         </div>
-        <div className="composer-bar">
-          <div className="composer-bar-group">
-            {attachButton("composer-attach", <AttachIcon size={18} />)}
-            {!thread.groupId && !thread.chat && (
-              <PermissionMenu
-                thread={configuredThread!}
-                disabled={!connected || sending || transferring}
-                buttonRef={permissionButton}
-              />
-            )}
-          </div>
-          {!thread.groupId && (
+        {!thread.groupId && (
+          <div className="composer-bar composer-strip">
             <div className="composer-bar-group">
               {!thread.botId && settingsBar}
-              <ContextUsage onCompact={compact} draft={message} />
+              {!thread.chat && (
+                <PermissionMenu
+                  thread={configuredThread!}
+                  disabled={!connected || sending || transferring}
+                  buttonRef={permissionButton}
+                />
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

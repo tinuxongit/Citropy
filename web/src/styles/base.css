@@ -419,7 +419,7 @@ kbd {
 :is(.thread-search, .feature-search, .github-search, .git-filter, .browser-address) {
   box-shadow: inset 0 0 0 2px transparent;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     box-shadow var(--dur-base) var(--ease-out);
 }
 
@@ -474,7 +474,7 @@ kbd {
   font-weight: 500;
   white-space: nowrap;
   transition:
-    background var(--dur-instant) var(--ease-out),
+    background var(--hover-fade) var(--ease-out),
     color var(--dur-instant) var(--ease-out),
     scale var(--dur-fast) var(--ease-out);
 }
@@ -528,7 +528,7 @@ kbd {
   border-radius: var(--r-sm);
   color: var(--text-3);
   transition:
-    background var(--dur-instant) var(--ease-out),
+    background var(--hover-fade) var(--ease-out),
     color var(--dur-instant) var(--ease-out),
     transform var(--dur-instant) var(--ease-out);
 }
@@ -571,11 +571,6 @@ kbd {
   & > :where(svg, .provider-icon):first-child {
     transition: scale var(--dur-fast) var(--ease-out);
   }
-  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-    &:hover > :where(svg, .provider-icon):first-child {
-      scale: var(--icon-hover-grow);
-    }
-  }
   @media (prefers-reduced-motion: no-preference) {
     &:active > :where(svg, .provider-icon):first-child {
       scale: var(--icon-press-shrink);
@@ -585,14 +580,6 @@ kbd {
 }
 
 :where(.btn, .composer-select, .selection-quote, button.details-row):not(:disabled) {
-  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-    &:hover {
-      scale: var(--hover-grow);
-    }
-    &:hover > :where(svg, .provider-icon):first-child {
-      scale: calc(var(--icon-hover-grow) / var(--hover-grow));
-    }
-  }
   @media (prefers-reduced-motion: no-preference) {
     &:active {
       scale: var(--press-shrink);

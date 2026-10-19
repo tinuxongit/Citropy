@@ -383,7 +383,7 @@
   border-radius: var(--r-full);
   background: transparent;
   color: #fff;
-  transition: background-color var(--dur-instant) ease;
+  transition: background-color var(--hover-fade) ease;
 }
 .video-player-seek-wrap {
   position: relative;

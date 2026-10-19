@@ -6,7 +6,7 @@
   --rail-tab-gap: var(--space-8);
   --rail-tab-pad: calc(var(--rail-pad) - var(--rail-tab-gap));
   --rail-section: 30px;
-  --rail-section-gap: var(--space-4);
+  --rail-section-gap: var(--space-2);
   --rail-heading-action: 32px;
   --rail-tab-shape: var(--r-md);
   --tree-gap: var(--space-8);
@@ -144,7 +144,7 @@
   width: var(--strip-action-face);
   height: var(--strip-action-face);
   border-radius: var(--r-sm);
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .navigation-strip :is(.strip-action-face, .unseen-anchor, .app-update-button) > svg.solid-icon {
   width: var(--strip-icon);
@@ -161,14 +161,6 @@
 }
 .navigation-strip .strip-action-face > :first-child {
   transition: transform var(--dur-fast) var(--ease-out);
-}
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .navigation-strip
-    :is(.strip-action, .app-update-button):hover
-    > .strip-action-face
-    > :first-child {
-    transform: scale(var(--icon-hover-grow));
-  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .navigation-strip
@@ -391,7 +383,7 @@
   font-size: var(--text-base);
   text-align: left;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 
@@ -422,7 +414,7 @@
   color: var(--text-3);
   cursor: text;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 
@@ -449,7 +441,7 @@
   font-size: var(--text-sm);
   text-align: left;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 .rail-nav-link > svg {
@@ -521,7 +513,7 @@
   isolation: isolate;
   margin: 0 var(--rail-tab-gap);
   border-radius: var(--rail-tab-shape);
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .thread-card:not([data-active="true"]):is(:hover, :has(:focus-visible)) {
   background: var(--hover);
@@ -538,7 +530,8 @@
   initial-value: 0px;
 }
 .thread-row,
-.global-project-toggle {
+.global-project-toggle,
+.rail-section-toggle {
   --row-fade: -16px;
   --row-fade-mask: linear-gradient(
     to left,
@@ -758,7 +751,7 @@
   border-radius: var(--r-xs);
   color: var(--text-3);
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 
@@ -813,7 +806,7 @@
   inset: 0 var(--rail-tab-gap);
   z-index: -1;
   border-radius: var(--rail-tab-shape);
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .global-project-heading:is(
     :hover,
@@ -879,7 +872,7 @@
   color: var(--text-3);
   opacity: 0;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 .global-project-new {
@@ -927,7 +920,7 @@
   font-size: var(--text-sm);
   text-align: left;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 .global-project-empty > svg {
@@ -965,7 +958,7 @@
   height: var(--rail-section);
   margin: var(--rail-section-gap) var(--rail-tab-gap) 0;
   border-radius: var(--rail-tab-shape);
-  transition: background var(--dur-instant);
+  transition: background var(--hover-fade);
 }
 .rail-section-heading:is(:hover, :has(:focus-visible)) {
   background: var(--hover);
@@ -993,7 +986,12 @@
   flex: 1;
   min-width: var(--space-16);
   height: 1px;
-  background: linear-gradient(to right, var(--line), transparent);
+  background: linear-gradient(to right, var(--divider), transparent);
+}
+/* Section lines run solid into the sidebar's edge. */
+.rail-section-toggle::after {
+  margin-right: calc(-1 * var(--rail-tab-gap));
+  background: var(--divider);
 }
 .rail-section-heading:has(> .menu-wrap):is(
     :hover,
@@ -1001,7 +999,8 @@
     :has(.rail-section-add[aria-expanded="true"])
   )
   .rail-section-toggle {
-  padding-right: var(--rail-section);
+  --row-fade: var(--rail-section);
+  mask: var(--row-fade-mask);
 }
 .rail-section-heading > .menu-wrap {
   position: absolute;
@@ -1024,7 +1023,7 @@
   color: var(--text-3);
   opacity: 0;
   transition:
-    background var(--dur-instant),
+    background var(--hover-fade),
     color var(--dur-instant);
 }
 .rail-section-heading:is(
@@ -1170,7 +1169,7 @@
   gap: var(--space-4);
   flex: none;
   padding: var(--space-8) var(--space-10) var(--space-10);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--divider);
 }
 .picked-actions-header {
   display: flex;

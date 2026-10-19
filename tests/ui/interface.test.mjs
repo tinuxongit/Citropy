@@ -713,7 +713,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
   });
 
   check(
-    "unsupported Markdown links keep their content without opening another app page",
+    "local file links open in the editor and other unsupported links keep only their content",
     async (t) => {
       const page = await fixture(
         t,
@@ -728,8 +728,15 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       assert.deepEqual(
         await page
           .locator("#fixture a")
-          .evaluateAll((links) => links.map((link) => link.getAttribute("href"))),
-        ["https://example.invalid", "mailto:test@example.invalid"],
+          .evaluateAll((links) =>
+            links.map((link) => [link.getAttribute("href"), link.dataset.file]),
+          ),
+        [
+          ["#", "/workspace/app.ts"],
+          ["#", "src/app.ts"],
+          ["https://example.invalid", undefined],
+          ["mailto:test@example.invalid", undefined],
+        ],
       );
       assert.equal(await page.locator("#fixture button.markdown-image").count(), 1);
       await page.getByText("Source", { exact: true }).click();
