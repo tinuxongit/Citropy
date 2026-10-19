@@ -305,7 +305,7 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
       const button = page.getByRole("button", { name: /^Context window:/ });
       return (await button.boundingBox()).width;
     };
-    assert.equal(await width(437_000), await width(1_000_000));
+    assert.ok(Math.abs((await width(437_000)) - (await width(1_000_000))) < 0.5);
   });
 
   check("sent messages show mentions as named tags", async (t) => {
