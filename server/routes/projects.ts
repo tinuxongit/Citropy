@@ -37,7 +37,7 @@ async function runInTerminal(
   const panel = openPanel(projectId, "terminal", threadId);
   renameTerminal(panel.id, name);
   try {
-    await terminals.open(panel.id, cwd, 100, 28, command);
+    await terminals.open(panel.id, cwd, 100, 28, command, undefined, true);
   } catch (error) {
     closePanel(panel.id);
     throw error;

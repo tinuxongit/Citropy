@@ -148,6 +148,27 @@ test(
   },
 );
 
+test(
+  "action terminals close after a successful run and stay open after a failure",
+  { skip: process.platform === "win32" },
+  async () => {
+    const { panelList } = await import("../server/panels.ts");
+    const succeeded = openPanel("project", "terminal");
+    const failed = openPanel("project", "terminal");
+    try {
+      await terminals.open(succeeded.id, root, 80, 24, "true", undefined, true);
+      await terminals.open(failed.id, root, 80, 24, "exit 3", undefined, true);
+      await until(() => terminals.session(failed.id)?.running === false);
+      await until(() => !terminals.session(succeeded.id));
+      assert.ok(!panelList().some((panel) => panel.id === succeeded.id));
+      assert.ok(panelList().some((panel) => panel.id === failed.id));
+    } finally {
+      await terminals.close(succeeded.id);
+      await terminals.close(failed.id);
+    }
+  },
+);
+
 test.after(async () => {
   await terminals.closeAll();
   eventJournal.close();

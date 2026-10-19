@@ -173,6 +173,7 @@ export class TerminalHost {
       cwd: input.cwd,
       command: input.command,
       panel: input.panel,
+      closeOnSuccess: input.closeOnSuccess,
       output: input.command ? `${input.command}\r\n` : "",
       offset: input.command ? input.command.length + 2 : 0,
       running: true,

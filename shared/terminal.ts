@@ -7,6 +7,7 @@ export interface TerminalSession {
   cwd: string;
   command?: string;
   panel?: PanelTab;
+  closeOnSuccess?: boolean;
   output: string;
   offset: number;
   sessionId?: string;
@@ -23,6 +24,7 @@ export interface TerminalOpenInput {
   rows: number;
   command?: string;
   panel?: PanelTab;
+  closeOnSuccess?: boolean;
   env?: Record<string, string>;
 }
 

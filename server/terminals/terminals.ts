@@ -82,12 +82,21 @@ function receive(event: TerminalEvent): void {
       offset: session.offset,
       sessionId: session.sessionId,
     });
+    if (session.closeOnSuccess && event.code === 0) closeFinished(event.id);
   }
+}
+
+function closeFinished(termId: string): void {
+  void close(termId).catch(logFailure("Closing a finished terminal", termId));
+  closePanel(termId);
 }
 
 function attach(session: TerminalSession, recovered = false): void {
   const previous = sessions.get(session.id);
   sessions.set(session.id, session);
+  // A command can finish while the backend is away; recovery must not bring its tab back.
+  if (session.closeOnSuccess && !session.running && session.code === 0)
+    return closeFinished(session.id);
   if (
     recovered &&
     previous &&
@@ -382,6 +391,7 @@ export async function open(
   rows: number,
   command?: string,
   env?: Record<string, string>,
+  closeOnSuccess?: boolean,
 ): Promise<void> {
   await ensure();
   const session = await request<TerminalSession>({
@@ -394,9 +404,11 @@ export async function open(
       command,
       env,
       panel: panelList().find((panel) => panel.id === termId),
+      closeOnSuccess,
     },
   });
-  attach(session);
+  // A terminal service started by an older Citropy drops the flag, so keep it on this side too.
+  attach(closeOnSuccess ? { ...session, closeOnSuccess } : session);
   await request({ op: "resize", termId, cols, rows });
 }
 

@@ -2,6 +2,11 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.17.0
+
+### Changed
+- Terminals opened by project scripts and Run in terminal close when their command succeeds. A failed command keeps its terminal open so you can read the error.
+
 ## 0.16.1
 
 ### Changed
