@@ -1,15 +1,17 @@
-import { AnimatePresence, motion } from "motion/react";
-import { useReducedMotion } from "../lib/use-reduced-motion.ts";
+import { AnimatePresence } from "motion/react";
+import { createPortal } from "react-dom";
 import { useVisibleInterval } from "../lib/use-visible-interval.ts";
-import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useId, useRef, useState } from "react";
 import { CollapseIcon } from "./icons/media.tsx";
+import { ComposerWideTab } from "./composer/ComposerWideTab.tsx";
 import { decimal, since, tokens, until } from "../lib/format.ts";
-import { scaled, useApp, viewportWidth } from "../lib/store.ts";
+import { useApp } from "../lib/store.ts";
 import { selectedModel } from "../../../shared/model-options.ts";
 import { providerAccount } from "../../../shared/provider-account.ts";
 import { estimateTokensFromChars, reportedContext } from "../../../shared/usage-metrics.ts";
 
-const PANEL_WIDTH = 304;
+// Long enough to cross the composer from the ring to the panel above it.
+const CLOSE_DELAY_MS = 250;
 // Above this, re-reading the whole context uncached costs more than compacting it first.
 const COMPACT_SUGGESTION_TOKENS = 100_000;
 
@@ -30,12 +32,11 @@ export const ContextUsage = memo(function ContextUsage({
   onCompact?: () => void;
   draft?: string;
 }) {
-  const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
+  const [tabList, setTabList] = useState<HTMLElement | null>(null);
   const id = useId();
   const ring = useRef<HTMLButtonElement>(null);
-  const details = useRef<HTMLDivElement>(null);
-  const uiScale = useApp((state) => state.uiScale);
+  const closing = useRef(0);
   const connected = useApp((state) => state.connected);
   const thread = useApp((state) => state.threads[state.activeThreadId ?? ""]);
   const provider = useApp((state) =>
@@ -74,43 +75,37 @@ export const ContextUsage = memo(function ContextUsage({
     Boolean(onCompact);
   const label = known ? `${contextPercent}% context used` : "Context usage";
 
-  useLayoutEffect(() => {
-    const panel = details.current;
-    const anchor = ring.current;
-    if (!open || !panel || !anchor) return;
-    panel.showPopover();
-    const position = () => {
-      const bounds = anchor.getBoundingClientRect();
-      const scale = uiScale / 100;
-      const width = Math.min(PANEL_WIDTH, viewportWidth() - 24);
-      panel.style.width = `${scaled(width)}px`;
-      panel.style.maxHeight = `${scaled(Math.max(0, bounds.top / scale - 20))}px`;
-      panel.style.left = `${scaled(Math.max(12, Math.min(bounds.right / scale - width, viewportWidth() - width - 12)))}px`;
-      panel.style.top = `${scaled(Math.max(12, (bounds.top - panel.offsetHeight) / scale - 8))}px`;
-    };
-    position();
-    const resize = new ResizeObserver(position);
-    resize.observe(panel);
-    resize.observe(anchor);
-    window.addEventListener("resize", position);
-    window.addEventListener("scroll", position, true);
-    return () => {
-      resize.disconnect();
-      window.removeEventListener("resize", position);
-      window.removeEventListener("scroll", position, true);
-    };
-  }, [open, uiScale]);
-
+  // The details open as a tab on the composer, like its other tabs, rather than a floating card.
+  useEffect(() => {
+    setTabList(
+      ring.current
+        ?.closest(".composer-shell")
+        ?.querySelector<HTMLElement>(":scope > .composer-tabs") ?? null,
+    );
+  }, []);
+  useEffect(() => () => clearTimeout(closing.current), []);
+  const inside = (target: EventTarget | null) =>
+    target instanceof Node &&
+    Boolean(
+      ring.current?.parentElement?.contains(target) ||
+      document.getElementById(id)?.contains(target),
+    );
   useEffect(() => {
     if (!open) return;
     const closeOutside = (event: PointerEvent) => {
-      if (!(event.target instanceof Node)) return;
-      if (ring.current?.contains(event.target) || details.current?.contains(event.target)) return;
-      setOpen(false);
+      if (!inside(event.target)) setOpen(false);
     };
     document.addEventListener("pointerdown", closeOutside);
     return () => document.removeEventListener("pointerdown", closeOutside);
   }, [open]);
+  const show = () => {
+    clearTimeout(closing.current);
+    setOpen(true);
+  };
+  const hide = () => {
+    clearTimeout(closing.current);
+    closing.current = window.setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
+  };
 
   return (
     <div
@@ -119,10 +114,10 @@ export const ContextUsage = memo(function ContextUsage({
         if (event.target.matches(":focus-visible")) setOpen(true);
       }}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+        if (!inside(event.relatedTarget)) setOpen(false);
       }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={show}
+      onMouseLeave={hide}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.currentTarget
@@ -159,112 +154,116 @@ export const ContextUsage = memo(function ContextUsage({
           />
         </svg>
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: reducedMotion ? 0 : 4, pointerEvents: "none" }}
-            transition={{ duration: reducedMotion ? 0 : 0.16 }}
-            ref={details}
-            popover="manual"
-            className="context-details"
-            role="group"
-            aria-label="Context usage"
-            id={id}
-          >
-            <section className="context-section context-window" aria-labelledby={`${id}-context`}>
-              <div className="context-heading">
-                <strong id={`${id}-context`}>Context</strong>
-                <span className="context-percentage">
-                  {known
-                    ? `${contextPercent}% used`
-                    : shown
-                      ? "Window size unavailable"
-                      : "Not reported yet"}
-                </span>
-              </div>
-              <p
-                className="context-summary"
-                title={
-                  known
-                    ? `${exactTokens(contextTokens)} of ${exactTokens(contextMax)} tokens`
-                    : shown
-                      ? `${exactTokens(contextTokens)} tokens used`
-                      : undefined
-                }
+      {tabList &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <ComposerWideTab
+                key="context"
+                className="context-details"
+                role="group"
+                aria-label="Context usage"
+                id={id}
+                onMouseEnter={show}
+                onMouseLeave={hide}
               >
-                {known
-                  ? `${tokens(contextTokens)} of ${tokens(contextMax)} tokens`
-                  : shown
-                    ? `${tokens(contextTokens)} tokens used`
-                    : contextMax > 0
-                      ? `Window size: ${tokens(contextMax)} tokens`
-                      : "Usage appears when the provider reports it."}
-              </p>
-              {known && (
-                <div
-                  className="context-meter"
-                  role="meter"
+                <section
+                  className="context-section context-window"
                   aria-labelledby={`${id}-context`}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={fill * 100}
-                  aria-valuetext={`${exactTokens(contextTokens)} of ${exactTokens(contextMax)} tokens`}
-                  data-hot={fill > 0.8}
                 >
-                  <span style={{ width: `${fill * 100}%` }} />
-                </div>
-              )}
-              {estimatedNote && <p className="context-estimate">Estimated from conversation</p>}
-            </section>
-            {cacheState && (
-              <section
-                className="context-section context-cache-timer"
-                aria-labelledby={`${id}-cache-timer`}
-              >
-                <div className="context-heading">
-                  <strong id={`${id}-cache-timer`}>Prompt cache</strong>
-                  <span className="context-stat-value" data-cache={cacheState}>
-                    {cacheWarm
-                      ? `Warm · ${until(cacheExpiresAt!, now)} left`
-                      : `Expired ${since(cacheExpiresAt!, now)} ago`}
-                  </span>
-                </div>
-                <p className="context-cache-note">
-                  {cacheWarm
-                    ? "Your next message reuses the saved context at a fraction of the price."
-                    : `Your next message re-reads ${tokens(contextTokens)} tokens at full price.${suggestCompact ? " Compacting first makes that smaller." : ""}`}
-                </p>
-              </section>
+                  <div className="context-heading">
+                    <strong id={`${id}-context`}>Context</strong>
+                    <span className="context-percentage">
+                      {known
+                        ? `${contextPercent}% used`
+                        : shown
+                          ? "Window size unavailable"
+                          : "Not reported yet"}
+                    </span>
+                  </div>
+                  <p
+                    className="context-summary"
+                    title={
+                      known
+                        ? `${exactTokens(contextTokens)} of ${exactTokens(contextMax)} tokens`
+                        : shown
+                          ? `${exactTokens(contextTokens)} tokens used`
+                          : undefined
+                    }
+                  >
+                    {known
+                      ? `${tokens(contextTokens)} of ${tokens(contextMax)} tokens`
+                      : shown
+                        ? `${tokens(contextTokens)} tokens used`
+                        : contextMax > 0
+                          ? `Window size: ${tokens(contextMax)} tokens`
+                          : "Usage appears when the provider reports it."}
+                  </p>
+                  {known && (
+                    <div
+                      className="context-meter"
+                      role="meter"
+                      aria-labelledby={`${id}-context`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={fill * 100}
+                      aria-valuetext={`${exactTokens(contextTokens)} of ${exactTokens(contextMax)} tokens`}
+                      data-hot={fill > 0.8}
+                    >
+                      <span style={{ width: `${fill * 100}%` }} />
+                    </div>
+                  )}
+                  {estimatedNote && <p className="context-estimate">Estimated from conversation</p>}
+                </section>
+                {cacheState && (
+                  <section
+                    className="context-section context-cache-timer"
+                    aria-labelledby={`${id}-cache-timer`}
+                  >
+                    <div className="context-heading">
+                      <strong id={`${id}-cache-timer`}>Prompt cache</strong>
+                      <span className="context-stat-value" data-cache={cacheState}>
+                        {cacheWarm
+                          ? `Warm · ${until(cacheExpiresAt!, now)} left`
+                          : `Expired ${since(cacheExpiresAt!, now)} ago`}
+                      </span>
+                    </div>
+                    <p className="context-cache-note">
+                      {cacheWarm
+                        ? "Your next message reuses the saved context at a fraction of the price."
+                        : `Your next message re-reads ${tokens(contextTokens)} tokens at full price.${suggestCompact ? " Compacting first makes that smaller." : ""}`}
+                    </p>
+                  </section>
+                )}
+                {thread?.compacting ? (
+                  <div className="context-compacting" role="status">
+                    <CollapseIcon size={15} aria-hidden="true" />
+                    Compacting context…
+                  </div>
+                ) : null}
+                {!connected && (
+                  <div className="context-connection" role="status">
+                    Reconnecting…
+                  </div>
+                )}
+                {!thread?.compacting && thread?.externalId && canCompact && onCompact && (
+                  <div className="context-actions">
+                    <button
+                      className="btn"
+                      type="button"
+                      disabled={thread.running || !connected}
+                      onClick={onCompact}
+                    >
+                      <CollapseIcon size={15} aria-hidden="true" />
+                      Compact context
+                    </button>
+                  </div>
+                )}
+              </ComposerWideTab>
             )}
-            {thread?.compacting ? (
-              <div className="context-compacting" role="status">
-                <CollapseIcon size={15} aria-hidden="true" />
-                Compacting context…
-              </div>
-            ) : null}
-            {!connected && (
-              <div className="context-connection" role="status">
-                Reconnecting…
-              </div>
-            )}
-            {!thread?.compacting && thread?.externalId && canCompact && onCompact && (
-              <div className="context-actions">
-                <button
-                  className="btn"
-                  type="button"
-                  disabled={thread.running || !connected}
-                  onClick={onCompact}
-                >
-                  <CollapseIcon size={15} aria-hidden="true" />
-                  Compact context
-                </button>
-              </div>
-            )}
-          </motion.div>
+          </AnimatePresence>,
+          tabList,
         )}
-      </AnimatePresence>
     </div>
   );
 });

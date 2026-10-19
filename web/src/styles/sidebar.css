@@ -20,7 +20,7 @@
   flex-direction: column;
   width: var(--rail);
   flex: none;
-  background: var(--panel);
+  background: var(--sheen), var(--panel);
   min-height: 0;
 }
 .navigation-strip {
@@ -93,7 +93,8 @@
   inset: 0;
   z-index: -2;
   border-radius: calc(var(--r-sm) + var(--strip-blob-inset));
-  background: var(--panel);
+  background: var(--well);
+  box-shadow: var(--inset-well);
 }
 .navigation-strip .app-update-control {
   position: relative;
@@ -134,6 +135,8 @@
   padding: 0;
   border-radius: 0;
   background: none;
+  /* Its face shows the hover, not the full-width button. */
+  box-shadow: none;
   color: var(--text-3);
   transition: color var(--dur-instant);
 }
@@ -158,6 +161,7 @@
 .strip-action:hover > .strip-action-face,
 .navigation-strip .app-update-button:hover > .strip-action-face {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .navigation-strip .strip-action-face > :first-child {
   transition: transform var(--dur-fast) var(--ease-out);
@@ -398,6 +402,7 @@
 .rail-action:hover,
 .section-link:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 
@@ -410,7 +415,7 @@
   height: 32px;
   padding: 0 var(--space-6) 0 var(--space-10);
   border-radius: var(--r-md);
-  background: var(--hover);
+  background: var(--raised);
   color: var(--text-3);
   cursor: text;
   transition:
@@ -449,6 +454,7 @@
 }
 .rail-nav-link:not(:disabled):hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .rail-nav-link:disabled {
@@ -463,7 +469,6 @@
 }
 
 .thread-search:focus-within {
-  background: var(--raised);
   color: var(--text);
 }
 .thread-search input {
@@ -511,12 +516,14 @@
 .thread-card {
   position: relative;
   isolation: isolate;
-  margin: 0 var(--rail-tab-gap);
+  /* A hair apart, so a raised hovered or selected row doesn't touch the next one. */
+  margin: 1px var(--rail-tab-gap);
   border-radius: var(--rail-tab-shape);
   transition: background var(--hover-fade);
 }
 .thread-card:not([data-active="true"]):is(:hover, :has(:focus-visible)) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .thread-list {
   --selection-fill: var(--highlight);
@@ -771,10 +778,12 @@
 }
 .thread-row-finish:hover:not(:disabled) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--ok);
 }
 .thread-row-pr:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .thread-row-finish:disabled {
@@ -814,6 +823,7 @@
     :has(.global-project-more[aria-expanded="true"])
   )::after {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .global-project-heading:is(
   :hover,
@@ -928,6 +938,7 @@
 }
 .global-project-empty:not(:disabled):hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .global-project-empty:disabled {
@@ -962,6 +973,7 @@
 }
 .rail-section-heading:is(:hover, :has(:focus-visible)) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .thread-category:first-child .rail-section-heading {
   margin-top: 0;
@@ -1121,7 +1133,7 @@
 }
 .thread-entry[data-dragging="true"] .thread-card {
   background: var(--raised-2);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--edge-light), var(--shadow-md);
 }
 .thread-entry[data-dragging="true"] .thread-row-actions {
   visibility: hidden;
@@ -1145,7 +1157,7 @@
 }
 .thread-list .thread-category[data-dragging="true"] .global-project-heading::after {
   background: var(--raised-2);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--edge-light), var(--shadow-md);
 }
 .thread-category[data-dragging="true"] :is(.global-project-more, .global-project-new) {
   visibility: hidden;
@@ -1199,6 +1211,7 @@
 .thread-more:hover {
   color: var(--text);
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 @media (hover: none) {
   .thread-more {

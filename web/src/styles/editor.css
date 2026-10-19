@@ -108,6 +108,7 @@
 }
 .editor-tab:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .editor-tab[data-active="true"] {
   color: var(--text);

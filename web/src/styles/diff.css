@@ -120,6 +120,7 @@
 
 .diff-more:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 
@@ -293,6 +294,7 @@
 }
 .restore-choice:hover:not([data-disabled="true"]) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .restore-choice:has(input:checked) {
   background: var(--raised-2);

@@ -132,6 +132,7 @@
 @media (hover: hover) and (pointer: fine) {
   .account-add-button:hover:not(:disabled) {
     background: var(--hover);
+    box-shadow: var(--edge-light), var(--shadow-raised);
     color: var(--text);
   }
 }
@@ -151,7 +152,6 @@
 }
 .account-add > input:focus {
   outline: none;
-  box-shadow: var(--field-focus-ring);
 }
 .account-add-note {
   grid-column: 2 / -1;
@@ -297,7 +297,6 @@
 }
 .environment-field input:focus {
   outline: none;
-  box-shadow: var(--field-focus-ring);
 }
 
 @container application (max-width: 720px) {

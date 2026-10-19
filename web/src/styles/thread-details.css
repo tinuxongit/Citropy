@@ -72,6 +72,8 @@
   max-height: calc(100% - 2 * var(--details-panel-inset));
   overflow-y: auto;
   border-radius: var(--details-card-radius);
+  /* On the panel, since it scrolls and would clip a shadow on the card inside. */
+  box-shadow: var(--shadow-raised), var(--shadow-md-drop);
   translate: 0 calc((1 - var(--details-shown)) * (-100% - var(--details-panel-inset)));
 }
 @starting-style {
@@ -94,9 +96,9 @@
 }
 
 .details-card {
-  border: 1px solid var(--line);
   border-radius: var(--details-card-radius);
-  background: var(--overlay);
+  background: var(--sheen), var(--raised);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   text-align: left;
 }
 
@@ -185,6 +187,7 @@ button.details-row:disabled {
 @media (hover: hover) and (pointer: fine) {
   :is(button.details-row, .details-chevron):hover:not(:disabled) {
     background: var(--hover);
+    box-shadow: var(--edge-light), var(--shadow-raised);
   }
 }
 .details-chevron[aria-expanded="true"] {
@@ -296,6 +299,7 @@ button.details-row:disabled {
   .details-head:hover,
   .details-add:hover:not(:disabled) {
     background: var(--hover);
+    box-shadow: var(--edge-light), var(--shadow-raised);
   }
   .details-item:not(:hover, :focus-within) > .details-item-action {
     opacity: 0;
@@ -305,6 +309,7 @@ button.details-row:disabled {
   }
   .details-item:hover {
     background: var(--hover);
+    box-shadow: var(--edge-light), var(--shadow-raised);
   }
   .details-item > :is(.details-row, .details-item-action):hover:not(:disabled) {
     background: none;

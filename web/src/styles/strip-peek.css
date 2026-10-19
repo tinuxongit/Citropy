@@ -20,7 +20,11 @@
   line-height: 1.5;
   text-align: left;
   pointer-events: none;
-  clip-path: inset(calc(-1 * var(--strip-peek-fillet)) 0 calc(-1 * var(--strip-peek-fillet)) 0);
+  /* Only the left side clips, hiding the card behind the strip as it slides; the rest leaves room
+     for its shadow. */
+  clip-path: inset(
+    calc(-1 * var(--strip-peek-fillet)) -48px calc(-1 * var(--strip-peek-fillet)) 0
+  );
 }
 .strip-peek-card {
   position: relative;
@@ -29,6 +33,8 @@
   max-height: calc(var(--viewport-height) - 2 * var(--strip-peek-edge));
   border-radius: 0 var(--r-popup) var(--r-popup) 0;
   background: var(--canvas-deep);
+  /* Part of the strip, it sits above the sunken workspace and shades it. */
+  box-shadow: var(--peek-shadow);
   translate: -100% 0;
   visibility: hidden;
   transition:

@@ -58,6 +58,7 @@
 }
 .workspace-choice:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .workspace-choice[aria-checked="true"] {
   background: var(--raised-2);

@@ -90,7 +90,7 @@
   pointer-events: none;
   mask-size: 100% 100%;
   mask-repeat: no-repeat;
-  background: var(--surface);
+  background: var(--sheen), var(--surface);
   backdrop-filter: blur(16px);
   transition: background-color var(--dur-base) var(--ease-in-out);
 }
@@ -111,7 +111,7 @@
   pointer-events: none;
   border-radius: inherit;
   background: inherit;
-  box-shadow: var(--shadow-md-drop);
+  box-shadow: var(--shadow-float);
 }
 /* The strip casts its own shadow, so the card's must not fall across it. */
 .composer-column:has(> .composer-strip) .composer-shell::before {
@@ -127,10 +127,15 @@
   );
 }
 .composer-strip {
-  box-shadow: var(--shadow-md-drop);
+  box-shadow: var(--shadow-float);
   clip-path: inset(0 -50px -50px);
 }
 
+@property --ring {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: transparent;
+}
 .composer-focus-ring {
   position: absolute;
   inset: 0;
@@ -138,11 +143,17 @@
   pointer-events: none;
   mask-size: 100% 100%;
   mask-repeat: no-repeat;
-  background: var(--line-strong);
-  transition: background-color var(--dur-base) var(--ease-out);
+  /* Brighter along the top, as if lit from above, like the edges of raised controls. */
+  --ring: var(--line-strong);
+  background: linear-gradient(
+    color-mix(in srgb, var(--ring), var(--text) 12%),
+    var(--ring) 48px,
+    color-mix(in srgb, var(--ring) 70%, transparent)
+  );
+  transition: --ring var(--dur-base) var(--ease-out);
 }
 .composer-shell:focus-within .composer-focus-ring {
-  background: color-mix(in srgb, var(--text) 22%, transparent);
+  --ring: color-mix(in srgb, var(--text) 22%, transparent);
 }
 
 .composer-input {
@@ -253,6 +264,7 @@
 }
 .composer-bar .composer-select:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .composer-bar .composer-select[aria-expanded="true"] {
@@ -299,8 +311,40 @@
   border-radius: var(--r-full);
 }
 
+/* A domed button: lit from the top, shaded along the bottom, on a soft drop shadow.
+   Pressing flattens it into a dip. */
+.composer-send:not(:disabled),
+.composer-stop {
+  background: linear-gradient(
+    color-mix(in srgb, var(--accent), #fff 30%),
+    var(--accent) 60%,
+    color-mix(in srgb, var(--accent), #000 4%)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 6px 14px -6px rgba(0, 0, 0, 0.5);
+}
+.composer-send:not(:disabled):hover,
+.composer-stop:hover {
+  background: linear-gradient(
+    color-mix(in srgb, var(--accent-hover), #fff 34%),
+    var(--accent-hover) 60%,
+    color-mix(in srgb, var(--accent-hover), #000 4%)
+  );
+}
+.composer-send:not(:disabled):active,
+.composer-stop:active {
+  background: color-mix(in srgb, var(--accent), #000 6%);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.25),
+    0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
 .composer-send:disabled {
-  background: var(--raised-2);
+  background: var(--sheen), var(--raised-2);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text-3);
   opacity: 1;
 }
@@ -329,6 +373,7 @@
 
 .composer-select:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 
@@ -361,7 +406,7 @@
   border-radius: var(--r-popup);
   border: 0;
   background: var(--menu);
-  box-shadow: var(--menu-shadow);
+  box-shadow: var(--edge-light), var(--menu-shadow);
   transform-origin: top left;
   --highlight: var(--menu-highlight);
 }
@@ -491,6 +536,7 @@
 }
 .menu-option:has(.menu-item-action):hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .menu-option:has(.menu-item-action)[data-selected] {
   background: var(--highlight);
@@ -515,6 +561,7 @@
 }
 .menu-item-action:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .menu-item-action[aria-pressed="true"] {
   color: var(--warn);
@@ -525,6 +572,7 @@
 
 .menu-item:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .menu-item:focus-visible {
@@ -594,19 +642,10 @@
 }
 
 .context-usage {
-  --context-panel-width: 304px;
   position: relative;
   display: flex;
   flex: none;
   align-items: center;
-}
-.context-usage:has(.context-details)::after {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  width: var(--context-panel-width);
-  height: 10px;
 }
 
 .context-ring {
@@ -620,6 +659,7 @@
 
 .context-ring:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .context-ring[aria-expanded="true"] {
   background: var(--highlight);
@@ -643,17 +683,7 @@
 }
 
 .context-details {
-  position: fixed;
-  inset: auto;
-  margin: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   color: var(--text);
-  width: var(--context-panel-width);
-  padding: 0;
-  border: 0;
-  border-radius: var(--r-popup);
-  background: var(--overlay);
   font-size: var(--text-sm);
 }
 
@@ -914,6 +944,7 @@
 }
 .tuning-tabs button:hover:not(:disabled) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .tuning-tabs button[aria-selected="true"] {
@@ -969,6 +1000,7 @@
 }
 .model-picker-row:hover:not(:disabled) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .model-picker-provider[aria-pressed="true"] {
@@ -1202,6 +1234,7 @@
 }
 .composer-suggestion-list > button:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .composer-suggestion-list > button[aria-selected="true"] {
   background: var(--highlight);
@@ -1279,6 +1312,7 @@
 }
 .composer-queue-item:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .composer-queue-item:focus-within {
   background: var(--highlight);
@@ -1360,8 +1394,8 @@
   width: min(var(--reading), 100%);
   margin: 0 auto;
   border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: var(--surface-shadow);
+  background: var(--sheen), var(--surface);
+  box-shadow: var(--edge-light), var(--surface-shadow);
   overflow: hidden;
 }
 .permission-row {
@@ -1384,6 +1418,7 @@
 }
 .permission-toggle:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .permission-toggle > svg,
 .permission-toggle > strong {
@@ -1505,7 +1540,7 @@
 .composer-tabs:empty {
   display: none;
 }
-.composer-tabs:has(> .composer-wide-tab) {
+.composer-tabs:has(> .composer-wide-tab:not(.context-details)) {
   left: calc(24px - var(--tab-fillet));
 }
 .composer-tabs > .composer-wide-tab {
@@ -1513,6 +1548,11 @@
   min-width: 0;
   padding: 0;
   border-radius: 20px 20px 0 0;
+}
+/* Kept narrow at the right, over the ring that opens it. */
+.composer-tabs > .context-details {
+  flex: none;
+  width: min(304px, calc(var(--viewport-width) - 72px));
 }
 .composer-wide-tab :is(.question-form, .permission-card) {
   width: 100%;
@@ -1538,6 +1578,7 @@
 }
 .composer-wide-tab-raise:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .composer-wide-tab-raise > svg {
   flex: none;
@@ -1715,6 +1756,7 @@
 }
 .usage-limit-action:hover:has(:enabled) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .usage-limit-action strong {
   display: block;

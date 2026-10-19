@@ -273,6 +273,7 @@ button.markdown-image:focus-visible {
   border: 0;
   border-radius: var(--r-md);
   background: var(--code-bg);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   overflow: hidden;
 }
 
@@ -338,6 +339,7 @@ button.markdown-image:focus-visible {
   .code-run:hover,
   .code-copy:hover {
     background: var(--hover);
+    box-shadow: var(--edge-light), var(--shadow-raised);
     color: var(--text);
   }
 }

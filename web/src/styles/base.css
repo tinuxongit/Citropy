@@ -195,7 +195,8 @@ body {
   z-index: -1;
   pointer-events: none;
   border-radius: var(--r-sm);
-  background: var(--selection-fill, var(--highlight));
+  background: var(--sheen), var(--selection-fill, var(--highlight));
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .segmented-tabs {
   display: flex;
@@ -416,11 +417,100 @@ kbd {
   box-shadow: var(--field-focus-ring);
 }
 
-:is(.thread-search, .feature-search, .github-search, .git-filter, .browser-address) {
-  box-shadow: inset 0 0 0 2px transparent;
+/* Fields that draw their own box, around an input or as one, sit into the surface like text fields. */
+:is(
+  .thread-search,
+  .feature-search,
+  .github-search,
+  .git-filter,
+  .browser-address,
+  .note-search,
+  .tools-search,
+  .editor-file-search,
+  .bot-brief,
+  .color-picker-hex,
+  .stepper-amount,
+  .account-add > input,
+  .environment-field input,
+  .git-branch-filter,
+  .sharing-address,
+  .question-custom :is(input, textarea),
+  .git-commit-form textarea,
+  .git-field > input,
+  .github-dialog textarea,
+  .routine-row input:not([type="checkbox"]),
+  .commit-input,
+  .commit-description textarea,
+  .browser-viewport-fields input
+) {
+  box-shadow: var(--inset-sunk);
   transition:
     background var(--hover-fade),
     box-shadow var(--dur-base) var(--ease-out);
+}
+:is(
+  .thread-search,
+  .feature-search,
+  .github-search,
+  .git-filter,
+  .browser-address,
+  .note-search,
+  .tools-search,
+  .editor-file-search,
+  .bot-brief,
+  .color-picker-hex,
+  .stepper-amount,
+  .account-add > input,
+  .environment-field input,
+  .git-branch-filter,
+  .sharing-address,
+  .question-custom :is(input, textarea),
+  .git-commit-form textarea,
+  .git-field > input,
+  .github-dialog textarea,
+  .routine-row input:not([type="checkbox"]),
+  .commit-input,
+  .commit-description textarea,
+  .browser-viewport-fields input
+):focus-within {
+  box-shadow: var(--inset-sunk), var(--field-focus-ring);
+}
+
+/* Segmented controls are tracks sunk into the surface, with the chosen segment raised in them. */
+:is(.segmented-tabs, .github-tabs, .scheme-switch, .usage-segmented, .panel-segmented) {
+  box-shadow: var(--inset-sunk);
+}
+
+/* Cards sit raised, like the conversation details card. */
+:is(
+  .settings-group,
+  .settings-card,
+  .metric-grid > div,
+  .resource-chart,
+  .theme-option,
+  .application-identity,
+  .workspace-choice,
+  .bot-template-card,
+  .turn-changes,
+  .git-current-summary,
+  .git-card-list,
+  .git-stash-list,
+  .git-sync,
+  .usage-provider-card,
+  .usage-project-select,
+  .usage-conversation-list,
+  .limit-card,
+  .feature-table-wrap,
+  .github-repo-metadata,
+  .github-list,
+  .github-comment,
+  .github-item-metadata,
+  .github-files details,
+  .github-account-details,
+  .github-local-workspace
+) {
+  background: var(--sheen), var(--surface);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 
 ::selection {
@@ -469,36 +559,48 @@ kbd {
   border-radius: var(--r-sm);
   border: 0;
   background: var(--raised);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text-2);
   font-size: var(--text-sm);
   font-weight: 500;
   white-space: nowrap;
   transition:
     background var(--hover-fade) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
     color var(--dur-instant) var(--ease-out),
     scale var(--dur-fast) var(--ease-out);
 }
 
 .btn:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 
 .btn:active {
   background: var(--highlight);
+  box-shadow: var(--edge-pressed);
 }
 
 .btn[data-variant="ghost"] {
   background: transparent;
+  box-shadow: none;
 }
 
 .btn[data-variant="ghost"]:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 
 .btn[data-variant="primary"] {
   background: var(--accent);
+  box-shadow:
+    var(--edge-light-strong),
+    0 1px 2px color-mix(in srgb, var(--accent) 24%, transparent);
   color: var(--on-accent);
+}
+.btn[data-variant="primary"]:active {
+  box-shadow: var(--edge-pressed);
 }
 
 .btn[data-variant="primary"]:hover {
@@ -516,6 +618,7 @@ kbd {
 }
 
 .btn:disabled {
+  box-shadow: none;
   opacity: 0.42;
   pointer-events: none;
 }
@@ -535,6 +638,7 @@ kbd {
 
 .icon-btn:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 
@@ -545,6 +649,11 @@ kbd {
 
 .icon-btn:active {
   background: var(--highlight);
+}
+
+/* Open controls sit raised, like hovered ones (each hover rule adds the same edge and shadow). */
+:where(.composer-select, .details-chevron, .icon-btn)[aria-expanded="true"] {
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 
 @media (hover: none) {
@@ -562,6 +671,7 @@ kbd {
 
 .icon-btn[data-active="true"] {
   background: var(--highlight);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--accent-text);
 }
 

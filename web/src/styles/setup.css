@@ -214,6 +214,7 @@
 @media (hover: hover) and (pointer: fine) {
   .setup-rail-steps button:hover {
     background: var(--hover);
+    box-shadow: var(--edge-light), var(--shadow-raised);
     color: var(--text-2);
   }
 }
@@ -283,7 +284,7 @@ li[data-state="done"] .setup-rail-number {
   overflow: hidden;
   border-radius: var(--r-xl);
   background: var(--canvas);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--edge-light), var(--shadow-lg);
 }
 .setup-progress {
   height: 2px;

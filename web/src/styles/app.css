@@ -108,14 +108,6 @@
 :root[data-page-hidden] *::after {
   animation-play-state: paused !important;
 }
-:root::view-transition {
-  pointer-events: none;
-}
-:root::view-transition-old(root),
-:root::view-transition-new(root) {
-  animation-duration: var(--dur-fast);
-  animation-timing-function: var(--ease-out);
-}
 
 .topbar {
   --frame-corner: var(--r-lg);
@@ -164,9 +156,11 @@
     position: absolute;
     inset: 0;
     z-index: 30;
-    border-top: 1px solid var(--line);
-    border-left: 1px solid var(--line);
+    border-top: 1px solid var(--frame-line);
+    border-left: 1px solid var(--frame-line);
     border-top-left-radius: var(--r-lg);
+    /* The workspace sits sunken into the titlebar and strip, shaded under their edges. */
+    box-shadow: var(--frame-sunk);
     pointer-events: none;
   }
   .rail::after {
@@ -223,6 +217,7 @@
 }
 .model-picker-trigger:hover:not(:disabled) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .model-picker-trigger[aria-expanded="true"] {
   background: var(--highlight);
@@ -366,6 +361,14 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
+}
+/* The glass follows the sidebar only while it slides. Switching views swaps one sidebar for another
+   a frame apart, and animating that gap would slide the glass out behind a sidebar already shown. */
+.shell:has(
+    > .shell-body > .sliding-panel[data-side="left"][data-animate="true"],
+    > .shell-body > .stage > .section-view > .sliding-panel[data-side="left"][data-animate="true"]
+  )
+  .backdrop-layers {
   transition: --glass-width var(--dur-panel) var(--ease-drawer);
 }
 .backdrop-layers[data-kind="ascii"] > .stage-backdrop {
@@ -498,7 +501,6 @@
     .strip-peek-card,
     .details-card,
     .toast,
-    .context-details,
     .composer-suggestions,
     .message-nav-preview,
     .remote-connection-banner,
@@ -653,6 +655,7 @@
 
 .recent-item:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 
 .recent-path {
@@ -738,7 +741,6 @@
       [popover]:not(.strip-peek, .menu),
       dialog,
       .strip-peek-card,
-      .context-details,
       .composer-suggestions,
       .message-nav-preview,
       .app-update-popover
@@ -784,7 +786,7 @@
   }
   .sliding-panel > .rail,
   .sliding-panel > .inspector {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--edge-light), var(--shadow-md);
   }
   .shell[data-backdrop] .sliding-panel[data-side="left"] > .rail {
     background: var(--canvas-deep);
@@ -859,6 +861,7 @@
 .window-controls button:hover {
   color: var(--text);
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .window-controls .window-close:hover {
   background: var(--bad);

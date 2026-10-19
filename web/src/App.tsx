@@ -8,7 +8,6 @@ import {
   Suspense,
   useDeferredValue,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -58,7 +57,6 @@ import { chooseWorkspace, createChat, createThread } from "./lib/actions.ts";
 import { reportError } from "./lib/api.ts";
 import { useGitHub } from "./lib/use-github.ts";
 import { BrowserGuests } from "./components/BrowserGuests.tsx";
-import { transitionView, viewShown } from "./lib/view-transition.ts";
 import { lazyView } from "./lib/view-modules.ts";
 import { BrowserTakeover } from "./components/BrowserTakeover.tsx";
 
@@ -175,8 +173,7 @@ export function App() {
     };
   }, []);
 
-  useLayoutEffect(() => viewShown(view), [view]);
-  const showView = (next: typeof view) => {
+  const openView = (next: typeof view) => {
     if (next !== "chat") useApp.setState({ readingThreadId: null });
     setView(next);
     if (next === "chat" || next === "chats") {
@@ -185,7 +182,6 @@ export function App() {
       setSectionSidebarOpen(!isNarrowViewport());
     }
   };
-  const openView = (next: typeof view) => transitionView(next, () => showView(next));
   const toggleNavigation = () => {
     if (conversationView) toggleSidebar();
     else setSectionSidebarOpen((open) => !open);

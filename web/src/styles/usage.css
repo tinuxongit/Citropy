@@ -144,6 +144,7 @@
 }
 .usage-provider-filter button:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .usage-provider-filter button[aria-pressed="false"] {
@@ -459,7 +460,7 @@
   background: color-mix(in oklab, var(--surface), var(--text) 4%);
 }
 .usage-provider-card[aria-pressed="true"] {
-  box-shadow: inset 0 0 0 1.5px var(--series);
+  box-shadow: inset 0 0 0 1.5px var(--series), var(--shadow-raised);
 }
 .usage-provider-name {
   display: flex;

@@ -63,6 +63,7 @@
 }
 .github-sidebar-account:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .github-sidebar-account[aria-current="page"] {
@@ -136,7 +137,6 @@
 .github-search:focus-within {
   color: var(--text);
   background: var(--raised-2);
-  box-shadow: var(--field-focus-ring);
 }
 .github-toolbar .select,
 .github-dialog .select {
@@ -303,6 +303,7 @@
 }
 .github-item:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .github-item[aria-pressed="true"] {
   background: transparent;

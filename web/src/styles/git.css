@@ -290,7 +290,6 @@
 
 .git-filter:focus-within {
   background: var(--raised-2);
-  box-shadow: var(--field-focus-ring);
 }
 .git-filter > svg {
   flex: none;
@@ -360,6 +359,7 @@
 }
 .git-manager .git-stage-all:hover:not(:disabled) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .git-list-hint {
   color: var(--text-3);
@@ -379,6 +379,7 @@
 
 .git-file-row:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .git-file-row[data-selected="true"] {
   background: transparent;
@@ -495,7 +496,8 @@
 .git-stash-list,
 .git-review-pane {
   border-radius: var(--r-lg);
-  background: var(--panel);
+  background: var(--sheen), var(--panel);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   overflow: hidden;
 }
 .git-review-pane {
@@ -748,6 +750,7 @@
 }
 .git-history-row:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .git-history-row[aria-pressed="true"] {
   background: transparent;

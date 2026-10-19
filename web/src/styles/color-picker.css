@@ -44,9 +44,6 @@
   border-radius: var(--r-sm);
   background: var(--raised);
 }
-.color-picker-hex:focus-within {
-  box-shadow: var(--field-focus-ring);
-}
 .color-picker-swatch {
   flex: none;
   width: 18px;

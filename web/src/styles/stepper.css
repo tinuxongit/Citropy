@@ -17,6 +17,7 @@
 }
 .stepper-step:hover:not(:disabled) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .stepper-step:disabled {
@@ -29,9 +30,6 @@
   padding: var(--space-4) 0;
   border-radius: var(--r-md);
   background: var(--popup-well);
-}
-.stepper-amount:focus-within {
-  box-shadow: var(--field-focus-ring);
 }
 .stepper-amount input {
   width: 100%;

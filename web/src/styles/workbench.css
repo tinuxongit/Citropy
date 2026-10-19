@@ -23,6 +23,7 @@
 }
 :root[data-scheme="dark"] .workbench-panel-menu .menu-item:is(:hover, :focus-visible) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .workbench-heading > .icon-btn {
   width: var(--tab-height);
@@ -42,6 +43,7 @@
 }
 .workbench-open:hover:not(:disabled) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .workbench-open[aria-expanded="true"] {
@@ -141,6 +143,7 @@
 }
 .workbench-tab:hover:not([data-active="true"])::after {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .workbench-tab > [role="tab"] {
   display: flex;
@@ -189,6 +192,7 @@
 .workbench-overflow:hover {
   color: var(--text);
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .workbench-overflow[aria-expanded="true"] {
   color: var(--text);
@@ -268,7 +272,6 @@
 }
 .browser-address:focus-within {
   background: var(--raised-2);
-  box-shadow: var(--field-focus-ring);
 }
 .browser-address input {
   width: 100%;
@@ -294,6 +297,7 @@
 .browser-address :is(a, button):hover {
   color: var(--text);
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .browser-screen {
   display: grid;
@@ -412,6 +416,7 @@
 }
 .browser-viewport-trigger:hover:not(:disabled) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .browser-viewport-trigger[aria-expanded="true"] {
   background: var(--highlight);
@@ -673,6 +678,7 @@
 .thread-child:hover {
   --child-surface: var(--raised);
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .thread-child[data-active="true"] {
@@ -838,6 +844,7 @@
 }
 .panel-starter-card:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .panel-starter-label {
   color: var(--text);

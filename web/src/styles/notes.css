@@ -22,9 +22,6 @@
   background: var(--raised);
   color: var(--text-4);
 }
-.note-search:focus-within {
-  box-shadow: var(--field-focus-ring);
-}
 .note-search input {
   flex: 1;
   min-width: 0;
@@ -55,6 +52,7 @@
 }
 .note-row:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .note-row-title {
   color: var(--text);

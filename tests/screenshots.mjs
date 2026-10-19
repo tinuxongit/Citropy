@@ -981,7 +981,6 @@ async function main() {
         },
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
-          await page.getByRole("button", { name: "Account", exact: true }).click();
           await page.getByRole("button", { name: "Settings", exact: true }).click();
           await page.getByRole("button", { name: "Phone access", exact: false }).click();
           await page.locator(".sharing-qr svg").waitFor();
@@ -1013,7 +1012,6 @@ async function main() {
         },
         act: async (page) => {
           await page.locator(".turn").first().waitFor();
-          await page.getByRole("button", { name: "Account", exact: true }).click();
           await page.getByRole("button", { name: "Usage", exact: true }).click();
           await page.getByRole("button", { name: "Overview", exact: true }).click();
           await page.locator(".usage-chart").waitFor();

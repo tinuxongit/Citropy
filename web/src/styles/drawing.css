@@ -84,6 +84,7 @@
 }
 .drawing-swatch:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .drawing-swatch[aria-pressed="true"] {
   background: var(--highlight);
@@ -119,7 +120,7 @@
   min-height: 0;
   overflow: hidden;
   border-radius: var(--r-md);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--edge-light), var(--shadow-md);
 }
 .drawing-layer {
   position: absolute;
@@ -204,6 +205,7 @@
 }
 .drawing-layer-row:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .drawing-layer-row[data-selected] {
   background: var(--highlight);

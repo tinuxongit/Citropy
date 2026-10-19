@@ -10,8 +10,8 @@
   width: min(var(--reading), 100%);
   max-height: calc(var(--viewport-height) * 0.48);
   margin: 0 auto;
-  background: var(--surface);
-  box-shadow: var(--surface-shadow);
+  background: var(--sheen), var(--surface);
+  box-shadow: var(--edge-light), var(--surface-shadow);
   border-radius: var(--r-xl);
   overflow: hidden;
 }
@@ -81,9 +81,11 @@
 
 .question-option:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .question-option[data-selected] {
-  background: var(--highlight);
+  background: var(--sheen), var(--highlight);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 
 .question-option:has(input:focus-visible) {

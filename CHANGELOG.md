@@ -2,6 +2,27 @@
 
 Each release publishes its section below as the release notes, which the app shows before updating.
 
+## 0.18.0
+
+### Added
+- The app has a new look with depth. Cards, buttons and the sidebar sit raised with a soft highlight, while text fields, toggles and switches sit sunken into the surface.
+- Link chips show the site's icon, and links to local files open in the editor.
+
+### Changed
+- The composer's controls move to a drawer under the card, and attaching files is a + button in the input row. The chat scrolls behind the composer.
+- Hovering the context ring opens its details as a tab on the composer, like usage and pending messages, instead of a floating window.
+- Hovers are calmer across the app, with a fainter fill that fades in quickly and out slowly.
+- Running tools shimmer instead of showing a second spinner.
+- The settings sidebar matches the app's sidebar.
+
+### Fixed
+- Switching views no longer makes you wait about a second before you can click again.
+- The sidebar no longer slides out a moment after you come back from Bots.
+- Chats open at the right scroll position.
+- The desktop app finds provider CLIs installed through version managers, and one provider failing to load no longer hides the others.
+- Messages sent while a turn was stopping are no longer dropped.
+- The update button no longer shows lines above and below it on hover.
+
 ## 0.17.0
 
 ### Added

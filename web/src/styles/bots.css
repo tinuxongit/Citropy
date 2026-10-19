@@ -299,6 +299,7 @@
 }
 .bot-card:not([data-active="true"]):is(:hover, :has(:focus-visible)) {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .bot-card > .menu-wrap {
   position: absolute;
@@ -431,6 +432,7 @@
 }
 .bot-hidden-toggle:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text-2);
 }
 .bot-hidden-toggle svg {
@@ -743,6 +745,7 @@
 }
 .bot-shape:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .bot-shape[aria-checked="true"] {
   background: var(--raised-2);
@@ -1024,6 +1027,7 @@
 .new-chat-row:has(:focus-visible),
 .new-chat-row:focus-visible {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   outline: none;
 }
 .new-chat-row[data-checked] {
@@ -1152,9 +1156,6 @@
   flex-direction: column;
   border-radius: var(--r-sm);
   background: var(--raised);
-}
-.bot-brief:focus-within {
-  box-shadow: var(--field-focus-ring);
 }
 .feature-field .bot-brief textarea,
 .feature-field .bot-brief textarea:focus {

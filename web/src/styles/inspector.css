@@ -82,6 +82,7 @@
 
 .change-head:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 
 .change-chevron {
@@ -281,6 +282,7 @@
 
 .tree-row:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 

@@ -47,6 +47,7 @@
   border: 0;
   border-radius: var(--r-sm);
   background: var(--raised);
+  box-shadow: var(--inset-sunk);
   font-size: var(--text-sm);
 }
 .feature-field textarea {
@@ -60,7 +61,7 @@
 .feature-field .select:focus-visible:not(:where(.menu *)),
 .feature-inline input:focus {
   outline: none;
-  box-shadow: var(--field-focus-ring);
+  box-shadow: var(--inset-sunk), var(--field-focus-ring);
 }
 .feature-field input:disabled:not(:where(.menu *)),
 .feature-field .select:disabled:not(:where(.menu *)) {
@@ -160,7 +161,6 @@
 }
 .feature-search:focus-within {
   background: var(--raised-2);
-  box-shadow: var(--field-focus-ring);
 }
 .feature-search svg {
   flex: none;

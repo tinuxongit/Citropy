@@ -307,6 +307,7 @@
 .tool-head:hover,
 .todo-head:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 
@@ -511,6 +512,7 @@
 @media (hover: hover) and (pointer: fine) {
   :is(.group-summary, .work-fold, .reasoning-head):hover {
     background: var(--hover);
+    box-shadow: var(--edge-light), var(--shadow-raised);
     color: var(--text);
   }
 }
@@ -1085,7 +1087,7 @@
   font-size: var(--text-xs);
   font-weight: 500;
   letter-spacing: 0.01em;
-  box-shadow: var(--shadow-md-drop);
+  box-shadow: var(--edge-light), var(--shadow-md-drop);
 }
 @media (hover: hover) and (pointer: fine) {
   :is(.jump, .selection-quote):hover {
@@ -1178,6 +1180,7 @@
 @media (hover: hover) and (pointer: fine) {
   .message-reaction:hover {
     background: var(--hover);
+    box-shadow: var(--edge-light), var(--shadow-raised);
   }
 }
 @media (hover: hover) and (pointer: fine) {
@@ -1262,7 +1265,8 @@
   max-width: 75%;
   padding: var(--user-card-padding-block) var(--space-16);
   border-radius: var(--r-xl);
-  background: var(--raised);
+  background: var(--sheen), var(--raised);
+  box-shadow: var(--edge-light), var(--shadow-raised);
 }
 .user-card {
   margin-left: auto;
@@ -1338,6 +1342,7 @@
 }
 .group-body .question-history summary:hover {
   background: var(--hover);
+  box-shadow: var(--edge-light), var(--shadow-raised);
   color: var(--text);
 }
 .group-body .question-history summary > svg:first-child {
@@ -1410,6 +1415,7 @@
 @media (hover: hover) and (pointer: fine) {
   :is(.turn-changes-title, .turn-changes-total, .turn-changes-file):hover {
     background: var(--hover);
+    box-shadow: var(--edge-light), var(--shadow-raised);
     color: var(--text);
   }
 }
@@ -1425,7 +1431,7 @@
   padding: var(--space-4);
   border-radius: var(--r-lg);
   background: var(--raised);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--edge-light), var(--shadow-md);
 }
 .find-bar .thread-search {
   width: 240px;
