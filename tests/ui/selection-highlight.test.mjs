@@ -52,7 +52,7 @@ test(
       window.setClipWidth = setWidth;
       return React.createElement(React.Fragment, null,
         React.createElement('div', { style: { position: 'absolute', left: 2, top: 2, width: 4, height: 4, background: '#00ff00' } }),
-        React.createElement('div', { id: 'host', className: 'sliding-selection', style: { display: visible ? 'block' : 'none', margin: 40, width: 'min(300px, calc(100vw - 80px))', '--selection-fill': '#7232e6' } },
+        React.createElement('div', { id: 'host', className: 'sliding-selection', style: { display: visible ? 'block' : 'none', margin: 40, width: 'min(300px, calc(100vw - 80px))', '--selection-fill': '#7232e6', '--sheen': 'none' } },
           React.createElement(SelectionHighlight, { value: selected }),
           React.createElement('div', { id: 'clip', style: { display: 'flex', overflow: 'hidden', width } },
             ...['one', 'two'].map(value => React.createElement('button', { key: value, 'aria-selected': value === selected, onClick: () => setSelected(value), style: { flex: '0 0 150px', height: 40, padding: 0, border: 0, background: 'transparent', color: '#fff' } }, value)))));
