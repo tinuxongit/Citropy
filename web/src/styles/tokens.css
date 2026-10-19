@@ -207,7 +207,9 @@
   --peek-shadow: 10px 6px 28px -10px rgba(0, 0, 0, 0.85);
   /* Deeper than --inset-sunk, for wells that hold controls rather than text. */
   --well: var(--raised-2);
-  --inset-well: inset 0 6px 12px -2px rgba(0, 0, 0, 0.95), inset 0 0 0 1px rgba(0, 0, 0, 0.7), inset 0 -1px 0 rgba(255, 255, 255, 0.16);
+  --inset-well:
+    inset 0 6px 12px -2px rgba(0, 0, 0, 0.95), inset 0 0 0 1px rgba(0, 0, 0, 0.7),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.16);
   --frame-sunk: inset 2px 3px 8px -3px rgba(0, 0, 0, 0.9);
   /* Raised fills lighten toward the top. */
   --sheen: linear-gradient(rgba(255, 255, 255, 0.035), transparent 56px);
@@ -340,7 +342,9 @@
   --frame-line: rgba(0, 0, 0, 0.14);
   --peek-shadow: 10px 6px 28px -10px rgba(0, 0, 0, 0.22);
   --well: rgba(0, 0, 0, 0.05);
-  --inset-well: inset 0 3px 7px rgba(0, 0, 0, 0.16), inset 0 0 0 1px rgba(0, 0, 0, 0.06), inset 0 -1px 0 rgba(255, 255, 255, 0.9);
+  --inset-well:
+    inset 0 3px 7px rgba(0, 0, 0, 0.16), inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.9);
   --frame-sunk: inset 1px 2px 4px -2px rgba(0, 0, 0, 0.2);
   --sheen: linear-gradient(rgba(255, 255, 255, 0.6), transparent 56px);
   --inset-sunk: inset 0 1px 3px rgba(0, 0, 0, 0.1), inset 0 -1px 0 rgba(255, 255, 255, 0.8);

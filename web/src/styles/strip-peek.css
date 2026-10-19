@@ -22,9 +22,7 @@
   pointer-events: none;
   /* Only the left side clips, hiding the card behind the strip as it slides; the rest leaves room
      for its shadow. */
-  clip-path: inset(
-    calc(-1 * var(--strip-peek-fillet)) -48px calc(-1 * var(--strip-peek-fillet)) 0
-  );
+  clip-path: inset(calc(-1 * var(--strip-peek-fillet)) -48px calc(-1 * var(--strip-peek-fillet)) 0);
 }
 .strip-peek-card {
   position: relative;
