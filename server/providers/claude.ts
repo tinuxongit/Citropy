@@ -28,6 +28,16 @@ import { claudeHome } from "./config-folders.ts";
 const SHARED_SETTINGS = ["settings.json", "CLAUDE.md", "agents", "commands", "skills", "plugins"];
 const DEFAULT_CONTEXT_MAX = 200_000;
 const EXTENDED_CONTEXT_MAX = 1_000_000;
+
+const modelSuffix = (contextMax: number) => (contextMax > DEFAULT_CONTEXT_MAX ? "[1m]" : "");
+
+// Claude Code only offers 200k and 1M windows; any other size becomes its auto-compact window, which
+// keeps the conversation within that many tokens.
+const compactWindow = (contextMax?: number) =>
+  contextMax && contextMax !== DEFAULT_CONTEXT_MAX && contextMax !== EXTENDED_CONTEXT_MAX
+    ? contextMax
+    : undefined;
+
 const STEER_NOTE =
   "The user sent this while you were working. Answer any question in it in your visible reply, not only in your thinking.";
 
@@ -98,6 +108,7 @@ class ClaudeSession implements AgentSession {
   #openBlocks = new Set<string>();
   #configuredContextMax: number;
   #reportedContextMax: number;
+  #compactWindow: number | undefined;
   #tasks = new Map<string, TodoItem>();
   #pendingTasks = new Map<string, string>();
   #agentLaunches = new Map<string, { model?: string; parent?: string }>();
@@ -139,6 +150,7 @@ class ClaudeSession implements AgentSession {
     this.#permissionMode = options.permissionMode;
     this.#configuredContextMax = options.contextMax ?? DEFAULT_CONTEXT_MAX;
     this.#reportedContextMax = this.#configuredContextMax;
+    this.#compactWindow = compactWindow(options.contextMax);
     const contextTokens = options.usage?.contextTokens ?? 0;
     this.#contextTokens = contextTokens <= this.#configuredContextMax ? contextTokens : 0;
     const args = [
@@ -179,8 +191,7 @@ class ClaudeSession implements AgentSession {
     if (options.model)
       args.push(
         "--model",
-        options.model.replace(/\[1m\]$/i, "") +
-          (options.contextMax === EXTENDED_CONTEXT_MAX ? "[1m]" : ""),
+        options.model.replace(/\[1m\]$/i, "") + modelSuffix(this.#configuredContextMax),
       );
     args.push("--settings", JSON.stringify({ fastMode: options.fastMode ?? false }));
     if (options.externalId) args.push("--resume", options.externalId);
@@ -196,6 +207,9 @@ class ClaudeSession implements AgentSession {
           ? {
               CLAUDE_CODE_DISABLE_1M_CONTEXT: options.contextMax <= DEFAULT_CONTEXT_MAX ? "1" : "0",
             }
+          : {}),
+        ...(this.#compactWindow
+          ? { CLAUDE_CODE_AUTO_COMPACT_WINDOW: String(this.#compactWindow) }
           : {}),
       },
       stdio: ["pipe", "pipe", "pipe"],
@@ -360,8 +374,7 @@ class ClaudeSession implements AgentSession {
           model:
             config.model === "default"
               ? null
-              : config.model.replace(/\[1m\]$/i, "") +
-                (this.#configuredContextMax === EXTENDED_CONTEXT_MAX ? "[1m]" : ""),
+              : config.model.replace(/\[1m\]$/i, "") + modelSuffix(this.#configuredContextMax),
         },
         "Claude did not confirm the model change.",
       );
@@ -803,7 +816,7 @@ class ClaudeSession implements AgentSession {
         modelUsage?.[this.#model ?? ""] ?? (models.length === 1 ? models[0] : undefined)
       )?.contextWindow;
       if (contextMax && Number.isFinite(contextMax) && contextMax > 0)
-        this.#reportedContextMax = contextMax;
+        this.#reportedContextMax = Math.min(contextMax, this.#compactWindow ?? contextMax);
       for (const [key, field] of [
         ["input", "inputTokens"],
         ["output", "outputTokens"],

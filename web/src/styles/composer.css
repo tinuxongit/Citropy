@@ -1024,27 +1024,6 @@
   outline-offset: 2px;
   border-radius: var(--r-full);
 }
-.tuning-chips {
-  --selection-fill: var(--highlight);
-  display: flex;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: var(--r-md);
-  background: var(--canvas-deep);
-}
-.tuning-chips button {
-  flex: 1;
-  height: 30px;
-  border-radius: var(--r-sm);
-  color: var(--text-3);
-  font-size: var(--text-sm);
-}
-.tuning-chips button:hover {
-  color: var(--text);
-}
-.tuning-chips button[aria-pressed="true"] {
-  color: var(--text);
-}
 .tuning-speed {
   display: flex;
   align-items: center;

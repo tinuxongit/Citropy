@@ -58,6 +58,9 @@ export const PERMISSION_MODES: Array<{
 ];
 
 const contextLabel = (size: number) => tokens(size).replace(/\.00M$/, "M");
+const CONTEXT_STEP = 1000;
+// Every label below 1M is three digits and "k"; one per digit reserves the widest in any font.
+const CONTEXT_LABEL_WIDTHS = [..."0123456789"].map((digit) => `${digit.repeat(3)}k`);
 
 export type TuningTab = "effort" | "context" | "speed";
 
@@ -80,7 +83,7 @@ export function ModelTuning({
   const contextWindow = settings.contextWindow ?? model?.contextMax;
   const tabs: Array<{ id: TuningTab; label: string; icon: ComponentType<{ size?: number }> }> = [
     ...(efforts.length ? [{ id: "effort" as const, label: "Effort", icon: EffortIcon }] : []),
-    ...(model?.contextWindows?.length
+    ...(model?.contextMin !== undefined && model.contextMax
       ? [{ id: "context" as const, label: "Context", icon: LayersIcon }]
       : []),
     ...(model?.fastMode ? [{ id: "speed" as const, label: "Speed", icon: BoltIcon }] : []),
@@ -122,19 +125,12 @@ export function ModelTuning({
           />
         )}
         {tab === "context" && (
-          <div className="tuning-chips sliding-selection" role="group" aria-label="Context window">
-            <SelectionHighlight value={String(contextWindow)} />
-            {model!.contextWindows!.map((size) => (
-              <button
-                key={size}
-                type="button"
-                aria-pressed={contextWindow === size}
-                onClick={() => onChange({ contextWindow: size })}
-              >
-                {contextLabel(size)} tokens
-              </button>
-            ))}
-          </div>
+          <ContextSlider
+            min={model!.contextMin!}
+            max={model!.contextMax!}
+            value={contextWindow!}
+            onChange={(size) => onChange({ contextWindow: size })}
+          />
         )}
         {tab === "speed" && (
           <label className="tuning-speed">
@@ -242,6 +238,88 @@ function EffortSlider({
           aria-label="Reasoning effort"
           aria-valuetext={efforts[index] && formatEffort(efforts[index])}
           disabled={last < 1}
+          onChange={(event) => settle(Number(event.target.value))}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
+function ContextSlider({
+  min,
+  max,
+  value,
+  onChange,
+}: {
+  min: number;
+  max: number;
+  value: number;
+  onChange: (size: number) => void;
+}) {
+  const [grip, setGrip] = useState<{ size: number; phase: "held" | "released" }>();
+  useEffect(
+    () =>
+      setGrip((current) =>
+        current?.phase === "released" && current.size === value ? undefined : current,
+      ),
+    [value],
+  );
+  const size = grip?.size ?? value;
+  const held = grip?.phase === "held";
+  const reducedMotion = useReducedMotion();
+  const target = (size - min) / (max - min);
+  const fill = useSpring(target, { stiffness: 600, damping: 42 });
+  useEffect(() => {
+    if (reducedMotion || held) fill.jump(target);
+    else fill.set(target);
+  }, [fill, target, reducedMotion, held]);
+  const sizeAt = (track: HTMLElement, clientX: number) => {
+    const rect = track.getBoundingClientRect();
+    // The thumb's center travels between its 4px insets from composer.css.
+    const edge = 4 + track.querySelector<HTMLElement>(".effort-slider-thumb")!.offsetWidth / 2;
+    const fraction = Math.min(
+      Math.max((clientX - rect.left - edge) / (rect.width - 2 * edge), 0),
+      1,
+    );
+    const snapped = Math.round((min + fraction * (max - min)) / CONTEXT_STEP) * CONTEXT_STEP;
+    return Math.min(Math.max(snapped, min), max);
+  };
+  const settle = (settled: number) => {
+    setGrip({ size: settled, phase: "released" });
+    if (settled !== value) onChange(settled);
+  };
+  return (
+    <div className="effort-slider">
+      <div className="effort-slider-value">{contextLabel(size)} tokens</div>
+      <motion.div
+        className="effort-slider-track"
+        style={{ "--fill": fill } as MotionStyle}
+        data-held={held || undefined}
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          setGrip({ size: sizeAt(event.currentTarget, event.clientX), phase: "held" });
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+          setGrip({ size: sizeAt(event.currentTarget, event.clientX), phase: "held" });
+        }}
+        onPointerUp={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+          settle(sizeAt(event.currentTarget, event.clientX));
+        }}
+        onPointerCancel={() => setGrip(undefined)}
+      >
+        <span className="effort-slider-thumb" />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={CONTEXT_STEP}
+          value={size}
+          aria-label="Context window"
+          aria-valuetext={`${size.toLocaleString(LOCALE)} tokens`}
           onChange={(event) => settle(Number(event.target.value))}
         />
       </motion.div>
@@ -380,7 +458,9 @@ export function ContextMenu({
   disabled: boolean;
 }) {
   const contextWindow = thread.contextWindow ?? model?.contextMax;
-  if (!contextWindow || !model?.contextWindows?.length) return null;
+  if (!contextWindow || model?.contextMin === undefined) return null;
+  const label = contextLabel(contextWindow);
+  const widths = [label, contextLabel(model.contextMax ?? contextWindow), ...CONTEXT_LABEL_WIDTHS];
   return (
     <TuningMenu
       thread={thread}
@@ -391,7 +471,13 @@ export function ContextMenu({
       label={`Context window: ${contextWindow.toLocaleString(LOCALE)} tokens`}
     >
       <LayersIcon size={BAR_ICON_SIZE} />
-      <span className="composer-label">{contextLabel(contextWindow)}</span>
+      <span className="composer-label composer-label-stack">
+        {[...new Set(widths)].map((choice) => (
+          <span key={choice} data-current={choice === label || undefined}>
+            {choice}
+          </span>
+        ))}
+      </span>
     </TuningMenu>
   );
 }

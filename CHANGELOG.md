@@ -4,6 +4,9 @@ Each release publishes its section below as the release notes, which the app sho
 
 ## 0.17.0
 
+### Added
+- The context button has a slider. Drag it to any size from 100k up to the model's limit, and Claude compacts the conversation when it reaches that size.
+
 ### Changed
 - Terminals opened by project scripts and Run in terminal close when their command succeeds. A failed command keeps its terminal open so you can read the error.
 

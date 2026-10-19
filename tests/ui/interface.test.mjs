@@ -262,6 +262,52 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
     await setup.getByRole("heading", { name: "Welcome to Citropy" }).waitFor();
   });
 
+  check("the context slider sets any size within the model's range", async (t) => {
+    const { page, sent } = await app(t, {
+      messages: [],
+      threadPatch: { running: false, status: "idle" },
+      snapshotPatch: {
+        providers: [
+          {
+            ...provider,
+            models: [{ ...provider.models[0], contextMin: 100_000, contextMax: 1_000_000 }],
+          },
+        ],
+      },
+    });
+    const configured = () =>
+      sent.filter((event) => event.t === "thread.config").map((event) => event.contextWindow);
+    await page.getByRole("button", { name: "Context window: 1,000,000 tokens" }).click();
+    await page.getByRole("slider", { name: "Context window" }).fill("437000");
+    await page.locator(".effort-slider-value").getByText("437k tokens").waitFor();
+    assert.ok(configured().includes(437_000));
+    const track = await page.locator(".effort-slider-track").boundingBox();
+    await page.mouse.move(track.x + track.width / 2, track.y + track.height / 2);
+    await page.mouse.down();
+    await page.mouse.up();
+    await expect(async () => Math.abs(configured().at(-1) - 550_000) <= 2_000);
+  });
+
+  check("the context button keeps its width for every size", async (t) => {
+    const width = async (contextWindow) => {
+      const { page } = await app(t, {
+        messages: [],
+        threadPatch: { running: false, status: "idle", contextWindow },
+        snapshotPatch: {
+          providers: [
+            {
+              ...provider,
+              models: [{ ...provider.models[0], contextMin: 100_000, contextMax: 1_000_000 }],
+            },
+          ],
+        },
+      });
+      const button = page.getByRole("button", { name: /^Context window:/ });
+      return (await button.boundingBox()).width;
+    };
+    assert.equal(await width(437_000), await width(1_000_000));
+  });
+
   check("sent messages show mentions as named tags", async (t) => {
     const mentions = [
       { name: "google", title: "Google", icon: "site", url: "https://www.google.com/" },

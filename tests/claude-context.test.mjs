@@ -18,7 +18,10 @@ function fixture(t, startOptions = {}) {
   child.stdin.on("data", (data) => child.messages.push(JSON.parse(String(data))));
   child.kill = () => true;
   const originalSpawn = childProcess.spawn;
-  childProcess.spawn = () => child;
+  childProcess.spawn = (file, args, options) => {
+    child.spawned = { args, env: options.env };
+    return child;
+  };
   syncBuiltinESMExports();
   const events = [];
   const session = claudeProvider.start({
@@ -176,6 +179,27 @@ test("Claude reporting a smaller context window does not change the configured w
   receive({ ...result, modelUsage: { "claude-opus-5-5": { contextWindow: 200_000 } } });
   await session.configure({ contextMax: 1_000_000 });
   await assert.rejects(session.configure({ contextMax: 200_000 }), /restart/);
+});
+
+test("Claude keeps a context window between its native sizes with auto-compaction", async (t) => {
+  const { child, events, receive } = fixture(t, {
+    model: "claude-opus-5-5",
+    contextMax: 400_000,
+  });
+  const { args, env } = child.spawned;
+  assert.equal(args[args.indexOf("--model") + 1], "claude-opus-5-5[1m]");
+  assert.equal(env.CLAUDE_CODE_AUTO_COMPACT_WINDOW, "400000");
+  assert.equal(env.CLAUDE_CODE_DISABLE_1M_CONTEXT, "0");
+  receive({ ...result, modelUsage: { "claude-opus-5-5": { contextWindow: 1_000_000 } } });
+  assert.equal(events.findLast((event) => event.type === "usage").usage.contextMax, 400_000);
+});
+
+test("Claude leaves auto-compaction alone at its native context sizes", (t) => {
+  const { child } = fixture(t, { model: "claude-opus-5-5", contextMax: 1_000_000 });
+  assert.equal(
+    child.spawned.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW,
+    process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW,
+  );
 });
 
 test("Claude reports when its prompt cache expires, counted from the request start", async (t) => {

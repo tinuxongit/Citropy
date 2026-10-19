@@ -83,6 +83,9 @@ function claudeSessionOnlyEfforts(
   return { base, extra: base.length ? offered.filter((level) => !base.includes(level)) : [] };
 }
 
+// Claude Code compacts to any window from 100k up to the model's limit.
+const CLAUDE_CONTEXT_MIN = 100_000;
+
 function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): ModelOption[] {
   const sessionOnly = claudeSessionOnlyEfforts(data, commands);
   const models = new Map<string, ModelOption>();
@@ -102,6 +105,7 @@ function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): Mode
     const efforts = claudeEfforts(model);
     const offersSessionOnly = sessionOnly.base.every((level) => efforts.includes(level));
     const contextMax = model.contextWindow ?? (extended ? 1_000_000 : named ? 200_000 : undefined);
+    const largestContext = Math.max(previous?.contextMax ?? 0, contextMax ?? 0);
     models.set(id, {
       id,
       label,
@@ -111,13 +115,8 @@ function claudeModels(data: ClaudeModel[], commands: ClaudeCommand[] = []): Mode
       efforts: offersSessionOnly ? [...efforts, ...sessionOnly.extra] : efforts,
       defaultEffort: model.defaultEffort,
       isDefault: previous?.isDefault || model.value === "default",
-      contextMax: Math.max(previous?.contextMax ?? 0, contextMax ?? 0) || undefined,
-      contextWindows:
-        extended || previous?.contextWindows?.length === 2
-          ? [200_000, 1_000_000]
-          : contextMax
-            ? [contextMax]
-            : undefined,
+      contextMax: largestContext || undefined,
+      contextMin: largestContext > CLAUDE_CONTEXT_MIN ? CLAUDE_CONTEXT_MIN : undefined,
       fastMode: previous?.fastMode || model.supportsFastMode || false,
       fastModeHint: model.supportsFastMode
         ? "Faster responses using paid usage credits"

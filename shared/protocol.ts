@@ -440,7 +440,7 @@ export interface ProviderInstance {
 
 export interface ModelOption {
   contextMax?: number;
-  contextWindows?: number[];
+  contextMin?: number;
   aliases?: string[];
   fastMode?: boolean;
   fastModeHint?: string;

@@ -42,9 +42,20 @@ export function modelSettings(
   return {
     model: model.id,
     effort: effectiveEffort(model, selection.effort),
-    contextWindow: model.contextWindows?.includes(selection.contextWindow ?? 0)
+    contextWindow: contextWindowAllowed(model, selection.contextWindow)
       ? selection.contextWindow
       : model.contextMax,
     fastMode: Boolean(model.fastMode && selection.fastMode),
   };
+}
+
+export function contextWindowAllowed(model: ModelOption, size: number | undefined): boolean {
+  return (
+    model.contextMin !== undefined &&
+    model.contextMax !== undefined &&
+    size !== undefined &&
+    Number.isInteger(size) &&
+    size >= model.contextMin &&
+    size <= model.contextMax
+  );
 }

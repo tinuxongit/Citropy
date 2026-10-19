@@ -8,7 +8,12 @@ import { store } from "../store.ts";
 import { findInMessages } from "../search/conversation-search.ts";
 import { chooseThreadWorkspace, workspacePath } from "../workspaces.ts";
 import { cleanupCheckpoints } from "../checkpoints.ts";
-import { modelSettings, nextTurnSettings, selectedModel } from "../../shared/model-options.ts";
+import {
+  contextWindowAllowed,
+  modelSettings,
+  nextTurnSettings,
+  selectedModel,
+} from "../../shared/model-options.ts";
 import { providerAccount } from "../../shared/provider-account.ts";
 import type { ClientEvent, Thread } from "../../shared/protocol.ts";
 import type { Respond, Routes } from "./types.ts";
@@ -96,7 +101,10 @@ function resolveConfig(
     throw new Error("This model is no longer available. Refresh the model list.");
   if (event.effort && !model?.efforts?.includes(event.effort))
     throw new Error("This effort is not supported by the selected model");
-  if (event.contextWindow !== undefined && !model?.contextWindows?.includes(event.contextWindow))
+  if (
+    event.contextWindow !== undefined &&
+    !(model && contextWindowAllowed(model, event.contextWindow))
+  )
     throw new Error("This context size is not supported by the selected model");
   if (
     event.fastMode !== undefined &&
