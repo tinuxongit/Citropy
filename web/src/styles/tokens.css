@@ -203,7 +203,7 @@
   --edge-pressed: inset 0 1px 0 rgba(0, 0, 0, 0.12);
   --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-float: 0 18px 44px -18px rgba(0, 0, 0, 0.8);
-  --frame-line: var(--line-strong);
+  --frame-line: var(--line);
   --peek-shadow: 10px 6px 28px -10px rgba(0, 0, 0, 0.85);
   /* Deeper than --inset-sunk, for wells that hold controls rather than text. */
   --well: var(--raised-2);
@@ -339,7 +339,7 @@
   --edge-pressed: inset 0 1px 0 rgba(0, 0, 0, 0.08);
   --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
   --shadow-float: 0 16px 40px -18px rgba(0, 0, 0, 0.55);
-  --frame-line: rgba(0, 0, 0, 0.14);
+  --frame-line: rgba(0, 0, 0, 0.08);
   --peek-shadow: 10px 6px 28px -10px rgba(0, 0, 0, 0.22);
   --well: rgba(0, 0, 0, 0.05);
   --inset-well:
