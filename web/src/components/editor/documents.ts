@@ -189,7 +189,8 @@ function protectDrafts(event: BeforeUnloadEvent): void {
   event.returnValue = "";
 }
 
-window.addEventListener("beforeunload", protectDrafts);
+// Tests import this through actions.ts without a window.
+if (typeof window !== "undefined") window.addEventListener("beforeunload", protectDrafts);
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     window.removeEventListener("beforeunload", protectDrafts);
