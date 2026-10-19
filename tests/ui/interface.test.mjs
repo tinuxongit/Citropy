@@ -303,6 +303,9 @@ test("interface", { timeout: 180_000, concurrency: 4 }, async (t) => {
         },
       });
       const button = page.getByRole("button", { name: /^Context window:/ });
+      // A label measured in the fallback font differs between sizes on a slow runner.
+      await button.waitFor();
+      await page.evaluate(() => document.fonts.ready);
       return (await button.boundingBox()).width;
     };
     assert.ok(Math.abs((await width(437_000)) - (await width(1_000_000))) < 0.5);
